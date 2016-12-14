@@ -21,6 +21,9 @@ export const VALID_AGGREGATIONS = new Map(Object.entries({
     "max": "Max"
 }));
 
+export const NULLARY_AGGREGATIONS = ["count", "cum_count"];
+export const UNARY_AGGREGATIONS = ["sum", "cum_sum", "distinct", "stddev", "avg", "min", "max"];
+
 export const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
 export const Plus = extendToken("Plus", /\+/, AdditiveOperator);
 export const Minus = extendToken("Minus", /-/, AdditiveOperator);
@@ -30,8 +33,15 @@ export const Multi = extendToken("Multi", /\*/, MultiplicativeOperator);
 export const Div = extendToken("Div", /\//, MultiplicativeOperator);
 
 export const Aggregation = extendToken("Aggregation", Lexer.NA);
-export const aggregationsTokens = Array.from(VALID_AGGREGATIONS).map(([short, expressionName]) =>
-    extendToken(expressionName, new RegExp(expressionName), Aggregation)
+
+export const NullaryAggregation = extendToken("NullaryAggregation", Aggregation);
+const nullaryAggregationTokens = NULLARY_AGGREGATIONS.map((short) =>
+    extendToken(VALID_AGGREGATIONS.get(short), new RegExp(VALID_AGGREGATIONS.get(short), "i"), NullaryAggregation)
+);
+
+export const UnaryAggregation = extendToken("UnaryAggregation", Aggregation);
+const unaryAggregationTokens = UNARY_AGGREGATIONS.map((short) =>
+    extendToken(VALID_AGGREGATIONS.get(short), new RegExp(VALID_AGGREGATIONS.get(short), "i"), UnaryAggregation)
 );
 
 export const Identifier = extendToken('Identifier', /\w+/);
@@ -50,7 +60,9 @@ export const allTokens = [
     WhiteSpace, LParen, RParen, Comma,
     Plus, Minus, Multi, Div,
     AdditiveOperator, MultiplicativeOperator,
-    Aggregation, ...aggregationsTokens,
+    Aggregation,
+    NullaryAggregation, ...nullaryAggregationTokens,
+    UnaryAggregation, ...unaryAggregationTokens,
     StringLiteral, NumberLiteral,
     Identifier
 ];

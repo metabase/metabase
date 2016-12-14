@@ -67,6 +67,7 @@ describe("lib/expressions/parser", () => {
         });
 
         it("can parse aggregation with no arguments", () => {
+            expect(compile("Count", aggregationOpts)).toEqual(["count"]);
             expect(compile("Count()", aggregationOpts)).toEqual(["count"]);
         });
 
@@ -75,7 +76,7 @@ describe("lib/expressions/parser", () => {
         });
 
         it("can parse complex aggregation", () => {
-            expect(compile("1 - Sum(A * 2) / Count()", aggregationOpts)).toEqual(["-", 1, ["/", ["sum", ["*", ["field-id", 1], 2]], ["count"]]]);
+            expect(compile("1 - Sum(A * 2) / Count", aggregationOpts)).toEqual(["-", 1, ["/", ["sum", ["*", ["field-id", 1], 2]], ["count"]]]);
         });
 
         it("should throw exception on invalid input", () => {
@@ -89,7 +90,7 @@ describe("lib/expressions/parser", () => {
     describe("suggest()", () => {
         it("should suggest aggregations and metrics after an operator", () => {
             expect(cleanSuggestions(suggest("1 + ", aggregationOpts))).toEqual([
-                { type: 'aggregations', text: 'Count()' },
+                { type: 'aggregations', text: 'Count ' },
                 { type: 'aggregations', text: 'Sum(' },
                 { type: 'metrics',     text: 'FooBar()' },
                 { type: 'other',       text: ' (' },
@@ -106,7 +107,7 @@ describe("lib/expressions/parser", () => {
         })
         it("should suggest partial matches in aggregation", () => {
             expect(cleanSuggestions(suggest("1 + C", aggregationOpts))).toEqual([
-                { type: 'aggregations', text: 'Count()' },
+                { type: 'aggregations', text: 'Count ' },
             ]);
         })
         it("should suggest partial matches in expression", () => {
@@ -118,19 +119,13 @@ describe("lib/expressions/parser", () => {
 
     describe("compile() in syntax mode", () => {
         it ("should parse source without whitespace into a recoverable syntax tree", () => {
-            const source = "1-Sum(A*2+\"Toucan Sam\")/Count()";
-            const tree = parse(source, aggregationOpts);
-            expect(serialize(tree)).toEqual(source)
-        })
-        xit ("should parse source with metric into a recoverable syntax tree", () => {
-            // FIXME: not preserving parens
-            const source = "Count()+FooBar()";
+            const source = "1-Sum(A*2+\"Toucan Sam\")/Count()+FooBar()";
             const tree = parse(source, aggregationOpts);
             expect(serialize(tree)).toEqual(source)
         })
         xit ("should parse source with whitespace into a recoverable syntax tree", () => {
             // FIXME: not preserving whitespace
-            const source = "1 - Sum(A * 2 + \"Toucan Sam\") / Count()";
+            const source = "1 - Sum(A * 2 + \"Toucan Sam\") / Count + FooBar()";
             const tree = parse(source, aggregationOpts);
             expect(serialize(tree)).toEqual(source)
         })

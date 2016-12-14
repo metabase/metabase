@@ -11,20 +11,22 @@ export function formatAggregationName(aggregationOption) {
     return VALID_AGGREGATIONS.get(aggregationOption.short);
 }
 
+function formatIdentifier(name) {
+    return /^\w+$/.test(name) ?
+        name :
+        JSON.stringify(name);
+}
+
 export function formatMetricName(metric) {
     return titleize(metric.name).replace(/\W+/g, "")
 }
 
 export function formatFieldName(field) {
-    return /^\w+$/.test(field.display_name) ?
-        field.display_name :
-        JSON.stringify(field.display_name);
+    return formatIdentifier(field.display_name);
 }
 
 export function formatExpressionName(name) {
-    return /^\w+$/.test(name) ?
-        name :
-        JSON.stringify(name);
+    return formatIdentifier(name);
 }
 
 // move to query lib

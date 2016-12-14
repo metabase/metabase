@@ -70,5 +70,7 @@ function formatMath([operator, ...args], info, parens) {
 
 function formatAggregation([aggregation, ...args], info) {
     const { aggregations } = info;
-    return `${aggregations.get(aggregation)}(${args.map(arg => format(arg, info)).join(", ")})`;
+    return args.length === 0 ?
+        aggregations.get(aggregation) :
+        `${aggregations.get(aggregation)}(${args.map(arg => format(arg, info)).join(", ")})`;
 }

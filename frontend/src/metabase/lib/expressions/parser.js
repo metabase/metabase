@@ -9,7 +9,7 @@ import {
     allTokens,
     LParen, RParen, Comma,
     AdditiveOperator, MultiplicativeOperator,
-    Aggregation,
+    Aggregation, NullaryAggregation, UnaryAggregation,
     StringLiteral, NumberLiteral,
     Identifier
 } from "./tokens";
@@ -59,30 +59,46 @@ class ExpressionsParser extends Parser {
             return this._math(initial, operations);
         });
 
-        $.RULE("aggregationOrMetricExpression", (outsideAggregation) => {
-            return $.OR([
-                {ALT: () => $.SUBRULE($.aggregationExpression, [outsideAggregation]) },
-                {ALT: () => $.SUBRULE($.metricExpression) }
-            ]);
-        });
+        $.RULE("nullaryCall", () => {
+            return {
+                lParen: $.CONSUME(LParen),
+                rParen: $.CONSUME(RParen)
+            }
+        })
+        $.RULE("unaryCall", () => {
+            return {
+                lParen: $.CONSUME(LParen),
+                arg:    $.SUBRULE($.expression, [false]),
+                rParen: $.CONSUME(RParen)
+            }
+        })
 
         $.RULE("aggregationExpression", (outsideAggregation) => {
-            const aggregation = $.CONSUME(Aggregation);
-            const lParen = $.CONSUME(LParen);
-            const args = $.MANY_SEP(Comma, () => $.SUBRULE($.expression, [false]));
-            const rParen = $.CONSUME(RParen);
-
-            return this._aggregation(aggregation, lParen, args, rParen);
+            const { aggregation, lParen, arg, rParen } = $.OR([
+                {ALT: () => ({
+                    aggregation: $.CONSUME(NullaryAggregation),
+                    ...$.OPTION(() => $.SUBRULE($.nullaryCall))
+                })},
+                {ALT: () => ({
+                    aggregation: $.CONSUME(UnaryAggregation),
+                    ...$.SUBRULE($.unaryCall)
+                })}
+            ]);
+            return this._aggregation(aggregation, lParen, arg, rParen);
         });
 
         $.RULE("metricExpression", () => {
             const metricName = $.SUBRULE($.identifier);
             const lParen = $.CONSUME(LParen);
             const rParen = $.CONSUME(RParen);
+            // const metricName = $.OR([
+            //     {ALT: () => $.SUBRULE($.stringLiteral) },
+            //     {ALT: () => $.SUBRULE($.identifier) }
+            // ]);
 
             const metric = this.getMetricForName(this._toString(metricName));
             if (metric != null) {
-                return this._metricReference(metricName, metric.id);
+                return this._metricReference(metricName, lParen, rParen, metric.id);
             }
             return this._unknownMetric(metricName, lParen, rParen);
         });
@@ -121,13 +137,14 @@ class ExpressionsParser extends Parser {
 
         $.RULE("atomicExpression", (outsideAggregation) => {
             return $.OR([
-                // aggregations not allowed inside other aggregations
-                {GATE: () => outsideAggregation, ALT: () => $.SUBRULE($.aggregationOrMetricExpression, [false]) },
-                // fields not allowed outside aggregations
+                // aggregations and metrics are not allowed inside other aggregations
+                {GATE: () => outsideAggregation, ALT: () => $.SUBRULE($.aggregationExpression, [false]) },
+                {GATE: () => outsideAggregation, ALT: () => $.SUBRULE($.metricExpression) },
+                // fields are not allowed outside aggregations
                 {GATE: () => !outsideAggregation, ALT: () => $.SUBRULE($.fieldExpression) },
                 {ALT: () => $.SUBRULE($.parenthesisExpression, [outsideAggregation]) },
                 {ALT: () => $.SUBRULE($.numberLiteral) }
-            ], "a number or field name");
+            ]);
         });
 
         $.RULE("parenthesisExpression", (outsideAggregation) => {
@@ -168,11 +185,11 @@ class ExpressionsParserMBQL extends ExpressionsParser {
         }
         return initial;
     }
-    _aggregation(aggregation, lParen, args, rParen) {
-        const aggregationName = aggregation.image;
-        return [aggregationsMap.get(aggregationName)].concat(args.values);
+    _aggregation(aggregation, lParen, arg, rParen) {
+        const agg = aggregationsMap.get(aggregation.image)
+        return arg == null ? [agg] : [agg, arg];
     }
-    _metricReference(metricName, metricId) {
+    _metricReference(metricName, lParen, rParen, metricId) {
         return ["METRIC", metricId];
     }
     _fieldReference(fieldName, fieldId) {
@@ -184,7 +201,7 @@ class ExpressionsParserMBQL extends ExpressionsParser {
     _unknownField(fieldName) {
         throw new Error("Unknown field \"" + fieldName + "\"");
     }
-    _unknownMetric(metricName) {
+    _unknownMetric(metricName, lParen, rParen) {
         throw new Error("Unknown metric \"" + metricName + "\"");
     }
 
@@ -207,31 +224,24 @@ class ExpressionsParserMBQL extends ExpressionsParser {
 
 const syntax = (type, ...children) => ({
     type: type,
-    children: children
+    children: children.filter(child => child)
 })
-const token = (token) => ({
+const token = (token) => token && ({
     type: "token",
     text: token.image,
     start: token.startOffset,
     end: token.endOffset,
-})
+});
 
 class ExpressionsParserSyntax extends ExpressionsParser {
     _math(initial, operations) {
         return syntax("math", ...[initial].concat(...operations.map(([op, arg]) => [token(op), arg])));
     }
-    _aggregation(aggregation, lParen, args, rParen) {
-        let argsAndCommas = [];
-        for (let i = 0; i < args.values.length; i++) {
-            argsAndCommas.push(args.values[i]);
-            if (i < args.separators.length) {
-                argsAndCommas.push(args.separators[i]);
-            }
-        }
-        return syntax("aggregation", token(aggregation), token(lParen), ...argsAndCommas, token(rParen));
+    _aggregation(aggregation, lParen, arg, rParen) {
+        return syntax("aggregation", token(aggregation), token(lParen), arg, token(rParen));
     }
-    _metricReference(metricName, metricId) {
-        return syntax("metric", metricName);
+    _metricReference(metricName, lParen, rParen, metricId) {
+        return syntax("metric", metricName, token(lParen), token(rParen));
     }
     _fieldReference(fieldName, fieldId) {
         return syntax("field", fieldName);
@@ -242,8 +252,8 @@ class ExpressionsParserSyntax extends ExpressionsParser {
     _unknownField(fieldName) {
         return syntax("unknown", fieldName);
     }
-    _unknownMetric(metricName) {
-        return syntax("unknown", metricName);
+    _unknownMetric(metricName, lParen, rParen) {
+        return syntax("unknown", metricName, lParen, rParen);
     }
 
     _identifier(identifier) {
@@ -389,17 +399,17 @@ export function suggest(source, {
                     postfixTrim: /^\w+\s*/
                 })));
             }
-        } else if (nextTokenType === Aggregation) {
+        } else if (nextTokenType === Aggregation || nextTokenType === NullaryAggregation || nextTokenType === UnaryAggregation) {
             if (outsideAggregation) {
                 finalSuggestions.push(...tableMetadata.aggregation_options.filter(a => formatAggregationName(a)).map(aggregationOption => {
                     const arity = aggregationOption.fields.length;
                     return {
                         type: "aggregations",
                         name: formatAggregationName(aggregationOption),
-                        text: formatAggregationName(aggregationOption) + "(" + (arity > 0 ? "" : ")"),
-                        postfixText: arity > 0 ? ")" : "",
+                        text: formatAggregationName(aggregationOption) + (arity > 0 ? "(" : " "),
+                        postfixText: (arity > 0 ? ")" : " "),
                         prefixTrim: /\w+$/,
-                        postfixTrim: /^\w+(\(\)?|$)/
+                        postfixTrim: (arity > 0 ? /^\w+(\(\)?|$)/ : /^\w+\s*/)
                     };
                 }));
                 finalSuggestions.push(...tableMetadata.metrics.map(metric => ({

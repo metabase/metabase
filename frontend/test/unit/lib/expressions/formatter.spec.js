@@ -30,13 +30,13 @@ describe("lib/expressions/parser", () => {
         });
 
         it("format aggregations", () => {
-            expect(format(["count"], mockMetadata)).toEqual("Count()");
+            expect(format(["count"], mockMetadata)).toEqual("Count");
             expect(format(["sum", ["field-id", 1]], mockMetadata)).toEqual("Sum(A)");
         });
 
         it("nested aggregation", () => {
-            expect(format(["+", 1, ["count"]], mockMetadata)).toEqual("1 + Count()");
-            expect(format(["/", ["sum", ["field-id", 1]], ["count"]], mockMetadata)).toEqual("Sum(A) / Count()");
+            expect(format(["+", 1, ["count"]], mockMetadata)).toEqual("1 + Count");
+            expect(format(["/", ["sum", ["field-id", 1]], ["count"]], mockMetadata)).toEqual("Sum(A) / Count");
         });
 
         it("aggregation with expressions", () => {
