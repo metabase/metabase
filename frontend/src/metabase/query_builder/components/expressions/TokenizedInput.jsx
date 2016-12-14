@@ -103,7 +103,10 @@ export default class TokenizedInput extends Component {
             inputNode.removeChild(inputNode.firstChild);
         }
         ReactDOM.render(<TokenizedExpression source={this._getValue()} />, inputNode);
-        restore();
+
+        if (document.activeElement === inputNode) {
+            restore();
+        }
     }
     render() {
         const { className, onFocus, onBlur, onClick } = this.props;

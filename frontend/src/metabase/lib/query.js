@@ -628,6 +628,14 @@ export const NamedClause = {
     },
     getContent(clause) {
         return NamedClause.isNamed(clause) ? clause[1] : clause;
+    },
+    setName(clause, name) {
+        return ["named", NamedClause.getContent(clause), name];
+    },
+    setContent(clause, content) {
+        return NamedClause.isNamed(clause) ?
+            ["named", content, NamedClause.getName(clause)] :
+            content;
     }
 }
 
@@ -672,7 +680,8 @@ export const AggregationClause = {
     },
 
     isCustom(aggregation) {
-        return aggregation && isMath(aggregation) || (
+        // for now treal all named clauses as custom
+        return aggregation && NamedClause.isNamed(aggregation) || isMath(aggregation) || (
             AggregationClause.isStandard(aggregation) && _.any(aggregation.slice(1), (arg) => isMath(arg))
         );
     },

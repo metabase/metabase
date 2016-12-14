@@ -9,7 +9,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import Button from "metabase/components/Button.jsx";
 
 import Query from "metabase/lib/query";
-import { AggregationClause } from "metabase/lib/query";
+import { AggregationClause, NamedClause } from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -23,8 +23,8 @@ export default class AggregationPopover extends Component {
 
         this.state = {
             aggregation: (props.isNew ? [] : props.aggregation),
-            choosingField: (props.aggregation && props.aggregation.length > 1 && AggregationClause.isStandard(props.aggregation)),
-            editingAggregation: (props.aggregation && props.aggregation.length > 1 && AggregationClause.isCustom(props.aggregation))
+            choosingField: AggregationClause.isStandard(props.aggregation),
+            editingAggregation: AggregationClause.isCustom(props.aggregation)
         };
 
         _.bindAll(this, "commitAggregation", "onPickAggregation", "onPickField", "onClearAggregation");
@@ -85,7 +85,7 @@ export default class AggregationPopover extends Component {
 
     itemIsSelected(item) {
         const { aggregation } = this.props;
-        return item.isSelected(aggregation);
+        return item.isSelected(NamedClause.getContent(aggregation));
     }
 
     renderItemExtra(item, itemIndex) {
@@ -115,7 +115,8 @@ export default class AggregationPopover extends Component {
 
     render() {
         const { availableAggregations, tableMetadata, isNew } = this.props;
-        const { aggregation, choosingField, editingAggregation } = this.state;
+        const { choosingField, editingAggregation } = this.state;
+        const aggregation = NamedClause.getContent(this.state.aggregation);
 
         let selectedAggregation;
         if (AggregationClause.isMetric(aggregation)) {
@@ -180,8 +181,13 @@ export default class AggregationPopover extends Component {
                             expression={aggregation}
                             tableMetadata={tableMetadata}
                             customFields={this.props.customFields}
-                            onChange={(parsedExpression) => this.setState({aggregation: parsedExpression, error: null})}
-                            onError={(errorMessage) => this.setState({error: errorMessage})}
+                            onChange={(parsedExpression) => this.setState({
+                                aggregation: NamedClause.setContent(this.state.aggregation, parsedExpression),
+                                error: null
+                            })}
+                            onError={(errorMessage) => this.setState({
+                                error: errorMessage
+                            })}
                         />
                         { this.state.error != null && (
                             Array.isArray(this.state.error) ?
@@ -191,6 +197,16 @@ export default class AggregationPopover extends Component {
                             :
                                 <div className="text-error mb1">{this.state.error.message}</div>
                         )}
+                        <input
+                            className="input block full my1"
+                            value={NamedClause.getName(this.state.aggregation)}
+                            onChange={(e) => this.setState({
+                                aggregation: e.target.value ?
+                                    NamedClause.setName(aggregation, e.target.value) :
+                                    aggregation
+                            })}
+                            placeholder="Aggregation name (optional)"
+                        />
                         <Button className="full" primary disabled={this.state.error} onClick={() => this.commitAggregation(this.state.aggregation)}>
                             {isNew ? "Add" : "Update"} Aggregation
                         </Button>
