@@ -56,7 +56,7 @@ function formatMetric([, metricId], { tableMetadata: { metrics } }) {
     if (!metric) {
         throw 'metric with ID does not exist: ' + metricId;
     }
-    return formatMetricName(metric) + "()";
+    return formatMetricName(metric);
 }
 
 function formatExpressionReference([, expressionName]) {

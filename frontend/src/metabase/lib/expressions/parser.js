@@ -7,7 +7,7 @@ import { formatFieldName, formatMetricName, formatExpressionName, formatAggregat
 import {
     VALID_AGGREGATIONS,
     allTokens,
-    LParen, RParen, Comma,
+    LParen, RParen,
     AdditiveOperator, MultiplicativeOperator,
     Aggregation, NullaryAggregation, UnaryAggregation,
     StringLiteral, NumberLiteral,
@@ -20,7 +20,14 @@ const aggregationsMap = new Map(Array.from(VALID_AGGREGATIONS).map(([a,b]) => [b
 
 class ExpressionsParser extends Parser {
     constructor(input, options = {}) {
-        super(input, allTokens/*, { recoveryEnabled: false }*/);
+        const parserOptions = {
+            // recoveryEnabled: false,
+            ignoredIssues: {
+                // uses GATE to disambiguate fieldName and metricName
+                atomicExpression: { OR1: true }
+            }
+        };
+        super(input, allTokens, parserOptions);
 
         let $ = this;
 
@@ -88,19 +95,16 @@ class ExpressionsParser extends Parser {
         });
 
         $.RULE("metricExpression", () => {
-            const metricName = $.SUBRULE($.identifier);
-            const lParen = $.CONSUME(LParen);
-            const rParen = $.CONSUME(RParen);
-            // const metricName = $.OR([
-            //     {ALT: () => $.SUBRULE($.stringLiteral) },
-            //     {ALT: () => $.SUBRULE($.identifier) }
-            // ]);
+            const metricName = $.OR([
+                {ALT: () => $.SUBRULE($.stringLiteral) },
+                {ALT: () => $.SUBRULE($.identifier) }
+            ]);
 
             const metric = this.getMetricForName(this._toString(metricName));
             if (metric != null) {
-                return this._metricReference(metricName, lParen, rParen, metric.id);
+                return this._metricReference(metricName, metric.id);
             }
-            return this._unknownMetric(metricName, lParen, rParen);
+            return this._unknownMetric(metricName);
         });
 
         $.RULE("fieldExpression", () => {
@@ -169,7 +173,7 @@ class ExpressionsParser extends Parser {
 
     getMetricForName(metricName) {
         const metrics = this._options.tableMetadata && this._options.tableMetadata.metrics;
-        return _.find(metrics, (metric) => formatMetricName(metric) === metricName);
+        return _.find(metrics, (metric) => metric.name.toLowerCase() === metricName.toLowerCase());
     }
 }
 
@@ -189,7 +193,7 @@ class ExpressionsParserMBQL extends ExpressionsParser {
         const agg = aggregationsMap.get(aggregation.image)
         return arg == null ? [agg] : [agg, arg];
     }
-    _metricReference(metricName, lParen, rParen, metricId) {
+    _metricReference(metricName, metricId) {
         return ["METRIC", metricId];
     }
     _fieldReference(fieldName, fieldId) {
@@ -201,7 +205,7 @@ class ExpressionsParserMBQL extends ExpressionsParser {
     _unknownField(fieldName) {
         throw new Error("Unknown field \"" + fieldName + "\"");
     }
-    _unknownMetric(metricName, lParen, rParen) {
+    _unknownMetric(metricName) {
         throw new Error("Unknown metric \"" + metricName + "\"");
     }
 
@@ -240,8 +244,8 @@ class ExpressionsParserSyntax extends ExpressionsParser {
     _aggregation(aggregation, lParen, arg, rParen) {
         return syntax("aggregation", token(aggregation), token(lParen), arg, token(rParen));
     }
-    _metricReference(metricName, lParen, rParen, metricId) {
-        return syntax("metric", metricName, token(lParen), token(rParen));
+    _metricReference(metricName, metricId) {
+        return syntax("metric", metricName);
     }
     _fieldReference(fieldName, fieldId) {
         return syntax("field", fieldName);
@@ -252,8 +256,8 @@ class ExpressionsParserSyntax extends ExpressionsParser {
     _unknownField(fieldName) {
         return syntax("unknown", fieldName);
     }
-    _unknownMetric(metricName, lParen, rParen) {
-        return syntax("unknown", metricName, lParen, rParen);
+    _unknownMetric(metricName) {
+        return syntax("unknown", metricName);
     }
 
     _identifier(identifier) {
@@ -399,7 +403,7 @@ export function suggest(source, {
                     postfixTrim: /^\w+\s*/
                 })));
             }
-        } else if (nextTokenType === Aggregation || nextTokenType === NullaryAggregation || nextTokenType === UnaryAggregation) {
+        } else if (nextTokenType === Aggregation || nextTokenType === NullaryAggregation || nextTokenType === UnaryAggregation || nextTokenType === Identifier || nextTokenType === StringLiteral) {
             if (outsideAggregation) {
                 finalSuggestions.push(...tableMetadata.aggregation_options.filter(a => formatAggregationName(a)).map(aggregationOption => {
                     const arity = aggregationOption.fields.length;
@@ -415,9 +419,9 @@ export function suggest(source, {
                 finalSuggestions.push(...tableMetadata.metrics.map(metric => ({
                     type: "metrics",
                     name: metric.name,
-                    text: formatMetricName(metric) + "()",
+                    text: formatMetricName(metric),
                     prefixTrim: /\w+$/,
-                    postfixTrim: /^\w+(\(\)?|$)/
+                    postfixTrim: /^\w+\s*/
                 })))
             }
         } else if (nextTokenType === NumberLiteral) {

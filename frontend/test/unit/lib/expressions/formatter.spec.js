@@ -44,7 +44,7 @@ describe("lib/expressions/parser", () => {
         });
 
         it("expression with metric", () => {
-            expect(format(["+", 1, ["METRIC", 1]], mockMetadata)).toEqual("1 + FooBar()");
+            expect(format(["+", 1, ["METRIC", 1]], mockMetadata)).toEqual("1 + \"foo bar\"");
         });
 
         it("expression with custom field", () => {

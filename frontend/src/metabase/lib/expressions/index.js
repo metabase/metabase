@@ -1,7 +1,6 @@
 
 import _ from "underscore";
 import { mbqlEq } from "../query/util";
-import { titleize } from "../formatting";
 
 import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
 
@@ -18,7 +17,7 @@ function formatIdentifier(name) {
 }
 
 export function formatMetricName(metric) {
-    return titleize(metric.name).replace(/\W+/g, "")
+    return formatIdentifier(metric.name);
 }
 
 export function formatFieldName(field) {
