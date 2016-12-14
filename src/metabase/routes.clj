@@ -15,7 +15,7 @@
                                {:bootstrap_json (json/generate-string (public-settings/public-settings))})
         (slurp (io/resource "frontend_client/init.html")))
       resp/response
-      (resp/content-type "text/html")))
+      (resp/content-type "text/html; charset=utf-8")))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes

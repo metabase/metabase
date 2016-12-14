@@ -12,7 +12,8 @@
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.generic-sql :as generic-sql]
             [metabase.test.util :as tu]
-            [metabase.test.data.generic-sql :as generic]))
+            [metabase.test.data.generic-sql :as generic]
+            [metabase.util :as u]))
 
 
 ;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
@@ -351,12 +352,15 @@
   (generic-sql/quote-name datasets/*driver* identifier))
 
 (defn- checkins-identifier []
-  (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
-    (str (when (seq schema)
-           (str (quote-name schema) \.))
-         (quote-name table-name))))
+  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery we will just hackily return the correct identifier here
+  (if (= datasets/*engine* :bigquery)
+    "[test_data.checkins]"
+    (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
+      (str (when (seq schema)
+             (str (quote-name schema) \.))
+           (quote-name table-name)))))
 
-;; as with the MBQL parameters tests redshift and crate fail for unknown reasons; disable their tests for now
+;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
   (set/difference (engines-that-support :native-parameters) #{:redshift :crate}))
 
