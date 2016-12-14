@@ -34,14 +34,14 @@ export default class CollectionEditorForm extends Component {
                         <Button className="mr1" onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button primary disabled={invalid} type="submit">
-                            Create
+                        <Button primary disabled={invalid} onClick={handleSubmit}>
+                            { fields.id.value != null ? "Update" : "Create" }
                         </Button>
                     </div>
                 }
                 onClose={onClose}
             >
-                <form onSubmit={handleSubmit} className="NewForm ml-auto mr-auto mt4 pt2" style={{ width: 540 }}>
+                <div className="NewForm ml-auto mr-auto mt4 pt2" style={{ width: 540 }}>
                     <div>
                         <FormField
                             displayName="Name"
@@ -74,7 +74,7 @@ export default class CollectionEditorForm extends Component {
                             />
                         </FormField>
                     </div>
-                </form>
+                </div>
             </PageModal>
         )
     }

@@ -7,22 +7,24 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { CollectionsApi } from "metabase/services";
 
+const LOAD_COLLECTION = 'metabase/collections/LOAD_COLLECTION';
 const LOAD_COLLECTIONS = 'metabase/collections/LOAD_COLLECTIONS';
 const SAVE_COLLECTION = 'metabase/collections/SAVE_COLLECTION';
 const DELETE_COLLECTION = 'metabase/collections/DELETE_COLLECTION';
 
+export const loadCollection = createAction(LOAD_COLLECTION, (id) => CollectionsApi.get({ id }));
 export const loadCollections = createAction(LOAD_COLLECTIONS, CollectionsApi.list);
 
-export const saveCollection = createThunkAction(SAVE_COLLECTION, (values) => {
+export const saveCollection = createThunkAction(SAVE_COLLECTION, (collection) => {
     return async (dispatch, getState) => {
         try {
             let response;
-            if (values.id == null) {
+            if (collection.id == null) {
                 MetabaseAnalytics.trackEvent("Collections", "Create");
-                response = await CollectionsApi.create(values);
+                response = await CollectionsApi.create(collection);
             } else {
                 MetabaseAnalytics.trackEvent("Collections", "Update");
-                response = await CollectionsApi.update(values);
+                response = await CollectionsApi.update(collection);
             }
             if (response.id != null) {
                 dispatch(reset("collection"));
@@ -68,7 +70,17 @@ const error = handleActions({
     }
 }, null);
 
+const collection = handleActions({
+    [LOAD_COLLECTION]: {
+        next: (state, { payload }) => payload
+    },
+    [SAVE_COLLECTION]: {
+        next: (state, { payload }) => payload
+    }
+}, null);
+
 export default combineReducers({
+    collection,
     collections,
     error
 });

@@ -21,7 +21,7 @@ const mapDispatchToProps = ({
 @connect(mapStateToProps, mapDispatchToProps)
 class Archive extends Component {
     componentWillMount () {
-        this.props.selectSection('archived');
+        this.props.selectSection({ f: 'archived' });
     }
     render () {
         const { items, setArchived } = this.props;

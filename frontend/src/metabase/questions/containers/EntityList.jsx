@@ -88,8 +88,8 @@ const EMPTY_STATES = {
         message: 'If you no longer need a question, you can archive it.'
     },
     'default': {
-        icon: 'label',
-        message: 'There aren\'t any questions in this section.' // TODO - this shouldn't say label
+        icon: 'all',
+        message: 'There aren\'t any questions matching that criteria.'
     }
 }
 
@@ -157,7 +157,7 @@ export default class EntityList extends Component {
                       }
                       <EntityFilterWidget
                         section={name}
-                        onSectionChange={selectSection}
+                        selectSection={selectSection}
                       />
                     </div>
                     <LoadingAndErrorWrapper className="full" loading={!error && loading} error={error}>
@@ -184,10 +184,10 @@ export default class EntityList extends Component {
 class EntityFilterWidget extends Component {
     static propTypes = {
         section: PropTypes.string.isRequired,
-        onSectionChange: PropTypes.func.isRequired,
+        selectSection: PropTypes.func.isRequired,
     }
     render() {
-        const { section, onSectionChange } = this.props;
+        const { section, selectSection } = this.props;
         return (
             <PopoverWithTrigger
                 ref={p => this.popover = p}
@@ -213,7 +213,7 @@ class EntityFilterWidget extends Component {
                             key={index}
                             className="List-item p1"
                             onClick={() => {
-                                onSectionChange(item.section);
+                                selectSection({ f: item.section });
                                 this.popover.close();
                             }}
                         >

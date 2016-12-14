@@ -22,6 +22,7 @@ export default class ExpandingSearchField extends Component {
 
     static propTypes = {
         onSearch: PropTypes.func.isRequired,
+        defaultValue: PropTypes.string,
     }
 
     componentDidMount () {
@@ -40,7 +41,6 @@ export default class ExpandingSearchField extends Component {
     }
 
     onKeyPress = (e) => {
-        console.log(e.keyCode)
         if (e.keyCode === KEYCODE_ENTER) {
             this.props.onSearch(e.target.value)
         } else if (e.keyCode === KEYCODE_ESCAPE) {
@@ -89,6 +89,7 @@ export default class ExpandingSearchField extends Component {
                             onFocus={() => this.setState({ active: true })}
                             onBlur={() => this.setState({ active: false })}
                             onKeyUp={this.onKeyPress}
+                            defaultValue={this.props.defaultValue}
                         />
                     }
                 </Motion>

@@ -11,6 +11,7 @@ import { setRequestState } from "metabase/redux/requests";
 
 import { getVisibleEntities, getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
+import { push } from "react-router-redux";
 
 const card = new Schema('cards');
 const label = new Schema('labels');
@@ -29,19 +30,23 @@ const SET_ARCHIVED = 'metabase/questions/SET_ARCHIVED';
 const SET_LABELED = 'metabase/questions/SET_LABELED';
 const SET_COLLECTION = 'metabase/collections/SET_COLLECTION';
 
-export const selectSection = createThunkAction(SELECT_SECTION, (section = "all", slug = null, type = "cards") => {
+export const selectSection = createThunkAction(SELECT_SECTION, (query = {}, type = "cards") => {
     return async (dispatch, getState) => {
+        if (query.f == null) {
+            query = { ...query, f: "all" };
+        }
+
         dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADING" }));
-        let response = await CardApi.list({ f: section, collection: slug });
+        let response = await CardApi.list(query);
         dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADED" }));
 
-        if (slug) {
-            section += "-" + slug;
-        }
+        let section = JSON.stringify(query);
 
         return { type, section, ...normalize(response, arrayOf(card)) };
     }
 });
+
+export const search = (q) => push("/questions/search?q=" + encodeURIComponent(q))
 
 export const setFavorited = createThunkAction(SET_FAVORITED, (cardId, favorited) => {
     return async (dispatch, getState) => {

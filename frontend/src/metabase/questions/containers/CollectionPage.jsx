@@ -1,24 +1,32 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import HeaderWithBack from "metabase/components/HeaderWithBack";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import CollectionActions from "../components/CollectionActions";
 import EntityList from "./EntityList";
 import { selectSection } from "../questions";
+import { loadCollections } from "../collections";
 
-const mapStateToProps = (state, props) => ({})
+import _ from "underscore";
+
+const mapStateToProps = (state, props) => ({
+    collection: _.findWhere(state.collections.collections, { slug: props.params.collectionSlug })
+})
 
 const mapDispatchToProps = ({
-    selectSection
+    selectSection,
+    loadCollections,
+    editCollection: (id) => push(`/collections/${id}`),
+    editPermissions: (id) => push(`/collections/permissions?collection=${id}`)
 })
 
 @connect(mapStateToProps, mapDispatchToProps)
-class CollectionPage extends Component {
+export default class CollectionPage extends Component {
     componentWillMount () {
-        this.props.selectSection('all', this.props.params.collectionName);
+        this.props.loadCollections();
+        this.props.selectSection({ f: 'all', collection: this.props.params.collectionSlug });
     }
     render () {
         return (
@@ -28,10 +36,10 @@ class CollectionPage extends Component {
                     <div className="ml-auto">
                         <CollectionActions
                             actions={[
-                                { name: 'Archive collection', icon: 'archive',  action: () => console.log('archive!') },
-                                { name: 'Edit collection', icon: 'pencil',  action: () => console.log('edit!!') },
-                                { name: 'Set permissions', icon: 'lock',  action: () => console.log('set perms!') },
-                                { name: 'Info', icon: 'info', action: () => console.log('info!') },
+                                { name: 'Archive collection', icon: 'archive',  action: () => alert('NYI: archive!') },
+                                { name: 'Edit collection', icon: 'pencil',  action: () => this.props.editCollection(this.props.collection.id) },
+                                { name: 'Set permissions', icon: 'lock',  action: () => this.props.editPermissions(this.props.collection.id) },
+                                { name: 'Info', icon: 'info', action: () => () => alert('NYI: info!') },
                             ]}
                         />
                     </div>
@@ -43,5 +51,3 @@ class CollectionPage extends Component {
         );
     }
 }
-
-export default CollectionPage;

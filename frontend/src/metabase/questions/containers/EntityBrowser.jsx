@@ -39,13 +39,13 @@ export default class EntityBrowser extends Component {
     };
 
     componentWillMount() {
-        this.props.selectSection(this.props.params.section, this.props.params.slug);
+        this.props.selectSection({ f: this.props.params.section, label: this.props.params.slug });
         this.props.loadLabels();
     }
 
     componentWillReceiveProps(newProps) {
         if (this.props.params.section !== newProps.params.section || this.props.params.slug !== newProps.params.slug) {
-            this.props.selectSection(newProps.params.section, newProps.params.slug);
+            this.props.selectSection({ f: newProps.params.section, label: newProps.params.slug });
         }
     }
 

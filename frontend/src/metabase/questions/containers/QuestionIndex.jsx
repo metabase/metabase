@@ -6,13 +6,12 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import ExpandingSearchField from "../components/ExpandingSearchField";
 import Tooltip from "metabase/components/Tooltip";
-import PageModal from "metabase/components/PageModal";
 
 import CollectionButtons from "../components/CollectionButtons"
 
 import EntityList from "./EntityList";
 
-import { selectSection } from "../questions";
+import { search, selectSection } from "../questions";
 import { loadCollections } from "../collections";
 
 
@@ -23,6 +22,7 @@ const mapStateToProps = (state, props) => ({
 })
 
 const mapDispatchToProps = ({
+    search,
     selectSection,
     loadCollections
 })
@@ -36,8 +36,8 @@ export default class QuestionIndex extends Component {
         }
     }
     componentWillMount () {
-        this.props.selectSection('all');
         this.props.loadCollections();
+        this.props.selectSection({ f: 'all' });
     }
 
     render () {
@@ -50,7 +50,7 @@ export default class QuestionIndex extends Component {
                     <h2>Collections of Questions</h2>
 
                     <div className="flex align-center ml-auto">
-                        <ExpandingSearchField className="mr2"/>
+                        <ExpandingSearchField className="mr2" onSearch={this.props.search} />
 
                         <Tooltip tooltip="Set permissions for collections">
                             <Link to="/collections/permissions">
