@@ -28,7 +28,7 @@ export default class CollectionEditorForm extends Component {
         const { fields, handleSubmit, invalid, onClose } = this.props;
         return (
             <PageModal
-                title="New collection"
+                title={fields.id.value != null ? fields.name.value : "New collection"}
                 footer={
                     <div className="flex-full">
                         <Button className="mr1" onClick={onClose}>
