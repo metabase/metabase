@@ -172,7 +172,12 @@ Update a `Card`.
 
 ## `GET /api/collection/`
 
-Fetch a list of all (non-archived) Collections that the current user has read permissions for.
+Fetch a list of all Collections that the current user has read permissions for.
+   By default, this returns non-archived Collections, but you 
+
+##### PARAMS:
+
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
 
 ## `GET /api/collection/:id`

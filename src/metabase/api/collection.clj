@@ -11,9 +11,11 @@
 
 
 (api/defendpoint GET "/"
-  "Fetch a list of all (non-archived) Collections that the current user has read permissions for."
-  []
-  (filterv models/can-read? (db/select Collection :archived false {:order-by [[:%lower.name :asc]]})))
+  "Fetch a list of all Collections that the current user has read permissions for.
+   By default, this returns non-archived Collections, but instead you can show archived ones by passing `?archived=true`."
+  [archived]
+  {archived (s/maybe su/BooleanString)}
+  (filterv models/can-read? (db/select Collection :archived (Boolean/parseBoolean archived) {:order-by [[:%lower.name :asc]]})))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific (non-archived) Collection, including cards that belong to it."
