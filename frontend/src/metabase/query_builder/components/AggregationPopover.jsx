@@ -23,8 +23,8 @@ export default class AggregationPopover extends Component {
 
         this.state = {
             aggregation: (props.isNew ? [] : props.aggregation),
-            choosingField: AggregationClause.isStandard(props.aggregation),
-            editingAggregation: AggregationClause.isCustom(props.aggregation)
+            choosingField: (props.aggregation && props.aggregation.length > 1 && AggregationClause.isStandard(props.aggregation)),
+            editingAggregation: (props.aggregation && props.aggregation.length > 1 && AggregationClause.isCustom(props.aggregation))
         };
 
         _.bindAll(this, "commitAggregation", "onPickAggregation", "onPickField", "onClearAggregation");
