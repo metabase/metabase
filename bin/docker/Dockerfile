@@ -15,7 +15,7 @@ RUN apk add --update java-cacerts && \
 COPY ./metabase.jar /app/
 
 # add our run script to the image
-COPY ../start.sh /app/
+COPY ../start /app/
 RUN chmod 755 /app/start
 
 # tidy up
