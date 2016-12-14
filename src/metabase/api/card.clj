@@ -129,7 +129,7 @@
 ;; TODO - do we need to hydrate the cards' collections as well?
 (defn- cards-for-filter-option [filter-option model-id label collection]
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
-                  (hydrate :creator)
+                  (hydrate :creator :collection)
                   hydrate-labels
                   hydrate-favorites)]
     ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply label/collection filtering if applicable
