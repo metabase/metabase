@@ -278,6 +278,10 @@ function applyChartTooltips(chart, series, onHoverChange) {
                         { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
                     ));
                 } else if (d.data) { // line, area, bar
+                    if (!isSingleSeriesBar) {
+                        let idx = determineSeriesIndexFromElement(this);
+                        cols = series[idx].data.cols;
+                    }
                     data = [
                         { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
                         { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
