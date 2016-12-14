@@ -147,7 +147,7 @@ class LegacySelect extends Component {
         value: PropTypes.any,
         values: PropTypes.array,
         options: PropTypes.array.isRequired,
-        disabledOptionIds: PropTypes.array, 
+        disabledOptionIds: PropTypes.array,
         placeholder: PropTypes.string,
         emptyPlaceholder: PropTypes.string,
         onChange: PropTypes.func,
@@ -176,10 +176,10 @@ class LegacySelect extends Component {
     render() {
         const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, emptyPlaceholder, isInitiallyOpen, disabled } = this.props;
 
-        var selectedName = value ? 
-            optionNameFn(value) : 
-            options && options.length > 0 ? 
-                placeholder : 
+        var selectedName = value ?
+            optionNameFn(value) :
+            options && options.length > 0 ?
+                placeholder :
                 emptyPlaceholder;
 
         var triggerElement = (

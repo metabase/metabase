@@ -22,6 +22,7 @@ export default class ExpandingSearchField extends Component {
 
     static propTypes = {
         onSearch: PropTypes.func.isRequired,
+        className: PropTypes.string,
         defaultValue: PropTypes.string,
     }
 

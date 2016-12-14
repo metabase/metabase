@@ -11,9 +11,10 @@ import CollectionButtons from "../components/CollectionButtons"
 
 import EntityList from "./EntityList";
 
-import { search, selectSection } from "../questions";
+import { search } from "../questions";
 import { loadCollections } from "../collections";
 
+import { push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => ({
     items: state.questions.entities.cards,
@@ -23,8 +24,8 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = ({
     search,
-    selectSection,
-    loadCollections
+    loadCollections,
+    push,
 })
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -37,11 +38,10 @@ export default class QuestionIndex extends Component {
     }
     componentWillMount () {
         this.props.loadCollections();
-        this.props.selectSection({ f: 'all' });
     }
 
     render () {
-        const { collections } = this.props;
+        const { collections, push, location } = this.props;
         const { questionsExpanded } = this.state;
         return (
             <div className="relative mx4">
@@ -79,7 +79,13 @@ export default class QuestionIndex extends Component {
                 </div>
                 { questionsExpanded &&
                     <div className="">
-                        <EntityList section="all" collection="" />
+                        <EntityList
+                            query={{ f: "all", collection: "", ...location.query }}
+                            onChangeSection={(section) => push({
+                                ...location,
+                                query: { ...location.query, f: section }
+                            })}
+                        />
                     </div>
                 }
             </div>

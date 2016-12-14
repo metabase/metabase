@@ -6,7 +6,6 @@ import HeaderWithBack from "metabase/components/HeaderWithBack";
 
 import CollectionActions from "../components/CollectionActions";
 import EntityList from "./EntityList";
-import { selectSection } from "../questions";
 import { loadCollections } from "../collections";
 
 import _ from "underscore";
@@ -16,7 +15,7 @@ const mapStateToProps = (state, props) => ({
 })
 
 const mapDispatchToProps = ({
-    selectSection,
+    push,
     loadCollections,
     editCollection: (id) => push(`/collections/${id}`),
     editPermissions: (id) => push(`/collections/permissions?collection=${id}`)
@@ -26,13 +25,13 @@ const mapDispatchToProps = ({
 export default class CollectionPage extends Component {
     componentWillMount () {
         this.props.loadCollections();
-        this.props.selectSection({ f: 'all', collection: this.props.params.collectionSlug });
     }
     render () {
+        const { collection, params, location, push } = this.props;
         return (
             <div className="mx4 mt4">
                 <div className="flex align-center">
-                    <HeaderWithBack name="Collection" />
+                    <HeaderWithBack name={collection && collection.name} />
                     <div className="ml-auto">
                         <CollectionActions
                             actions={[
@@ -45,7 +44,13 @@ export default class CollectionPage extends Component {
                     </div>
                 </div>
                 <div className="mt4">
-                    <EntityList />
+                    <EntityList
+                        query={{ f: "all", collection: params.collectionSlug, ...location.query }}
+                        onChangeSection={(section) => push({
+                            ...location,
+                            query: { ...location.query, f: section }
+                        })}
+                    />
                 </div>
             </div>
         );

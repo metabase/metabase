@@ -53,7 +53,7 @@ const CollectionButton = ({ name, color, slug }) =>
         style={{
             borderRadius: 10
         }}
-        to={`/questions/collections/${slug}`}i
+        to={`/questions/collections/${slug}`}
     >
         <div className="absolute top right mt2 mr2 hover-child">
             <CollectionActions actions={[

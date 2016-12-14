@@ -20,6 +20,11 @@ export const getSelectedIds         = (state) => state.questions.selectedIds;
 
 export const getCollections         = (state) => state.collections.collections;
 
+export const getQuery = createSelector(
+    [getSection],
+    (section) => section && JSON.parse(section)
+)
+
 const getSectionData = createSelector(
     [getItemsBySection, getEntityType, getSection],
     (itemsBySection, type, section) =>

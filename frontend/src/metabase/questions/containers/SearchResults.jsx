@@ -6,28 +6,14 @@ import HeaderWithBack from "metabase/components/HeaderWithBack";
 import ExpandingSearchField from "../components/ExpandingSearchField";
 import EntityList from "./EntityList";
 
-import { search, selectSection } from "../questions";
-
-import _ from "underscore";
-
-const mapStateToProps = (state, props) => ({
-})
+import { search } from "../questions";
 
 const mapDispatchToProps = ({
-    search,
-    selectSection,
+    search
 })
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(null, mapDispatchToProps)
 class SearchResults extends Component {
-    componentWillMount () {
-        this.props.selectSection(this.props.location.query);
-    }
-    componentWillReceiveProps(nextProps) {
-        if (!_.isEqual(this.props.location.query, nextProps.location.query)) {
-            this.props.selectSection(nextProps.location.query);
-        }
-    }
     render () {
         return (
             <div className="px4 pt3">
@@ -41,7 +27,7 @@ class SearchResults extends Component {
                         />
                     </div>
                 </div>
-                <EntityList />
+                <EntityList query={this.props.location.query} />
             </div>
         );
     }

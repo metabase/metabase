@@ -15,6 +15,7 @@ import SearchHeader from "../components/SearchHeader";
 import ActionHeader from "../components/ActionHeader";
 import UndoListing from "./UndoListing";
 
+import _ from "underscore";
 
 import { selectSection, setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
 import {
@@ -28,7 +29,7 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
-      sectionId:        getSection(state),
+      section:          getSection(state),
       entityType:       getEntityType(state),
       entityIds:        getEntityIds(state),
       loading:          getSectionLoading(state),
@@ -42,7 +43,9 @@ const mapStateToProps = (state, props) => {
       allAreSelected:   getAllAreSelected(state),
       sectionIsArchive: getSectionIsArchive(state),
 
-      labels:           getLabelsWithSelectedState(state)
+      labels:           getLabelsWithSelectedState(state),
+
+    //   query:            getQuery(state),
   }
 }
 
@@ -55,49 +58,57 @@ const mapDispatchToProps = {
 }
 
 const SECTIONS = [
-    { section: 'all', name: 'All questions' },
-    { section: 'fav', name: 'Favorites' },
-    { section: 'recent', name: 'Recently viewed' },
-    { section: 'mine', name: 'Saved by me' },
-    { section: 'popular', name: 'Most popular' },
+    {
+        section: 'all',
+        name: 'All questions',
+        icon: 'all',
+        empty: 'No questions have been saved yet.',
+    },
+    {
+        section: 'fav',
+        name: 'Favorites',
+        icon: 'star',
+        empty: 'You haven\'t favorited any questions yet.',
+    },
+    {
+        section: 'recent',
+        name: 'Recently viewed',
+        icon: 'recents',
+        empty: 'You haven\'t viewed any questions recently.',
+    },
+    {
+        section: 'mine',
+        name: 'Saved by me',
+        icon: 'mine',
+        empty:  'You haven\'t saved any questions yet.'
+    },
+    {
+        section: 'popular',
+        name: 'Most popular',
+        icon: 'popular',
+        empty: 'The most viewed questions across your company will show up here.',
+    },
+    {
+        section: 'archived',
+        name: "Archive",
+        icon: 'archive',
+        empty: 'If you no longer need a question, you can archive it.',
+    }
 ];
 
-const EMPTY_STATES = {
-    'All questions': {
-        icon: 'all',
-        message: 'No questions have been saved yet.'
-    },
-    'Recently viewed': {
-        icon: 'recents',
-        message: 'You haven\'t viewed any questions recently.'
-    },
-    'Saved by me': {
-        icon: 'mine',
-        message: 'You haven\'t saved any questions yet.'
-    },
-    'Favorites': {
-        icon: 'star',
-        message: 'You haven\'t favorited any questions yet.'
-    },
-    'Most popular': {
-        icon: 'popular' ,
-        message: 'The most viewed questions across your company will show up here.'
-    },
-    'Archive': {
-        icon: 'archive',
-        message: 'If you no longer need a question, you can archive it.'
-    },
-    'default': {
-        icon: 'all',
-        message: 'There aren\'t any questions matching that criteria.'
-    }
+const DEFAULT_SECTION = {
+    icon: 'all',
+    empty: 'There aren\'t any questions matching that criteria.'
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityList extends Component {
     static propTypes = {
-        style:              PropTypes.object.isRequired,
-        sectionId:          PropTypes.string.isRequired,
+        style:              PropTypes.object,
+
+        query:              PropTypes.object,
+
+        section:            PropTypes.string,
         name:               PropTypes.string.isRequired,
         loading:            PropTypes.bool.isRequired,
         error:              PropTypes.any,
@@ -112,19 +123,36 @@ export default class EntityList extends Component {
         labels:             PropTypes.array.isRequired,
         setItemSelected:    PropTypes.func.isRequired,
         setAllSelected:     PropTypes.func.isRequired,
-        setArchived:        PropTypes.func.isRequired
+        setArchived:        PropTypes.func.isRequired,
+        selectSection:      PropTypes.func.isRequired,
+        onChangeSection:    PropTypes.func
     };
+
+    static defaultProps = {
+        showEntityFilterWidget: true
+    }
 
     componentDidUpdate(prevProps) {
         // Scroll to the top of the list if the section changed
         // A little hacky, something like https://github.com/taion/scroll-behavior might be better
-        if (this.props.sectionId !== prevProps.sectionId) {
+        if (this.props.section !== prevProps.section) {
             ReactDOM.findDOMNode(this).scrollTop = 0;
         }
     }
 
-    emptyState () {
-        return EMPTY_STATES[this.props.name] || EMPTY_STATES.default;
+    componentWillMount() {
+        if (this.props.query) {
+            this.props.selectSection(this.props.query);
+        }
+    }
+    componentWillReceiveProps(nextProps) {
+        if (nextProps.query && !_.isEqual(this.props.query, nextProps.query)) {
+            this.props.selectSection(nextProps.query);
+        }
+    }
+
+    getSection () {
+        return _.findWhere(SECTIONS, { section: this.props.query && this.props.query.f || "all" }) || DEFAULT_SECTION;
     }
 
     render() {
@@ -134,31 +162,37 @@ export default class EntityList extends Component {
             entityType, entityIds,
             searchText, setSearchText,
             visibleCount, selectedCount, allAreSelected, sectionIsArchive, labels,
-            setItemSelected, setAllSelected, setArchived, selectSection,
-            collectionsCount
+            setItemSelected, setAllSelected, setArchived, onChangeSection
         } = this.props;
-        const empty = this.emptyState();
+        const section = this.getSection();
         return (
             <div className="full" style={style}>
                 <div className="full">
                     <div className="flex align-center my1" style={{height: 40}}>
-                      { selectedCount > 0 ?
-                        <ActionHeader
-                          visibleCount={visibleCount}
-                          selectedCount={selectedCount}
-                          allAreSelected={allAreSelected}
-                          sectionIsArchive={sectionIsArchive}
-                          setAllSelected={setAllSelected}
-                          setArchived={setArchived}
-                          labels={labels}
-                          />
+                        { selectedCount > 0 ?
+                            <ActionHeader
+                                visibleCount={visibleCount}
+                                selectedCount={selectedCount}
+                                allAreSelected={allAreSelected}
+                                sectionIsArchive={sectionIsArchive}
+                                setAllSelected={setAllSelected}
+                                setArchived={setArchived}
+                                labels={labels}
+                            />
+                        : entityIds.length > 0 ?
+                            <SearchHeader
+                                searchText={searchText}
+                                setSearchText={setSearchText}
+                            />
                         :
-                          <SearchHeader searchText={searchText} setSearchText={setSearchText} />
+                            null
                       }
-                      <EntityFilterWidget
-                        section={name}
-                        selectSection={selectSection}
-                      />
+                      { onChangeSection &&
+                          <EntityFilterWidget
+                            section={section}
+                            onChange={onChangeSection}
+                          />
+                      }
                     </div>
                     <LoadingAndErrorWrapper className="full" loading={!error && loading} error={error}>
                     { () =>
@@ -170,7 +204,7 @@ export default class EntityList extends Component {
                             />
                         :
                             <div className={S.empty}>
-                                <EmptyState message={empty.message} icon={empty.icon} />
+                                <EmptyState message={section.empty} icon={section.icon} />
                             </div>
                     }
                     </LoadingAndErrorWrapper>
@@ -183,11 +217,11 @@ export default class EntityList extends Component {
 
 class EntityFilterWidget extends Component {
     static propTypes = {
-        section: PropTypes.string.isRequired,
-        selectSection: PropTypes.func.isRequired,
+        section: PropTypes.object.isRequired,
+        onChange: PropTypes.func.isRequired,
     }
     render() {
-        const { section, selectSection } = this.props;
+        const { section, onChange } = this.props;
         return (
             <PopoverWithTrigger
                 ref={p => this.popover = p}
@@ -195,7 +229,7 @@ class EntityFilterWidget extends Component {
                 targetOffsetY={10}
                 triggerElement={
                     <div className="flex align-center text-brand">
-                        <h3>{section}</h3>
+                        <h3>{section && section.name}</h3>
                         <Icon
                             ref={i => this.icon = i}
                             className="ml1"
@@ -213,11 +247,11 @@ class EntityFilterWidget extends Component {
                             key={index}
                             className="List-item p1"
                             onClick={() => {
-                                selectSection({ f: item.section });
+                                onChange(item.section);
                                 this.popover.close();
                             }}
                         >
-                            <Icon name={item.name} />
+                            <Icon name={item.icon} />
                             <h4 className="List-item-title">
                                 {item.name}
                             </h4>

@@ -10,7 +10,7 @@ const CollectionActions = ({ actions }) =>
                 <Icon
                     className="cursor-pointer text-brand-hover ml2"
                     name={icon}
-                    onClick={ () => action() }
+                    onClick={action}
                 />
             </Tooltip>
         )}
