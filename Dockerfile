@@ -26,8 +26,11 @@ ADD . /app/source
 # build the app
 WORKDIR /app/source
 RUN bin/build
-# Move it to '/app/metabase.jar'
+
+# Move things into the '/app' directory
 RUN mv ./target/uberjar/metabase.jar /app/metabase.jar
+RUN cp bin/start /app/start
+RUN chmod 755 /app/start
 
 # remove unnecessary packages & tidy up
 RUN apk del nodejs git wget python make g++
@@ -38,4 +41,4 @@ EXPOSE 3000
 
 # build and then run it
 WORKDIR /app
-ENTRYPOINT ["./bin/start"]
+ENTRYPOINT ["/app/start"]
