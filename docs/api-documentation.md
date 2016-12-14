@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.21.0-snapshot
+# API Documentation for Metabase v0.22.0-snapshot
 
 ## `GET /api/activity/`
 
@@ -104,13 +104,24 @@ Run the query associated with a Card.
 
 ## `POST /api/card/:card-id/query/csv`
 
-Run the query associated with a Card, and return its results as CSV.
+Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
 
 ##### PARAMS:
 
 *  **`card-id`** 
 
-*  **`parameters`** 
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `POST /api/card/:card-id/query/json`
+
+Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 
 ## `PUT /api/card/:id`
@@ -425,6 +436,15 @@ Get historical query execution duration.
 *  **`query`** 
 
 
+## `POST /api/dataset/json`
+
+Execute a query and download the result data as a JSON file.
+
+##### PARAMS:
+
+*  **`query`** value must be a valid JSON string.
+
+
 ## `POST /api/email/test`
 
 Send a test email. You must be a superuser to do this.
@@ -718,7 +738,7 @@ You must be a superuser to do this.
 
 ## `GET /api/permissions/group`
 
-Fetch all `PermissionsGroups`.
+Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
 
 You must be a superuser to do this.
 
@@ -1377,6 +1397,14 @@ Indicate that a user has been informed about the vast intricacies of 'the' Query
 ## `GET /api/util/logs`
 
 Logs.
+
+You must be a superuser to do this.
+
+
+## `GET /api/util/stats`
+
+Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
+  what is being phoned home.
 
 You must be a superuser to do this.
 
