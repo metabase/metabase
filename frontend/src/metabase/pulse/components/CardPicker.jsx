@@ -101,7 +101,7 @@ export default class CardPicker extends Component {
             <div className="CardPicker flex-full">
                 <input
                     ref="input"
-                    className="input no-focus full h4 text-bold"
+                    className="input no-focus full text-bold"
                     placeholder="Type a question name to filter"
                     value={this.inputValue}
                     onFocus={this.onInputFocus}

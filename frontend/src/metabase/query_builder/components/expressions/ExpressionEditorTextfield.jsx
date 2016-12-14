@@ -235,7 +235,7 @@ export default class ExpressionEditorTextfield extends Component {
             <div className={cx(S.editor, "relative")}>
                 <TokenizedInput
                     ref="input"
-                    className={cx(S.input, "my1 p1 input block full h4 text-dark", { "border-error": errorMessage })}
+                    className={cx(S.input, "my1 input block full", { "border-error": errorMessage })}
                     type="text"
                     placeholder={placeholder}
                     value={this.state.expressionString}
