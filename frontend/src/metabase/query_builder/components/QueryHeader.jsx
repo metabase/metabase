@@ -12,8 +12,9 @@ import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
-import SaveQuestionModal from 'metabase/components/SaveQuestionModal.jsx';
 import Tooltip from "metabase/components/Tooltip.jsx";
+
+import SaveQuestionModal from 'metabase/containers/SaveQuestionModal.jsx';
 
 import { CardApi, RevisionApi } from "metabase/services";
 

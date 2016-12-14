@@ -1,10 +1,12 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
+import Select, { Option } from "metabase/components/Select.jsx";
 
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
@@ -13,7 +15,17 @@ import cx from "classnames";
 
 import "./SaveQuestionModal.css";
 
+import { loadCollections } from "metabase/questions/collections";
 
+const mapStateToProps = (state, props) => ({
+    collections: state.collections.collections
+});
+
+const mapDispatchToProps = {
+    loadCollections
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class SaveQuestionModal extends Component {
 
     constructor(props, context) {
@@ -27,6 +39,7 @@ export default class SaveQuestionModal extends Component {
             details: {
                 name: props.card.name || isStructured ? Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query) : "",
                 description: props.card.description || null,
+                collection_id: props.card.collection_id || null,
                 saveType: props.originalCard ? "overwrite" : "create"
             }
         };
@@ -39,6 +52,10 @@ export default class SaveQuestionModal extends Component {
         createFn: PropTypes.func.isRequired,
         saveFn: PropTypes.func.isRequired,
         closeFn: PropTypes.func.isRequired
+    }
+
+    componentWillMount() {
+        this.props.loadCollections();
     }
 
     componentDidMount() {
@@ -89,7 +106,8 @@ export default class SaveQuestionModal extends Component {
                 // since description is optional, it can be null, so check for a description before trimming it
                 description: details.saveType === "overwrite" ?
                     originalCard.description :
-                    details.description ? details.description.trim() : null
+                    details.description ? details.description.trim() : null,
+                collection_id: details.collection_id
             };
 
             if (details.saveType === "create") {
@@ -109,6 +127,7 @@ export default class SaveQuestionModal extends Component {
     }
 
     render() {
+        const { collections } = this.props;
         let { error, details } = this.state;
         var formError;
         if (error) {
@@ -172,19 +191,48 @@ export default class SaveQuestionModal extends Component {
                             { details.saveType === "create" &&
                                 <div key="saveQuestionModalFields" className="saveQuestionModalFields">
                                     <FormField
-                                        key="name"
                                         displayName="Name"
                                         fieldName="name"
-                                        errors={this.state.errors}>
-                                        <input className="Form-input full" name="name" placeholder="What is the name of your card?" value={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autoFocus/>
+                                        errors={this.state.errors}
+                                    >
+                                        <input
+                                            className="Form-input full"
+                                            name="name" placeholder="What is the name of your card?"
+                                            value={this.state.details.name}
+                                            onChange={(e) => this.onChange("name", e.target.value)}
+                                            autoFocus
+                                        />
                                     </FormField>
                                     <FormField
-                                        key="description"
                                         displayName="Description"
                                         fieldName="description"
-                                        errors={this.state.errors}>
-                                        <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
+                                        errors={this.state.errors}
+                                    >
+                                        <textarea
+                                            className="Form-input full"
+                                            name="description"
+                                            placeholder="It's optional but oh, so helpful"
+                                            value={this.state.details.description}
+                                            onChange={(e) => this.onChange("description", e.target.value)}
+                                        />
                                     </FormField>
+                                    { collections && collections.length > 0 &&
+                                        <FormField
+                                            displayName="Which collection should this go in?"
+                                            fieldName="collection_id"
+                                            errors={this.state.errors}
+                                        >
+                                            <Select
+                                                className="block"
+                                                value={this.state.details.collection_id}
+                                                onChange={(e) => this.onChange("collection_id", e.target.value)}
+                                            >
+                                                {[{ name: "None", id: null }].concat(collections).map(collection =>
+                                                    <Option value={collection.id}>{collection.name}</Option>
+                                                )}
+                                            </Select>
+                                        </FormField>
+                                    }
                                 </div>
                             }
                         </ReactCSSTransitionGroup>
