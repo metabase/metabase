@@ -58,11 +58,22 @@
   (when (metric? metric)
     (second metric)))
 
+(defn- maybe-unnest-ag-clause
+  "Unnest AG-CLAUSE if it's wrapped in a vector (i.e. if it is using the \"multiple-aggregation\" syntax).
+   (This is provided merely as a convenience to facilitate implementation of the Query Builder, so it can use the same UI for
+   normal aggregations and Metric creation. *METRICS DO NOT SUPPORT MULTIPLE AGGREGATIONS,* so if nested syntax is used, any
+   aggregation after the first will be ignored.)"
+  [ag-clause]
+  (if (and (coll? ag-clause)
+           (every? coll? ag-clause))
+    (first ag-clause)
+    ag-clause))
+
 (defn- expand-metric [metric-clause filter-clauses-atom]
   (let [{filter-clause :filter, ag-clause :aggregation} (db/select-one-field :definition 'Metric, :id (metric-id metric-clause))]
     (when filter-clause
       (swap! filter-clauses-atom conj filter-clause))
-    ag-clause))
+    (maybe-unnest-ag-clause ag-clause)))
 
 (defn- expand-metrics-in-ag-clause [query-dict filter-clauses-atom]
   (walk/postwalk (fn [form]
