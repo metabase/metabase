@@ -32,6 +32,15 @@
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
     (map :name ((user->client :rasta) :get 200 "collection"))))
 
+;; Check that if we pass `?archived=true` we instead see archived cards
+(tu/expect-with-temp [Collection [collection-1 {:name "Archived Collection", :archived true}]
+                      Collection [collection-2 {:name "Regular Collection"}]]
+  ["Archived Collection"]
+  (do
+    (perms/grant-collection-read-permissions! (group/all-users) collection-1)
+    (perms/grant-collection-read-permissions! (group/all-users) collection-2)
+    (map :name ((user->client :rasta) :get 200 "collection" :archived :true))))
+
 ;; check that we can see collection details (GET /api/collection/:id)
 (expect
   "Coin Collection"

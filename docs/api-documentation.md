@@ -172,7 +172,15 @@ Update a `Card`.
 
 ## `GET /api/collection/`
 
-Fetch a list of all (non-archived) Collections that the current user has read permissions for.
+Fetch a list of all Collections that the current user has read permissions for.
+   This includes `:can_write`, which means whether the current user is allowed to add or remove Cards to this Collection; keep in mind
+   that regardless of this status you must be a superuser to modify properties of Collections themselves.
+
+   By default, this returns non-archived Collections, but instead you can show archived ones by passing `?archived=true`.
+
+##### PARAMS:
+
+*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean (true or false).
 
 
 ## `GET /api/collection/:id`
