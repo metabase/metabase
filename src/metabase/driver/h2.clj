@@ -210,7 +210,7 @@
          {:date-interval                     (u/drop-first-arg date-interval)
           :details-fields                    (constantly [{:name         "db"
                                                            :display-name "Connection String"
-                                                           :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
+                                                           :placeholder  "file:/Users/camsaul/bird_sightings/toucans"
                                                            :required     true}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)})

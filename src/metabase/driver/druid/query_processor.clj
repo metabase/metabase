@@ -218,34 +218,35 @@
                                     (ag:count output-name))))
 
 
-(defn- handle-aggregation [query-type {ag-type :aggregation-type, ag-field :field, output-name :output-name, :as ag} druid-query]
-  (when (isa? query-type ::ag-query)
-    (merge-with concat
-      druid-query
-      (let [ag-type (when-not (= ag-type :rows) ag-type)]
-        (match [ag-type ag-field]
-          ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
-          [nil     nil] {:aggregations [(ag:count (or output-name :___count))]}
+(defn- handle-aggregation [query-type {ag-type :aggregation-type, ag-field :field, output-name :output-name, custom-name :custom-name, :as ag} druid-query]
+  (let [output-name (or custom-name output-name)]
+    (when (isa? query-type ::ag-query)
+      (merge-with concat
+        druid-query
+        (let [ag-type (when-not (= ag-type :rows) ag-type)]
+          (match [ag-type ag-field]
+            ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
+            [nil     nil] {:aggregations [(ag:count (or output-name :___count))]}
 
-          [:count  nil] {:aggregations [(ag:count (or output-name :count))]}
+            [:count  nil] {:aggregations [(ag:count (or output-name :count))]}
 
-          [:count    _] {:aggregations [(ag:count ag-field (or output-name :count))]}
+            [:count    _] {:aggregations [(ag:count ag-field (or output-name :count))]}
 
-          [:avg      _] (let [count-name (name (gensym "___count_"))
-                              sum-name   (name (gensym "___sum_"))]
-                          {:aggregations     [(ag:count ag-field count-name)
-                                              (ag:doubleSum ag-field sum-name)]
-                           :postAggregations [{:type   :arithmetic
-                                               :name   (or output-name :avg)
-                                               :fn     :/
-                                               :fields [{:type :fieldAccess, :fieldName sum-name}
-                                                        {:type :fieldAccess, :fieldName count-name}]}]})
-          [:distinct _] {:aggregations [{:type       :cardinality
-                                         :name       (or output-name :distinct___count)
-                                         :fieldNames [(->rvalue ag-field)]}]}
-          [:sum      _] {:aggregations [(ag:doubleSum ag-field (or output-name :sum))]}
-          [:min      _] {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}
-          [:max      _] {:aggregations [(ag:doubleMax ag-field (or output-name :max))]})))))
+            [:avg      _] (let [count-name (name (gensym "___count_"))
+                                sum-name   (name (gensym "___sum_"))]
+                            {:aggregations     [(ag:count ag-field count-name)
+                                                (ag:doubleSum ag-field sum-name)]
+                             :postAggregations [{:type   :arithmetic
+                                                 :name   (or output-name :avg)
+                                                 :fn     :/
+                                                 :fields [{:type :fieldAccess, :fieldName sum-name}
+                                                          {:type :fieldAccess, :fieldName count-name}]}]})
+            [:distinct _] {:aggregations [{:type       :cardinality
+                                           :name       (or output-name :distinct___count)
+                                           :fieldNames [(->rvalue ag-field)]}]}
+            [:sum      _] {:aggregations [(ag:doubleSum ag-field (or output-name :sum))]}
+            [:min      _] {:aggregations [(ag:doubleMin ag-field (or output-name :min))]}
+            [:max      _] {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}))))))
 
 (defn- add-expression-aggregation-output-names [args]
   (for [arg args]

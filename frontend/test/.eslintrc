@@ -1,0 +1,13 @@
+{
+    "rules": {
+        "jasmine/no-focused-tests": 2,
+        "jasmine/no-suite-dupes": [2, "branch"]
+    },
+    "env": {
+        "jasmine": true,
+        "node": true
+    },
+    "plugins": [
+        "jasmine"
+    ]
+}

@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { formatExpression, parseExpressionString, tokenAtPosition, tokensToExpression } from "metabase/lib/expressions";
+import { formatExpression, parseExpressionString } from "metabase/lib/expressions";
 
 const mockFields = [
     {id: 1, display_name: "A"},
@@ -10,12 +10,12 @@ const mockFields = [
 
 const mathOperators = new Set(['+', '-', '*', '/']);
 
-const parsedMathOperators = {
-    "+": { value: '+', start: 2, end: 3, parsedValue: '+' },
-    "-": { value: '-', start: 2, end: 3, parsedValue: '-' },
-    "*": { value: '*', start: 2, end: 3, parsedValue: '*' },
-    "/": { value: '/', start: 2, end: 3, parsedValue: '/' }
-}
+// const parsedMathOperators = {
+//     "+": { value: '+', start: 2, end: 3, parsedValue: '+' },
+//     "-": { value: '-', start: 2, end: 3, parsedValue: '-' },
+//     "*": { value: '*', start: 2, end: 3, parsedValue: '*' },
+//     "/": { value: '/', start: 2, end: 3, parsedValue: '/' }
+// }
 
 function stripStartEnd(list) {
     return list.map(i => {

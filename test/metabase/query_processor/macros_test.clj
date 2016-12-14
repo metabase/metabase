@@ -14,7 +14,7 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:aggregation [["rows"]]
+   :query    {:aggregation ["rows"]
               :filter      ["AND" [">" 4 1]]
               :breakout    [17]}}
   (expand-macros {:database 1
@@ -27,8 +27,10 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:aggregation [["rows"]]
-              :filter      ["AND" ["AND" ["=" 5 "abc"]] ["OR" ["AND" ["IS_NULL" 7]] [">" 4 1]]]
+   :query    {:aggregation ["rows"]
+              :filter      ["AND" ["AND" ["=" 5 "abc"]]
+                                  ["OR" ["AND" ["IS_NULL" 7]]
+                                        [">" 4 1]]]
               :breakout    [17]}}
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}     {:db_id database-id}]
@@ -46,8 +48,9 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:aggregation [["count"]]
-              :filter      ["AND" ["AND" [">" 4 1]] ["AND" ["=" 5 "abc"]]]
+   :query    {:aggregation ["count"]
+              :filter      ["AND" ["AND" [">" 4 1]]
+                                  ["AND" ["=" 5 "abc"]]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
   (tu/with-temp* [Database [{database-id :id}]
@@ -66,7 +69,7 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:aggregation [["count"]]
+   :query    {:aggregation ["count"]
               :filter      ["AND" ["=" 5 "abc"]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
@@ -86,7 +89,7 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:aggregation [["count"]]
+   :query    {:aggregation ["count"]
               :filter      ["AND" ["=" 5 "abc"]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
@@ -105,7 +108,7 @@
 (expect
   {:database 1
    :type     :query
-   :query    {:aggregation [["sum" 18]]
+   :query    {:aggregation ["sum" 18]
               :filter      ["AND" ["AND" [">" 4 1] ["AND" ["IS_NULL" 7]]] ["AND" ["=" 5 "abc"] ["AND" ["BETWEEN" 9 0 25]]]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
