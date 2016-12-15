@@ -212,7 +212,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
+            <Modal small onClose={this.onCloseModal}>
                 <ModalContent title={user.first_name+" has been added"}
                               closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
@@ -242,7 +242,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
+            <Modal small onClose={this.onCloseModal}>
                 <ModalContent title={user.first_name+" has been added"}
                               closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
@@ -264,7 +264,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
+            <Modal small onClose={this.onCloseModal}>
                 <ModalContent title={"We've Re-sent "+user.first_name+"'s Invite"}
                               closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
@@ -284,7 +284,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
+            <Modal small onClose={this.onCloseModal}>
                 <ModalContent title={"Remove "+user.common_name}
                               closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
@@ -307,7 +307,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
+            <Modal small onClose={this.onCloseModal}>
                 <ModalContent title={"Reset "+user.first_name+"'s Password"}
                               closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
@@ -330,7 +330,7 @@ export default class PeopleListingApp extends Component {
         let { user, password } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
+            <Modal small onClose={this.onCloseModal}>
                 <ModalContent title={user.first_name+"'s Password Has Been Reset"}
                               closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
@@ -354,7 +354,7 @@ export default class PeopleListingApp extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
+            <Modal small onClose={this.onCloseModal}>
                 <ModalContent title={user.first_name+"'s Password Has Been Reset"}
                               closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">

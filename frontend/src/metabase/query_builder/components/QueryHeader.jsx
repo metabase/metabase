@@ -387,7 +387,7 @@ export default class QueryHeader extends Component {
                     setItemAttributeFn={this.props.onSetCardAttribute}
                 />
 
-                <Modal className="Modal Modal--small" isOpen={this.state.modal === "saved"} onClose={this.onCloseModal}>
+                <Modal small isOpen={this.state.modal === "saved"} onClose={this.onCloseModal}>
                     <QuestionSavedModal
                         addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
                         closeFn={this.onCloseModal}

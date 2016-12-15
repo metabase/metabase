@@ -46,9 +46,10 @@ export default class Modal extends Component {
     }
 
     _modalComponent() {
+        const className = this.props.className || cx("Modal", ...["small", "medium", "wide", "tall", "full"].filter(type => this.props[type]).map(type => `Modal--${type}`))
         return (
             <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
-                <div className={cx(this.props.className, 'relative bordered bg-white rounded')}>
+                <div className={cx(className, 'relative bordered bg-white rounded')}>
                     {this.props.children}
                 </div>
             </OnClickOutsideWrapper>
