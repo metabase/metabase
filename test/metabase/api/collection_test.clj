@@ -12,7 +12,7 @@
 
 ;; check that we can get a basic list of collections
 (tu/expect-with-temp [Collection [collection]]
-  [(into {} collection)]
+  [(assoc (into {} collection) :can_write true)]
   ((user->client :crowberto) :get 200 "collection"))
 
 ;; check that we don't see collections if we don't have permissions for them
