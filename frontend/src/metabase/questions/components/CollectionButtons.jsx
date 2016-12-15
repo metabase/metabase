@@ -63,7 +63,7 @@ const CollectionButton = ({ name, color, slug }) =>
         </div>
         <Icon
             className="mb4 mt2"
-            name="all"
+            name="collection"
             size={COLLECTION_ICON_SIZE}
             style={{ color }}
         />

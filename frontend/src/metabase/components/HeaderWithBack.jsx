@@ -9,8 +9,9 @@ const HeaderWithBack = ({ name }) =>
             className="cursor-pointer text-brand-hover mr2"
             onClick={() => window.history.back()}
         >
-            { /* TODO - this should be an arrow */ }
-            <Icon name="chevronleft" />
+            <div className="circle">
+                <Icon name="backArrow" />
+            </div>
         </div>
         <h2>{name}</h2>
     </div>
