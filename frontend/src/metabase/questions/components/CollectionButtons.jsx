@@ -57,7 +57,7 @@ const CollectionButton = ({ name, color, slug }) =>
     >
         <div className="absolute top right mt2 mr2 hover-child">
             <CollectionActions actions={[
-                { name: "Set collection permissions", icon: "lock" },
+                { name: "Set collection permissions", icon: "lockoutline" },
                 { name: "Archive collection", icon: "archive" }
             ]}/>
         </div>
