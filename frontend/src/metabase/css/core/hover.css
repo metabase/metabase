@@ -1,2 +1,5 @@
-.hover-child { display: none; }
-.hover-parent:hover .hover-child { display: block; }
+.hover-parent.hover--display .hover-child       { display: none; }
+.hover-parent:hover.hover--display .hover-child { display: block; }
+
+.hover-parent.hover--visibility .hover-child       { visibility: hidden; }
+.hover-parent:hover.hover--visibility .hover-child { visibility: visible; }
