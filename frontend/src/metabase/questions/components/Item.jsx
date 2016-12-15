@@ -44,8 +44,8 @@ const Item = ({ id, description, name, created, by, selected, favorite, archived
                     <Link to={`/questions/${id}/move`}>
                         <Icon
                             className="cursor-pointer text-brand-hover transition-color"
-                            name={ archived ? "unarchive" : "archive"}
-                            size={20}
+                            name="move"
+                            size={18}
                         />
                     </Link>
                 </Tooltip>
@@ -54,7 +54,7 @@ const Item = ({ id, description, name, created, by, selected, favorite, archived
                         className="cursor-pointer text-brand-hover transition-color"
                         name={ archived ? "unarchive" : "archive"}
                         onClick={() => setArchived(id, !archived, true)}
-                        size={20}
+                        size={18}
                     />
                 </Tooltip>
             </div>

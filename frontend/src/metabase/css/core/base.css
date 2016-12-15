@@ -61,6 +61,8 @@ textarea {
   background-color: #f9fbfc;
 }
 
+.circle { border-radius: 99px; }
+
 .undefined {
     border: 1px solid red !important;
 }

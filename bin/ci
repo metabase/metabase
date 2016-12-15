@@ -64,6 +64,7 @@ install-crate() {
     sudo apt-get install -y crate
     # ulimit setting refused Crate service to start on CircleCI container - so comment it
     sudo sed -i '/MAX_LOCKED_MEMORY/s/^/#/' /etc/init/crate.conf
+    echo "psql.port: 5200" | sudo tee -a /etc/crate/crate.yml
     sudo service crate restart
 }
 

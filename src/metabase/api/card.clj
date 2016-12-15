@@ -4,7 +4,8 @@
             [compojure.core :refer [GET POST DELETE PUT]]
             [schema.core :as s]
             (metabase.api [common :refer :all]
-                          [dataset :as dataset-api])
+                          [dataset :as dataset-api]
+                          [label :as label-api])
             (metabase [db :as db]
                       [events :as events])
             (metabase.models [hydrate :refer [hydrate]]
@@ -278,6 +279,7 @@
    (This endpoint is considered DEPRECATED as Labels will be removed in a future version of Metabase.)"
   [card-id :as {{:keys [label_ids]} :body}]
   {label_ids [su/IntGreaterThanZero]}
+  (label-api/warn-about-labels-being-deprecated)
   (write-check Card card-id)
   (let [[labels-to-remove labels-to-add] (data/diff (set (db/select-field :label_id CardLabel :card_id card-id))
                                                     (set label_ids))]
