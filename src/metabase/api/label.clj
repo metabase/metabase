@@ -9,7 +9,9 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]))
 
-(defn- warn-about-labels-being-deprecated []
+(defn warn-about-labels-being-deprecated
+  "Print a warning message about Labels-related endpoints being deprecated."
+  []
   (log/warn (u/format-color 'yellow "Labels are deprecated, and this API endpoint will be removed in a future version of Metabase.")))
 
 (defendpoint GET "/"
