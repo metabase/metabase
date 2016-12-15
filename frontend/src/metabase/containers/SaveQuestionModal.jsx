@@ -12,13 +12,14 @@ import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
 
 import cx from "classnames";
+import _ from "underscore";
 
 import "./SaveQuestionModal.css";
 
 import { loadCollections } from "metabase/questions/collections";
 
 const mapStateToProps = (state, props) => ({
-    collections: state.collections.collections
+    collections: _.filter(state.collections.collections, collection => collection.can_write)
 });
 
 const mapDispatchToProps = {
