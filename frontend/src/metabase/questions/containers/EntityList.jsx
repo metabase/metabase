@@ -187,7 +187,7 @@ export default class EntityList extends Component {
                         :
                             null
                       }
-                      { onChangeSection &&
+                      { entityIds.length > 0 && onChangeSection &&
                           <EntityFilterWidget
                             section={section}
                             onChange={onChangeSection}
