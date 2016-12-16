@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import { Motion, spring, presets } from "react-motion";
+import Collapse from "react-collapse";
 
 // import ActionGroup from "metabase/components/ActionGroup";
 import Icon from "metabase/components/Icon";
@@ -88,17 +89,15 @@ export default class QuestionIndex extends Component {
                         <h2>Everything Else</h2>
                     </div>`
                 </div>
-                { questionsExpanded &&
-                    <div className="">
-                        <EntityList
-                            query={{ f: "all", collection: "", ...location.query }}
-                            onChangeSection={(section) => push({
-                                ...location,
-                                query: { ...location.query, f: section }
-                            })}
-                        />
-                    </div>
-                }
+                <Collapse isOpened={questionsExpanded} keepContent={true}>
+                    <EntityList
+                        query={{ f: "all", collection: "", ...location.query }}
+                        onChangeSection={(section) => push({
+                            ...location,
+                            query: { ...location.query, f: section }
+                        })}
+                    />
+                </Collapse>
             </div>
         )
     }
