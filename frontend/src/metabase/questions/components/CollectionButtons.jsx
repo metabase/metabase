@@ -49,7 +49,7 @@ const NewCollectionButton = () =>
 
 const CollectionButton = ({ name, color, slug }) =>
     <Link
-        className="relative block p4 hover-parent text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
+        className="relative block p4 hover-parent hover--visibility text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
         style={{
             borderRadius: 10
         }}
