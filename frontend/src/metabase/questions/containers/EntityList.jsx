@@ -241,17 +241,20 @@ class EntityFilterWidget extends Component {
                 }
                 target={() => this.icon}
             >
-                <ol className="List text-brand">
+                <ol className="text-brand mt2 mb1">
                     { SECTIONS.map((item, index) =>
                         <li
                             key={index}
-                            className="List-item p1"
+                            className="cursor-pointer flex align-center brand-hover px2 py1 mb1"
                             onClick={() => {
                                 onChange(item.section);
                                 this.popover.close();
                             }}
                         >
-                            <Icon name={item.icon} />
+                            <Icon
+                                className="mr1 text-light-blue"
+                                name={item.icon}
+                            />
                             <h4 className="List-item-title">
                                 {item.name}
                             </h4>
