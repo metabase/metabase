@@ -12,38 +12,51 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 
 import Urls from "metabase/lib/urls";
 
+const ITEM_ICON_SIZE = 20;
 
 const Item = ({ id, description, name, created, by, selected, favorite, archived, icon, setItemSelected, setFavorited, setArchived }) =>
-    <div className={cx('hover-parent hover--visibility', S.item, { [S.selected]: selected, [S.favorite]: favorite, [S.archived]: archived })}>
-        <div className={S.leftIcons}>
-            { icon && <Icon className={S.chartIcon} name={icon} size={20} /> }
-            <CheckBox
-                checked={selected}
-                onChange={(e) => setItemSelected({ [id]: e.target.checked })}
-                className={S.itemCheckbox}
-                size={20}
-                padding={3}
-                borderColor="currentColor"
-                invertChecked
+    <div className={cx('hover-parent hover--visibility', S.item)}>
+        <div className="flex flex-full align-center">
+            <div className="relative flex ml1 mr2" style={{ width: ITEM_ICON_SIZE, height: ITEM_ICON_SIZE }}>
+                { icon &&
+                    <Icon
+                        className="text-light-blue absolute top left visible hover-child--hidden"
+                        name={icon}
+                        size={ITEM_ICON_SIZE}
+                    />
+                }
+                <CheckBox
+                    className={cx(
+                        "cursor-pointer absolute top left",
+                        { "visible text-brand": selected },
+                        { "hover-child text-brand-hover text-light-blue transition-color": !selected }
+                    )}
+                    checked={selected}
+                    onChange={(e) => setItemSelected({ [id]: e.target.checked })}
+                    size={ITEM_ICON_SIZE}
+                    padding={3}
+                    borderColor="currentColor"
+                    invertChecked
+                />
+            </div>
+            <ItemBody
+                description={description}
+                id={id}
+                name={name}
+                setFavorited={setFavorited}
+                favorite={favorite}
             />
         </div>
-        <ItemBody
-            description={description}
-            id={id}
-            name={name}
-            setFavorited={setFavorited}
-            favorite={favorite}
-        />
-        <div>
+        <div className="flex flex-column ml-auto">
             <ItemCreated
                 by={by}
                 created={created}
             />
-            <div className="hover-child flex ml-auto">
+            <div className="hover-child mt1 ml-auto">
                 <Tooltip tooltip="Move to a collection">
                     <Link to={`/questions/${id}/move`}>
                         <Icon
-                            className="cursor-pointer text-brand-hover transition-color mx1"
+                            className="text-light-blue cursor-pointer text-brand-hover transition-color mx2"
                             name="move"
                             size={18}
                         />
@@ -51,7 +64,7 @@ const Item = ({ id, description, name, created, by, selected, favorite, archived
                 </Tooltip>
                 <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
                     <Icon
-                        className="cursor-pointer text-brand-hover transition-color"
+                        className="text-light-blue cursor-pointer text-brand-hover transition-color"
                         name={ archived ? "unarchive" : "archive"}
                         onClick={() => setArchived(id, !archived, true)}
                         size={18}
@@ -78,14 +91,19 @@ Item.propTypes = {
 
 const ItemBody = pure(({ id, name, description, favorite, setFavorited }) =>
     <div className={S.itemBody}>
-        <div className={cx('flex align-center', S.itemTitle)}>
+        <div className={cx('flex', S.itemTitle)}>
             <Link to={Urls.card(id)} className={cx(S.itemName)}>
                 {name}
             </Link>
             <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
                 <Icon
-                    className={S.favoriteIcon}
-                    name="star" size={20}
+                    className={cx(
+                        "flex cursor-pointer text-brand-hover transition-color",
+                        {"hover-child text-light-blue": !favorite},
+                        {"visible text-brand": favorite}
+                    )}
+                    name={favorite ? "star" : "staroutline"}
+                    size={ITEM_ICON_SIZE}
                     onClick={() => setFavorited(id, !favorite) }
                 />
             </Tooltip>
