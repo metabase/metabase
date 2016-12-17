@@ -136,38 +136,61 @@
       (catch Throwable t
         (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
 
-(def ^:private ^:const crufty-table-names
-  "Names of Tables that should automatically given the `visibility-type` of `:cruft`.
+(def ^:private ^:const crufty-table-patterns
+  "Regular expressions that match Tables that should automatically given the `visibility-type` of `:cruft`.
    This means they are automatically hidden to users (but can be unhidden in the admin panel).
    These `Tables` are known to not contain useful data, such as migration or web framework internal tables."
   #{;; Django
-    "auth_group"
-    "auth_group_permissions"
-    "auth_permission"
-    "django_admin_log"
-    "django_content_type"
-    "django_migrations"
-    "django_session"
-    "django_site"
-    "south_migrationhistory"
-    "user_groups"
-    "user_user_permissions"
+    #"^auth_group$"
+    #"^auth_group_permissions$"
+    #"^auth_permission$"
+    #"^django_admin_log$"
+    #"^django_content_type$"
+    #"^django_migrations$"
+    #"^django_session$"
+    #"^django_site$"
+    #"^south_migrationhistory$"
+    #"^user_groups$"
+    #"^user_user_permissions$"
+    ;; Drupal
+    #".*_cache$"
+    #".*_revision$"
+    #"^advagg_.*"
+    #"^apachesolr_.*"
+    #"^authmap$"
+    #"^autoload_registry.*"
+    #"^batch$"
+    #"^blocked_ips$"
+    #"^cache.*"
+    #"^captcha_.*"
+    #"^config$"
+    #"^field_revision_.*"
+    #"^flood$"
+    #"^node_revision.*"
+    #"^queue$"
+    #"^rate_bot_.*"
+    #"^registry.*"
+    #"^router.*"
+    #"^semaphore$"
+    #"^sequences$"
+    #"^sessions$"
+    #"^watchdog$"
     ;; Rails / Active Record
-    "schema_migrations"
+    #"^schema_migrations$"
     ;; PostGIS
-    "spatial_ref_sys"
+    #"^spatial_ref_sys$"
     ;; nginx
-    "nginx_access_log"
+    #"^nginx_access_log$"
     ;; Liquibase
-    "databasechangelog"
-    "databasechangeloglock"
+    #"^databasechangelog$"
+    #"^databasechangeloglock$"
     ;; Lobos
-    "lobos_migrations"})
+    #"^lobos_migrations$"})
 
 (defn- is-crufty-table?
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
   [table]
-  (contains? crufty-table-names (s/lower-case (:name table))))
+  (boolean (some #(re-find % (s/lower-case (:name table))) crufty-table-patterns)))
 
 (defn is-metabase-metadata-table?
   "Is this TABLE the special `_metabase_metadata` table?"
