@@ -77,7 +77,8 @@
     z-index: 1;
 }
 
-.ColumnarSelector-column:last-child {
+/* only apply if there's more than one, aka the last is not the first */
+.ColumnarSelector-column:last-child:not(:first-child) {
     background-color: white;
     border-left:  var(--border-size) var(--border-style) var(--border-color);
     position: relative;

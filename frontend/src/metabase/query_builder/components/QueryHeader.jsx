@@ -183,6 +183,8 @@ export default class QueryHeader extends Component {
         if (isNew && isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
+                    full
+                    form
                     key="save"
                     ref="saveModal"
                     triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
@@ -195,7 +197,7 @@ export default class QueryHeader extends Component {
                         addToDashboard={false}
                         saveFn={this.onSave}
                         createFn={this.onCreate}
-                        closeFn={() => this.refs.saveModal.toggle()}
+                        onClose={() => this.refs.saveModal.toggle()}
                     />
                 </ModalWithTrigger>
             ]);
@@ -257,7 +259,7 @@ export default class QueryHeader extends Component {
                             <DeleteQuestionModal
                                 card={this.props.card}
                                 deleteCardFn={this.onDelete}
-                                closeFn={() => this.refs.deleteModal.toggle()}
+                                onClose={() => this.refs.deleteModal.toggle()}
                             />
                         </ModalWithTrigger>
                     </Tooltip>
@@ -306,7 +308,7 @@ export default class QueryHeader extends Component {
                             addToDashboard={true}
                             saveFn={this.onSave}
                             createFn={this.onCreate}
-                            closeFn={() => this.refs.addToDashSaveModal.toggle()}
+                            onClose={() => this.refs.addToDashSaveModal.toggle()}
                         />
                     </ModalWithTrigger>
                 </Tooltip>
@@ -390,14 +392,14 @@ export default class QueryHeader extends Component {
                 <Modal small isOpen={this.state.modal === "saved"} onClose={this.onCloseModal}>
                     <QuestionSavedModal
                         addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
-                        closeFn={this.onCloseModal}
+                        onClose={this.onCloseModal}
                     />
                 </Modal>
 
                 <Modal isOpen={this.state.modal === "add-to-dashboard"} onClose={this.onCloseModal}>
                     <AddToDashSelectDashModal
                         card={this.props.card}
-                        closeFn={this.onCloseModal}
+                        onClose={this.onCloseModal}
                         onChangeLocation={this.props.onChangeLocation}
                     />
                 </Modal>

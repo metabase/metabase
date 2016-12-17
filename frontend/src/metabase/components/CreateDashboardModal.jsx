@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
+import Button from "metabase/components/Button.jsx";
 
 import cx from "classnames";
 
@@ -21,7 +22,7 @@ export default class CreateDashboardModal extends Component {
 
     static propTypes = {
         createDashboardFn: PropTypes.func.isRequired,
-        closeFn: PropTypes.func
+        onClose: PropTypes.func
     };
 
     setName(event) {
@@ -72,22 +73,15 @@ export default class CreateDashboardModal extends Component {
 
         var formReady = (name !== null && name !== "");
 
-        var buttonClasses = cx({
-            "Button": true,
-            "Button--primary": formReady
-        });
-
-        var createButton = (
-            <button className={buttonClasses} disabled={!formReady}>
-                Create
-            </button>
-        );
-
         return (
             <ModalContent
                 id="CreateDashboardModal"
-                title="Create Dashboard"
-                closeFn={this.props.closeFn}
+                title="Create dashboard"
+                footer={[
+                    <Button onClick={this.props.onClose}>Cancel</Button>,
+                    <Button primary={formReady} disabled={!formReady}>Create</Button>
+                ]}
+                onClose={this.props.onClose}
             >
                 <form className="Modal-form" onSubmit={this.createNewDash}>
                     <div className="Form-inputs">
@@ -105,12 +99,6 @@ export default class CreateDashboardModal extends Component {
                             errors={this.state.errors}>
                             <input className="Form-input full" name="description" placeholder="It's optional but oh, so helpful"  value={this.state.description} onChange={this.setDescription} />
                         </FormField>
-                    </div>
-
-                    <div className="Form-actions">
-                        {createButton}
-                        <span className="px1">or</span><a className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
-                        {formError}
                     </div>
                 </form>
             </ModalContent>

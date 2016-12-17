@@ -7,11 +7,11 @@ import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
+import Button from "metabase/components/Button";
 
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
 
-import cx from "classnames";
 import _ from "underscore";
 
 import "./SaveQuestionModal.css";
@@ -52,7 +52,7 @@ export default class SaveQuestionModal extends Component {
         tableMetadata: PropTypes.object, // can't be required, sometimes null
         createFn: PropTypes.func.isRequired,
         saveFn: PropTypes.func.isRequired,
-        closeFn: PropTypes.func.isRequired
+        onClose: PropTypes.func.isRequired
     }
 
     componentWillMount() {
@@ -92,9 +92,11 @@ export default class SaveQuestionModal extends Component {
         this.setState({ details: { ...this.state.details, [fieldName]: fieldValue ? fieldValue : null }});
     }
 
-    async formSubmitted(e) {
+    formSubmitted = async (e) => {
         try {
-            e.preventDefault();
+            if (e) {
+                e.preventDefault();
+            }
 
             let { details } = this.state;
             let { card, originalCard, addToDashboard, createFn, saveFn } = this.props;
@@ -119,7 +121,7 @@ export default class SaveQuestionModal extends Component {
             }
 
             await this.requestPromise;
-            this.props.closeFn();
+            this.props.onClose();
         } catch (error) {
             if (error && !error.isCanceled) {
                 this.setState({ error: error });
@@ -173,80 +175,77 @@ export default class SaveQuestionModal extends Component {
             );
         }
 
-        let title = this.props.addToDashboard ? "First, Save Your Question" : "Save Question";
+        let title = this.props.addToDashboard ? "First, save your question" : "Save question";
 
         return (
             <ModalContent
                 id="SaveQuestionModal"
                 title={title}
-                closeFn={this.props.closeFn}
-            >
-                <form className="flex flex-column flex-full" onSubmit={(e) => this.formSubmitted(e)}>
-                    <div className="Form-inputs">
-                        {saveOrUpdate}
-                        <ReactCSSTransitionGroup
-                            transitionName="saveQuestionModalFields"
-                            transitionEnterTimeout={500}
-                            transitionLeaveTimeout={500}
-                        >
-                            { details.saveType === "create" &&
-                                <div key="saveQuestionModalFields" className="saveQuestionModalFields">
-                                    <FormField
-                                        displayName="Name"
-                                        fieldName="name"
-                                        errors={this.state.errors}
-                                    >
-                                        <input
-                                            className="Form-input full"
-                                            name="name" placeholder="What is the name of your card?"
-                                            value={this.state.details.name}
-                                            onChange={(e) => this.onChange("name", e.target.value)}
-                                            autoFocus
-                                        />
-                                    </FormField>
-                                    <FormField
-                                        displayName="Description"
-                                        fieldName="description"
-                                        errors={this.state.errors}
-                                    >
-                                        <textarea
-                                            className="Form-input full"
-                                            name="description"
-                                            placeholder="It's optional but oh, so helpful"
-                                            value={this.state.details.description}
-                                            onChange={(e) => this.onChange("description", e.target.value)}
-                                        />
-                                    </FormField>
-                                    { collections && collections.length > 0 &&
-                                        <FormField
-                                            displayName="Which collection should this go in?"
-                                            fieldName="collection_id"
-                                            errors={this.state.errors}
-                                        >
-                                            <Select
-                                                className="block"
-                                                value={this.state.details.collection_id}
-                                                onChange={(e) => this.onChange("collection_id", e.target.value)}
-                                            >
-                                                {[{ name: "None", id: null }].concat(collections).map(collection =>
-                                                    <Option value={collection.id}>{collection.name}</Option>
-                                                )}
-                                            </Select>
-                                        </FormField>
-                                    }
-                                </div>
-                            }
-                        </ReactCSSTransitionGroup>
-                    </div>
-
-                    <div className="Form-actions">
-                        <button className={cx("Button", { "Button--primary": this.state.valid })} disabled={!this.state.valid}>
+                footer={[
+                        <Button onClick={this.props.onClose}>
+                            Cancel
+                        </Button>,
+                        <Button primary={this.state.valid} disabled={!this.state.valid} onClick={this.formSubmitted}>
                             Save
-                        </button>
-                        <span className="px1">or</span>
-                        <a className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
-                        {formError}
-                    </div>
+                        </Button>
+                ]}
+                onClose={this.props.onClose}
+            >
+                <form className="Form-inputs" onSubmit={this.formSubmitted}>
+                    {saveOrUpdate}
+                    <ReactCSSTransitionGroup
+                        transitionName="saveQuestionModalFields"
+                        transitionEnterTimeout={500}
+                        transitionLeaveTimeout={500}
+                    >
+                        { details.saveType === "create" &&
+                            <div key="saveQuestionModalFields" className="saveQuestionModalFields">
+                                <FormField
+                                    displayName="Name"
+                                    fieldName="name"
+                                    errors={this.state.errors}
+                                >
+                                    <input
+                                        className="Form-input full"
+                                        name="name" placeholder="What is the name of your card?"
+                                        value={this.state.details.name}
+                                        onChange={(e) => this.onChange("name", e.target.value)}
+                                        autoFocus
+                                    />
+                                </FormField>
+                                <FormField
+                                    displayName="Description"
+                                    fieldName="description"
+                                    errors={this.state.errors}
+                                >
+                                    <textarea
+                                        className="Form-input full"
+                                        name="description"
+                                        placeholder="It's optional but oh, so helpful"
+                                        value={this.state.details.description}
+                                        onChange={(e) => this.onChange("description", e.target.value)}
+                                    />
+                                </FormField>
+                                { collections && collections.length > 0 &&
+                                    <FormField
+                                        displayName="Which collection should this go in?"
+                                        fieldName="collection_id"
+                                        errors={this.state.errors}
+                                    >
+                                        <Select
+                                            className="block"
+                                            value={this.state.details.collection_id}
+                                            onChange={(e) => this.onChange("collection_id", e.target.value)}
+                                        >
+                                            {[{ name: "None", id: null }].concat(collections).map(collection =>
+                                                <Option value={collection.id}>{collection.name}</Option>
+                                            )}
+                                        </Select>
+                                    </FormField>
+                                }
+                            </div>
+                        }
+                    </ReactCSSTransitionGroup>
                 </form>
             </ModalContent>
         );

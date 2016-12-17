@@ -50,7 +50,7 @@ export default class AddToDashSelectQuestionModal extends Component {
         return (
             <ModalContent
                 title="Add Question to Dashboard"
-                closeFn={this.props.onClose}
+                onClose={this.props.onClose}
             >
                 <LoadingAndErrorWrapper loading={!this.props.cards} error={error} >
                 {() =>

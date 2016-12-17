@@ -46,7 +46,7 @@ export default class DeleteDashboardModal extends Component {
         return (
             <ModalContent
                 title="Delete Dashboard"
-                closeFn={this.props.onClose}
+                onClose={this.props.onClose}
             >
                 <div className="Form-inputs mb4">
                     <p>Are you sure you want to do this?</p>

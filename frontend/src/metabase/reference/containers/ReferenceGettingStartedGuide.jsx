@@ -233,7 +233,7 @@ export default class ReferenceGettingStartedGuide extends Component {
 
                                 MetabaseAnalytics.trackEvent("Dashboard", "Create");
                             }}
-                            closeFn={hideDashboardModal}
+                            onClose={hideDashboardModal}
                         />
                     </Modal>
                 }

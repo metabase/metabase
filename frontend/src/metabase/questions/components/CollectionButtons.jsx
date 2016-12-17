@@ -49,13 +49,13 @@ const NewCollectionButton = () =>
 
 const CollectionButton = ({ name, color, slug }) =>
     <Link
-        className="relative block p4 hover-parent text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
+        className="relative block p4 visible-hover-parent text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
         style={{
             borderRadius: 10
         }}
         to={`/questions/collections/${slug}`}
     >
-        <div className="absolute top right mt2 mr2 hover-child">
+        <div className="absolute top right mt2 mr2 visible-hover-child">
             <CollectionActions actions={[
                 { name: "Set collection permissions", icon: "lockoutline" },
                 { name: "Archive collection", icon: "archive" }

@@ -5,17 +5,43 @@ import cx from "classnames";
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
+import ModalContent from "./ModalContent";
 
-export default class Modal extends Component {
+import _ from "underscore";
+
+export const MODAL_CHILD_CONTEXT_TYPES = {
+    fullPageModal: PropTypes.bool,
+    formModal: PropTypes.bool
+};
+
+function getModalContent(props) {
+    if (React.Children.count(props.children).length > 1 ||
+        props.title != null || props.footer != null
+    ) {
+        return <ModalContent {..._.omit(props, "className", "style")} />
+    } else {
+        return React.Children.only(props.children);
+    }
+}
+
+export class WindowModal extends Component {
     static propTypes = {
         isOpen: PropTypes.bool
     };
 
     static defaultProps = {
         className: "Modal",
-        backdropClassName: "Modal-backdrop",
-        isOpen: true
+        backdropClassName: "Modal-backdrop"
     };
+
+    static childContextTypes = MODAL_CHILD_CONTEXT_TYPES;
+
+    getChildContext() {
+        return {
+            fullPageModal: false,
+            formModal: !!this.props.form
+        };
+    }
 
     componentWillMount() {
         this._modalElement = document.createElement('span');
@@ -46,11 +72,11 @@ export default class Modal extends Component {
     }
 
     _modalComponent() {
-        const className = this.props.className || cx("Modal", ...["small", "medium", "wide", "tall", "full"].filter(type => this.props[type]).map(type => `Modal--${type}`))
+        const className = cx(this.props.className, ...["small", "medium", "wide", "tall"].filter(type => this.props[type]).map(type => `Modal--${type}`))
         return (
             <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
                 <div className={cx(className, 'relative bordered bg-white rounded')}>
-                    {this.props.children}
+                    {getModalContent(this.props)}
                 </div>
             </OnClickOutsideWrapper>
         );
@@ -74,3 +100,71 @@ export default class Modal extends Component {
         return <span />;
     }
 }
+
+export class FullPageModal extends Component {
+    static childContextTypes = MODAL_CHILD_CONTEXT_TYPES;
+
+    getChildContext() {
+        return {
+            fullPageModal: true,
+            formModal: !!this.props.form
+        };
+    }
+
+    componentDidMount() {
+        let nav = document.body.querySelector(".Nav");
+        this._sibling = nav.nextSibling;
+        this._siblingPosition = nav.nextSibling.style.position;
+        this._siblingZIndex = nav.nextSibling.style.zIndex;
+        this._sibling.style.position = "absolute";
+        this._sibling.style.zIndex = -1;
+
+        this._modalElement = document.createElement("div");
+        this._modalElement.className = "Modal--full flex-full relative bg-white ";
+        nav.parentNode.appendChild(this._modalElement);
+
+        this.componentDidUpdate();
+    }
+    componentDidUpdate() {
+        ReactDOM.unstable_renderSubtreeIntoContainer(this, getModalContent(this.props), this._modalElement);
+    }
+    componentWillUnmount() {
+        ReactDOM.unmountComponentAtNode(this._modalElement);
+        this._modalElement.parentNode.removeChild(this._modalElement);
+        this._sibling.style.position = this._siblingPosition;
+        this._sibling.style.zIndex = this._siblingZIndex;
+    }
+    render() {
+        return null;
+    }
+}
+
+export class InlineModal extends Component {
+    static childContextTypes = MODAL_CHILD_CONTEXT_TYPES;
+
+    getChildContext() {
+        return {
+            fullPageModal: true,
+            formModal: !!this.props.form
+        };
+    }
+
+    render() {
+        return getModalContent(this.props);
+    }
+}
+
+
+const Modal = ({ full, inline, ...props }) =>
+    full ?
+        (props.isOpen ? <FullPageModal {...props} /> : null)
+    : inline ?
+        <InlineModal {...props} />
+    :
+        <WindowModal {...props} />;
+
+Modal.defaultProps = {
+    isOpen: true,
+};
+
+export default Modal;

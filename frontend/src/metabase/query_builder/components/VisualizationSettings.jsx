@@ -82,7 +82,8 @@ export default class VisualizationSettings extends React.Component {
             return (
                 <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
-                    <ModalWithTrigger wide tall
+                    <ModalWithTrigger
+                        wide tall
                         triggerElement={<span data-metabase-event="Query Builder;Chart Settings"><Icon name="gear"/></span>}
                         triggerClasses="text-brand-hover"
                         ref="popover"

@@ -14,7 +14,7 @@ import Urls from "metabase/lib/urls";
 
 
 const Item = ({ id, description, name, created, by, selected, favorite, archived, icon, setItemSelected, setFavorited, setArchived }) =>
-    <div className={cx('hover-parent', S.item, { [S.selected]: selected, [S.favorite]: favorite, [S.archived]: archived })}>
+    <div className={cx('visible-hover-parent', S.item, { [S.selected]: selected, [S.favorite]: favorite, [S.archived]: archived })}>
         <div className={S.leftIcons}>
             { icon && <Icon className={S.chartIcon} name={icon} size={20} /> }
             <CheckBox
@@ -39,7 +39,7 @@ const Item = ({ id, description, name, created, by, selected, favorite, archived
                 by={by}
                 created={created}
             />
-            <div className="hover-child ml-auto">
+            <div className="visible-hover-child ml-auto">
                 <Tooltip tooltip="Move to a collection">
                     <Link to={`/questions/${id}/move`}>
                         <Icon

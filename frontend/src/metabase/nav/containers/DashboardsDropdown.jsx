@@ -102,7 +102,7 @@ export default class DashboardsDropdown extends Component {
             <Modal>
                 <CreateDashboardModal
                     createDashboardFn={this.onCreateDashboard.bind(this)}
-                    closeFn={this.closeModal} />
+                    onClose={this.closeModal} />
             </Modal>
         );
     }

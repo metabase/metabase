@@ -21,7 +21,7 @@ const Button = ({ className, icon, children, ...props }) => {
     let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(variant => "Button--" + variant);
     return (
         <button
-            {..._.omit(props, ...variantClasses)}
+            {..._.omit(props, ...BUTTON_VARIANTS)}
             className={cx("Button", className, variantClasses)}
         >
             <div className="flex layout-centered">
