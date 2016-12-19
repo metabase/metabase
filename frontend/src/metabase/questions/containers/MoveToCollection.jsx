@@ -1,10 +1,9 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { goBack } from "react-router-redux"
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
-import Modal from "metabase/components/Modal";
+import ModalContent from "metabase/components/ModalContent";
 
 import CollectionList from "./CollectionList";
 
@@ -17,8 +16,7 @@ const mapStateToProps = (state, props) => ({
 })
 
 const mapDispatchToProps = {
-    setCollection,
-    goBack
+    setCollection
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -33,26 +31,25 @@ export default class MoveToCollection extends Component {
     async onMove(collectionId) {
         try {
             this.setState({ error: null })
-            await this.props.setCollection(this.props.params.questionId, collectionId);
-            this.props.goBack();
+            await this.props.setCollection(this.props.questionId, collectionId);
+            this.props.onClose();
         } catch (e) {
             this.setState({ error: e })
         }
     }
 
     render() {
-        const { goBack } = this.props;
+        const { onClose } = this.props;
         const { collectionId, error } = this.state;
         return (
-            <Modal
-                inline
+            <ModalContent
                 title="Which collection should this be in?"
                 footer={
                     <div>
                         { error &&
                             <span className="text-error">{error}</span>
                         }
-                        <Button className="mr1" onClick={goBack}>
+                        <Button className="mr1" onClick={onClose}>
                             Cancel
                         </Button>
                         <Button primary disabled={collectionId === undefined} onClick={() => this.onMove(collectionId)}>
@@ -60,7 +57,7 @@ export default class MoveToCollection extends Component {
                         </Button>
                     </div>
                 }
-                onClose={goBack}
+                onClose={onClose}
             >
                 <CollectionList>
                     { collections =>
@@ -85,7 +82,7 @@ export default class MoveToCollection extends Component {
                         </ol>
                     }
                 </CollectionList>
-            </Modal>
+            </ModalContent>
         )
     }
 }

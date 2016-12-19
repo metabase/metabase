@@ -174,7 +174,7 @@ export default class EntityList extends Component {
 
         const showActionHeader = (editable && selectedCount > 0);
         const showSearchHeader = (entityIds.length > 0 && showSearchWidget);
-        const showEntityFilterWidget =  (entityIds.length > 0 && onChangeSection);
+        const showEntityFilterWidget = onChangeSection;
         return (
             <div className="full" style={style}>
                 <div className="full">
@@ -239,10 +239,10 @@ class EntityFilterWidget extends Component {
         return (
             <PopoverWithTrigger
                 ref={p => this.popover = p}
-                triggerClasses="block ml-auto"
+                triggerClasses="block ml-auto flex-no-shrink"
                 targetOffsetY={10}
                 triggerElement={
-                    <div className="flex align-center text-brand">
+                    <div className="ml2 flex align-center text-brand">
                         <h3>{section && section.name}</h3>
                         <Icon
                             ref={i => this.icon = i}

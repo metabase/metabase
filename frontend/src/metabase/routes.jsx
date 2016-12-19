@@ -22,10 +22,8 @@ import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
 import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
-import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
 import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
 import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
-import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
 import SearchResults from "metabase/questions/containers/SearchResults.jsx";
 import EditLabels from "metabase/questions/containers/EditLabels.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
@@ -144,10 +142,6 @@ export const getRoutes = (store) =>
                     <Route path="search" component={SearchResults} />
                     <Route path="archive" component={Archive} />
                     <Route path="collections/:collectionSlug" component={CollectionPage} />
-                    <Route path=":questionId/move" component={MoveToCollection} />
-                    { /* TODO - These are temporary routes for templating purposes and should be removed */}
-                    <Route path="dashadd" component={AddToDashboard} />
-                    { /* end template routes */}
                 </Route>
 
                 <Route path="/collections" >

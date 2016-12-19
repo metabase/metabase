@@ -12,6 +12,7 @@ import { setRequestState } from "metabase/redux/requests";
 import { getVisibleEntities, getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
 import { push } from "react-router-redux";
+import { updateIn } from "icepick";
 
 const card = new Schema('cards');
 const label = new Schema('labels');
@@ -138,9 +139,22 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
     }
 });
 
-export const setCollection = createAction(SET_COLLECTION, (cardId, collectionId) =>
-    CardApi.update({ id: cardId, collection_id: collectionId })
-);
+export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collectionId, undoable = false) => {
+    return async (dispatch, getState) => {
+        if (cardId == null) {
+            // bulk label
+            let selected = getSelectedEntities(getState());
+            selected.map(item => dispatch(setCollection(item.id, collectionId)));
+        } else {
+            const collection = _.findWhere(getState().collections.collections, { id: collectionId });
+            const card = await CardApi.update({ id: cardId, collection_id: collectionId });
+            return {
+                ...card,
+                _changedSectionSlug: collection && collection.slug
+            }
+        }
+    }
+});
 
 export const setSearchText = createAction(SET_SEARCH_TEXT);
 export const setItemSelected = createAction(SET_ITEM_SELECTED);
@@ -204,12 +218,8 @@ export default function(state = initialState, { type, payload, error }) {
                     ...state.entities.cards[payload.id],
                     ...payload
                 });
-                if (payload.favorite) {
-                    state = addToSection(state, "cards", "favorites", payload.id);
-                } else {
-                    state = removeFromSection(state, "cards", "favorites", payload.id);
-                }
-                return state;
+                // FIXME: incorrectly adds to sections it may not have previously been in, but not a big deal since we reload whens switching sections
+                state = updateSections(state, "cards", payload.id, (s) => s.f === "fav", payload.favorite);
             }
             return state;
         case SET_ARCHIVED:
@@ -220,14 +230,9 @@ export default function(state = initialState, { type, payload, error }) {
                     ...state.entities.cards[payload.id],
                     ...payload
                 });
-                for (let section in state.itemsBySection.cards) {
-                    if (payload.archived ? section === "archived" : section !== "archived") {
-                        state = addToSection(state, "cards", section, payload.id);
-                    } else {
-                        state = removeFromSection(state, "cards", section, payload.id);
-                    }
-                }
-                return state;
+                // FIXME: incorrectly adds to sections it may not have previously been in, but not a big deal since we reload whens switching sections
+                state = updateSections(state, "cards", payload.id, (s) => s.f === "archived", payload.archived);
+                state = updateSections(state, "cards", payload.id, (s) => s.f !== "archived", !payload.archived);
             }
             return state;
         case SET_LABELED:
@@ -238,12 +243,20 @@ export default function(state = initialState, { type, payload, error }) {
                     ...state.entities.cards[payload.id],
                     ...payload
                 });
-                if (payload._changedLabeled) {
-                    state = addToSection(state, "cards", "label-" + payload._changedLabelSlug, payload.id);
-                } else {
-                    state = removeFromSection(state, "cards", "label-" + payload._changedLabelSlug, payload.id);
-                }
+                // FIXME: incorrectly adds to sections it may not have previously been in, but not a big deal since we reload whens switching sections
+                state = updateSections(state, "cards", payload.id, (s) => s.label === payload._changedLabelSlug, payload._changedLabeled);
+            }
+            return state;
+        case SET_COLLECTION:
+            if (error) {
                 return state;
+            } else if (payload && payload.id != null) {
+                state = i.assocIn(state, ["entities", "cards", payload.id], {
+                    ...state.entities.cards[payload.id],
+                    ...payload
+                });
+                state = updateSections(state, "cards", payload.id, (s) => s.collection !== payload._changedSectionSlug, false);
+                state = updateSections(state, "cards", payload.id, (s) => s.collection === payload._changedSectionSlug, true);
             }
             return state;
         default:
@@ -251,18 +264,18 @@ export default function(state = initialState, { type, payload, error }) {
     }
 }
 
-function addToSection(state, type, section, id) {
-    let items = i.getIn(state, ["itemsBySection", type, section, "items"]);
-    if (items && !_.contains(items, id)) {
-        return i.setIn(state, ["itemsBySection", type, section, "items"], items.concat(id));
-    }
-    return state;
-}
-
-function removeFromSection(state, type, section, id) {
-    let items = i.getIn(state, ["itemsBySection", type, section, "items"]);
-    if (items && _.contains(items, id)) {
-        return i.setIn(state, ["itemsBySection", type, section, "items"], items.filter(i => i !== id));
-    }
-    return state;
+function updateSections(state, entityType, entityId, sectionPredicate, shouldContain) {
+    return updateIn(state, ["itemsBySection", entityType], (sections) =>
+        _.mapObject(sections, (section, sectionKey) => {
+            if (sectionPredicate(JSON.parse(sectionKey))) {
+                const doesContain = _.contains(section.items, entityId);
+                if (!doesContain && shouldContain) {
+                    return { ...section, items: section.items.concat(entityId) };
+                } else if (doesContain && !shouldContain) {
+                    return { ...section, items: section.items.filter(id => id !== entityId) };
+                }
+            }
+            return section;
+        })
+    );
 }

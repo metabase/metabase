@@ -9,6 +9,8 @@ import S from "./List.css";
 import Icon from "metabase/components/Icon.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import MoveToCollection from "../containers/MoveToCollection.jsx";
 
 import Urls from "metabase/lib/urls";
 
@@ -58,15 +60,22 @@ const Item = ({ entity, id, description, name, created, by, selected, favorite, 
             />
             { setArchived &&
                 <div className="hover-child mt1 ml-auto">
-                    <Tooltip tooltip="Move to a collection">
-                        <Link to={`/questions/${id}/move`}>
-                            <Icon
-                                className="text-light-blue cursor-pointer text-brand-hover transition-color mx2"
-                                name="move"
-                                size={18}
-                            />
-                        </Link>
-                    </Tooltip>
+                    <ModalWithTrigger
+                        full
+                        triggerElement={
+                            <Tooltip tooltip="Move to a collection">
+                                <Icon
+                                    className="text-light-blue cursor-pointer text-brand-hover transition-color mx2"
+                                    name="move"
+                                    size={18}
+                                />
+                            </Tooltip>
+                        }
+                    >
+                        <MoveToCollection
+                            questionId={id}
+                        />
+                    </ModalWithTrigger>
                     <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
                         <Icon
                             className="text-light-blue cursor-pointer text-brand-hover transition-color"

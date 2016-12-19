@@ -5,6 +5,8 @@ import S from "./ActionHeader.css";
 import StackedCheckBox from "metabase/components/StackedCheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import MoveToCollection from "../containers/MoveToCollection.jsx";
 
 import LabelPopover from "../containers/LabelPopover.jsx";
 
@@ -38,8 +40,19 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
                     count={selectedCount}
                 />
             : null }
+            <ModalWithTrigger
+                full
+                triggerElement={
+                    <span className={S.actionButton} >
+                        <Icon name="move" className="mr1" />
+                        Move
+                    </span>
+                }
+            >
+                <MoveToCollection />
+            </ModalWithTrigger>
             <span className={S.actionButton} onClick={() => setArchived(undefined, !sectionIsArchive, true)}>
-                <Icon name={ sectionIsArchive ? "unarchive" : "archive" } />
+                <Icon name={ sectionIsArchive ? "unarchive" : "archive" }  className="mr1" />
                 { sectionIsArchive ? "Unarchive" : "Archive" }
             </span>
         </span>
