@@ -38,7 +38,7 @@ export default class CollectionsPermissionsApp extends Component {
                 load={CollectionsApi.graph}
                 save={CollectionsApi.updateGraph}
             >
-                <Editor {...this.props} />
+                <Editor {...this.props} admin={false} />
             </PermissionsApp>
         )
     }
