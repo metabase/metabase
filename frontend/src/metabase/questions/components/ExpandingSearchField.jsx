@@ -70,9 +70,13 @@ export default class ExpandingSearchField extends Component {
         const { active } = this.state;
         return (
             <div
-                className={cx(className, 'bordered border-dark flex align-center pr2 transition-border', { 'border-brand' : active })}
+                className={cx(
+                    className,
+                    'bordered border-dark flex align-center pr2 transition-border',
+                    { 'border-brand' : active }
+                )}
                 onClick={this.setActive}
-                style={{ borderRadius: 99 }}
+                style={{borderRadius: 99}}
             >
                 <Icon
                     className={cx('ml2', { 'text-brand': active })}
@@ -86,7 +90,7 @@ export default class ExpandingSearchField extends Component {
                             ref={(search) => this.searchInput = search}
                             className="input text-bold borderless"
                             placeholder="Search for a question..."
-                            style={interpolatingStyle}
+                            style={Object.assign({}, interpolatingStyle, { fontSize: '1em'})}
                             onFocus={() => this.setState({ active: true })}
                             onBlur={() => this.setState({ active: false })}
                             onKeyUp={this.onKeyPress}

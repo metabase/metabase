@@ -25,7 +25,7 @@ class SearchResults extends Component {
         const { totalCount } = this.props;
         return (
             <div className="px4 pt3">
-                <div className="flex align-center">
+                <div className="flex align-center mb3">
                     <HeaderWithBack name={totalCount != null ?
                         `${totalCount} ${inflect("result", totalCount)}` :
                         "Search results"}

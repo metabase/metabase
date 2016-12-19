@@ -9,13 +9,13 @@ import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 
 import cx from "classnames";
 
-const PermissionsEditor = ({ grid, onUpdatePermission, onSave, onCancel, isDirty, saveError, diff }) =>
+const PermissionsEditor = ({ admin, grid, onUpdatePermission, onSave, onCancel, isDirty, saveError, diff }) =>
     <LoadingAndErrorWrapper loading={!grid} className="flex-full flex flex-column">
     { () => // eslint-disable-line react/display-name
         <div className="flex-full flex flex-column">
             { isDirty &&
                 <EditBar
-                    admin
+                    admin={admin}
                     title="You've made changes to permissions."
                     buttons={[
                         <Confirm
@@ -53,5 +53,9 @@ const PermissionsEditor = ({ grid, onUpdatePermission, onSave, onCancel, isDirty
         </div>
     }
     </LoadingAndErrorWrapper>
+
+PermissionsEditor.defaultProps = {
+    admin: true
+}
 
 export default PermissionsEditor;

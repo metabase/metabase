@@ -32,10 +32,11 @@ const mapDispatchToProps = ({
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class QuestionIndex extends Component {
-    constructor () {
-        super();
+    constructor (props) {
+        super(props);
         this.state = {
-            questionsExpanded: true
+            // only expand the everything else section if there are no collections
+            questionsExpanded: props.collections ? false : true
         }
     }
     componentWillMount () {
@@ -89,7 +90,7 @@ export default class QuestionIndex extends Component {
                         <h2>Everything Else</h2>
                     </div>`
                 </div>
-                <Collapse isOpened={questionsExpanded} keepContent={true}>
+                <Collapse isOpened={questionsExpanded} keepCollapsedContent={true}>
                     <EntityList
                         query={{ f: "all", collection: "", ...location.query }}
                         onChangeSection={(section) => push({
