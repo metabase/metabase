@@ -4,7 +4,7 @@ import { goBack } from "react-router-redux"
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
-import PageModal from "metabase/components/PageModal";
+import Modal from "metabase/components/Modal";
 
 import CollectionList from "./CollectionList";
 
@@ -44,7 +44,8 @@ export default class MoveToCollection extends Component {
         const { goBack } = this.props;
         const { collectionId, error } = this.state;
         return (
-            <PageModal
+            <Modal
+                inline
                 title="Which collection should this be in?"
                 footer={
                     <div>
@@ -84,7 +85,7 @@ export default class MoveToCollection extends Component {
                         </ol>
                     }
                 </CollectionList>
-            </PageModal>
+            </Modal>
         )
     }
 }
