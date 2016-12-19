@@ -47,7 +47,7 @@ const NewCollectionButton = () =>
         <h3 className="text-brand">New collection</h3>
     </Link>
 
-const CollectionButton = ({ name, color, slug }) =>
+const CollectionButton = ({ id, name, color, slug }) =>
     <Link
         className="relative block p4 hover-parent hover--visibility text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
         style={{
@@ -57,7 +57,7 @@ const CollectionButton = ({ name, color, slug }) =>
     >
         <div className="absolute top right mt2 mr2 hover-child">
             <CollectionActions actions={[
-                { name: "Set collection permissions", icon: "lockoutline" },
+                { name: "Set collection permissions", icon: "lockoutline", to: "/collections/permissions?collectionId=" + id },
                 { name: "Archive collection", icon: "archive" }
             ]}/>
         </div>

@@ -9,7 +9,9 @@ import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 
 import cx from "classnames";
 
-const PermissionsEditor = ({ admin, grid, onUpdatePermission, onSave, onCancel, isDirty, saveError, diff }) =>
+import _ from "underscore";
+
+const PermissionsEditor = ({ admin, grid, onUpdatePermission, onSave, onCancel, isDirty, saveError, diff, location }) =>
     <LoadingAndErrorWrapper loading={!grid} className="flex-full flex flex-column">
     { () => // eslint-disable-line react/display-name
         <div className="flex-full flex flex-column">
@@ -49,6 +51,7 @@ const PermissionsEditor = ({ admin, grid, onUpdatePermission, onSave, onCancel, 
                 className="flex-full"
                 grid={grid}
                 onUpdatePermission={onUpdatePermission}
+                {...getEntityAndGroupIdFromLocation(location)}
             />
         </div>
     }
@@ -56,6 +59,16 @@ const PermissionsEditor = ({ admin, grid, onUpdatePermission, onSave, onCancel, 
 
 PermissionsEditor.defaultProps = {
     admin: true
+}
+
+function getEntityAndGroupIdFromLocation({ query = {}} = {}) {
+    query = _.mapObject(query, (value) => isNaN(value) ? value : parseFloat(value));
+    const entityId = _.omit(query, "groupId");
+    const groupId = query.groupId;
+    return {
+        groupId: groupId || null,
+        entityId: Object.keys(entityId).length > 0 ? entityId : null
+    };
 }
 
 export default PermissionsEditor;

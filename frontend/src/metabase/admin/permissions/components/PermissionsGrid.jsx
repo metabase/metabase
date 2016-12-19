@@ -119,7 +119,7 @@ const GroupColumnHeader = ({ group, permissions, isLastColumn, isFirstColumn }) 
         </div>
     </div>
 
-const PermissionsCell = ({ group, permissions, entity, onUpdatePermission, isLastRow, isLastColumn, isFirstColumn }) =>
+const PermissionsCell = ({ group, permissions, entity, onUpdatePermission, isLastRow, isLastColumn, isFirstColumn, isFaded }) =>
     <div className="flex" style={getBorderStyles({ isLastRow, isLastColumn, isFirstColumn, isFirstRow: false })}>
         { permissions.map(permission =>
             <GroupPermissionCell
@@ -128,7 +128,7 @@ const PermissionsCell = ({ group, permissions, entity, onUpdatePermission, isLas
                 group={group}
                 entity={entity}
                 onUpdatePermission={onUpdatePermission}
-                isEditable={group.editable}
+                isEditable={group.editable && !isFaded}
             />
         )}
     </div>
@@ -176,7 +176,7 @@ class GroupPermissionCell extends Component {
                             <div
                                 className={cx(
                                     'flex-full flex layout-centered relative',
-                                    { 'cursor-pointer' : isEditable }
+                                    { 'cursor-pointer' : isEditable, disabled: !isEditable }
                                 )}
                                 style={{
                                     borderColor: LIGHT_BORDER,
@@ -296,7 +296,9 @@ const CornerHeader = ({ grid }) =>
         </div>
     </div>
 
-const PermissionsGrid = ({ className, grid, onUpdatePermission }) => {
+import _ from "underscore";
+
+const PermissionsGrid = ({ className, grid, onUpdatePermission, entityId, groupId }) => {
     const permissions = Object.entries(grid.permissions).map(([id, permission]) =>
         ({ id: id, ...PERMISSIONS_UI[id], ...permission })
     );
@@ -325,6 +327,10 @@ const PermissionsGrid = ({ className, grid, onUpdatePermission }) => {
                                 isLastRow={rowIndex === grid.entities.length - 1}
                                 isFirstColumn={columnIndex === 0}
                                 isLastColumn={columnIndex === grid.groups.length - 1}
+                                isFaded={
+                                    (groupId != null && grid.groups[columnIndex].id !== groupId) ||
+                                    (entityId != null && !_.isEqual(entityId, grid.entities[rowIndex].id))
+                                }
                             />
                         }
                         renderColumnHeader={({ columnIndex }) =>
