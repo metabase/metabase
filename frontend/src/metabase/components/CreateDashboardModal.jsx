@@ -79,7 +79,7 @@ export default class CreateDashboardModal extends Component {
                 title="Create dashboard"
                 footer={[
                     <Button onClick={this.props.onClose}>Cancel</Button>,
-                    <Button primary={formReady} disabled={!formReady}>Create</Button>
+                    <Button primary={formReady} disabled={!formReady} onClick={this.createNewDash}>Create</Button>
                 ]}
                 onClose={this.props.onClose}
             >

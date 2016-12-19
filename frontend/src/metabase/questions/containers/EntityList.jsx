@@ -126,10 +126,14 @@ export default class EntityList extends Component {
 
         onChangeSection:    PropTypes.func,
         showSearchWidget:   PropTypes.bool,
+        editable:           PropTypes.bool,
+
+        onEntityClick:            PropTypes.func,
     };
 
     static defaultProps = {
         showSearchWidget: true,
+        editable: true,
     }
 
     componentDidUpdate(prevProps) {
@@ -163,44 +167,54 @@ export default class EntityList extends Component {
             searchText, setSearchText, showSearchWidget,
             visibleCount, selectedCount, allAreSelected, sectionIsArchive, labels,
             setItemSelected, setAllSelected, setArchived, onChangeSection,
+            editable, onEntityClick,
         } = this.props;
+
         const section = this.getSection();
+
+        const showActionHeader = (editable && selectedCount > 0);
+        const showSearchHeader = (entityIds.length > 0 && showSearchWidget);
+        const showEntityFilterWidget =  (entityIds.length > 0 && onChangeSection);
         return (
             <div className="full" style={style}>
                 <div className="full">
-                    <div className="flex align-center my1" style={{height: 40}}>
-                        { selectedCount > 0 ?
-                            <ActionHeader
-                                visibleCount={visibleCount}
-                                selectedCount={selectedCount}
-                                allAreSelected={allAreSelected}
-                                sectionIsArchive={sectionIsArchive}
-                                setAllSelected={setAllSelected}
-                                setArchived={setArchived}
-                                labels={labels}
-                            />
-                        : (entityIds.length > 0 && showSearchWidget) ?
-                            <SearchHeader
-                                searchText={searchText}
-                                setSearchText={setSearchText}
-                            />
-                        :
-                            null
-                      }
-                      { entityIds.length > 0 && onChangeSection &&
-                          <EntityFilterWidget
-                            section={section}
-                            onChange={onChangeSection}
-                          />
-                      }
-                    </div>
+                    { (showActionHeader || showSearchHeader || showEntityFilterWidget) &&
+                        <div className="flex align-center my1" style={{height: 40}}>
+                            { showActionHeader ?
+                                <ActionHeader
+                                    visibleCount={visibleCount}
+                                    selectedCount={selectedCount}
+                                    allAreSelected={allAreSelected}
+                                    sectionIsArchive={sectionIsArchive}
+                                    setAllSelected={setAllSelected}
+                                    setArchived={setArchived}
+                                    labels={labels}
+                                />
+                            : showSearchHeader ?
+                                <SearchHeader
+                                    searchText={searchText}
+                                    setSearchText={setSearchText}
+                                />
+                            :
+                                null
+                          }
+                          { showEntityFilterWidget &&
+                              <EntityFilterWidget
+                                section={section}
+                                onChange={onChangeSection}
+                              />
+                          }
+                        </div>
+                    }
                     <LoadingAndErrorWrapper className="full" loading={!error && loading} error={error}>
                     { () =>
                         entityIds.length > 0 ?
                             <List
                                 entityType={entityType}
                                 entityIds={entityIds}
+                                editable={editable}
                                 setItemSelected={setItemSelected}
+                                onEntityClick={onEntityClick}
                             />
                         :
                             <div className={S.empty}>

@@ -1,74 +1,112 @@
-import React from "react";
+import React, { Component } from "react";
 
 import Button from "metabase/components/Button.jsx";
+import ModalContent from "metabase/components/ModalContent.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import HeaderWithBack from "metabase/components/HeaderWithBack";
 
 import Collections from "./CollectionList";
+import EntityList from "./EntityList";
 import ExpandingSearchField from "../components/ExpandingSearchField.jsx";
 
-const AddToDashboard = () =>
-    <div>
-        <div className="px4 flex-full">
-            <div className="py4 flex align-center mb3">
-                <h1 className="ml-auto text-bold">Add question to dashboard?</h1>
-                <Icon
-                    className="ml-auto text-grey-4 cursor-pointer"
-                    name="close"
-                    width="36"
-                    height="36"
-                />
-            </div>
-            <div>
+export default class AddToDashboard extends Component {
+    constructor(props, context) {
+        super(props, context);
+
+        this.state = {
+            collection: null,
+            query: null
+        }
+    }
+
+    render() {
+        const { query, collection } = this.state;
+        return (
+            <ModalContent
+                title="Add question to dashboard?"
+                className="mx4 mb4"
+            >
                 <div className="py1 flex align-center">
-                    <ExpandingSearchField />
-                    <div className="ml-auto flex align-center">
-                        <h5>Sort by</h5>
-                        <Button borderless>
-                            Last modified
-                        </Button>
-                        <Button borderless>
-                            Alphabetical order
-                        </Button>
-                    </div>
+                    { !query ?
+                        <ExpandingSearchField
+                            defaultValue={query && query.q}
+                            onSearch={(value) => this.setState({
+                                collection: null,
+                                query: { q: value }
+                            })}
+                        />
+                    :
+                        <HeaderWithBack
+                            name={collection && collection.name}
+                            onBack={() => this.setState({ collection: null, query: null })}
+                        />
+                    }
+                    { query &&
+                        <div className="ml-auto flex align-center">
+                            <h5>Sort by</h5>
+                            <Button borderless>
+                                Last modified
+                            </Button>
+                            <Button borderless>
+                                Alphabetical order
+                            </Button>
+                        </div>
+                    }
                 </div>
-                <Collections>
-                    { collections =>
-                        <ol>
-                            { collections.map((collection, index) =>
+                { this.state.query ?
+                    <EntityList
+                        query={this.state.query}
+                        editable={false}
+                        showSearchWidget={false}
+                        onEntityClick={this.props.onAdd}
+                    />
+                :
+                    <Collections>
+                        { collections =>
+                            <ol>
+                                { collections.map((collection, index) =>
+                                    <li
+                                        className="text-brand-hover flex align-center border-bottom cursor-pointer py1 mb1"
+                                        key={index}
+                                        onClick={() => this.setState({
+                                            collection: collection,
+                                            query: { collection: collection.slug }
+                                        })}
+                                    >
+                                        <Icon
+                                            className="mr2"
+                                            name="all"
+                                            style={{ color: collection.color }}
+                                        />
+                                        <h3>{collection.name}</h3>
+                                        <Icon
+                                            className="ml-auto"
+                                            name="chevronright"
+                                        />
+                                    </li>
+                                )}
                                 <li
                                     className="text-brand-hover flex align-center border-bottom cursor-pointer py1 mb1"
-                                    key={index}
-                                    onClick={() => console.log('select collection')}
+                                    onClick={() => this.setState({
+                                        collection: { name: "Everything else" },
+                                        query: { collection: "" }
+                                    })}
                                 >
-                                    <Icon
-                                        className="mr2"
-                                        name="all"
-                                        style={{ color: collection.color }}
-                                    />
-                                    <h3>{collection.name}</h3>
-                                    <Icon
-                                        className="ml-auto"
-                                        name="chevronright"
-                                    />
+                                        <Icon
+                                            className="mr2"
+                                            name="star"
+                                        />
+                                        <h3>Everything else</h3>
+                                        <Icon
+                                            className="ml-auto"
+                                            name="chevronright"
+                                        />
                                 </li>
-                            )}
-                            <li className="text-brand-hover flex align-center border-bottom cursor-pointer py1 mb1">
-                                    <Icon
-                                        className="mr2"
-                                        name="star"
-                                    />
-                                    <h3>Everything else</h3>
-                                    <Icon
-                                        className="ml-auto"
-                                        name="chevronright"
-                                    />
-                            </li>
-                        </ol>
-                    }
-                </Collections>
-            </div>
-        </div>
-    </div>
-
-
-export default AddToDashboard;
+                            </ol>
+                        }
+                    </Collections>
+                }
+            </ModalContent>
+        );
+    }
+}
