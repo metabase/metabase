@@ -10,14 +10,14 @@ const CollectionActions = ({ actions }) =>
             <Tooltip tooltip={name} key={index} >
                 { action ?
                     <Icon
-                        className="cursor-pointer text-brand-hover ml2"
+                        className="cursor-pointer text-brand-hover mx2"
                         name={icon}
                         onClick={action}
                     />
                 :
                     <Link to={to}>
                         <Icon
-                            className="cursor-pointer text-brand-hover ml2"
+                            className="cursor-pointer text-brand-hover mx2"
                             name={icon}
                         />
                     </Link>
