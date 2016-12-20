@@ -61,9 +61,9 @@ export default class QuestionIndex extends Component {
                             </Link>
                         </Tooltip>
 
-                        <Tooltip tooltip="Archive">
+                        <Tooltip tooltip="View the archive">
                             <Link to="/questions/archive" className="mx2">
-                                <Icon name="archive" />
+                                <Icon name="viewArchive" />
                             </Link>
                         </Tooltip>
                     </div>
