@@ -125,8 +125,8 @@ const ItemBody = pure(({ entity, id, name, description, favorite, setFavorited, 
                 </Tooltip>
             }
         </div>
-        <div className={S.itemSubtitle}>
-            {description}
+        <div className={cx({ 'text-slate': description }, { 'text-light-blue': !description })}>
+            {description ? description : "No description yet"}
         </div>
     </div>
 );

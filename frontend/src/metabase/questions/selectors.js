@@ -70,7 +70,8 @@ export const makeGetItem = () => {
             archived: entity.archived,
             labels: entity.labels.map(labelId => labelEntities[labelId]).filter(l => l),
             selected,
-            visible
+            visible,
+            description: entity.description
         })
     );
     return getItem;
