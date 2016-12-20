@@ -135,6 +135,74 @@ function getRawQueryWarningModal(permissions, groupId, entityId, value) {
     }
 }
 
+const OPTION_GREEN = {
+    icon: "check",
+    iconColor: "#9CC177",
+    bgColor: "#F6F9F2"
+};
+const OPTION_YELLOW = {
+    icon: "eye",
+    iconColor: "#F9D45C",
+    bgColor: "#FEFAEE"
+};
+const OPTION_RED = {
+    icon: "close",
+    iconColor: "#EEA5A5",
+    bgColor: "#FDF3F3"
+};
+
+
+const OPTION_ALL = {
+    ...OPTION_GREEN,
+    value: "all",
+    title: "Grant unrestricted access",
+    tooltip: "Unrestricted access",
+};
+
+const OPTION_CONTROLLED = {
+    ...OPTION_YELLOW,
+    value: "controlled",
+    title: "Limit access",
+    tooltip: "Limited access",
+    icon: "permissionsLimited",
+};
+
+const OPTION_NONE = {
+    ...OPTION_RED,
+    value: "none",
+    title: "Revoke access",
+    tooltip: "No access",
+};
+
+const OPTION_NATIVE_WRITE = {
+    ...OPTION_GREEN,
+    value: "write",
+    title: "Write raw queries",
+    tooltip: "Can write raw queries",
+    icon: "sql",
+};
+
+const OPTION_NATIVE_READ = {
+    ...OPTION_YELLOW,
+    value: "read",
+    title: "View raw queries",
+    tooltip: "Can view raw queries",
+};
+
+const OPTION_COLLECTION_WRITE = {
+    ...OPTION_GREEN,
+    value: "write",
+    title: "Curate collection",
+    tooltip: "Can add and remove questions from this collection",
+};
+
+const OPTION_COLLECTION_READ = {
+    ...OPTION_YELLOW,
+    value: "read",
+    title: "View collection",
+    tooltip: "Can view questions in this collection",
+};
+
 export const getTablesPermissionsGrid = createSelector(
     getMetadata, getGroups, getPermissions, getDatabaseId, getSchemaName,
     (metadata: Metadata, groups: Array<Group>, permissions: GroupsPermissions, databaseId: DatabaseId, schemaName: SchemaName) => {
@@ -160,8 +228,9 @@ export const getTablesPermissionsGrid = createSelector(
             groups,
             permissions: {
                 "fields": {
+                    header: "Data Access",
                     options(groupId, entityId) {
-                        return ["all", "none"]
+                        return [OPTION_ALL, OPTION_NONE]
                     },
                     getter(groupId, entityId) {
                         return getFieldsPermission(permissions, groupId, entityId);
@@ -214,9 +283,10 @@ export const getSchemasPermissionsGrid = createSelector(
             ],
             groups,
             permissions: {
+                header: "Data Access",
                 "tables": {
                     options(groupId, entityId) {
-                        return ["all", "controlled", "none"]
+                        return [OPTION_ALL, OPTION_CONTROLLED, OPTION_NONE]
                     },
                     getter(groupId, entityId) {
                         return getTablesPermission(permissions, groupId, entityId);
@@ -268,8 +338,9 @@ export const getDatabasesPermissionsGrid = createSelector(
             groups,
             permissions: {
                 "schemas": {
+                    header: "Data Access",
                     options(groupId, entityId) {
-                        return ["all", "controlled", "none"]
+                        return [OPTION_ALL, OPTION_CONTROLLED, OPTION_NONE]
                     },
                     getter(groupId, entityId) {
                         return getSchemasPermission(permissions, groupId, entityId);
@@ -301,11 +372,12 @@ export const getDatabasesPermissionsGrid = createSelector(
                     }
                 },
                 "native": {
+                    header: "SQL Queries",
                     options(groupId, entityId) {
                         if (getSchemasPermission(permissions, groupId, entityId) === "none") {
-                            return ["none"];
+                            return [OPTION_NONE];
                         } else {
-                            return ["write", "read", "none"];
+                            return [OPTION_NATIVE_WRITE, OPTION_NATIVE_READ, OPTION_NONE];
                         }
                     },
                     getter(groupId, entityId) {
@@ -361,7 +433,7 @@ export const getCollectionsPermissionsGrid = createSelector(
             permissions: {
                 "access": {
                     options(groupId, entityId) {
-                        return ["write", "read", "none"];
+                        return [OPTION_COLLECTION_WRITE, OPTION_COLLECTION_READ, OPTION_NONE];
                     },
                     getter(groupId, { collectionId }) {
                         return getIn(permissions, [groupId, collectionId]);

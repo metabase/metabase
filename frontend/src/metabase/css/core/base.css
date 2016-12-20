@@ -57,6 +57,10 @@ textarea {
   opacity: 0.4;
 }
 
+.faded, :local(.faded) {
+  opacity: 0.4;
+}
+
 .MB-lightBG {
   background-color: #f9fbfc;
 }
