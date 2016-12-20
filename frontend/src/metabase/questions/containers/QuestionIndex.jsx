@@ -56,7 +56,7 @@ export default class QuestionIndex extends Component {
                         <ExpandingSearchField className="mr2" onSearch={this.props.search} />
 
                         <Tooltip tooltip="Set permissions for collections">
-                            <Link to="/collections/permissions">
+                            <Link to="/collections/permissions" className="mx2">
                                 <Icon name="lock" />
                             </Link>
                         </Tooltip>
