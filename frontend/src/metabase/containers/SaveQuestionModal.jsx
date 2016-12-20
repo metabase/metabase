@@ -1,8 +1,10 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+import cx from "classnames";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
+import Icon from "metabase/components/Icon";
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
@@ -235,10 +237,28 @@ export default class SaveQuestionModal extends Component {
                                         <Select
                                             className="block"
                                             value={this.state.details.collection_id}
-                                            onChange={(e) => this.onChange("collection_id", e.target.value)}
+                                            onChange={e => this.onChange("collection_id", e.target.value)}
                                         >
-                                            {[{ name: "None", id: null }].concat(collections).map(collection =>
-                                                <Option value={collection.id}>{collection.name}</Option>
+                                            {[{ name: "None", id: null }]
+                                            .concat(collections)
+                                            .map((collection, index) =>
+                                                <Option
+                                                    key={index}
+                                                    value={collection.id}
+                                                >
+                                                        { collection.id &&
+                                                        <Icon
+                                                            className="mr1"
+                                                            name="collection"
+                                                            width={20}
+                                                            height={20}
+                                                            style={{
+                                                                color: collection.color
+                                                            }}
+                                                        />
+                                                        }
+                                                        {collection.name}
+                                                </Option>
                                             )}
                                         </Select>
                                     </FormField>

@@ -130,7 +130,7 @@ export class Option extends Component {
         return (
             <div
                 onClick={onClick}
-                className={cx("ColumnarSelector-row flex no-decoration", {
+                className={cx("ColumnarSelector-row flex align-center cursor-pointer no-decoration", {
                     "ColumnarSelector-row--selected": selected,
                     "disabled": disabled
                 })}
