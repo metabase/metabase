@@ -56,13 +56,13 @@ export default class QuestionIndex extends Component {
                         <ExpandingSearchField className="mr2" onSearch={this.props.search} />
 
                         <Tooltip tooltip="Set permissions for collections">
-                            <Link to="/collections/permissions" className="mx2">
+                            <Link to="/collections/permissions" className="mx2 text-brand-hover">
                                 <Icon name="lock" />
                             </Link>
                         </Tooltip>
 
                         <Tooltip tooltip="View the archive">
-                            <Link to="/questions/archive" className="mx2">
+                            <Link to="/questions/archive" className="mx2 text-brand-hover">
                                 <Icon name="viewArchive" />
                             </Link>
                         </Tooltip>
