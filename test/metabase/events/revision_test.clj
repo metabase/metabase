@@ -37,6 +37,7 @@
    :id                     (:id card)
    :display                "table"
    :visualization_settings {}
+   :collection_id          nil
    :archived               false})
 
 (defn- dashboard->revision-object [dashboard]

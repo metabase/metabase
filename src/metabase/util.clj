@@ -670,13 +670,16 @@
 
 (defn slugify
   "Return a version of `String` S appropriate for use as a URL slug.
-   Downcase the name and replace non-alphanumeric characters with underscores."
-  ^String [s]
-  (when (seq s)
-    (s/join (for [c (s/lower-case (name s))]
-              (if (contains? slugify-valid-chars c)
-                c
-                \_)))))
+   Downcase the name and replace non-alphanumeric characters with underscores.
+   Optionally specify MAX-LENGTH which will truncate the slug after that many characters."
+  (^String [s]
+   (when (seq s)
+     (s/join (for [c (s/lower-case (name s))]
+               (if (contains? slugify-valid-chars c)
+                 c
+                 \_)))))
+  (^String [s max-length]
+   (s/join (take max-length (slugify s)))))
 
 (defn do-with-auto-retries
   "Execute F, a function that takes no arguments, and return the results.

@@ -1,8 +1,8 @@
-(ns metabase.models.card-label
+(ns ^:deprecated metabase.models.card-label
   (:require [metabase.models.interface :as i]
             [metabase.util :as u]))
 
-(i/defentity CardLabel :card_label)
+(i/defentity ^:deprecated CardLabel :card_label)
 
 (u/strict-extend (class CardLabel)
   i/IEntity

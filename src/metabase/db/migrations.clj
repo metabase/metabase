@@ -6,8 +6,9 @@
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [schema.core :as s]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver]
@@ -15,10 +16,13 @@
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
+                             [card-label :refer [CardLabel]]
+                             [collection :refer [Collection], :as collection]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [interface :refer [defentity]]
+                             [label :refer [Label]]
                              [permissions :refer [Permissions], :as perms]
                              [permissions-group :as perm-group]
                              [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
@@ -297,14 +301,14 @@
 (defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:%lower.special_type (s/lower-case old-type)}
+    (db/update-where! 'Field {:%lower.special_type (str/lower-case old-type)}
       :special_type new-type)
     ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
     (db/update-where! 'Field {:special_type (name (keyword new-type))}
       :special_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
     ;; migrate things like :DateTimeField -> :type/DateTime
-    (db/update-where! 'Field {:%lower.base_type (s/lower-case old-type)}
+    (db/update-where! 'Field {:%lower.base_type (str/lower-case old-type)}
       :base_type new-type)
     ;; migrate things like :DateTime -> :type/DateTime
     (db/update-where! 'Field {:base_type (name (keyword new-type))}
@@ -316,3 +320,36 @@
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
     :special_type nil))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                PEMISSIONS COLLECTIONS                                                  |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(s/defn ^:private ^:always-validate random-color :- collection/hex-color-regex
+  []
+  (format "#%06X" (rand-int (Math/pow 256 3))))
+
+(defn- get-or-create-collection!
+  "Create a new Collection for LABEL (if needed). If label had a color, keep it, otherwise give it a random new one."
+  [{label-name :name, icon :icon}]
+  (or (Collection :name label-name)
+      (println (u/format-color 'green "Creating a new collection for label '%s'..." label-name))
+      (db/insert! Collection
+        :name  label-name
+        :color (or (re-matches collection/hex-color-regex icon)
+                   (random-color)))))
+
+(defn- add-label-cards-to-collection!
+  "Add cards that have LABEL to COLLECTION, if they're not already in a Collection."
+  [{label-name :name, :as label} collection]
+  (doseq [card-label (db/select CardLabel :label_id (u/get-id label))]
+    (when-let [card (db/select-one Card :id (:card_id card-label), :collection_id nil)]
+      (println (u/format-color 'blue "Adding card '%s' to collection '%s'..." (:name card) label-name))
+      (db/update! Card (u/get-id card)
+        :collection_id (u/get-id collection)))))
+
+;; create new Collections for existing Labels, and add cards to the one of the newly created collections for them
+(defmigration ^{:author "camsaul", :added "0.22.0"} create-collections-for-labels
+  (doseq [label (db/select Label {:order-by [:%lower.name]})]
+    (add-label-cards-to-collection! label (get-or-create-collection! label))))
