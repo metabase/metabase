@@ -17,8 +17,8 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
         <Tooltip tooltip={"Select all " + visibleCount} isEnabled={!allAreSelected}>
             <StackedCheckBox
                 checked={allAreSelected}
+                className="ml1"
                 onChange={(e) => setAllSelected(e.target.checked)}
-                className={cx(S.allCheckbox, { [S.selected]: allAreSelected })}
                 size={20} padding={3} borderColor="currentColor"
                 invertChecked
             />
