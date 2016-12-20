@@ -39,7 +39,7 @@
 }
 
 .EditHeader.EditHeader--admin {
-    background-color: #8C95A2;
+    background-color: rgba(128, 145, 171, 0.8);
 }
 
 .EditHeader-title {
@@ -54,15 +54,15 @@
 .EditHeader .Button {
     color: var(--brand-color);
     border: none;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    background-color: rgba(255,255,255,0.5);
-    font-weight: normal;
+    font-size: 0.875rem;
+    background-color: rgba(255,255,255,0.1);
+    font-weight: 700;
     margin-left: 0.75em;
 }
 
 .EditHeader .Button--primary {
     background-color: white;
+    color: #444444;
 }
 
 .EditHeader .Button:hover {
@@ -70,10 +70,18 @@
     background-color: var(--brand-color);
 }
 
+.EditHeader.EditHeader--admin .Button:hover {
+  background-color: var(--admin-nav-bg-color);
+}
+
+.EditHeader.EditHeader--admin .Button.Button--primary:hover {
+  color: white;
+}
+
 .EditHeader.EditHeader--admin .Button {
     color: white;
 }
 
 .EditHeader.EditHeader--admin .Button.Button--primary {
-    color: var(--brand-color);
+    color: #444;
 }
