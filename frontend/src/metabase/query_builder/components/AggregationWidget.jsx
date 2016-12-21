@@ -98,6 +98,7 @@ export default class AggregationWidget extends Component {
                     className="FilterPopover"
                     isInitiallyOpen={true}
                     onClose={this.close}
+                    dismissOnEscape={false} // disable for expression editor
                 >
                     <AggregationPopover
                         aggregation={aggregation}
