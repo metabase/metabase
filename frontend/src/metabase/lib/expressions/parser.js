@@ -10,7 +10,7 @@ import {
     LParen, RParen,
     AdditiveOperator, MultiplicativeOperator,
     Aggregation, NullaryAggregation, UnaryAggregation,
-    StringLiteral, NumberLiteral,
+    StringLiteral, NumberLiteral, Minus,
     Identifier
 } from "./tokens";
 
@@ -135,8 +135,9 @@ class ExpressionsParser extends Parser {
         })
 
         $.RULE("numberLiteral", () => {
+            const minus = $.OPTION(() => $.CONSUME(Minus));
             const numberLiteral = $.CONSUME(NumberLiteral);
-            return this._numberLiteral(numberLiteral);
+            return this._numberLiteral(minus, numberLiteral);
         })
 
         $.RULE("atomicExpression", (outsideAggregation) => {
@@ -215,8 +216,8 @@ class ExpressionsParserMBQL extends ExpressionsParser {
     _stringLiteral(stringLiteral) {
         return JSON.parse(stringLiteral.image);
     }
-    _numberLiteral(numberLiteral) {
-        return parseFloat(numberLiteral.image);
+    _numberLiteral(minus, numberLiteral) {
+        return parseFloat(numberLiteral.image) * (minus ? -1 : 1);
     }
     _parens(lParen, expValue, rParen) {
         return expValue;
@@ -266,8 +267,8 @@ class ExpressionsParserSyntax extends ExpressionsParser {
     _stringLiteral(stringLiteral) {
         return syntax("string", token(stringLiteral));
     }
-    _numberLiteral(numberLiteral) {
-        return syntax("number", token(numberLiteral));
+    _numberLiteral(minus, numberLiteral) {
+        return syntax("number", token(minus), token(numberLiteral));
     }
     _parens(lParen, expValue, rParen) {
         return syntax("group", token(lParen), expValue, token(rParen));
