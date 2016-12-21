@@ -3,7 +3,11 @@ import ReactDOM from "react-dom";
 
 import TokenizedExpression from "./TokenizedExpression.jsx";
 
-import { getCaretPosition, saveSelection } from "metabase/lib/dom"
+import { getCaretPosition, saveSelection, getSelectionPosition } from "metabase/lib/dom"
+
+
+const KEYCODE_LEFT      = 37;
+const KEYCODE_BACKSPACE = 8;
 
 export default class TokenizedInput extends Component {
     constructor(props) {
@@ -41,63 +45,60 @@ export default class TokenizedInput extends Component {
     onSelectionChange = (e) => {
         ReactDOM.findDOMNode(this).selectionStart = getCaretPosition(ReactDOM.findDOMNode(this))
     }
+    onClick = (e) => {
+        this._isTyping = false;
+        return this.props.onClick(e);
+    }
     onInput = (e) => {
         this._setValue(e.target.textContent);
     }
     onKeyDown = (e) => {
-        this.props.onKeyDown(e);
+        // isTyping signals whether the user is typing characters (keyCode >= 65) vs. deleting / navigating with arrows / clicking to select
+        const isTyping = this._isTyping;
+        // also keep isTyping same when deleting
+        this._isTyping = e.keyCode >= 65 || (e.keyCode === KEYCODE_BACKSPACE && isTyping);
 
-        // handle tokenized delete
-        if (e.keyCode !== 8) {
-            return;
-        }
         const input = ReactDOM.findDOMNode(this);
 
-        var selection = window.getSelection();
-        var range = selection.getRangeAt(0);
-
-        let isEndOfNode = range.endContainer.length === range.endOffset;
-        let hasSelection = range.startContainer !== range.endContainer || range.startOffset !== range.endOffset;
-
-        let el = selection.focusNode;
-        let path = [];
-        while (el && el != input) {
-            path.unshift(el.className);
-            el = el.parentNode;
-        }
-
-        /*
-        e.stopPropagation();
-        e.preventDefault();
-        return;
-        /**/
-
-        if (!isEndOfNode || hasSelection) {
+        let [start, end] = getSelectionPosition(input);
+        if (start !== end) {
             return;
         }
 
-        let parent = selection.focusNode.parentNode;
-        let group;
-        if (parent.classList.contains("close-paren") && parent.parentNode.classList.contains("group") && parent.parentNode.parentNode.classList.contains("aggregation")) {
-            group = parent.parentNode.parentNode;
-        } else if (parent.classList.contains("identifier")) {
-            if (parent.parentNode.classList.contains("string-literal")) {
-                group = parent.parentNode;
-            } else {
-                group = parent;
+        let element = window.getSelection().focusNode;
+        while (element && element !== input) {
+            // check ancestors of the focused node for "Expression-tokenized"
+            // if the element is marked as "tokenized" we might want to intercept keypresses
+            if (element.classList && element.classList.contains("Expression-tokenized") && getCaretPosition(element) === element.textContent.length) {
+                const isSelected = element.classList.contains("Expression-selected");
+                if (e.keyCode === KEYCODE_BACKSPACE && !isSelected && !isTyping) {
+                    // not selected, not "typging", and hit backspace, so mark as "selected"
+                    element.classList.add("Expression-selected");
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                } else if (e.keyCode === KEYCODE_BACKSPACE && isSelected) {
+                    // selected and hit backspace, so delete it
+                    element.parentNode.removeChild(element);
+                    this._setValue(input.textContent);
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                } else if (e.keyCode === KEYCODE_LEFT && isSelected) {
+                    // selected and hit left arrow, so enter "typing" mode and unselect it
+                    element.classList.remove("Expression-selected");
+                    this._isTyping = true;
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                }
             }
+            // nada, try the next ancestor
+            element = element.parentNode;
         }
 
-        if (group) {
-            e.stopPropagation();
-            e.preventDefault();
-            if (group.classList.contains("selected")) {
-                group.parentNode.removeChild(group);
-                this._setValue(input.textContent);
-            } else {
-                group.classList.add("selected");
-            }
-        }
+        // if we haven't handled the event yet, pass it on to our parent
+        this.props.onKeyDown(e);
     }
 
     componentDidUpdate() {
@@ -108,14 +109,15 @@ export default class TokenizedInput extends Component {
         while (inputNode.firstChild) {
             inputNode.removeChild(inputNode.firstChild);
         }
-        ReactDOM.render(<TokenizedExpression source={this._getValue()} />, inputNode);
+        ReactDOM.render(<TokenizedExpression source={this._getValue()} parserInfo={this.props.parserInfo} />, inputNode);
 
         if (document.activeElement === inputNode) {
             restore();
         }
     }
+
     render() {
-        const { className, onFocus, onBlur, onClick } = this.props;
+        const { className, onFocus, onBlur } = this.props;
         return (
             <div
                 className={className}
@@ -125,7 +127,7 @@ export default class TokenizedInput extends Component {
                 onInput={this.onInput}
                 onFocus={onFocus}
                 onBlur={onBlur}
-                onClick={onClick}
+                onClick={this.onClick}
             />
         );
     }

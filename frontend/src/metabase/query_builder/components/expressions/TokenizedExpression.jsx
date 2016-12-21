@@ -2,59 +2,108 @@ import React, { Component, PropTypes } from "react";
 
 import "./TokenizedExpression.css";
 
+import { parse } from "metabase/lib/expressions/parser";
+
+import cx from "classnames";
+
 function nextNonWhitespace(tokens, index) {
     while (index < tokens.length && /^\s+$/.test(tokens[++index])) {
     }
     return tokens[index];
 }
 
+function parsePartial(expressionString) {
+    // TODO: use the Chevrotain parser or tokenizer
+    let tokens = (expressionString || " ").match(/[a-zA-Z]\w*|"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"|\(|\)|\d+|\s+|[*/+-]|.+/g);
+
+    let root = { type: "group", children: [] };
+    let current = root;
+    let outsideAggregation = true;
+    const stack = [];
+    const push = (element) => {
+        current.children.push(element);
+        stack.push(current);
+        current = element;
+    }
+    const pop = () => {
+        if (stack.length === 0) {
+            return;
+        }
+        current = stack.pop();
+    }
+    for (let i = 0; i < tokens.length; i++) {
+        let token = tokens[i];
+        if (/^[a-zA-Z]\w*$/.test(token)) {
+            if (nextNonWhitespace(tokens, i) === "(") {
+                outsideAggregation = false;
+                push({
+                    type: "aggregation",
+                    tokenized: true,
+                    children: []
+                });
+                current.children.push({
+                    type: "aggregation-name",
+                    text: token
+                });
+            } else {
+                current.children.push({
+                    type: outsideAggregation ? "metric" : "field",
+                    tokenized: true,
+                    text: token
+                });
+            }
+        } else if (/^"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"$/.test(token)) {
+            current.children.push({
+                type: "string-literal",
+                tokenized: true,
+                children: [
+                    { type: "open-quote", text: "\"" },
+                    { type: outsideAggregation ? "metric" : "field", text: JSON.parse(token) },
+                    { type: "close-quote", text: "\"" }
+                ]
+            });
+        } else if (token === "(") {
+            push({ type: "group", children: [] })
+            current.children.push({ type: "open-paren", text: "(" })
+        } else if (token === ")") {
+            current.children.push({ type: "close-paren", text: ")" })
+            pop();
+            if (current.type === "aggregation") {
+                outsideAggregation = true;
+                pop();
+            }
+        } else {
+            // special handling for unclosed string literals
+            if (i === tokens.length - 1 && /^".+[^"]$/.test(token)) {
+                current.children.push({
+                    type: "string-literal",
+                    tokenized: true,
+                    children: [
+                        { type: "open-quote", text: "\"" },
+                        { type: outsideAggregation ? "metric" : "field", text: JSON.parse(token + "\"") }
+                    ]
+                });
+            } else {
+                current.children.push({ type: "token", text: token });
+            }
+        }
+    }
+    return root;
+}
+
+const renderSyntaxTree = (node, index) =>
+    <span key={index} className={cx("Expression-node", "Expression-" + node.type, { "Expression-tokenized": node.tokenized })}>
+        {node.text != null ?
+            node.text
+        : node.children ?
+            node.children.map(renderSyntaxTree)
+        : null }
+    </span>
+
 export default class TokenizedExpression extends React.Component {
     render() {
-        // TODO: use the Chevrotain parser or tokenizer
-        let tokens = this.props.source.match(/[a-zA-Z]\w*|"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"|\(|\)|\d+|\s+|[*/+-]|.*/g);
-        let root = <span className="TokenizedExpression" children={[]} />;
-        let current = root;
-        let outsideAggregation = true;
-        const stack = [];
-        const push = (element) => {
-            current.props.children.push(element);
-            stack.push(current);
-            current = element;
-        }
-        const pop = () => {
-            if (stack.length === 0) {
-                return;
-            }
-            current = stack.pop();
-        }
-        for (let i = 0; i < tokens.length; i++) {
-            let token = tokens[i];
-            if (/^[a-zA-Z]\w*$/.test(token)) {
-                if (nextNonWhitespace(tokens, i) === "(") {
-                    outsideAggregation = false;
-                    push(<span className="aggregation" children={[]} />);
-                    current.props.children.push(<span className="aggregation-name">{token}</span>);
-                } else {
-                    current.props.children.push(<span className="identifier">{token}</span>);
-                }
-            } else if (/^"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"$/.test(token)) {
-                current.props.children.push(
-                    <span className="string-literal"><span className="open-quote">"</span><span className="identifier">{JSON.parse(token)}</span><span className="close-quote">"</span></span>
-                );
-            } else if (token === "(") {
-                push(<span className="group" children={[]} />)
-                current.props.children.push(<span className="open-paren">(</span>)
-            } else if (token === ")") {
-                current.props.children.push(<span className="close-paren">)</span>)
-                pop();
-                if (current.props.className === "aggregation") {
-                    outsideAggregation = true;
-                    pop();
-                }
-            } else {
-                current.props.children.push(token);
-            }
-        }
-        return root;
+        // let parsed = parse(this.props.source, this.props.parserInfo);
+        const parsed = parsePartial(this.props.source);
+        return renderSyntaxTree(parsed);
     }
 }

@@ -1,65 +1,53 @@
-.TokenizedExpression .aggregation,
-.TokenizedExpression .group,
-.TokenizedExpression .identifier,
-.TokenizedExpression .open-paren,
-.TokenizedExpression .close-paren,
-.TokenizedExpression .string-literal {
+.Expression-node {
   display: inline-block;
   border-radius: 3px;
   font-size: 14px;
-/*   display: flex;
-  align-items: center; */
 }
 
-.TokenizedExpression .string-literal > .open-quote,
-.TokenizedExpression .string-literal > .close-quote {
-  /* don't use `display: none;` `visibility: hidden;` `width: 0;` or `height: 0;` as text won't appear when copied */
-  /* display: inline-block; */
+.Expression-open-quote,
+.Expression-close-quote {
   opacity: 0.5;
-  /*width: 1px;
-  height: 1px; */
-  /* overflow: hidden; */
 }
 
-/* metric */
-.TokenizedExpression .identifier {
-  border: 1px solid #9CC177;
-  background-color: #E4F7D1;
+.Expression-aggregation {
+  padding: 3px 3px;
+}
+
+.Expression-metric,
+.Expression-field {
   margin: 1px 1px;
   padding: 1px 3px;
 }
 
-/* field */
-.TokenizedExpression .aggregation {
+.Expression-aggregation,
+.Expression-metric {
   border: 1px solid #9CC177;
   background-color: #E4F7D1;
-  padding: 3px 3px;
 }
 
-/* aggregation */
-.TokenizedExpression .aggregation .identifier {
+.Expression-field {
   border: 1px solid #509EE3;
   background-color: #C7E3FB;
 }
 
-.TokenizedExpression .aggregation > .identifier {
-  background-color: transparent;
-  border-color: transparent;
-  padding: 0 0;
-}
-
-.TokenizedExpression .identifier.selected,
-.TokenizedExpression .aggregation.selected {
+.Expression-selected.Expression-aggregation,
+.Expression-selected.Expression-metric,
+.Expression-selected .Expression-aggregation,
+.Expression-selected .Expression-metric {
   color: white;
   background-color: #9CC177;
 }
 
-.TokenizedExpression .aggregation.selected .identifier,
-.TokenizedExpression .aggregation .identifier.selected {
+.Expression-selected.Expression-field,
+.Expression-selected .Expression-field {
   color: white;
   background-color: #509EE3;
 }
 
-.TokenizedExpression .selected {
-  /*border: 1px solid red;*/
+.Expression-selected {
+  outline: 1px solid rgba(255,0,0,0.5);
+}
+
+.Expression-select-skip {
+  outline: 1px solid rgba(255,0,255,0.5);
 }

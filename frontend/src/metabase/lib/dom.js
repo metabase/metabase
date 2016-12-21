@@ -62,15 +62,19 @@ export function getSelectionPosition(element) {
     }
     // contenteditable
     else {
-        const selection = window.getSelection();
-        const range = selection.getRangeAt(0);
-        const { startContainer, startOffset } = range;
-        range.setStart(element, 0);
-        const end = range.toString().length;
-        range.setEnd(startContainer, startOffset);
-        const start = range.toString().length;
+        try {
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            const { startContainer, startOffset } = range;
+            range.setStart(element, 0);
+            const end = range.toString().length;
+            range.setEnd(startContainer, startOffset);
+            const start = range.toString().length;
 
-        return [start, end];
+            return [start, end];
+        } catch (e) {
+            return [0, 0];
+        }
     }
 }
 

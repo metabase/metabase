@@ -23,6 +23,7 @@ const KEYCODE_UP    = 38;
 const KEYCODE_RIGHT = 39;
 const KEYCODE_DOWN  = 40;
 
+const MAX_SUGGESTIONS = 30;
 
 export default class ExpressionEditorTextfield extends Component {
     constructor(props, context) {
@@ -45,6 +46,14 @@ export default class ExpressionEditorTextfield extends Component {
         placeholder: "write some math!"
     }
 
+    _getParserInfo(props = this.props) {
+        return {
+            tableMetadata: props.tableMetadata,
+            customFields: props.customFields || {},
+            startRule: props.startRule
+        }
+    }
+
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
     }
@@ -52,20 +61,14 @@ export default class ExpressionEditorTextfield extends Component {
     componentWillReceiveProps(newProps) {
         // we only refresh our state if we had no previous state OR if our expression or table has changed
         if (!this.state || this.props.expression != newProps.expression || this.props.tableMetadata != newProps.tableMetadata) {
+            const parserInfo = this._getParserInfo(newProps);
             let parsedExpression = newProps.expression;
-            let expressionString = format(newProps.expression, {
-                tableMetadata: newProps.tableMetadata,
-                customFields: newProps.customFields,
-            });
+            let expressionString = format(newProps.expression, parserInfo);
             let expressionErrorMessage = null;
             let suggestions = [];
             try {
                 if (expressionString) {
-                    compile(expressionString, {
-                        tableMetadata: newProps.tableMetadata,
-                        customFields: newProps.customFields,
-                        startRule: newProps.startRule
-                    });
+                    compile(expressionString, parserInfo);
                 }
             } catch (e) {
                 expressionErrorMessage = e;
@@ -118,14 +121,16 @@ export default class ExpressionEditorTextfield extends Component {
         this.setState({ highlightedSuggestion: index }, this.onSuggestionAccepted);
     }
 
-    onInputKeyDown(event) {
+    onInputKeyDown(e) {
         const { suggestions, highlightedSuggestion } = this.state;
 
-        if (event.keyCode === KEYCODE_LEFT || event.keyCode === KEYCODE_RIGHT) {
+        if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
             setTimeout(() => this._triggerAutosuggest());
             return;
         }
-        if (event.keyCode === KEYCODE_ESC) {
+        if (e.keyCode === KEYCODE_ESC) {
+            e.stopPropagation();
+            e.preventDefault();
             this.clearSuggestions();
             return;
         }
@@ -133,19 +138,19 @@ export default class ExpressionEditorTextfield extends Component {
         if (!suggestions.length) {
             return;
         }
-        if (event.keyCode === KEYCODE_ENTER) {
+        if (e.keyCode === KEYCODE_ENTER) {
             this.onSuggestionAccepted();
-            event.preventDefault();
-        } else if (event.keyCode === KEYCODE_UP) {
+            e.preventDefault();
+        } else if (e.keyCode === KEYCODE_UP) {
             this.setState({
                 highlightedSuggestion: (highlightedSuggestion + suggestions.length - 1) % suggestions.length
             });
-            event.preventDefault();
-        } else if (event.keyCode === KEYCODE_DOWN) {
+            e.preventDefault();
+        } else if (e.keyCode === KEYCODE_DOWN) {
             this.setState({
                 highlightedSuggestion: (highlightedSuggestion + suggestions.length + 1) % suggestions.length
             });
-            event.preventDefault();
+            e.preventDefault();
         }
     }
 
@@ -190,16 +195,14 @@ export default class ExpressionEditorTextfield extends Component {
             return;
         }
 
+        const parserInfo = this._getParserInfo();
+
         let expressionErrorMessage = null;
         let suggestions           = [];
         let parsedExpression;
 
         try {
-            parsedExpression = compile(expressionString, {
-                tableMetadata: this.props.tableMetadata,
-                customFields: this.props.customFields,
-                startRule: this.props.startRule
-            })
+            parsedExpression = compile(expressionString, parserInfo)
         } catch (e) {
             expressionErrorMessage = e;
             console.error("expression error:", expressionErrorMessage);
@@ -217,9 +220,7 @@ export default class ExpressionEditorTextfield extends Component {
         if (!hasSelection && !(isValid && isAtEnd && !endsWithWhitespace)) {
             try {
                 suggestions = suggest(expressionString, {
-                    tableMetadata: this.props.tableMetadata,
-                    customFields: this.props.customFields,
-                    startRule: this.props.startRule,
+                    ...parserInfo,
                     index: selectionEnd
                 })
             } catch (e) {
@@ -256,6 +257,7 @@ export default class ExpressionEditorTextfield extends Component {
                     onFocus={(e) => this._triggerAutosuggest()}
                     onClick={this.onInputClick}
                     autoFocus
+                    parserInfo={this._getParserInfo()}
                 />
                 <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
                 { suggestions.length ?
@@ -268,14 +270,14 @@ export default class ExpressionEditorTextfield extends Component {
                         }}
                     >
                         <ul style={{minWidth: 150, overflow: "hidden"}}>
-                            {suggestions.map((suggestion, i) =>
+                            {suggestions.slice(0,MAX_SUGGESTIONS).map((suggestion, i) =>
                                 // insert section title. assumes they're sorted by type
                                 [(i === 0 || suggestion.type !== suggestions[i - 1].type) &&
-                                    <li className="mx2 h6 text-uppercase text-bold text-grey-3 py1 pt2">
+                                    <li  ref={"header-" + i} className="mx2 h6 text-uppercase text-bold text-grey-3 py1 pt2">
                                         {suggestion.type}
                                     </li>
                                 ,
-                                    <li style={{ paddingTop: 5, paddingBottom: 5 }}
+                                    <li ref={i} style={{ paddingTop: 5, paddingBottom: 5 }}
                                         className={cx("px2 cursor-pointer text-white-hover bg-brand-hover", {"text-white bg-brand": i === this.state.highlightedSuggestion})}
                                         onMouseDownCapture={(e) => this.onSuggestionMouseDown(e, i)}
                                     >
@@ -290,6 +292,9 @@ export default class ExpressionEditorTextfield extends Component {
                                     </li>
                                 ]
                             )}
+                            { suggestions.length >= MAX_SUGGESTIONS &&
+                                <li style={{ paddingTop: 5, paddingBottom: 5 }} className="px2 text-italic text-grey-3">and {suggestions.length - MAX_SUGGESTIONS} more</li>
+                            }
                         </ul>
                     </Popover>
                 : null}
