@@ -168,7 +168,7 @@ export default class AggregationPopover extends Component {
 
         if (editingAggregation) {
             return (
-                <div style={{width: 300}}>
+                <div style={{width: editingAggregation ? 500 : 300}}>
                     <div className="text-grey-3 p1 py2 border-bottom flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.onClearAggregation}>
                             <Icon name="chevronleft" size={18}/>
@@ -205,7 +205,7 @@ export default class AggregationPopover extends Component {
                                     NamedClause.setName(aggregation, e.target.value) :
                                     aggregation
                             })}
-                            placeholder="Aggregation name (optional)"
+                            placeholder="Name (optional)"
                         />
                         <Button className="full" primary disabled={this.state.error} onClick={() => this.commitAggregation(this.state.aggregation)}>
                             {isNew ? "Add" : "Update"} Aggregation

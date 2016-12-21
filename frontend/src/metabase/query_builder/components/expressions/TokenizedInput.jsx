@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 
 import TokenizedExpression from "./TokenizedExpression.jsx";
 
-import { getCaretPosition, saveCaretPosition } from "metabase/lib/dom"
+import { getCaretPosition, saveSelection } from "metabase/lib/dom"
 
 export default class TokenizedInput extends Component {
     constructor(props) {
@@ -77,26 +77,32 @@ export default class TokenizedInput extends Component {
         }
 
         let parent = selection.focusNode.parentNode;
-        if (parent.className === "close-paren" && parent.parentNode.className === "group" && parent.parentNode.parentNode.className === "aggregation") {
-            parent.parentNode.parentNode.parentNode.removeChild(parent.parentNode.parentNode);
-            e.stopPropagation();
-            e.preventDefault();
-            this._setValue(input.textContent);
-        } else if (parent.className === "identifier") {
-            if (parent.parentNode.className === "string-literal") {
-                parent.parentNode.parentNode.removeChild(parent.parentNode);
+        let group;
+        if (parent.classList.contains("close-paren") && parent.parentNode.classList.contains("group") && parent.parentNode.parentNode.classList.contains("aggregation")) {
+            group = parent.parentNode.parentNode;
+        } else if (parent.classList.contains("identifier")) {
+            if (parent.parentNode.classList.contains("string-literal")) {
+                group = parent.parentNode;
             } else {
-                parent.parentNode.removeChild(parent);
+                group = parent;
             }
+        }
+
+        if (group) {
             e.stopPropagation();
             e.preventDefault();
-            this._setValue(input.textContent);
+            if (group.classList.contains("selected")) {
+                group.parentNode.removeChild(group);
+                this._setValue(input.textContent);
+            } else {
+                group.classList.add("selected");
+            }
         }
     }
 
     componentDidUpdate() {
         const inputNode = ReactDOM.findDOMNode(this);
-        const restore = saveCaretPosition(inputNode);
+        const restore = saveSelection(inputNode);
 
         ReactDOM.unmountComponentAtNode(inputNode);
         while (inputNode.firstChild) {
@@ -113,6 +119,7 @@ export default class TokenizedInput extends Component {
         return (
             <div
                 className={className}
+                style={{ whiteSpace: "pre" }}
                 contentEditable
                 onKeyDown={this.onKeyDown}
                 onInput={this.onInput}

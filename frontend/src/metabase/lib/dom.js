@@ -55,42 +55,68 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
     });
 }
 
-export function getCaretPosition(element) {
-    if (element.nodeName.toLowerCase() === "input" || element.nodeName.toLowerCase() === "textarea") {
-        return element.selectionStart;
-    } else {
-        // contenteditable
+export function getSelectionPosition(element) {
+    // input, textarea, IE
+    if (element.setSelectionRange || element.createTextRange) {
+        return [element.selectionStart, element.selectionEnd];
+    }
+    // contenteditable
+    else {
         const selection = window.getSelection();
         const range = selection.getRangeAt(0);
+        const { startContainer, startOffset } = range;
         range.setStart(element, 0);
-        return range.toString().length;
+        const end = range.toString().length;
+        range.setEnd(startContainer, startOffset);
+        const start = range.toString().length;
+
+        return [start, end];
     }
 }
 
-export function setCaretPosition(element, position) {
+export function setSelectionPosition(element, [start, end]) {
+    // input, textarea
     if (element.setSelectionRange) {
         element.focus();
-        element.setSelectionRange(position, position);
-    } else if (element.createTextRange) {
+        element.setSelectionRange(start, end);
+    }
+    // IE
+    else if (element.createTextRange) {
         const range = element.createTextRange();
         range.collapse(true);
-        range.moveEnd("character", position);
-        range.moveStart("character", position);
+        range.moveEnd("character", end);
+        range.moveStart("character", start);
         range.select();
-    } else {
-        // contenteditable
+    }
+    // contenteditable
+    else {
         const selection = window.getSelection();
-        const pos = getTextNodeAtPosition(element, position);
+        const startPos = getTextNodeAtPosition(element, start);
+        const endPos = getTextNodeAtPosition(element, end);
         selection.removeAllRanges();
         const range = new Range();
-        range.setStart(pos.node ,pos.position);
+        range.setStart(startPos.node, startPos.position);
+        range.setEnd(endPos.node, endPos.position);
         selection.addRange(range);
     }
 }
 
-export function saveCaretPosition(context) {
-    let position = getCaretPosition(context);
-    return () => setCaretPosition(context, position);
+export function saveSelection(element) {
+    let range = getSelectionPosition(element);
+    return () => setSelectionPosition(element, range);
+}
+
+export function getCaretPosition(element) {
+    return getSelectionPosition(element)[1];
+}
+
+export function setCaretPosition(element, position) {
+    setSelectionPosition(element, [position, position]);
+}
+
+export function saveCaretPosition(element) {
+    let position = getCaretPosition(element);
+    return () => setCaretPosition(element, position);
 }
 
 function getTextNodeAtPosition(root, index) {

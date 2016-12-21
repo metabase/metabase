@@ -7,7 +7,7 @@ import cx from "classnames";
 
 import { compile, suggest } from "metabase/lib/expressions/parser";
 import { format } from "metabase/lib/expressions/formatter";
-import { setCaretPosition, getCaretPosition } from "metabase/lib/dom";
+import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
 
 import Popover from "metabase/components/Popover.jsx";
 
@@ -16,7 +16,6 @@ import TokenizedInput from "./TokenizedInput.jsx";
 import { isExpression } from "metabase/lib/expressions";
 
 
-const KEYCODE_TAB   =  9;
 const KEYCODE_ENTER = 13;
 const KEYCODE_ESC   = 27;
 const KEYCODE_LEFT  = 37;
@@ -134,7 +133,7 @@ export default class ExpressionEditorTextfield extends Component {
         if (!suggestions.length) {
             return;
         }
-        if (event.keyCode === KEYCODE_ENTER || event.keyCode === KEYCODE_TAB) {
+        if (event.keyCode === KEYCODE_ENTER) {
             this.onSuggestionAccepted();
             event.preventDefault();
         } else if (event.keyCode === KEYCODE_UP) {
@@ -205,15 +204,27 @@ export default class ExpressionEditorTextfield extends Component {
             expressionErrorMessage = e;
             console.error("expression error:", expressionErrorMessage);
         }
-        try {
-            suggestions = suggest(expressionString, {
-                tableMetadata: this.props.tableMetadata,
-                customFields: this.props.customFields,
-                startRule: this.props.startRule,
-                index: getCaretPosition(inputElement)
-            })
-        } catch (e) {
-            console.error("suggest error:", e);
+
+        const isValid = parsedExpression && parsedExpression.length > 0;
+        const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
+        const hasSelection = selectionStart !== selectionEnd;
+        const isAtEnd = selectionEnd === expressionString.length;
+        const endsWithWhitespace = /\s$/.test(expressionString);
+
+        // don't show suggestions if
+        // * there's a section
+        // * we're at the end of a valid expression, unless the user has typed another space
+        if (!hasSelection && !(isValid && isAtEnd && !endsWithWhitespace)) {
+            try {
+                suggestions = suggest(expressionString, {
+                    tableMetadata: this.props.tableMetadata,
+                    customFields: this.props.customFields,
+                    startRule: this.props.startRule,
+                    index: selectionEnd
+                })
+            } catch (e) {
+                console.error("suggest error:", e);
+            }
         }
 
         this.setState({
@@ -249,7 +260,7 @@ export default class ExpressionEditorTextfield extends Component {
                 <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
                 { suggestions.length ?
                     <Popover
-                        className="px2 pb1 not-rounded border-dark"
+                        className="pb1 not-rounded border-dark"
                         hasArrow={false}
                         tetherOptions={{
                             attachment: 'top left',
@@ -260,17 +271,17 @@ export default class ExpressionEditorTextfield extends Component {
                             {suggestions.map((suggestion, i) =>
                                 // insert section title. assumes they're sorted by type
                                 [(i === 0 || suggestion.type !== suggestions[i - 1].type) &&
-                                    <li className="h6 text-uppercase text-bold text-grey-3 py1 pt2">
+                                    <li className="mx2 h6 text-uppercase text-bold text-grey-3 py1 pt2">
                                         {suggestion.type}
                                     </li>
                                 ,
-                                    <li style={{ paddingTop: "2px", paddingBottom: "2px" }}
-                                        className={cx("cursor-pointer text-brand-hover", {"text-bold text-brand": i === this.state.highlightedSuggestion})}
+                                    <li style={{ paddingTop: 5, paddingBottom: 5 }}
+                                        className={cx("px2 cursor-pointer text-white-hover bg-brand-hover", {"text-white bg-brand": i === this.state.highlightedSuggestion})}
                                         onMouseDownCapture={(e) => this.onSuggestionMouseDown(e, i)}
                                     >
                                         { suggestion.prefixLength ?
                                             <span>
-                                                <span className="text-brand text-bold">{suggestion.name.slice(0, suggestion.prefixLength)}</span>
+                                                <span className={cx("text-brand text-bold", {"text-white bg-brand": i === this.state.highlightedSuggestion})}>{suggestion.name.slice(0, suggestion.prefixLength)}</span>
                                                 <span>{suggestion.name.slice(suggestion.prefixLength)}</span>
                                             </span>
                                         :

@@ -42,7 +42,7 @@ export default class ExpressionWidget extends Component {
         const { expression } = this.state;
 
         return (
-            <div style={{maxWidth: "500px"}}>
+            <div style={{maxWidth: "600px"}}>
                 <div className="p2">
                     <div className="h5 text-uppercase text-grey-3 text-bold">Field formula</div>
                     <div>
