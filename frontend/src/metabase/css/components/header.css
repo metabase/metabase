@@ -52,17 +52,22 @@
 }
 
 .EditHeader .Button {
-    color: var(--brand-color);
+    color: white;
     border: none;
-    font-size: 0.875rem;
+    font-size: 1em;
+    text-transform: capitalize;
     background-color: rgba(255,255,255,0.1);
-    font-weight: 700;
     margin-left: 0.75em;
 }
 
 .EditHeader .Button--primary {
     background-color: white;
-    color: #444444;
+    color: var(--brand-color);
+}
+
+.EditHeader.EditHeader--admin .Button--primary {
+  background-color: white;
+  color: var(--70-percent-black);
 }
 
 .EditHeader .Button:hover {
@@ -72,16 +77,4 @@
 
 .EditHeader.EditHeader--admin .Button:hover {
   background-color: var(--admin-nav-bg-color);
-}
-
-.EditHeader.EditHeader--admin .Button.Button--primary:hover {
-  color: white;
-}
-
-.EditHeader.EditHeader--admin .Button {
-    color: white;
-}
-
-.EditHeader.EditHeader--admin .Button.Button--primary {
-    color: #444;
 }

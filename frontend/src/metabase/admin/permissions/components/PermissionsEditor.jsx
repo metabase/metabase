@@ -23,7 +23,7 @@ const PermissionsEditor = ({ grid, onUpdatePermission, onSave, onCancel, isDirty
                             action={onCancel}
                             content="No changes to permissions will be made."
                         >
-                            <button className="Button Button--borderless Button--small">
+                            <button className="Button Button--borderless Button--small text-white text-white-hover">
                                 Cancel
                             </button>
                         </Confirm>,
@@ -33,7 +33,7 @@ const PermissionsEditor = ({ grid, onUpdatePermission, onSave, onCancel, isDirty
                             content={<PermissionsConfirm diff={diff} />}
                             triggerClasses={cx({ disabled: !isDirty })}
                         >
-                            <button className={cx("Button Button--primary Button--small")}>Save Changes</button>
+                            <button className={cx("Button Button--primary Button--small text-bold text-white-hover")}>Save Changes</button>
                         </Confirm>
                     ]}
                 />
