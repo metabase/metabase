@@ -39,7 +39,7 @@
 }
 
 .EditHeader.EditHeader--admin {
-    background-color: rgba(128, 145, 171, 0.8);
+    background-color: var(--admin-nav-bg-color-tint);
 }
 
 .EditHeader-title {
