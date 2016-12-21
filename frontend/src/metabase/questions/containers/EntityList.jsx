@@ -18,6 +18,7 @@ import UndoListing from "./UndoListing";
 import _ from "underscore";
 
 import { selectSection, setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
+import { loadLabels } from "../labels";
 import {
     getSection, getEntityType, getEntityIds,
     getSectionLoading, getSectionError,
@@ -53,7 +54,8 @@ const mapDispatchToProps = {
     setAllSelected,
     setSearchText,
     setArchived,
-    selectSection
+    selectSection,
+    loadLabels
 }
 
 const SECTIONS = [
@@ -126,6 +128,7 @@ export default class EntityList extends Component {
 
         onChangeSection:    PropTypes.func,
         showSearchWidget:   PropTypes.bool,
+        showCollectionName: PropTypes.bool,
         editable:           PropTypes.bool,
 
         onEntityClick:            PropTypes.func,
@@ -133,6 +136,7 @@ export default class EntityList extends Component {
 
     static defaultProps = {
         showSearchWidget: true,
+        showCollectionName: true,
         editable: true,
     }
 
@@ -145,6 +149,7 @@ export default class EntityList extends Component {
     }
 
     componentWillMount() {
+        this.props.loadLabels();
         if (this.props.query) {
             this.props.selectSection(this.props.query);
         }
@@ -167,6 +172,7 @@ export default class EntityList extends Component {
             searchText, setSearchText, showSearchWidget,
             visibleCount, selectedCount, allAreSelected, sectionIsArchive, labels,
             setItemSelected, setAllSelected, setArchived, onChangeSection,
+            showCollectionName,
             editable, onEntityClick,
         } = this.props;
 
@@ -215,6 +221,7 @@ export default class EntityList extends Component {
                                 editable={editable}
                                 setItemSelected={setItemSelected}
                                 onEntityClick={onEntityClick}
+                                showCollectionName={showCollectionName}
                             />
                         :
                             <div className={S.empty}>

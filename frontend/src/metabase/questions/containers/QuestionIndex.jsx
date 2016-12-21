@@ -35,8 +35,7 @@ export default class QuestionIndex extends Component {
     constructor (props) {
         super(props);
         this.state = {
-            // only expand the everything else section if there are no collections
-            questionsExpanded: props.collections ? false : true
+            questionsExpanded: true
         }
     }
     componentWillMount () {
@@ -88,7 +87,7 @@ export default class QuestionIndex extends Component {
                             }
                         </Motion>
                         <h2>Everything Else</h2>
-                    </div>`
+                    </div>
                 </div>
                 <Collapse isOpened={questionsExpanded} keepCollapsedContent={true}>
                     <EntityList

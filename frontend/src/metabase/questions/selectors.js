@@ -68,6 +68,7 @@ export const makeGetItem = () => {
             icon: visualizations.get(entity.display).iconName,
             favorite: entity.favorite,
             archived: entity.archived,
+            collection: entity.collection,
             labels: entity.labels.map(labelId => labelEntities[labelId]).filter(l => l),
             selected,
             visible,

@@ -33,7 +33,7 @@ export default class EntityItem extends Component {
     };
 
     render() {
-        let { item, editable, setItemSelected, setFavorited, setArchived, onMove, onEntityClick } = this.props;
+        let { item, editable, setItemSelected, setFavorited, setArchived, onMove, onEntityClick, showCollectionName } = this.props;
         return (
             <li className="relative" style={{ display: item.visible ? undefined : "none" }}>
                 <Item
@@ -42,6 +42,7 @@ export default class EntityItem extends Component {
                     setArchived={editable ? setArchived : null}
                     onMove={editable ? onMove : null}
                     onEntityClick={onEntityClick}
+                    showCollectionName={showCollectionName}
                     entity={item}
                     {...item}
                 />

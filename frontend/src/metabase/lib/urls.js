@@ -34,6 +34,10 @@ var Urls = {
         }
 
         return url;
+    },
+
+    collection(collection) {
+        return `/questions/collections/${collection.slug}`;
     }
 }
 

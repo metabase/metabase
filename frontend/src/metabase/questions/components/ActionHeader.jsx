@@ -27,7 +27,7 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
             {selectedCount} selected
         </span>
         <span className="flex align-center flex-align-right">
-            { !sectionIsArchive ?
+            { !sectionIsArchive && labels.length > 0 ?
                 <LabelPopover
                     triggerElement={
                         <span className={S.actionButton}>

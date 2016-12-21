@@ -11,12 +11,19 @@ import CheckBox from "metabase/components/CheckBox.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import MoveToCollection from "../containers/MoveToCollection.jsx";
+import Labels from "./Labels.jsx";
+import CollectionBadge from "./CollectionBadge.jsx";
 
 import Urls from "metabase/lib/urls";
 
 const ITEM_ICON_SIZE = 20;
 
-const Item = ({ entity, id, description, name, created, by, selected, favorite, archived, icon, setItemSelected, setFavorited, setArchived, onEntityClick }) =>
+const Item = ({
+    entity,
+    id, name, description, labels, created, by, favorite, collection, archived,
+    icon, selected, setItemSelected, setFavorited, setArchived, showCollectionName,
+    onEntityClick
+}) =>
     <div className={cx('hover-parent hover--visibility', S.item)}>
         <div className="flex flex-full align-center">
             <div className="relative flex ml1 mr2" style={{ width: ITEM_ICON_SIZE, height: ITEM_ICON_SIZE }}>
@@ -45,11 +52,13 @@ const Item = ({ entity, id, description, name, created, by, selected, favorite, 
             </div>
             <ItemBody
                 entity={entity}
-                description={description}
                 id={id}
                 name={name}
-                setFavorited={setFavorited}
+                description={description}
+                labels={labels}
                 favorite={favorite}
+                collection={showCollectionName && collection}
+                setFavorited={setFavorited}
                 onEntityClick={onEntityClick}
             />
         </div>
@@ -104,12 +113,15 @@ Item.propTypes = {
     setArchived:        PropTypes.func.isRequired,
 };
 
-const ItemBody = pure(({ entity, id, name, description, favorite, setFavorited, onEntityClick }) =>
+const ItemBody = pure(({ entity, id, name, description, labels, favorite, collection, setFavorited, onEntityClick }) =>
     <div className={S.itemBody}>
         <div className={cx('flex', S.itemTitle)}>
             <Link to={Urls.card(id)} className={cx(S.itemName)} onClick={onEntityClick && ((e) => { e.preventDefault(); onEntityClick(entity); })}>
                 {name}
             </Link>
+            { collection &&
+                <CollectionBadge collection={collection} />
+            }
             { setFavorited &&
                 <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
                     <Icon
@@ -124,6 +136,7 @@ const ItemBody = pure(({ entity, id, name, description, favorite, setFavorited, 
                     />
                 </Tooltip>
             }
+            <Labels labels={labels} />
         </div>
         <div className={cx({ 'text-slate': description }, { 'text-light-blue': !description })}>
             {description ? description : "No description yet"}

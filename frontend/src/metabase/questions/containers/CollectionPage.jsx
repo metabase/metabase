@@ -50,6 +50,7 @@ export default class CollectionPage extends Component {
                             ...location,
                             query: { ...location.query, f: section }
                         })}
+                        showCollectionName={false}
                     />
                 </div>
             </div>

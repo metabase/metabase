@@ -133,6 +133,13 @@ export const RevisionsApi = {
     get:                         GET("/api/:entity/:id/revisions"),
 };
 
+export const LabelApi = {
+    list:                        GET("/api/label"),
+    create:                     POST("/api/label"),
+    update:                      PUT("/api/label/:id"),
+    delete:                   DELETE("/api/label/:id"),
+};
+
 export const SessionApi = {
     create:                     POST("/api/session"),
     createWithGoogleAuth:       POST("/api/session/google_auth"),

@@ -55,7 +55,11 @@ export default class EditLabels extends Component {
         return (
             <div className={S.editor} style={style}>
                 <div className="wrapper wrapper--trim">
-                    <div className={S.header}>Labels</div>
+                    <div className={S.header}>Add and edit labels</div>
+                    <div className="bordered border-error rounded p2 mb2">
+                        <h3 className="text-error mb1">Heads up!</h3>
+                        <div>In an upcoming release, Labels will be removed in favor of Collections.</div>
+                    </div>
                 </div>
                 <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"} className="wrapper wrapper--trim"/>
                 <LoadingAndErrorWrapper loading={labelsLoading} error={labelsError} noBackground noWrapper>
@@ -70,7 +74,7 @@ export default class EditLabels extends Component {
                                 </li>
                             :
                                 <li key={label.id} className={S.label}>
-                                    <LabelIcon icon={label.color} size={28} />
+                                    <LabelIcon icon={label.icon} size={28} />
                                     <span className={S.name}>{label.name}</span>
                                     <a className={S.edit} onClick={() => editLabel(label.id)}>Edit</a>
                                     <Confirm title={`Delete label "${label.name}"`} action={() => deleteLabel(label.id)}>

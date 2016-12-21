@@ -144,11 +144,14 @@ export const getRoutes = (store) =>
                     <Route path="collections/:collectionSlug" component={CollectionPage} />
                 </Route>
 
-                <Route path="/collections" >
-                    <IndexRoute component={EditLabels} />
+                <Route path="/collections">
                     <Route path="create" component={CollectionCreate} />
                     <Route path="permissions" component={CollectionPermissions} />
                     <Route path=":collectionId" component={CollectionEdit} />
+                </Route>
+
+                <Route path="/labels">
+                    <IndexRoute component={EditLabels} />
                 </Route>
 
                 {/* REFERENCE */}
