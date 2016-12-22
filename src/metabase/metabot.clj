@@ -317,3 +317,13 @@
   (log/info "Stopping MetaBot...  🤖")
   (reset! websocket-monitor-thread-id nil)
   (disconnect-websocket!))
+
+(defn restart-metabot! 
+  "Restart the Metaot. 
+   Used on settings changed"
+  []
+  (when @websocket-monitor-thread-id
+    (log/info "Metabot already running. Killing the previous WebSocket listener first.")
+    (stop-metabot!))
+  (start-metabot!)
+  )
