@@ -6,8 +6,9 @@ import Collapse from "react-collapse";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 import ExpandingSearchField from "../components/ExpandingSearchField";
-import Tooltip from "metabase/components/Tooltip";
+import CollectionActions from "../components/CollectionActions";
 
 import CollectionButtons from "../components/CollectionButtons"
 
@@ -53,23 +54,20 @@ export default class QuestionIndex extends Component {
         return (
             <div className="relative mx4">
                 <div className="flex align-center pt4 pb2">
-                    <h2>{ showCollections ? "Collections of Questions" : "Saved Questions" }</h2>
+                    <TitleAndDescription title={ showCollections ? "Collections of Questions" : "Saved Questions" } />
                     <div className="flex align-center ml-auto">
                         <ExpandingSearchField className="mr2" onSearch={this.props.search} />
 
-                        { hasCollections &&
-                            <Tooltip tooltip="Set permissions for collections">
-                                <Link to="/collections/permissions" className="mx2 text-brand-hover">
-                                    <Icon name="lock" />
+                        <CollectionActions>
+                            { isAdmin && hasCollections &&
+                                <Link to="/collections/permissions">
+                                    <Icon name="lock" tooltip="Set permissions for collections" />
                                 </Link>
-                            </Tooltip>
-                        }
-
-                        <Tooltip tooltip="View the archive">
-                            <Link to="/questions/archive" className="mx2 text-brand-hover">
-                                <Icon name="viewArchive" />
+                            }
+                            <Link to="/questions/archive">
+                                <Icon name="viewArchive" tooltip="View the archive" />
                             </Link>
-                        </Tooltip>
+                        </CollectionActions>
                     </div>
                 </div>
                 { showCollections &&

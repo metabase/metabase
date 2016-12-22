@@ -2,7 +2,8 @@ import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
-import CollectionActions from "./CollectionActions"
+import CollectionActions from "./CollectionActions";
+import ArchiveCollectionWidget from "../containers/ArchiveCollectionWidget";
 
 const COLLECTION_ICON_SIZE = 64;
 
@@ -57,10 +58,12 @@ const CollectionButton = ({ id, name, color, slug, isAdmin }) =>
     >
         { isAdmin &&
             <div className="absolute top right mt2 mr2 hover-child">
-                <CollectionActions actions={[
-                    { name: "Set collection permissions", icon: "lockoutline", to: "/collections/permissions?collectionId=" + id },
-                    { name: "Archive collection", icon: "archive" }
-                ]}/>
+                <CollectionActions>
+                    <Link to={"/collections/permissions?collectionId=" + id}>
+                        <Icon name="lockoutline" tooltip="Set collection permissions" />
+                    </Link>
+                    <ArchiveCollectionWidget collectionId={id} />
+                </CollectionActions>
             </div>
         }
         <Icon
