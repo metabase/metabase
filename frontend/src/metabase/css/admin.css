@@ -1,5 +1,6 @@
 :root {
-    --admin-nav-bg-color: #6F7A8B;
+    --admin-nav-bg-color: #8091AB;
+    --admin-nav-bg-color-tint: #9AA7BC;
     --admin-nav-item-text-color: rgba(255, 255, 255, 0.63);
     --admin-nav-item-text-active-color: #fff;
     --page-header-padding: 2.375rem;
@@ -36,11 +37,11 @@
 
 .AdminNav .NavDropdown.open .NavDropdown-button,
 .AdminNav .NavDropdown .NavDropdown-content-layer {
-    background-color: #8993A1;
+    background-color: var(--admin-nav-bg-color-tint);
 }
 
 .AdminNav .Dropdown-item:hover {
-    background-color: #6F7A8B;
+    background-color: var(--admin-nav-bg-color);
 }
 
 /* utility to get a simple common hover state for admin items */
