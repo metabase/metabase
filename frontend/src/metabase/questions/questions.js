@@ -2,7 +2,7 @@
 import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import { normalize, Schema, arrayOf } from 'normalizr';
-import i from "icepick";
+import { getIn, assoc, assocIn, updateIn, merge, chain } from "icepick";
 import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";
@@ -12,7 +12,6 @@ import { setRequestState } from "metabase/redux/requests";
 import { getVisibleEntities, getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
 import { push } from "react-router-redux";
-import { updateIn } from "icepick";
 
 const card = new Schema('cards');
 const label = new Schema('labels');
@@ -118,8 +117,8 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
             }
         } else {
             const state = getState();
-            const labelSlug = i.getIn(state.questions, ["entities", "labels", labelId, "slug"]);
-            const labels = i.getIn(state.questions, ["entities", "cards", cardId, "labels"]);
+            const labelSlug = getIn(state.questions, ["entities", "labels", labelId, "slug"]);
+            const labels = getIn(state.questions, ["entities", "cards", cardId, "labels"]);
             const newLabels = labels.filter(id => id !== labelId);
             if (labeled) {
                 newLabels.push(labelId);
@@ -185,7 +184,7 @@ const initialState = {
 
 export default function(state = initialState, { type, payload, error }) {
     if (payload && payload.entities) {
-        state = i.assoc(state, "entities", i.merge(state.entities, payload.entities));
+        state = assoc(state, "entities", merge(state.entities, payload.entities));
     }
 
     switch (type) {
@@ -197,9 +196,9 @@ export default function(state = initialState, { type, payload, error }) {
             return { ...state, selectedIds: payload };
         case SELECT_SECTION:
             if (error) {
-                return i.assoc(state, "sectionError", payload);
+                return assoc(state, "sectionError", payload);
             } else {
-                return (i.chain(state)
+                return (chain(state)
                     .assoc("type", payload.type)
                     .assoc("section", payload.section)
                     .assoc("sectionError", null)
@@ -214,8 +213,8 @@ export default function(state = initialState, { type, payload, error }) {
             if (error) {
                 return state;
             } else if (payload && payload.id != null) {
-                state = i.assocIn(state, ["entities", "cards", payload.id], {
-                    ...state.entities.cards[payload.id],
+                state = assocIn(state, ["entities", "cards", payload.id], {
+                    ...getIn(state, ["entities", "cards", payload.id]),
                     ...payload
                 });
                 // FIXME: incorrectly adds to sections it may not have previously been in, but not a big deal since we reload whens switching sections
@@ -226,8 +225,8 @@ export default function(state = initialState, { type, payload, error }) {
             if (error) {
                 return state;
             } else if (payload && payload.id != null) {
-                state = i.assocIn(state, ["entities", "cards", payload.id], {
-                    ...state.entities.cards[payload.id],
+                state = assocIn(state, ["entities", "cards", payload.id], {
+                    ...getIn(state, ["entities", "cards", payload.id]),
                     ...payload
                 });
                 // FIXME: incorrectly adds to sections it may not have previously been in, but not a big deal since we reload whens switching sections
@@ -239,8 +238,8 @@ export default function(state = initialState, { type, payload, error }) {
             if (error) {
                 return state;
             } else if (payload && payload.id != null) {
-                state = i.assocIn(state, ["entities", "cards", payload.id], {
-                    ...state.entities.cards[payload.id],
+                state = assocIn(state, ["entities", "cards", payload.id], {
+                    ...getIn(state, ["entities", "cards", payload.id]),
                     ...payload
                 });
                 // FIXME: incorrectly adds to sections it may not have previously been in, but not a big deal since we reload whens switching sections
@@ -251,8 +250,8 @@ export default function(state = initialState, { type, payload, error }) {
             if (error) {
                 return state;
             } else if (payload && payload.id != null) {
-                state = i.assocIn(state, ["entities", "cards", payload.id], {
-                    ...state.entities.cards[payload.id],
+                state = assocIn(state, ["entities", "cards", payload.id], {
+                    ...getIn(state, ["entities", "cards", payload.id]),
                     ...payload
                 });
                 state = updateSections(state, "cards", payload.id, (s) => s.collection !== payload._changedSectionSlug, false);

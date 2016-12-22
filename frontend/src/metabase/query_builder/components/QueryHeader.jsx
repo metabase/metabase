@@ -13,6 +13,7 @@ import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
 import Tooltip from "metabase/components/Tooltip.jsx";
+import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
 
 import SaveQuestionModal from 'metabase/containers/SaveQuestionModal.jsx';
 
@@ -263,6 +264,20 @@ export default class QueryHeader extends Component {
                             />
                         </ModalWithTrigger>
                     </Tooltip>
+                ]);
+
+                buttonSections.push([
+                    <ModalWithTrigger
+                        ref="move"
+                        full
+                        triggerElement={
+                            <Tooltip tooltip="Move question">
+                                <Icon name="move" />
+                            </Tooltip>
+                        }
+                    >
+                        <MoveToCollection questionId={this.props.card.id} />
+                    </ModalWithTrigger>
                 ]);
             }
         }

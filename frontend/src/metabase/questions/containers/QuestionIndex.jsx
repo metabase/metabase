@@ -124,6 +124,7 @@ const CollectionEmptyState = () =>
             <h3>Create collections for your saved questions</h3>
             <div className="mt1">
                 Collections help you organize your questions and allow you to decide who gets to see what.
+                {" "}
                 <Link to="http://metabase.com/FIXME">Learn more</Link>
             </div>
         </div>

@@ -10,12 +10,14 @@ import CollectionList from "./CollectionList";
 import cx from "classnames";
 
 import { setCollection } from "../questions";
+import { loadCollections } from "../collections";
 
 const mapStateToProps = (state, props) => ({
 
 })
 
 const mapDispatchToProps = {
+    loadCollections,
     setCollection
 }
 
@@ -26,6 +28,10 @@ export default class MoveToCollection extends Component {
         this.state = {
             collectionId: undefined
         }
+    }
+
+    componentWillMount() {
+        this.props.loadCollections()
     }
 
     async onMove(collectionId) {
@@ -47,7 +53,7 @@ export default class MoveToCollection extends Component {
                 footer={
                     <div>
                         { error &&
-                            <span className="text-error">{error}</span>
+                            <span className="text-error">{String(error)}</span>
                         }
                         <Button className="mr1" onClick={onClose}>
                             Cancel
