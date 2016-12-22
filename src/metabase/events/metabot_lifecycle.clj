@@ -28,11 +28,10 @@
     (try
       ;; if someone updated our slack-token, or metabot was enabled/disabled then react accordingly
       (when (and (contains? object :metabot-enabled) (contains? object :slack-token))
-        
         (let [{:keys [slack-token metabot-enabled]} object]
           (cond
-            (nil? slack-token) (metabot/stop-metabot!) 
-            (not metabot-enabled)  (metabot/stop-metabot!)
+            (nil? slack-token)      (metabot/stop-metabot!)
+            (not metabot-enabled)   (metabot/stop-metabot!)
             :else (metabot/restart-metabot!))))
       ; (let [{:keys [slack-token metabot-enabled]} object]
       ;   (cond
