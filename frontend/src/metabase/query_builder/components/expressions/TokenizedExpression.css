@@ -43,11 +43,3 @@
   color: white;
   background-color: #509EE3;
 }
-
-.Expression-selected {
-  outline: 1px solid rgba(255,0,0,0.5);
-}
-
-.Expression-select-skip {
-  outline: 1px solid rgba(255,0,255,0.5);
-}
