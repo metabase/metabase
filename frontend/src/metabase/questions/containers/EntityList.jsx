@@ -93,7 +93,7 @@ const SECTIONS = [
         section: 'archived',
         name: "Archive",
         icon: 'archive',
-        empty: 'If you no longer need a question, you can archive it.',
+        empty: 'If you no longer need a question, you can archive it.'
     }
 ];
 
@@ -131,7 +131,7 @@ export default class EntityList extends Component {
         showCollectionName: PropTypes.bool,
         editable:           PropTypes.bool,
 
-        onEntityClick:            PropTypes.func,
+        onEntityClick:      PropTypes.func,
     };
 
     static defaultProps = {
@@ -225,7 +225,7 @@ export default class EntityList extends Component {
                             />
                         :
                             <div className={S.empty}>
-                                <EmptyState message={section.empty} icon={section.icon} />
+                                <EmptyState message={this.props.emptyState || section.empty} icon={section.icon} />
                             </div>
                     }
                     </LoadingAndErrorWrapper>
@@ -263,7 +263,7 @@ class EntityFilterWidget extends Component {
                 target={() => this.icon}
             >
                 <ol className="text-brand mt2 mb1">
-                    { SECTIONS.map((item, index) =>
+                    { SECTIONS.filter(item => item.section !== "archived").map((item, index) =>
                         <li
                             key={index}
                             className="cursor-pointer flex align-center brand-hover px2 py1 mb1"
