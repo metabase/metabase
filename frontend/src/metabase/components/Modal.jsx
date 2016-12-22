@@ -124,7 +124,15 @@ export class FullPageModal extends Component {
         nav.parentNode.appendChild(this._modalElement);
 
         this.componentDidUpdate();
+
+        this._scrollX = window.scrollX;
+        this._scrollY = window.scrollY;
+        window.scrollTo(0,0);
+
+        this._documentBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
     }
+
     componentDidUpdate() {
         ReactDOM.unstable_renderSubtreeIntoContainer(this, getModalContent(this.props), this._modalElement);
     }
@@ -133,6 +141,8 @@ export class FullPageModal extends Component {
         this._modalElement.parentNode.removeChild(this._modalElement);
         this._sibling.style.position = this._siblingPosition;
         this._sibling.style.zIndex = this._siblingZIndex;
+        document.body.style.overflow = this._documentBodyOverflow;
+        window.scrollTo(this._scrollX, this._scrollY);
     }
     render() {
         return null;
