@@ -17,7 +17,7 @@ import { search } from "../questions";
 import { loadCollections } from "../collections";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { push } from "react-router-redux";
+import { replace } from "react-router-redux";
 
 const mapStateToProps = (state, props) => ({
     items: state.questions.entities.cards,
@@ -30,7 +30,7 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = ({
     search,
     loadCollections,
-    push,
+    replace,
 })
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -46,7 +46,7 @@ export default class QuestionIndex extends Component {
     }
 
     render () {
-        const { collections, push, location, isAdmin } = this.props;
+        const { collections, replace, location, isAdmin } = this.props;
         const { questionsExpanded } = this.state;
         const hasCollections = collections.length > 0;
         const showCollections = isAdmin || hasCollections;
@@ -105,7 +105,8 @@ export default class QuestionIndex extends Component {
                 <Collapse isOpened={questionsExpanded || !showCollections} keepCollapsedContent={true}>
                     <EntityList
                         query={{ f: "all", collection: "", ...location.query }}
-                        onChangeSection={(section) => push({
+                        // use replace when changing sections so back button still takes you back to collections page
+                        onChangeSection={(section) => replace({
                             ...location,
                             query: { ...location.query, f: section }
                         })}

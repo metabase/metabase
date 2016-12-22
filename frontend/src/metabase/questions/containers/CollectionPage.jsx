@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push, replace, goBack } from "react-router-redux";
 
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 
@@ -16,6 +16,8 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = ({
     push,
+    replace,
+    goBack,
     loadCollections,
     editCollection: (id) => push(`/collections/${id}`),
     editPermissions: (id) => push(`/collections/permissions?collection=${id}`)
@@ -27,18 +29,25 @@ export default class CollectionPage extends Component {
         this.props.loadCollections();
     }
     render () {
-        const { collection, params, location, push } = this.props;
+        const { collection, params, location, push, replace, goBack } = this.props;
+        console.log("collection", collection)
         return (
             <div className="mx4 mt4">
                 <div className="flex align-center">
-                    <HeaderWithBack name={collection && collection.name} />
+                    <HeaderWithBack
+                        name={collection && collection.name}
+                        description={collection && collection.description}
+                        onBack={window.history.length === 1 ?
+                            () => push("/questions") :
+                            () => goBack()
+                        }
+                    />
                     <div className="ml-auto">
                         <CollectionActions
                             actions={[
                                 { name: 'Archive collection', icon: 'archive',  action: () => alert('NYI: archive!') },
                                 { name: 'Edit collection', icon: 'pencil',  action: () => this.props.editCollection(this.props.collection.id) },
                                 { name: 'Set permissions', icon: 'lock',  action: () => this.props.editPermissions(this.props.collection.id) },
-                                { name: 'Info', icon: 'info', action: () => () => alert('NYI: info!') },
                             ]}
                         />
                     </div>
@@ -46,7 +55,8 @@ export default class CollectionPage extends Component {
                 <div className="mt4">
                     <EntityList
                         query={{ f: "all", collection: params.collectionSlug, ...location.query }}
-                        onChangeSection={(section) => push({
+                        // use replace when changing sections so back button still takes you back to collections page
+                        onChangeSection={(section) => replace({
                             ...location,
                             query: { ...location.query, f: section }
                         })}

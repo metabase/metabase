@@ -1,7 +1,7 @@
 
 import { createAction, createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
 import { reset } from 'redux-form';
-import { push } from "react-router-redux";
+import { goBack } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -29,7 +29,7 @@ export const saveCollection = createThunkAction(SAVE_COLLECTION, (collection) =>
             if (response.id != null) {
                 dispatch(reset("collection"));
             }
-            dispatch(push("/questions"))
+            dispatch(goBack())
             return response;
         } catch (e) {
             // redux-form expects an object with either { field: error } or { _error: error }

@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon.jsx";
 
 const EmptyState = ({ title, message, icon, image, action, link }) =>
-    <div className="text-centered text-brand-light">
+    <div className="text-centered text-brand-light my2">
         { title &&
             <h2 className="text-brand mb4">{title}</h2>
         }

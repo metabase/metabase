@@ -10,7 +10,7 @@ import { reduxForm } from "redux-form";
 
 @reduxForm({
     form: 'collection',
-    fields: ['color', 'name', 'id'],
+    fields: ['id', 'name', 'description', 'color'],
     validate: (values) => {
         const errors = {};
         if (!values.name) {

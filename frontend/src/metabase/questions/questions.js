@@ -11,7 +11,7 @@ import { setRequestState } from "metabase/redux/requests";
 
 import { getVisibleEntities, getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 
 const card = new Schema('cards');
 const label = new Schema('labels');
@@ -46,7 +46,7 @@ export const selectSection = createThunkAction(SELECT_SECTION, (query = {}, type
     }
 });
 
-export const search = (q) => push("/questions/search?q=" + encodeURIComponent(q))
+export const search = (q, repl) => (repl ? replace : push)("/questions/search?q=" + encodeURIComponent(q))
 
 export const setFavorited = createThunkAction(SET_FAVORITED, (cardId, favorited) => {
     return async (dispatch, getState) => {

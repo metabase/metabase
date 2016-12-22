@@ -16,7 +16,8 @@ const mapStateToProps = (state, props) => ({
 })
 
 const mapDispatchToProps = ({
-    search
+    // pass "true" as 2nd arg to replace history state so back button still takes you back to index
+    search: (term) => search(term, true)
 })
 
 @connect(mapStateToProps, mapDispatchToProps)

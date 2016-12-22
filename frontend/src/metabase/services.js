@@ -38,7 +38,7 @@ export const DashboardApi = {
 };
 
 export const CollectionsApi = {
-    list:                        GET("/api/collection"),
+    list:                        GET("/api/collection"),//  () => []),
     create:                     POST("/api/collection"),
     get:                         GET("/api/collection/:id"),
     update:                      PUT("/api/collection/:id"),

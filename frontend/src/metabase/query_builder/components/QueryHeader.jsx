@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import QueryModeButton from "./QueryModeButton.jsx";
 
@@ -22,6 +23,7 @@ import { CardApi, RevisionApi } from "metabase/services";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
+import Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -394,7 +396,7 @@ export default class QueryHeader extends Component {
 
     render() {
         return (
-            <div>
+            <div className="relative">
                 <HeaderBar
                     isEditing={this.props.isEditing}
                     name={this.props.isNew ? "New question" : this.props.card.name}
@@ -402,6 +404,16 @@ export default class QueryHeader extends Component {
                     breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
                     setItemAttributeFn={this.props.onSetCardAttribute}
+                    badge={this.props.card.collection &&
+                        <Link
+                            to={Urls.collection(this.props.card.collection)}
+                            className="text-uppercase flex align-center no-decoration"
+                            style={{ color: this.props.card.collection.color, fontSize: 12 }}
+                        >
+                            <Icon name="collection" size={12} style={{ marginRight: "0.5em" }} />
+                            {this.props.card.collection.name}
+                        </Link>
+                    }
                 />
 
                 <Modal small isOpen={this.state.modal === "saved"} onClose={this.onCloseModal}>
