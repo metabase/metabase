@@ -27,6 +27,7 @@ import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx
 import SearchResults from "metabase/questions/containers/SearchResults.jsx";
 import EditLabels from "metabase/questions/containers/EditLabels.jsx";
 import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
+import EntityList from "metabase/questions/containers/EntityList.jsx";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
@@ -143,6 +144,12 @@ export const getRoutes = (store) =>
                     <Route path="archive" component={Archive} />
                     <Route path="collections/:collectionSlug" component={CollectionPage} />
                 </Route>
+
+                <Route path="/entities/:entityType" component={({ location, params }) =>
+                    <div className="p4">
+                        <EntityList entityType={params.entityType} entityQuery={location.query} />
+                    </div>
+                }/>
 
                 <Route path="/collections">
                     <Route path="create" component={CollectionCreate} />

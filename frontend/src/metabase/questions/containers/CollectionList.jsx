@@ -4,8 +4,8 @@ import { connect } from "react-redux";
 import { getCollections } from "../selectors";
 import { loadCollections } from "../collections";
 
-const mapStateToProps = (state) => ({
-    collections: getCollections(state)
+const mapStateToProps = (state, props) => ({
+    collections: getCollections(state, props)
 })
 
 const mapDispatchToProps = {

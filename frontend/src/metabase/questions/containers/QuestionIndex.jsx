@@ -25,7 +25,7 @@ const mapStateToProps = (state, props) => ({
     sectionId: state.questions.section,
     collections: state.collections.collections,
 
-    isAdmin: getUserIsAdmin(state)
+    isAdmin: getUserIsAdmin(state, props)
 })
 
 const mapDispatchToProps = ({
@@ -102,7 +102,8 @@ export default class QuestionIndex extends Component {
                 }
                 <Collapse isOpened={questionsExpanded || !showCollections} keepCollapsedContent={true}>
                     <EntityList
-                        query={{ f: "all", collection: "", ...location.query }}
+                        entityType="cards"
+                        entityQuery={{ f: "all", collection: "", ...location.query }}
                         // use replace when changing sections so back button still takes you back to collections page
                         onChangeSection={(section) => replace({
                             ...location,

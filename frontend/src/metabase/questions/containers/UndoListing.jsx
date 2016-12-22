@@ -14,7 +14,7 @@ import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 const mapStateToProps = (state, props) => {
   return {
-      undos: getUndos(state)
+      undos: getUndos(state, props)
   }
 }
 

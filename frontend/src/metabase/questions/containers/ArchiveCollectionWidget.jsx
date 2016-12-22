@@ -6,31 +6,36 @@ import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { archiveCollection } from "../collections";
+import { setCollectionArchived } from "../collections";
 
 const mapStateToProps = (state, props) => ({
 })
 
 const mapDispatchToProps = {
-    archiveCollection
+    setCollectionArchived
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class ArchiveCollectionWidget extends Component {
     _onArchive = async () => {
         try {
-            this.props.archiveCollection(this.props.collectionId)
+            await this.props.setCollectionArchived(this.props.collectionId, true);
+            this.onClose();
         } catch (error) {
             console.error(error)
             this.setState({ error })
         }
     }
 
+    onClose = () => {
+        this.refs.modal.close();
+    }
+
     render() {
-        console.log(this.props);
         return (
             <ModalWithTrigger
                 {...this.props}
+                ref="modal"
                 triggerElement={
                     <Tooltip tooltip="Archive collection">
                         <Icon name="archive" />
@@ -42,7 +47,7 @@ export default class ArchiveCollectionWidget extends Component {
                     <Button warning onClick={this._onArchive}>Archive</Button>
                 ]}
             >
-                <div>hello</div>
+                <div className="px4 pb4">The saved questions in this collection will also be archived.</div>
             </ModalWithTrigger>
         );
     }

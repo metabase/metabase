@@ -55,7 +55,8 @@ export default class AddToDashboard extends Component {
                 </div>
                 { this.state.query ?
                     <EntityList
-                        query={this.state.query}
+                        entityType="cards"
+                        entityQuery={this.state.query}
                         editable={false}
                         showSearchWidget={false}
                         onEntityClick={this.props.onAdd}

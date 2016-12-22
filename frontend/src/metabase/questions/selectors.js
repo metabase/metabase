@@ -1,7 +1,7 @@
 
 import { createSelector } from 'reselect';
 import moment from "moment";
-import i from "icepick";
+import { getIn } from "icepick";
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
@@ -10,8 +10,8 @@ function caseInsensitiveSearch(haystack, needle) {
     return !needle || (haystack != null && haystack.toLowerCase().indexOf(needle.toLowerCase()) >= 0);
 }
 
-export const getEntityType          = (state) => state.questions.type
-export const getSection             = (state) => state.questions.section
+export const getEntityType          = (state, props) => props.entityType;
+export const getSection             = (state, props) => props.entityQuery && JSON.stringify(props.entityQuery);
 export const getEntities            = (state) => state.questions.entities
 export const getItemsBySection      = (state) => state.questions.itemsBySection
 
@@ -28,7 +28,7 @@ export const getQuery = createSelector(
 const getSectionData = createSelector(
     [getItemsBySection, getEntityType, getSection],
     (itemsBySection, type, section) =>
-        i.getIn(itemsBySection, [type, section])
+        getIn(itemsBySection, [type, section])
 );
 
 export const getSectionLoading = createSelector(
@@ -37,8 +37,11 @@ export const getSectionLoading = createSelector(
         !(sectionData && sectionData.items)
 );
 
-export const getSectionError = (state) =>
-    !!state.questions.sectionError;
+export const getSectionError = createSelector(
+    [getSectionData],
+    (sectionData) =>
+        (sectionData && sectionData.error)
+);
 
 export const getEntityIds = createSelector(
     [getSectionData],
@@ -47,13 +50,13 @@ export const getEntityIds = createSelector(
 );
 
 const getEntity = (state, props) =>
-    getEntities(state)[props.entityType][props.entityId];
+    getEntities(state, props)[props.entityType][props.entityId];
 
 const getEntitySelected = (state, props) =>
-    getSelectedIds(state)[props.entityId] || false;
+    getSelectedIds(state, props)[props.entityId] || false;
 
 const getEntityVisible = (state, props) =>
-    caseInsensitiveSearch(getEntity(state, props).name, getSearchText(state));
+    caseInsensitiveSearch(getEntity(state, props).name, getSearchText(state, props));
 
 const getLabelEntities = (state) => state.labels.entities.labels
 
@@ -63,13 +66,13 @@ export const makeGetItem = () => {
         (entity, selected, visible, labelEntities) => ({
             name: entity.name,
             id: entity.id,
-            created: moment(entity.created_at).fromNow(),
-            by: entity.creator.common_name,
+            created: entity.created_at ? moment(entity.created_at).fromNow() : null,
+            by: entity.creator && entity.creator.common_name,
             icon: visualizations.get(entity.display).iconName,
             favorite: entity.favorite,
             archived: entity.archived,
             collection: entity.collection,
-            labels: entity.labels.map(labelId => labelEntities[labelId]).filter(l => l),
+            labels: entity.labels ? entity.labels.map(labelId => labelEntities[labelId]).filter(l => l) : [],
             selected,
             visible,
             description: entity.description
@@ -81,7 +84,7 @@ export const makeGetItem = () => {
 export const getAllEntities = createSelector(
     [getEntityIds, getEntityType, getEntities],
     (entityIds, entityType, entities) =>
-        entityIds.map(entityId => entities[entityType][entityId])
+        entityIds.map(entityId => getIn(entities, [entityType, entityId]))
 );
 
 export const getVisibleEntities = createSelector(

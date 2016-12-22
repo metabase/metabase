@@ -14,10 +14,10 @@ import * as colors from "metabase/lib/colors";
 
 const mapStateToProps = (state, props) => {
   return {
-      labels:           getLabels(state),
-      labelsLoading:    getLabelsLoading(state),
-      labelsError:      getLabelsError(state),
-      editingLabelId:   getEditingLabelId(state)
+      labels:           getLabels(state, props),
+      labelsLoading:    getLabelsLoading(state, props),
+      labelsError:      getLabelsError(state, props),
+      editingLabelId:   getEditingLabelId(state, props)
   }
 }
 

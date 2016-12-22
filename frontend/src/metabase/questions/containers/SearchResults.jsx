@@ -12,7 +12,7 @@ import { getTotalCount } from "../selectors";
 import { search } from "../questions";
 
 const mapStateToProps = (state, props) => ({
-    totalCount: getTotalCount(state),
+    totalCount: getTotalCount(state, props),
 })
 
 const mapDispatchToProps = ({
@@ -39,7 +39,11 @@ class SearchResults extends Component {
                         />
                     </div>
                 </div>
-                <EntityList query={this.props.location.query} showSearchWidget={false} />
+                <EntityList
+                    entityType="cards"
+                    entityQuery={this.props.location.query}
+                    showSearchWidget={false}
+                />
             </div>
         );
     }

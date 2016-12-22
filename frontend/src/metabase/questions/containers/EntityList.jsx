@@ -17,10 +17,10 @@ import UndoListing from "./UndoListing";
 
 import _ from "underscore";
 
-import { selectSection, setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
+import { loadEntities, setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
 import { loadLabels } from "../labels";
 import {
-    getSection, getEntityType, getEntityIds,
+    getSection, getEntityIds,
     getSectionLoading, getSectionError,
     getSearchText,
     getVisibleCount, getSelectedCount, getAllAreSelected, getSectionIsArchive,
@@ -30,22 +30,19 @@ import {
 
 const mapStateToProps = (state, props) => {
   return {
-      section:          getSection(state),
-      entityType:       getEntityType(state),
-      entityIds:        getEntityIds(state),
-      loading:          getSectionLoading(state),
-      error:            getSectionError(state),
+      section:          getSection(state, props),
+      entityIds:        getEntityIds(state, props),
+      loading:          getSectionLoading(state, props),
+      error:            getSectionError(state, props),
 
-      searchText:       getSearchText(state),
+      searchText:       getSearchText(state, props),
 
-      visibleCount:     getVisibleCount(state),
-      selectedCount:    getSelectedCount(state),
-      allAreSelected:   getAllAreSelected(state),
-      sectionIsArchive: getSectionIsArchive(state),
+      visibleCount:     getVisibleCount(state, props),
+      selectedCount:    getSelectedCount(state, props),
+      allAreSelected:   getAllAreSelected(state, props),
+      sectionIsArchive: getSectionIsArchive(state, props),
 
-      labels:           getLabelsWithSelectedState(state),
-
-    //   query:            getQuery(state),
+      labels:           getLabelsWithSelectedState(state, props),
   }
 }
 
@@ -54,7 +51,7 @@ const mapDispatchToProps = {
     setAllSelected,
     setSearchText,
     setArchived,
-    selectSection,
+    loadEntities,
     loadLabels
 }
 
@@ -107,12 +104,12 @@ export default class EntityList extends Component {
     static propTypes = {
         style:              PropTypes.object,
 
-        query:              PropTypes.object,
+        entityQuery:        PropTypes.object.isRequired,
+        entityType:         PropTypes.string.isRequired,
 
         section:            PropTypes.string,
         loading:            PropTypes.bool.isRequired,
         error:              PropTypes.any,
-        entityType:         PropTypes.string.isRequired,
         entityIds:          PropTypes.array.isRequired,
         searchText:         PropTypes.string.isRequired,
         setSearchText:      PropTypes.func.isRequired,
@@ -124,7 +121,7 @@ export default class EntityList extends Component {
         setItemSelected:    PropTypes.func.isRequired,
         setAllSelected:     PropTypes.func.isRequired,
         setArchived:        PropTypes.func.isRequired,
-        selectSection:      PropTypes.func.isRequired,
+        loadEntities:      PropTypes.func.isRequired,
 
         onChangeSection:    PropTypes.func,
         showSearchWidget:   PropTypes.bool,
@@ -150,18 +147,16 @@ export default class EntityList extends Component {
 
     componentWillMount() {
         this.props.loadLabels();
-        if (this.props.query) {
-            this.props.selectSection(this.props.query);
-        }
+        this.props.loadEntities(this.props.entityType, this.props.entityQuery);
     }
     componentWillReceiveProps(nextProps) {
-        if (nextProps.query && !_.isEqual(this.props.query, nextProps.query)) {
-            this.props.selectSection(nextProps.query);
+        if (!_.isEqual(this.props.entityQuery, nextProps.entityQuery) || nextProps.entityType !== this.props.entityType) {
+            this.props.loadEntities(nextProps.entityType, nextProps.entityQuery);
         }
     }
 
     getSection () {
-        return _.findWhere(SECTIONS, { section: this.props.query && this.props.query.f || "all" }) || DEFAULT_SECTION;
+        return _.findWhere(SECTIONS, { section: this.props.entityQuery && this.props.entityQuery.f || "all" }) || DEFAULT_SECTION;
     }
 
     render() {

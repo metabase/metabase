@@ -122,7 +122,7 @@ const ItemBody = pure(({ entity, id, name, description, labels, favorite, collec
             { collection &&
                 <CollectionBadge collection={collection} />
             }
-            { setFavorited &&
+            { favorite != null && setFavorited &&
                 <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
                     <Icon
                         className={cx(
@@ -153,9 +153,12 @@ ItemBody.propTypes = {
 };
 
 const ItemCreated = pure(({ created, by }) =>
-    <div className={S.itemSubtitle}>
-      {`Created ${created} by ${by}`}
-  </div>
+    (created || by) ?
+        <div className={S.itemSubtitle}>
+            {"Created" + (created ? ` ${created}` : ``) + (by ? ` by ${by}` : ``)}
+        </div>
+    :
+        null
 );
 
 ItemCreated.propTypes = {

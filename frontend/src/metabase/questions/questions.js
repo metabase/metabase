@@ -1,5 +1,5 @@
 
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction, momentifyArraysTimestamps } from "metabase/lib/redux";
 
 import { normalize, Schema, arrayOf } from 'normalizr';
 import { getIn, assoc, assocIn, updateIn, merge, chain } from "icepick";
@@ -13,15 +13,19 @@ import { getVisibleEntities, getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
 import { push, replace } from "react-router-redux";
 
+import { SET_COLLECTION_ARCHIVED } from "./collections";
+
 const card = new Schema('cards');
 const label = new Schema('labels');
+const collection = new Schema('collections');
 card.define({
-  labels: arrayOf(label)
+  labels: arrayOf(label),
+  // collection: collection
 });
 
-import { CardApi } from "metabase/services";
+import { CardApi, CollectionsApi } from "metabase/services";
 
-const SELECT_SECTION = 'metabase/questions/SELECT_SECTION';
+const LOAD_ENTITIES = 'metabase/questions/LOAD_ENTITIES';
 const SET_SEARCH_TEXT = 'metabase/questions/SET_SEARCH_TEXT';
 const SET_ITEM_SELECTED = 'metabase/questions/SET_ITEM_SELECTED';
 const SET_ALL_SELECTED = 'metabase/questions/SET_ALL_SELECTED';
@@ -30,19 +34,24 @@ const SET_ARCHIVED = 'metabase/questions/SET_ARCHIVED';
 const SET_LABELED = 'metabase/questions/SET_LABELED';
 const SET_COLLECTION = 'metabase/collections/SET_COLLECTION';
 
-export const selectSection = createThunkAction(SELECT_SECTION, (query = {}, type = "cards") => {
+export const loadEntities = createThunkAction(LOAD_ENTITIES, (type, query) => {
     return async (dispatch, getState) => {
-        if (query.f == null) {
-            query = { ...query, f: "all" };
-        }
-
-        dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADING" }));
-        let response = await CardApi.list(query);
-        dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADED" }));
-
         let section = JSON.stringify(query);
-
-        return { type, section, ...normalize(response, arrayOf(card)) };
+        try {
+            let result;
+            dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADING" }));
+            if (type === "cards") {
+                result = { type, section, ...normalize(momentifyArraysTimestamps(await CardApi.list(query)), arrayOf(card)) };
+            } else if (type === "collections") {
+                result = { type, section, ...normalize(momentifyArraysTimestamps(await CollectionsApi.list(query)), arrayOf(collection)) };
+            } else {
+                throw "Unknown entity type " + type;
+            }
+            dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADED" }));
+            return result;
+        } catch (error) {
+            throw { type, section, error };
+        }
     }
 });
 
@@ -174,8 +183,6 @@ export const setAllSelected = createThunkAction(SET_ALL_SELECTED, (selected) => 
 
 const initialState = {
     entities: {},
-    type: "cards",
-    section: null,
     itemsBySection: {},
     searchText: "",
     selectedIds: {},
@@ -194,16 +201,14 @@ export default function(state = initialState, { type, payload, error }) {
             return { ...state, selectedIds: { ...state.selectedIds, ...payload } };
         case SET_ALL_SELECTED:
             return { ...state, selectedIds: payload };
-        case SELECT_SECTION:
+        case LOAD_ENTITIES:
             if (error) {
-                return assoc(state, "sectionError", payload);
+                return assocIn(state, ["itemsBySection", payload.type, payload.section, "error"], payload.error);
             } else {
                 return (chain(state)
-                    .assoc("type", payload.type)
-                    .assoc("section", payload.section)
-                    .assoc("sectionError", null)
                     .assoc("selectedIds", {})
                     .assoc("searchText", "")
+                    .assocIn(["itemsBySection", payload.type, payload.section, "error"], null)
                     .assocIn(["itemsBySection", payload.type, payload.section, "items"], payload.result)
                     // store the initial sort order so if we remove and undo an item it can be put back in it's original location
                     .assocIn(["itemsBySection", payload.type, payload.section, "sortIndex"], payload.result.reduce((o, id, i) => { o[id] = i; return o; }, {}))
@@ -256,6 +261,18 @@ export default function(state = initialState, { type, payload, error }) {
                 });
                 state = updateSections(state, "cards", payload.id, (s) => s.collection !== payload._changedSectionSlug, false);
                 state = updateSections(state, "cards", payload.id, (s) => s.collection === payload._changedSectionSlug, true);
+            }
+            return state;
+        case SET_COLLECTION_ARCHIVED:
+            if (error) {
+                return state;
+            } else if (payload && payload.id != null) {
+                state = assocIn(state, ["entities", "collections", payload.id], {
+                    ...getIn(state, ["entities", "collections", payload.id]),
+                    ...payload
+                });
+                state = updateSections(state, "collections", payload.id, (s) => s.archived, payload.archived);
+                state = updateSections(state, "collections", payload.id, (s) => !s.archived, !payload.archived);
             }
             return state;
         default:

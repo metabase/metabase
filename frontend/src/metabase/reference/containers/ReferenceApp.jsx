@@ -23,7 +23,7 @@ import {
 } from '../utils';
 
 import {
-    selectSection as fetchQuestions
+    loadEntities
 } from 'metabase/questions/questions';
 
 import {
@@ -40,7 +40,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-    fetchQuestions,
+    fetchQuestions: () => loadEntities("card", {}),
     fetchDashboards,
     ...metadataActions,
     ...actions

@@ -53,7 +53,8 @@ export default class CollectionPage extends Component {
                 </div>
                 <div className="mt4">
                     <EntityList
-                        query={{ f: "all", collection: params.collectionSlug, ...location.query }}
+                        entityType="cards"
+                        entityQuery={{ f: "all", collection: params.collectionSlug, ...location.query }}
                         // use replace when changing sections so back button still takes you back to collections page
                         onChangeSection={(section) => replace({
                             ...location,
