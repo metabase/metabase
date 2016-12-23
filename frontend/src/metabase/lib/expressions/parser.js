@@ -142,14 +142,18 @@ class ExpressionsParser extends Parser {
 
         $.RULE("atomicExpression", (outsideAggregation) => {
             return $.OR([
-                // aggregations and metrics are not allowed inside other aggregations
+                // aggregations are not allowed inside other aggregations
                 {GATE: () => outsideAggregation, ALT: () => $.SUBRULE($.aggregationExpression, [false]) },
-                {GATE: () => outsideAggregation, ALT: () => $.SUBRULE($.metricExpression) },
+
+                // NOTE: DISABLE METRICS
+                // {GATE: () => outsideAggregation, ALT: () => $.SUBRULE($.metricExpression) },
+
                 // fields are not allowed outside aggregations
                 {GATE: () => !outsideAggregation, ALT: () => $.SUBRULE($.fieldExpression) },
+
                 {ALT: () => $.SUBRULE($.parenthesisExpression, [outsideAggregation]) },
                 {ALT: () => $.SUBRULE($.numberLiteral) }
-            ]);
+            ], (outsideAggregation ? "aggregation" : "field name") + ", number, or expression");
         });
 
         $.RULE("parenthesisExpression", (outsideAggregation) => {
@@ -301,6 +305,14 @@ function run(Parser, source, options) {
     const parser = new Parser(ExpressionsLexer.tokenize(source).tokens, options);
     const expression = parser[startRule]();
     if (parser.errors.length > 0) {
+        for (const error of parser.errors) {
+            // clean up error messages
+            error.message = error.message && error.message
+                .replace(/^Expecting:?\s+/, "Expected ")
+                .replace(/--> (.*?) <--/g, "$1")
+                .replace(/(\n|\s)*but found:?/, " but found ")
+                .replace(/\s*but found\s+''$/, "");
+        }
         throw parser.errors;
     }
     return expression;
@@ -417,13 +429,14 @@ export function suggest(source, {
                         postfixTrim: (arity > 0 ? /^\w+(\(\)?|$)/ : /^\w+\s*/)
                     };
                 }));
-                finalSuggestions.push(...tableMetadata.metrics.map(metric => ({
-                    type: "metrics",
-                    name: metric.name,
-                    text: formatMetricName(metric),
-                    prefixTrim: /\w+$/,
-                    postfixTrim: /^\w+\s*/
-                })))
+                // NOTE: DISABLE METRICS
+                // finalSuggestions.push(...tableMetadata.metrics.map(metric => ({
+                //     type: "metrics",
+                //     name: metric.name,
+                //     text: formatMetricName(metric),
+                //     prefixTrim: /\w+$/,
+                //     postfixTrim: /^\w+\s*/
+                // })))
             }
         } else if (nextTokenType === NumberLiteral) {
             // skip number literal
