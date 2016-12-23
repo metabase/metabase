@@ -32,7 +32,7 @@
           (cond
             (nil? slack-token)      (metabot/stop-metabot!)
             (not metabot-enabled)   (metabot/stop-metabot!)
-             :else (metabot/restart-metabot!))))
+            :else                   (metabot/restart-metabot!))))
       (catch Throwable e
         (log/warn (format "Failed to process driver notifications event. %s" topic) e)))))
 
