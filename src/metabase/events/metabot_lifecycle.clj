@@ -33,12 +33,6 @@
             (nil? slack-token)      (metabot/stop-metabot!)
             (not metabot-enabled)   (metabot/stop-metabot!)
             :else (metabot/restart-metabot!))))
-      ; (let [{:keys [slack-token metabot-enabled]} object]
-      ;   (cond
-      ;     (and (contains? object :metabot-enabled)
-      ;          (not metabot-enabled))      (metabot/stop-metabot!)
-      ;     (and (contains? object :slack-token)
-      ;          (seq slack-token))                  (metabot/start-metabot!)))
       (catch Throwable e
         (log/warn (format "Failed to process driver notifications event. %s" topic) e)))))
 
