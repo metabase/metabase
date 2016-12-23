@@ -60,41 +60,43 @@ export default class TokenizedInput extends Component {
 
         const input = ReactDOM.findDOMNode(this);
 
-        let [start, end] = getSelectionPosition(input);
-        if (start !== end) {
-            return;
-        }
+        const [start, end] = getSelectionPosition(input);
+        const hasSelection = start !== end;
 
-        let element = window.getSelection().focusNode;
-        while (element && element !== input) {
-            // check ancestors of the focused node for "Expression-tokenized"
-            // if the element is marked as "tokenized" we might want to intercept keypresses
-            if (element.classList && element.classList.contains("Expression-tokenized") && getCaretPosition(element) === element.textContent.length) {
-                const isSelected = element.classList.contains("Expression-selected");
-                if (e.keyCode === KEYCODE_BACKSPACE && !isSelected && !isTyping) {
-                    // not selected, not "typging", and hit backspace, so mark as "selected"
-                    element.classList.add("Expression-selected");
-                    e.stopPropagation();
-                    e.preventDefault();
-                    return;
-                } else if (e.keyCode === KEYCODE_BACKSPACE && isSelected) {
-                    // selected and hit backspace, so delete it
-                    element.parentNode.removeChild(element);
-                    this._setValue(input.textContent);
-                    e.stopPropagation();
-                    e.preventDefault();
-                    return;
-                } else if (e.keyCode === KEYCODE_LEFT && isSelected) {
-                    // selected and hit left arrow, so enter "typing" mode and unselect it
-                    element.classList.remove("Expression-selected");
-                    this._isTyping = true;
-                    e.stopPropagation();
-                    e.preventDefault();
-                    return;
+        const hasModifierKey = !e.altKey && !e.ctrlKey && !e.metaKey
+
+        if (!hasSelection && !hasModifierKey) {
+            let element = window.getSelection().focusNode;
+            while (element && element !== input) {
+                // check ancestors of the focused node for "Expression-tokenized"
+                // if the element is marked as "tokenized" we might want to intercept keypresses
+                if (element.classList && element.classList.contains("Expression-tokenized") && getCaretPosition(element) === element.textContent.length) {
+                    const isSelected = element.classList.contains("Expression-selected");
+                    if (e.keyCode === KEYCODE_BACKSPACE && !isSelected && !isTyping) {
+                        // not selected, not "typging", and hit backspace, so mark as "selected"
+                        element.classList.add("Expression-selected");
+                        e.stopPropagation();
+                        e.preventDefault();
+                        return;
+                    } else if (e.keyCode === KEYCODE_BACKSPACE && isSelected) {
+                        // selected and hit backspace, so delete it
+                        element.parentNode.removeChild(element);
+                        this._setValue(input.textContent);
+                        e.stopPropagation();
+                        e.preventDefault();
+                        return;
+                    } else if (e.keyCode === KEYCODE_LEFT && isSelected) {
+                        // selected and hit left arrow, so enter "typing" mode and unselect it
+                        element.classList.remove("Expression-selected");
+                        this._isTyping = true;
+                        e.stopPropagation();
+                        e.preventDefault();
+                        return;
+                    }
                 }
+                // nada, try the next ancestor
+                element = element.parentNode;
             }
-            // nada, try the next ancestor
-            element = element.parentNode;
         }
 
         // if we haven't handled the event yet, pass it on to our parent
@@ -121,7 +123,7 @@ export default class TokenizedInput extends Component {
         return (
             <div
                 className={className}
-                style={{ whiteSpace: "pre" }}
+                style={{ whiteSpace: "pre-wrap" }}
                 contentEditable
                 onKeyDown={this.onKeyDown}
                 onInput={this.onInput}

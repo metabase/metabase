@@ -1,5 +1,6 @@
 .Expression-node {
-  display: inline-block;
+  /* this is required to get top/bottom padding to work, but breaks some keyboard shortcuts */
+  /*display: inline-block;*/
   border-radius: 3px;
   font-size: 14px;
 }
@@ -11,6 +12,9 @@
 
 .Expression-aggregation {
   padding: 3px 3px;
+}
+.Expression-aggregation-name {
+  padding: 0 2px;
 }
 
 .Expression-metric,
