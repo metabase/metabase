@@ -19,7 +19,7 @@ import cx from "classnames";
 
 @reduxForm({
     form: "metric",
-    fields: ["id", "name", "description", "table_id", "definition", "revision_message"],
+    fields: ["id", "name", "description", "table_id", "definition", "revision_message", "show_in_getting_started"],
     validate: (values) => {
         const errors = {};
         if (!values.name) {

@@ -7,6 +7,8 @@ import Utils from "metabase/lib/utils";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
+import { stripId } from "metabase/lib/formatting";
+import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 
 import * as Q from "./query/query";
@@ -454,22 +456,25 @@ var Query = {
         return results;
     },
 
+    formatField(fieldDef, options = {}) {
+        let name = stripId(fieldDef && (fieldDef.display_name || fieldDef.name));
+        return name;
+    },
+
     getFieldName(tableMetadata, field, options) {
         try {
-            if (Query.isRegularField(field)) {
-                let fieldDef = Table.getField(tableMetadata, field);
-                if (fieldDef) {
-                    return fieldDef.display_name.replace(/\s+id\s*$/i, "");
+            let target = Query.getFieldTarget(field, tableMetadata);
+            let components = [];
+            if (target.path) {
+                for (const fieldDef of target.path) {
+                    components.push(Query.formatField(fieldDef, options), " → ");
                 }
-            } else if (Query.isForeignKeyField(field)) {
-                let fkFieldDef = Table.getField(tableMetadata, field[1]);
-                let targetTableDef = fkFieldDef && fkFieldDef.target.table;
-                return [Query.getFieldName(tableMetadata, field[1], options), " → ", Query.getFieldName(targetTableDef, field[2], options)];
-            } else if (Query.isDatetimeField(field)) {
-                return [Query.getFieldName(tableMetadata, field[1], options), " (" + field[3] + ")"];
-            } else if (Query.isExpressionField(field)) {
-                return field[1];
             }
+            components.push(Query.formatField(target.field, options));
+            if (target.unit) {
+                components.push(` (${target.unit})`)
+            }
+            return components;
         } catch (e) {
             console.warn("Couldn't format field name for field", field, "in table", tableMetadata);
         }
@@ -497,6 +502,7 @@ var Query = {
                 case "cum_sum":   return     ["Cumulative sum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
                 case "max":       return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
                 case "min":       return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
+                default:          return [formatExpression(aggregation, { tableMetadata })]
             }
         }), "and");
     },
@@ -508,8 +514,9 @@ var Query = {
     },
 
     getFilterDescription(tableMetadata, query, options) {
-        let filters = Query.getFilters(query);
-        if (filters && filters.length > 0) {
+        // getFilters returns list of filters without the implied "AND"
+        let filters = ["AND"].concat(Query.getFilters(query));
+        if (filters && filters.length > 1) {
             return ["Filtered by ", Query.getFilterClauseDescription(tableMetadata, filters, options)];
         }
     },
