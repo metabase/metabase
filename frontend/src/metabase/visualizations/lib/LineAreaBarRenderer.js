@@ -278,6 +278,10 @@ function applyChartTooltips(chart, series, onHoverChange) {
                         { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
                     ));
                 } else if (d.data) { // line, area, bar
+                    if (!isSingleSeriesBar) {
+                        let idx = determineSeriesIndexFromElement(this);
+                        cols = series[idx].data.cols;
+                    }
                     data = [
                         { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
                         { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
@@ -711,7 +715,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         if (isTimeseries) {
             // replace xValues with
             xValues = d3.time[xInterval.interval]
-                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), xInterval.count);
+                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), xInterval.count)
+                .map(d => moment(d));
             datas = fillMissingValues(
                 datas,
                 xValues,
@@ -802,7 +807,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
     let yExtent = d3.extent([].concat(...yExtents));
 
-    if (!isScalarSeries && !isScatter && !isStacked && settings["graph.y_axis.auto_split"] !== false) {
+    // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
+    const hasDifferentYAxisColumns = _.uniq(series.map(s => s.data.cols[1])).length > 1;
+    if (!isScalarSeries && !isScatter && !isStacked && hasDifferentYAxisColumns && settings["graph.y_axis.auto_split"] !== false) {
         yAxisSplit = computeSplit(yExtents);
     } else {
         yAxisSplit = [series.map((s,i) => i)];

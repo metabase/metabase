@@ -201,3 +201,39 @@
                :query    {:source-table (data/id :venues)
                           :aggregation  [:+ ["METRIC" (u/get-id metric)] 1]
                           :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
+
+;; check that we can handle METRICS (ick) inside a NAMED clause
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  {:rows    [[2 118]
+             [3  39]
+             [4  24]]
+   :columns [(data/format-name "price")
+             (if (= *engine* :redshift) "my cool metric" "My Cool Metric")]}
+  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+                                :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
+                                             :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
+    (format-rows-by [int int]
+      (rows+column-names (qp/process-query
+                           {:database (data/id)
+                            :type     :query
+                            :query    {:source-table (data/id :venues)
+                                       :aggregation  [[:named ["METRIC" (u/get-id metric)] "My Cool Metric"]]
+                                       :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
+
+;; check that METRICS (ick) with a nested aggregation still work inside a NAMED clause
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  {:rows    [[2 118]
+             [3  39]
+             [4  24]]
+   :columns [(data/format-name "price")
+             (if (= *engine* :redshift) "my cool metric" "My Cool Metric")]}
+  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+                                :definition {:aggregation [[:sum [:field-id (data/id :venues :price)]]]
+                                             :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
+    (format-rows-by [int int]
+      (rows+column-names (qp/process-query
+                           {:database (data/id)
+                            :type     :query
+                            :query    {:source-table (data/id :venues)
+                                       :aggregation  [[:named ["METRIC" (u/get-id metric)] "My Cool Metric"]]
+                                       :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
