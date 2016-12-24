@@ -229,7 +229,7 @@ export default class GuiQueryEditor extends Component {
                         customFields={Query.getExpressions(this.props.query.query)}
                         updateAggregation={(aggregation) => this.updateAggregation(index, aggregation)}
                         removeAggregation={canRemoveAggregation ? this.removeAggregation.bind(null, index) : null}
-                        addButton={this.renderAdd(index === 0 ? "Add a grouping" : null)}
+                        addButton={this.renderAdd(null)}
                     />
                 );
                 if (aggregations[index + 1] != null && aggregations[index + 1].length > 0) {
@@ -275,10 +275,8 @@ export default class GuiQueryEditor extends Component {
             for (let i = 0; i < breakouts.length; i++) {
                 const breakout = breakouts[i];
 
-                if (i === 0 && breakout != null) {
-                    breakoutList.push(
-                        <span  key={"by"+i} className="text-bold">by</span>
-                    );
+                if (breakout == null) {
+                    breakoutList.push(<span className="ml1" />);
                 }
 
                 breakoutList.push(
@@ -303,7 +301,7 @@ export default class GuiQueryEditor extends Component {
         }
 
         return (
-            <div className={cx("Query-section Query-section-breakout ml1", { disabled: !enabled })}>
+            <div className={cx("Query-section Query-section-breakout", { disabled: !enabled })}>
                 {breakoutList}
             </div>
         );
@@ -353,9 +351,22 @@ export default class GuiQueryEditor extends Component {
         }
 
         return (
-            <div className="GuiBuilder-section GuiBuilder-view flex align-center px1" ref="viewSection">
+            <div className="GuiBuilder-section GuiBuilder-view flex align-center px1 pr2" ref="viewSection">
                 <span className="GuiBuilder-section-label Query-label">View</span>
                 {this.renderAggregation()}
+            </div>
+        );
+    }
+
+    renderGroupedBySection() {
+        const { features } = this.props;
+        if (!features.aggregation && !features.breakout) {
+            return;
+        }
+
+        return (
+            <div className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1" ref="viewSection">
+                <span className="GuiBuilder-section-label Query-label">Grouped By</span>
                 {this.renderBreakouts()}
             </div>
         );
@@ -363,7 +374,7 @@ export default class GuiQueryEditor extends Component {
 
     componentDidUpdate() {
         // HACK: magic number "5" accounts for the borders between the sections?
-        let contentWidth = ["data", "filter", "view", "sortLimit"].reduce((acc, ref) => {
+        let contentWidth = ["data", "filter", "view", "groupedBy","sortLimit"].reduce((acc, ref) => {
             let node = ReactDOM.findDOMNode(this.refs[`${ref}Section`]);
             return acc + (node ? node.offsetWidth : 0);
         }, 0) + 5;
@@ -384,6 +395,7 @@ export default class GuiQueryEditor extends Component {
                 </div>
                 <div className="GuiBuilder-row flex flex-full">
                     {this.renderViewSection()}
+                    {this.renderGroupedBySection()}
                     <div className="flex-full"></div>
                     {this.props.children}
                     <ExtendedOptions
