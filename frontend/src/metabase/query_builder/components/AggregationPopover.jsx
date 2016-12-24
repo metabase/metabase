@@ -208,7 +208,7 @@ export default class AggregationPopover extends Component {
                             placeholder="Name (optional)"
                         />
                         <Button className="full" primary disabled={this.state.error} onClick={() => this.commitAggregation(this.state.aggregation)}>
-                            {isNew ? "Add" : "Update"} Aggregation
+                            Done
                         </Button>
                     </div>
                 </div>
