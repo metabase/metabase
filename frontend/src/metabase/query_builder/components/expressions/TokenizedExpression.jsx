@@ -2,9 +2,26 @@ import React, { Component, PropTypes } from "react";
 
 import "./TokenizedExpression.css";
 
-import { parse } from "metabase/lib/expressions/parser";
-
 import cx from "classnames";
+
+export default class TokenizedExpression extends React.Component {
+    render() {
+        // TODO: use the Chevrotain parser or tokenizer
+        // let parsed = parse(this.props.source, this.props.parserInfo);
+        const parsed = parse(this.props.source);
+        return renderSyntaxTree(parsed);
+    }
+}
+
+const renderSyntaxTree = (node, index) =>
+    <span key={index} className={cx("Expression-node", "Expression-" + node.type, { "Expression-tokenized": node.tokenized })}>
+        {node.text != null ?
+            node.text
+        : node.children ?
+            node.children.map(renderSyntaxTree)
+        : null }
+    </span>
+
 
 function nextNonWhitespace(tokens, index) {
     while (index < tokens.length && /^\s+$/.test(tokens[++index])) {
@@ -12,8 +29,7 @@ function nextNonWhitespace(tokens, index) {
     return tokens[index];
 }
 
-function parsePartial(expressionString) {
-    // TODO: use the Chevrotain parser or tokenizer
+function parse(expressionString) {
     let tokens = (expressionString || " ").match(/[a-zA-Z]\w*|"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"|\(|\)|\d+|\s+|[*/+-]|.+/g);
 
     let root = { type: "group", children: [] };
@@ -89,21 +105,4 @@ function parsePartial(expressionString) {
         }
     }
     return root;
-}
-
-const renderSyntaxTree = (node, index) =>
-    <span key={index} className={cx("Expression-node", "Expression-" + node.type, { "Expression-tokenized": node.tokenized })}>
-        {node.text != null ?
-            node.text
-        : node.children ?
-            node.children.map(renderSyntaxTree)
-        : null }
-    </span>
-
-export default class TokenizedExpression extends React.Component {
-    render() {
-        // let parsed = parse(this.props.source, this.props.parserInfo);
-        const parsed = parsePartial(this.props.source);
-        return renderSyntaxTree(parsed);
-    }
 }

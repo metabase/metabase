@@ -114,7 +114,7 @@ export default class AggregationPopover extends Component {
     }
 
     render() {
-        const { availableAggregations, tableMetadata, isNew } = this.props;
+        const { availableAggregations, tableMetadata } = this.props;
         const { choosingField, editingAggregation } = this.state;
         const aggregation = NamedClause.getContent(this.state.aggregation);
 

@@ -2,7 +2,7 @@ import { Lexer, Parser, getImage } from "chevrotain";
 
 import _ from "underscore";
 
-import { formatFieldName, formatMetricName, formatExpressionName, formatAggregationName } from "../expressions";
+import { formatFieldName, formatExpressionName, formatAggregationName } from "../expressions";
 
 import {
     VALID_AGGREGATIONS,
