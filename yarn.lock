@@ -1444,6 +1444,10 @@ change-emitter@^0.1.2:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/change-emitter/-/change-emitter-0.1.2.tgz#6b88ca4d5d864e516f913421b11899a860aee8db"
 
+chevrotain@^0.20.0:
+  version "0.20.0"
+  resolved "https://registry.yarnpkg.com/chevrotain/-/chevrotain-0.20.0.tgz#b814daf9e15c134bf421ff54b429b818c6648a9e"
+
 chokidar@^1.0.0, chokidar@^1.4.1:
   version "1.6.0"
   resolved "https://registry.yarnpkg.com/chokidar/-/chokidar-1.6.0.tgz#90c32ad4802901d7713de532dc284e96a63ad058"
@@ -2760,12 +2764,6 @@ flatten@1.0.2, flatten@^1.0.2:
 flow-bin@^0.32.0:
   version "0.32.0"
   resolved "https://registry.yarnpkg.com/flow-bin/-/flow-bin-0.32.0.tgz#a1d69d153a07b0a9cd4a633d13bf746d4ace5730"
-
-flow-status-webpack-plugin@^0.1.4:
-  version "0.1.7"
-  resolved "https://registry.yarnpkg.com/flow-status-webpack-plugin/-/flow-status-webpack-plugin-0.1.7.tgz#425a6cdf3763a8aeef3dff203e5127b919bd104a"
-  dependencies:
-    shelljs "^0.6.0"
 
 flux-standard-action@^0.6.0, flux-standard-action@^0.6.1:
   version "0.6.1"
