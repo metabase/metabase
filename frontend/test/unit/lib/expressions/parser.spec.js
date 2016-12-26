@@ -100,7 +100,8 @@ describe("lib/expressions/parser", () => {
             expect(cleanSuggestions(suggest("1 + ", aggregationOpts))).toEqual([
                 { type: 'aggregations', text: 'Count ' },
                 { type: 'aggregations', text: 'Sum(' },
-                { type: 'metrics',     text: '"foo bar"' },
+                // NOTE: metrics support currently disabled
+                // { type: 'metrics',     text: '"foo bar"' },
                 { type: 'other',       text: ' (' },
             ]);
         })
@@ -127,13 +128,13 @@ describe("lib/expressions/parser", () => {
 
     describe("compile() in syntax mode", () => {
         it ("should parse source without whitespace into a recoverable syntax tree", () => {
-            const source = "1-Sum(A*2+\"Toucan Sam\")/Count()+\"foo bar\"";
+            const source = "1-Sum(A*2+\"Toucan Sam\")/Count()";
             const tree = parse(source, aggregationOpts);
             expect(serialize(tree)).toEqual(source)
         })
         xit ("should parse source with whitespace into a recoverable syntax tree", () => {
             // FIXME: not preserving whitespace
-            const source = "1 - Sum(A * 2 + \"Toucan Sam\") / Count + \"foo bar\"";
+            const source = "1 - Sum(A * 2 + \"Toucan Sam\") / Count";
             const tree = parse(source, aggregationOpts);
             expect(serialize(tree)).toEqual(source)
         })

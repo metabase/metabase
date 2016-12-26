@@ -28,6 +28,7 @@ declare module "underscore" {
   declare function some<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
   declare function all<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
   declare function any<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
+  declare function contains<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
 
   declare function initial<T>(a: Array<T>, n?: number): Array<T>;
   declare function rest<T>(a: Array<T>, index?: number): Array<T>;
