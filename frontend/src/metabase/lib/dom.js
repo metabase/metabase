@@ -54,3 +54,86 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
         return visiblePercentageX + tolerance > percentX && visiblePercentageY + tolerance > percentY;
     });
 }
+
+export function getSelectionPosition(element) {
+    // input, textarea, IE
+    if (element.setSelectionRange || element.createTextRange) {
+        return [element.selectionStart, element.selectionEnd];
+    }
+    // contenteditable
+    else {
+        try {
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            const { startContainer, startOffset } = range;
+            range.setStart(element, 0);
+            const end = range.toString().length;
+            range.setEnd(startContainer, startOffset);
+            const start = range.toString().length;
+
+            return [start, end];
+        } catch (e) {
+            return [0, 0];
+        }
+    }
+}
+
+export function setSelectionPosition(element, [start, end]) {
+    // input, textarea
+    if (element.setSelectionRange) {
+        element.focus();
+        element.setSelectionRange(start, end);
+    }
+    // IE
+    else if (element.createTextRange) {
+        const range = element.createTextRange();
+        range.collapse(true);
+        range.moveEnd("character", end);
+        range.moveStart("character", start);
+        range.select();
+    }
+    // contenteditable
+    else {
+        const selection = window.getSelection();
+        const startPos = getTextNodeAtPosition(element, start);
+        const endPos = getTextNodeAtPosition(element, end);
+        selection.removeAllRanges();
+        const range = new Range();
+        range.setStart(startPos.node, startPos.position);
+        range.setEnd(endPos.node, endPos.position);
+        selection.addRange(range);
+    }
+}
+
+export function saveSelection(element) {
+    let range = getSelectionPosition(element);
+    return () => setSelectionPosition(element, range);
+}
+
+export function getCaretPosition(element) {
+    return getSelectionPosition(element)[1];
+}
+
+export function setCaretPosition(element, position) {
+    setSelectionPosition(element, [position, position]);
+}
+
+export function saveCaretPosition(element) {
+    let position = getCaretPosition(element);
+    return () => setCaretPosition(element, position);
+}
+
+function getTextNodeAtPosition(root, index) {
+    let treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, (elem) => {
+        if (index > elem.textContent.length){
+            index -= elem.textContent.length;
+            return NodeFilter.FILTER_REJECT
+        }
+        return NodeFilter.FILTER_ACCEPT;
+    });
+    var c = treeWalker.nextNode();
+    return {
+        node: c ? c : root,
+        position: c ? index :  0
+    };
+}

@@ -51,20 +51,18 @@ export default class FieldPane extends Component {
         var query = this.setDatabaseAndTable();
         // Add an aggregation so both aggregation and filter popovers aren't visible
         if (!Query.hasValidAggregation(query.query)) {
-            Query.updateAggregation(query.query, ["rows"]);
+            Query.clearAggregations(query.query);
         }
-        Query.addFilter(query.query);
-        Query.updateFilter(query.query, Query.getFilters(query.query).length - 1, [null, this.props.field.id, null]);
+        Query.addFilter(query.query, [null, this.props.field.id, null]);
         this.props.setQueryFn(query);
     }
 
     groupBy() {
         let query = this.props.query;
         if (!Query.hasValidAggregation(query.query)) {
-            Query.updateAggregation(query.query, ["rows"]);
+            Query.clearAggregations(query.query);
         }
-        Query.addDimension(query.query);
-        Query.updateDimension(query.query, this.props.field.id, query.query.breakout.length - 1);
+        Query.addBreakout(query.query, this.props.field.id);
         this.props.setQueryFn(query);
         this.props.runQueryFn();
     }

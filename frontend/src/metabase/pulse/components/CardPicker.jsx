@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import Popover from "metabase/components/Popover.jsx";
+import Query from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -52,7 +53,7 @@ export default class CardPicker extends Component {
     renderItem(card) {
         let error;
         try {
-            if (card.dataset_query.query.aggregation[0] === "rows") {
+            if (Query.isBareRows(card.dataset_query.query)) {
                 error = "Raw data cannot be included in pulses";
             }
         } catch (e) {}
@@ -100,7 +101,7 @@ export default class CardPicker extends Component {
             <div className="CardPicker flex-full">
                 <input
                     ref="input"
-                    className="input no-focus full h4 text-bold"
+                    className="input no-focus full text-bold"
                     placeholder="Type a question name to filter"
                     value={this.inputValue}
                     onFocus={this.onInputFocus}

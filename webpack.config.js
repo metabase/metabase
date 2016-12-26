@@ -1,5 +1,7 @@
-"use strict";
 /*eslint-env node */
+
+require("babel-register");
+require("babel-polyfill");
 
 var webpack = require('webpack');
 var webpackPostcssTools = require('webpack-postcss-tools');
@@ -8,11 +10,13 @@ var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
-var FlowStatusWebpackPlugin = require('flow-status-webpack-plugin');
 
 var _ = require('underscore');
 var glob = require('glob');
 var fs = require('fs');
+
+var chevrotain = require("chevrotain");
+var allTokens = require("./frontend/src/metabase/lib/expressions/tokens").allTokens;
 
 function hasArg(arg) {
     var regex = new RegExp("^" + ((arg.length === 2) ? ("-\\w*"+arg[1]+"\\w*") : (arg)) + "$");
@@ -30,8 +34,8 @@ if (isWatching) {
     console.warn("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries");
 }
 
-// default NODE_ENV to production unless -d or --debug is specified
-var NODE_ENV = process.env["NODE_ENV"] || (hasArg("-d") || (hasArg("--debug")) ? "development": "production");
+// default NODE_ENV to development
+var NODE_ENV = process.env["NODE_ENV"] || "development";
 console.log("webpack env:", NODE_ENV)
 
 // Babel:
@@ -222,8 +226,7 @@ if (NODE_ENV === "hot") {
     );
 }
 
-// development environment:
-if (NODE_ENV === "development" || NODE_ENV === "hot") {
+if (NODE_ENV !== "production") {
     // replace minified files with un-minified versions
     for (var name in config.resolve.alias) {
         var minified = config.resolve.alias[name];
@@ -232,13 +235,7 @@ if (NODE_ENV === "development" || NODE_ENV === "hot") {
             config.resolve.alias[name] = unminified;
         }
     }
-}
 
-if (process.env.ENABLE_FLOW) {
-    config.plugins.push(new FlowStatusWebpackPlugin());
-}
-
-if (NODE_ENV === "hot" || isWatching) {
     // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
     config.devtool = "eval-cheap-module-source-map";
 
@@ -248,6 +245,16 @@ if (NODE_ENV === "hot" || isWatching) {
     // helps with source maps
     config.output.devtoolModuleFilenameTemplate = '[absolute-resource-path]';
     config.output.pathinfo = true;
-} else if (NODE_ENV === "production") {
+} else {
+    // this is required to ensure we don't minify Chevrotain token identifiers
+    // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
+    config.plugins.push(new webpack.optimize.UglifyJsPlugin({
+        mangle: {
+            except: allTokens.map(function(currTok) {
+                return chevrotain.tokenName(currTok);
+            })
+        }
+    }))
+
     config.devtool = "source-map";
 }

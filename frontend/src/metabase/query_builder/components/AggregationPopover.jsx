@@ -6,12 +6,16 @@ import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import Button from "metabase/components/Button.jsx";
 
 import Query from "metabase/lib/query";
-import { AggregationClause } from "metabase/lib/query";
+import { AggregationClause, NamedClause } from "metabase/lib/query";
 
 import _ from "underscore";
 
+import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield.jsx"
+
+const CUSTOM_SECTION_NAME = "Custom Expression";
 
 export default class AggregationPopover extends Component {
     constructor(props, context) {
@@ -19,7 +23,8 @@ export default class AggregationPopover extends Component {
 
         this.state = {
             aggregation: (props.isNew ? [] : props.aggregation),
-            choosingField: (props.aggregation && props.aggregation.length > 1 && AggregationClause.isStandard(props.aggregation))
+            choosingField: (props.aggregation && props.aggregation.length > 1 && AggregationClause.isStandard(props.aggregation)),
+            editingAggregation: (props.aggregation && props.aggregation.length > 1 && AggregationClause.isCustom(props.aggregation))
         };
 
         _.bindAll(this, "commitAggregation", "onPickAggregation", "onPickField", "onClearAggregation");
@@ -43,7 +48,12 @@ export default class AggregationPopover extends Component {
 
     onPickAggregation(agg) {
         // check if this aggregation requires a field, if so then force user to pick that now, otherwise we are done
-        if (agg.aggregation && agg.aggregation.requiresField) {
+        if (agg.custom) {
+            this.setState({
+                aggregation: agg.value,
+                editingAggregation: true
+            });
+        } else if (agg.aggregation && agg.aggregation.requiresField) {
             this.setState({
                 aggregation: agg.value,
                 choosingField: true
@@ -60,7 +70,8 @@ export default class AggregationPopover extends Component {
 
     onClearAggregation() {
         this.setState({
-            choosingField: false
+            choosingField: false,
+            editingAggregation: false
         });
     }
 
@@ -74,7 +85,7 @@ export default class AggregationPopover extends Component {
 
     itemIsSelected(item) {
         const { aggregation } = this.props;
-        return (aggregation[0] === item.value[0] && (aggregation[0] !== "METRIC" || aggregation[1] === item.value[1]));
+        return item.isSelected(NamedClause.getContent(aggregation));
     }
 
     renderItemExtra(item, itemIndex) {
@@ -104,7 +115,8 @@ export default class AggregationPopover extends Component {
 
     render() {
         const { availableAggregations, tableMetadata } = this.props;
-        const { aggregation, choosingField } = this.state;
+        const { choosingField, editingAggregation } = this.state;
+        const aggregation = NamedClause.getContent(this.state.aggregation);
 
         let selectedAggregation;
         if (AggregationClause.isMetric(aggregation)) {
@@ -121,6 +133,7 @@ export default class AggregationPopover extends Component {
                 items: availableAggregations.map(aggregation => ({
                     name: aggregation.name,
                     value: [aggregation.short].concat(aggregation.fields.map(field => null)),
+                    isSelected: (agg) => !AggregationClause.isCustom(agg) && AggregationClause.getAggregation(agg) === aggregation.short,
                     aggregation: aggregation
                 })),
                 icon: "table2"
@@ -136,30 +149,71 @@ export default class AggregationPopover extends Component {
                 items: metrics.map(metric => ({
                     name: metric.name,
                     value: ["METRIC", metric.id],
+                    isSelected: (aggregation) => AggregationClause.getMetric(aggregation) === metric.id,
                     metric: metric
                 })),
                 icon: "star-outline"
             });
         }
 
+        let customExpressionIndex = sections.length;
+        sections.push({
+            name: CUSTOM_SECTION_NAME,
+            icon: "star-outline"
+        });
+
         if (sections.length === 1) {
             sections[0].name = null
         }
 
-        if (!choosingField) {
+        if (editingAggregation) {
             return (
-                <AccordianList
-                    className="text-green"
-                    sections={sections}
-                    onChange={this.onPickAggregation}
-                    itemIsSelected={this.itemIsSelected.bind(this)}
-                    renderSectionIcon={(s) => <Icon name={s.icon} size={18} />}
-                    renderItemExtra={this.renderItemExtra.bind(this)}
-                    getItemClasses={(item) => item.metric && !item.metric.is_active ? "text-grey-3" : null }
-                />
+                <div style={{width: editingAggregation ? 500 : 300}}>
+                    <div className="text-grey-3 p1 py2 border-bottom flex align-center">
+                        <a className="cursor-pointer flex align-center" onClick={this.onClearAggregation}>
+                            <Icon name="chevronleft" size={18}/>
+                            <h3 className="inline-block pl1">{CUSTOM_SECTION_NAME}</h3>
+                        </a>
+                    </div>
+                    <div className="p1">
+                        <ExpressionEditorTextfield
+                            startRule="aggregation"
+                            expression={aggregation}
+                            tableMetadata={tableMetadata}
+                            customFields={this.props.customFields}
+                            onChange={(parsedExpression) => this.setState({
+                                aggregation: NamedClause.setContent(this.state.aggregation, parsedExpression),
+                                error: null
+                            })}
+                            onError={(errorMessage) => this.setState({
+                                error: errorMessage
+                            })}
+                        />
+                        { this.state.error != null && (
+                            Array.isArray(this.state.error) ?
+                                this.state.error.map(error =>
+                                    <div className="text-error mb1" style={{ whiteSpace: "pre-wrap" }}>{error.message}</div>
+                                )
+                            :
+                                <div className="text-error mb1">{this.state.error.message}</div>
+                        )}
+                        <input
+                            className="input block full my1"
+                            value={NamedClause.getName(this.state.aggregation)}
+                            onChange={(e) => this.setState({
+                                aggregation: e.target.value ?
+                                    NamedClause.setName(aggregation, e.target.value) :
+                                    aggregation
+                            })}
+                            placeholder="Name (optional)"
+                        />
+                        <Button className="full" primary disabled={this.state.error} onClick={() => this.commitAggregation(this.state.aggregation)}>
+                            Done
+                        </Button>
+                    </div>
+                </div>
             );
-
-        } else {
+        } else if (choosingField) {
             const [agg, fieldId] = aggregation;
             return (
                 <div style={{width: 300}}>
@@ -179,6 +233,26 @@ export default class AggregationPopover extends Component {
                         enableTimeGrouping={false}
                     />
                 </div>
+            );
+        } else {
+            return (
+                <AccordianList
+                    className="text-green"
+                    sections={sections}
+                    onChange={this.onPickAggregation}
+                    itemIsSelected={this.itemIsSelected.bind(this)}
+                    renderSectionIcon={(s) => <Icon name={s.icon} size={18} />}
+                    renderItemExtra={this.renderItemExtra.bind(this)}
+                    getItemClasses={(item) => item.metric && !item.metric.is_active ? "text-grey-3" : null }
+                    onChangeSection={(index) => {
+                        if (index === customExpressionIndex) {
+                            this.onPickAggregation({
+                                custom: true,
+                                value: aggregation !== "rows" && !_.isEqual(aggregation, ["rows"]) ? aggregation : null
+                            })
+                        }
+                    }}
+                />
             );
         }
     }

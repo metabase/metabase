@@ -42,7 +42,7 @@ export default class ExpressionWidget extends Component {
         const { expression } = this.state;
 
         return (
-            <div style={{maxWidth: "500px"}}>
+            <div style={{maxWidth: "600px"}}>
                 <div className="p2">
                     <div className="h5 text-uppercase text-grey-3 text-bold">Field formula</div>
                     <div>
@@ -62,7 +62,7 @@ export default class ExpressionWidget extends Component {
                     <div className="mt3 h5 text-uppercase text-grey-3 text-bold">Give it a name</div>
                     <div>
                         <input
-                            className="my1 p1 input block full h4 text-dark"
+                            className="my1 input block full"
                             type="text"
                             value={this.state.name}
                             placeholder="Something nice and descriptive"

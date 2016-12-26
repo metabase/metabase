@@ -904,7 +904,6 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
         } else {
             // this is applying a filter by clicking on a cell value
             let dataset_query = JSON.parse(JSON.stringify(card.dataset_query));
-            Query.addFilter(dataset_query.query);
 
             if (coldef.unit && coldef.unit != "default" && filter === "=") {
                 // this is someone using quick filters on a datetime value
@@ -917,11 +916,10 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
                     case "year": start = moment(value, "YYYY").format("YYYY-MM-DD");
                                  end = moment(value, "YYYY").add(1, "years").subtract(1, "days").format("YYYY-MM-DD"); break;
                 }
-                Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, ["BETWEEN", fieldRefForm, start, end]);
-
+                Query.addFilter(dataset_query.query, ["BETWEEN", fieldRefForm, start, end]);
             } else {
                 // quick filtering on a normal value (string/number)
-                Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, fieldRefForm, value]);
+                Query.addFilter(dataset_query.query, [filter, fieldRefForm, value]);
             }
 
             // update and run the query

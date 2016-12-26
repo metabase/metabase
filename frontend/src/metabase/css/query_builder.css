@@ -357,6 +357,9 @@
 .GuiBuilder-filtered-by {
     border-right: 1px solid transparent;
 }
+.GuiBuilder-view {
+    border-right: 1px solid #e0e0e0;
+}
 .GuiBuilder-sort-limit {
     border-left: 1px solid #e0e0e0;
 }
@@ -377,7 +380,7 @@
 .GuiBuilder-section {
     position: relative;
     min-height: 55px;
-    min-width: 120px;
+    min-width: 100px;
 }
 
 .GuiBuilder-section-label {
