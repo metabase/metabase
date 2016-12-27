@@ -53,7 +53,7 @@ export default class MoveToCollection extends Component {
                 footer={
                     <div>
                         { error &&
-                            <span className="text-error">{String(error)}</span>
+                            <span className="text-error mr1">{error.data && error.data.message}</span>
                         }
                         <Button className="mr1" onClick={onClose}>
                             Cancel
