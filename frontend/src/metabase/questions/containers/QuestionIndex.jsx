@@ -109,7 +109,7 @@ export default class QuestionIndex extends Component {
                             ...location,
                             query: { ...location.query, f: section }
                         })}
-                        emptyState="Questions that aren’t in a collection will be shown here"
+                        defaultEmptyState="Questions that aren’t in a collection will be shown here"
                     />
                 </Collapse>
             </div>

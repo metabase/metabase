@@ -220,7 +220,7 @@ export default class EntityList extends Component {
                             />
                         :
                             <div className={S.empty}>
-                                <EmptyState message={this.props.emptyState || section.empty} icon={section.icon} />
+                                <EmptyState message={section.section === "all" && this.props.defaultEmptyState ? this.props.defaultEmptyState : section.empty} icon={section.icon} />
                             </div>
                     }
                     </LoadingAndErrorWrapper>
