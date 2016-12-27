@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import cx from "classnames";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import { Motion, spring, presets } from "react-motion";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
 import ModalContent from "./ModalContent";
@@ -134,16 +135,36 @@ export class FullPageModal extends Component {
     }
 
     componentDidUpdate() {
-        ReactDOM.unstable_renderSubtreeIntoContainer(this, getModalContent(this.props), this._modalElement);
+        this._renderModal(true)
     }
+
     componentWillUnmount() {
-        ReactDOM.unmountComponentAtNode(this._modalElement);
-        this._modalElement.parentNode.removeChild(this._modalElement);
-        this._sibling.style.position = this._siblingPosition;
-        this._sibling.style.zIndex = this._siblingZIndex;
-        document.body.style.overflow = this._documentBodyOverflow;
-        window.scrollTo(this._scrollX, this._scrollY);
+        this._renderModal(false);
+        setTimeout(() => {
+            ReactDOM.unmountComponentAtNode(this._modalElement);
+            this._modalElement.parentNode.removeChild(this._modalElement);
+            this._sibling.style.position = this._siblingPosition;
+            this._sibling.style.zIndex = this._siblingZIndex;
+            document.body.style.overflow = this._documentBodyOverflow;
+            window.scrollTo(this._scrollX, this._scrollY);
+        }, 300);
     }
+
+    _renderModal(open) {
+        ReactDOM.unstable_renderSubtreeIntoContainer(this,
+            <Motion defaultStyle={{ opacity: 0, top: 20 }} style={open ?
+                { opacity: spring(1), top: spring(0) } :
+                { opacity: spring(0), top: spring(20) }
+            }>
+                { motionStyle =>
+                    <div className="relative" style={motionStyle}>
+                    { getModalContent(this.props) }
+                    </div>
+                }
+            </Motion>
+        , this._modalElement);
+    }
+
     render() {
         return null;
     }
