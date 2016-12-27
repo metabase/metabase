@@ -419,6 +419,8 @@ export const getDatabasesPermissionsGrid = createSelector(
 );
 
 const getCollections = (state) => state.permissions.collections;
+const getCollectionPermission = (permissions, groupId, { collectionId }) =>
+    getIn(permissions, [groupId, collectionId])
 
 export const getCollectionsPermissionsGrid = createSelector(
     getCollections, getGroups, getPermissions,
@@ -426,6 +428,8 @@ export const getCollectionsPermissionsGrid = createSelector(
         if (!groups || !permissions || !collections) {
             return null;
         }
+
+        const defaultGroup = _.find(groups, isDefaultGroup);
 
         return {
             type: "collection",
@@ -435,16 +439,19 @@ export const getCollectionsPermissionsGrid = createSelector(
                     options(groupId, entityId) {
                         return [OPTION_COLLECTION_WRITE, OPTION_COLLECTION_READ, OPTION_NONE];
                     },
-                    getter(groupId, { collectionId }) {
-                        return getIn(permissions, [groupId, collectionId]);
+                    getter(groupId, entityId) {
+                        return getCollectionPermission(permissions, groupId, entityId);
                     },
                     updater(groupId, { collectionId }, value) {
                         return assocIn(permissions, [groupId, collectionId], value);
                     },
                     confirm(groupId, entityId, value) {
-                        return [];
+                        return [
+                            getPermissionWarningModal(getCollectionPermission, null, defaultGroup, permissions, groupId, entityId, value)
+                        ];
                     },
                     warning(groupId, entityId) {
+                        return getPermissionWarning(getCollectionPermission, null, defaultGroup, permissions, groupId, entityId);
                     }
                 },
             },

@@ -21,6 +21,10 @@ export const loadCollections = createAction(LOAD_COLLECTIONS, CollectionsApi.lis
 export const saveCollection = createThunkAction(SAVE_COLLECTION, (collection) => {
     return async (dispatch, getState) => {
         try {
+            if (!collection.description) {
+                // description must be nil or non empty string
+                collection = { ...collection, description: null }
+            }
             let response;
             if (collection.id == null) {
                 MetabaseAnalytics.trackEvent("Collections", "Create");
