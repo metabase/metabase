@@ -98,7 +98,7 @@ export class WindowModal extends Component {
     }
 
     render() {
-        return <span />;
+        return null;
     }
 }
 
@@ -157,7 +157,7 @@ export class FullPageModal extends Component {
                 { opacity: spring(0), top: spring(20) }
             }>
                 { motionStyle =>
-                    <div className="relative" style={motionStyle}>
+                    <div className="full-height relative" style={motionStyle}>
                     { getModalContent(this.props) }
                     </div>
                 }

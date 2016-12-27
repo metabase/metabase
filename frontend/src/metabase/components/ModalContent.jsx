@@ -44,7 +44,6 @@ export default class ModalContent extends Component {
                 <ModalBody>
                     {children}
                 </ModalBody>
-                <div className="flex-full" />
                 { footer &&
                     <ModalFooter>
                         {footer}
@@ -66,10 +65,10 @@ ModalHeader.contextTypes = MODAL_CHILD_CONTEXT_TYPES;
 
 export const ModalBody = ({ children }, { fullPageModal, formModal }) =>
     <div
-        className={cx("ModalBody", { "px4": formModal })}
+        className={cx("ModalBody", { "px4": formModal, "flex flex-full": !formModal })}
     >
         <div
-            className="flex-full ml-auto mr-auto"
+            className="flex-full ml-auto mr-auto flex flex-column"
             style={{ maxWidth: (formModal && fullPageModal) ? FORM_WIDTH : undefined }}
         >
             {children}
