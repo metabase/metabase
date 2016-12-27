@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import { getCollections } from "../selectors";
+import { getAllCollections, getWritableCollections } from "../selectors";
 import { loadCollections } from "../collections";
 
 const mapStateToProps = (state, props) => ({
-    collections: getCollections(state, props)
+    collections: props.writable ? getWritableCollections(state, props) : getAllCollections(state, props)
 })
 
 const mapDispatchToProps = {

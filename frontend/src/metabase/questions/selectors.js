@@ -18,12 +18,17 @@ export const getItemsBySection      = (state) => state.questions.itemsBySection
 export const getSearchText          = (state) => state.questions.searchText;
 export const getSelectedIds         = (state) => state.questions.selectedIds;
 
-export const getCollections         = (state) => state.collections.collections;
+export const getAllCollections      = (state) => state.collections.collections;
+
+export const getWritableCollections = createSelector(
+    [getAllCollections],
+    (collections) => _.filter(collections, collection => collection.can_write)
+);
 
 export const getQuery = createSelector(
     [getSection],
     (section) => section && JSON.parse(section)
-)
+);
 
 const getSectionData = createSelector(
     [getItemsBySection, getEntityType, getSection],

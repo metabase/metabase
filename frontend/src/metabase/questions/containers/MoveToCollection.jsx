@@ -65,7 +65,7 @@ export default class MoveToCollection extends Component {
                 }
                 onClose={onClose}
             >
-                <CollectionList>
+                <CollectionList writable>
                     { collections =>
                         <ol className="List text-brand ml-auto mr-auto" style={{ width: 520 }}>
                             { [{ name: "None", id: null }].concat(collections).map((collection, index) =>

@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import { connect } from "react-redux";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
@@ -9,25 +8,13 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 import Button from "metabase/components/Button";
+import CollectionList from "metabase/questions/containers/CollectionList";
 
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
 
-import _ from "underscore";
-
 import "./SaveQuestionModal.css";
 
-import { loadCollections } from "metabase/questions/collections";
-
-const mapStateToProps = (state, props) => ({
-    collections: _.filter(state.collections.collections, collection => collection.can_write)
-});
-
-const mapDispatchToProps = {
-    loadCollections
-};
-
-@connect(mapStateToProps, mapDispatchToProps)
 export default class SaveQuestionModal extends Component {
 
     constructor(props, context) {
@@ -54,10 +41,6 @@ export default class SaveQuestionModal extends Component {
         createFn: PropTypes.func.isRequired,
         saveFn: PropTypes.func.isRequired,
         onClose: PropTypes.func.isRequired
-    }
-
-    componentWillMount() {
-        this.props.loadCollections();
     }
 
     componentDidMount() {
@@ -131,7 +114,6 @@ export default class SaveQuestionModal extends Component {
     }
 
     render() {
-        const { collections } = this.props;
         let { error, details } = this.state;
         var formError;
         if (error) {
@@ -183,6 +165,7 @@ export default class SaveQuestionModal extends Component {
                 id="SaveQuestionModal"
                 title={title}
                 footer={[
+                        formError,
                         <Button onClick={this.props.onClose}>
                             Cancel
                         </Button>,
@@ -227,7 +210,8 @@ export default class SaveQuestionModal extends Component {
                                         onChange={(e) => this.onChange("description", e.target.value)}
                                     />
                                 </FormField>
-                                { collections && collections.length > 0 &&
+                                <CollectionList writable>
+                                { (collections) => collections.length > 0 &&
                                     <FormField
                                         displayName="Which collection should this go in?"
                                         fieldName="collection_id"
@@ -262,6 +246,7 @@ export default class SaveQuestionModal extends Component {
                                         </Select>
                                     </FormField>
                                 }
+                                </CollectionList>
                             </div>
                         }
                     </ReactCSSTransitionGroup>
