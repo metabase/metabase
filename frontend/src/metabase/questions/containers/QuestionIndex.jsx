@@ -85,7 +85,7 @@ export default class QuestionIndex extends Component {
                         onClick={() => this.setState({ questionsExpanded: !questionsExpanded })}
                     >
                         <div className="flex align-center">
-                            <Motion defaultStyle={{ deg: 0 }} style={{ deg: questionsExpanded ? spring(0, presets.gentle) : spring(270, presets.gentle) }}>
+                            <Motion defaultStyle={{ deg: 0 }} style={{ deg: questionsExpanded ? spring(0, presets.gentle) : spring(-90, presets.gentle) }}>
                                 { motionStyle =>
                                     <Icon
                                         className="ml1 mr1"
