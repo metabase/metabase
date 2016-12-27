@@ -37,7 +37,11 @@ var Urls = {
     },
 
     collection(collection) {
-        return `/questions/collections/${collection.slug}`;
+        return `/questions/collections/${encodeURIComponent(collection.slug)}`;
+    },
+
+    label(label) {
+        return `/questions/search?label=${encodeURIComponent(label.slug)}`;
     }
 }
 

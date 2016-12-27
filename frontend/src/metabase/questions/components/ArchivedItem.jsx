@@ -5,7 +5,7 @@ import React, { PropTypes } from "react";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-const ArchivedItem = ({ name, type, icon, color = '#DEEAF1', onUnarchive }) =>
+const ArchivedItem = ({ name, type, icon, color = '#DEEAF1', isAdmin, onUnarchive }) =>
     <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-grey-0-hover">
         <Icon
             name={icon}
@@ -14,13 +14,15 @@ const ArchivedItem = ({ name, type, icon, color = '#DEEAF1', onUnarchive }) =>
             size={20}
         />
         { name }
-        <Tooltip tooltip={`Unarchive this ${type}`}>
-            <Icon
-                onClick={onUnarchive}
-                className="ml-auto cursor-pointer text-brand-hover hover-child"
-                name="unarchive"
-            />
-        </Tooltip>
+        { isAdmin &&
+            <Tooltip tooltip={`Unarchive this ${type}`}>
+                <Icon
+                    onClick={onUnarchive}
+                    className="ml-auto cursor-pointer text-brand-hover hover-child"
+                    name="unarchive"
+                />
+            </Tooltip>
+        }
     </div>
 
 ArchivedItem.propTypes = {

@@ -8,13 +8,16 @@ import ArchivedItem from "../components/ArchivedItem";
 import { loadEntities, setArchived, setSearchText } from "../questions";
 import { setCollectionArchived } from "../collections";
 import { getVisibleEntities, getSearchText } from "../selectors";
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import visualizations from "metabase/visualizations";
 
 const mapStateToProps = (state, props) => ({
     searchText:             getSearchText(state, props),
     archivedCards:          getVisibleEntities(state, { entityType: "cards", entityQuery: { f: "archived" }}) || [],
-    archivedCollections:    getVisibleEntities(state, { entityType: "collections", entityQuery: { archived: true }}) || []
+    archivedCollections:    getVisibleEntities(state, { entityType: "collections", entityQuery: { archived: true }}) || [],
+
+    isAdmin:                getUserIsAdmin(state, props)
 })
 
 const mapDispatchToProps = {
@@ -34,7 +37,7 @@ export default class Archive extends Component {
         this.props.loadEntities("collections", { archived: true });
     }
     render () {
-        const { archivedCards, archivedCollections } = this.props;
+        const { archivedCards, archivedCollections, isAdmin } = this.props;
         const items = [
             ...archivedCollections.map(collection => ({ type: "collection", ...collection })),
             ...archivedCards.map(card => ({ type: "card", ...card }))
@@ -49,12 +52,12 @@ export default class Archive extends Component {
                 <div>
                     { items.map(item =>
                         item.type === "collection" ?
-                            <ArchivedItem name={item.name} type="collection" icon="collection" color={item.color} onUnarchive={async () => {
+                            <ArchivedItem name={item.name} type="collection" icon="collection" color={item.color} isAdmin={isAdmin} onUnarchive={async () => {
                                 await this.props.setCollectionArchived(item.id, false);
                                 this.loadEntities()
                             }} />
                         : item.type === "card" ?
-                            <ArchivedItem name={item.name} type="card" icon={visualizations.get(item.display).iconName} onUnarchive={async () => {
+                            <ArchivedItem name={item.name} type="card" icon={visualizations.get(item.display).iconName} isAdmin={isAdmin} onUnarchive={async () => {
                                 await this.props.setArchived(item.id, false);
                                 this.loadEntities();
                             }} />

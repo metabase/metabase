@@ -10,15 +10,17 @@ function caseInsensitiveSearch(haystack, needle) {
     return !needle || (haystack != null && haystack.toLowerCase().indexOf(needle.toLowerCase()) >= 0);
 }
 
-export const getEntityType          = (state, props) => props.entityType;
+export const getEntityType          = (state, props) => props && props.entityType ? props.entityType : state.questions.lastEntityType;
+export const getEntityQuery         = (state, props) => props && props.entityQuery ? JSON.stringify(props.entityQuery) : state.questions.lastEntityQuery;
+
 export const getSection             = (state, props) => props.entityQuery && JSON.stringify(props.entityQuery);
-export const getEntities            = (state) => state.questions.entities
-export const getItemsBySection      = (state) => state.questions.itemsBySection
+export const getEntities            = (state, props) => state.questions.entities
+export const getItemsBySection      = (state, props) => state.questions.itemsBySection
 
-export const getSearchText          = (state) => state.questions.searchText;
-export const getSelectedIds         = (state) => state.questions.selectedIds;
+export const getSearchText          = (state, props) => state.questions.searchText;
+export const getSelectedIds         = (state, props) => state.questions.selectedIds;
 
-export const getAllCollections      = (state) => state.collections.collections;
+export const getAllCollections      = (state, props) => state.collections.collections;
 
 export const getWritableCollections = createSelector(
     [getAllCollections],
@@ -26,14 +28,14 @@ export const getWritableCollections = createSelector(
 );
 
 export const getQuery = createSelector(
-    [getSection],
-    (section) => section && JSON.parse(section)
+    [getEntityQuery],
+    (entityQuery) => entityQuery && JSON.parse(entityQuery)
 );
 
 const getSectionData = createSelector(
-    [getItemsBySection, getEntityType, getSection],
-    (itemsBySection, type, section) =>
-        getIn(itemsBySection, [type, section])
+    [getItemsBySection, getEntityType, getEntityQuery],
+    (itemsBySection, entityType, entityQuery) =>
+        getIn(itemsBySection, [entityType, entityQuery])
 );
 
 export const getSectionLoading = createSelector(
@@ -63,7 +65,7 @@ const getEntitySelected = (state, props) =>
 const getEntityVisible = (state, props) =>
     caseInsensitiveSearch(getEntity(state, props).name, getSearchText(state, props));
 
-const getLabelEntities = (state) => state.labels.entities.labels
+const getLabelEntities = (state, props) => state.labels.entities.labels
 
 export const makeGetItem = () => {
     const getItem = createSelector(
@@ -126,9 +128,9 @@ export const getAllAreSelected = createSelector(
 );
 
 export const getSectionIsArchive = createSelector(
-    [getSection],
-    (section) =>
-        section === "archived"
+    [getQuery],
+    (query) =>
+        query && query.f === "archived"
 );
 
 const sections = [
@@ -139,18 +141,18 @@ const sections = [
     { id: "popular",   name: "Most popular",    icon: "popular" }
 ];
 
-export const getSections    = (state) => sections;
+export const getSections    = (state, props) => sections;
 
-export const getEditingLabelId = (state) => state.labels.editing;
+export const getEditingLabelId = (state, props) => state.labels.editing;
 
 export const getLabels = createSelector(
-    [(state) => state.labels.entities.labels, (state) => state.labels.labelIds],
+    [(state, props) => state.labels.entities.labels, (state, props) => state.labels.labelIds],
     (labelEntities, labelIds) =>
         labelIds ? labelIds.map(id => labelEntities[id]).sort((a, b) => a.name.localeCompare(b.name)) : []
 );
 
-export const getLabelsLoading = (state) => !state.labels.labelIds;
-export const getLabelsError = (state) => state.labels.error;
+export const getLabelsLoading = (state, props) => !state.labels.labelIds;
+export const getLabelsError = (state, props) => state.labels.error;
 
 const getLabelCountsForSelectedEntities = createSelector(
     [getSelectedEntities],
@@ -201,4 +203,4 @@ export const getSectionName = createSelector(
     }
 );
 
-export const getUndos = (state) => state.undo;
+export const getUndos = (state, props) => state.undo;

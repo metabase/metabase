@@ -20,9 +20,10 @@ const mapDispatchToProps = ({
     push,
     replace,
     goBack,
-    loadCollections,
+    goToQuestions: () => push(`/questions`),
     editCollection: (id) => push(`/collections/${id}`),
-    editPermissions: (id) => push(`/collections/permissions?collection=${id}`)
+    editPermissions: (id) => push(`/collections/permissions?collection=${id}`),
+    loadCollections,
 })
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -32,6 +33,7 @@ export default class CollectionPage extends Component {
     }
     render () {
         const { collection, params, location, push, replace, goBack } = this.props;
+        const canEdit = collection && collection.can_write;
         return (
             <div className="mx4 mt4">
                 <div className="flex align-center">
@@ -45,9 +47,9 @@ export default class CollectionPage extends Component {
                     />
                     <div className="ml-auto">
                         <CollectionActions>
-                            { this.props.collection && <ArchiveCollectionWidget collectionId={this.props.collection.id} /> }
-                            <Icon name="pencil" tooltip="Edit collection" onClick={() => this.props.editCollection(this.props.collection.id)} />
-                            <Icon name="lock" tooltip="Set permissions" onClick={() => this.props.editPermissions(this.props.collection.id)} />
+                            { canEdit && <ArchiveCollectionWidget collectionId={this.props.collection.id} onArchived={this.props.goToQuestions}/> }
+                            { canEdit && <Icon name="pencil" tooltip="Edit collection" onClick={() => this.props.editCollection(this.props.collection.id)} /> }
+                            { canEdit && <Icon name="lock" tooltip="Set permissions" onClick={() => this.props.editPermissions(this.props.collection.id)} /> }
                         </CollectionActions>
                     </div>
                 </div>
@@ -61,6 +63,7 @@ export default class CollectionPage extends Component {
                             query: { ...location.query, f: section }
                         })}
                         showCollectionName={false}
+                        editable={canEdit}
                     />
                 </div>
             </div>

@@ -20,15 +20,20 @@ export default class ArchiveCollectionWidget extends Component {
     _onArchive = async () => {
         try {
             await this.props.setCollectionArchived(this.props.collectionId, true);
-            this.onClose();
+            this._onClose();
+            if (this.props.onArchived) {
+                this.props.onArchived();
+            }
         } catch (error) {
             console.error(error)
             this.setState({ error })
         }
     }
 
-    onClose = () => {
-        this.refs.modal.close();
+    _onClose = () => {
+        if (this.refs.modal) {
+            this.refs.modal.close();
+        }
     }
 
     render() {
@@ -43,7 +48,7 @@ export default class ArchiveCollectionWidget extends Component {
                 }
                 title="Archive this collection?"
                 footer={[
-                    <Button>Cancel</Button>,
+                    <Button onClick={this._onClose}>Cancel</Button>,
                     <Button warning onClick={this._onArchive}>Archive</Button>
                 ]}
             >

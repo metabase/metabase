@@ -34,23 +34,23 @@ const SET_ARCHIVED = 'metabase/questions/SET_ARCHIVED';
 const SET_LABELED = 'metabase/questions/SET_LABELED';
 const SET_COLLECTION = 'metabase/collections/SET_COLLECTION';
 
-export const loadEntities = createThunkAction(LOAD_ENTITIES, (type, query) => {
+export const loadEntities = createThunkAction(LOAD_ENTITIES, (entityType, entityQueryObject) => {
     return async (dispatch, getState) => {
-        let section = JSON.stringify(query);
+        let entityQuery = JSON.stringify(entityQueryObject);
         try {
             let result;
             dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADING" }));
-            if (type === "cards") {
-                result = { type, section, ...normalize(momentifyArraysTimestamps(await CardApi.list(query)), arrayOf(card)) };
-            } else if (type === "collections") {
-                result = { type, section, ...normalize(momentifyArraysTimestamps(await CollectionsApi.list(query)), arrayOf(collection)) };
+            if (entityType === "cards") {
+                result = { entityType, entityQuery, ...normalize(momentifyArraysTimestamps(await CardApi.list(entityQueryObject)), arrayOf(card)) };
+            } else if (entityType === "collections") {
+                result = { entityType, entityQuery, ...normalize(momentifyArraysTimestamps(await CollectionsApi.list(entityQueryObject)), arrayOf(collection)) };
             } else {
-                throw "Unknown entity type " + type;
+                throw "Unknown entity type " + entityType;
             }
             dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADED" }));
             return result;
         } catch (error) {
-            throw { type, section, error };
+            throw { entityType, entityQuery, error };
         }
     }
 });
@@ -182,6 +182,8 @@ export const setAllSelected = createThunkAction(SET_ALL_SELECTED, (selected) => 
 });
 
 const initialState = {
+    lastEntityType: null,
+    lastEntityQuery: null,
     entities: {},
     itemsBySection: {},
     searchText: "",
@@ -203,15 +205,17 @@ export default function(state = initialState, { type, payload, error }) {
             return { ...state, selectedIds: payload };
         case LOAD_ENTITIES:
             if (error) {
-                return assocIn(state, ["itemsBySection", payload.type, payload.section, "error"], payload.error);
+                return assocIn(state, ["itemsBySection", payload.entityType, payload.entityQuery, "error"], payload.error);
             } else {
                 return (chain(state)
+                    .assoc("lastEntityType", payload.entityType)
+                    .assoc("lastEntityQuery", payload.entityQuery)
                     .assoc("selectedIds", {})
                     .assoc("searchText", "")
-                    .assocIn(["itemsBySection", payload.type, payload.section, "error"], null)
-                    .assocIn(["itemsBySection", payload.type, payload.section, "items"], payload.result)
+                    .assocIn(["itemsBySection", payload.entityType, payload.entityQuery, "error"], null)
+                    .assocIn(["itemsBySection", payload.entityType, payload.entityQuery, "items"], payload.result)
                     // store the initial sort order so if we remove and undo an item it can be put back in it's original location
-                    .assocIn(["itemsBySection", payload.type, payload.section, "sortIndex"], payload.result.reduce((o, id, i) => { o[id] = i; return o; }, {}))
+                    .assocIn(["itemsBySection", payload.entityType, payload.entityQuery, "sortIndex"], payload.result.reduce((o, id, i) => { o[id] = i; return o; }, {}))
                     .value());
             }
         case SET_FAVORITED:
@@ -281,17 +285,17 @@ export default function(state = initialState, { type, payload, error }) {
 }
 
 function updateSections(state, entityType, entityId, sectionPredicate, shouldContain) {
-    return updateIn(state, ["itemsBySection", entityType], (sections) =>
-        _.mapObject(sections, (section, sectionKey) => {
-            if (sectionPredicate(JSON.parse(sectionKey))) {
-                const doesContain = _.contains(section.items, entityId);
+    return updateIn(state, ["itemsBySection", entityType], (entityQueries) =>
+        _.mapObject(entityQueries, (entityQueryResult, entityQuery) => {
+            if (sectionPredicate(JSON.parse(entityQuery))) {
+                const doesContain = _.contains(entityQueryResult.items, entityId);
                 if (!doesContain && shouldContain) {
-                    return { ...section, items: section.items.concat(entityId) };
+                    return { ...entityQueryResult, items: entityQueryResult.items.concat(entityId) };
                 } else if (doesContain && !shouldContain) {
-                    return { ...section, items: section.items.filter(id => id !== entityId) };
+                    return { ...entityQueryResult, items: entityQueryResult.items.filter(id => id !== entityId) };
                 }
             }
-            return section;
+            return entityQueryResult;
         })
     );
 }
