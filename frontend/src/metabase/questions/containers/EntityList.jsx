@@ -245,7 +245,7 @@ class EntityFilterWidget extends Component {
                 targetOffsetY={10}
                 triggerElement={
                     <div className="ml2 flex align-center text-brand">
-                        <h3>{section && section.name}</h3>
+                        <span className="text-bold">{section && section.name}</span>
                         <Icon
                             ref={i => this.icon = i}
                             className="ml1"
