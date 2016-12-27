@@ -83,6 +83,7 @@ const Item = ({
                     >
                         <MoveToCollection
                             questionId={id}
+                            initialCollectionId={collection && collection.id}
                         />
                     </ModalWithTrigger>
                     <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>

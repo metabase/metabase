@@ -10,8 +10,6 @@ import MoveToCollection from "../containers/MoveToCollection.jsx";
 
 import LabelPopover from "../containers/LabelPopover.jsx";
 
-import cx from "classnames";
-
 const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsArchive, setAllSelected, setArchived, labels }) =>
     <div className={S.actionHeader}>
         <Tooltip tooltip={"Select all " + visibleCount} isEnabled={!allAreSelected}>

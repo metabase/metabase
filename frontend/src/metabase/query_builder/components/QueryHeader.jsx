@@ -278,7 +278,10 @@ export default class QueryHeader extends Component {
                             </Tooltip>
                         }
                     >
-                        <MoveToCollection questionId={this.props.card.id} />
+                        <MoveToCollection
+                            questionId={this.props.card.id}
+                            initialCollectionId={this.props.card && this.props.card.collection_id}
+                        />
                     </ModalWithTrigger>
                 ]);
             }

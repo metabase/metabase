@@ -26,7 +26,7 @@ export default class MoveToCollection extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            collectionId: undefined
+            collectionId: props.initialCollectionId
         }
     }
 
