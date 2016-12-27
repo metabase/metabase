@@ -202,5 +202,3 @@ export const getSectionName = createSelector(
         return "";
     }
 );
-
-export const getUndos = (state, props) => state.undo;

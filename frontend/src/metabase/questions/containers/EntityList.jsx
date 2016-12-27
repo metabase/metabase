@@ -13,7 +13,6 @@ import S from "../components/List.css";
 import List from "../components/List";
 import SearchHeader from "../components/SearchHeader";
 import ActionHeader from "../components/ActionHeader";
-import UndoListing from "./UndoListing";
 
 import _ from "underscore";
 
@@ -225,7 +224,6 @@ export default class EntityList extends Component {
                     }
                     </LoadingAndErrorWrapper>
                 </div>
-                <UndoListing />
             </div>
         );
     }

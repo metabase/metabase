@@ -40,7 +40,7 @@
     align-items: flex-end;
 }
 
-.align-self-end {
+.align-self-end, :local(.align-self-end) {
     align-self: flex-end;
 }
 

@@ -7,11 +7,13 @@ import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import Urls from "metabase/lib/urls";
+
+import { push, replace } from "react-router-redux";
 import { setRequestState } from "metabase/redux/requests";
+import { addUndo } from "metabase/redux/undo";
 
 import { getVisibleEntities, getSelectedEntities } from "./selectors";
-import { addUndo } from "./undo";
-import { push, replace } from "react-router-redux";
 
 import { SET_COLLECTION_ARCHIVED } from "./collections";
 
@@ -69,11 +71,22 @@ export const setFavorited = createThunkAction(SET_FAVORITED, (cardId, favorited)
     }
 });
 
-function createUndo(type, actions) {
+import React from "react";
+import { Link } from "react-router";
+
+function createUndo(type, actions, collection) {
     return {
         type: type,
         count: actions.length,
-        message: (undo) => undo.count + " " + inflect(null, undo.count, "question was", "questions were") + " " + type,
+        message: (undo) =>
+            <div className="flex flex-column">
+                <div>
+                    { undo.count + " " + inflect(null, undo.count, "question was", "questions were") + " " + type }
+                    { undo.count === 1 && collection &&
+                        <span> to the <Link className="link" to={Urls.collection(collection)}>{collection.name}</Link> collection.</span>
+                    }
+                </div>
+            </div>,
         actions: actions
     };
 }
@@ -101,7 +114,8 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (cardId, archived, un
             if (undoable) {
                 dispatch(addUndo(createUndo(
                     archived ? "archived" : "unarchived",
-                    [setArchived(cardId, !archived)]
+                    [setArchived(cardId, !archived)],
+                    !archived && card.collection
                 )));
                 MetabaseAnalytics.trackEvent("Questions", archived ? "Archive" : "Unarchive");
             }

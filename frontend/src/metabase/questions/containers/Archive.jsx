@@ -58,7 +58,7 @@ export default class Archive extends Component {
                             }} />
                         : item.type === "card" ?
                             <ArchivedItem name={item.name} type="card" icon={visualizations.get(item.display).iconName} isAdmin={isAdmin} onUnarchive={async () => {
-                                await this.props.setArchived(item.id, false);
+                                await this.props.setArchived(item.id, false, true);
                                 this.loadEntities();
                             }} />
                         :
