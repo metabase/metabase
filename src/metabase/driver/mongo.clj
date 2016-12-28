@@ -198,7 +198,21 @@
                                                           {:name         "ssl"
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
-                                                           :default      false}])
+                                                           :default      false}
+                                                          {:name         "tunnel-host"
+                                                           :display-name "SSH tunnel host"
+                                                           :placeholder  "What username do you use to login to the SSH tunnel?"}
+                                                          {:name         "tunnel-port"
+                                                           :display-name "SSH tunnel port"
+                                                           :type         :integer
+                                                           :default      22}
+                                                          {:name         "tunnel-user"
+                                                           :display-name "SSH tunnel username"
+                                                           :placeholder  "What username do you use to login to the SSH tunnel?"}
+                                                          {:name         "tunnel-pass"
+                                                           :display-name "SSH tunnel password"
+                                                           :type         :password
+                                                           :placeholder  "******"}])
           :execute-query                     (u/drop-first-arg qp/execute-query)
           :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
           :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)

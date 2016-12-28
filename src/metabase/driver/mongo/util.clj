@@ -4,7 +4,8 @@
             (monger [core :as mg]
                     [credentials :as mcred])
             (metabase [driver :as driver]
-                      [util :as u])))
+                      [util :as u]))
+  (:import com.jcraft.jsch.JSch))
 
 (def ^:const ^:private connection-timeout-ms
   "Number of milliseconds to wait when attempting to establish a Mongo connection.
@@ -39,16 +40,25 @@
                                             [server-address options]
                                             [server-address options credentials]))
 
+(defn start-ssh-tunnel
+  [{:keys [tunnel-host tunnel-port tunnel-user tunnel-pass host port]}]
+  (let [session (.getSession (new com.jcraft.jsch.JSch) tunnel-user tunnel-host tunnel-port)]
+    (.setPassword session tunnel-pass)
+    (.setConfig session "StrictHostKeyChecking" "no")
+    (.connect session)
+    (.setPortForwardingL session 0 host port)))
+
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  (let [{:keys [dbname host port user pass ssl authdb]
-         :or   {port 27017, pass "", ssl false}} (cond
-                                                   (string? database)            {:dbname database}
-                                                   (:dbname (:details database)) (:details database) ; entire Database obj
-                                                   (:dbname database)            database            ; connection details map only
-                                                   :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
+  (let [details (cond
+                  (string? database)            {:dbname database}
+                  (:dbname (:details database)) (:details database) ; entire Database obj
+                  (:dbname database)            database            ; connection details map only
+                  :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
+        {:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass]
+         :or   {port 27017, pass "", ssl false}} details
         user             (when (seq user) ; ignore empty :user and :pass strings
                            user)
         pass             (when (seq pass)
@@ -56,6 +66,12 @@
         authdb           (if (seq authdb)
                            authdb
                            dbname)
+        port             (if (seq tunnel-host)
+                           (start-ssh-tunnel details)
+                           port)
+        host             (if (seq tunnel-host)
+                           "127.0.0.1"
+                           host)
         server-address   (mg/server-address host port)
         credentials      (when user
                            (mcred/create user authdb pass))

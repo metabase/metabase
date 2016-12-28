@@ -45,6 +45,7 @@
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
                   "v2-rev324-1.22.0"]
                  [com.h2database/h2 "1.4.193"]                        ; embedded SQL database
+                 [com.jcraft/jsch "0.1.54"]                           ; SSH client for tunnels
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver
