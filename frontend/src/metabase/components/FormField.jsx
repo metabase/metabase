@@ -5,8 +5,10 @@ import cx from "classnames";
 export default class FormField extends Component {
     static propTypes = {
         // redux-form compatible:
-        error: PropTypes.object,
         name: PropTypes.string,
+        error: PropTypes.any,
+        visited: PropTypes.bool,
+        active: PropTypes.bool,
 
         displayName: PropTypes.string.isRequired,
 
@@ -16,7 +18,7 @@ export default class FormField extends Component {
     };
 
     getError() {
-        if (this.props.error) {
+        if (this.props.error && this.props.visited !== false && this.props.active !== true) {
             return this.props.error;
         }
 

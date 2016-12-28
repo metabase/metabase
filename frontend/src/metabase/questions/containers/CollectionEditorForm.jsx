@@ -14,7 +14,7 @@ import { reduxForm } from "redux-form";
     validate: (values) => {
         const errors = {};
         if (!values.name) {
-            errors.name = true;
+            errors.name = "Name is required";
         }
         if (!values.color) {
             errors.color = "Color is required";
