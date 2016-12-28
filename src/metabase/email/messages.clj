@@ -169,17 +169,21 @@
       (.write fos img-bytes))
     file))
 
+(defn- hash-bytes
+  "Generate a hash to be used in a Content-ID"
+  [^bytes img-bytes]
+  (Math/abs ^Integer (java.util.Arrays/hashCode img-bytes)))
+
 (defn- render-image [images-atom, ^bytes image-bytes]
-  (str "cid:IMAGE" (or (u/first-index-satisfying (fn [^bytes item]
-                                                   (java.util.Arrays/equals item image-bytes))
-                                                 @images-atom)
-                       (u/prog1 (count @images-atom)
-                         (swap! images-atom conj image-bytes)))))
+  (let [content-id (str (hash-bytes image-bytes) "@metabase")]
+    (if-not (contains? @images-atom content-id)
+      (swap! images-atom assoc content-id image-bytes))
+    (str "cid:" content-id)))
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [pulse results]
-  (let [images       (atom [])
+  (let [images       (atom {})
         body         (binding [render/*include-title* true
                                render/*render-img-fn* (partial render-image images)]
                        (vec (cons :div (for [result results]
@@ -195,8 +199,8 @@
                         :quotationAuthor (:author data-quote)
                         :logoFooter      true})]
     (apply vector {:type "text/html; charset=utf-8" :content message-body}
-           (map-indexed (fn [idx bytes] {:type         :inline
-                                         :content-id   (str "IMAGE" idx)
-                                         :content-type "image/png"
-                                         :content      (write-byte-array-to-temp-file bytes)})
-                        @images))))
+           (map (fn [[content-id bytes]] {:type         :inline
+                                    :content-id   content-id
+                                    :content-type "image/png"
+                                    :content      (write-byte-array-to-temp-file bytes)})
+                (seq @images)))))
