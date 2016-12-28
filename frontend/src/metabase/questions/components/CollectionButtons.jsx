@@ -22,7 +22,7 @@ const CollectionButtons = ({ collections, isAdmin, push }) =>
 
 const NewCollectionButton = ({ push }) =>
     <div
-        className="relative block p4 hover-parent text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
+        className="relative block p4 hover-parent cursor-pointer text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
         style={{ borderRadius: 10 }}
         onClick={() => push(`/collections/create`)}
     >
@@ -48,7 +48,7 @@ const NewCollectionButton = ({ push }) =>
 
 const CollectionButton = ({ id, name, color, slug, isAdmin, push }) =>
     <div
-        className="relative block p4 hover-parent hover--visibility text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
+        className="relative block p4 hover-parent cursor-pointer hover--visibility text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
         style={{ borderRadius: 10 }}
         onClick={() => push(`/questions/collections/${slug}`)}
     >
