@@ -181,7 +181,19 @@ export class InlineModal extends Component {
     }
 
     render() {
-        return getModalContent(this.props);
+        const { isOpen } = this.props;
+        return (
+            <Motion defaultStyle={{ opacity: 0, top: 20 }} style={isOpen ?
+                { opacity: spring(1), top: spring(0) } :
+                { opacity: spring(0), top: spring(20) }
+            }>
+                { motionStyle =>
+                    <div className="full-height relative" style={motionStyle}>
+                    { getModalContent(this.props) }
+                    </div>
+                }
+            </Motion>
+        )
     }
 }
 
