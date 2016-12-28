@@ -44,7 +44,8 @@
     align-items: center;
 }
 
-.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover {
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover,
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover .Icon {
     background-color: var(--brand-color) !important;
     color: white !important;
 }

@@ -238,6 +238,6 @@ export default class Popover extends Component {
     }
 
     render() {
-        return <span className="hide" />;
+        return null;
     }
 }

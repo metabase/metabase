@@ -126,16 +126,19 @@ export class Option extends Component {
     };
 
     render() {
-        const { children, selected, disabled, onClick } = this.props;
+        const { children, selected, disabled, icon, iconColor, iconSize, onClick } = this.props;
         return (
             <div
                 onClick={onClick}
-                className={cx("ColumnarSelector-row flex align-center cursor-pointer no-decoration", {
+                className={cx("ColumnarSelector-row flex align-center cursor-pointer no-decoration relative", {
                     "ColumnarSelector-row--selected": selected,
                     "disabled": disabled
                 })}
             >
-                <Icon name="check"  size={14}/>
+                <Icon name="check" size={14} />
+                { icon &&
+                    <Icon name={icon} style={{ position: "absolute", color: iconColor, visibility: !selected ? "visible" : "hidden" }} size={iconSize} />
+                }
                 {children}
             </div>
         );

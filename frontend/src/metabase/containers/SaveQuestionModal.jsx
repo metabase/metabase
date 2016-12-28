@@ -228,19 +228,11 @@ export default class SaveQuestionModal extends Component {
                                                 <Option
                                                     key={index}
                                                     value={collection.id}
+                                                    icon={collection.id != null && "collection"}
+                                                    iconColor={collection.color}
+                                                    iconSize={18}
                                                 >
-                                                        { collection.id &&
-                                                        <Icon
-                                                            className="mr1"
-                                                            name="collection"
-                                                            width={20}
-                                                            height={20}
-                                                            style={{
-                                                                color: collection.color
-                                                            }}
-                                                        />
-                                                        }
-                                                        {collection.name}
+                                                    {collection.name}
                                                 </Option>
                                             )}
                                         </Select>
