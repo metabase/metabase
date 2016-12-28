@@ -224,7 +224,7 @@
    collection_id          (s/maybe su/IntGreaterThanZero)}
   (let [card (write-check Card id)]
     ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
-    (when (not= (:collection_id card) collection_id)
+    (when (and (not (nil? collection_id)) (not= (:collection_id card) collection_id))
       (check-permissions-for-collection collection_id))
     ;; ok, now save the Card
     (db/update! Card id
