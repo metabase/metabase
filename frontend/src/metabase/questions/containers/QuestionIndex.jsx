@@ -1,11 +1,11 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import { Motion, spring, presets } from "react-motion";
 import Collapse from "react-collapse";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
+import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import ExpandingSearchField from "../components/ExpandingSearchField";
 import CollectionActions from "../components/CollectionActions";
@@ -16,16 +16,15 @@ import EntityList from "./EntityList";
 
 import { search } from "../questions";
 import { loadCollections } from "../collections";
+import { getAllCollections, getAllEntities } from "../selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { replace, push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => ({
-    items: state.questions.entities.cards,
-    sectionId: state.questions.section,
-    collections: state.collections.collections,
-
-    isAdmin: getUserIsAdmin(state, props)
+    questions:   getAllEntities(state, props),
+    collections: getAllCollections(state, props),
+    isAdmin:     getUserIsAdmin(state, props),
 })
 
 const mapDispatchToProps = ({
@@ -48,10 +47,12 @@ export default class QuestionIndex extends Component {
     }
 
     render () {
-        const { collections, replace, push, location, isAdmin } = this.props;
+        const { questions, collections, replace, push, location, isAdmin } = this.props;
         const { questionsExpanded } = this.state;
-        const hasCollections = collections.length > 0;
+        const hasCollections = collections && collections.length > 0;
+        const hasQuestions = questions && questions.length > 0;
         const showCollections = isAdmin || hasCollections;
+        const showQuestions = hasQuestions || !showCollections || location.query.f != null;
         return (
             <div className="relative mx4">
                 <div className="flex align-center pt4 pb2">
@@ -80,28 +81,19 @@ export default class QuestionIndex extends Component {
                         }
                     </div>
                 }
-                { showCollections &&
+                {/* only show title if we're showing the questions AND collections, otherwise title goes in the main header */}
+                { showQuestions && showCollections &&
                     <div
                         className="inline-block mt2 mb2 cursor-pointer text-brand-hover"
                         onClick={() => this.setState({ questionsExpanded: !questionsExpanded })}
                     >
                         <div className="flex align-center">
-                            <Motion defaultStyle={{ deg: 0 }} style={{ deg: questionsExpanded ? spring(0, presets.gentle) : spring(-90, presets.gentle) }}>
-                                { motionStyle =>
-                                    <Icon
-                                        className="ml1 mr1"
-                                        name="expandarrow"
-                                        style={{
-                                            transform: `rotate(${motionStyle.deg}deg)`
-                                        }}
-                                    />
-                                }
-                            </Motion>
+                            <DisclosureTriangle open={questionsExpanded} />
                             <h2>Everything Else</h2>
                         </div>
                     </div>
                 }
-                <Collapse isOpened={questionsExpanded || !showCollections} keepCollapsedContent={true}>
+                <Collapse isOpened={showQuestions && (questionsExpanded || !showCollections)} keepCollapsedContent={true}>
                     <EntityList
                         entityType="cards"
                         entityQuery={{ f: "all", collection: "", ...location.query }}
