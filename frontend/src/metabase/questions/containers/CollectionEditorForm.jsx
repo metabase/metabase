@@ -15,6 +15,8 @@ import { reduxForm } from "redux-form";
         const errors = {};
         if (!values.name) {
             errors.name = "Name is required";
+        } else if (values.name.length > 100) {
+            errors.name = "Name must be 100 characters or less";
         }
         if (!values.color) {
             errors.color = "Color is required";
