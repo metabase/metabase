@@ -18,7 +18,7 @@ import { search } from "../questions";
 import { loadCollections } from "../collections";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { replace } from "react-router-redux";
+import { replace, push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => ({
     items: state.questions.entities.cards,
@@ -32,6 +32,7 @@ const mapDispatchToProps = ({
     search,
     loadCollections,
     replace,
+    push,
 })
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -47,7 +48,7 @@ export default class QuestionIndex extends Component {
     }
 
     render () {
-        const { collections, replace, location, isAdmin } = this.props;
+        const { collections, replace, push, location, isAdmin } = this.props;
         const { questionsExpanded } = this.state;
         const hasCollections = collections.length > 0;
         const showCollections = isAdmin || hasCollections;
@@ -73,7 +74,7 @@ export default class QuestionIndex extends Component {
                 { showCollections &&
                     <div className="mb2">
                         { collections.length > 0 ?
-                            <CollectionButtons collections={collections} isAdmin={isAdmin} />
+                            <CollectionButtons collections={collections} isAdmin={isAdmin} push={push} />
                         :
                             <CollectionEmptyState />
                         }

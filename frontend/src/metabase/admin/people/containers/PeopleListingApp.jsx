@@ -9,7 +9,6 @@ import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import Modal from "metabase/components/Modal.jsx";
-import ModalContent, { ModalFooter } from "metabase/components/ModalContent.jsx";
 import PasswordReveal from "metabase/components/PasswordReveal.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
 import Icon from "metabase/components/Icon.jsx";

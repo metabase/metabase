@@ -30,6 +30,10 @@ export default class EntityItem extends Component {
         setItemSelected:    PropTypes.func.isRequired,
         setFavorited:       PropTypes.func.isRequired,
         setArchived:        PropTypes.func.isRequired,
+        editable:           PropTypes.bool,
+        showCollectionName: PropTypes.bool,
+        onEntityClick:      PropTypes.func,
+        onMove:             PropTypes.func,
     };
 
     render() {

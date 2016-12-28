@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import cx from "classnames";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
-import { Motion, spring, presets } from "react-motion";
+import { Motion, spring } from "react-motion";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
 import ModalContent from "./ModalContent";

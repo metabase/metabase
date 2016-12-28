@@ -4,8 +4,6 @@ import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Button from "metabase/components/Button.jsx";
 
-import cx from "classnames";
-
 export default class CreateDashboardModal extends Component {
     constructor(props, context) {
         super(props, context);
@@ -78,6 +76,7 @@ export default class CreateDashboardModal extends Component {
                 id="CreateDashboardModal"
                 title="Create dashboard"
                 footer={[
+                    formError,
                     <Button onClick={this.props.onClose}>Cancel</Button>,
                     <Button primary={formReady} disabled={!formReady} onClick={this.createNewDash}>Create</Button>
                 ]}
@@ -88,15 +87,16 @@ export default class CreateDashboardModal extends Component {
                         <FormField
                             displayName="Name"
                             fieldName="name"
-                            errors={this.state.errors}>
-                            <input className="Form-input
-                            full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autoFocus />
+                            errors={this.state.errors}
+                        >
+                            <input className="Form-input full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autoFocus />
                         </FormField>
 
                         <FormField
                             displayName="Description"
                             fieldName="description"
-                            errors={this.state.errors}>
+                            errors={this.state.errors}
+                        >
                             <input className="Form-input full" name="description" placeholder="It's optional but oh, so helpful"  value={this.state.description} onChange={this.setDescription} />
                         </FormField>
                     </div>

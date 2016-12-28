@@ -100,11 +100,14 @@ const Item = ({
     </div>
 
 Item.propTypes = {
+    entity:             PropTypes.object.isRequired,
     id:                 PropTypes.number.isRequired,
     name:               PropTypes.string.isRequired,
     created:            PropTypes.string.isRequired,
     description:        PropTypes.string,
     by:                 PropTypes.string.isRequired,
+    labels:             PropTypes.array.isRequired,
+    collection:         PropTypes.object,
     selected:           PropTypes.bool.isRequired,
     favorite:           PropTypes.bool.isRequired,
     archived:           PropTypes.bool.isRequired,
@@ -112,6 +115,8 @@ Item.propTypes = {
     setItemSelected:    PropTypes.func.isRequired,
     setFavorited:       PropTypes.func.isRequired,
     setArchived:        PropTypes.func.isRequired,
+    onEntityClick:      PropTypes.func,
+    showCollectionName: PropTypes.bool,
 };
 
 const ItemBody = pure(({ entity, id, name, description, labels, favorite, collection, setFavorited, onEntityClick }) =>

@@ -7,7 +7,7 @@ import PermissionsApp from "./PermissionsApp.jsx";
 import { CollectionsApi } from "metabase/services";
 
 import { getCollectionsPermissionsGrid, getIsDirty, getSaveError, getDiff } from "../selectors";
-import { updatePermission, savePermissions, loadPermissions, loadCollections } from "../permissions";
+import { updatePermission, savePermissions, loadCollections } from "../permissions";
 import { goBack, push } from "react-router-redux";
 
 const mapStateToProps = (state, props) => {

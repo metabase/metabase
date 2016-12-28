@@ -52,12 +52,12 @@ export default class Archive extends Component {
                 <div>
                     { items.map(item =>
                         item.type === "collection" ?
-                            <ArchivedItem name={item.name} type="collection" icon="collection" color={item.color} isAdmin={isAdmin} onUnarchive={async () => {
+                            <ArchivedItem key={item.type + item.id} name={item.name} type="collection" icon="collection" color={item.color} isAdmin={isAdmin} onUnarchive={async () => {
                                 await this.props.setCollectionArchived(item.id, false);
                                 this.loadEntities()
                             }} />
                         : item.type === "card" ?
-                            <ArchivedItem name={item.name} type="card" icon={visualizations.get(item.display).iconName} isAdmin={isAdmin} onUnarchive={async () => {
+                            <ArchivedItem key={item.type + item.id} name={item.name} type="card" icon={visualizations.get(item.display).iconName} isAdmin={isAdmin} onUnarchive={async () => {
                                 await this.props.setArchived(item.id, false, true);
                                 this.loadEntities();
                             }} />

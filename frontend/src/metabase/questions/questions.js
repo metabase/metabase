@@ -78,7 +78,7 @@ function createUndo(type, actions, collection) {
     return {
         type: type,
         count: actions.length,
-        message: (undo) =>
+        message: (undo) => // eslint-disable-line react/display-name
             <div className="flex flex-column">
                 <div>
                     { undo.count + " " + inflect(null, undo.count, "question was", "questions were") + " " + type }

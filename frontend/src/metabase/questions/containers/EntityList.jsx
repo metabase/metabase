@@ -120,14 +120,17 @@ export default class EntityList extends Component {
         setItemSelected:    PropTypes.func.isRequired,
         setAllSelected:     PropTypes.func.isRequired,
         setArchived:        PropTypes.func.isRequired,
-        loadEntities:      PropTypes.func.isRequired,
 
-        onChangeSection:    PropTypes.func,
-        showSearchWidget:   PropTypes.bool,
-        showCollectionName: PropTypes.bool,
-        editable:           PropTypes.bool,
+        loadEntities:       PropTypes.func.isRequired,
+        loadLabels:         PropTypes.func.isRequired,
 
         onEntityClick:      PropTypes.func,
+        onChangeSection:    PropTypes.func,
+        showSearchWidget:   PropTypes.bool.isRequired,
+        showCollectionName: PropTypes.bool.isRequired,
+        editable:           PropTypes.bool.isRequired,
+
+        defaultEmptyState:  PropTypes.string
     };
 
     static defaultProps = {

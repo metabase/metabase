@@ -182,7 +182,16 @@ const CollectionListItem = ({ collection, onClick }) =>
         <Icon name="chevronright" className="flex-align-right text-grey-2" />
     </li>
 
+CollectionListItem.propTypes = {
+    collection: PropTypes.object.isRequired,
+    onClick: PropTypes.func.isRequired
+};
+
 const CollectionList = ({ children }) =>
     <ul className="List text-brand">
         {children}
     </ul>
+
+CollectionList.propTypes = {
+    children: PropTypes.array.isRequired
+};

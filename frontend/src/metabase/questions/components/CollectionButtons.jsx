@@ -7,11 +7,11 @@ import ArchiveCollectionWidget from "../containers/ArchiveCollectionWidget";
 
 const COLLECTION_ICON_SIZE = 64;
 
-const CollectionButtons = ({ collections, isAdmin }) =>
+const CollectionButtons = ({ collections, isAdmin, push }) =>
     <ol className="">
         { collections
-            .map(collection => <CollectionButton {...collection} isAdmin={isAdmin} />)
-            .concat(isAdmin ? [<NewCollectionButton />] : [])
+            .map(collection => <CollectionButton {...collection} push={push} isAdmin={isAdmin} />)
+            .concat(isAdmin ? [<NewCollectionButton push={push} />] : [])
             .map((element, index) =>
                 <li key={index} className="inline-block pr2 pb2" style={{ width: "25%" }}>
                     {element}
@@ -20,13 +20,11 @@ const CollectionButtons = ({ collections, isAdmin }) =>
         }
     </ol>
 
-const NewCollectionButton = () =>
-    <Link
+const NewCollectionButton = ({ push }) =>
+    <div
         className="relative block p4 hover-parent text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
-        style={{
-            borderRadius: 10
-        }}
-        to="/collections/create"
+        style={{ borderRadius: 10 }}
+        onClick={() => push(`/collections/create`)}
     >
         <div>
             <div
@@ -46,15 +44,13 @@ const NewCollectionButton = () =>
             </div>
         </div>
         <h3 className="text-brand">New collection</h3>
-    </Link>
+    </div>
 
-const CollectionButton = ({ id, name, color, slug, isAdmin }) =>
-    <Link
+const CollectionButton = ({ id, name, color, slug, isAdmin, push }) =>
+    <div
         className="relative block p4 hover-parent hover--visibility text-centered text-brand-hover bg-grey-0 bg-light-blue-hover no-decoration"
-        style={{
-            borderRadius: 10
-        }}
-        to={`/questions/collections/${slug}`}
+        style={{ borderRadius: 10 }}
+        onClick={() => push(`/questions/collections/${slug}`)}
     >
         { isAdmin &&
             <div className="absolute top right mt2 mr2 hover-child">
@@ -73,6 +69,6 @@ const CollectionButton = ({ id, name, color, slug, isAdmin }) =>
             style={{ color }}
         />
         <h3>{ name }</h3>
-    </Link>
+    </div>
 
 export default CollectionButtons;
