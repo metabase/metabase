@@ -25,7 +25,7 @@ export default class DataReference extends Component {
 
     static propTypes = {
         query: PropTypes.object.isRequired,
-        closeFn: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
@@ -34,7 +34,7 @@ export default class DataReference extends Component {
     };
 
     close() {
-        this.props.closeFn();
+        this.props.onClose();
     }
 
     back() {

@@ -5,18 +5,18 @@ import S from "./ActionHeader.css";
 import StackedCheckBox from "metabase/components/StackedCheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import MoveToCollection from "../containers/MoveToCollection.jsx";
 
 import LabelPopover from "../containers/LabelPopover.jsx";
-
-import cx from "classnames";
 
 const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsArchive, setAllSelected, setArchived, labels }) =>
     <div className={S.actionHeader}>
         <Tooltip tooltip={"Select all " + visibleCount} isEnabled={!allAreSelected}>
             <StackedCheckBox
                 checked={allAreSelected}
+                className="ml1"
                 onChange={(e) => setAllSelected(e.target.checked)}
-                className={cx(S.allCheckbox, { [S.selected]: allAreSelected })}
                 size={20} padding={3} borderColor="currentColor"
                 invertChecked
             />
@@ -25,7 +25,7 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
             {selectedCount} selected
         </span>
         <span className="flex align-center flex-align-right">
-            { !sectionIsArchive ?
+            { !sectionIsArchive && labels.length > 0 ?
                 <LabelPopover
                     triggerElement={
                         <span className={S.actionButton}>
@@ -38,8 +38,19 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
                     count={selectedCount}
                 />
             : null }
+            <ModalWithTrigger
+                full
+                triggerElement={
+                    <span className={S.actionButton} >
+                        <Icon name="move" className="mr1" />
+                        Move
+                    </span>
+                }
+            >
+                <MoveToCollection />
+            </ModalWithTrigger>
             <span className={S.actionButton} onClick={() => setArchived(undefined, !sectionIsArchive, true)}>
-                <Icon name={ sectionIsArchive ? "unarchive" : "archive" } />
+                <Icon name={ sectionIsArchive ? "unarchive" : "archive" }  className="mr1" />
                 { sectionIsArchive ? "Unarchive" : "Archive" }
             </span>
         </span>

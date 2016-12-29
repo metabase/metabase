@@ -46,7 +46,7 @@ export default class SaveStatus extends Component {
                 </div>
             )
         } else {
-            return <span />;
+            return null;
         }
     }
 }

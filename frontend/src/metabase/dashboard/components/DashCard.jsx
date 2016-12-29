@@ -151,7 +151,7 @@ const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisu
 
 const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     <ModalWithTrigger
-        className="Modal Modal--wide Modal--tall"
+        wide tall
         triggerElement={<Icon name="gear" />}
         triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer mr1 flex align-center flex-no-shrink"
     >
