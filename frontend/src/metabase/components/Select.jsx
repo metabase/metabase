@@ -119,10 +119,13 @@ class BrowserSelect extends Component {
 
 export class Option extends Component {
     static propTypes = {
-        children: PropTypes.any,
-        selected: PropTypes.bool,
-        disabled: PropTypes.bool,
-        onClick: PropTypes.func
+        children:   PropTypes.any,
+        selected:   PropTypes.bool,
+        disabled:   PropTypes.bool,
+        onClick:    PropTypes.func,
+        icon:       PropTypes.string,
+        iconColor:  PropTypes.string,
+        iconSize:   PropTypes.number,
     };
 
     render() {

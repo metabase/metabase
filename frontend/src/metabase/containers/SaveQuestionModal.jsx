@@ -2,7 +2,6 @@ import React, { Component, PropTypes } from "react";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
-import Icon from "metabase/components/Icon";
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import Radio from "metabase/components/Radio.jsx";
