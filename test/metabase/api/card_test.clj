@@ -191,6 +191,7 @@
      :table_id               table-id
      :query_type             "query"
      :collection_id          nil
+     :collection             nil
      :archived               false
      :labels                 []})
   ((user->client :rasta) :get 200 (str "card/" (u/get-id card))))
