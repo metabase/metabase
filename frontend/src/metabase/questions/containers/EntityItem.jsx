@@ -37,18 +37,10 @@ export default class EntityItem extends Component {
         return (
             <li className="relative" style={{ display: item.visible ? undefined : "none" }}>
                 <Item
-                    id={item.id}
-                    name={item.name}
-                    created={item.created}
-                    by={item.by}
-                    favorite={item.favorite}
-                    archived={item.archived}
-                    icon={item.icon}
-                    selected={item.selected}
-                    labels={item.labels}
                     setItemSelected={setItemSelected}
                     setFavorited={setFavorited}
                     setArchived={setArchived}
+                    {...item}
                 />
             </li>
         )

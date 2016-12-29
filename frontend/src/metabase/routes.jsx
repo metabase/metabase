@@ -12,16 +12,19 @@ import App from "metabase/App.jsx";
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
-import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
+import LogoutApp from "metabase/auth/containers/LogoutApp.jsx"; import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
-import EntityBrowser from "metabase/questions/containers/EntityBrowser.jsx";
-import EntityList from "metabase/questions/containers/EntityList.jsx";
-import EditLabels from "metabase/questions/containers/EditLabels.jsx";
+import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
+import Archive from "metabase/questions/containers/Archive.jsx";
+import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
+import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
+import NewCollection from "metabase/questions/containers/NewCollection.jsx";
+import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
+import SearchResults from "metabase/questions/containers/SearchResults.jsx";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
@@ -131,11 +134,16 @@ export const getRoutes = (store) =>
                 <Route path="/q" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
-                <Route path="/questions" component={EntityBrowser}>
-                    <Route path="edit/labels" component={EditLabels} />
-                    <Route path=":section" component={EntityList} />
-                    <Route path=":section/:slug" component={EntityList} />
-                </Route>
+                <Route path="/questions" component={QuestionIndex} />
+                <Route path="/questions/archive" component={Archive} />
+                <Route path="/questions/permissions" component={QuestionPermissions} />
+                <Route path="/questions/collections/new" component={NewCollection} />
+                <Route path="/questions/:id/move" component={MoveToCollection} />
+                { /* TODO - These are temporary routes for templating purposes and should be removed */}
+                <Route path="/questions/dashadd" component={AddToDashboard} />
+                <Route path="/questions/search/:searchString" component={SearchResults} />
+                { /* end template routes */}
+                <Route path="/questions/collections/:collectionName" component={CollectionPage} />
 
                 {/* REFERENCE */}
                 <Route path="/reference" component={ReferenceApp}>
@@ -215,3 +223,13 @@ export const getRoutes = (store) =>
             <Redirect from="/q/:serializedCard" to="/q#:serializedCard" />
         </Route>
     </Route>
+
+const NewCollectionPage = () =>
+    <div>
+    </div>
+
+const QuestionPermissions = () =>
+    <div>
+        Question permissions
+    </div>
+
