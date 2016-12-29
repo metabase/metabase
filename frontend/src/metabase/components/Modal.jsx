@@ -47,7 +47,6 @@ export class WindowModal extends Component {
     componentWillMount() {
         this._modalElement = document.createElement('span');
         this._modalElement.className = 'ModalContainer';
-        this._modalElement.id = Math.floor((Math.random() * 698754) + 1);
         document.querySelector('body').appendChild(this._modalElement);
     }
 
@@ -113,40 +112,39 @@ export class FullPageModal extends Component {
     }
 
     componentDidMount() {
-        let nav = document.body.querySelector(".Nav");
-        this._sibling = nav.nextSibling;
-        this._siblingPosition = nav.nextSibling.style.position;
-        this._siblingZIndex = nav.nextSibling.style.zIndex;
-        this._sibling.style.position = "absolute";
-        this._sibling.style.zIndex = -1;
-
         this._modalElement = document.createElement("div");
-        this._modalElement.className = "Modal--full flex-full relative bg-white ";
-        nav.parentNode.appendChild(this._modalElement);
+        this._modalElement.className = "Modal--full";
+        document.querySelector('body').appendChild(this._modalElement);
 
         this.componentDidUpdate();
 
+        // save the scroll position, scroll to the top left, and disable scrolling
         this._scrollX = window.scrollX;
         this._scrollY = window.scrollY;
         window.scrollTo(0,0);
-
-        this._documentBodyOverflow = document.body.style.overflow;
         document.body.style.overflow = "hidden";
     }
 
     componentDidUpdate() {
+        // set the top of the modal to the bottom of the nav
+        let nav = document.body.querySelector(".Nav");
+        if (nav) {
+            this._modalElement.style.top = nav.getBoundingClientRect().bottom + "px";
+        }
         this._renderModal(true)
     }
 
     componentWillUnmount() {
         this._renderModal(false);
+
+        // restore scroll position and scrolling
+        window.scrollTo(this._scrollX, this._scrollY);
+        document.body.style.overflow = "unset";
+
+        // wait for animations to complete before unmounting
         setTimeout(() => {
             ReactDOM.unmountComponentAtNode(this._modalElement);
             this._modalElement.parentNode.removeChild(this._modalElement);
-            this._sibling.style.position = this._siblingPosition;
-            this._sibling.style.zIndex = this._siblingZIndex;
-            document.body.style.overflow = this._documentBodyOverflow;
-            window.scrollTo(this._scrollX, this._scrollY);
         }, 300);
     }
 
@@ -171,34 +169,17 @@ export class FullPageModal extends Component {
 }
 
 export class InlineModal extends Component {
-    static childContextTypes = MODAL_CHILD_CONTEXT_TYPES;
-
-    getChildContext() {
-        return {
-            fullPageModal: true,
-            formModal: !!this.props.form
-        };
-    }
-
     render() {
-        const { isOpen } = this.props;
         return (
-            <Motion defaultStyle={{ opacity: 0, top: 20 }} style={isOpen ?
-                { opacity: spring(1), top: spring(0) } :
-                { opacity: spring(0), top: spring(20) }
-            }>
-                { motionStyle =>
-                    <div className="full-height relative" style={motionStyle}>
-                    { getModalContent(this.props) }
-                    </div>
-                }
-            </Motion>
-        )
+            <div>
+                {this.props.isOpen ? <FullPageModal {...this.props} /> : null}
+            </div>
+        );
     }
 }
 
 
-const Modal = ({ full, inline, ...props }) =>
+const Modal = ({ full, inline, ...props }) =>console.log(full, inline, props)||
     full ?
         (props.isOpen ? <FullPageModal {...props} /> : null)
     : inline ?

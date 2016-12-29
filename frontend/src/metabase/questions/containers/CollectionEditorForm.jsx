@@ -31,6 +31,7 @@ export default class CollectionEditorForm extends Component {
         return (
             <Modal
                 inline
+                form
                 title={fields.id.value != null ? fields.name.value : "New collection"}
                 footer={[
                     <Button className="mr1" onClick={onClose}>
