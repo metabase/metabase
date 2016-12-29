@@ -15,7 +15,7 @@ const ArchivedItem = ({ name, type, icon, color = '#DEEAF1', isAdmin = false, on
         />
         { name }
         { isAdmin &&
-            <Tooltip tooltip={`Unarchive this ${type}`}>
+            <Tooltip tooltip={`Unarchive this ${type === "card" ? "question" : type}`}>
                 <Icon
                     onClick={onUnarchive}
                     className="ml-auto cursor-pointer text-brand-hover hover-child"
