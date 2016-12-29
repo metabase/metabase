@@ -217,7 +217,9 @@ export const describeE2E = (name, options, describeCallback) => {
             ]);
 
             global.driver = webdriver.driver;
-            global.d = new Driver(webdriver.driver);
+            global.d = new Driver(webdriver.driver, {
+                base: server.host
+            });
             global.server = server;
 
             await driver.get(`${server.host}/`);
