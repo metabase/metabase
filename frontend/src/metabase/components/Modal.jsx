@@ -16,7 +16,7 @@ export const MODAL_CHILD_CONTEXT_TYPES = {
 };
 
 function getModalContent(props) {
-    if (React.Children.count(props.children).length > 1 ||
+    if (React.Children.count(props.children) > 1 ||
         props.title != null || props.footer != null
     ) {
         return <ModalContent {..._.omit(props, "className", "style")} />
