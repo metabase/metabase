@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
+import Clearable from "./Clearable.jsx";
 
 import Query from "metabase/lib/query";
 import { formatBucketing } from "metabase/lib/query_time";
@@ -36,9 +37,12 @@ export default class FieldName extends Component {
                 parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
                 parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" size={10} /></span>);
             }
-            // target field itself
-            // using i.getIn to avoid exceptions when field is undefined
-            parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, tableMetadata)}</span>);
+            if (fieldTarget.field.id != null) {
+                parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, fieldTarget.table)}</span>);
+            } else {
+                // expressions, etc
+                parts.push(<span key="field">{fieldTarget.field.display_name}</span>);
+            }
             // datetime-field unit
             if (fieldTarget.unit != null) {
                 parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);
@@ -48,16 +52,11 @@ export default class FieldName extends Component {
         }
 
         return (
-            <div className="flex align-center">
+            <Clearable onClear={this.props.removeField}>
                 <div className={cx(className, { selected: Query.isValidField(field) })} onClick={this.props.onClick}>
                     <span className="QueryOption">{parts}</span>
                 </div>
-                { this.props.removeField &&
-                    <a className="text-grey-2 no-decoration pr1 flex align-center" onClick={this.props.removeField}>
-                        <Icon name='close' size={14} />
-                    </a>
-                }
-            </div>
+            </Clearable>
         );
     }
 }

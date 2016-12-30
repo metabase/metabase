@@ -293,24 +293,33 @@ describe("Reference utils.js", () => {
             database = 1,
             table = 2,
             display = "table",
-            aggregation = [ "rows" ],
-            breakout = [],
-            filter = []
-        }) => ({
-            "name": null,
-            "display": display,
-            "visualization_settings": {},
-            "dataset_query": {
-                "database": database,
-                "type": "query",
-                "query": {
-                    "source_table": table,
-                    "aggregation": aggregation,
-                    "breakout": breakout,
-                    "filter": filter
+            aggregation,
+            breakout,
+            filter
+        }) => {
+            const card = {
+                "name": null,
+                "display": display,
+                "visualization_settings": {},
+                "dataset_query": {
+                    "database": database,
+                    "type": "query",
+                    "query": {
+                        "source_table": table
+                    }
                 }
+            };
+            if (aggregation != undefined) {
+                card.dataset_query.query.aggregation = aggregation;
             }
-        });
+            if (breakout != undefined) {
+                card.dataset_query.query.breakout = breakout;
+            }
+            if (filter != undefined) {
+                card.dataset_query.query.filter = filter;
+            }
+            return card;
+        };
 
         it("should generate correct question for table raw data", () => {
             const question = getQuestion({

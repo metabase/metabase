@@ -18,8 +18,8 @@ export default class SortWidget extends Component {
         fieldOptions: PropTypes.object.isRequired,
         customFieldOptions: PropTypes.object,
         tableName: PropTypes.string,
-        updateSort: PropTypes.func.isRequired,
-        removeSort: PropTypes.func.isRequired,
+        updateOrderBy: PropTypes.func.isRequired,
+        removeOrderBy: PropTypes.func.isRequired,
         tableMetadata: PropTypes.object.isRequired
     };
 
@@ -37,13 +37,13 @@ export default class SortWidget extends Component {
     componentWillUnmount() {
         // Remove partially completed sort if the widget is removed
         if (this.state.field == null || this.state.direction == null) {
-            this.props.removeSort();
+            this.props.removeOrderBy();
         }
     }
 
     setField(value) {
         if (this.state.field !== value) {
-            this.props.updateSort([value, this.state.direction]);
+            this.props.updateOrderBy([value, this.state.direction]);
             // Optimistically set field state so componentWillUnmount logic works correctly
             this.setState({ field: value });
         }
@@ -51,7 +51,7 @@ export default class SortWidget extends Component {
 
     setDirection(value) {
         if (this.state.direction !== value) {
-            this.props.updateSort([this.state.field, value]);
+            this.props.updateOrderBy([this.state.field, value]);
             // Optimistically set direction state so componentWillUnmount logic works correctly
             this.setState({ direction: value });
         }
@@ -87,7 +87,7 @@ export default class SortWidget extends Component {
                     action={this.setDirection}
                 />
 
-                <a onClick={this.props.removeSort}>
+                <a onClick={this.props.removeOrderBy}>
                     <Icon name='close' size={12} />
                 </a>
             </div>

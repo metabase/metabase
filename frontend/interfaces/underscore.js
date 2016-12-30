@@ -1,9 +1,9 @@
 // type definitions for (some of) underscore
 
 declare module "underscore" {
-  declare function find<T>(list: T[], predicate: (val: T)=>boolean): ?T;
-  declare function findWhere<T>(list: T[], properties: {[key:string]: any}): ?T;
-  declare function findIndex<T>(list: T[], predicate: (val: T)=>boolean): number;
+  declare function find<T>(list: ?T[], predicate: (val: T)=>boolean): ?T;
+  declare function findWhere<T>(list: ?T[], properties: {[key:string]: any}): ?T;
+  declare function findIndex<T>(list: ?T[], predicate: (val: T)=>boolean): number;
 
   declare function clone<T>(obj: T): T;
 
@@ -15,7 +15,6 @@ declare module "underscore" {
 
   declare function flatten<S>(a: Array<Array<S>>): S[];
 
-  declare function any<T>(list: Array<T>, pred: (el: T)=>boolean): boolean;
 
   declare function each<T>(o: {[key:string]: T}, iteratee: (val: T, key: string)=>void): void;
   declare function each<T>(a: T[], iteratee: (val: T, key: string)=>void): void;
@@ -27,6 +26,9 @@ declare module "underscore" {
 
   declare function every<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
   declare function some<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
+  declare function all<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
+  declare function any<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
+  declare function contains<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
 
   declare function initial<T>(a: Array<T>, n?: number): Array<T>;
   declare function rest<T>(a: Array<T>, index?: number): Array<T>;

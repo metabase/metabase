@@ -215,8 +215,8 @@
 (defn collection-metrics
   "Get metrics on collection usage"
   []
-  (let [collections (db/select `Collection)
-        cards (db/select [`Cards :collection_id])]
+  (let [collections (db/select 'Collection)
+        cards (db/select ['Card :collection_id])]
     {:collections (count collections)
      :num_cards_per_collection (medium-histogram cards :collection_id)}
     )

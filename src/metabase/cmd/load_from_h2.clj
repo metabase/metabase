@@ -25,6 +25,8 @@
                              [card :refer [Card]]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
+                             [collection :refer [Collection]]
+                             [collection-revision :refer [CollectionRevision]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -97,6 +99,9 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
+   Collection
+   CollectionRevision
+   ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 
 

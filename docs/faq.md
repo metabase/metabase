@@ -39,7 +39,7 @@ Metabase currently supports:
 
 * Amazon Redshift
 * BigQuery
-* Crate (version 0.55 or higher)
+* CrateDB (version 0.57 or higher)
 * Druid
 * H2
 * MongoDB (version 3.0 or higher)

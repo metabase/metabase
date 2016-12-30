@@ -1,15 +1,10 @@
-import { By, until } from "selenium-webdriver";
-
 import {
     waitForElement,
-    waitForElementText,
     waitForElementRemoved,
-    findElement,
     waitForElementAndClick,
     waitForElementAndSendKeys,
     waitForUrl,
     screenshot,
-    loginMetabase,
     describeE2E,
     ensureLoggedIn
 } from "../support/utils";
@@ -34,7 +29,7 @@ describeE2E("tutorial", () => {
         await screenshot(driver, "screenshots/setup-tutorial-qb.png");
         await waitForElementAndClick(driver, ".Modal .Button.Button--primary");
 
-        await waitForElement(driver, "img[src='/app/img/qb_tutorial/table.png']");
+        await waitForElement(driver, "#QB-TutorialTableImg");
         // a .Modal-backdrop element blocks clicks for a while during transition?
         await waitForElementRemoved(driver, '.Modal-backdrop');
         await waitForElementAndClick(driver, ".GuiBuilder-data a");
@@ -50,32 +45,33 @@ describeE2E("tutorial", () => {
         await waitForElementAndClick(driver, "#TablePicker .List-item:first-child>a");
 
         // select filters
-        await waitForElement(driver, "img[src='/app/img/qb_tutorial/funnel.png']");
+        await waitForElement(driver, "#QB-TutorialFunnelImg");
         await waitForElementAndClick(driver, ".GuiBuilder-filtered-by .Query-section:not(.disabled) a");
 
         await waitForElementAndClick(driver, "#FilterPopover .List-item:first-child>a");
 
-        await waitForElementAndClick(driver, ".Button[data-ui-tag='relative-date-shortcut-this-year']");
+        await waitForElementAndClick(driver, "input[data-ui-tag='relative-date-input']");
+        await waitForElementAndSendKeys(driver, "#FilterPopover input.border-purple", '10');
         await waitForElementAndClick(driver, ".Button[data-ui-tag='add-filter']:not(.disabled)");
 
         // select aggregations
-        await waitForElement(driver, "img[src='/app/img/qb_tutorial/calculator.png']");
+        await waitForElement(driver, "#QB-TutorialCalculatorImg");
         await waitForElementAndClick(driver, "#Query-section-aggregation");
         await waitForElementAndClick(driver, "#AggregationPopover .List-item:nth-child(2)>a");
 
         // select breakouts
-        await waitForElement(driver, "img[src='/app/img/qb_tutorial/banana.png']");
+        await waitForElement(driver, "#QB-TutorialBananaImg");
         await waitForElementAndClick(driver, ".Query-section.Query-section-breakout>div");
 
         await waitForElementAndClick(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
-        await waitForElementAndClick(driver, "#TimeGroupingPopover .List-item:nth-child(3)>a");
+        await waitForElementAndClick(driver, "#TimeGroupingPopover .List-item:nth-child(4)>a");
 
         // run query
-        await waitForElement(driver, "img[src='/app/img/qb_tutorial/rocket.png']");
+        await waitForElement(driver, "#QB-TutorialRocketImg");
         await waitForElementAndClick(driver, ".Button.RunButton");
 
         // wait for query to complete
-        await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']", 20000);
+        await waitForElement(driver, "#QB-TutorialChartImg", 20000);
 
         // switch visualization
         await waitForElementAndClick(driver, "#VisualizationTrigger");
@@ -84,7 +80,7 @@ describeE2E("tutorial", () => {
         await waitForElementAndClick(driver, "#VisualizationPopover li:nth-child(4)");
 
         // end tutorial
-        await waitForElement(driver, "img[src='/app/img/qb_tutorial/boat.png']");
+        await waitForElement(driver, "#QB-TutorialBoatImg");
         await waitForElementAndClick(driver, ".Modal .Button.Button--primary");
         await waitForElementAndClick(driver, ".PopoverBody .Button.Button--primary");
 

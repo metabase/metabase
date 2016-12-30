@@ -45,7 +45,7 @@ export const metricEditSelectors = createSelector(
     tableMetadataSelector,
     (metrics, id, tableId, tableMetadata) => ({
         metric: id == null ?
-            { id: null, table_id: tableId, definition: { aggregation: [null], filter: [] } } :
+            { id: null, table_id: tableId, definition: { aggregation: [null] } } :
             metrics[id],
         tableMetadata
     })

@@ -531,7 +531,8 @@ const SETTINGS = {
         getDefault: ([{ card, data }]) => (
             (data && data.cols.length === 3) &&
             Query.isStructured(card.dataset_query) &&
-            !Query.isBareRowsAggregation(card.dataset_query.query)
+            data.cols.filter(isMetric).length === 1 &&
+            data.cols.filter(isDimension).length === 2
         )
     },
     "table.columns": {
@@ -548,6 +549,8 @@ const SETTINGS = {
         getProps: ([{ data: { cols }}]) => ({
             columnNames: cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col)}), {})
         })
+    },
+    "table.column_widths": {
     },
     "map.type": {
         title: "Map type",

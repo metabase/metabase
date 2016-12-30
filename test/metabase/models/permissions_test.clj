@@ -1,6 +1,10 @@
 (ns metabase.models.permissions-test
   (:require [expectations :refer :all]
-            [metabase.models.permissions :as perms]))
+            (metabase.models [permissions :as perms]
+                             [permissions-group :refer [PermissionsGroup]])
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 
 ;;; ------------------------------------------------------------ valid-object-path? ------------------------------------------------------------
@@ -502,3 +506,19 @@
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                                 TODO - Permissions Graph Tests                                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+(defn- test-data-graph [group]
+  (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"]))
+
+;; Test that setting partial permissions for a table retains permissions for other tables -- #3888
+(expect
+  [{(data/id :categories) :none, (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}
+   {(data/id :categories) :all,  (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}]
+  (tu/with-temp PermissionsGroup [group]
+    ;; first, graph permissions only for VENUES
+    (perms/grant-permissions! group (perms/object-path (data/id) "PUBLIC" (data/id :venues)))
+    [(test-data-graph group)
+     ;; next, grant permissions via `update-graph!` for CATEGORIES as well. Make sure permissions for VENUES are retained (#3888)
+     (do
+       (perms/update-graph! [(u/get-id group) (data/id) :schemas "PUBLIC" (data/id :categories)] :all)
+       (test-data-graph group))]))

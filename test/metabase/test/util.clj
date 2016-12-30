@@ -5,6 +5,7 @@
             [expectations :refer :all]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
+                             [collection :refer [Collection]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
@@ -107,6 +108,11 @@
                                 :name                   (random-name)
                                 :visualization_settings {}})})
 
+(u/strict-extend (class Collection)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:name  (random-name)
+                                :color "#ABCDEF"})})
+
 (u/strict-extend (class Dashboard)
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
@@ -124,7 +130,7 @@
   {:with-temp-defaults (fn [_] {:base_type :type/Text
                                 :name      (random-name)
                                 :position  1
-                                :table_id  (data/id :venues)})})
+                                :table_id  (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
   WithTempDefaults
@@ -132,7 +138,7 @@
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
-                                :table_id    (data/id :venues)})})
+                                :table_id    (data/id :checkins)})})
 
 (u/strict-extend (class PermissionsGroup)
   WithTempDefaults
@@ -172,7 +178,7 @@
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
-                                :table_id    (data/id :venues)})})
+                                :table_id    (data/id :checkins)})})
 
 ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 

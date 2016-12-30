@@ -18,6 +18,7 @@
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Timestamp
            java.util.Date
+           clojure.lang.Keyword
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
@@ -65,7 +66,8 @@
   nil                    (formatted [_] nil)
   Number                 (formatted [this] this)
   String                 (formatted [this] this)
-  honeysql.types.SqlCall (formatted [this] this)
+  Keyword                (formatted [this] this) ; HoneySQL fn calls and keywords (e.g. `:%count.*`) are
+  honeysql.types.SqlCall (formatted [this] this) ; already converted to HoneySQL so just return them as-is
 
   Expression
   (formatted [{:keys [operator args]}]
@@ -151,24 +153,21 @@
   (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)
                                  (hx/escape-dots (annotate/expression-aggregation-name expression))]))
 
+(defn- apply-single-aggregation [driver honeysql-form {:keys [aggregation-type field], :as aggregation}]
+  (h/merge-select honeysql-form [(aggregation->honeysql driver aggregation-type field)
+                                 (hx/escape-dots (annotate/expression-aggregation-name aggregation))]))
+
 (defn apply-aggregation
   "Apply a `aggregation` clauses to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
-  ([driver honeysql-form {aggregations :aggregation}]
-   (loop [form honeysql-form, [ag & more] aggregations]
-     (let [form (if (instance? Expression ag)
-                  (apply-expression-aggregation driver form ag)
-                  (let [{:keys [aggregation-type field]} ag]
-                    (apply-aggregation driver form aggregation-type field)))]
-       (if-not (seq more)
-         form
-         (recur form more)))))
+  [driver honeysql-form {aggregations :aggregation}]
+  (loop [form honeysql-form, [ag & more] aggregations]
+    (let [form (if (instance? Expression ag)
+                 (apply-expression-aggregation driver form ag)
+                 (apply-single-aggregation driver form ag))]
+      (if-not (seq more)
+        form
+        (recur form more)))))
 
-  ([driver honeysql-form aggregation-type field]
-   (h/merge-select honeysql-form [(aggregation->honeysql driver aggregation-type field)
-                                  ;; the column alias is always the same as the ag type except for `:distinct` with is called `:count` (WHY?)
-                                  (if (= aggregation-type :distinct)
-                                    :count
-                                    aggregation-type)])))
 
 (defn apply-breakout
   "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."

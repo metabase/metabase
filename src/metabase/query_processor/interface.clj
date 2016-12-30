@@ -181,14 +181,15 @@
 
 (def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
 
-(s/defrecord Expression [operator :- ExpressionOperator
-                         args     :- [(s/cond-pre (s/recursive #'RValue)
-                                                  (s/recursive #'Aggregation))]])
+(s/defrecord Expression [operator   :- ExpressionOperator
+                         args       :- [(s/cond-pre (s/recursive #'RValue)
+                                                    (s/recursive #'Aggregation))]
+                         custom-name :- (s/maybe su/NonBlankString)])
 
-(def AnyField
+(def AnyFieldOrExpression
   "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
   (s/named (s/cond-pre ExpressionRef Expression FieldPlaceholderOrAgRef)
-           "Valid field, ag field reference, or expression reference."))
+           "Valid field, ag field reference, expression, or expression reference."))
 
 
 (def LiteralDatetimeString
@@ -241,12 +242,14 @@
 ;;; # ------------------------------------------------------------ CLAUSE SCHEMAS ------------------------------------------------------------
 
 (s/defrecord AggregationWithoutField [aggregation-type :- (s/named (s/enum :count :cumulative-count)
-                                                                   "Valid aggregation type")])
+                                                                   "Valid aggregation type")
+                                      custom-name      :- (s/maybe su/NonBlankString)])
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
                                                                 "Valid aggregation type")
                                    field            :- (s/cond-pre FieldPlaceholderOrExpressionRef
-                                                                   Expression)])
+                                                                   Expression)
+                                   custom-name      :- (s/maybe su/NonBlankString)])
 
 (defn- valid-aggregation-for-driver? [{:keys [aggregation-type]}]
   (when (= aggregation-type :stddev)
@@ -302,7 +305,7 @@
 
 (def OrderBy
   "Schema for top-level `order-by` clause in an MBQL query."
-  (s/named {:field     AnyField
+  (s/named {:field     AnyFieldOrExpression
             :direction OrderByDirection}
            "Valid order-by subclause"))
 
@@ -317,7 +320,7 @@
   "Schema for an MBQL query."
   {(s/optional-key :aggregation) [Aggregation]
    (s/optional-key :breakout)    [FieldPlaceholderOrExpressionRef]
-   (s/optional-key :fields)      [AnyField]
+   (s/optional-key :fields)      [AnyFieldOrExpression]
    (s/optional-key :filter)      Filter
    (s/optional-key :limit)       su/IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]

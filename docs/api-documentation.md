@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.21.0-snapshot
+# API Documentation for Metabase v0.22.0-snapshot
 
 ## `GET /api/activity/`
 
@@ -34,7 +34,13 @@ Get all the `Cards`. Option filter param `f` can be used to change the set of Ca
    but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
    functions above for the specific behavior of each filter option. :card_index:
 
-   Optionally filter cards by LABEL slug.
+   Optionally filter cards by LABEL or COLLECTION slug. (COLLECTION can be a blank string, to signify cards with *no collection* should be returned.)
+
+   NOTES:
+
+   *  Filtering by LABEL is considered *deprecated*, as `Labels` will be removed from an upcoming version of Metabase in favor of `Collections`.
+   *  LABEL and COLLECTION params are mutually exclusive; if both are specified, LABEL will be ignored and Cards will only be filtered by their `Collection`.
+   *  If no `Collection` exists with the slug COLLECTION, this endpoint will return a 404.
 
 ##### PARAMS:
 
@@ -43,6 +49,8 @@ Get all the `Cards`. Option filter param `f` can be used to change the set of Ca
 *  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`label`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`collection`** value may be nil, or if non-nil, value must be a string.
 
 
 ## `GET /api/card/:id`
@@ -62,13 +70,15 @@ Create a new `Card`.
 
 *  **`dataset_query`** 
 
-*  **`description`** 
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`display`** value must be a non-blank string.
 
 *  **`name`** value must be a non-blank string.
 
 *  **`visualization_settings`** value must be a map.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `POST /api/card/:card-id/favorite`
@@ -83,6 +93,7 @@ Favorite a Card.
 ## `POST /api/card/:card-id/labels`
 
 Update the set of `Labels` that apply to a `Card`.
+   (This endpoint is considered DEPRECATED as Labels will be removed in a future version of Metabase.)
 
 ##### PARAMS:
 
@@ -104,13 +115,36 @@ Run the query associated with a Card.
 
 ## `POST /api/card/:card-id/query/csv`
 
-Run the query associated with a Card, and return its results as CSV.
+Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
 
 ##### PARAMS:
 
 *  **`card-id`** 
 
-*  **`parameters`** 
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `POST /api/card/:card-id/query/json`
+
+Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `POST /api/card/collections`
+
+Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with COLLECTION_ID,
+   or remove them from any Collections by passing a `null` COLLECTION_ID.
+
+##### PARAMS:
+
+*  **`card_ids`** value must be an array. Each value must be an integer greater than zero.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `PUT /api/card/:id`
@@ -123,7 +157,7 @@ Update a `Card`.
 
 *  **`dataset_query`** 
 
-*  **`description`** 
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -132,6 +166,74 @@ Update a `Card`.
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+
+## `GET /api/collection/`
+
+Fetch a list of all Collections that the current user has read permissions for.
+   This includes `:can_write`, which means whether the current user is allowed to add or remove Cards to this Collection; keep in mind
+   that regardless of this status you must be a superuser to modify properties of Collections themselves.
+
+   By default, this returns non-archived Collections, but instead you can show archived ones by passing `?archived=true`.
+
+##### PARAMS:
+
+*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean (true or false).
+
+
+## `GET /api/collection/:id`
+
+Fetch a specific (non-archived) Collection, including cards that belong to it.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `GET /api/collection/graph`
+
+Fetch a graph of all Collection Permissions.
+
+
+## `POST /api/collection/`
+
+Create a new Collection.
+
+##### PARAMS:
+
+*  **`name`** value must be a non-blank string.
+
+*  **`color`** value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+
+
+## `PUT /api/collection/:id`
+
+Modify an existing Collection, including archiving or unarchiving it.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`name`** value must be a non-blank string.
+
+*  **`color`** value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+
+## `PUT /api/collection/graph`
+
+Do a batch update of Collections Permissions by passing in a modified graph.
+
+##### PARAMS:
+
+*  **`body`** value must be a map.
 
 
 ## `DELETE /api/dashboard/:id`
@@ -425,6 +527,15 @@ Get historical query execution duration.
 *  **`query`** 
 
 
+## `POST /api/dataset/json`
+
+Execute a query and download the result data as a JSON file.
+
+##### PARAMS:
+
+*  **`query`** value must be a valid JSON string.
+
+
 ## `POST /api/email/test`
 
 Send a test email. You must be a superuser to do this.
@@ -522,7 +633,7 @@ Fetch basic info for the Getting Started guide.
 
 ## `DELETE /api/label/:id`
 
-Delete a `Label`. :label:
+[DEPRECATED] Delete a `Label`. :label:
 
 ##### PARAMS:
 
@@ -531,12 +642,12 @@ Delete a `Label`. :label:
 
 ## `GET /api/label/`
 
-List all `Labels`. :label:
+[DEPRECATED] List all `Labels`. :label:
 
 
 ## `POST /api/label/`
 
-Create a new `Label`. :label: 
+[DEPRECATED] Create a new `Label`. :label:
 
 ##### PARAMS:
 
@@ -547,7 +658,7 @@ Create a new `Label`. :label:
 
 ## `PUT /api/label/:id`
 
-Update a `Label`. :label:
+[DEPRECATED] Update a `Label`. :label:
 
 ##### PARAMS:
 
@@ -718,7 +829,7 @@ You must be a superuser to do this.
 
 ## `GET /api/permissions/group`
 
-Fetch all `PermissionsGroups`.
+Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
 
 You must be a superuser to do this.
 
@@ -1377,6 +1488,14 @@ Indicate that a user has been informed about the vast intricacies of 'the' Query
 ## `GET /api/util/logs`
 
 Logs.
+
+You must be a superuser to do this.
+
+
+## `GET /api/util/stats`
+
+Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
+  what is being phoned home.
 
 You must be a superuser to do this.
 

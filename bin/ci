@@ -48,13 +48,13 @@ node-6() {
     if is_enabled "jar" || is_enabled "e2e" || is_enabled "screenshots"; then
         run_step ./bin/build version frontend sample-dataset uberjar
     fi
-    # if is_enabled "e2e" || is_enabled "compare_screenshots"; then
-    #     USE_SAUCE=true \
-    #         run_step yarn run test-e2e
-    # fi
-    # if is_enabled "screenshots"; then
-    #     run_step node_modules/.bin/babel-node ./bin/compare-screenshots
-    # fi
+    if is_enabled "e2e" || is_enabled "compare_screenshots"; then
+        USE_SAUCE=true \
+            run_step yarn run test-e2e
+    fi
+    if is_enabled "screenshots"; then
+        run_step node_modules/.bin/babel-node ./bin/compare-screenshots
+    fi
 }
 
 
@@ -64,6 +64,7 @@ install-crate() {
     sudo apt-get install -y crate
     # ulimit setting refused Crate service to start on CircleCI container - so comment it
     sudo sed -i '/MAX_LOCKED_MEMORY/s/^/#/' /etc/init/crate.conf
+    echo "psql.port: 5200" | sudo tee -a /etc/crate/crate.yml
     sudo service crate restart
 }
 

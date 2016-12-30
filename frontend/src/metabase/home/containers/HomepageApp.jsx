@@ -71,7 +71,7 @@ export default class HomepageApp extends Component {
                     <Modal>
                         <NewUserOnboardingModal
                             user={user}
-                            closeFn={() => (this.completeOnboarding())}
+                            onClose={() => (this.completeOnboarding())}
                         />
                     </Modal>
                 : null }

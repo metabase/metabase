@@ -23,8 +23,7 @@
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [clj-time.core :as t]))
+            [metabase.util :as u]))
 
 ;; 3 users:
 ;; crowberto, member of Admin, All Users
@@ -369,7 +368,7 @@
 ;;; ------------------------------------------------------------ with everything! ------------------------------------------------------------
 
 
-(defn- -do-with-test-data [f]
+(defn -do-with-test-data [f]
   (((comp with-ops-group
           with-db-2
           with-db-1
@@ -379,11 +378,11 @@
           with-metrics
           with-segments) f)))
 
-(defmacro ^:private with-test-data {:style/indent 0} [& body]
+(defmacro with-test-data {:style/indent 0} [& body]
   `(-do-with-test-data (fn []
                          ~@body)))
 
-(defmacro ^:private expect-with-test-data {:style/indent 0} [expected actual]
+(defmacro expect-with-test-data {:style/indent 0} [expected actual]
   `(expect
      ~expected
      (with-test-data
@@ -470,7 +469,7 @@
 ;; Only Admin should be able to ask SQL questions against DB 2. Error message is slightly different for Rasta & Lucky because Rasta has no permissions whatsoever for DB 2 while Lucky has partial perms
 (expect-with-test-data [[100]] (sql-query :crowberto *db2*))
 (expect-with-test-data "You don't have permissions to do that." (sql-query :rasta *db2*))
-(expect-with-test-data "You do not have permissions to run new native queries against database 'DB Two'." (sql-query :lucky *db2*))
+(expect-with-test-data #"You do not have read permissions for /db/\d+/native/\." (sql-query :lucky *db2*))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+

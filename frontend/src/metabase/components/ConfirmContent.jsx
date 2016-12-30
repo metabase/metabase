@@ -2,10 +2,21 @@ import React, { Component, PropTypes } from "react";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
 
-const ConfirmContent = ({ title, content, onClose, onAction, message = "Are you sure you want to do this?" }) =>
+const nop = () => {};
+
+const ConfirmContent = ({
+    title,
+    content,
+    message = "Are you sure you want to do this?",
+    onClose = nop,
+    onAction = nop,
+    onCancel = nop,
+    confirmButtonText = "Yes",
+    cancelButtonText = "No"
+}) =>
     <ModalContent
         title={title}
-        closeFn={onClose}
+        onClose={() => { onCancel(); onClose(); }}
     >
         <div className="mx4">{content}</div>
 
@@ -14,8 +25,8 @@ const ConfirmContent = ({ title, content, onClose, onAction, message = "Are you 
         </div>
 
         <div className="Form-actions">
-            <button className="Button Button--danger" onClick={() => { onAction(); onClose(); }}>Yes</button>
-            <button className="Button ml1" onClick={onClose}>No</button>
+            <button className="Button Button--danger" onClick={() => { onAction(); onClose(); }}>{confirmButtonText}</button>
+            <button className="Button ml1" onClick={() => { onCancel(); onClose(); }}>{cancelButtonText}</button>
         </div>
     </ModalContent>
 

@@ -75,7 +75,7 @@ export default class TableSimple extends Component {
                             <thead ref="header">
                                 <tr>
                                     {cols.map((col, colIndex) =>
-                                        <th key={colIndex} className={cx("MB-DataTable-header cellData text-brand-hover", { "MB-DataTable-header--sorted": sortColumn === colIndex })} onClick={() => this.setSort(colIndex)}>
+                                        <th key={colIndex} className={cx("TableInteractive-headerCellData cellData text-brand-hover", { "TableInteractive-headerCellData--sorted": sortColumn === colIndex })} onClick={() => this.setSort(colIndex)}>
                                             <div className="relative">
                                                 <Icon
                                                     name={sortDescending ? "chevrondown" : "chevronup"}

@@ -46,7 +46,7 @@
    :start (t/first-day-of-the-month dt)})
 
 (defn- year-range [^DateTime dt]
-  {:end   (t/last-day-of-the-month (.withMonthOfYear dt DateTimeConstants/DECEMBER))
+  {:end   (t/last-day-of-the-month  (.withMonthOfYear dt DateTimeConstants/DECEMBER))
    :start (t/first-day-of-the-month (.withMonthOfYear dt DateTimeConstants/JANUARY))})
 
 (defn- absolute-date->range

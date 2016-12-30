@@ -10,7 +10,7 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 [![NPM Dependencies Status](https://david-dm.org/metabase/metabase.svg)](https://david-dm.org/metabase/metabase)
 [![Issue Stats](http://issuestats.com/github/metabase/metabase/badge/pr)](http://issuestats.com/github/metabase/metabase)
 [![Issue Stats](http://issuestats.com/github/metabase/metabase/badge/issue)](http://issuestats.com/github/metabase/metabase)
-
+ 
 # Features
 - 5 minute [setup](http://www.metabase.com/docs/latest/setting-up-metabase) (We're not kidding)
 - Let anyone on your team [ask questions](http://www.metabase.com/docs/latest/users-guide/03-asking-questions) without knowing SQL
@@ -34,7 +34,7 @@ For more information check out [metabase.com](http://www.metabase.com)
 - Google BigQuery
 - SQLite
 - H2
-- Crate
+- CrateDB
 - Oracle
 - Vertica
 
