@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import CollectionActions from "./CollectionActions";
 import ArchiveCollectionWidget from "../containers/ArchiveCollectionWidget";
 
 const COLLECTION_ICON_SIZE = 64;
