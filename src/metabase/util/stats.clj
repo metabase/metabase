@@ -212,12 +212,14 @@
      :num_cards_per_label (medium-histogram cardlabels :label_id)}))
 
 
-(defn collection-metrics
+(defn- collection-metrics
   "Get metrics on collection usage"
   []
   (let [collections (db/select 'Collection)
         cards (db/select ['Card :collection_id])]
     {:collections (count collections)
+     :cards_in_collections (count (filter (comp nil?) (map :collection_id cards)))
+     :cards_not_in_collections (count (filter nil? (map :collection_id cards)))
      :num_cards_per_collection (medium-histogram cards :collection_id)}
     )
   )
