@@ -48,12 +48,10 @@ class CollectionButton extends Component {
                 >
                     { isAdmin &&
                         <div className="absolute top right mt2 mr2 hover-child">
-                            <CollectionActions>
-                                <Link to={"/collections/permissions?collectionId=" + id}>
-                                    <Icon name="lockoutline" tooltip="Set collection permissions" />
-                                </Link>
-                                <ArchiveCollectionWidget collectionId={id} />
-                            </CollectionActions>
+                            <Link to={"/collections/permissions?collectionId=" + id} className="mr1">
+                                <Icon name="lockoutline" tooltip="Set collection permissions" />
+                            </Link>
+                            <ArchiveCollectionWidget collectionId={id} />
                         </div>
                     }
                     <Icon
