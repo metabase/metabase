@@ -161,14 +161,31 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
     }
 });
 
+const getCardCollectionId = (state, cardId) => getIn(state, ["questions", "entities", "cards", cardId, "collection_id"])
+
 export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collectionId, undoable = false) => {
     return async (dispatch, getState) => {
+        const state = getState();
         if (cardId == null) {
-            // bulk label
+            // bulk move
             let selected = getSelectedEntities(getState());
+            if (undoable) {
+                dispatch(addUndo(createUndo(
+                    "moved",
+                    selected.map(item => setCollection(item.id, getCardCollectionId(state, item.id)))
+                )));
+                MetabaseAnalytics.trackEvent("Questions", "Bulk Move to Collection");
+            }
             selected.map(item => dispatch(setCollection(item.id, collectionId)));
         } else {
-            const collection = _.findWhere(getState().collections.collections, { id: collectionId });
+            const collection = _.findWhere(state.collections.collections, { id: collectionId });
+            if (undoable) {
+                dispatch(addUndo(createUndo(
+                    "moved",
+                    [setCollection(cardId, getCardCollectionId(state, cardId))]
+                )));
+                MetabaseAnalytics.trackEvent("Questions", "Move to Collection");
+            }
             const card = await CardApi.update({ id: cardId, collection_id: collectionId });
             return {
                 ...card,
