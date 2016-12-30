@@ -205,10 +205,24 @@
 (defn- label-metrics
   "Get metrics based on labels"
   []
-  (let [labels (db/select ['CardLabel :card_id :label_id])]
+  (let [labels (db/select 'Label)
+        cardlabels (db/select ['CardLabel :card_id :label_id])]
     {:labels (count labels)
-     :num_labels_per_card (micro-histogram labels :card_id)
-     :num_cards_per_label (medium-histogram labels :label_id)}))
+     :num_labels_per_card (micro-histogram cardlabels :card_id)
+     :num_cards_per_label (medium-histogram cardlabels :label_id)}))
+
+
+(defn- collection-metrics
+  "Get metrics on collection usage"
+  []
+  (let [collections (db/select 'Collection)
+        cards (db/select ['Card :collection_id])]
+    {:collections (count collections)
+     :cards_in_collections (count (filter (comp nil?) (map :collection_id cards)))
+     :cards_not_in_collections (count (filter nil? (map :collection_id cards)))
+     :num_cards_per_collection (medium-histogram cards :collection_id)}
+    )
+  )
 
 ;; Metadata Metrics
 (defn- database-dims
@@ -291,6 +305,7 @@
                      :metric (metric-metrics)
                      :group (group-metrics)
                      :label (label-metrics)
+                     :collection (collection-metrics)
                      :execution (execution-metrics)}}))
 
 
