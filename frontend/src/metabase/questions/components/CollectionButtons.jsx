@@ -11,12 +11,12 @@ const COLLECTION_ICON_SIZE = 64;
 const COLLECTION_BOX_CLASSES = "relative block p4 hover-parent hover--visibility cursor-pointer text-centered transition-background";
 
 const CollectionButtons = ({ collections, isAdmin, push }) =>
-    <ol className="flex">
+    <ol className="flex flex-wrap">
         { collections
             .map(collection => <CollectionButton {...collection} push={push} isAdmin={isAdmin} />)
             .concat(isAdmin ? [<NewCollectionButton push={push} />] : [])
             .map((element, index) =>
-                <li key={index} className="mr4">
+                <li key={index} className="mr4 mb4">
                     {element}
                 </li>
             )

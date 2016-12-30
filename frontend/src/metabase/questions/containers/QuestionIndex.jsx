@@ -73,7 +73,7 @@ export default class QuestionIndex extends Component {
                     </div>
                 </div>
                 { showCollections &&
-                    <div className="mb2">
+                    <div>
                         { collections.length > 0 ?
                             <CollectionButtons collections={collections} isAdmin={isAdmin} push={push} />
                         :
