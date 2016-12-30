@@ -179,7 +179,7 @@ export class InlineModal extends Component {
 }
 
 
-const Modal = ({ full, inline, ...props }) =>console.log(full, inline, props)||
+const Modal = ({ full, inline, ...props }) =>
     full ?
         (props.isOpen ? <FullPageModal {...props} /> : null)
     : inline ?

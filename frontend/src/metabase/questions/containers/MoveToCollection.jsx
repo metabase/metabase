@@ -37,7 +37,7 @@ export default class MoveToCollection extends Component {
     async onMove(collectionId) {
         try {
             this.setState({ error: null })
-            await this.props.setCollection(this.props.questionId, collectionId);
+            await this.props.setCollection(this.props.questionId, collectionId, true);
             this.props.onClose();
         } catch (e) {
             this.setState({ error: e })
