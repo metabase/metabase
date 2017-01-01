@@ -46,7 +46,7 @@
     "react-retina-image": "^2.0.0",
     "react-router": "^2.6.0",
     "react-router-redux": "^4.0.5",
-    "react-sortable": "^1.0.1",
+    "react-sortable": "^1.2.0",
     "react-virtualized": "^8.6.0",
     "recompose": "^0.20.2",
     "redux": "^3.5.2",
@@ -121,10 +121,10 @@
     "style-loader": "^0.13.0",
     "unused-files-webpack-plugin": "^2.0.2",
     "webchauffeur": "^1.0.1",
-    "webpack": "^1.12.14",
-    "webpack-dev-server": "^1.14.0",
-    "webpack-hot-middleware": "^2.10.0",
-    "webpack-postcss-tools": "^1.1.1"
+    "webpack": "^1.14.0",
+    "webpack-dev-server": "^1.16.2",
+    "webpack-hot-middleware": "^2.14.0",
+    "webpack-postcss-tools": "^1.1.2"
   },
   "scripts": {
     "dev": "yarn && concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn run build-hot'",
