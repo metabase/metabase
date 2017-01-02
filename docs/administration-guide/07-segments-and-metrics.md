@@ -47,4 +47,4 @@ Lastly, you can also view the revision history for each segment and metric from 
 ---
 
 ## Next: configuring Metabase
-There are a few other settings you configure in Metabase. [Learn how](06-configuration-settings.md).
+There are a few other settings you configure in Metabase. [Learn how](08-configuration-settings.md).
