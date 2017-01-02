@@ -1,7 +1,7 @@
 ## Creating Collections for Your Saved Questions
 ---
 
-Collections are a great way to organize your saved questions and decide who gets to see and edit things. Collections could be things like, "Important Metrics," "Marketing KPIs," or "Questions about users." Multiple user groups can be given access to the same collections, so we don't necessarily recommend naming collections after user groups.
+Collections are a great way to organize your saved questions and decide who gets to see and edit things. Collections could be things like, "Important Metrics," "Marketing KPIs," or "Questions about users." Multiple [user groups](05-setting-permissions.md) can be given access to the same collections, so we don't necessarily recommend naming collections after user groups.
 
 This page will teach you how to create and manage your collections. For more information on organizing saved questions and using collections, [check out this section of the User's Guide](../users-guide/05-sharing-answers.md).
 
