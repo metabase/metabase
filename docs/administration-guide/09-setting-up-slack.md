@@ -30,4 +30,4 @@ That's it!  Metabase will automatically run a quick test to check that the API t
 ---
 
 ## Next: Single Sign-On
-Learn how to [configure Single Sign-On](08-single-sign-on.md) to let users sign in or sign up with just a click.
+Learn how to [configure Single Sign-On](10-single-sign-on.md) to let users sign in or sign up with just a click.

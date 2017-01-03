@@ -19,4 +19,4 @@ This option turns determines whether or not you allow anonymous data about your 
 ---
 
 ## Next: Setting up Slack
-If you want to use Slack to enhance the Metabase experience then lets do that now. Let’s learn [how to setup Slack](07-setting-up-slack.md).
+If you want to use Slack to enhance the Metabase experience then lets do that now. Let’s learn [how to setup Slack](09-setting-up-slack.md).
