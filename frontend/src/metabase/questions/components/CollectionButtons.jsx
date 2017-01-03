@@ -29,7 +29,7 @@ class CollectionButton extends Component {
     }
 
     render () {
-        const { id, name, color, slug, isAdmin, push } = this.props;
+        const { id, name, color, slug, isAdmin } = this.props;
         return (
             <Link
                 to={`/questions/collections/${slug}`}

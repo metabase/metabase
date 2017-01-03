@@ -1,7 +1,8 @@
 
 import { createAction, createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
 import { reset } from 'redux-form';
-import { goBack } from "react-router-redux";
+import { push } from "react-router-redux";
+import Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 
@@ -36,7 +37,7 @@ export const saveCollection = createThunkAction(SAVE_COLLECTION, (collection) =>
             if (response.id != null) {
                 dispatch(reset("collection"));
             }
-            dispatch(goBack())
+            dispatch(push(Urls.collection(response)));
             return response;
         } catch (e) {
             // redux-form expects an object with either { field: error } or { _error: error }
