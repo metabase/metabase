@@ -4,7 +4,7 @@
 
 *   [What Metabase does](01-what-is-metabase.md)
 *   [The basics of database terminology](02-database-basics.md)
-*   [What Metabase questions are made up of](03-asking-questions.md)
+*   [Asking questions in Metabase](03-asking-questions.md)
 *   [How to visualize the answers to questions](04-visualizing-results.md)
 *   [Sharing and organizing your saved questions](05-sharing-answers.md)
 *   [Creating dashboards](06-dashboards.md)

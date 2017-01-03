@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import CollectionActions from "./CollectionActions";
 import ArchiveCollectionWidget from "../containers/ArchiveCollectionWidget";
 
 const COLLECTION_ICON_SIZE = 64;
@@ -11,12 +10,12 @@ const COLLECTION_ICON_SIZE = 64;
 const COLLECTION_BOX_CLASSES = "relative block p4 hover-parent hover--visibility cursor-pointer text-centered transition-background";
 
 const CollectionButtons = ({ collections, isAdmin, push }) =>
-    <ol className="flex">
+    <ol className="flex flex-wrap">
         { collections
             .map(collection => <CollectionButton {...collection} push={push} isAdmin={isAdmin} />)
             .concat(isAdmin ? [<NewCollectionButton push={push} />] : [])
             .map((element, index) =>
-                <li key={index} className="mr4">
+                <li key={index} className="mr4 mb4">
                     {element}
                 </li>
             )
@@ -48,12 +47,10 @@ class CollectionButton extends Component {
                 >
                     { isAdmin &&
                         <div className="absolute top right mt2 mr2 hover-child">
-                            <CollectionActions>
-                                <Link to={"/collections/permissions?collectionId=" + id}>
-                                    <Icon name="lockoutline" tooltip="Set collection permissions" />
-                                </Link>
-                                <ArchiveCollectionWidget collectionId={id} />
-                            </CollectionActions>
+                            <Link to={"/collections/permissions?collectionId=" + id} className="mr1">
+                                <Icon name="lockoutline" tooltip="Set collection permissions" />
+                            </Link>
+                            <ArchiveCollectionWidget collectionId={id} />
                         </div>
                     }
                     <Icon
