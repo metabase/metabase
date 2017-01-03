@@ -2,9 +2,9 @@
 import _ from "underscore";
 import { mbqlEq } from "../query/util";
 
-import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
+import { VALID_OPERATORS, VALID_AGGREGATIONS, VALID_FUNCTIONS } from "./tokens";
 
-export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
+export { VALID_OPERATORS, VALID_AGGREGATIONS, VALID_FUNCTIONS } from "./tokens";
 
 export function formatAggregationName(aggregationOption) {
     return VALID_AGGREGATIONS.get(aggregationOption.short);
@@ -31,7 +31,12 @@ export function formatExpressionName(name) {
 // move to query lib
 
 export function isExpression(expr) {
-    return isMath(expr) || isAggregation(expr) || isField(expr) || isMetric(expr) || isExpressionReference(expr);
+    return isMath(expr) ||
+        isFunction(expr) ||
+        isAggregation(expr) ||
+        isField(expr) ||
+        isMetric(expr) ||
+        isExpressionReference(expr);
 }
 
 export function isField(expr) {
@@ -41,6 +46,10 @@ export function isField(expr) {
 export function isMetric(expr) {
     // case sensitive, unlike most mbql
     return Array.isArray(expr) && expr.length === 2 && expr[0] === "METRIC" && typeof expr[1] === 'number';
+}
+
+export function isFunction(expr) {
+    return Array.isArray(expr) && VALID_FUNCTIONS.has(expr[0]) && _.all(expr.slice(1), isValidArg);
 }
 
 export function isMath(expr) {

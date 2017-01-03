@@ -2,8 +2,8 @@
 import _ from "underscore";
 
 import {
-    VALID_OPERATORS, VALID_AGGREGATIONS,
-    isField, isMath, isMetric, isAggregation, isExpressionReference,
+    VALID_OPERATORS, VALID_AGGREGATIONS, VALID_FUNCTIONS,
+    isField, isMath, isFunction, isMetric, isAggregation, isExpressionReference,
     formatMetricName, formatFieldName, formatExpressionName
 } from "../expressions";
 
@@ -12,9 +12,10 @@ export function format(expr, {
     tableMetadata = {},
     customFields = {},
     operators = VALID_OPERATORS,
+    functions = VALID_FUNCTIONS,
     aggregations = VALID_AGGREGATIONS
 }, parens = false) {
-    const info = { tableMetadata, customFields, operators, aggregations };
+    const info = { tableMetadata, customFields, operators, functions, aggregations };
     if (expr == null || _.isEqual(expr, [])) {
         return "";
     }
@@ -26,6 +27,9 @@ export function format(expr, {
     }
     if (isMetric(expr)) {
         return formatMetric(expr, info);
+    }
+    if (isFunction(expr)) {
+        return formatFunction(expr, info, parens);
     }
     if (isMath(expr)) {
         return formatMath(expr, info, parens);
@@ -61,6 +65,10 @@ function formatMetric([, metricId], { tableMetadata: { metrics } }) {
 
 function formatExpressionReference([, expressionName]) {
     return formatExpressionName(expressionName);
+}
+
+function formatFunction([func, ...args], info) {
+    return `${func}(${args.map(arg => format(arg, info)).join(", ")})`;
 }
 
 function formatMath([operator, ...args], info, parens) {

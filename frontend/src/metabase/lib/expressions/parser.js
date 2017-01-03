@@ -10,6 +10,7 @@ import {
     LParen, RParen,
     AdditiveOperator, MultiplicativeOperator,
     Aggregation, NullaryAggregation, UnaryAggregation,
+    UnaryFunction,
     StringLiteral, NumberLiteral, Minus,
     Identifier
 } from "./tokens";
@@ -72,10 +73,10 @@ class ExpressionsParser extends Parser {
                 rParen: $.CONSUME(RParen)
             }
         })
-        $.RULE("unaryCall", () => {
+        $.RULE("unaryCall", (outsideAggregation) => {
             return {
                 lParen: $.CONSUME(LParen),
-                arg:    $.SUBRULE($.expression, [false]),
+                arg:    $.SUBRULE($.expression, [outsideAggregation]),
                 rParen: $.CONSUME(RParen)
             }
         })
@@ -88,7 +89,7 @@ class ExpressionsParser extends Parser {
                 })},
                 {ALT: () => ({
                     aggregation: $.CONSUME(UnaryAggregation),
-                    ...$.SUBRULE($.unaryCall)
+                    ...$.SUBRULE($.unaryCall, [false])
                 })}
             ]);
             return this._aggregation(aggregation, lParen, arg, rParen);
@@ -124,6 +125,16 @@ class ExpressionsParser extends Parser {
             return this._unknownField(fieldName);
         });
 
+        $.RULE("functionExpression", (outsideAggregation) => {
+            const { func, lParen, arg, rParen } = $.OR([
+                {ALT: () => ({
+                    func: $.CONSUME(UnaryFunction),
+                    ...$.SUBRULE($.unaryCall, [outsideAggregation])
+                })}
+            ]);
+            return this._function(func, lParen, arg, rParen);
+        })
+
         $.RULE("identifier", () => {
             const identifier = $.CONSUME(Identifier);
             return this._identifier(identifier);
@@ -151,6 +162,7 @@ class ExpressionsParser extends Parser {
                 // fields are not allowed outside aggregations
                 {GATE: () => !outsideAggregation, ALT: () => $.SUBRULE($.fieldExpression) },
 
+                {ALT: () => $.SUBRULE($.functionExpression, [outsideAggregation]) },
                 {ALT: () => $.SUBRULE($.parenthesisExpression, [outsideAggregation]) },
                 {ALT: () => $.SUBRULE($.numberLiteral) }
             ], (outsideAggregation ? "aggregation" : "field name") + ", number, or expression");
@@ -197,6 +209,9 @@ class ExpressionsParserMBQL extends ExpressionsParser {
     _aggregation(aggregation, lParen, arg, rParen) {
         const agg = aggregationsMap.get(aggregation.image)
         return arg == null ? [agg] : [agg, arg];
+    }
+    _function(func, lParen, arg, rParen) {
+        return [func.image, arg];
     }
     _metricReference(metricName, metricId) {
         return ["METRIC", metricId];
@@ -248,6 +263,9 @@ class ExpressionsParserSyntax extends ExpressionsParser {
     }
     _aggregation(aggregation, lParen, arg, rParen) {
         return syntax("aggregation", token(aggregation), token(lParen), arg, token(rParen));
+    }
+    _function(func, lParen, arg, rParen) {
+        return syntax("function", token(func), token(lParen), arg, token(rParen));
     }
     _metricReference(metricName, metricId) {
         return syntax("metric", metricName);

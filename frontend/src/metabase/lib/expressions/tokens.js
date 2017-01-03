@@ -9,6 +9,10 @@ export const VALID_OPERATORS = new Set([
     '/'
 ]);
 
+export const VALID_FUNCTIONS = new Set([
+    'round'
+]);
+
 export const VALID_AGGREGATIONS = new Map(Object.entries({
     "count": "Count",
     "cum_count": "CumulativeCount",
@@ -23,6 +27,7 @@ export const VALID_AGGREGATIONS = new Map(Object.entries({
 
 export const NULLARY_AGGREGATIONS = ["count", "cum_count"];
 export const UNARY_AGGREGATIONS = ["sum", "cum_sum", "distinct", "stddev", "avg", "min", "max"];
+export const UNARY_FUNCTIONS = ["round"];
 
 export const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
 export const Plus = extendToken("Plus", /\+/, AdditiveOperator);
@@ -42,6 +47,13 @@ const nullaryAggregationTokens = NULLARY_AGGREGATIONS.map((short) =>
 export const UnaryAggregation = extendToken("UnaryAggregation", Aggregation);
 const unaryAggregationTokens = UNARY_AGGREGATIONS.map((short) =>
     extendToken(VALID_AGGREGATIONS.get(short), new RegExp(VALID_AGGREGATIONS.get(short), "i"), UnaryAggregation)
+);
+
+export const Function_ = extendToken("Function", Lexer.NA);
+
+export const UnaryFunction = extendToken("UnaryFunction", Function_);
+const unaryFunctionTokens = UNARY_FUNCTIONS.map((short) =>
+    extendToken(short, new RegExp(short, "i"), UnaryFunction)
 );
 
 export const Identifier = extendToken('Identifier', /\w+/);
@@ -68,6 +80,7 @@ export const allTokens = [
     Aggregation,
     NullaryAggregation, ...nullaryAggregationTokens,
     UnaryAggregation, ...unaryAggregationTokens,
+    Function_, UnaryFunction, ...unaryFunctionTokens,
     StringLiteral, NumberLiteral,
     Identifier
 ];

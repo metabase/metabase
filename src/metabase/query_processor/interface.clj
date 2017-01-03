@@ -179,7 +179,7 @@
 
 (declare RValue Aggregation)
 
-(def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
+(def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/ :round) "Valid expression operator"))
 
 (s/defrecord Expression [operator   :- ExpressionOperator
                          args       :- [(s/cond-pre (s/recursive #'RValue)

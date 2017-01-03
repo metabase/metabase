@@ -421,6 +421,7 @@
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} - "Arithmetic subtraction function."    (partial expression-fn :-))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} round "Round function."                 (partial expression-fn :round))
 
 ;;; EXPRESSION PARSING
 
