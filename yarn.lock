@@ -160,9 +160,9 @@ amdefine@>=0.0.4:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/amdefine/-/amdefine-1.0.0.tgz#fd17474700cb5cc9c2b709f0be9d23ce3c198c33"
 
-annotate-react-dom@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/annotate-react-dom/-/annotate-react-dom-1.0.0.tgz#446b4667620c2d071344401344747b4fd7680b6f"
+annotate-react-dom@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/annotate-react-dom/-/annotate-react-dom-1.1.0.tgz#607c14d2565198d4bf365f6f05c60a61ba939a16"
 
 ansi-escapes@^1.1.0:
   version "1.4.0"
@@ -574,6 +574,10 @@ babel-messages@^6.8.0:
   resolved "https://registry.yarnpkg.com/babel-messages/-/babel-messages-6.8.0.tgz#bf504736ca967e6d65ef0adb5a2a5f947c8e0eb9"
   dependencies:
     babel-runtime "^6.0.0"
+
+babel-plugin-add-react-displayname@^0.0.4:
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/babel-plugin-add-react-displayname/-/babel-plugin-add-react-displayname-0.0.4.tgz#bc2a74bcbee6e505025b3352fea85ee7bc4c6f7c"
 
 babel-plugin-check-es2015-constants@^6.3.13:
   version "6.8.0"
@@ -7014,11 +7018,11 @@ watchpack@^0.2.1:
     chokidar "^1.0.0"
     graceful-fs "^4.1.2"
 
-webchauffeur@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/webchauffeur/-/webchauffeur-1.1.0.tgz#b0abe64978c655472b181ff4c49752c33fdd12f7"
+webchauffeur@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/webchauffeur/-/webchauffeur-1.2.0.tgz#d03d7f38d336c2ae55099d978adabc0e75a50d6f"
   dependencies:
-    annotate-react-dom "^1.0.0"
+    annotate-react-dom "^1.1.0"
     css-to-xpath "^0.1.0"
     mz "^2.6.0"
     promise-chain-decorator "^1.2.0"

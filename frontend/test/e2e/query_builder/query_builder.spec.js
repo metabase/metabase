@@ -41,12 +41,12 @@ describeE2E("query_builder", () => {
             // save question
             await d.select(".Header-buttonSection:first-child").wait().click();
             await d.select("#SaveQuestionModal input[name='name']").wait().sendKeys("Pivot Table");
-            await d.select("#SaveQuestionModal .Button.Button--primary").wait().click();
+            await d.select("#SaveQuestionModal .Button.Button--primary").wait().click().waitRemoved(); // wait for the modal to be removed
 
             // add to new dashboard
             await d.select("#QuestionSavedModal .Button.Button--primary").wait().click();
             await d.select("#CreateDashboardModal input[name='name']").wait().sendKeys("Main Dashboard");
-            await d.select("#CreateDashboardModal .Button.Button--primary").wait().click();
+            await d.select("#CreateDashboardModal .Button.Button--primary").wait().click().waitRemoved(); // wait for the modal to be removed
 
             // save dashboard
             await d.select(".EditHeader .Button.Button--primary").wait().click();
