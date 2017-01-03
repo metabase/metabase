@@ -221,7 +221,7 @@ export default class QueryBuilder extends Component {
 
                 <div className={cx("SideDrawer", { "SideDrawer--show": showDrawer })}>
                     { uiControls.isShowingDataReference &&
-                        <DataReference {...this.props} closeFn={() => this.props.toggleDataReference()} />
+                        <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
 
                     { uiControls.isShowingTemplateTagsEditor &&

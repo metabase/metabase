@@ -34,6 +34,14 @@ var Urls = {
         }
 
         return url;
+    },
+
+    collection(collection) {
+        return `/questions/collections/${encodeURIComponent(collection.slug)}`;
+    },
+
+    label(label) {
+        return `/questions/search?label=${encodeURIComponent(label.slug)}`;
     }
 }
 

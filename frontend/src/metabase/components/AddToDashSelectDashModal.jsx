@@ -25,7 +25,7 @@ export default class AddToDashSelectDashModal extends Component {
 
     static propTypes = {
         card: PropTypes.object.isRequired,
-        closeFn: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired,
         onChangeLocation: PropTypes.func.isRequired
     };
 
@@ -54,13 +54,13 @@ export default class AddToDashSelectDashModal extends Component {
         if (!this.state.dashboards) {
             return null;
         } else if (this.state.dashboards.length === 0 || this.state.shouldCreateDashboard === true) {
-            return <CreateDashboardModal createDashboardFn={this.createDashboard} closeFn={this.props.closeFn} />
+            return <CreateDashboardModal createDashboardFn={this.createDashboard} onClose={this.props.onClose} />
         } else {
             return (
                 <ModalContent
                     id="AddToDashSelectDashModal"
                     title="Add Question to Dashboard"
-                    closeFn={this.props.closeFn}
+                    onClose={this.props.onClose}
                 >
                 <div className="flex flex-column">
                     <div

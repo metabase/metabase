@@ -4,8 +4,8 @@ import { connect } from "react-redux";
 
 import S from "./UndoListing.css";
 
-import { dismissUndo, performUndo } from "../undo";
-import { getUndos } from "../selectors";
+import { dismissUndo, performUndo } from "metabase/redux/undo";
+import { getUndos } from "metabase/selectors/undo";
 
 import Icon from "metabase/components/Icon";
 import BodyComponent from "metabase/components/BodyComponent";
@@ -14,7 +14,7 @@ import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
 const mapStateToProps = (state, props) => {
   return {
-      undos: getUndos(state)
+      undos: getUndos(state, props)
   }
 }
 
@@ -43,11 +43,14 @@ export default class UndoListing extends Component {
                 >
                 { undos.map(undo =>
                     <li key={undo._domId} className={S.undo}>
-                        <span className={S.message}>{typeof undo.message === "function" ? undo.message(undo) : undo.message}</span>
-                        <span className={S.actions}>
+                        <div className={S.message}>
+                            {typeof undo.message === "function" ? undo.message(undo) : undo.message}
+                        </div>
+
+                        <div className={S.actions}>
                             <a className={S.undoButton} onClick={() => performUndo(undo.id)}>Undo</a>
                             <Icon className={S.dismissButton} name="close" onClick={() => dismissUndo(undo.id)} />
-                        </span>
+                        </div>
                     </li>
                 )}
                 </ReactCSSTransitionGroup>

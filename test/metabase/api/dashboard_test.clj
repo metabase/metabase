@@ -124,6 +124,7 @@
                                                        :query_type             nil
                                                        :dataset_query          {}
                                                        :visualization_settings {}
+                                                       :collection_id          nil
                                                        :archived               false}
                               :series                 []}]}
   ;; fetch a dashboard WITH a dashboard card on it

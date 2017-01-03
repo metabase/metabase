@@ -2,6 +2,7 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
+import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
 import Query from "metabase/lib/query";
 
@@ -14,7 +15,8 @@ export default class CardPicker extends Component {
         this.state = {
             isOpen: false,
             inputValue: "",
-            inputWidth: 300
+            inputWidth: 300,
+            collectionId: undefined,
         };
 
         _.bindAll(this, "onChange", "onInputChange", "onInputFocus", "onInputBlur");
@@ -42,12 +44,18 @@ export default class CardPicker extends Component {
         // which causes the click handler to not fire. For some reason this even
         // happens with a 100ms delay, but not 200ms?
         clearTimeout(this._timer);
-        this._timer = setTimeout(() => this.setState({ isOpen: false }), 250);
+        this._timer = setTimeout(() => {
+            if (!this.state.isClicking) {
+                this.setState({ isOpen: false })
+            } else {
+                this.setState({ isClicking: false })
+            }
+        }, 250);
     }
 
     onChange(id) {
         this.props.onChange(id);
-        this.setState({ isOpen: false });
+        ReactDOM.findDOMNode(this.refs.input).blur();
     }
 
     renderItem(card) {
@@ -87,16 +95,37 @@ export default class CardPicker extends Component {
 
     render() {
         let { cardList } = this.props;
-        let { isOpen, inputValue, inputWidth } = this.state;
 
+        let { isOpen, inputValue, inputWidth, collectionId } = this.state;
+
+        let cardByCollectionId = _.groupBy(cardList, "collection_id");
+        let collectionIds = Object.keys(cardByCollectionId);
+
+        const collections = _.chain(cardList)
+            .map(card => card.collection)
+            .uniq(c => c && c.id)
+            .filter(c => c)
+            .sortBy("name")
+            .value();
+
+        collections.unshift({ id: null, name: "None" });
+
+        let visibleCardList;
         if (inputValue) {
             let searchString = inputValue.toLowerCase();
-            cardList = cardList.filter((card) =>
+            visibleCardList = cardList.filter((card) =>
                 ~(card.name || "").toLowerCase().indexOf(searchString) ||
                 ~(card.description || "").toLowerCase().indexOf(searchString)
             );
+        } else {
+            if (collectionId !== undefined) {
+                visibleCardList = cardByCollectionId[collectionId];
+            } else if (collectionIds.length === 1) {
+                visibleCardList = cardByCollectionId[collectionIds[0]];
+            }
         }
 
+        const collection = _.findWhere(collections, { id: collectionId });
         return (
             <div className="CardPicker flex-full">
                 <input
@@ -117,11 +146,52 @@ export default class CardPicker extends Component {
                         targetOffset: "0 0"
                     }}
                 >
-                    <ul className="List rounded bordered text-brand scroll-y scroll-show" style={{ width: inputWidth + "px", maxHeight: "400px" }}>
-                        {cardList.map((card) => this.renderItem(card))}
-                    </ul>
+                    <div className="rounded bordered scroll-y scroll-show" style={{ width: inputWidth + "px", maxHeight: "400px" }}>
+                    { visibleCardList && collectionIds.length > 1 &&
+                        <div className="flex align-center text-slate cursor-pointer border-bottom p2"  onClick={(e) => {
+                            this.setState({ collectionId: undefined, isClicking: true });
+                        }}>
+                            <Icon name="chevronleft" size={18} />
+                            <h3 className="ml1">{collection && collection.name}</h3>
+                        </div>
+                    }
+                    { visibleCardList ?
+                        <ul className="List text-brand">
+                            {visibleCardList.map((card) => this.renderItem(card))}
+                        </ul>
+                    : collections ?
+                        <CollectionList>
+                        {collections.map(collection =>
+                            <CollectionListItem collection={collection} onClick={(e) => {
+                                this.setState({ collectionId: collection.id, isClicking: true });
+                            }}/>
+                        )}
+                        </CollectionList>
+                    : null }
+                    </div>
                 </Popover>
             </div>
         );
     }
 }
+
+const CollectionListItem = ({ collection, onClick }) =>
+    <li className="List-item cursor-pointer flex align-center py1 px2" onClick={onClick}>
+        <Icon name="collection" style={{ color: collection.color }} className="Icon mr2 text-default" size={18} />
+        <h4 className="List-item-title">{collection.name}</h4>
+        <Icon name="chevronright" className="flex-align-right text-grey-2" />
+    </li>
+
+CollectionListItem.propTypes = {
+    collection: PropTypes.object.isRequired,
+    onClick: PropTypes.func.isRequired
+};
+
+const CollectionList = ({ children }) =>
+    <ul className="List text-brand">
+        {children}
+    </ul>
+
+CollectionList.propTypes = {
+    children: PropTypes.array.isRequired
+};

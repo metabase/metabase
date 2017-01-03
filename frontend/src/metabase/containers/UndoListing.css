@@ -1,5 +1,3 @@
-@import '../Questions.css';
-
 :local(.listing) {
     composes: m2 from "style";
     composes: fixed left bottom from "style";
@@ -8,23 +6,21 @@
 
 :local(.undo) {
     composes: mt2 p2 from "style";
-    composes: bordered from "style";
-    composes: rounded from "style";
-    composes: shadowed from "style";
-    composes: relative from "style";
+    composes: bordered rounded shadowed from "style";
     composes: bg-white from "style";
+    composes: relative from "style";
+    composes: flex align-center from "style";
     width: 320px;
 }
 
 :local(.actions) {
-    composes: flex align-center from "style";
-    composes: float-right from "style";
+    composes: flex align-center flex-align-right from "style";
 }
 
 :local(.undoButton) {
     composes: mx2 from "style";
     composes: text-uppercase text-bold from "style";
-    color: var(--blue-color);
+    color: var(--brand-color);
 }
 :local(.dismissButton) {
     composes: cursor-pointer from "style";

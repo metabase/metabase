@@ -60,7 +60,7 @@
      *  `(partial current-user-has-full-permissions? :read)` (you must also implement `perms-objects-set` to use this)
      *  `(partial current-user-has-partial-permissions? :read)` (you must also implement `perms-objects-set` to use this)")
 
-  (can-write? ^Boolean [instance], ^Boolean [entity, ^Integer id]
+  (^{:hydrate :can_write} can-write? ^Boolean [instance], ^Boolean [entity, ^Integer id]
    "Return whether `*current-user*` has *write* permissions for an object. You should use one of these implmentations:
 
      *  `(constantly true)`
