@@ -55,6 +55,7 @@ export default class CollectionPage extends Component {
                 </div>
                 <div className="mt4">
                     <EntityList
+                        defaultEmptyState="No questions have been added to this collection yet."
                         entityType="cards"
                         entityQuery={{ f: "all", collection: params.collectionSlug, ...location.query }}
                         // use replace when changing sections so back button still takes you back to collections page
