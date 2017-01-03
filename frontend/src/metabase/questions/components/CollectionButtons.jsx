@@ -31,7 +31,9 @@ class CollectionButton extends Component {
     render () {
         const { id, name, color, slug, isAdmin, push } = this.props;
         return (
-            <div
+            <Link
+                to={`/questions/collections/${slug}`}
+                className="no-decoration"
                 onMouseEnter={() => this.setState({ hovered: true })}
                 onMouseLeave={() => this.setState({ hovered: false })}
             >
@@ -43,7 +45,6 @@ class CollectionButton extends Component {
                         borderRadius: 10,
                         backgroundColor: this.state.hovered ? color : '#fafafa'
                     }}
-                    onClick={() => push(`/questions/collections/${slug}`)}
                 >
                     { isAdmin &&
                         <div className="absolute top right mt2 mr2 hover-child">
@@ -61,7 +62,7 @@ class CollectionButton extends Component {
                     />
                     <h3>{ name }</h3>
                 </div>
-            </div>
+            </Link>
         )
     }
 }
