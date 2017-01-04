@@ -119,23 +119,29 @@ class BrowserSelect extends Component {
 
 export class Option extends Component {
     static propTypes = {
-        children: PropTypes.any,
-        selected: PropTypes.bool,
-        disabled: PropTypes.bool,
-        onClick: PropTypes.func
+        children:   PropTypes.any,
+        selected:   PropTypes.bool,
+        disabled:   PropTypes.bool,
+        onClick:    PropTypes.func,
+        icon:       PropTypes.string,
+        iconColor:  PropTypes.string,
+        iconSize:   PropTypes.number,
     };
 
     render() {
-        const { children, selected, disabled, onClick } = this.props;
+        const { children, selected, disabled, icon, iconColor, iconSize, onClick } = this.props;
         return (
             <div
                 onClick={onClick}
-                className={cx("ColumnarSelector-row flex no-decoration", {
+                className={cx("ColumnarSelector-row flex align-center cursor-pointer no-decoration relative", {
                     "ColumnarSelector-row--selected": selected,
                     "disabled": disabled
                 })}
             >
-                <Icon name="check"  size={14}/>
+                <Icon name="check" size={14} />
+                { icon &&
+                    <Icon name={icon} style={{ position: "absolute", color: iconColor, visibility: !selected ? "visible" : "hidden" }} size={iconSize} />
+                }
                 {children}
             </div>
         );
@@ -147,7 +153,7 @@ class LegacySelect extends Component {
         value: PropTypes.any,
         values: PropTypes.array,
         options: PropTypes.array.isRequired,
-        disabledOptionIds: PropTypes.array, 
+        disabledOptionIds: PropTypes.array,
         placeholder: PropTypes.string,
         emptyPlaceholder: PropTypes.string,
         onChange: PropTypes.func,
@@ -176,10 +182,10 @@ class LegacySelect extends Component {
     render() {
         const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, emptyPlaceholder, isInitiallyOpen, disabled } = this.props;
 
-        var selectedName = value ? 
-            optionNameFn(value) : 
-            options && options.length > 0 ? 
-                placeholder : 
+        var selectedName = value ?
+            optionNameFn(value) :
+            options && options.length > 0 ?
+                placeholder :
                 emptyPlaceholder;
 
         var triggerElement = (

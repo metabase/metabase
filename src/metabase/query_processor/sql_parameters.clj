@@ -46,21 +46,10 @@
   (first (hsql/format x
            :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))))
 
-(defn- format-oracle-date [s]
-  (format "to_timestamp('%s', 'YYYY-MM-DD')" (u/format-date "yyyy-MM-dd" (u/->Date s))))
-
-(defn- oracle-driver? ^Boolean []
-  ;; we can't just import OracleDriver the normal way here because that would cause a cyclic load dependency
-  (boolean (when-let [oracle-driver-class (u/ignore-exceptions (Class/forName "metabase.driver.oracle.OracleDriver"))]
-             (instance? oracle-driver-class *driver*))))
-
-(defn- format-date
-  ;; This is a dirty dirty HACK! Unfortuantely Oracle is super-dumb when it comes to automatically converting strings to dates
-  ;; so we need to add the cast here
-  [date]
-  (if (oracle-driver?)
-    (format-oracle-date date)
-    (str \' date \')))
+(defn- format-date-string
+  "Format DATE-STRING as an appropriate literal using the driver's definition of `date-string->literal`."
+  ^String [^String date-string]
+  (honeysql->sql ((resolve 'metabase.driver.generic-sql/date-string->literal) *driver* date-string)))
 
 (extend-protocol ISQLParamSubstituion
   nil         (->sql [_]    "NULL")
@@ -73,20 +62,20 @@
 
   FieldInstance
   (->sql [this]
-    (->sql (let [identifier (apply hsql/qualify (field/qualified-name-components this))]
+    (->sql (let [identifier ((resolve 'metabase.driver.generic-sql/field->identifier) *driver* this)]
              (if (re-find #"^date/" (:type this))
                ((resolve 'metabase.driver.generic-sql/date) *driver* :day identifier)
                identifier))))
 
   Date
   (->sql [{:keys [s]}]
-    (format-date s))
+    (format-date-string s))
 
   DateRange
   (->sql [{:keys [start end]}]
     (if (= start end)
-      (format "= %s" (format-date start))
-      (format "BETWEEN %s AND %s" (format-date start) (format-date end))))
+      (format "= %s" (format-date-string start))
+      (format "BETWEEN %s AND %s" (format-date-string start) (format-date-string end))))
 
   Dimension
   (->sql [{:keys [field param], :as dimension}]
@@ -175,10 +164,10 @@
 
 (defn- parse-value-for-type [param-type value]
   (cond
-    (= param-type "number")                                (->NumberValue value)
+    (= param-type "number")                          (->NumberValue value)
     (and (= param-type "dimension")
-         (= (get-in value [:param :type]) "number"))       (update-in value [:param :value] ->NumberValue)
-    :else                                                  value))
+         (= (get-in value [:param :type]) "number")) (update-in value [:param :value] ->NumberValue)
+    :else                                            value))
 
 (defn- value-for-tag
   "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS sequence.

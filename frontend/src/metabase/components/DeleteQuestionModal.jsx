@@ -15,7 +15,7 @@ export default class DeleteQuestionModal extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         deleteCardFn: PropTypes.func.isRequired,
-        closeFn: PropTypes.func
+        onClose: PropTypes.func
     };
 
     async deleteCard() {
@@ -46,7 +46,7 @@ export default class DeleteQuestionModal extends Component {
         return (
             <ModalContent
                 title="Delete Question"
-                closeFn={this.props.closeFn}
+                onClose={this.props.onClose}
             >
                 <div className="Form-inputs mb4">
                     <p>Are you sure you want to do this?</p>
@@ -57,7 +57,7 @@ export default class DeleteQuestionModal extends Component {
 
                 <div className="Form-actions">
                     <button className="Button Button--danger" onClick={() => this.deleteCard()}>Yes</button>
-                    <button className="Button Button--primary ml1" onClick={this.props.closeFn}>No</button>
+                    <button className="Button Button--primary ml1" onClick={this.props.onClose}>No</button>
                     {formError}
                 </div>
             </ModalContent>

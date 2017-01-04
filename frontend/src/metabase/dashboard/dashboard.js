@@ -85,6 +85,7 @@ export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
 
+// TODO: consolidate with questions reducer
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "all") {
     return async function(dispatch, getState) {
         let cards = await CardApi.list({ f: filterMode });
@@ -411,6 +412,7 @@ const isEditing = handleActions({
     [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload }
 }, false);
 
+// TODO: consolidate with questions reducer
 const cards = handleActions({
     [FETCH_CARDS]: { next: (state, { payload }) => ({ ...payload.entities.card }) }
 }, {});

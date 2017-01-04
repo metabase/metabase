@@ -32,6 +32,6 @@ export default ComposedComponent => class extends Component {
     }
 
     render() {
-        return <span />;
+        return null;
     }
 };

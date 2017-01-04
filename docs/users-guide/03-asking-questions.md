@@ -49,7 +49,7 @@ If your Metabase admins have created special named filters, called segments, for
 
 ### Answer Output
 ---
-The last section of the question builder is where you select what you want the output of your answer to be, under the View dropdown. You’re basically telling Metabase, “I want to view the…” Metabase can output the answer to your question in three different ways:
+The last section of the question builder is where you select what you want the output of your answer to be, under the View dropdown. You’re basically telling Metabase, “I want to view the…” Metabase can output the answer to your question in four different ways:
 
 #### 1. Raw Data
 Raw Data is just a table with the answer listed in rows.  It's useful when you want to see the actual data you're working with, rather than a sum or average, etc., or when you're exploring a small table with a limited number of records.  
@@ -58,18 +58,28 @@ When you filter your data to see groups of interesting users, orders, etc., Raw 
 
 #### 2. Basic Metrics
 
-What's a *metric*? It's a number that is derived from your source table and takes into consideration any filters you asked Metabase to apply to your question. So when you select one of these metrics, your answer will come back in the form of a number. The different basic metrics are:
+What's a *metric*? It's a number that is derived from your source table and takes into consideration any filters you asked Metabase to apply to your question. So when you select one of these metrics, your answer will come back in the form of a number. You can add additional metrics to your question using the `+` icon next to your selected metric.
 
-* **Count:** The total of number of rows in the answer. Each row corresponds to a separate record. If you want to know how many orders in the Orders table were placed with a price greater than $40, you’d filter by “Price greater than 40,” and then select Count, because you want Metabase to count how many orders matched your filter.
-* **Sum:** Sum of all the values in a column. This is really easy to get mixed up with Count — just remember that Count counts each *row*, but Sum adds up all the values in a single field. You’d use Sum to get your total revenue dollar amount, for example.
-* **Average:** Average of all the values in a column.
-* **Number of Distinct Values:** Number of unique values in all the cells of a single column. This would be useful to find out things like how many different *types* of products were sold last month (not how many were sold in total).
-* **Cumulative Sum:** This gives you a running total of a specific column. This will look exactly the same as Sum unless you break out your answer by day, week, month, etc. (See the next section about breaking out metrics.) An example would be total revenue over time.
-* **Standard Deviation:** A number which expresses how much the values of a column vary, plus or minus, from the average of that column.
+The different basic metrics are:
+
+* **Count of rows:** The total of number of rows in the answer. Each row corresponds to a separate record. If you want to know how many orders in the Orders table were placed with a price greater than $40, you’d filter by “Price greater than 40,” and then select Count, because you want Metabase to count how many orders matched your filter.
+* **Sum of …:** Sum of all the values in a column. This is really easy to get mixed up with Count — just remember that Count counts each *row*, but Sum adds up all the values in a single field. You’d use Sum to get your total revenue dollar amount, for example.
+* **Average of …:** Average of all the values in a column.
+* **Number of distinct values of…:** Number of unique values in all the cells of a single column. This would be useful to find out things like how many different *types* of products were sold last month (not how many were sold in total).
+* **Cumulative sum of…:** This gives you a running total of a specific column. This will look exactly the same as Sum unless you break out your answer by day, week, month, etc. (See the next section about breaking out metrics.) An example would be total revenue over time.
+* **Cumulative count of rows:** This gives you a running total of the number of rows in the table over time. Just like `Cumulative sum of…`, this will look exactly the same as `Count of rows` unless you break out your answer a time field.
+* **Standard deviation of …:** A number which expresses how much the values of a column vary, plus or minus, from the average of that column.
+* **Minimum of …:** The minimum value present in the selected field.
+* **Maximum of …:** The maximum value present in the selected field.
 
 #### 3. Common Metrics
 
 If your admins have created any named metrics that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
+
+#### 4. Custom Expressions
+Custom expressions allow you to do simple arithmetic within or between aggregation functions. For example, you could do `Average(FieldX) + Sum(FieldY)` or `Max(FieldX - FieldY)`, where `FieldX` and `FieldY` are fields in the currently selected table. You can either use your cursor to select suggested functions and fields, or simply start typing and use the autocomplete. If you are a Metabase administrator, you can now also use custom aggregation expressions when creating defined common metrics in the Admin Panel.
+
+Currently, you can use any of the basic aggregation functions listed in #2 above in your custom expression, and these basic mathematical operators: `+`, `-`, `*` (multiply), `/` (divide). You can also use parentheses to clarify the order of operations.
 
 ### Breaking Out Metrics: Add a group
 ---
@@ -100,7 +110,7 @@ A custom field is helpful if you need to create a new field based on a calculati
 
 ![Custom fields](images/custom-fields/blank-formula.png)
 
-Say we had a table of individual baseball games, and we wanted to figure out how many more runs the home team scored than the away team (the “run differential”). If we have one field with the home team’s score, and another field with the away team’s score, we could type a formula like this:
+Say we had a table of baseball games, each row representing a single game, and we wanted to figure out how many more runs the home team scored than the away team (the “run differential”). If we have one field with the home team’s score, and another field with the away team’s score, we could type a formula like this:
 
 ![Formula](images/custom-fields/filled-formula.png)
 

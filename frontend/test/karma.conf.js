@@ -36,9 +36,6 @@ module.exports = function(config) {
         webpackMiddleware: {
             stats: "errors-only"
         },
-        webpackMiddleware: {
-            stats: "errors-only",
-        },
         coverageReporter: {
             dir: '../coverage/',
             subdir: function(browser) {

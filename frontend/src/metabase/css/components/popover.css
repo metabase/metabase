@@ -11,7 +11,6 @@
 
 .PopoverBody {
 	pointer-events: auto;
-	position: relative;
 	min-width: 1em; /* ewwwwwwww */
 	border: 1px solid #ddd;
 	box-shadow: 0 1px 7px rgba(0, 0, 0, .18);
@@ -19,6 +18,7 @@
 	border-radius: 4px;
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
 }
 
 .PopoverBody.PopoverBody--tooltip {

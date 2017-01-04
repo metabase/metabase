@@ -149,7 +149,7 @@
   "Get metrics based on user records
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  (let [users (db/select 'User)]
+  (let [users (db/select ['User :is_active :is_superuser :last_login :google_auth])]
     {:users (apply add-summaries (map user-dims users))}))
 
 
@@ -157,7 +157,7 @@
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
   []
-  (let [groups (db/select 'PermissionsGroup)]
+  (let [groups (db/select ['PermissionsGroup :id])]
     {:groups (count groups)}))
 
 ;; Artifact Metrics
@@ -173,15 +173,15 @@
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [questions (db/select 'Card)]
+  (let [questions (db/select ['Card :id :query_type])]
     {:questions (apply add-summaries (map question-dims questions))}))
 
 (defn- dashboard-metrics
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (db/select 'Dashboard)
-        dashcards (db/select 'DashboardCard)]
+  (let [dashboards (db/select ['Dashboard :id :creator_id])
+        dashcards (db/select ['DashboardCard :id :card_id :dashboard_id])]
     {:dashboards (count dashboards)
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
      :num_cards_per_dash (medium-histogram dashcards :dashboard_id)
@@ -191,9 +191,9 @@
   "Get mes based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
-  (let [pulses (db/select 'Pulse)
-        pulsecards (db/select 'PulseCard)
-        pulsechannels (db/select 'PulseChannel)]
+  (let [pulses (db/select ['Pulse :id :creator_id])
+        pulsecards (db/select ['PulseCard :id :card_id :pulse_id])
+        pulsechannels (db/select ['PulseChannel :channel_type :schedule_type])]
     {:pulses (count pulses)
      :pulse_types (frequencies (map :channel_type pulsechannels))
      :pulse_schedules (frequencies (map :schedule_type pulsechannels))
@@ -205,10 +205,24 @@
 (defn- label-metrics
   "Get metrics based on labels"
   []
-  (let [labels (db/select 'CardLabel)]
+  (let [labels (db/select 'Label)
+        cardlabels (db/select ['CardLabel :card_id :label_id])]
     {:labels (count labels)
-     :num_labels_per_card (micro-histogram labels :card_id)
-     :num_cards_per_label (medium-histogram labels :label_id)}))
+     :num_labels_per_card (micro-histogram cardlabels :card_id)
+     :num_cards_per_label (medium-histogram cardlabels :label_id)}))
+
+
+(defn- collection-metrics
+  "Get metrics on collection usage"
+  []
+  (let [collections (db/select 'Collection)
+        cards (db/select ['Card :collection_id])]
+    {:collections (count collections)
+     :cards_in_collections (count (filter (comp nil?) (map :collection_id cards)))
+     :cards_not_in_collections (count (filter nil? (map :collection_id cards)))
+     :num_cards_per_collection (medium-histogram cards :collection_id)}
+    )
+  )
 
 ;; Metadata Metrics
 (defn- database-dims
@@ -220,14 +234,14 @@
 (defn- database-metrics
   "Get metrics based on databases"
   []
-  (let [databases (db/select 'Database)]
+  (let [databases (db/select ['Database :id :is_full_sync])]
     {:databases (apply add-summaries (map database-dims databases))}))
 
 
 (defn- table-metrics
   "Get metrics based on tables"
   []
-  (let [tables (db/select 'Table)]
+  (let [tables (db/select ['Table :id :db_id :schema])]
     {:tables (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema (medium-histogram tables :schema)}))
@@ -236,21 +250,21 @@
 (defn- field-metrics
   "Get metrics based on fields"
   []
-  (let [fields (db/select 'Field)]
+  (let [fields (db/select ['Field :id :table_id])]
     {:fields (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
 (defn- segment-metrics
   "Get metrics based on segments"
   []
-  (let [segments (db/select 'Segment)]
+  (let [segments (db/select ['Segment :id])]
     {:segments (count segments)}))
 
 
 (defn- metric-metrics
   "Get metrics based on metrics"
   []
-  (let [metrics (db/select 'Metric)]
+  (let [metrics (db/select ['Metric :id])]
     {:metrics (count metrics)}))
 
 
@@ -291,6 +305,7 @@
                      :metric (metric-metrics)
                      :group (group-metrics)
                      :label (label-metrics)
+                     :collection (collection-metrics)
                      :execution (execution-metrics)}}))
 
 

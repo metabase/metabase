@@ -11,6 +11,11 @@
     font-size: 14px;
 }
 
+:local(.footer) {
+    composes: text-bold p2 border-top from "style";
+    font-size: 14px;
+}
+
 :local(.options) {
     composes: full-height py1 scroll-y from "style";
     max-height: 300px;

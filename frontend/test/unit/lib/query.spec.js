@@ -9,10 +9,7 @@ describe('Query', () => {
                 database: null,
                 type: "query",
                 query: {
-                    source_table: null,
-                    aggregation: ["rows"],
-                    breakout: [],
-                    filter: []
+                    source_table: null
                 }
             });
         });
@@ -28,52 +25,19 @@ describe('Query', () => {
         });
 
         it("should populate the databaseId if specified", () => {
-            expect(createQuery("query", 123)).toEqual({
-                database: 123,
-                type: "query",
-                query: {
-                    source_table: null,
-                    aggregation: ["rows"],
-                    breakout: [],
-                    filter: []
-                }
-            });
+            expect(createQuery("query", 123).database).toEqual(123);
         });
 
         it("should populate the tableId if specified", () => {
-            expect(createQuery("query", 123, 456)).toEqual({
-                database: 123,
-                type: "query",
-                query: {
-                    source_table: 456,
-                    aggregation: ["rows"],
-                    breakout: [],
-                    filter: []
-                }
-            });
+            expect(createQuery("query", 123, 456).query.source_table).toEqual(456);
         });
 
         it("should NOT set the tableId if query type is native", () => {
-            expect(createQuery("native", 123, 456)).toEqual({
-                database: 123,
-                type: "native",
-                native: {
-                    query: ""
-                }
-            });
+            expect(createQuery("native", 123, 456).query).toEqual(undefined);
         });
 
         it("should NOT populate the tableId if no database specified", () => {
-            expect(createQuery("query", null, 456)).toEqual({
-                database: null,
-                type: "query",
-                query: {
-                    source_table: null,
-                    aggregation: ["rows"],
-                    breakout: [],
-                    filter: []
-                }
-            });
+            expect(createQuery("query", null, 456).query.source_table).toEqual(null);
         });
     });
 
@@ -89,7 +53,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[1, "ascending"]]));
+            expect(query.order_by).toEqual([[1, "ascending"]]);
         });
         it('should remove incomplete sort clauses', () => {
             let query = {
@@ -116,7 +80,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["aggregation", 0], "ascending"]]));
+            expect(query.order_by).toEqual([[["aggregation", 0], "ascending"]]);
         });
         it('should remove sort clauses on aggregations if that aggregation doesn\'t support it', () => {
             let query = {
@@ -143,7 +107,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[1, "ascending"]]));
+            expect(query.order_by).toEqual([[1, "ascending"]]);
         });
         it('should remove sort clauses on fields not appearing in breakout', () => {
             let query = {
@@ -170,7 +134,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["fk->", 1, 2], "ascending"]]));
+            expect(query.order_by).toEqual([[["fk->", 1, 2], "ascending"]]);
         });
 
         it('should not remove sort clauses with datetime_fields on fields appearing in breakout', () => {
@@ -184,7 +148,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["datetime_field", 1, "as", "week"], "ascending"]]));
+            expect(query.order_by).toEqual([[["datetime_field", 1, "as", "week"], "ascending"]]);
         });
 
         it('should replace order_by clauses with the exact matching datetime_fields version in the breakout', () => {
@@ -198,7 +162,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["datetime_field", 1, "as", "week"], "ascending"]]));
+            expect(query.order_by).toEqual([[["datetime_field", 1, "as", "week"], "ascending"]]);
         });
 
         it('should replace order_by clauses with the exact matching fk-> version in the breakout', () => {
@@ -212,11 +176,11 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(JSON.stringify(query.order_by)).toBe(JSON.stringify([[["fk->", 1, 2], "ascending"]]));
+            expect(query.order_by).toEqual([[["fk->", 1, 2], "ascending"]]);
         });
     });
 
-    describe('removeDimension', () => {
+    describe('removeBreakout', () => {
         it('should remove the dimension', () => {
             let query = {
                 source_table: 0,
@@ -224,8 +188,8 @@ describe('Query', () => {
                 breakout: [1],
                 filter: []
             };
-            Query.removeDimension(query, 0);
-            expect(query.breakout.length).toBe(0);
+            Query.removeBreakout(query, 0);
+            expect(query.breakout).toBe(undefined);
         });
         it('should remove sort clauses for the dimension that was removed', () => {
             let query = {
@@ -237,7 +201,7 @@ describe('Query', () => {
                     [1, "ascending"]
                 ]
             };
-            Query.removeDimension(query, 0);
+            Query.removeBreakout(query, 0);
             expect(query.order_by).toBe(undefined);
         });
     });

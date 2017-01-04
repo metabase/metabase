@@ -20,13 +20,13 @@ frontend-deps() {
 }
 
 frontend() {
-    echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
-    ./node_modules/.bin/webpack -p --bail
+    echo "Running 'webpack' with NODE_ENV=production assemble and minify frontend assets..." &&
+    NODE_ENV=production ./node_modules/.bin/webpack --bail
 }
 
 frontend-fast() {
-    echo "Running 'webpack' to assemble and minify frontend assets..." &&
-    ./node_modules/.bin/webpack --devtool eval --bail
+    echo "Running 'webpack' with NODE_ENV=development to assemble frontend assets..." &&
+    NODE_ENV=development ./node_modules/.bin/webpack --bail --devtool eval
 }
 
 sample-dataset() {

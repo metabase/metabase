@@ -15,7 +15,7 @@ export default class CreatedDatabaseModal extends Component {
         return (
             <ModalContent
                 title="Your database has been added!"
-                closeFn={onClose}
+                onClose={onClose}
             >
                 <div className="Form-inputs mb4">
                     <p>
