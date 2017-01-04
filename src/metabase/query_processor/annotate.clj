@@ -166,7 +166,7 @@
    since at this time we can't resolve those normally (#1786) fall back to using the metadata for the first column (e.g., `count`).
    This is definitely a HACK, but in most cases this should be correct (or at least better than the generic info) for the important things like type information."
   [fields k]
-  (when-let [[_ field-name-without-suffix] (re-matches #"(.*)_\d+$" (name k))]
+  (when-let [[_ field-name-without-suffix] (re-matches #"^(.*)_\d+$" (name k))]
     (some (fn [{field-name :field-name, :as field}]
             (when (= (name field-name) field-name-without-suffix)
               (merge (generic-info-for-missing-key k)
