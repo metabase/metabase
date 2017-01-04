@@ -94,9 +94,8 @@
     :count
     ag-type))
 
-;; TODO - rename to something like `aggregation-name` or `aggregation-subclause-name` now that this handles any sort of aggregation
-(defn expression-aggregation-name
-  "Return an appropriate name for an `:aggregation` subclause (an aggregation or expression)."
+(defn aggregation-name
+  "Return an appropriate field *and* display name for an `:aggregation` subclause (an aggregation or expression)."
   ^String [{custom-name :custom-name, aggregation-type :aggregation-type, :as ag}]
   (cond
     ;; if a custom name was provided use it
@@ -106,23 +105,25 @@
                                 (str/join (str " " (name operator) " ")
                                           (for [arg args]
                                             (if (instance? Expression arg)
-                                              (str "(" (expression-aggregation-name arg) ")")
-                                              (expression-aggregation-name arg)))))
+                                              (str "(" (aggregation-name arg) ")")
+                                              (aggregation-name arg)))))
     ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with is called `:count` (WHY?)
     aggregation-type          (if (= (keyword aggregation-type) :distinct)
                                 "count"
                                 (name aggregation-type))))
 
 (defn- expression-aggregate-field-info [expression]
-  (let [ag-name (expression-aggregation-name expression)]
+  (let [ag-name (aggregation-name expression)]
     {:source             :aggregation
      :field-name         ag-name
      :field-display-name ag-name
      :base-type          :type/Number
      :special-type       :type/Number}))
 
-(defn- aggregate-field-info [{ag-type :aggregation-type, ag-field :field}]
-  (merge (let [field-name (ag-type->field-name ag-type)]
+(defn- aggregate-field-info
+  "Return appropriate column metadata for an `:aggregation` clause."
+  [{ag-type :aggregation-type, ag-field :field, :as ag}]
+  (merge (let [field-name (aggregation-name ag)]
            {:source             :aggregation
             :field-name         field-name
             :field-display-name field-name
@@ -139,11 +140,17 @@
            {:base-type    :type/Float
             :special-type :type/Number})))
 
-(defn- add-aggregate-field-if-needed
-  "Add a Field containing information about an aggregate column such as `:count` or `:distinct` if needed."
-  [{aggregations :aggregation} fields]
-  (if (or (empty? aggregations)
-          (= (:aggregation-type (first aggregations)) :rows))
+(defn- has-aggregation?
+  "Does QUERY have an aggregation?"
+  [{aggregations :aggregation}]
+  (or (empty? aggregations)
+      ;; TODO - Not sure this needs to be checked anymore since `:rows` is a legacy way to specifiy "no aggregations" and should be stripped out during preprocessing
+      (= (:aggregation-type (first aggregations)) :rows)))
+
+(defn- add-aggregate-fields-if-needed
+  "Add a Field containing information about an aggregate columns such as `:count` or `:distinct` if needed."
+  [{aggregations :aggregation, :as query} fields]
+  (if (has-aggregation? query)
     fields
     (concat fields (for [ag aggregations]
                      (if (instance? Expression ag)
@@ -154,8 +161,7 @@
   "When create info maps for any fields we didn't expect to come back from the query.
    Ideally, this should never happen, but on the off chance it does we still want to return it in the results."
   [actual-keys fields]
-  {:pre [(set? actual-keys)
-         (every? keyword? actual-keys)]}
+  {:pre [(set? actual-keys) (every? keyword? actual-keys)]}
   (let [expected-keys (u/prog1 (set (map :field-name fields))
                         (assert (every? keyword? <>)))
         missing-keys  (set/difference actual-keys expected-keys)]
@@ -170,7 +176,7 @@
                       :field-display-name k}))))
 
 
-;;; ## Field Sorting
+;;; ## Field Sorting (TODO - Maybe move this into a separate namespace (`metabase.query-processor.sort`?)
 
 ;; We sort Fields with a "importance" vector like [source-importance position special-type-importance name]
 
@@ -282,7 +288,7 @@
   (when (seq result-keys)
     (->> (collect-fields (dissoc query :expressions))
          (map qualify-field-name)
-         (add-aggregate-field-if-needed query)
+         (add-aggregate-fields-if-needed query)
          (map (u/rpartial update :field-name keyword))
          (add-unknown-fields-if-needed result-keys)
          (sort-fields query)

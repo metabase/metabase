@@ -258,7 +258,7 @@
 
 (defn- expression-post-aggregation [{:keys [operator args], :as expression}]
   {:type   :arithmetic
-   :name   (annotate/expression-aggregation-name expression)
+   :name   (annotate/aggregation-name expression)
    :fn     operator
    :fields (for [arg args]
              (cond
