@@ -33,7 +33,7 @@
 (defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
-  (filter models/can-read? (-> (db/select Segment, :is_active true)
+  (filter models/can-read? (-> (db/select Segment, :is_active true, {:order-by [[:%lower.name :asc]]})
                                (hydrate :creator))))
 
 
