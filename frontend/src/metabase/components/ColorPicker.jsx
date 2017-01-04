@@ -1,60 +1,72 @@
-import React, { Component } from "react";
+import React, { Component, PropTypes } from "react";
 
-import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import { normal, saturated, desaturated } from "metabase/lib/colors";
+import { normal } from "metabase/lib/colors";
 
-const COLORS = [
-    ...Object.values(normal),
-    ...Object.values(saturated),
-    ...Object.values(desaturated),
-];
+const DEFAULT_COLOR_SQUARE_SIZE = 32;
 
-const COLOR_SQUARE_SIZE = 32;
-const COLOR_SQUARE = {
-    width: COLOR_SQUARE_SIZE,
-    height: COLOR_SQUARE_SIZE
-};
-
-const ColorSquare = ({ color }) =>
+const ColorSquare = ({ color, size }) =>
     <div style={{
-        ...COLOR_SQUARE,
+        width: size,
+        height: size,
         backgroundColor: color,
-        borderRadius: 4
+        borderRadius: size / 8
     }}></div>
 
 class ColorPicker extends Component {
+    static defaultProps = {
+        colors: [...Object.values(normal)],
+        size: DEFAULT_COLOR_SQUARE_SIZE,
+        triggerSize: DEFAULT_COLOR_SQUARE_SIZE,
+        padding: 4
+    }
+
+    static propTypes = {
+        colors: PropTypes.array,
+        onChange: PropTypes.func.isRequired,
+        size: PropTypes.number,
+        triggerSize: PropTypes.number,
+        value: PropTypes.string
+    }
+
     render () {
-        const { value, onChange } = this.props;
+        const { colors, onChange, padding, size, triggerSize, value } = this.props;
         return (
             <div className="inline-block">
                 <PopoverWithTrigger
                     ref="colorPopover"
                     triggerElement={
-                        <div className="bordered p1 rounded flex align-center">
-                            <ColorSquare color={value} />
-                            <Icon
-                                className="ml1"
-                                name="chevrondown"
-                            />
+                        <div
+                            className="bordered rounded flex align-center"
+                            style={{ padding: triggerSize / 4 }}
+                        >
+                            <ColorSquare color={value} size={triggerSize} />
                         </div>
                     }
                 >
-                    <ol className="flex p1">
-                        { COLORS.map((color, index) =>
-                            <li
-                                className="cursor-pointer mr1 mb1"
-                                key={index}
-                                onClick={() => {
-                                    onChange(color);
-                                    this.refs.colorPopover.close();
-                                }}
-                            >
-                                <ColorSquare color={color} />
-                            </li>
-                        )}
-                    </ol>
+                    <div className="p1">
+                        <ol
+                            className="flex flex-wrap"
+                            style={{
+                                maxWidth: 120
+                            }}
+                        >
+                            { colors.map((color, index) =>
+                                <li
+                                    className="cursor-pointer"
+                                    style={{ padding }}
+                                    key={index}
+                                    onClick={() => {
+                                        onChange(color);
+                                        this.refs.colorPopover.close();
+                                    }}
+                                >
+                                    <ColorSquare color={color} size={size} />
+                                </li>
+                            )}
+                        </ol>
+                    </div>
                 </PopoverWithTrigger>
             </div>
         );
