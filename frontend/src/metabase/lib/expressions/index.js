@@ -6,12 +6,14 @@ import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
 
 export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
 
+const RESERVED_WORDS = new Set(VALID_AGGREGATIONS.values());
+
 export function formatAggregationName(aggregationOption) {
     return VALID_AGGREGATIONS.get(aggregationOption.short);
 }
 
 function formatIdentifier(name) {
-    return /^\w+$/.test(name) ?
+    return /^\w+$/.test(name) && !RESERVED_WORDS.has(name) ?
         name :
         JSON.stringify(name);
 }
