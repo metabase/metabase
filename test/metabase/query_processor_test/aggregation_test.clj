@@ -150,7 +150,7 @@
 
 ;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
 ;; (TODO - this isn't tested against Mongo because the Mongo driver currently combines duplicate aggregations of the same time into a single type)
-(datasets/expct-with-engines (disj non-timeseries-engines :mongo)
+(datasets/expect-with-engines (disj non-timeseries-engines :mongo)
   [(aggregate-col :count)
    (assoc (aggregate-col :count)
      :display_name    "count_2"
