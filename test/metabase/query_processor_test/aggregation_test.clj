@@ -148,6 +148,17 @@
     (rows (data/run-query venues
             (ql/aggregation (ql/avg $price) (ql/count) (ql/sum $price))))))
 
+;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
+(expect-with-non-timeseries-dbs
+  [(aggregate-col :count)
+   (assoc (aggregate-col :count)
+     :display_name    "count_2"
+     :name            "count_2"
+     :preview_display true)]
+  (-> (data/run-query venues
+        (ql/aggregation (ql/count) (ql/count)))
+      :data :cols))
+
 
 ;;; ------------------------------------------------------------ CUMULATIVE SUM ------------------------------------------------------------
 
