@@ -207,7 +207,7 @@ export default class QueryHeader extends Component {
         }
 
         // persistence buttons on saved cards
-        if (!isNew) {
+        if (!isNew && card.can_write) {
             if (!isEditing) {
                 if (this.state.recentlySaved) {
                     // existing card + not editing + recently saved = save confirmation
@@ -219,7 +219,6 @@ export default class QueryHeader extends Component {
                             </span>
                         </button>
                     ]);
-
                 } else {
                     // edit button
                     buttonSections.push([
