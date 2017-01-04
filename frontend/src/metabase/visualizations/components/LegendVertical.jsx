@@ -25,26 +25,20 @@ export default class LegendVertical extends Component {
         // legend items will overflow the widget area
         let size = ReactDOM.findDOMNode(this).getBoundingClientRect();
 
-        let widgetSizeHasChanged = this.state.size && (size.width !== this.state.size.width || size.height !== this.state.size.height);
-        let firstLoad = !this.state.size;
-
-        if (firstLoad || widgetSizeHasChanged){
-            // Determine how many legend items extend outside of the widget area and
-            // set overflow count to # of items
+        // only check the height. width may flucatuate depending on the browser causing an infinite loop
+        if (this.state.size && size.height !== this.state.size.height) {
+            this.setState({ overflowCount: 0, size });
+        } else if (this.state.overflowCount === 0) {
             let overflowCount = 0;
             for (var i = 0; i < this.props.titles.length; i++) {
-                if (!this.refs["item"+i]){
-                    // Handle the case where we are resizing the widget but have already
-                    // removed overflow.  Just exit and don't call setState() to avoid
-                    // infinite loop.
-                    return
-                }
                 let itemSize = ReactDOM.findDOMNode(this.refs["item"+i]).getBoundingClientRect();
                 if (size.top > itemSize.top || size.bottom < itemSize.bottom) {
                     overflowCount++;
                 }
             }
-            this.setState({ overflowCount, size });
+            if (this.state.overflowCount !== overflowCount) {
+                this.setState({ overflowCount, size });
+            }
         }
     }
 
@@ -85,9 +79,13 @@ export default class LegendVertical extends Component {
                     </li>
                 )}
                 {overflowCount > 0 ?
-                    <li key="extra">
+                    <li key="extra" className="flex flex-no-shrink" >
                         <Tooltip tooltip={<LegendVertical className="p2" titles={extraItems} colors={extraColors} />}>
-                            <LegendItem className="inline-block" title={(overflowCount + 1) + " more"} color="gray" showTooltip={false} />
+                            <LegendItem
+                                title={(overflowCount + 1) + " more"}
+                                color="gray"
+                                showTooltip={false}
+                            />
                         </Tooltip>
                     </li>
                 : null }
