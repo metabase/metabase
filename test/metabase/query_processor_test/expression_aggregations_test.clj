@@ -1,5 +1,5 @@
 (ns metabase.query-processor-test.expression-aggregations-test
-  "Tests for expression aggregations."
+  "Tests for expression aggregations and for named aggregations."
   (:require [expectations :refer :all]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor :as qp]
@@ -237,3 +237,16 @@
                             :query    {:source-table (data/id :venues)
                                        :aggregation  [[:named ["METRIC" (u/get-id metric)] "My Cool Metric"]]
                                        :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
+
+;; check that named aggregations come back with the correct column metadata (#4002)
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  (let [col-name (if (= *engine* :redshift) "count of things" "Count of Things")]
+    (assoc (aggregate-col :count)
+      :name         col-name
+      :display_name col-name))
+  (-> (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-table (data/id :venues)
+                    :aggregation  [[:named ["COUNT"] "Count of Things"]]}})
+      :data :cols first))
