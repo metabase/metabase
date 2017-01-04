@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.db :as db]
+            [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u])
@@ -85,21 +86,14 @@
   {:post [(keyword? (:field-name %))]}
   (assoc field :field-name (keyword (str/join \. (rest (i/qualified-name-components field))))))
 
-(defn- ag-type->field-name
-  "Return the (keyword) name that should be used for the column in the results. This is the same as the name of the aggregation,
-   except for `distinct`, which is called `:count` for unknown reasons and/or historical accident."
-  [ag-type]
-  {:pre [(keyword? ag-type)]}
-  (if (= ag-type :distinct)
-    :count
-    ag-type))
-
 (defn aggregation-name
   "Return an appropriate field *and* display name for an `:aggregation` subclause (an aggregation or expression)."
   ^String [{custom-name :custom-name, aggregation-type :aggregation-type, :as ag}]
+  (when-not i/*driver*
+    (throw (Exception. "metabase.query-processor.interface/*driver* is unbound.")))
   (cond
     ;; if a custom name was provided use it
-    custom-name               custom-name
+    custom-name               (driver/format-custom-field-name i/*driver* custom-name)
     ;; for unnamed expressions, just compute a name like "sum + count"
     (instance? Expression ag) (let [{:keys [operator args]} ag]
                                 (str/join (str " " (name operator) " ")
