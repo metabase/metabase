@@ -22,7 +22,7 @@ const mapDispatchToProps = ({
     goBack,
     goToQuestions: () => push(`/questions`),
     editCollection: (id) => push(`/collections/${id}`),
-    editPermissions: (id) => push(`/collections/permissions?collection=${id}`),
+    editPermissions: (id) => push(`/collections/permissions?collectionId=${id}`),
     loadCollections,
 })
 
