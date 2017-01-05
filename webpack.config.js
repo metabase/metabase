@@ -185,7 +185,7 @@ var config = module.exports = {
 
     postcss: function (webpack) {
         return [
-            require("postcss-import")({ addDependencyTo: webpack }),
+            require("postcss-import")(),
             require("postcss-url")(),
             require("postcss-cssnext")(CSSNEXT_CONFIG)
         ]
