@@ -151,6 +151,35 @@
                        (expression-aggregate-field-info ag)
                        (aggregate-field-info ag))))))
 
+
+(defn- generic-info-for-missing-key
+  "Return a set of bare-bones metadata for a Field named K when all else fails."
+  [k]
+  {:base-type          :type/*
+   :preview-display    true
+   :special-type       nil
+   :field-name         k
+   :field-display-name k})
+
+(defn- info-for-duplicate-field
+  "The Clojure JDBC driver automatically appends suffixes like `count_2` to duplicate columns if multiple columns come back with the same name;
+   since at this time we can't resolve those normally (#1786) fall back to using the metadata for the first column (e.g., `count`).
+   This is definitely a HACK, but in most cases this should be correct (or at least better than the generic info) for the important things like type information."
+  [fields k]
+  (when-let [[_ field-name-without-suffix] (re-matches #"^(.*)_\d+$" (name k))]
+    (some (fn [{field-name :field-name, :as field}]
+            (when (= (name field-name) field-name-without-suffix)
+              (merge (generic-info-for-missing-key k)
+                     (select-keys field [:base-type :special-type :source]))))
+          fields)))
+
+(defn- info-for-missing-key
+  "Metadata for a field named K, which we weren't able to resolve normally.
+   If possible, we work around This defaults to generic information "
+  [fields k]
+  (or (info-for-duplicate-field fields k)
+      (generic-info-for-missing-key k)))
+
 (defn- add-unknown-fields-if-needed
   "When create info maps for any fields we didn't expect to come back from the query.
    Ideally, this should never happen, but on the off chance it does we still want to return it in the results."
@@ -163,11 +192,7 @@
       (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
                   missing-keys expected-keys actual-keys)))
     (concat fields (for [k missing-keys]
-                     {:base-type          :type/*
-                      :preview-display    true
-                      :special-type       nil
-                      :field-name         k
-                      :field-display-name k}))))
+                     (info-for-missing-key fields k)))))
 
 
 ;;; ## Field Sorting (TODO - Maybe move this into a separate namespace (`metabase.query-processor.sort`?)
