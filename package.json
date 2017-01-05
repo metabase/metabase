@@ -66,7 +66,7 @@
     "z-index": "0.0.1"
   },
   "devDependencies": {
-    "@kadira/storybook": "^1.16.0",
+    "@kadira/storybook": "^2.35.2",
     "@slack/client": "^3.5.4",
     "babel-cli": "^6.11.4",
     "babel-core": "^6.20.0",
