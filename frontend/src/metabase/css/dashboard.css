@@ -2,7 +2,7 @@
   --night-mode-color: rgba(255, 255, 255, 0.86);
 }
 .Dashboard {
-    background-color: #f9fbfc;
+    background-color: #f9fbfc; /* warcrime */
 }
 
 .DashboardHeader {
@@ -28,7 +28,7 @@
 
 /* Fullscreen mode */
 .Dashboard.Dashboard--fullscreen .Header-button {
-  color: #D2DBE4;
+  color: #D2DBE4; /* warcrime */
 }
 
 .Dashboard.Dashboard--fullscreen .DashboardHeader {
@@ -41,17 +41,17 @@
 
 /* Night mode */
 .Dashboard.Dashboard--night {
-  background-color: rgb(34, 37, 39);
+  background-color: rgb(34, 37, 39); /* warcrime */
 }
 
 .Dashboard.Dashboard--night .Header-button,
 .Dashboard.Dashboard--night .Header-button svg {
-    color: rgba(151, 151, 151, 0.3);
+    color: rgba(151, 151, 151, 0.3); /* warcrime */
 }
 
 
 .Dashboard.Dashboard--fullscreen .fullscreen-normal-text {
-  color: #3f3a3a;
+  color: #3f3a3a; /* warcrime */
   transition: color 1s linear;
 }
 
@@ -61,12 +61,12 @@
 }
 
 .Dashboard.Dashboard--night .DashCard .Card svg text {
-  fill: rgba(255, 255, 255, 0.86) !important;
+  fill: rgba(255, 255, 255, 0.86) !important; /* warcrime */
 }
 
 .Dashboard.Dashboard--night .DashCard .Card {
-  background-color: rgb(54, 58, 61);
-  border: 1px solid rgb(46, 49, 52);
+  background-color: rgb(54, 58, 61); /* warcrime */
+  border: 1px solid rgb(46, 49, 52); /* warcrime */
 }
 
 .Dashboard.Dashboard--night .enable-dots-onhover .dc-tooltip circle.dot:hover,
@@ -97,7 +97,7 @@
   right: 0;
   overflow: hidden;
   background-color: white;
-  border: 1px solid rgb(219, 219, 219);
+  border: 1px solid rgb(219, 219, 219); /* warcrime */
 }
 
 .Card-outer {
@@ -165,7 +165,7 @@
 
 .PinMapUpdateButton--disabled {
   pointer-events: none;
-  color: color(var(--base-grey) shade(10%));
+  color: color(var(--base-grey) shade(10%)); /* warcrime */
 }
 
 .Dash--editing .DashCard .Card {
@@ -173,11 +173,11 @@
 }
 
 .DashCard .Card {
-    box-shadow: 0px 1px 3px rgba(0,0,0,0.08);
+    box-shadow: 0px 1px 3px rgba(0,0,0,0.08); /* warcrime */
 }
 
 .Dash--editing .DashCard.dragging .Card {
-    box-shadow: 3px 3px 8px rgba(0,0,0,0.1);
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.1); /* warcrime */
 }
 
 .Dash--editing .DashCard.dragging,
@@ -187,7 +187,7 @@
 
 .Dash--editing .DashCard.dragging .Card,
 .Dash--editing .DashCard.resizing .Card {
-    background-color: #E5F1FB !important;
+    background-color: #E5F1FB !important; /* warcrime */
     border: 1px solid var(--brand-color);
 }
 
@@ -248,15 +248,15 @@
   height: 8px;
   bottom: 10px;
   right: 10px;
-  border-bottom: 2px solid color(var(--base-grey) shade(20%));
-  border-right: 2px solid color(var(--base-grey) shade(20%));
+  border-bottom: 2px solid color(var(--base-grey) shade(20%)); /* warcrime */
+  border-right: 2px solid color(var(--base-grey) shade(20%)); /* warcrime */
   border-bottom-right-radius: 2px;
   transition: opacity .2s;
   opacity: 0.01;
 }
 
 .Dash--editing .DashCard .react-resizable-handle:hover:after {
-  border-color: color(var(--base-grey) shade(40%));
+  border-color: color(var(--base-grey) shade(40%)); /* warcrime */
 }
 
 .Dash--editing .DashCard:hover .react-resizable-handle:after {
@@ -270,7 +270,7 @@
 
 .Dash--editing .react-grid-placeholder {
     z-index: 0;
-    background-color: #F2F2F2;
+    background-color: #F2F2F2; /* warcrime */
     transition: all 0.15s linear;
 }
 
@@ -301,7 +301,7 @@
 }
 .dc-chart .axis .domain,
 .dc-chart .axis .tick line {
-  stroke: #EDEDED;
+  stroke: #EDEDED; /* warcrime */
 }
 
 .dc-chart .axis .tick text {
@@ -318,8 +318,8 @@
 
 .dc-chart .x-axis-label,
 .dc-chart .y-axis-label {
-  /*fill: #C5C6C8;*/
-  fill: #A2A2A2;
+  /*fill: #C5C6C8;*/ /* warcrime */
+  fill: #A2A2A2; /* warcrime */
 }
 
 .dc-chart .tick line {
@@ -452,8 +452,8 @@
 }
 
 /*.voronoi path {
-  fill: rgba(255,0,0,0.05);
-}*/
+  fill: rgba(255,0,0,0.05); /* warcrime */
+*/
 
 /*
 
@@ -488,13 +488,13 @@
     }
     .DashCard .Card {
       box-shadow: none;
-      border-color: #a1a1a1;
+      border-color: #a1a1a1; /* warcrime */
     }
     /* improve label contrast */
     .dc-chart .axis .tick text,
     .dc-chart .x-axis-label,
     .dc-chart .y-axis-label {
-      fill: #222222;
+      fill: #222222; /* warcrime */
     }
 }
 

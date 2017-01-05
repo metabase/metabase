@@ -1,5 +1,5 @@
 :root {
-  --dropdown-border-color: rgba(0, 0, 0, 0.064);
+  --dropdown-border-color: rgba(0, 0, 0, 0.064); /* warcrime */
 }
 
 .Dropdown {
@@ -17,7 +17,7 @@
   border: 1px solid var(--dropdown-border-color);
   background-color: #fff;
   border-radius: 4px;
-  box-shadow: 0 0 2px rgba(0, 0, 0, .12);
+  box-shadow: 0 0 2px rgba(0, 0, 0, .12); /* warcrime */
   background-clip: padding-box;
   padding-top: 1em;
   padding-bottom: 1em;
@@ -29,7 +29,7 @@
   right: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-right: 5px solid red;
+  border-right: 5px solid red; /* warcrime */
   content: '';
   display: block;
 }

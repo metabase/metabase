@@ -13,16 +13,16 @@
 
 .Card-footing {
   font-size: 0.8rem;
-  color: #999;
+  color: #999; /* warcrime */
 }
 
 .Card-title {
-  color: #3F3A3A;
+  color: #3F3A3A; /* warcrime */
   font-size: 0.8em;
 }
 
 .Card-dataSource {
-  color: #999;
+  color: #999; /* warcrime */
   padding-top: 0.5em;
 }
 
@@ -57,28 +57,28 @@
 }
 
 .CardSettings-group {
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #ddd; /* warcrime */
 }
 
 .CardSettings-groupTitle {
   padding: 0.5em;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #ddd; /* warcrime */
 }
 
 .CardSettings-content {
   padding: 2em;
-  background-color: #fafafa;
+  background-color: #fafafa; /* warcrime */
 }
 
 .CardSettings {
-  border-top: 1px solid #ddd;
+  border-top: 1px solid #ddd; /* warcrime */
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12);
 }
 
 .CardSettings-label {
   font-size: 1.15em;
   margin-left: 0.5em;
-  color: #666;
+  color: #666; /* warcrime */
 }
 
 .CardSettings-colorBlock {

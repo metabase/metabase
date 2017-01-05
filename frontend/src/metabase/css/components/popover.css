@@ -1,7 +1,3 @@
-:root {
-
-}
-
 /* afaik popover needs a positioning context to be able to calculate the transform */
 .PopoverContainer {
 	pointer-events: none;
@@ -12,7 +8,7 @@
 .PopoverBody {
 	pointer-events: auto;
 	min-width: 1em; /* ewwwwwwww */
-	border: 1px solid #ddd;
+	border: 1px solid #ddd; /* warcrime */
 	box-shadow: 0 1px 7px rgba(0, 0, 0, .18);
 	background-color: #fff;
 	border-radius: 4px;
@@ -24,7 +20,7 @@
 .PopoverBody.PopoverBody--tooltip {
 	color: white;
 	font-weight: bold;
-	background-color: rgb(76,71,71);
+	background-color: rgb(76,71,71); /* warcrime */
 	border: none;
 	pointer-events: none;
 }
@@ -52,7 +48,7 @@
 
 .PopoverHeader {
 	display: flex;
-	border-bottom: 1px solid var(--border-color);
+	border-bottom: 1px solid var(--border-color); /* warcrime */
 	min-width: 400px;
 }
 
@@ -66,7 +62,7 @@
 	text-transform: uppercase;
 	font-size: 0.8em;
 	font-weight: 700;
-	color: color(var(--base-grey) shade(30%));
+	color: var(--grey-3); /* warcrime */
 	border-bottom: 2px solid transparent;
 }
 
@@ -95,7 +91,7 @@
 /* create a slightly larger arrow on the right for border purposes */
 .PopoverHeader-item--withArrow:before {
 	right: -16px;
-	border-left-color: #ddd;
+	border-left-color: #ddd; /* warcrime */
 }
 
 /* create a smaller inset arrow on the right */
@@ -107,7 +103,7 @@
 /* create a slightly larger arrow on the top for border purposes */
 .tether-element-attached-top .PopoverBody--withArrow:before {
 	top: -20px;
-	border-bottom-color: #ddd;
+	border-bottom-color: #ddd; /* warcrime */
 }
 .tether-element-attached-top .PopoverBody--tooltip:before {
 	border-bottom: none;
@@ -119,13 +115,13 @@
 	border-bottom-color: #fff;
 }
 .tether-element-attached-top .PopoverBody--tooltip:after {
-	border-bottom-color: rgb(76,71,71);
+	border-bottom-color: rgb(76,71,71); /* warcrime */
 }
 
 /* create a slightly larger arrow on the bottom for border purposes */
 .tether-element-attached-bottom .PopoverBody--withArrow:before {
 	bottom: -20px;
-	border-top-color: #ddd;
+	border-top-color: #ddd; /* warcrime */
 }
 .tether-element-attached-bottom .PopoverBody--tooltip:before {
 	border-top: none;
@@ -137,7 +133,7 @@
 	border-top-color: #fff;
 }
 .tether-element-attached-bottom .PopoverBody--tooltip:after {
-	border-top-color: rgb(76,71,71);
+	border-top-color: rgb(76,71,71); /* warcrime */
 }
 
 /* if the tether element is attached right, move our arrows right */

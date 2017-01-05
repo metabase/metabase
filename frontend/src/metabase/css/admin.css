@@ -1,7 +1,7 @@
 :root {
     --admin-nav-bg-color: #8091AB;
     --admin-nav-bg-color-tint: #9AA7BC;
-    --admin-nav-item-text-color: rgba(255, 255, 255, 0.63);
+    --admin-nav-item-text-color: rgba(255, 255, 255, 0.63); /* warcrime */
     --admin-nav-item-text-active-color: #fff;
     --page-header-padding: 2.375rem;
 }
@@ -47,7 +47,7 @@
 /* utility to get a simple common hover state for admin items */
 .HoverItem:hover,
 .AdminHoverItem:hover {
-    background-color: #F3F8FD;
+    background-color: #F3F8FD; /* warcrime */
     transition: background .2s linear;
 }
 
@@ -56,8 +56,8 @@
 }
 
 .Actions {
-    background-color: rgba(243,243,243,0.46);
-    border: 1px solid #E0E0E0;
+    background-color: rgba(243,243,243,0.46); /* warcrime */
+    border: 1px solid #E0E0E0; /* warcrime */
     padding: 2em;
 }
 
@@ -87,7 +87,7 @@
 }
 
 .ContentTable thead {
-    border-bottom: 1px solid #D8D8D8;
+    border-bottom: 1px solid #D8D8D8; /* warcrime */
 }
 
 .AdminBadge {
@@ -120,7 +120,7 @@
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-    background-color: rgba(74, 144, 226, 0.04);
+    background-color: rgba(74, 144, 226, 0.04); /* warcrime */
 }
 
 .ContentTable tr:hover .Table-actions {
@@ -129,11 +129,11 @@
 }
 
 .AdminList {
-    background-color: #F9FBFC;
+    background-color: #F9FBFC; /* warcrime */
     border: var(--border-size) var(--border-style) var(--border-color);
     border-radius: var(--default-border-radius);
     width: 266px;
-    box-shadow: inset -1px -1px 3px rgba(0,0,0,0.05);
+    box-shadow: inset -1px -1px 3px rgba(0,0,0,0.05); /* warcrime */
     padding-bottom: 0.75em;
 }
 
@@ -149,7 +149,7 @@
     bottom: 0;
     margin: auto;
     margin-left: 1em;
-    color: #C0C0C0;
+    color: #C0C0C0; /* warcrime */
 }
 
 .AdminList-search .AdminInput {
@@ -181,14 +181,14 @@
     margin-right: -0.5em;
     padding-left: 1.5em;
     padding-right: 1.5em;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* warcrime */
 }
 
 .AdminList-section {
     margin-top: 1em;
     padding: 0.5em 1em 0.5em 1em;
     text-transform: uppercase;
-    color: color(var(--base-grey) shade(20%));
+    color: color(var(--base-grey) shade(20%)); /* warcrime */
     font-weight: 700;
     font-size: smaller;
 }
@@ -202,9 +202,9 @@
 }
 
 .AdminInput {
-    color: var(--default-font-color);
+    color: var(--default-font-color); /* warcrime */
     padding: var(--padding-1);
-    background-color: #FCFCFC;
+    background-color: #FCFCFC; /* warcrime */
     border: 1px solid transparent;
 }
 .AdminInput:focus {
@@ -233,7 +233,7 @@
 
 
 .MetadataTable-title {
-    background-color: #FCFCFC;
+    background-color: #FCFCFC; /* warcrime */
 }
 
 .TableEditor-table-name {
@@ -280,7 +280,7 @@
 
 .ProgressBar {
     position: relative;
-    border: 1px solid #6F7A8B;
+    border: 1px solid #6F7A8B; /* warcrime */
 
     width: 55px;
     height: 10px;
@@ -292,7 +292,7 @@
     border-radius: 2px;
 }
 .ProgressBar-progress {
-    background-color: #6F7A8B;
+    background-color: #6F7A8B; /* warcrime */
     position: absolute;
     height: 100%;
     top: 0px;

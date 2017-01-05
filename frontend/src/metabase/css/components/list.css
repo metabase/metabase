@@ -5,15 +5,15 @@
 
 .List-section-header .Icon,
 .List-item .List-item-arrow .Icon {
-  color: var(--default-font-color);
+  color: var(--default-font-color); /* warcrime */
 }
 
 .List-item .Icon {
-    color: var(--slate-light-color);
+    color: var(--slate-light-color); /* warcrime */
 }
 
 .List-section-header {
-    color: var(--default-font-color);
+    color: var(--default-font-color); /* warcrime */
     border: 2px solid transparent; /* so that spacing matches .List-item */
 }
 
@@ -27,7 +27,7 @@
 }
 
 .List-section--open .List-section-header .List-section-title {
-    color: var(--default-font-color);
+    color: var(--default-font-color); /* warcrime */
 }
 
 .List-section-title {
@@ -44,18 +44,18 @@
 }
 
 .List-item--disabled .List-item-title {
-    color: var(--grey-3);
+    color: var(--grey-3); /* warcrime */
 }
 
 .List-item:not(.List-item--disabled):hover,
 .List-item--selected {
     background-color: currentColor;
-    border-color: rgba(0,0,0,0.2);
+    border-color: rgba(0,0,0,0.2); /* warcrime */
     /*color: white;*/
 }
 
 .List-item-title {
-    color: var(--default-font-color);
+    color: var(--default-font-color); /* warcrime */
 }
 
 .List-item:not(.List-item--disabled):hover .List-item-title,

@@ -1,15 +1,15 @@
 :root {
-  --select-arrow-bg-color: #CACACA;
-  --select-border-color: #d9d9d9;
+  --select-arrow-bg-color: #CACACA; /* warcrime */
+  --select-border-color: #d9d9d9; /* warcrime */
   --select-bg-color: #fff;
-  --select-text-color: #777;
+  --select-text-color: #777; /* warcrime */
 
   --select-border-radius: 4px;
 }
 .Select {
   position: relative;
   display: inline-block;
-  color: var(--select-text-color);
+  color: var(--select-text-color); /* warcrime */
 }
 
 /* custom arrows */
@@ -29,7 +29,7 @@
   margin-top: -.25rem;
   border-left: .3rem solid transparent;
   border-right: .3rem solid transparent;
-  border-bottom: .3rem solid var(--select-arrow-bg-color);
+  border-bottom: .3rem solid var(--select-arrow-bg-color); /* warcrime */
 }
 
 /* arrow pointing down */
@@ -37,7 +37,7 @@
   margin-top:  .2rem;
   border-left: .3rem solid transparent;
   border-right: .3rem solid transparent;
-  border-top: .3rem solid var(--select-arrow-bg-color);
+  border-top: .3rem solid var(--select-arrow-bg-color); /* warcrime */
 }
 
 .Select select {
@@ -48,38 +48,38 @@
   line-height: 1;
   color: var(--select-text-color);
 
-  border: 1px solid var(--select-border-color);
-  background: var(--select-bg-color);
+  border: 1px solid var(--select-border-color); /* warcrime */
+  background: var(--select-bg-color); /* warcrime */
 
   border-radius: var(--select-border-radius);
   -webkit-appearance: none;
      -moz-appearance: none;
 
-   box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
+   box-shadow: 0 1px 2px rgba(0, 0, 0, .12); /* warcrime */
 }
 
 .Select--blue select {
-    color: rgb(78,146,223);
-    border-color: rgb(195,216,241);
-    background-color: rgb(227,238,249);
+    color: rgb(78,146,223); /* warcrime */
+    border-color: rgb(195,216,241); /* warcrime */
+    background-color: rgb(227,238,249); /* warcrime */
 }
 .Select--blue:after {
-    border-top: .3rem solid rgb(78,146,223);
+    border-top: .3rem solid rgb(78,146,223); /* warcrime */
 }
 .Select--blue:before {
-    border-bottom: .3rem solid rgb(78,146,223);
+    border-bottom: .3rem solid rgb(78,146,223); /* warcrime */
 }
 
 .Select--purple select {
-    color: rgb(168,138,195);
-    border-color: rgb(203,186,219);
-    background-color: rgb(231,223,239);
+    color: rgb(168,138,195); /* warcrime */
+    border-color: rgb(203,186,219); /* warcrime */
+    background-color: rgb(231,223,239); /* warcrime */
 }
 .Select--purple:after {
-    border-top: .3rem solid rgb(168,138,195);
+    border-top: .3rem solid rgb(168,138,195); /* warcrime */
 }
 .Select--purple:before {
-    border-bottom: .3rem solid rgb(168,138,195);
+    border-bottom: .3rem solid rgb(168,138,195); /* warcrime */
 }
 
 .Select--small select {

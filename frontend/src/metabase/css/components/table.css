@@ -1,6 +1,6 @@
 :root {
-  --table-border-color: rgba(213, 213, 213, .3);
-  --table-alt-bg-color: rgba(0, 0, 0, .02);
+  --table-border-color: rgba(213, 213, 213, .3); /* warcrime */
+  --table-alt-bg-color: rgba(0, 0, 0, .02); /* warcrime */
 
   --entity-image-small-size: 24px;
   --entity-image-large-size: 64px;
@@ -27,19 +27,19 @@ th { text-align: left; }
 }
 
 .Table--bordered {
-  border: 1px solid var(--table-border-color);
+  border: 1px solid var(--table-border-color); /* warcrime */
 }
 
 .Table tr {
-  border-bottom: 1px solid var(--table-border-color);
+  border-bottom: 1px solid var(--table-border-color); /* warcrime */
 }
 
 .Table tr:nth-child(even) {
-  background-color: var(--table-alt-bg-color);
+  background-color: var(--table-alt-bg-color); /* warcrime */
 }
 
 .Table th,
 .Table td {
   padding: 1em;
-  border: 1px solid var(--table-border-color);
+  border: 1px solid var(--table-border-color); /* warcrime */
 }
