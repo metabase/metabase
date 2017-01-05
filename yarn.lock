@@ -2161,9 +2161,9 @@ date-now@^0.1.4:
   version "0.1.4"
   resolved "https://registry.yarnpkg.com/date-now/-/date-now-0.1.4.tgz#eaf439fd4d4848ad74e5cc7dbef200672b9e345b"
 
-dc@^2.0.0-beta.32:
-  version "2.0.0-beta.33"
-  resolved "https://registry.yarnpkg.com/dc/-/dc-2.0.0-beta.33.tgz#996988f54909c0fd89d2aeb601b0f8ac557d0574"
+dc@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/dc/-/dc-2.0.0.tgz#ec7b30afe0617085ed956789908b1ea1fcd0cf22"
   dependencies:
     crossfilter2 "~1.3"
     d3 "^3"
