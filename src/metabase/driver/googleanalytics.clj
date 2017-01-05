@@ -82,7 +82,7 @@
     "ga:hour"
     "ga:dayOfWeek"
     "ga:day"
-    "ga:yearWeek"
+    "ga:isoYearIsoWeek"
     "ga:week"
     "ga:yearMonth"
     "ga:month"
