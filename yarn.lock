@@ -2942,7 +2942,7 @@ flow-bin@^0.37.4:
   version "0.37.4"
   resolved "https://registry.yarnpkg.com/flow-bin/-/flow-bin-0.37.4.tgz#3d8da2ef746e80e730d166e09040f4198969b76b"
 
-flux-standard-action@^0.6.0, flux-standard-action@^0.6.1:
+flux-standard-action@^0.6.1:
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/flux-standard-action/-/flux-standard-action-0.6.1.tgz#6f34211b94834ea1c3cc30f4e7afad3d0fbf71a2"
   dependencies:
@@ -3991,10 +3991,6 @@ lodash._reinterpolate@~3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/lodash._reinterpolate/-/lodash._reinterpolate-3.0.0.tgz#0ccf2d89166af03b3663c796538b75ac6e114d9d"
 
-lodash._root@~3.0.0:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/lodash._root/-/lodash._root-3.0.1.tgz#fba1c4524c19ee9a5f8136b4609f017cf4ded692"
-
 lodash.assign@^4.2.0:
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/lodash.assign/-/lodash.assign-4.2.0.tgz#0d99f3ccd7a6d261d19bdaeb9245005d285808e7"
@@ -4015,12 +4011,9 @@ lodash.isarray@^3.0.0:
   version "3.0.4"
   resolved "https://registry.yarnpkg.com/lodash.isarray/-/lodash.isarray-3.0.4.tgz#79e4eb88c36a8122af86f844aa9bcd851b5fbb55"
 
-lodash.isempty@4.2.1:
-  version "4.2.1"
-  resolved "https://registry.yarnpkg.com/lodash.isempty/-/lodash.isempty-4.2.1.tgz#6015160e77116db88bb612df42adf7f200abec77"
-  dependencies:
-    lodash._root "~3.0.0"
-    lodash.keys "^4.0.0"
+lodash.isempty@4.4.0:
+  version "4.4.0"
+  resolved "https://registry.yarnpkg.com/lodash.isempty/-/lodash.isempty-4.4.0.tgz#6f86cbedd8be4ec987be9aaf33c9684db1b31e7e"
 
 lodash.isplainobject@^3.2.0:
   version "3.2.0"
@@ -4037,10 +4030,6 @@ lodash.keys@^3.1.2:
     lodash._getnative "^3.0.0"
     lodash.isarguments "^3.0.0"
     lodash.isarray "^3.0.0"
-
-lodash.keys@^4.0.0:
-  version "4.2.0"
-  resolved "https://registry.yarnpkg.com/lodash.keys/-/lodash.keys-4.2.0.tgz#a08602ac12e4fb83f91fc1fb7a360a4d9ba35205"
 
 lodash.keysin@^3.0.0:
   version "3.0.8"
@@ -5700,14 +5689,14 @@ rechoir@^0.6.2:
   dependencies:
     resolve "^1.1.6"
 
-recompose@^0.20.2:
-  version "0.20.2"
-  resolved "https://registry.yarnpkg.com/recompose/-/recompose-0.20.2.tgz#113d6ac7e29ca664cfffec16b681ddddf15250bc"
+recompose@^0.21.2:
+  version "0.21.2"
+  resolved "https://registry.yarnpkg.com/recompose/-/recompose-0.21.2.tgz#ff3fbdb2397b1c77c47d451be2a63b9295d44681"
   dependencies:
     change-emitter "^0.1.2"
     fbjs "^0.8.1"
     hoist-non-react-statics "^1.0.0"
-    symbol-observable "^0.2.4"
+    symbol-observable "^1.0.4"
 
 reduce-css-calc@^1.2.6, reduce-css-calc@^1.2.7:
   version "1.3.0"
@@ -5727,19 +5716,20 @@ reduce-reducers@^0.1.0:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/reduce-reducers/-/reduce-reducers-0.1.2.tgz#fa1b4718bc5292a71ddd1e5d839c9bea9770f14b"
 
-redux-actions@^0.9.1:
-  version "0.9.1"
-  resolved "https://registry.yarnpkg.com/redux-actions/-/redux-actions-0.9.1.tgz#a72767654bc21424c3df3f6240780ffa8872783c"
+redux-actions@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/redux-actions/-/redux-actions-1.2.0.tgz#4f421f1aa74c827d5e8abce6c009d5872c4af3e6"
   dependencies:
-    flux-standard-action "^0.6.0"
+    invariant "^2.2.1"
+    lodash "^4.13.1"
     reduce-reducers "^0.1.0"
 
-redux-auth-wrapper@^0.6.0:
-  version "0.6.0"
-  resolved "https://registry.yarnpkg.com/redux-auth-wrapper/-/redux-auth-wrapper-0.6.0.tgz#10db13c3df7bae88d73aeedc89f8a3674c9a5af2"
+redux-auth-wrapper@^0.9.0:
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/redux-auth-wrapper/-/redux-auth-wrapper-0.9.0.tgz#4456a73f44ea8b1e996906127feffac890ba6913"
   dependencies:
     hoist-non-react-statics "1.2.0"
-    lodash.isempty "4.2.1"
+    lodash.isempty "4.4.0"
 
 redux-form@^4.2.0:
   version "4.2.2"
@@ -6399,11 +6389,7 @@ svgo@^0.7.0:
     sax "~1.2.1"
     whet.extend "~0.9.9"
 
-symbol-observable@^0.2.4:
-  version "0.2.4"
-  resolved "https://registry.yarnpkg.com/symbol-observable/-/symbol-observable-0.2.4.tgz#95a83db26186d6af7e7a18dbd9760a2f86d08f40"
-
-symbol-observable@^1.0.2:
+symbol-observable@^1.0.2, symbol-observable@^1.0.4:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/symbol-observable/-/symbol-observable-1.0.4.tgz#29bf615d4aa7121bdd898b22d4b3f9bc4e2aa03d"
 
