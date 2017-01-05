@@ -41,7 +41,7 @@
     "react-draggable": "^2.2.3",
     "react-height": "^2.1.1",
     "react-motion": "^0.4.5",
-    "react-redux": "^4.4.5",
+    "react-redux": "^5.0.1",
     "react-resizable": "^1.0.1",
     "react-retina-image": "^2.0.0",
     "react-router": "^2.6.0",
