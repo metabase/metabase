@@ -1,3 +1,7 @@
+.ModalContainer {
+    z-index: 3;
+}
+
 .Modal {
   margin: auto;
   width: 640px;

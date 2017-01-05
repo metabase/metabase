@@ -106,7 +106,7 @@ export default class Navbar extends Component {
 
     renderMainNav() {
         return (
-            <nav className={cx("CheckBg CheckBg-offset z4 relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
+            <nav className={cx("Nav CheckBg CheckBg-offset relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
                 <ul className="pl4 pr1 flex align-center">
                     <li>
                         <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background">
@@ -115,11 +115,7 @@ export default class Navbar extends Component {
                     </li>
                     <li className="pl3">
                         <DashboardsDropdown {...this.props}>
-                            <a
-                                className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}
-                                data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"}
-                                style={this.styles.navButton}
-                            >
+                            <a data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"} style={this.styles.navButton} className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}>
                                 <span className="NavDropdown-button-layer">
                                     Dashboards
                                     <Icon className="ml1" name={'chevrondown'} size={8}></Icon>
