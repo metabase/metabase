@@ -16,6 +16,8 @@ import { AutoSizer } from 'react-virtualized'
 import { capitalize, pluralize } from "metabase/lib/formatting";
 import cx from "classnames";
 
+import { grey } from 'metabase/lib/colors';
+
 const LIGHT_BORDER = "rgb(225, 226, 227)";
 const DARK_BORDER = "rgb(161, 163, 169)";
 const BORDER_RADIUS = 4;
@@ -39,8 +41,8 @@ const HEADER_WIDTH = 240;
 
 const DEFAULT_OPTION = {
     icon: "unknown",
-    iconColor: "#9BA5B1",
-    bgColor: "#DFE8EA"
+    iconColor: grey['4'],
+    bgColor: grey['2']
 };
 
 const GroupColumnHeader = ({ group, permissions, isLastColumn, isFirstColumn }) =>
@@ -158,7 +160,7 @@ class GroupPermissionCell extends Component {
                                 { warning &&
                                     <div className="absolute top right p1">
                                         <Tooltip tooltip={warning} maxWidth="24em">
-                                            <Icon name="warning2" className="text-slate" />
+                                            <Icon name="warning2" className="text-grey-4" />
                                         </Tooltip>
                                     </div>
                                 }

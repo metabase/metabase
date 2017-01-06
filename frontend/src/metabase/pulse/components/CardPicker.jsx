@@ -148,7 +148,7 @@ export default class CardPicker extends Component {
                 >
                     <div className="rounded bordered scroll-y scroll-show" style={{ width: inputWidth + "px", maxHeight: "400px" }}>
                     { visibleCardList && collectionIds.length > 1 &&
-                        <div className="flex align-center text-slate cursor-pointer border-bottom p2"  onClick={(e) => {
+                        <div className="flex align-center text-grey-4 cursor-pointer border-bottom p2"  onClick={(e) => {
                             this.setState({ collectionId: undefined, isClicking: true });
                         }}>
                             <Icon name="chevronleft" size={18} />

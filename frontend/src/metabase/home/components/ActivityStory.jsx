@@ -1,13 +1,15 @@
 import React, { Component, PropTypes } from 'react';
 import { Link } from "react-router";
 
+import { grey } from 'metabase/lib/colors';
+
 export default class ActivityStory extends Component {
     constructor(props, context) {
         super(props, context);
 
         this.styles = {
             borderWidth: '2px',
-            borderColor: '#DFE8EA',
+            borderColor: grey['2']
         }
     }
 
