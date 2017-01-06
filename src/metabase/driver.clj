@@ -363,8 +363,7 @@
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map & [rethrow-exceptions]]
-  {:pre [(keyword? engine)
-         (map? details-map)]}
+  {:pre [(keyword? engine) (map? details-map)]}
   (let [driver (engine->driver engine)]
     (try
       (u/with-timeout can-connect-timeout-ms

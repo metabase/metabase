@@ -59,8 +59,7 @@
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
-;; TODO - shouldn't this be called `run-all!`?
-(defn run-all
+(defn run-all!
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
