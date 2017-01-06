@@ -40,7 +40,7 @@
    :is_active               true
    :definition              {:clause ["a" "b"]}}
   (tu/with-temp* [Database [{database-id :id}]
-                  Table    [{:keys [id]} {:db_id database-id}]]
+                  Table    [{:keys [id]}      {:db_id database-id}]]
     (create-metric-then-select! id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
 
 
@@ -49,12 +49,12 @@
   [true
    false]
   (tu/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id}  {:db_id database-id}]
-                  Metric   [{metric-id :id} {:table_id   table-id
-                                             :definition {:database 45
-                                                          :query    {:filter ["yay"]}}}]]
+                  Table    [{table-id :id}    {:db_id database-id}]
+                  Metric   [{metric-id :id}   {:table_id   table-id
+                                               :definition {:database 45
+                                                            :query    {:filter ["yay"]}}}]]
     [(metric/exists? metric-id)
-     (metric/exists? 34)]))
+     (metric/exists? Integer/MAX_VALUE)])) ; a Metric that definitely doesn't exist
 
 
 ;; retrieve-metric
@@ -71,10 +71,10 @@
    :definition              {:database 45
                              :query    {:filter ["yay"]}}}
   (tu/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id}  {:db_id database-id}]
-                  Metric   [{metric-id :id} {:table_id    table-id
-                                             :definition  {:database 45
-                                                           :query    {:filter ["yay"]}}}]]
+                  Table    [{table-id :id}    {:db_id database-id}]
+                  Metric   [{metric-id :id}   {:table_id    table-id
+                                               :definition  {:database 45
+                                                             :query    {:filter ["yay"]}}}]]
     (let [{:keys [creator] :as metric} (retrieve-metric metric-id)]
       (update (dissoc metric :id :table_id :created_at :updated_at)
               :creator (u/rpartial dissoc :date_joined :last_login)))))
