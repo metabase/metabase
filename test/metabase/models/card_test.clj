@@ -3,13 +3,15 @@
             [metabase.api.common :refer [*current-user-permissions-set* *is-superuser?*]]
             [metabase.db :as db]
             (metabase.models [card :refer :all]
+                             [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [interface :as models]
                              [permissions :as perms])
             [metabase.query-processor.expand :as ql]
             [metabase.test.data :refer [id]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [random-name with-temp]]))
+            [metabase.test.util :refer [random-name with-temp], :as tu]
+            [metabase.util :as u]))
 
 
 (defn- create-dash! [dash-name]
@@ -121,3 +123,13 @@
   #{"/db/0/"}
   (query-perms-set (mbql {:filter [:WOW 100 200]})
                    :read))
+
+
+;; Test that when somebody archives a Card, it is removed from any Dashboards it belongs to
+(expect
+  0
+  (tu/with-temp* [Dashboard     [dashboard]
+                  Card          [card]
+                  DashboardCard [dashcard  {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}]]
+    (db/update! Card (u/get-id card) :archived true)
+    (db/select-one-count DashboardCard :dashboard_id (u/get-id dashboard))))

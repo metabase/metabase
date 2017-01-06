@@ -118,7 +118,6 @@
       (merge defaults card)
       card)))
 
-
 (defn- pre-insert [{:keys [dataset_query], :as card}]
   ;; TODO - make sure if `collection_id` is specified that we have write permissions for tha tcollection
   (u/prog1 card
@@ -128,6 +127,12 @@
                (= (keyword (:type dataset_query)) :native))
       (let [database (db/select-one ['Database :id :name], :id (:database dataset_query))]
         (qp-perms/throw-if-cannot-run-new-native-query-referencing-db database)))))
+
+(defn- pre-update [{archived? :archived, :as card}]
+  (u/prog1 card
+    ;; if the Card is archived, then remove it from any Dashboards
+    (when archived?
+      (db/cascade-delete! 'DashboardCard :card_id (u/get-id card)))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! 'PulseCard :card_id id)
@@ -146,7 +151,7 @@
           :timestamped?       (constantly true)
           :can-read?          (partial i/current-user-has-full-permissions? :read)
           :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :pre-update         populate-query-fields
+          :pre-update         (comp populate-query-fields pre-update)
           :pre-insert         (comp populate-query-fields pre-insert)
           :pre-cascade-delete pre-cascade-delete
           :perms-objects-set  perms-objects-set})
