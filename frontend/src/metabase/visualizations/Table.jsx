@@ -7,7 +7,7 @@ import * as DataGrid from "metabase/lib/data_grid";
 import _ from "underscore";
 
 export default class Bar extends Component {
-    static displayName = "Table";
+    static uiName = "Table";
     static identifier = "table";
     static iconName = "table";
 

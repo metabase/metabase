@@ -8,7 +8,7 @@ import { getSettings } from "metabase/lib/visualization_settings";
 import i from "icepick";
 
 export default class Funnel extends Component {
-    static displayName = "Funnel";
+    static uiName = "Funnel";
     static identifier = "funnel";
     static iconName = "funnel";
 

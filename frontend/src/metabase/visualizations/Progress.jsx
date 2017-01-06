@@ -11,7 +11,7 @@ import Color from "color";
 const BORDER_RADIUS = 5;
 
 export default class Progress extends Component {
-    static displayName = "Progress";
+    static uiName = "Progress";
     static identifier = "progress";
     static iconName = "progress";
 
