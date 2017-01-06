@@ -1,5 +1,5 @@
 :root {
-    --title-color: #606E7B; /* warcrime */
+    --title-color: var(--new-grey-5); /* warcrime */
     --icon-width: calc(48px + 1rem);
 }
 

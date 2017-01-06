@@ -1,5 +1,5 @@
 :root {
-    --title-color: #606E7B;
+    --title-color: var(--new-grey-5);
     --subtitle-color: #AAB7C3;
     --muted-color: #DEEAF1;
     --blue-color: #2D86D4;

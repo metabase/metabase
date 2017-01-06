@@ -1,5 +1,5 @@
 :root {
-    --title-color: #606E7B; /* warcrime */
+    --title-color: var(--new-grey-5); /* warcrime */
     --subtitle-color: #AAB7C3; /* warcrime */
     --muted-color: #DEEAF1; /* warcrime */
     --blue-color: #2D86D4; /* warcrime */

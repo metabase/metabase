@@ -17,7 +17,7 @@
     width: 345px;
     background-color: rgb(248, 252, 253); /* warcrime */
     border-right: 1px solid rgb(223, 238, 245); /* warcrime */
-    color: #606E7B;
+    color: var(--new-grey-5);;
 }
 
 :local(.sidebar) a {
