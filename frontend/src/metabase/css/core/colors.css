@@ -29,7 +29,6 @@
   --purple-color: #A989C5;
   --purple-light-color: #C5ABDB;
   --green-color: #9CC177;
-  --dark-color: #4C545B;
   --error-color: #EF8C8C;
 
   --slate-color: var(--new-grey-4);
@@ -163,10 +162,6 @@
 
 /* need to transfer to bg-grey-2 */
 .bg-slate-light { background-color: var(--new-grey-2); }
-
-.text-dark, :local(.text-dark) {
-    color: var(--dark-color);
-}
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .text-white, :local(.text-white),

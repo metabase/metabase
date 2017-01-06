@@ -249,7 +249,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                 { () => isEditing ?
                     <div className="wrapper wrapper--trim">
                         <div className="mt4 py2">
-                            <h1 className="my3 text-dark">
+                            <h1 className="my3">
                                 Help new Metabase users find their way around.
                             </h1>
                             <p className="text-paragraph text-measure">
@@ -350,7 +350,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             expand={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                         >
                             <div>
-                                <h2 className="text-measure text-dark">
+                                <h2 className="text-measure">
                                     What are 3-5 commonly referenced segments or tables
                                     that would be useful for this audience?
                                 </h2>
@@ -602,7 +602,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     </SectionHeader>,
                                     <div className="mb4 pb4" key={'contactDetails'}>
                                             { guide.contact.name &&
-                                                <span className="text-dark mr3">
+                                                <span className="mr3">
                                                     {`Contact ${guide.contact.name}`}
                                                 </span>
                                             }
@@ -632,4 +632,4 @@ const AdminInstructions = ({ children }) => // eslint-disable-line react/prop-ty
     </div>
 
 const SectionHeader = ({ trim, children }) => // eslint-disable-line react/prop-types
-    <h2 className={cx('text-dark text-measure', {  "mb0" : trim }, { "mb4" : !trim })}>{children}</h2> 
+    <h2 className={cx('text-measure', {  "mb0" : trim }, { "mb4" : !trim })}>{children}</h2>

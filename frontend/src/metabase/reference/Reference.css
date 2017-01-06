@@ -15,7 +15,7 @@
 }
 
 :local(.guideEmptyMessage) {
-    composes: text-dark text-paragraph text-centered mt3 from "style";
+    composes: text-paragraph text-centered mt3 from "style";
 }
 
 
@@ -71,7 +71,7 @@
 }
 
 :local(.guideTitleBody) {
-    composes: full text-dark text-bold from "style";
+    composes: full text-bold from "style";
     composes: guideLeftPaddedBody;
 }
 
@@ -81,7 +81,7 @@
 }
 
 :local(.guideSeeAllBody) {
-    composes: flex full text-dark text-bold mt4 from "style";
+    composes: flex full text-bold mt4 from "style";
     composes: guideLeftPaddedBody;
 }
 
@@ -104,7 +104,6 @@
 :local(.guideEditHeader) {
     composes: full text-body my4 from "style";
     max-width: 550px;
-    color: var(--dark-color);
 }
 
 :local(.guideEditHeaderTitle) {
@@ -160,11 +159,11 @@
 
 :local(.guideEditAddButtonBody) {
     flex: 550;
-    max-width: 550px;    
+    max-width: 550px;
 }
 
 :local(.guideEditTextarea) {
-    composes: text-dark input p2 from "style";
+    composes: input p2 from "style";
     resize: none;
     font-size: 16px;
     width: 100%;
@@ -188,7 +187,7 @@
 }
 
 :local(.guideEditInput) {
-    composes: full text-dark input p2 from "style";
+    composes: full input p2 from "style";
     font-size: 16px;
     display: block;
 }

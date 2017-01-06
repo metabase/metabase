@@ -1,13 +1,13 @@
 :root {
-    --title-color: #606E7B;
+    --title-color: #606E7B; /* warcrime */
     --icon-width: calc(48px + 1rem);
 }
 
 :local(.headerBody) {
-    composes: flex flex-full border-bottom text-dark text-bold from "style";
+    composes: flex flex-full border-bottom text-bold from "style";
     overflow: hidden;
     align-items: center;
-    border-color: #EDF5FB;
+    border-color: #EDF5FB; /* warcrime */
 }
 
 :local(.headerTextInput) {
@@ -23,7 +23,6 @@
 }
 
 :local(.subheaderBody) {
-    composes: text-dark from "style";
     margin-left: var(--icon-width);
     font-size: 16px;
 }
