@@ -28,7 +28,7 @@
            com.google.api.client.json.JsonFactory
            com.google.api.client.json.jackson2.JacksonFactory
            (com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes)
-           (com.google.api.services.bigquery.model Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema QueryRequest QueryResponse)
+           (com.google.api.services.bigquery.model DatasetReference Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema QueryRequest QueryResponse)
            (metabase.query_processor.interface DateTimeValue Value)))
 
 
@@ -111,15 +111,19 @@
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
 
 (defn- ^QueryResponse execute-bigquery
-  ([{{:keys [project-id]} :details, :as database} query-string]
-   (execute-bigquery (database->client database) project-id query-string))
+  ([{{:keys [project-id billing-project-id dataset-id]} :details, :as database} query-string]
+   (execute-bigquery (database->client database) project-id (or billing-project-id project-id) dataset-id query-string))
 
-  ([^Bigquery client, ^String project-id, ^String query-string]
-   {:pre [client (seq project-id) (seq query-string)]}
-   (let [request (doto (QueryRequest.)
+  ([^Bigquery client, ^String project-id, ^String billing-project-id, ^String dataset-id, ^String query-string]
+   {:pre [client (seq project-id) (seq billing-project-id) (seq dataset-id) (seq query-string)]}
+   (let [dataset (doto (DatasetReference.)
+                   (.setDatasetId dataset-id)
+                   (.setProjectId project-id))
+         request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
+                   (.setDefaultDataset dataset)
                    (.setQuery query-string))]
-     (google/execute (.query (.jobs client) project-id request)))))
+     (google/execute (.query (.jobs client) billing-project-id request)))))
 
 (def ^:private ^java.util.TimeZone default-timezone
   (java.util.TimeZone/getDefault))
@@ -186,8 +190,8 @@
   {:pre [(map? field-instance)]}
   (let [{table-name :name, :as table}                 (field/table field-instance)
         {{dataset-name :dataset-id} :details, :as db} (table/database table)
-        query                                         (format "SELECT [%s.%s.%s] FROM [%s.%s] LIMIT %d"
-                                                              dataset-name table-name field-name dataset-name table-name driver/field-values-lazy-seq-chunk-size)
+        query                                         (format "SELECT [%s.%s] FROM [%s] LIMIT %d"
+                                                              table-name field-name table-name driver/field-values-lazy-seq-chunk-size)
         fetch-page                                    (fn [page]
                                                         (map first (:rows (process-native* db (str query " OFFSET " (* page driver/field-values-lazy-seq-chunk-size))))))
         fetch-all                                     (fn fetch-all [page]
@@ -253,17 +257,8 @@
 
 (declare driver)
 
-;; Make the dataset-id the "schema" of every field or table in the query because otherwise BigQuery can't figure out where things is from
-(defn- qualify-fields-and-tables-with-dataset-id [{{{:keys [dataset-id]} :details} :database, :as query}]
-  (walk/postwalk (fn [x]
-                   (cond
-                     (instance? metabase.query_processor.interface.Field x)     (assoc x :schema-name dataset-id) ; TODO - it is inconvenient that we use different keys for `schema` across different
-                     (instance? metabase.query_processor.interface.JoinTable x) (assoc x :schema      dataset-id) ; classes. We should one day refactor to use the same key everywhere.
-                     :else                                                      x))
-                 (assoc-in query [:query :source-table :schema] dataset-id)))
-
 (defn- honeysql-form [outer-query]
-  (sqlqp/build-honeysql-form driver (qualify-fields-and-tables-with-dataset-id outer-query)))
+  (sqlqp/build-honeysql-form driver outer-query))
 
 (defn- honeysql-form->sql ^String [honeysql-form]
   {:pre [(map? honeysql-form)]}
@@ -274,9 +269,9 @@
       "BigQuery statements can't be parameterized!")
     sql))
 
-(defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
+(defn- post-process-mbql [table-name {:keys [columns rows]}]
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset and table IDs
-  (let [demangle-name (u/rpartial s/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
+  (let [demangle-name (u/rpartial s/replace (re-pattern (str \^ table-name \_)) "")
         columns       (for [column columns]
                         (keyword (demangle-name column)))
         rows          (for [row rows]
@@ -299,7 +294,7 @@
   (let [sql     (str "-- " (qp/query->remark outer-query) "\n" sql)
         results (process-native* database sql)
         results (if mbql?
-                  (post-process-mbql dataset-id table-name results)
+                  (post-process-mbql table-name results)
                   (update results :columns (partial map keyword)))]
     (assoc results :annotate? mbql?)))
 
@@ -322,7 +317,7 @@
 (defn- field->alias [{:keys [^String schema-name, ^String field-name, ^String table-name, ^Integer index, field], :as this}]
   {:pre [(map? this) (or field
                          index
-                         (and (seq schema-name) (seq field-name) (seq table-name))
+                         (and (seq field-name) (seq table-name))
                          (log/error "Don't know how to alias: " this))]}
   (cond
     field (recur field) ; type/DateTime
@@ -331,13 +326,13 @@
                   (if (= ag-type :distinct)
                     :count
                     ag-type)))
-    :else (str schema-name \. table-name \. field-name)))
+    :else (str table-name \. field-name)))
 
 ;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
 (defn- field->identifier [{table-id :table_id, :as field}]
   (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
         dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
-    (hsql/raw (apply format "[%s.%s.%s]" dataset (field/qualified-name-components field)))))
+    (hsql/raw (apply format "[%s.%s]" (field/qualified-name-components field)))))
 
 ;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
 ;; BAD:
@@ -411,12 +406,16 @@
           :describe-table        (u/drop-first-arg describe-table)
           :details-fields        (constantly [{:name         "project-id"
                                                :display-name "Project ID"
-                                               :placeholder  "praxis-beacon-120871"
+                                               :placeholder  "bigquery-public-data"
                                                :required     true}
                                               {:name         "dataset-id"
                                                :display-name "Dataset ID"
-                                               :placeholder  "toucanSightings"
+                                               :placeholder  "baseball"
                                                :required     true}
+                                              {:name         "billing-project-id"
+                                               :display-name "Billing Project ID"
+                                               :placeholder  "praxis-beacon-120871"
+                                               :required     false}
                                               {:name         "client-id"
                                                :display-name "Client ID"
                                                :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
