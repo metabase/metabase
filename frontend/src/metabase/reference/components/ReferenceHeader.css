@@ -33,7 +33,7 @@
 }
 
 :local(.subheaderLink):hover {
-    color: color(var(--primary-button-border-color) shade(10%));
+    color: color(var(--primary-button-border-color) shade(10%)); /* warcrime */
     transition: color .3s linear;
 }
 

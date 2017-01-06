@@ -1,8 +1,8 @@
 :root {
-    --title-color: #606E7B;
-    --subtitle-color: #AAB7C3;
-    --muted-color: #DEEAF1;
-    --blue-color: #2D86D4;
+    --title-color: #606E7B; /* warcrime */
+    --subtitle-color: #AAB7C3; /* warcrime */
+    --muted-color: #DEEAF1; /* warcrime */
+    --blue-color: #2D86D4; /* warcrime */
     --icon-width: calc(48px + 1rem);
 }
 

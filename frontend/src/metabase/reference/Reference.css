@@ -1,6 +1,6 @@
 :root {
-    --title-color: #606E7B;
-    --subtitle-color: #AAB7C3;
+    --title-color: #606E7B; /* warcrime */
+    --subtitle-color: #AAB7C3; /* warcrime */
     --icon-width: calc(48px + 1rem);
 }
 
@@ -38,7 +38,7 @@
 }
 
 :local(.tableActualName) {
-    color: var(--subtitle-color);
+    color: var(--subtitle-color); /* warcrime */
 }
 
 :local(.guideLeftPadded) {
@@ -123,7 +123,7 @@
 :local(.guideEditLabel) {
     composes: block text-bold mb2 from "style";
     font-size: 16px;
-    color: var(--title-color);
+    color: var(--title-color); /* warcrime */
 }
 
 :local(.guideEditHeaderDescription) {
