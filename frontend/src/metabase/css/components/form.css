@@ -109,12 +109,6 @@
     background: rgba(0, 0, 0, 0.02); /* warcrime */
 }
 
-/* ewww */
-.Form-field:hover .Form-input.ng-dirty {
-    color: #222;
-    background-color: #fff;
-}
-
 .Form-field:hover .Form-charm {
     opacity: 1;
 }
