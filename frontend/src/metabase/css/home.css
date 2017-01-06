@@ -1,3 +1,7 @@
+.Nav {
+    z-index: 4;
+}
+
 .CheckBg {
     background-image: url('/app/components/icons/assets/header_rect.svg');
     background-repeat: repeat;
@@ -51,7 +55,9 @@
 .NavDropdown {
     position: relative;
 }
-
+.NavDropdown.open {
+    z-index: 100;
+}
 .NavDropdown .NavDropdown-content {
     display: none;
 }

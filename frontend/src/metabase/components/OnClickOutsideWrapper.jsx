@@ -1,5 +1,5 @@
 import React, { Component, PropTypes } from "react";
-import { findDOMNode } from "react-dom";
+import ReactDOM from "react-dom";
 
 // keep track of the order popovers were opened so we only close the last one when clicked outside
 const popoverStack = [];
@@ -21,10 +21,9 @@ export default class OnClickOutsideWrapper extends Component {
         this._timeout = setTimeout(() => {
             popoverStack.push(this);
 
-            // HACK: set the z-index of the parent element to ensure it's always on top
-            // NOTE: this actually doesn"t seem to be working correctly for
-            // popovers since PopoverBody creates a stacking context
-            findDOMNode(this).parentNode.classList.add('zF');
+            // HACK: set the z-index of the parent element to ensure it"s always on top
+            // NOTE: this actually doesn"t seem to be working correctly for popovers since PopoverBody creates a stacking context
+            ReactDOM.findDOMNode(this).parentNode.style.zIndex = popoverStack.length + 2; // HACK: add 2 to ensure it"s in front of main and nav elements
 
             if (this.props.dismissOnEscape) {
                 document.addEventListener("keydown", this._handleKeyPress, false);
@@ -39,7 +38,6 @@ export default class OnClickOutsideWrapper extends Component {
         document.removeEventListener("keydown", this._handleKeyPress, false);
         window.removeEventListener("click", this._handleClick, true);
         clearTimeout(this._timeout);
-        findDOMNode(this).parentNode.classList.remove('zF');
 
         // remove from the stack after a delay, if it is removed through some other
         // means this will happen too early causing parent modal to close
@@ -52,7 +50,7 @@ export default class OnClickOutsideWrapper extends Component {
     }
 
     _handleClick = (e) => {
-        if (!findDOMNode(this).contains(e.target)) {
+        if (!ReactDOM.findDOMNode(this).contains(e.target)) {
             setTimeout(this._handleDismissal, 0);
         }
     }
