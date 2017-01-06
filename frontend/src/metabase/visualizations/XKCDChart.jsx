@@ -19,7 +19,7 @@ import "xkcdplot/humor-sans";
 import cx from "classnames";
 
 export default class XKCDChart extends Component {
-    static displayName = "XKCD"
+    static uiName = "XKCD"
     static identifier = "xkcd";
     static iconName = "pinmap";
 
