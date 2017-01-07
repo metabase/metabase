@@ -6,7 +6,7 @@
     --form-input-size-medium: 1.25rem;
     --form-input-size-large: 1.571rem;
 
-    --form-label-color: #949494; /* warcrime */
+    --form-label-color: var(--new-grey-4); /* warcrime */
     --form-offset: 2.4rem;
 }
 
