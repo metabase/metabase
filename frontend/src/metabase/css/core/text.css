@@ -1,8 +1,3 @@
-:root {
-  --body-text-color: #8E9BA9;
-  --70-percent-black: #444444;
-}
-
 /* center */
 .text-centered, :local(.text-centered) { text-align: center; }
 
@@ -82,7 +77,7 @@
 .text-body, :local(.text-body) {
   font-size: 1.286em;
   line-height: 1.457em;
-  color: var(--body-text-color); /* TODO - is this bad? */
+  color: var(--new-grey-4); /* TODO - move to a text-color class on elements that use this */
 }
 
 .text-paragraph, :local(.text-paragraph) {

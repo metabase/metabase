@@ -73,7 +73,6 @@
     opacity: 0.4;
     background: #FBFCFD; /* warcrime */
     border: 1px solid #ddd; /* warcrime */
-    color: #444; /* warcrime */
 }
 
 .DangerZone:hover .Button--danger {

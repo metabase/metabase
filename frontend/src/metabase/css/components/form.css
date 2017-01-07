@@ -115,7 +115,6 @@
 
 .Form-field:hover .Form-input:focus {
     transition: color .3s linear;
-    color: #444; /* warcrime */
     background-color: transparent;
     transition: background .3s linear;
 }
