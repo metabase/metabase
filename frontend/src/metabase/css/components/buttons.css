@@ -207,7 +207,7 @@
 
 /* toggle button */
 .Button-toggle {
-    color: var(--grey-text-color); /* warcrime */
+    color: var(--new-grey-5); /* warcrime */
     display: flex;
     line-height: 1;
     border: 1px solid #ddd; /* warcrime */
