@@ -8,10 +8,6 @@
   color: var(--default-font-color); /* warcrime */
 }
 
-.List-item .Icon {
-    color: var(--slate-light-color); /* warcrime */
-}
-
 .List-section-header {
     color: var(--default-font-color); /* warcrime */
     border: 2px solid transparent; /* so that spacing matches .List-item */

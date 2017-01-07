@@ -67,7 +67,6 @@
 
 .EditHeader.EditHeader--admin .Button--primary {
   background-color: white;
-  color: var(--70-percent-black); /* warcrime */
 }
 
 .EditHeader .Button:hover {
