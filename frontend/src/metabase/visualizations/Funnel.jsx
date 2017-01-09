@@ -12,7 +12,7 @@ import i from "icepick";
 import type { VisualizationProps } from "metabase/visualizations";
 
 export default class Funnel extends Component<*, VisualizationProps, *> {
-    static displayName = "Funnel";
+    static uiName = "Funnel";
     static identifier = "funnel";
     static iconName = "funnel";
 

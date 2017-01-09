@@ -28,7 +28,7 @@ type State = {
 export default class Bar extends Component<*, Props, State> {
     state: State;
 
-    static displayName = "Table";
+    static uiName = "Table";
     static identifier = "table";
     static iconName = "table";
 

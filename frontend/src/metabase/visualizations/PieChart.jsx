@@ -33,7 +33,7 @@ import type { VisualizationProps } from "metabase/visualizations";
 type Props = VisualizationProps;
 
 export default class PieChart extends Component<*, Props, *> {
-    static displayName = "Pie";
+    static uiName = "Pie";
     static identifier = "pie";
     static iconName = "pie";
 

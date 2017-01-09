@@ -18,7 +18,7 @@ import d3 from "d3";
 import type { VisualizationProps } from "metabase/visualizations";
 
 export default class Scalar extends Component<*, VisualizationProps, *> {
-    static displayName = "Number";
+    static uiName = "Number";
     static identifier = "scalar";
     static iconName = "number";
 

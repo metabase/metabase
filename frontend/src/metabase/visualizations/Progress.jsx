@@ -15,7 +15,7 @@ const BORDER_RADIUS = 5;
 import type { VisualizationProps } from "metabase/visualizations";
 
 export default class Progress extends Component<*, VisualizationProps, *> {
-    static displayName = "Progress";
+    static uiName = "Progress";
     static identifier = "progress";
     static iconName = "progress";
 

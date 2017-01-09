@@ -10,7 +10,7 @@ import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import type { VisualizationProps } from "metabase/visualizations";
 
 export default class Map extends Component<*, VisualizationProps, *> {
-    static displayName = "Map";
+    static uiName = "Map";
     static identifier = "map";
     static iconName = "pinmap";
 
