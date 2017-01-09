@@ -6,7 +6,7 @@ import PinMap from "./PinMap.jsx";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 export default class Map extends Component {
-    static displayName = "Map";
+    static uiName = "Map";
     static identifier = "map";
     static iconName = "pinmap";
 
