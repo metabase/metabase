@@ -1,10 +1,12 @@
+/* @flow weak */
+
 import React, { Component, PropTypes } from "react";
 
 import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
-import { refreshCurrentUser } from "metabase/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";

@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
@@ -47,11 +49,11 @@ const VORONOI_MAX_POINTS = 300;
 const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
 const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
 
-function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
-    let numTicks = axis.ticks();
+function adjustTicksIfNeeded(axis, axisSize: number, minPixelsPerTick: number) {
+    const ticks = axis.ticks();
     // d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
     // if it's an array then convert to a num
-    numTicks = numTicks.length != null ? numTicks[0] : numTicks;
+    const numTicks: number = Array.isArray(ticks) ? ticks[0] : ticks;
 
     if ((axisSize / numTicks) < minPixelsPerTick) {
         axis.ticks(Math.round(axisSize / minPixelsPerTick));
@@ -192,14 +194,14 @@ function applyChartOrdinalXAxis(chart, settings, series, xValues) {
 
 function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     let axis;
-    if (axisName === "left") {
+    if (axisName !== "right") {
         axis = {
             scale:   (...args) => chart.y(...args),
             axis:    (...args) => chart.yAxis(...args),
             label:   (...args) => chart.yAxisLabel(...args),
             setting: (name) => settings["graph.y_axis." + name]
         };
-    } else if (axisName === "right") {
+    } else {
         axis = {
             scale:   (...args) => chart.rightY(...args),
             axis:    (...args) => chart.rightYAxis(...args),
@@ -441,6 +443,7 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
 
         function dispatchUIEvent(element, eventName) {
             let e = document.createEvent("UIEvents");
+            // $FlowFixMe
             e.initUIEvent(eventName, true, true, window, 1);
             element.dispatchEvent(e);
         }
@@ -713,9 +716,11 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
     if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {
         if (isTimeseries) {
+            // $FlowFixMe
+            const { interval, count } = xInterval;
             // replace xValues with
-            xValues = d3.time[xInterval.interval]
-                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), xInterval.count)
+            xValues = d3.time[interval]
+                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
                 .map(d => moment(d));
             datas = fillMissingValues(
                 datas,

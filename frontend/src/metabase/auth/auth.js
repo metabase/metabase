@@ -9,7 +9,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
-import { refreshCurrentUser } from "metabase/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 
 import { SessionApi } from "metabase/services";
 

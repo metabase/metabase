@@ -1,3 +1,5 @@
+/* @flow */
+
 import { createAction } from "redux-actions";
 import { handleActions } from 'redux-actions';
 

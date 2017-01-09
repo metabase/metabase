@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import CardRenderer from "./CardRenderer.jsx";
@@ -20,7 +22,11 @@ import crossfilter from "crossfilter";
 import _ from "underscore";
 import cx from "classnames";
 
-export default class LineAreaBarChart extends Component {
+import type { VisualizationProps } from "metabase/visualizations";
+
+export default class LineAreaBarChart extends Component<*, VisualizationProps, *> {
+    static identifier;
+
     static noHeader = true;
     static supportsSeries = true;
 
@@ -81,7 +87,6 @@ export default class LineAreaBarChart extends Component {
 
     static propTypes = {
         series: PropTypes.array.isRequired,
-        onAddSeries: PropTypes.func,
         actionButtons: PropTypes.node,
         isDashboard: PropTypes.bool
     };

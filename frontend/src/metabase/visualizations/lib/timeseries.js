@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import moment from "moment";
 
 import { isDate } from "metabase/lib/schema_metadata";
