@@ -239,18 +239,13 @@ const SETTINGS = {
                 { name: "Stack - 100%", value: "normalized" }
             ]
         }),
-        getDefault: (series, vizSettings) =>
-            vizSettings["stackable.stacked"] ? "stacked" : null
-    },
-    // legacy, supeceded by stackable.stack_type
-    "stackable.stacked": {
-        readDependencies: ["graph.metrics"],
-        getDefault: ([{ card, data }], vizSettings) => (
-            // area charts should usually be stacked
-            card.display === "area" ||
-            // legacy default for D-M-M+ charts
-            (card.display === "area" && vizSettings["graph.metrics"].length > 1)
-        )
+        getDefault: ([{ card, data }], vizSettings) =>
+            // legacy setting and default for D-M-M+ charts
+            vizSettings["stackable.stacked"] || (card.display === "area" && vizSettings["graph.metrics"].length > 1) ?
+                "stacked" : null,
+        getHidden: (series) =>
+            series.length < 2,
+        readDependencies: ["graph.metrics"]
     },
     "graph.show_goal": {
         section: "Display",
