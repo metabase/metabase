@@ -256,6 +256,8 @@ function transformSingleSeries(s, series) {
                     o.key
                 ].filter(n => n).join(": "),
                 _transformed: true,
+                _breakoutValue: o.key,
+                _breakoutColumn: cols[seriesIndex]
             },
             data: {
                 rows: o.value,

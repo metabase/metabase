@@ -271,9 +271,11 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange) {
         chart.selectAll(".bar, .dot, .area, .line, .bubble")
             .on("mousemove", function(d, i) {
                 const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
+                const card = series[seriesIndex].card;
                 const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
+                const isArea = this.classList.contains("area");
 
-                let data;
+                let data = [];
                 if (Array.isArray(d.key)) { // scatter
                     data = d.key.map((value, index) => (
                         { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
@@ -288,12 +290,25 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange) {
                     ];
                 }
 
+                if (data && series.length > 1) {
+                    if (card._breakoutColumn) {
+                        data.unshift({
+                            key: getFriendlyName(card._breakoutColumn),
+                            value: card._breakoutValue,
+                            col: card._breakoutColumn
+                        });
+                    }
+                }
+
+                data = _.uniq(data, (d) => d.col);
+
                 onHoverChange && onHoverChange({
                     // for single series bar charts, fade the series and highlght the hovered element with CSS
                     index: isSingleSeriesBar ? -1 : seriesIndex,
-                    element: this,
-                    d: d,
-                    data: data && _.uniq(data, (d) => d.col)
+                    // for area charts, use the mouse location rather than the DOM element
+                    element: isArea ? null : this,
+                    event: isArea ? d3.event : null,
+                    data: data.length > 0 ? data : null,
                 });
             })
             .on("mouseleave", function() {
