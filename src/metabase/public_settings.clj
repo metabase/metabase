@@ -68,20 +68,20 @@
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end application."
   []
-  {:ga_code               "UA-60817802-1"
-   :password_complexity   password/active-password-complexity
-   :timezones             common/timezones
-   :version               config/mb-version-info
-   :engines               ((resolve 'metabase.driver/available-drivers))
-   :setup_token           ((resolve 'metabase.setup/token-value))
+  {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
-   :site_name             (site-name)
-   :email_configured      ((resolve 'metabase.email/email-configured?))
-   :admin_email           (admin-email)
-   :report_timezone       (setting/get :report-timezone)
-   :timezone_short        (short-timezone-name (setting/get :report-timezone))
-   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
-   :google_auth_client_id (setting/get :google-auth-client-id)
-   :map_tile_server_url   (map-tile-server-url)
    :custom_geojson        (setting/get :custom-geojson)
-   :types                 (types/types->parents)})
+   :email_configured      ((resolve 'metabase.email/email-configured?))
+   :engines               ((resolve 'metabase.driver/available-drivers))
+   :ga_code               "UA-60817802-1"
+   :google_auth_client_id (setting/get :google-auth-client-id)
+   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
+   :map_tile_server_url   (map-tile-server-url)
+   :password_complexity   password/active-password-complexity
+   :report_timezone       (setting/get :report-timezone)
+   :setup_token           ((resolve 'metabase.setup/token-value))
+   :site_name             (site-name)
+   :timezone_short        (short-timezone-name (setting/get :report-timezone))
+   :timezones             common/timezones
+   :types                 (types/types->parents)
+   :version               config/mb-version-info})

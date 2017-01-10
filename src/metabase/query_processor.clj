@@ -508,65 +508,17 @@
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
 
-(declare query-fail query-complete save-query-execution!)
+(defn- save-query-execution!
+  "Save (or update) a `QueryExecution`."
+  [{:keys [id], :as query-execution}]
+  (if id
+    ;; execution has already been saved, so update it
+    (u/prog1 query-execution
+      (db/update! QueryExecution id query-execution))
+    ;; first time saving execution, so insert it
+    (db/insert! QueryExecution query-execution)))
 
-(defn- assert-valid-query-result [query-result]
-  (when-not (contains? query-result :status)
-    (throw (Exception. "invalid response from database driver. no :status provided")))
-  (when (= :failed (:status query-result))
-    (log/error (u/pprint-to-str 'red query-result))
-    (throw (Exception. (str (get query-result :error "general error"))))))
-
-(defn dataset-query
-  "Process and run a json based dataset query and return results.
-
-  Takes 2 arguments:
-
-  1.  the json query as a dictionary
-  2.  query execution options specified in a dictionary
-
-  Depending on the database specified in the query this function will delegate to a driver specific implementation.
-  For the purposes of tracking we record each call to this function as a QueryExecution in the database.
-
-  Possible caller-options include:
-
-    :executed-by [int]  (User ID of caller)
-    :card-id     [int]  (ID of Card associated with this execution)"
-  {:arglists '([query options])}
-  [query {:keys [executed-by card-id]}]
-  {:pre [(integer? executed-by) (u/maybe? integer? card-id)]}
-  (let [query-uuid      (str (java.util.UUID/randomUUID))
-        query-hash      (hash query)
-        query-execution {:uuid              query-uuid
-                         :executor_id       executed-by
-                         :json_query        query
-                         :query_hash        query-hash
-                         :version           0
-                         :status            :starting
-                         :error             ""
-                         :started_at        (u/new-sql-timestamp)
-                         :finished_at       (u/new-sql-timestamp)
-                         :running_time      0
-                         :result_rows       0
-                         :result_file       ""
-                         :result_data       "{}"
-                         :raw_query         ""
-                         :additional_info   ""
-                         :start_time_millis (System/currentTimeMillis)}
-        query           (assoc query :info {:executed-by executed-by
-                                            :card-id     card-id
-                                            :uuid        query-uuid
-                                            :query-hash  query-hash
-                                            :query-type  (if (mbql-query? query) "MBQL" "native")})]
-    (try
-      (let [result (process-query query)]
-        (assert-valid-query-result result)
-        (query-complete query-execution result))
-      (catch Throwable e
-        (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
-        (query-fail query-execution (.getMessage e))))))
-
-(defn- query-fail
+(defn- save-and-return-failed-query!
   "Save QueryExecution state and construct a failed query response"
   [query-execution error-message]
   (let [updates {:status       :failed
@@ -586,7 +538,7 @@
                            :cols    []
                            :columns []}))))
 
-(defn- query-complete
+(defn- save-and-return-successful-query!
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
@@ -602,12 +554,78 @@
       (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))
 
-(defn- save-query-execution!
-  "Save (or update) a `QueryExecution`."
-  [{:keys [id], :as query-execution}]
-  (if id
-    ;; execution has already been saved, so update it
-    (u/prog1 query-execution
-      (db/update! QueryExecution id query-execution))
-    ;; first time saving execution, so insert it
-    (db/insert! QueryExecution query-execution)))
+
+(defn- assert-query-status-successful
+  "Make sure QUERY-RESULT `:status` is something other than `nil`or `:failed`, or throw an Exception."
+  [query-result]
+  (when-not (contains? query-result :status)
+    (throw (Exception. "invalid response from database driver. no :status provided")))
+  (when (= :failed (:status query-result))
+    (log/error (u/pprint-to-str 'red query-result))
+    (throw (Exception. (str (get query-result :error "general error"))))))
+
+(def ^:dynamic ^Boolean *allow-queries-with-no-executor-id*
+  "Should we allow running queries (via `dataset-query`) without specifying the `executed-by` User ID?
+   By default this is `false`, but this constraint can be disabled for running queries not executed by a specific user
+   (e.g., public Cards)."
+  false)
+
+(defn- query-execution-info
+  "Return the info for the `QueryExecution` entry for this QUERY."
+  [{{:keys [uuid executed-by query-hash]} :info, :as query}]
+  {:uuid              (or uuid (throw (Exception. "Missing query UUID!")))
+   :executor_id       executed-by
+   :json_query        (dissoc query :info)
+   :query_hash        (or query-hash (throw (Exception. "Missing query hash!")))
+   :version           0
+   :error             ""
+   :started_at        (u/new-sql-timestamp)
+   :finished_at       (u/new-sql-timestamp)
+   :running_time      0
+   :result_rows       0
+   :result_file       ""
+   :result_data       "{}"
+   :raw_query         ""
+   :additional_info   ""
+   :start_time_millis (System/currentTimeMillis)})
+
+(defn- run-and-save-query!
+  "Run QUERY and save appropriate `QueryExecution` info, and then return results (or an error message) in the usual format."
+  [query]
+  (let [query-execution (query-execution-info query)]
+    (try
+      (let [result (process-query query)]
+        (assert-query-status-successful result)
+        (save-and-return-successful-query! query-execution result))
+      (catch Throwable e
+        (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
+        (save-and-return-failed-query! query-execution (.getMessage e))))))
+
+(defn dataset-query
+  "Process and run a json based dataset query and return results.
+
+  Takes 2 arguments:
+
+  1.  the json query as a dictionary
+  2.  query execution options specified in a dictionary
+
+  Depending on the database specified in the query this function will delegate to a driver specific implementation.
+  For the purposes of tracking we record each call to this function as a QueryExecution in the database.
+
+  Possible caller-options include:
+
+    :executed-by [int]  (User ID of caller)
+    :card-id     [int]  (ID of Card associated with this execution)"
+  {:arglists '([query options])}
+  [query {:keys [executed-by card-id]}]
+  {:pre [(or (integer? executed-by)
+             *allow-queries-with-no-executor-id*)
+         (u/maybe? integer? card-id)]}
+  (let [query-uuid (str (java.util.UUID/randomUUID))
+        query-hash (hash query)
+        query      (assoc query :info {:executed-by executed-by
+                                       :card-id     card-id
+                                       :uuid        query-uuid
+                                       :query-hash  query-hash
+                                       :query-type  (if (mbql-query? query) "MBQL" "native")})]
+    (run-and-save-query! query)))
