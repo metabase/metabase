@@ -116,13 +116,13 @@ export class FullPageModal extends Component {
         this._modalElement.className = "Modal--full";
         document.querySelector('body').appendChild(this._modalElement);
 
-        this.componentDidUpdate();
-
         // save the scroll position, scroll to the top left, and disable scrolling
         this._scrollX = window.scrollX;
         this._scrollY = window.scrollY;
         window.scrollTo(0,0);
         document.body.style.overflow = "hidden";
+
+        this.componentDidUpdate();
     }
 
     componentDidUpdate() {

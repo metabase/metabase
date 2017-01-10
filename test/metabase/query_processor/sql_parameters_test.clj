@@ -1,6 +1,5 @@
 (ns metabase.query-processor.sql-parameters-test
-  (:require [clojure.set :as set]
-            [clj-time.core :as t]
+  (:require [clj-time.core :as t]
             [expectations :refer :all]
             (metabase [db :as db]
                       [driver :as driver])
@@ -362,7 +361,7 @@
 
 ;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
-  (set/difference (engines-that-support :native-parameters) #{:redshift :crate}))
+  (disj (engines-that-support :native-parameters) :redshift :crate))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query

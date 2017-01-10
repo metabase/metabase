@@ -1,6 +1,5 @@
 (ns metabase.driver.crate
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.crate.util :as crate-util]
@@ -69,7 +68,7 @@
           :details-fields (constantly [{:name         "hosts"
                                         :display-name "Hosts"
                                         :default      "localhost:5432"}])
-          :features       (comp (u/rpartial set/difference #{:foreign-keys}) sql/features)})
+          :features       (comp (u/rpartial disj :foreign-keys) sql/features)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg crate-spec)

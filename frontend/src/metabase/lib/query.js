@@ -487,11 +487,15 @@ var Query = {
 
     getAggregationDescription(tableMetadata, query, options) {
         return conjunctList(Query.getAggregations(query).map(aggregation => {
+            if (NamedClause.isNamed(aggregation)) {
+                return [NamedClause.getName(aggregation)];
+            }
+            if (AggregationClause.isMetric(aggregation)) {
+                let metric = _.findWhere(tableMetadata.metrics, { id: AggregationClause.getMetric(aggregation) });
+                let name = metric ? metric.name : "[Unknown Metric]";
+                return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
+            }
             switch (aggregation[0]) {
-                case "METRIC":
-                    let metric = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
-                    let name = metric ? metric.name : "[Unknown Metric]";
-                    return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
                 case "rows":      return           ["Raw data"];
                 case "count":     return              ["Count"];
                 case "cum_count": return   ["Cumulative count"];

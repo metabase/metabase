@@ -14,7 +14,7 @@ import i from "icepick";
 import d3 from "d3";
 
 export default class Scalar extends Component {
-    static displayName = "Number";
+    static uiName = "Number";
     static identifier = "scalar";
     static iconName = "number";
 

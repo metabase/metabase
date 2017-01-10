@@ -27,7 +27,7 @@ const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 const PERCENT_REGEX = /percent/i;
 
 export default class PieChart extends Component {
-    static displayName = "Pie";
+    static uiName = "Pie";
     static identifier = "pie";
     static iconName = "pie";
 

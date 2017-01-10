@@ -1,12 +1,13 @@
 (ns metabase.query-processor-test.expression-aggregations-test
-  "Tests for expression aggregations."
+  "Tests for expression aggregations and for named aggregations."
   (:require [expectations :refer :all]
+            [metabase.driver :as driver]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets, :refer [*engine*]]
+            [metabase.test.data.datasets :as datasets, :refer [*engine* *driver*]]
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
@@ -167,7 +168,7 @@
              [3  52]
              [4  30]]
    :columns [(data/format-name "price")
-             (if (= *engine* :redshift) "new price" "New Price")]} ; Redshift annoyingly always lowercases column aliases
+             (driver/format-custom-field-name *driver* "New Price")]} ; Redshift annoyingly always lowercases column aliases
   (format-rows-by [int int]
     (rows+column-names (data/run-query venues
                          (ql/aggregation (ql/named (ql/sum (ql/+ $price 1)) "New Price"))
@@ -180,7 +181,7 @@
              [3  -2]
              [4 -17]]
    :columns [(data/format-name "price")
-             (if (= *engine* :redshift) "sum-41" "Sum-41")]}
+             (driver/format-custom-field-name *driver* "Sum-41")]}
   (format-rows-by [int int]
     (rows+column-names (data/run-query venues
                          (ql/aggregation (ql/named (ql/- (ql/sum $price) 41) "Sum-41"))
@@ -208,7 +209,7 @@
              [3  39]
              [4  24]]
    :columns [(data/format-name "price")
-             (if (= *engine* :redshift) "my cool metric" "My Cool Metric")]}
+             (driver/format-custom-field-name *driver* "My Cool Metric")]}
   (tu/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
@@ -226,7 +227,7 @@
              [3  39]
              [4  24]]
    :columns [(data/format-name "price")
-             (if (= *engine* :redshift) "my cool metric" "My Cool Metric")]}
+             (driver/format-custom-field-name *driver* "My Cool Metric")]}
   (tu/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [[:sum [:field-id (data/id :venues :price)]]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
@@ -237,3 +238,16 @@
                             :query    {:source-table (data/id :venues)
                                        :aggregation  [[:named ["METRIC" (u/get-id metric)] "My Cool Metric"]]
                                        :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))
+
+;; check that named aggregations come back with the correct column metadata (#4002)
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  (let [col-name (driver/format-custom-field-name *driver* "Count of Things")]
+    (assoc (aggregate-col :count)
+      :name         col-name
+      :display_name col-name))
+  (-> (qp/process-query
+        {:database (data/id)
+         :type     :query
+         :query    {:source-table (data/id :venues)
+                    :aggregation  [[:named ["COUNT"] "Count of Things"]]}})
+      :data :cols first))

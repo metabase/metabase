@@ -43,7 +43,7 @@ export default class Header extends Component {
 
         return (
             <div className={cx("QueryBuilder-section flex align-center", className)}>
-                <div className={cx("Entity py1 relative", { "pt2": badge })}>
+                <div className={cx("py1 relative flex-full", { "pt2": badge })}>
                     { badge &&
                         <div className="absolute top left">{badge}</div>
                     }

@@ -160,6 +160,10 @@ amdefine@>=0.0.4:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/amdefine/-/amdefine-1.0.0.tgz#fd17474700cb5cc9c2b709f0be9d23ce3c198c33"
 
+annotate-react-dom@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/annotate-react-dom/-/annotate-react-dom-1.1.0.tgz#607c14d2565198d4bf365f6f05c60a61ba939a16"
+
 ansi-escapes@^1.1.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/ansi-escapes/-/ansi-escapes-1.4.0.tgz#d3a8a83b319aa67793662b13e761c7911422306e"
@@ -570,6 +574,10 @@ babel-messages@^6.8.0:
   resolved "https://registry.yarnpkg.com/babel-messages/-/babel-messages-6.8.0.tgz#bf504736ca967e6d65ef0adb5a2a5f947c8e0eb9"
   dependencies:
     babel-runtime "^6.0.0"
+
+babel-plugin-add-react-displayname@^0.0.4:
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/babel-plugin-add-react-displayname/-/babel-plugin-add-react-displayname-0.0.4.tgz#bc2a74bcbee6e505025b3352fea85ee7bc4c6f7c"
 
 babel-plugin-check-es2015-constants@^6.3.13:
   version "6.8.0"
@@ -1218,6 +1226,10 @@ bluebird@^3.0.5, bluebird@^3.3.3, bluebird@^3.3.4, bluebird@^3.4.1:
   version "3.4.6"
   resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.4.6.tgz#01da8d821d87813d158967e743d5fe6c62cf8c0f"
 
+bo-selector@0.0.10:
+  version "0.0.10"
+  resolved "https://registry.yarnpkg.com/bo-selector/-/bo-selector-0.0.10.tgz#9816dcb00adf374ea87941a863b2acfc026afa3e"
+
 body-parser@^1.12.4:
   version "1.15.2"
   resolved "https://registry.yarnpkg.com/body-parser/-/body-parser-1.15.2.tgz#d7578cf4f1d11d5f6ea804cef35dc7a7ff6dae67"
@@ -1841,6 +1853,13 @@ css-selector-tokenizer@^0.6.0:
     cssesc "^0.1.0"
     fastparse "^1.1.1"
     regexpu-core "^1.0.0"
+
+css-to-xpath@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/css-to-xpath/-/css-to-xpath-0.1.0.tgz#ac0d1c26cef023f7bd8cf2e1fc1f77134bc70c47"
+  dependencies:
+    bo-selector "0.0.10"
+    xpath-builder "0.0.7"
 
 css-what@2.1:
   version "2.1.0"
@@ -4410,6 +4429,14 @@ mute-stream@0.0.5:
 mz@^2.3.1:
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/mz/-/mz-2.4.0.tgz#987ba9624d89395388c37cb4741e2caf4dd13b1a"
+  dependencies:
+    any-promise "^1.0.0"
+    object-assign "^4.0.1"
+    thenify-all "^1.0.0"
+
+mz@^2.6.0:
+  version "2.6.0"
+  resolved "https://registry.yarnpkg.com/mz/-/mz-2.6.0.tgz#c8b8521d958df0a4f2768025db69c719ee4ef1ce"
   dependencies:
     any-promise "^1.0.0"
     object-assign "^4.0.1"
@@ -6991,10 +7018,13 @@ watchpack@^0.2.1:
     chokidar "^1.0.0"
     graceful-fs "^4.1.2"
 
-webchauffeur:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/webchauffeur/-/webchauffeur-1.0.1.tgz#ed9d4ae28bb3a2e87d755b2d470c535e39cf30e4"
+webchauffeur@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/webchauffeur/-/webchauffeur-1.2.0.tgz#d03d7f38d336c2ae55099d978adabc0e75a50d6f"
   dependencies:
+    annotate-react-dom "^1.1.0"
+    css-to-xpath "^0.1.0"
+    mz "^2.6.0"
     promise-chain-decorator "^1.2.0"
 
 webpack-core@~0.6.0:
@@ -7186,6 +7216,10 @@ xmldom@^0.1.19, xmldom@^0.1.22:
 xmlhttprequest-ssl@1.5.1:
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/xmlhttprequest-ssl/-/xmlhttprequest-ssl-1.5.1.tgz#3b7741fea4a86675976e908d296d4445961faa67"
+
+xpath-builder@0.0.7:
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/xpath-builder/-/xpath-builder-0.0.7.tgz#67d6bbc3f6a320ec317e3e6368c5706b6111deec"
 
 xtend@^4.0.0:
   version "4.0.1"

@@ -186,6 +186,7 @@
      :id                     $
      :display                "table"
      :visualization_settings {}
+     :can_write              true
      :created_at             $
      :database_id            database-id ; these should be inferred from the dataset_query
      :table_id               table-id
