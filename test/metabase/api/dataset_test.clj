@@ -2,7 +2,7 @@
   "Unit tests for /api/dataset endpoints."
   (:require [clojure.string :as s]
             [expectations :refer :all]
-            [metabase.api.dataset :refer [query-constraints]]
+            [metabase.api.dataset :refer [default-query-constraints]]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [query-execution :refer [QueryExecution]])
@@ -65,7 +65,7 @@
                                (ql/aggregation (ql/count))))
                       (assoc :type "query")
                       (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
-                      (assoc :constraints query-constraints))
+                      (assoc :constraints default-query-constraints))
     :started_at   true
     :finished_at  true
     :running_time true}
@@ -81,7 +81,7 @@
                                (ql/aggregation (ql/count))))
                       (assoc :type "query")
                       (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
-                      (assoc :constraints query-constraints))
+                      (assoc :constraints default-query-constraints))
     :started_at   true
     :finished_at  true
     :running_time true
@@ -108,7 +108,7 @@
                 :json_query   {:database    (id)
                                :type        "native"
                                :native      {:query "foobar"}
-                               :constraints query-constraints}
+                               :constraints default-query-constraints}
                 :started_at   true
                 :finished_at  true
                 :running_time true}]
