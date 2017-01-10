@@ -78,6 +78,7 @@ Common detailed types include:
 * Zip Code
 
 This is also where you set mark special fields in a table:
+
 * Entity Key — the field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
 * Entity Name — different from the entity key, this is the field whose heading represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
 * Foreign Key — this is a field in this table that uniquely identifies a *row* in another table. In other words, this is a field that, almost always, points to the primary key of another table. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
