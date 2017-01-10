@@ -36,7 +36,7 @@ export default class DeleteModalWithConfirm extends Component {
         return (
             <ModalContent
                 title={"Delete \"" + objectName + "\"?"}
-                closeFn={this.props.onClose}
+                onClose={this.props.onClose}
             >
             <div className="px4 pb4">
                 <ul>

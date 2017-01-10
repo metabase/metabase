@@ -45,7 +45,7 @@ const referenceSections = {
             message: "Metrics will appear here once your admins have created some",
             image: "/app/img/metrics-list",
             adminAction: "Learn how to create metrics",
-            adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
+            adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
         },
         breadcrumb: "Metrics",
         // mapping of propname to args of dispatch function
@@ -65,7 +65,7 @@ const referenceSections = {
             message: "Segments will appear here once your admins have created some",
             image: "/app/img/segments-list",
             adminAction: "Learn how to create segments",
-            adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
+            adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
         },
         breadcrumb: "Segments",
         fetch: {
@@ -512,7 +512,9 @@ const getMetricQuestions = createSelector(
     (metricId, questions) => Object.values(questions)
         .filter(question =>
             question.dataset_query.type === "query" &&
-            AggregationClause.getMetric(question.dataset_query.query.aggregation) === metricId
+            _.any(Query.getAggregations(question.dataset_query.query), (aggregation) =>
+                AggregationClause.getMetric(aggregation) === metricId
+            )
         )
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );

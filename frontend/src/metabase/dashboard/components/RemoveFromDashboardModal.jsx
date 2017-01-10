@@ -61,7 +61,7 @@ export default class RemoveFromDashboardModal extends Component {
         return (
             <ModalContent
                 title="Remove from Dashboard"
-                closeFn={() => this.props.onClose()}
+                onClose={() => this.props.onClose()}
             >
                 <div className="flex-full px4 pb3 text-grey-4">
                     <p>Are you sure you want to do this?</p>

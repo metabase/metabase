@@ -2,9 +2,10 @@
   (:require [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*], :as api]
             [metabase.db :as db]
             (metabase.models [card-label :refer [CardLabel]]
+                             [collection :refer [Collection], :as collection]
                              [dependency :as dependency]
                              [interface :as i]
                              [label :refer [Label]]
@@ -75,8 +76,10 @@
   "Return a set of required permissions object paths for CARD.
    Optionally specify whether you want `:read` or `:write` permissions; default is `:read`.
    (`:write` permissions only affects native queries)."
-  [{query :dataset_query} read-or-write]
-  (query-perms-set query read-or-write))
+  [{query :dataset_query, collection-id :collection_id} read-or-write]
+  (if collection-id
+    (collection/perms-objects-set collection-id read-or-write)
+    (query-perms-set query read-or-write)))
 
 
 ;;; ------------------------------------------------------------ Dependencies ------------------------------------------------------------
@@ -115,15 +118,21 @@
       (merge defaults card)
       card)))
 
-
 (defn- pre-insert [{:keys [dataset_query], :as card}]
+  ;; TODO - make sure if `collection_id` is specified that we have write permissions for tha tcollection
   (u/prog1 card
     ;; for native queries we need to make sure the user saving the card has native query permissions for the DB
     ;; because users can always see native Cards and we don't want someone getting around their lack of permissions that way
     (when (and *current-user-id*
                (= (keyword (:type dataset_query)) :native))
       (let [database (db/select-one ['Database :id :name], :id (:database dataset_query))]
-        (qp-perms/throw-if-cannot-run-new-native-query-referencing-db *current-user-id* database)))))
+        (qp-perms/throw-if-cannot-run-new-native-query-referencing-db database)))))
+
+(defn- pre-update [{archived? :archived, :as card}]
+  (u/prog1 card
+    ;; if the Card is archived, then remove it from any Dashboards
+    (when archived?
+      (db/cascade-delete! 'DashboardCard :card_id (u/get-id card)))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! 'PulseCard :card_id id)
@@ -142,7 +151,7 @@
           :timestamped?       (constantly true)
           :can-read?          (partial i/current-user-has-full-permissions? :read)
           :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :pre-update         populate-query-fields
+          :pre-update         (comp populate-query-fields pre-update)
           :pre-insert         (comp populate-query-fields pre-insert)
           :pre-cascade-delete pre-cascade-delete
           :perms-objects-set  perms-objects-set})

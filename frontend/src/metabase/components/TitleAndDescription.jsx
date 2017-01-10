@@ -9,7 +9,7 @@ const TitleAndDescription = ({ title, description }) =>
         <h2 className="mr1">{title}</h2>
         { description &&
             <Tooltip tooltip={description} maxWidth={'22em'}>
-                <Icon name='info'/>
+                <Icon name='info' style={{ marginTop: 3 }}/>
             </Tooltip>
         }
     </div>;

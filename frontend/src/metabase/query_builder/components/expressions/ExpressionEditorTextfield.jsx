@@ -5,46 +5,53 @@ import S from "./ExpressionEditorTextfield.css";
 import _ from "underscore";
 import cx from "classnames";
 
+import { compile, suggest } from "metabase/lib/expressions/parser";
+import { format } from "metabase/lib/expressions/formatter";
+import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
+
 import Popover from "metabase/components/Popover.jsx";
 
-import { parseExpressionString, tokenAtPosition, tokensToExpression, formatExpression, isExpression } from "metabase/lib/expressions";
+import TokenizedInput from "./TokenizedInput.jsx";
+
+import { isExpression } from "metabase/lib/expressions";
 
 
-const KEYCODE_TAB   =  9;
 const KEYCODE_ENTER = 13;
+const KEYCODE_ESC   = 27;
+const KEYCODE_LEFT  = 37;
 const KEYCODE_UP    = 38;
+const KEYCODE_RIGHT = 39;
 const KEYCODE_DOWN  = 40;
 
-
-// return the first token with a non-empty error message
-function getErrorToken(tokens) {
-    for (var i = 0; i < tokens.length; i++) {
-        let token = tokens[i];
-        if (token.error && token.error.length) return token;
-        if (!token.isParent) continue;
-        let childError = getErrorToken(token.value);
-        if (childError) return childError;
-    }
-    return null;
-}
-
+const MAX_SUGGESTIONS = 30;
 
 export default class ExpressionEditorTextfield extends Component {
     constructor(props, context) {
         super(props, context);
-        _.bindAll(this, 'onInputChange', 'onInputKeyDown', 'onInputBlur', 'onSuggestionAccepted', 'onSuggestionMouseDown');
+        _.bindAll(this, '_triggerAutosuggest', 'onInputKeyDown', 'onInputBlur', 'onSuggestionAccepted', 'onSuggestionMouseDown');
     }
 
     static propTypes = {
         expression: PropTypes.array,      // should be an array like [parsedExpressionObj, expressionString]
         tableMetadata: PropTypes.object.isRequired,
+        customFields: PropTypes.object,
         onChange: PropTypes.func.isRequired,
-        onError: PropTypes.func.isRequired
+        onError: PropTypes.func.isRequired,
+        startRule: PropTypes.string.isRequired
     };
 
     static defaultProps = {
         expression: [null, ""],
+        startRule: "expression",
         placeholder: "write some math!"
+    }
+
+    _getParserInfo(props = this.props) {
+        return {
+            tableMetadata: props.tableMetadata,
+            customFields: props.customFields || {},
+            startRule: props.startRule
+        }
     }
 
     componentWillMount() {
@@ -54,135 +61,178 @@ export default class ExpressionEditorTextfield extends Component {
     componentWillReceiveProps(newProps) {
         // we only refresh our state if we had no previous state OR if our expression or table has changed
         if (!this.state || this.props.expression != newProps.expression || this.props.tableMetadata != newProps.tableMetadata) {
-            let parsedExpression = newProps.expression,
-                expression       = formatExpression(newProps.expression, this.props.tableMetadata.fields),
-                tokens           = [];
-
-            let errorMessage = null;
+            const parserInfo = this._getParserInfo(newProps);
+            let parsedExpression = newProps.expression;
+            let expressionString = format(newProps.expression, parserInfo);
+            let expressionErrorMessage = null;
+            let suggestions = [];
             try {
-                tokens = expression && expression.length ? tokensToExpression(parseExpressionString(expression, newProps.tableMetadata.fields)) : [];
+                if (expressionString) {
+                    compile(expressionString, parserInfo);
+                }
             } catch (e) {
-                errorMessage = e;
+                expressionErrorMessage = e;
             }
 
             this.setState({
-                parsedExpression:       parsedExpression,
-                expressionString:       expression,
-                tokens:                 tokens,
-                expressionErrorMessage: errorMessage,
-                suggestions:            [],
-                highlightedSuggestion:  0,
-                suggestionsTitle:       null
+                parsedExpression,
+                expressionString,
+                expressionErrorMessage,
+                suggestions,
+                highlightedSuggestion: 0
             });
         }
     }
 
+    componentDidMount() {
+        this._setCaretPosition(this.state.expressionString.length, this.state.expressionString.length === 0)
+    }
+
     onSuggestionAccepted() {
-        let inputElement = ReactDOM.findDOMNode(this.refs.input),
-            displayName  = this.state.suggestions[this.state.highlightedSuggestion].display_name,
-            // wrap field names with spaces in them in quotes
-            needsQuotes  = displayName.indexOf(' ') > -1,
-            suggestion   = needsQuotes ? ('"' + displayName + '"') : displayName,
-            tokenAtPoint = tokenAtPosition(this.state.tokens, inputElement.selectionStart);
+        const { expressionString } = this.state;
+        const suggestion = this.state.suggestions[this.state.highlightedSuggestion];
 
-        let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
+        if (suggestion) {
+            let prefix = expressionString.slice(0, suggestion.index);
+            if (suggestion.prefixTrim) {
+                prefix = prefix.replace(suggestion.prefixTrim, "");
+            }
+            let postfix = expressionString.slice(suggestion.index);
+            if (suggestion.postfixTrim) {
+                postfix = postfix.replace(suggestion.postfixTrim, "");
+            }
+            if (!postfix && suggestion.postfixText) {
+                postfix = suggestion.postfixText;
+            }
 
-        // Remove extra quotation marks in case we accidentally inserted duplicates when accepting a suggestion already inside some
-        expression = expression.replace(/"+/, '"');
-
-        // hand off to the code that deals with text change events which will trigger parsing and new autocomplete suggestions
-        inputElement.value = expression + ' ';
-        this.onInputChange(); // add a blank space after end of token
+            this.onExpressionChange(prefix + suggestion.text + postfix)
+            setTimeout(() => this._setCaretPosition((prefix + suggestion.text).length, true))
+        }
 
         this.setState({
             highlightedSuggestion: 0
         });
     }
 
-    onSuggestionMouseDown(event) {
+    onSuggestionMouseDown(event, index) {
         // when a suggestion is clicked, we'll highlight the clicked suggestion and then hand off to the same code that deals with ENTER / TAB keydowns
         event.preventDefault();
-
-        this.setState({
-            highlightedSuggestion: parseInt(event.target.getAttribute('data-i'))
-        }, this.onSuggestionAccepted);
+        event.stopPropagation();
+        this.setState({ highlightedSuggestion: index }, this.onSuggestionAccepted);
     }
 
-    onInputKeyDown(event) {
-        if (!this.state.suggestions.length) return;
+    onInputKeyDown(e) {
+        const { suggestions, highlightedSuggestion } = this.state;
 
-        if (event.keyCode === KEYCODE_ENTER || event.keyCode === KEYCODE_TAB) {
+        if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
+            setTimeout(() => this._triggerAutosuggest());
+            return;
+        }
+        if (e.keyCode === KEYCODE_ESC) {
+            e.stopPropagation();
+            e.preventDefault();
+            this.clearSuggestions();
+            return;
+        }
+
+        if (!suggestions.length) {
+            return;
+        }
+        if (e.keyCode === KEYCODE_ENTER) {
             this.onSuggestionAccepted();
-
-        } else if (event.keyCode === KEYCODE_UP) {
+            e.preventDefault();
+        } else if (e.keyCode === KEYCODE_UP) {
             this.setState({
-                highlightedSuggestion: this.state.highlightedSuggestion === 0 ? (this.state.suggestions.length - 1) : (this.state.highlightedSuggestion - 1)
+                highlightedSuggestion: (highlightedSuggestion + suggestions.length - 1) % suggestions.length
             });
-        } else if (event.keyCode === KEYCODE_DOWN) {
+            e.preventDefault();
+        } else if (e.keyCode === KEYCODE_DOWN) {
             this.setState({
-                highlightedSuggestion: this.state.highlightedSuggestion === (this.state.suggestions.length - 1) ? 0 : (this.state.highlightedSuggestion + 1)
+                highlightedSuggestion: (highlightedSuggestion + suggestions.length + 1) % suggestions.length
             });
-        } else return;
+            e.preventDefault();
+        }
+    }
 
-        event.preventDefault();
+    clearSuggestions() {
+        this.setState({
+            suggestions: [],
+            highlightedSuggestion: 0
+        });
     }
 
     onInputBlur() {
-        this.setState({
-            suggestions: [],
-            highlightedSuggestion: 0,
-            suggestionsTitle: null
-        });
+        this.clearSuggestions();
 
         // whenever our input blurs we push the updated expression to our parent if valid
-        if (isExpression(this.state.parsedExpression)) this.props.onChange(this.state.parsedExpression)
-            else if (this.state.expressionErrorMessage)    this.props.onError(this.state.expressionErrorMessage);
+        if (isExpression(this.state.parsedExpression)) {
+            this.props.onChange(this.state.parsedExpression);
+        } else if (this.state.expressionErrorMessage) {
+            this.props.onError(this.state.expressionErrorMessage);
+        } else {
+            this.props.onError({ message: "Invalid expression" });
+        }
     }
 
-    onInputChange() {
-        let inputElement = ReactDOM.findDOMNode(this.refs.input),
-            expression   = inputElement.value;
+    onInputClick = () => {
+        this._triggerAutosuggest();
+    }
 
-        var errorMessage          = null,
-            tokens                = [],
-            suggestions           = [],
-            suggestionsTitle      = null,
-            highlightedSuggestion = this.state.highlightedSuggestion,
-            parsedExpression;
+    _triggerAutosuggest = () => {
+        this.onExpressionChange(this.state.expressionString);
+    }
 
-        try {
-            tokens = parseExpressionString(expression, this.props.tableMetadata.fields);
+    _setCaretPosition = (position, autosuggest) => {
+        setCaretPosition(ReactDOM.findDOMNode(this.refs.input), position);
+        if (autosuggest) {
+            setTimeout(() => this._triggerAutosuggest());
+        }
+    }
 
-            let errorToken = getErrorToken(tokens);
-            if (errorToken) errorMessage = errorToken.error;
-
-            let cursorPosition = inputElement.selectionStart;
-            let tokenAtPoint = tokenAtPosition(tokens, cursorPosition);
-
-            if (tokenAtPoint && tokenAtPoint.suggestions) {
-                suggestions = tokenAtPoint.suggestions;
-                suggestionsTitle = tokenAtPoint.suggestionsTitle;
-            }
-
-            if (highlightedSuggestion >= suggestions.length) highlightedSuggestion = suggestions.length - 1;
-            if (highlightedSuggestion < 0)                   highlightedSuggestion = 0;
-
-            parsedExpression = tokensToExpression(tokens);
-
-        } catch (e) {
-            errorMessage = e;
+    onExpressionChange(expressionString) {
+        let inputElement = ReactDOM.findDOMNode(this.refs.input);
+        if (!inputElement) {
+            return;
         }
 
-        if (errorMessage) console.error('expression error message:', errorMessage);
+        const parserInfo = this._getParserInfo();
+
+        let expressionErrorMessage = null;
+        let suggestions           = [];
+        let parsedExpression;
+
+        try {
+            parsedExpression = compile(expressionString, parserInfo)
+        } catch (e) {
+            expressionErrorMessage = e;
+            console.error("expression error:", expressionErrorMessage);
+        }
+
+        const isValid = parsedExpression && parsedExpression.length > 0;
+        const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
+        const hasSelection = selectionStart !== selectionEnd;
+        const isAtEnd = selectionEnd === expressionString.length;
+        const endsWithWhitespace = /\s$/.test(expressionString);
+
+        // don't show suggestions if
+        // * there's a section
+        // * we're at the end of a valid expression, unless the user has typed another space
+        if (!hasSelection && !(isValid && isAtEnd && !endsWithWhitespace)) {
+            try {
+                suggestions = suggest(expressionString, {
+                    ...parserInfo,
+                    index: selectionEnd
+                })
+            } catch (e) {
+                console.error("suggest error:", e);
+            }
+        }
 
         this.setState({
-            expressionErrorMessage: errorMessage,
-            expressionString: expression,
-            parsedExpression: parsedExpression,
-            suggestions: suggestions,
-            suggestionsTitle: suggestionsTitle,
-            highlightedSuggestion: highlightedSuggestion,
-            tokens: tokens
+            expressionErrorMessage,
+            expressionString,
+            parsedExpression,
+            suggestions
         });
     }
 
@@ -191,48 +241,63 @@ export default class ExpressionEditorTextfield extends Component {
         if (errorMessage && !errorMessage.length) errorMessage = 'unknown error';
 
         const { placeholder } = this.props;
+        const { suggestions } = this.state;
 
         return (
             <div className={cx(S.editor, "relative")}>
-                <input
+                <TokenizedInput
                     ref="input"
-                    className={cx(S.input, "my1 p1 input block full h4 text-dark")}
+                    className={cx(S.input, "my1 input block full", { "border-error": errorMessage })}
                     type="text"
                     placeholder={placeholder}
                     value={this.state.expressionString}
-                    onChange={this.onInputChange}
+                    onChange={(e) => this.onExpressionChange(e.target.value)}
                     onKeyDown={this.onInputKeyDown}
                     onBlur={this.onInputBlur}
-                    onFocus={this.onInputChange}
-                    focus={true}
+                    onFocus={(e) => this._triggerAutosuggest()}
+                    onClick={this.onInputClick}
+                    autoFocus
+                    parserInfo={this._getParserInfo()}
                 />
                 <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
-                {this.state.suggestions.length ?
-                 <Popover
-                     className="p2 not-rounded border-dark"
-                     hasArrow={false}
-                     tetherOptions={{
-                             attachment: 'top left',
-                             targetAttachment: 'bottom left',
-                             targetOffset: '0 ' + ((this.state.expressionString.length / 2) * 6)
-                         }}
-                 >
-                     <div style={{minWidth: 150, maxHeight: 342, overflow: "hidden"}}>
-                         <h5 style={{marginBottom: 2}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5>
-                         <ul>
-                             {this.state.suggestions.map((suggestion, i) =>
-                                 <li style={{paddingTop: "2px", paddingBottom: "2px", cursor: "pointer"}}
-                                     className={cx({"text-bold text-brand": i === this.state.highlightedSuggestion})}
-                                     data-i={i}
-                                     onMouseDown={this.onSuggestionMouseDown}
-                                 >
-                                     {suggestion.display_name}
-                                 </li>
-                              )}
-                         </ul>
-                     </div>
-                 </Popover>
-                 : null}
+                { suggestions.length ?
+                    <Popover
+                        className="pb1 not-rounded border-dark"
+                        hasArrow={false}
+                        tetherOptions={{
+                            attachment: 'top left',
+                            targetAttachment: 'bottom left'
+                        }}
+                    >
+                        <ul style={{minWidth: 150, overflow: "hidden"}}>
+                            {suggestions.slice(0,MAX_SUGGESTIONS).map((suggestion, i) =>
+                                // insert section title. assumes they're sorted by type
+                                [(i === 0 || suggestion.type !== suggestions[i - 1].type) &&
+                                    <li  ref={"header-" + i} className="mx2 h6 text-uppercase text-bold text-grey-3 py1 pt2">
+                                        {suggestion.type}
+                                    </li>
+                                ,
+                                    <li ref={i} style={{ paddingTop: 5, paddingBottom: 5 }}
+                                        className={cx("px2 cursor-pointer text-white-hover bg-brand-hover", {"text-white bg-brand": i === this.state.highlightedSuggestion})}
+                                        onMouseDownCapture={(e) => this.onSuggestionMouseDown(e, i)}
+                                    >
+                                        { suggestion.prefixLength ?
+                                            <span>
+                                                <span className={cx("text-brand text-bold", {"text-white bg-brand": i === this.state.highlightedSuggestion})}>{suggestion.name.slice(0, suggestion.prefixLength)}</span>
+                                                <span>{suggestion.name.slice(suggestion.prefixLength)}</span>
+                                            </span>
+                                        :
+                                            suggestion.name
+                                        }
+                                    </li>
+                                ]
+                            )}
+                            { suggestions.length >= MAX_SUGGESTIONS &&
+                                <li style={{ paddingTop: 5, paddingBottom: 5 }} className="px2 text-italic text-grey-3">and {suggestions.length - MAX_SUGGESTIONS} more</li>
+                            }
+                        </ul>
+                    </Popover>
+                : null}
             </div>
         );
     }

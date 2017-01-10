@@ -85,7 +85,7 @@
   {query su/JSONString}
   (let [query (json/parse-string query keyword)]
     (read-check Database (:database query))
-    (as-csv (qp/dataset-query query {:executed-by *current-user-id*}))))
+    (as-csv (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*}))))
 
 (defendpoint POST "/json"
   "Execute a query and download the result data as a JSON file."
@@ -93,7 +93,7 @@
   {query su/JSONString}
   (let [query (json/parse-string query keyword)]
     (read-check Database (:database query))
-    (as-json (qp/dataset-query query {:executed-by *current-user-id*}))))
+    (as-json (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*}))))
 
 
 (define-routes)

@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import S from "./Labels.css";
 import color from 'color'
+import Urls from "metabase/lib/urls";
 
 import EmojiIcon from "metabase/components/EmojiIcon.jsx"
 
@@ -33,7 +34,7 @@ class Label extends Component {
     const { hovered } = this.state
     return (
       <Link
-        to={"/questions/label/"+slug}
+        to={Urls.label({ slug })}
         onMouseEnter={() => this.setState({ hovered: true })}
         onMouseLeave={() => this.setState({ hovered: false })}
       >

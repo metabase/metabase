@@ -52,7 +52,7 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
 
 function DeleteGroupModal({ group, onConfirm = () => {} , onClose = () => {} }) {
     return (
-        <ModalContent title="Remove this group?" closeFn={onClose}>
+        <ModalContent title="Remove this group?" onClose={onClose}>
             <p className="px4 pb4">
                 Are you sure? All members of this group will lose any permissions settings the have based on this group.
                 This can't be undone.

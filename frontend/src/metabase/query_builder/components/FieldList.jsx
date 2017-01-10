@@ -63,7 +63,7 @@ export default class FieldList extends Component {
             name: singularize(tableName),
             items: specialOptions.concat(fieldOptions.fields.map(field => ({
                 name: Query.getFieldPathName(field.id, tableMetadata),
-                value: field.id,
+                value: ["field-id", field.id],
                 field: field
             })))
         };
@@ -88,7 +88,11 @@ export default class FieldList extends Component {
     }
 
     itemIsSelected(item) {
-        return _.isEqual(this.state.fieldTarget, item.value);
+        let { fieldTarget } = this.state;
+        if (typeof fieldTarget === "number") {
+            fieldTarget = ["field-id", fieldTarget];
+        }
+        return _.isEqual(fieldTarget, item.value);
     }
 
     renderItemExtra(item) {

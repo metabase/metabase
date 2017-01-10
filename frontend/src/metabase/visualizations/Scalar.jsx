@@ -14,7 +14,7 @@ import i from "icepick";
 import d3 from "d3";
 
 export default class Scalar extends Component {
-    static displayName = "Number";
+    static uiName = "Number";
     static identifier = "scalar";
     static iconName = "number";
 
@@ -124,7 +124,12 @@ export default class Scalar extends Component {
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>
                 <div className="Card-title absolute top right p1 px2">{actionButtons}</div>
-                <Ellipsified className={cx(styles.Value, 'ScalarValue', 'fullscreen-normal-text', 'fullscreen-night-text')} tooltip={fullScalarValue} alwaysShowTooltip={fullScalarValue !== compactScalarValue}>
+                <Ellipsified
+                    className={cx(styles.Value, 'ScalarValue', 'fullscreen-normal-text', 'fullscreen-night-text')}
+                    tooltip={fullScalarValue}
+                    alwaysShowTooltip={fullScalarValue !== compactScalarValue}
+                    style={{maxWidth: '100%'}}
+                >
                     {compactScalarValue}
                 </Ellipsified>
                 <Ellipsified className={styles.Title} tooltip={card.name}>

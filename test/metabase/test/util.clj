@@ -5,6 +5,7 @@
             [expectations :refer :all]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
+                             [collection :refer [Collection]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
@@ -106,6 +107,11 @@
                                 :display                :table
                                 :name                   (random-name)
                                 :visualization_settings {}})})
+
+(u/strict-extend (class Collection)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:name  (random-name)
+                                :color "#ABCDEF"})})
 
 (u/strict-extend (class Dashboard)
   WithTempDefaults

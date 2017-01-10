@@ -27,7 +27,7 @@ export default class TablePane extends Component {
         query: PropTypes.object.isRequired,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         show: PropTypes.func.isRequired,
-        closeFn: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired,
         table: PropTypes.object
     };

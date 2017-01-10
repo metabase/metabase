@@ -97,22 +97,13 @@ export default class DashboardHeader extends Component {
 
     getEditingButtons() {
         return [
-            <ActionButton
-                key="save"
-                actionFn={() => this.onSave()}
-                className="Button Button--small Button--primary text-uppercase"
-                normalText="Save"
-                activeText="Saving…"
-                failedText="Save failed"
-                successText="Saved"
-            />,
-            <a data-metabase-event="Dashboard;Cancel Edits" key="cancel" className="Button Button--small text-uppercase" onClick={() => this.onCancel()}>
+            <a data-metabase-event="Dashboard;Cancel Edits" key="cancel" className="Button Button--small" onClick={() => this.onCancel()}>
                 Cancel
             </a>,
             <ModalWithTrigger
                 key="delete"
                 ref="deleteDashboardModal"
-                triggerClasses="Button Button--small text-uppercase"
+                triggerClasses="Button Button--small"
                 triggerElement="Delete"
             >
                 <DeleteDashboardModal
@@ -120,7 +111,16 @@ export default class DashboardHeader extends Component {
                     onClose={() => this.refs.deleteDashboardModal.toggle()}
                     onDelete={() => this.onDelete()}
                 />
-            </ModalWithTrigger>
+            </ModalWithTrigger>,
+            <ActionButton
+                key="save"
+                actionFn={() => this.onSave()}
+                className="Button Button--small Button--primary"
+                normalText="Save"
+                activeText="Saving…"
+                failedText="Save failed"
+                successText="Saved"
+            />
         ];
     }
 
@@ -200,6 +200,7 @@ export default class DashboardHeader extends Component {
         if (!isFullscreen && canEdit) {
             buttons.push(
                 <ModalWithTrigger
+                    full
                     key="add"
                     ref="addQuestionModal"
                     triggerElement={

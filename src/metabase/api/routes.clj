@@ -3,6 +3,7 @@
             [compojure.route :as route]
             (metabase.api [activity :as activity]
                           [card :as card]
+                          [collection :as collection]
                           [dashboard :as dashboard]
                           [database :as database]
                           [dataset :as dataset]
@@ -38,6 +39,7 @@
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"        [] (+auth activity/routes))
   (context "/card"            [] (+auth card/routes))
+  (context "/collection"      [] (+auth collection/routes))
   (context "/dashboard"       [] (+auth dashboard/routes))
   (context "/database"        [] (+auth database/routes))
   (context "/dataset"         [] (+auth dataset/routes))

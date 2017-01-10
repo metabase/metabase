@@ -12,7 +12,7 @@ export default class FormTextArea extends Component {
         return (
             <textarea
                 placeholder={placeholder}
-                className={cx("input full text-default h4", { "border-error": !field.active && field.visited && field.invalid }, className)}
+                className={cx("input full", { "border-error": !field.active && field.visited && field.invalid }, className)}
                 {...formDomOnlyProps(field)}
             />
         );

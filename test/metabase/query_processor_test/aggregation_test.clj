@@ -148,6 +148,18 @@
     (rows (data/run-query venues
             (ql/aggregation (ql/avg $price) (ql/count) (ql/sum $price))))))
 
+;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
+;; (TODO - this isn't tested against Mongo or BigQuery because those drivers don't currently work correctly with multiple columns with the same name)
+(datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery)
+  [(aggregate-col :count)
+   (assoc (aggregate-col :count)
+     :display_name    "count_2"
+     :name            "count_2"
+     :preview_display true)]
+  (-> (data/run-query venues
+        (ql/aggregation (ql/count) (ql/count)))
+      :data :cols))
+
 
 ;;; ------------------------------------------------------------ CUMULATIVE SUM ------------------------------------------------------------
 

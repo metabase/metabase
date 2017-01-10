@@ -87,15 +87,17 @@
    {:pre [client (seq project-id) (seq dataset-id) (seq table-id)]}
    (google/execute (.get (.tables client) project-id dataset-id table-id))))
 
-(def ^:private ^:const  bigquery-type->base-type
-  {"BOOLEAN"   :type/Boolean
-   "FLOAT"     :type/Float
-   "INTEGER"   :type/Integer
-   "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
-   "STRING"    :type/Text
-   "DATE"      :type/Date
-   "DATETIME"  :type/DateTime
-   "TIMESTAMP" :type/DateTime})
+(defn- bigquery-type->base-type [field-type]
+  (case field-type
+    "BOOLEAN"   :type/Boolean
+    "FLOAT"     :type/Float
+    "INTEGER"   :type/Integer
+    "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
+    "STRING"    :type/Text
+    "DATE"      :type/Date
+    "DATETIME"  :type/DateTime
+    "TIMESTAMP" :type/DateTime
+    :type/*))
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]

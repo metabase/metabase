@@ -63,6 +63,10 @@ export function momentifyObjectsTimestamps(objects, keys) {
     return _.mapObject(objects, o => momentifyTimestamps(o, keys));
 }
 
+export function momentifyArraysTimestamps(array, keys) {
+    return _.map(array, o => momentifyTimestamps(o, keys));
+}
+
 // turns into id indexed map
 export const resourceListToMap = (resources) =>
     resources.reduce((map, resource) => ({ ...map, [resource.id]: resource }), {});
