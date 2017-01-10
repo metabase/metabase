@@ -265,11 +265,12 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, series, onHoverChange) {
+function applyChartTooltips(chart, series, isStacked, onHoverChange) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
-        chart.selectAll(".bar, .dot, .area, .line, .bubble, g.pie-slice, g.features")
+        chart.selectAll(".bar, .dot, .area, .line, .bubble")
             .on("mousemove", function(d, i) {
+                const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
                 const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
 
                 let data;
@@ -279,8 +280,7 @@ function applyChartTooltips(chart, series, onHoverChange) {
                     ));
                 } else if (d.data) { // line, area, bar
                     if (!isSingleSeriesBar) {
-                        let idx = determineSeriesIndexFromElement(this);
-                        cols = series[idx].data.cols;
+                        cols = series[seriesIndex].data.cols;
                     }
                     data = [
                         { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
@@ -290,7 +290,7 @@ function applyChartTooltips(chart, series, onHoverChange) {
 
                 onHoverChange && onHoverChange({
                     // for single series bar charts, fade the series and highlght the hovered element with CSS
-                    index: isSingleSeriesBar ? -1 : determineSeriesIndexFromElement(this),
+                    index: isSingleSeriesBar ? -1 : seriesIndex,
                     element: this,
                     d: d,
                     data: data && _.uniq(data, (d) => d.col)
@@ -979,7 +979,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     }
     const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
-    applyChartTooltips(chart, series, (hovered) => {
+    applyChartTooltips(chart, series, isStacked, (hovered) => {
         if (onHoverChange) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {
