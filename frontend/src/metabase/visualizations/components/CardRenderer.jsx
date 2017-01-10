@@ -78,7 +78,7 @@ export default class CardRenderer extends Component {
 
     render() {
         return (
-            <div className={cx(this.props.className, "Card-outer")}></div>
+            <div className={this.props.className}></div>
         );
     }
 }

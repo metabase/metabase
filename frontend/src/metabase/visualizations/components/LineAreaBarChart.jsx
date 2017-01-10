@@ -4,6 +4,7 @@ import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 
+import "./LineAreaBarChart.css";
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
 import { isNumeric, isDate } from "metabase/lib/schema_metadata";
@@ -175,7 +176,7 @@ export default class LineAreaBarChart extends Component {
         }
 
         return (
-            <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
+            <div className={cx("LineAreaBarChart flex flex-column p1", this.getHoverClasses(), this.props.className)}>
                 { titleHeaderSeries ?
                     <LegendHeader
                         className="flex-no-shrink"
