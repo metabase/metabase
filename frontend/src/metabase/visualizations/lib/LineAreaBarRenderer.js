@@ -333,7 +333,7 @@ function applyChartLineBarSettings(chart, settings, chartType) {
     }
 }
 
-function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
+function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked) {
     // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 
     function removeClipPath() {
@@ -547,6 +547,10 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
         }
     }
 
+    function setClassName() {
+        chart.svg().classed("stacked", isStacked);
+    }
+
     // run these first so the rest of the margin computations take it into account
     hideDisabledLabels();
     hideDisabledAxis();
@@ -577,6 +581,7 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
         hideBadAxis();
         disableClickFiltering();
         fixStackZIndex();
+        setClassName();
     });
 
     chart.render();
@@ -998,7 +1003,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     chart.render();
 
     // apply any on-rendering functions
-    lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis);
+    lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked);
 
     // only ordinal axis can display "null" values
     if (isOrdinal) {
