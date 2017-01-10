@@ -301,20 +301,19 @@
     (filter {} (time-interval (field-id 100) :current :day)) "
   [f n unit]
   (if-not (integer? n)
-    (let [n (normalize-token n)]
-      (case n
-        :current (recur f  0 unit)
-        :last    (recur f -1 unit)
-        :next    (recur f  1 unit)))
+    (case (normalize-token n)
+      :current (recur f  0 unit)
+      :last    (recur f -1 unit)
+      :next    (recur f  1 unit))
     (let [f (datetime-field f unit)]
       (cond
         (core/= n  0) (= f (value f (relative-datetime :current)))
         (core/= n -1) (= f (value f (relative-datetime -1 unit)))
         (core/= n  1) (= f (value f (relative-datetime  1 unit)))
-        (core/< n -1) (between f (value f (relative-datetime (dec n) unit))
-                                 (value f (relative-datetime      -1 unit)))
-        (core/> n  1) (between f (value f (relative-datetime       1 unit))
-                               (value f (relative-datetime (inc n) unit)))))))
+        (core/< n -1) (between f (value f (relative-datetime  n unit))
+                                 (value f (relative-datetime -1 unit)))
+        (core/> n  1) (between f (value f (relative-datetime  1 unit))
+                                 (value f (relative-datetime  n unit)))))))
 
 (s/defn ^:ql ^:always-validate filter
   "Filter the results returned by the query.
