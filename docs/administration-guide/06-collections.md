@@ -13,7 +13,7 @@ Only administrators of Metabase can create and edit collections. From the Questi
 ### Setting permissions for collections
 Collection permissions are similar to data permissions. Rather than going to the Admin Panel, you set permissions on collections by clicking on the lock icon in the top-right of the Questions screen or the top-right of a collection screen.
 
-![Permissions grid](images/collections/permissions-grid.png)
+![Permissions grid](images/collections/permission-grid.png)
 
 You'll see a table with your user groups along the top and all your collections down along the left. A user group can have View access, Curate access, or no access to a given collection.
 
