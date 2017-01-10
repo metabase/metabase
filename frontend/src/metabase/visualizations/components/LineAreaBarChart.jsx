@@ -199,7 +199,7 @@ export default class LineAreaBarChart extends Component {
                     chartType={this.getChartType()}
                     series={series}
                     settings={settings}
-                    className="flex-full"
+                    className="renderer flex-full"
                     renderer={lineAreaBarRenderer}
                 />
                 <ChartTooltip series={series} hovered={hovered} />

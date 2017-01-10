@@ -1,3 +1,9 @@
+.LineAreaBarChart .renderer {
+  margin-top: -5px;
+  margin-left: -0.5em;
+  margin-right: -0.5em;
+  margin-bottom: -0.5em;
+}
 
 .LineAreaBarChart .dc-chart .grid-line.horizontal {
   stroke: rgba(151, 151, 151, 0.2);
