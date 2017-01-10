@@ -7,7 +7,7 @@ import promise from 'redux-promise';
 import thunk from "redux-thunk";
 import createLogger from "redux-logger";
 
-import { createHistory } from 'history';
+import createHistory from "history/createBrowserHistory";
 
 import { reduxReactRouter } from 'redux-router';
 
