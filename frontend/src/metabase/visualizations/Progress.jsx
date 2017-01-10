@@ -80,8 +80,8 @@ export default class Progress extends Component {
         const goal = settings["progress.goal"] || 0;
 
         const mainColor = settings["progress.color"];
-        const lightColor = Color(mainColor).lighten(0.25).rgbString();
-        const darkColor = Color(mainColor).darken(0.30).rgbString();
+        const lightColor = Color(mainColor).lighten(0.25).rgb().string();
+        const darkColor = Color(mainColor).darken(0.30).rgb().string();
 
         const progressColor = mainColor;
         const restColor = value > goal ? darkColor : lightColor;

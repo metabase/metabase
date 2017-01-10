@@ -6,7 +6,7 @@ import moment from "moment";
 
 import { createAction } from "redux-actions";
 import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
-import { normalize, Schema, arrayOf } from "normalizr";
+import { normalize, schema } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -23,11 +23,10 @@ const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
 // normalizr schemas
-const dashcard = new Schema('dashcard');
-const card = new Schema('card');
-const dashboard = new Schema('dashboard');
-dashboard.define({
-    ordered_cards: arrayOf(dashcard)
+const dashcard = new schema.Entity('dashcard');
+const card = new schema.Entity('card');
+const dashboard = new schema.Entity('dashboard', {
+    ordered_cards: [dashcard]
 });
 
 // action constants
@@ -92,7 +91,7 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "
         for (var c of cards) {
             c.updated_at = moment(c.updated_at);
         }
-        return normalize(cards, arrayOf(card));
+        return normalize(cards, [card]);
     };
 });
 

@@ -2,7 +2,7 @@
 
 import memoize from "./memoize";
 
-import { Schema, arrayOf, normalize } from "normalizr";
+import { normalize, schema } from "normalizr";
 import { getIn } from "icepick";
 
 type MetaSchemaClass = { type: string, schema: MetaSchema }
@@ -78,14 +78,14 @@ export default class Base {
 // transform our schema to a normalizr schema
 function toNormalizrSchema(Klass: MetaSchemaClass) {
     if (Array.isArray(Klass.schema)) {
-        return arrayOf(toNormalizrSchema(Klass.schema[0]));
+        return [toNormalizrSchema(Klass.schema[0])];
     } else {
-        const schema : any = new Schema(Klass.type);
         const properties = {}
         for (const name in Klass.schema) {
-            properties[name] = Array.isArray(Klass.schema[name]) ? arrayOf(toNormalizrSchema(Klass.schema[name][0])) : toNormalizrSchema(Klass.schema[name]);
+            properties[name] = Array.isArray(Klass.schema[name]) ?
+                [toNormalizrSchema(Klass.schema[name][0])] :
+                toNormalizrSchema(Klass.schema[name]);
         }
-        schema.define(properties);
-        return schema;
+        return new schema.Entity(Klass.type, properties)
     }
 }

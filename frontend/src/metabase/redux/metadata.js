@@ -7,7 +7,7 @@ import {
     updateData,
 } from "metabase/lib/redux";
 
-import { normalize, Schema, arrayOf } from 'normalizr';
+import { normalize, schema } from "normalizr";
 import i from "icepick";
 import _ from "underscore";
 
@@ -15,18 +15,12 @@ import { augmentDatabase, augmentTable } from "metabase/lib/table";
 
 import { MetabaseApi, MetricApi, SegmentApi, RevisionsApi } from "metabase/services";
 
-const database_list = new Schema('database_list');
-const database = new Schema('databases');
-const table = new Schema('tables');
-const field = new Schema('fields');
-database_list.define({
-    databases: arrayOf(database)
+const field = new schema.Entity('fields');
+const table = new schema.Entity('tables', {
+    fields: [field]
 });
-database.define({
-    tables: arrayOf(table)
-});
-table.define({
-    fields: arrayOf(field)
+const database = new schema.Entity('databases', {
+    tables: [table]
 });
 
 const FETCH_METRICS = "metabase/metadata/FETCH_METRICS";

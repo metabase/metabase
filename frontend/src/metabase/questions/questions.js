@@ -1,7 +1,7 @@
 
 import { createAction, createThunkAction, momentifyArraysTimestamps } from "metabase/lib/redux";
 
-import { normalize, Schema, arrayOf } from 'normalizr';
+import { normalize, schema } from "normalizr";
 import { getIn, assoc, assocIn, updateIn, merge, chain } from "icepick";
 import _ from "underscore";
 
@@ -17,11 +17,10 @@ import { getVisibleEntities, getSelectedEntities } from "./selectors";
 
 import { SET_COLLECTION_ARCHIVED } from "./collections";
 
-const card = new Schema('cards');
-const label = new Schema('labels');
-const collection = new Schema('collections');
-card.define({
-  labels: arrayOf(label),
+const label = new schema.Entity('labels');
+const collection = new schema.Entity('collections');
+const card = new schema.Entity('cards', {
+  labels: [label],
   // collection: collection
 });
 
@@ -43,9 +42,9 @@ export const loadEntities = createThunkAction(LOAD_ENTITIES, (entityType, entity
             let result;
             dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADING" }));
             if (entityType === "cards") {
-                result = { entityType, entityQuery, ...normalize(momentifyArraysTimestamps(await CardApi.list(entityQueryObject)), arrayOf(card)) };
+                result = { entityType, entityQuery, ...normalize(momentifyArraysTimestamps(await CardApi.list(entityQueryObject)), [card]) };
             } else if (entityType === "collections") {
-                result = { entityType, entityQuery, ...normalize(momentifyArraysTimestamps(await CollectionsApi.list(entityQueryObject)), arrayOf(collection)) };
+                result = { entityType, entityQuery, ...normalize(momentifyArraysTimestamps(await CollectionsApi.list(entityQueryObject)), [collection]) };
             } else {
                 throw "Unknown entity type " + entityType;
             }

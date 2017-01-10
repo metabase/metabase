@@ -12,8 +12,8 @@ const CollectionBadge = ({ className, collection }) =>
         className={cx(className, "flex align-center px1 rounded mx1")}
         style={{
             fontSize: 14,
-            color: Color(collection.color).darken(0.1).hexString(),
-            backgroundColor: Color(collection.color).lighten(0.4).hexString()
+            color: Color(collection.color).darken(0.1).hex(),
+            backgroundColor: Color(collection.color).lighten(0.4).hex()
         }}
     >
         {collection.name}
