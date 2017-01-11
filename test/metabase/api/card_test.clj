@@ -19,7 +19,9 @@
             [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [match-$ random-name with-temp with-temp* obj->json->obj expect-with-temp]]
             [metabase.util :as u]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [clojure.string :as str])
+  (:import java.util.UUID))
 
 ;; # CARD LIFECYCLE
 
@@ -152,6 +154,8 @@
      :table_id               table-id
      :query_type             "query"
      :collection_id          nil
+     :public_uuid            nil
+     :made_public_by_id      nil
      :archived               false}
     ;; make sure we clean up after ourselves as well and delete the Card we create
     (dissoc (u/prog1 ((user->client :rasta) :post 200 "card" {:name                   card-name
@@ -193,6 +197,8 @@
      :query_type             "query"
      :collection_id          nil
      :collection             nil
+     :public_uuid            nil
+     :made_public_by_id      nil
      :archived               false
      :labels                 []})
   ((user->client :rasta) :get 200 (str "card/" (u/get-id card))))
@@ -556,3 +562,81 @@
     (perms/revoke-permissions! (perms-group/all-users) (u/get-id database))
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
     (POST-card-collections! :rasta 403 collection [card-1 card-2])))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                                    PUBLIC SHARING ENDPOINTS                                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+(defn- shared-card []
+  {:public_uuid       (str (UUID/randomUUID))
+   :made_public_by_id (user->id :crowberto)})
+
+;;; ------------------------------------------------------------ POST /api/card/:id/public_link ------------------------------------------------------------
+
+;; Test that we can share a Card
+(expect
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tu/with-temp Card [card]
+      (let [{uuid :uuid} ((user->client :crowberto) :post 200 (format "card/%d/public_link" (u/get-id card)))]
+        (db/exists? Card :id (u/get-id card), :public_uuid uuid)))))
+
+;; Test that we *cannot* share a Card if we aren't admins
+(expect
+  "You don't have permissions to do that."
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tu/with-temp Card [card]
+      ((user->client :rasta) :post 403 (format "card/%d/public_link" (u/get-id card))))))
+
+;; Test that we *cannot* share a Card if the setting is disabled
+(expect
+  "Public sharing is not enabled."
+  (tu/with-temporary-setting-values [enable-public-sharing false]
+    (tu/with-temp Card [card]
+      ((user->client :crowberto) :post 400 (format "card/%d/public_link" (u/get-id card))))))
+
+;; Test that we *cannot* share a Card if the Card has been archived
+(expect
+  "Not found."
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tu/with-temp Card [card {:archived true}]
+      ((user->client :crowberto) :post 404 (format "card/%d/public_link" (u/get-id card))))))
+
+;; Test that we get a 404 if the Card doesn't exist
+(expect
+  "Not found."
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    ((user->client :crowberto) :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))
+
+;; Test that if a Card has already been shared we reüse the existing UUID
+(tu/expect-with-temp [Card [card (shared-card)]]
+  (:public_uuid card)
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (:uuid ((user->client :crowberto) :post 200 (format "card/%d/public_link" (u/get-id card))))))
+
+
+;;; ------------------------------------------------------------ DELETE /api/card/:id/public_link ------------------------------------------------------------
+
+;; Test that we can unshare a Card
+(expect
+  false
+  (tu/with-temp Card [card (shared-card)]
+    ((user->client :crowberto) :delete 204 (format "card/%d/public_link" (u/get-id card)))
+    (db/exists? Card :id (u/get-id card), :public_uuid (:public_uuid card))))
+
+;; Test that we *cannot* unshare a Card if we are not admins
+(expect
+  "You don't have permissions to do that."
+  (tu/with-temp Card [card (shared-card)]
+    ((user->client :rasta) :delete 403 (format "card/%d/public_link" (u/get-id card)))))
+
+;; Test that we get a 404 if Card isn't shared
+(expect
+  "Not found."
+  (tu/with-temp Card [card]
+    ((user->client :crowberto) :delete 404 (format "card/%d/public_link" (u/get-id card)))))
+
+;; Test that we get a 404 if Card doesn't exist
+(expect
+  "Not found."
+  ((user->client :crowberto) :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE)))
