@@ -6,6 +6,7 @@
             [clojure.walk :as walk]
             [cheshire.core :as json]
             (monger [collection :as mc]
+                    joda-time                ; apparently if this is loaded Monger can handle JodaTime dates (?)
                     [operators :refer :all])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.table :refer [Table]]
@@ -15,9 +16,10 @@
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
-           (com.mongodb CommandResult DB)
            clojure.lang.PersistentArrayMap
+           (com.mongodb CommandResult DB)
            org.bson.types.ObjectId
+           org.joda.time.DateTime
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
@@ -378,6 +380,35 @@
                     v)}))))
 
 
+;;; ------------------------------------------------------------ Handling ISODate(...) forms ------------------------------------------------------------
+;; In Mongo it's fairly common use ISODate(...) forms in queries, which unfortunately are not valid JSON,
+;; and thus cannot be parsed by Cheshire. But we are clever so we will:
+;;
+;; 1) Convert forms like ISODate(...) to valid JSON forms like ["___ISODate", ...]
+;; 2) Parse Normally
+;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates
+
+(defn- encoded-iso-date? [form]
+  (and (vector? form)
+       (= (first form) "___ISODate")))
+
+(defn- maybe-decode-iso-date-fncall [form]
+  (if (encoded-iso-date? form)
+    (DateTime. (second form))
+    form))
+
+(defn- decode-iso-date-fncalls [query]
+  (walk/postwalk maybe-decode-iso-date-fncall query))
+
+(defn- encode-iso-date-fncalls
+  "Replace occurances of `ISODate(...)` function calls (invalid JSON, but legal in Mongo)
+   with legal JSON forms like `[:___ISODate ...]` that we can decode later."
+  [query-string]
+  (s/replace query-string #"ISODate\(([^)]+)\)" "[\"___ISODate\", $1]"))
+
+
+;;; ------------------------------------------------------------ Query Execution ------------------------------------------------------------
+
 (defn mbql->native
   "Process and run an MBQL query."
   [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
@@ -397,7 +428,7 @@
          (string? collection)
          (map? database)]}
   (let [query   (if (string? query)
-                  (json/parse-string query keyword)
+                  (decode-iso-date-fncalls (json/parse-string (encode-iso-date-fncalls query) keyword))
                   query)
         results (mc/aggregate *mongo-connection* collection query
                               :allow-disk-use true)

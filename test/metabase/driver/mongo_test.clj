@@ -11,8 +11,10 @@
             [metabase.query-processor-test :refer [rows]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            [metabase.test.data.interface :as i])
+            [metabase.test.data.interface :as i]
+            [metabase.test.util :as tu])
   (:import org.bson.types.ObjectId
+           org.joda.time.DateTime
            metabase.driver.mongo.MongoDriver))
 
 ;; ## Logic for selectively running mongo
@@ -173,7 +175,6 @@
 
 
 ;;; Check that we support Mongo BSON ID and can filter by it (#1367)
-
 (i/def-database-definition ^:private with-bson-ids
   ["birds"
    [{:field-name "name", :base-type :type/Text}
@@ -186,3 +187,27 @@
   (rows (data/dataset metabase.driver.mongo-test/with-bson-ids
           (data/run-query birds
             (ql/filter (ql/= $bird_id "abcdefabcdefabcdefabcdef"))))))
+
+
+;;; ------------------------------------------------------------ Test that we can handle native queries with "ISODate(...)" forms (#3741) ------------------------------------------------------------
+(tu/resolve-private-vars metabase.driver.mongo.query-processor
+  maybe-decode-iso-date-fncall decode-iso-date-fncalls encode-iso-date-fncalls)
+
+(expect
+  "[{\"$match\":{\"date\":{\"$gte\":[\"___ISODate\", \"2012-01-01\"]}}}]"
+  (encode-iso-date-fncalls "[{\"$match\":{\"date\":{\"$gte\":ISODate(\"2012-01-01\")}}}]"))
+
+(expect
+  (DateTime. "2012-01-01")
+  (maybe-decode-iso-date-fncall ["___ISODate" "2012-01-01"]))
+
+(expect
+  [{:$match {:date {:$gte (DateTime. "2012-01-01")}}}]
+  (decode-iso-date-fncalls [{:$match {:date {:$gte ["___ISODate" "2012-01-01"]}}}]))
+
+(datasets/expect-with-engine :mongo
+  5
+  (count (rows (qp/process-query {:native   {:query      "[{\"$match\": {\"date\": {\"$gte\": ISODate(\"2015-12-20\")}}}]"
+                                             :collection "checkins"}
+                                  :type     :native
+                                  :database (:id (mongo-db))}))))
