@@ -1,6 +1,12 @@
 import Query from "metabase/lib/query";
 import { createQuery, AggregationClause, BreakoutClause } from "metabase/lib/query";
 
+const mockTableMetadata = {
+    display_name: "Order",
+    fields: [
+        { id: 1, display_name: "Total" }
+    ]
+}
 
 describe('Query', () => {
     describe('createQuery', () => {
@@ -284,6 +290,20 @@ describe('Query', () => {
     })
 });
 
+describe("generateQueryDescription", () => {
+    it("should work with multiple aggregations", () => {
+        expect(Query.generateQueryDescription(mockTableMetadata, {
+            source_table: 1,
+            aggregation: [["count"], ["sum", ["field-id", 1]]]
+        })).toEqual("Orders, Count and Sum of Total")
+    })
+    it("should work with named aggregations", () => {
+        expect(Query.generateQueryDescription(mockTableMetadata, {
+            source_table: 1,
+            aggregation: [["named", ["sum", ["field-id", 1]], "Revenue"]]
+        })).toEqual("Orders, Revenue")
+    })
+})
 
 describe('AggregationClause', () => {
 

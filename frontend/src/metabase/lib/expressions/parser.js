@@ -2,10 +2,9 @@ import { Lexer, Parser, getImage } from "chevrotain";
 
 import _ from "underscore";
 
-import { formatFieldName, formatExpressionName, formatAggregationName } from "../expressions";
+import { formatFieldName, formatExpressionName, formatAggregationName, getAggregationFromName } from "../expressions";
 
 import {
-    VALID_AGGREGATIONS,
     allTokens,
     LParen, RParen,
     AdditiveOperator, MultiplicativeOperator,
@@ -15,8 +14,6 @@ import {
 } from "./tokens";
 
 const ExpressionsLexer = new Lexer(allTokens);
-
-const aggregationsMap = new Map(Array.from(VALID_AGGREGATIONS).map(([a,b]) => [b,a]));
 
 class ExpressionsParser extends Parser {
     constructor(input, options = {}) {
@@ -195,7 +192,7 @@ class ExpressionsParserMBQL extends ExpressionsParser {
         return initial;
     }
     _aggregation(aggregation, lParen, arg, rParen) {
-        const agg = aggregationsMap.get(aggregation.image)
+        const agg = getAggregationFromName(getImage(aggregation));
         return arg == null ? [agg] : [agg, arg];
     }
     _metricReference(metricName, metricId) {
@@ -395,7 +392,7 @@ export function suggest(source, {
             if (!outsideAggregation) {
                 let fields = [];
                 if (startRule === "aggregation" && currentAggregationToken) {
-                    let aggregationShort = aggregationsMap.get(getImage(currentAggregationToken));
+                    let aggregationShort = getAggregationFromName(getImage(currentAggregationToken));
                     let aggregationOption = _.findWhere(tableMetadata.aggregation_options, { short: aggregationShort });
                     fields = aggregationOption && aggregationOption.fields && aggregationOption.fields[0] || []
                 } else if (startRule === "expression") {

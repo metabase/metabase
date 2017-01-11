@@ -1,7 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             (monger [collection :as mc]
@@ -116,7 +115,7 @@
 
 (defn- describe-database [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    {:tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
+    {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
 (defn- describe-table [database table]

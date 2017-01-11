@@ -6,12 +6,26 @@ import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
 
 export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
 
+const AGG_NAMES_MAP = new Map(Array.from(VALID_AGGREGATIONS).map(([short, displayName]) =>
+    // case-insensitive
+    [displayName.toLowerCase(), short]
+));
+
+export function getAggregationFromName(name) {
+    // case-insensitive
+    return AGG_NAMES_MAP.get(name.toLowerCase());
+}
+
+export function isReservedWord(word) {
+    return !!getAggregationFromName(word);
+}
+
 export function formatAggregationName(aggregationOption) {
     return VALID_AGGREGATIONS.get(aggregationOption.short);
 }
 
 function formatIdentifier(name) {
-    return /^\w+$/.test(name) ?
+    return /^\w+$/.test(name) && !isReservedWord(name) ?
         name :
         JSON.stringify(name);
 }

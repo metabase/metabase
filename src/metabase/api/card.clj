@@ -324,32 +324,36 @@
 
 ;;; ------------------------------------------------------------ Running a Query ------------------------------------------------------------
 
-(defn- run-query-for-card [card-id parameters]
+(defn run-query-for-card
+  "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
+  [card-id & {:keys [parameters constraints]
+              :or   {constraints dataset-api/default-query-constraints}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (read-check Card card-id)
         query   (assoc (:dataset_query card)
                   :parameters  parameters
-                  :constraints dataset-api/query-constraints)
+                  :constraints constraints)
         options {:executed-by *current-user-id*
                  :card-id     card-id}]
+    (check-not-archived card)
     (qp/dataset-query query options)))
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters]} :body}]
-  (run-query-for-card card-id parameters))
+  (run-query-for-card card-id, :parameters parameters))
 
 (defendpoint POST "/:card-id/query/csv"
   "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card card-id (json/parse-string parameters keyword))))
+  (dataset-api/as-csv (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
 
 (defendpoint POST "/:card-id/query/json"
   "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card card-id (json/parse-string parameters keyword))))
+  (dataset-api/as-json (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
 
 
 (define-routes)

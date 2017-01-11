@@ -1,6 +1,7 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase.config :as config]
             [metabase.db.spec :as dbspec]
@@ -59,29 +60,30 @@
 (u/strict-extend RedshiftDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval       (u/drop-first-arg date-interval)
-          :describe-table-fks  (u/drop-first-arg describe-table-fks)
-          :details-fields      (constantly [{:name         "host"
-                                             :display-name "Host"
-                                             :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
-                                             :required     true}
-                                            {:name         "port"
-                                             :display-name "Port"
-                                             :type         :integer
-                                             :default      5439}
-                                            {:name         "db"
-                                             :display-name "Database name"
-                                             :placeholder  "toucan_sightings"
-                                             :required     true}
-                                            {:name         "user"
-                                             :display-name "Database username"
-                                             :placeholder  "cam"
-                                             :required     true}
-                                            {:name         "password"
-                                             :display-name "Database user password"
-                                             :type         :password
-                                             :placeholder  "*******"
-                                             :required     true}])})
+         {:date-interval            (u/drop-first-arg date-interval)
+          :describe-table-fks       (u/drop-first-arg describe-table-fks)
+          :details-fields           (constantly [{:name         "host"
+                                                  :display-name "Host"
+                                                  :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
+                                                  :required     true}
+                                                 {:name         "port"
+                                                  :display-name "Port"
+                                                  :type         :integer
+                                                  :default      5439}
+                                                 {:name         "db"
+                                                  :display-name "Database name"
+                                                  :placeholder  "toucan_sightings"
+                                                  :required     true}
+                                                 {:name         "user"
+                                                  :display-name "Database username"
+                                                  :placeholder  "cam"
+                                                  :required     true}
+                                                 {:name         "password"
+                                                  :display-name "Database user password"
+                                                  :type         :password
+                                                  :placeholder  "*******"
+                                                  :required     true}])
+          :format-custom-field-name (u/drop-first-arg str/lower-case)})
 
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin

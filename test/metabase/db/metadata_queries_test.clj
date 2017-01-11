@@ -1,6 +1,5 @@
 (ns metabase.db.metadata-queries-test
-  (:require [clojure.set :as set]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             [metabase.db :as db]
             [metabase.db.metadata-queries :refer :all]
             (metabase.models [field :refer [Field]]
@@ -12,7 +11,7 @@
 
 ;; Redshift & Crate tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
 (def ^:private ^:const metadata-queries-test-engines
-  (set/difference  qp-test/non-timeseries-engines #{:redshift :crate}))
+  (disj qp-test/non-timeseries-engines :redshift :crate))
 
 ;; ### FIELD-DISTINCT-COUNT
 (datasets/expect-with-engines metadata-queries-test-engines

@@ -7,7 +7,8 @@ const mockMetadata = {
             {id: 1, display_name: "A"},
             {id: 2, display_name: "B"},
             {id: 3, display_name: "C"},
-            {id: 10, display_name: "Toucan Sam"}
+            {id: 10, display_name: "Toucan Sam"},
+            {id: 11, display_name: "count"}
         ],
         metrics: [
             {id: 1, name: "foo bar"},
@@ -91,6 +92,12 @@ describe("lib/expressions/parser", () => {
             expect(() => compile("1 + ", expressionOpts)).toThrow();
         });
 
+        it("should treat aggregations as case-insensitive", () => {
+            expect(compile("count", aggregationOpts)).toEqual(["count"]);
+            expect(compile("cOuNt", aggregationOpts)).toEqual(["count"]);
+            expect(compile("average(A)", aggregationOpts)).toEqual(["avg", ["field-id", 1]]);
+        });
+
         // fks
         // multiple tables with the same field name resolution
     });
@@ -107,7 +114,10 @@ describe("lib/expressions/parser", () => {
         })
         it("should suggest fields after an operator", () => {
             expect(cleanSuggestions(suggest("1 + ", expressionOpts))).toEqual([
+                // quoted because has a space
                 { type: 'fields',      text: '"Toucan Sam" ' },
+                // quoted because conflicts with aggregation
+                { type: 'fields',      text: '"count" ' },
                 { type: 'fields',      text: 'A ' },
                 { type: 'fields',      text: 'B ' },
                 { type: 'fields',      text: 'C ' },
@@ -121,7 +131,14 @@ describe("lib/expressions/parser", () => {
         })
         it("should suggest partial matches in expression", () => {
             expect(cleanSuggestions(suggest("1 + C", expressionOpts))).toEqual([
+                { type: 'fields', text: '"count" ' },
                 { type: 'fields', text: 'C ' },
+            ]);
+        })
+        it("should suggest partial matches after an aggregation", () => {
+            expect(cleanSuggestions(suggest("average(c", expressionOpts))).toEqual([
+                { type: 'fields',      text: '"count" ' },
+                { type: 'fields',      text: 'C ' }
             ]);
         })
     })
