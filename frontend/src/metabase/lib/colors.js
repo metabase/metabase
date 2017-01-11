@@ -4,6 +4,10 @@ export const normal = {
     purple: '#A989C5',
     red: '#EF8C8C',
     yellow: '#f9d45c',
+    orange: '#F1B556',
+    teal: '#A6E7F3',
+    indigo: '#7172AD',
+    grey: '#7B8797',
 }
 
 export const saturated = {
