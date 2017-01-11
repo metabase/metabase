@@ -312,6 +312,7 @@
              [java.sql.Date                  :type/Date]
              [java.sql.Timestamp             :type/DateTime]
              [java.util.Date                 :type/DateTime]
+             [org.joda.time.DateTime         :type/DateTime]
              [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
