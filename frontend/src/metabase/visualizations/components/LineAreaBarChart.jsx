@@ -12,6 +12,7 @@ import {
     getChartTypeFromData,
     getFriendlyName
 } from "metabase/visualizations/lib/utils";
+import { addCSSRule } from "metabase/lib/dom";
 
 import { getSettings } from "metabase/lib/visualization_settings";
 
@@ -20,6 +21,20 @@ import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/er
 import crossfilter from "crossfilter";
 import _ from "underscore";
 import cx from "classnames";
+
+const MAX_SERIES = 20;
+
+const MUTE_STYLE = "opacity: 0.25;"
+for (let i = 0; i < MAX_SERIES; i++) {
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .area`,       MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .line`,       MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .bar`,        MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .dc-tooltip._${i} .dot`,   MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bar`,    MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .line`,   MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .dot`,    MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bubble`, MUTE_STYLE);
+}
 
 export default class LineAreaBarChart extends Component {
     static noHeader = true;
@@ -93,7 +108,7 @@ export default class LineAreaBarChart extends Component {
     getHoverClasses() {
         const { hovered } = this.props;
         if (hovered && hovered.index != null) {
-            let seriesClasses = _.range(0,5).filter(n => n !== hovered.index).map(n => "mute-"+n);
+            let seriesClasses = _.range(0, MAX_SERIES).filter(n => n !== hovered.index).map(n => "mute-"+n);
             let axisClasses =
                 hovered.axisIndex === 0 ? "mute-yr" :
                 hovered.axisIndex === 1 ? "mute-yl" :
@@ -200,6 +215,7 @@ export default class LineAreaBarChart extends Component {
                     series={series}
                     settings={settings}
                     className="renderer flex-full"
+                    maxSeries={MAX_SERIES}
                     renderer={lineAreaBarRenderer}
                 />
                 <ChartTooltip series={series} hovered={hovered} />

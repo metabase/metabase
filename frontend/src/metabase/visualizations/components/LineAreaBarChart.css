@@ -98,58 +98,7 @@
   transition: opacity 0.25s linear;
 }
 
-/* individual chart (.chart-body is a direct grandchild of svg)*/
-.LineAreaBarChart.mute-0 svg.stacked .stack._0 .area,
-.LineAreaBarChart.mute-1 svg.stacked .stack._1 .area,
-.LineAreaBarChart.mute-2 svg.stacked .stack._2 .area,
-.LineAreaBarChart.mute-3 svg.stacked .stack._3 .area,
-.LineAreaBarChart.mute-4 svg.stacked .stack._4 .area,
-.LineAreaBarChart.mute-5 svg.stacked .stack._5 .area,
-.LineAreaBarChart.mute-0 svg.stacked .stack._0 .line,
-.LineAreaBarChart.mute-1 svg.stacked .stack._1 .line,
-.LineAreaBarChart.mute-2 svg.stacked .stack._2 .line,
-.LineAreaBarChart.mute-3 svg.stacked .stack._3 .line,
-.LineAreaBarChart.mute-4 svg.stacked .stack._4 .line,
-.LineAreaBarChart.mute-5 svg.stacked .stack._5 .line,
-.LineAreaBarChart.mute-0 svg.stacked .stack._0 .bar,
-.LineAreaBarChart.mute-1 svg.stacked .stack._1 .bar,
-.LineAreaBarChart.mute-2 svg.stacked .stack._2 .bar,
-.LineAreaBarChart.mute-3 svg.stacked .stack._3 .bar,
-.LineAreaBarChart.mute-4 svg.stacked .stack._4 .bar,
-.LineAreaBarChart.mute-5 svg.stacked .stack._5 .bar,
-.LineAreaBarChart.mute-0 svg.stacked .dc-tooltip._0 .dot,
-.LineAreaBarChart.mute-1 svg.stacked .dc-tooltip._1 .dot,
-.LineAreaBarChart.mute-2 svg.stacked .dc-tooltip._2 .dot,
-.LineAreaBarChart.mute-3 svg.stacked .dc-tooltip._3 .dot,
-.LineAreaBarChart.mute-4 svg.stacked .dc-tooltip._4 .dot,
-.LineAreaBarChart.mute-5 svg.stacked .dc-tooltip._5 .dot { opacity: 0.25; }
-
-/* composite charts */
-.LineAreaBarChart.mute-0 svg:not(.stacked) .sub._0 .bar,
-.LineAreaBarChart.mute-1 svg:not(.stacked) .sub._1 .bar,
-.LineAreaBarChart.mute-2 svg:not(.stacked) .sub._2 .bar,
-.LineAreaBarChart.mute-3 svg:not(.stacked) .sub._3 .bar,
-.LineAreaBarChart.mute-4 svg:not(.stacked) .sub._4 .bar,
-.LineAreaBarChart.mute-5 svg:not(.stacked) .sub._5 .bar,
-.LineAreaBarChart.mute-0 svg:not(.stacked) .sub._0 .line,
-.LineAreaBarChart.mute-1 svg:not(.stacked) .sub._1 .line,
-.LineAreaBarChart.mute-2 svg:not(.stacked) .sub._2 .line,
-.LineAreaBarChart.mute-3 svg:not(.stacked) .sub._3 .line,
-.LineAreaBarChart.mute-4 svg:not(.stacked) .sub._4 .line,
-.LineAreaBarChart.mute-5 svg:not(.stacked) .sub._5 .line,
-.LineAreaBarChart.mute-0 svg:not(.stacked) .sub._0 .dot,
-.LineAreaBarChart.mute-1 svg:not(.stacked) .sub._1 .dot,
-.LineAreaBarChart.mute-2 svg:not(.stacked) .sub._2 .dot,
-.LineAreaBarChart.mute-3 svg:not(.stacked) .sub._3 .dot,
-.LineAreaBarChart.mute-4 svg:not(.stacked) .sub._4 .dot,
-.LineAreaBarChart.mute-5 svg:not(.stacked) .sub._5 .dot,
-.LineAreaBarChart.mute-0 svg:not(.stacked) .sub._0 .bubble,
-.LineAreaBarChart.mute-1 svg:not(.stacked) .sub._1 .bubble,
-.LineAreaBarChart.mute-2 svg:not(.stacked) .sub._2 .bubble,
-.LineAreaBarChart.mute-3 svg:not(.stacked) .sub._3 .bubble,
-.LineAreaBarChart.mute-4 svg:not(.stacked) .sub._4 .bubble,
-.LineAreaBarChart.mute-5 svg:not(.stacked) .sub._5 .bubble { opacity: 0.25; }
-
+/* .mute-* selectors dynamically generated in LineAreaBarChart.js*/
 
 .LineAreaBarChart.mute-yl .dc-chart .axis.y,
 .LineAreaBarChart.mute-yl .dc-chart .y-axis-label.y-label {

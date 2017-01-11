@@ -693,7 +693,7 @@ function moment_fast_toString() {
     return this._i;
 }
 
-export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
+export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings, maxSeries }) {
     const colors = settings["graph.colors"];
 
     const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
@@ -704,11 +704,11 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     const isDimensionNumeric = dimensionIsNumeric(series[0].data);
 
     if (series[0].data.cols.length < 2) {
-        throw "This chart type requires at least 2 columns";
+        throw new Error("This chart type requires at least 2 columns.");
     }
 
-    if (series.length > 20) {
-        throw "This chart type doesn't support more than 20 series";
+    if (series.length > maxSeries) {
+        throw new Error(`This chart type doesn't support more than ${maxSeries} series of data.`);
     }
 
     const warnings = {};
