@@ -89,16 +89,19 @@
                  [k (f v)])))))
 
 
+(defn- user-id [username]
+  (require 'metabase.test.data.users)
+  ((resolve 'metabase.test.data.users/user->id) username))
+
+(defn- rasta-id     [] (user-id :rasta))
+
+
 (defprotocol ^:private WithTempDefaults
   (^:private with-temp-defaults [this]))
 
 (u/strict-extend Object
   WithTempDefaults
   {:with-temp-defaults (constantly {})})
-
-(defn- rasta-id []
-  (require 'metabase.test.data.users)
-  ((resolve 'metabase.test.data.users/user->id) :rasta))
 
 (u/strict-extend (class Card)
   WithTempDefaults

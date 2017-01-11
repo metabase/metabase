@@ -64,9 +64,11 @@
          (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
 (defn check-exists?
-  "Check that object with ID exists in the DB, or throw a 404."
-  [entity id]
-  (check-404 (db/exists? entity, :id id)))
+  "Check that object with ID (or other key/values) exists in the DB, or throw a 404."
+  ([entity id]
+   (check-exists? entity :id id))
+  ([entity k v & more]
+   (check-404 (apply db/exists? entity k v more))))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
@@ -210,6 +212,7 @@
 
 ;;; ------------------------------------------------------------ DEFENDPOINT AND RELATED FUNCTIONS ------------------------------------------------------------
 
+;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 (defmacro defendpoint
   "Define an API function.
    This automatically does several things:
@@ -289,3 +292,12 @@
    (write-check (entity id)))
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
+
+
+;;; ------------------------------------------------------------ OTHER HELPER FNS ------------------------------------------------------------
+
+(defn check-not-archived
+  "Check that the OBJECT is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
+  [object]
+  (u/prog1 object
+    (check-404 (not (:archived object)))))

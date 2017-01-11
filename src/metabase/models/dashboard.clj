@@ -2,7 +2,7 @@
   (:require [clojure.data :refer [diff]]
             (metabase [db :as db]
                       [events :as events])
-            (metabase.models [card :as card]
+            (metabase.models [card :refer [Card], :as card]
                              [dashboard-card :refer [DashboardCard], :as dashboard-card]
                              [hydrate :refer [hydrate]]
                              [interface :as i]
@@ -59,7 +59,13 @@
   "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
   {:hydrate :ordered_cards}
   [dashboard]
-  (db/select DashboardCard, :dashboard_id (u/get-id dashboard), {:order-by [[:created_at :asc]]}))
+  (db/do-post-select DashboardCard
+    (db/query {:select   [:dashcard.*]
+               :from     [[DashboardCard :dashcard]]
+               :join     [[Card :card] [:= :dashcard.card_id :card.id]]
+               :where    [:and [:= :dashcard.dashboard_id (u/get-id dashboard)]
+                               [:= :card.archived false]]
+               :order-by [[:dashcard.created_at :asc]]})))
 
 
 ;;; ## ---------------------------------------- PERSISTENCE FUNCTIONS ----------------------------------------

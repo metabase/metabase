@@ -185,7 +185,7 @@ var config = module.exports = {
 
     postcss: function (webpack) {
         return [
-            require("postcss-import")({ addDependencyTo: webpack }),
+            require("postcss-import")(),
             require("postcss-url")(),
             require("postcss-cssnext")(CSSNEXT_CONFIG)
         ]
@@ -193,12 +193,6 @@ var config = module.exports = {
 };
 
 if (NODE_ENV === "hot") {
-    config.entry.app = [
-        'webpack-dev-server/client?http://localhost:8080',
-        'webpack/hot/only-dev-server',
-        config.entry.app
-    ];
-
     // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
     config.output.filename = "[name].hot.bundle.js?[hash]";
 
@@ -237,7 +231,7 @@ if (NODE_ENV !== "production") {
     }
 
     // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
-    config.devtool = "eval-cheap-module-source-map";
+    config.devtool = "cheap-module-source-map";
 
     // works with breakpoints
     // config.devtool = "inline-source-map"

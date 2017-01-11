@@ -47,8 +47,8 @@ class Label extends Component {
               <span
                 className={S.label}
                 style={{
-                  backgroundColor: hovered ? color(icon).darken(0.1).hexString() : icon,
-                  boxShadow: `1px 1px 0 ${color(icon).darken(hovered ? 0.1 : 0.2).hexString()}`,
+                  backgroundColor: hovered ? color(icon).darken(0.1).hex() : icon,
+                  boxShadow: `1px 1px 0 ${color(icon).darken(hovered ? 0.1 : 0.2).hex()}`,
                   transition: 'background .3s ease-in-out'
                 }}
               >

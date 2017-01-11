@@ -564,6 +564,15 @@
     (models/default-fields (resolve-entity entity))))
 
 
+(defn do-post-select
+  "Perform post-processing for objects fetched from the DB.
+   Convert results OBJECTS to ENTITY record types and call the entity's `post-select` method on them."
+  {:style/indent 1}
+  [entity objects]
+  (let [entity (resolve-entity entity)]
+    (vec (for [object objects]
+           (models/do-post-select entity object)))))
+
 (defn simple-select
   "Select objects from the database. Like `select`, but doesn't offer as many conveniences, so you should use that instead.
    This calls `post-select` on the results.
@@ -572,11 +581,10 @@
   {:style/indent 1}
   [entity honeysql-form]
   (let [entity (resolve-entity entity)]
-    (vec (for [object (query (merge {:select (or (models/default-fields entity)
-                                                 [:*])
-                                     :from   [entity]}
-                                    honeysql-form))]
-           (models/do-post-select entity object)))))
+    (do-post-select entity (query (merge {:select (or (models/default-fields entity)
+                                                      [:*])
+                                          :from   [entity]}
+                                         honeysql-form)))))
 
 (defn simple-select-one
   "Select a single object from the database. Like `select-one`, but doesn't offer as many conveniences, so prefer that instead.
