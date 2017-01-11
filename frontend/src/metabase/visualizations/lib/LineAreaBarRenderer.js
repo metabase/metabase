@@ -44,9 +44,9 @@ const VORONOI_TARGET_RADIUS = 50;
 const VORONOI_MAX_POINTS = 300;
 
 // min margin
-const MARGIN_TOP_MIN = 18; // needs to be large enough for goal line text
+const MARGIN_TOP_MIN = 20; // needs to be large enough for goal line text
 const MARGIN_BOTTOM_MIN = 10;
-const MARGIN_HORIZONTAL_MIN = 10;
+const MARGIN_HORIZONTAL_MIN = 20;
 
 // extra padding for axis
 const X_AXIS_PADDING = 0;
