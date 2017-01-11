@@ -335,6 +335,7 @@
                   :constraints constraints)
         options {:executed-by *current-user-id*
                  :card-id     card-id}]
+    (check-not-archived card)
     (qp/dataset-query query options)))
 
 (defendpoint POST "/:card-id/query"

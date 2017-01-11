@@ -292,3 +292,12 @@
    (write-check (entity id)))
   ([entity id & other-conditions]
    (write-check (apply db/select-one entity :id id other-conditions))))
+
+
+;;; ------------------------------------------------------------ OTHER HELPER FNS ------------------------------------------------------------
+
+(defn check-not-archived
+  "Check that the OBJECT is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
+  [object]
+  (u/prog1 object
+    (check-404 (not (:archived object)))))
