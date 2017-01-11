@@ -42,6 +42,15 @@ export function formatExpressionName(name) {
     return formatIdentifier(name);
 }
 
+export function parseStringSingle(token) {
+    // HACK FIXME
+    return JSON.parse(token.replace(/'/g, '"'));
+}
+
+export function parseStringDouble(token) {
+    return JSON.parse(token);
+}
+
 // move to query lib
 
 export function isExpression(expr) {
@@ -79,5 +88,5 @@ export function isExpressionReference(expr) {
 }
 
 export function isValidArg(arg) {
-    return isExpression(arg) || isField(arg) || typeof arg === 'number';
+    return typeof arg === 'number' || typeof arg === 'string' || isExpression(arg);
 }

@@ -10,7 +10,16 @@ export const VALID_OPERATORS = new Set([
 ]);
 
 export const VALID_FUNCTIONS = new Set([
-    'round'
+    "round",
+    "floor",
+    "ceil",
+    "abs",
+
+    "pi",
+    "random",
+
+    "length",
+    "concat"
 ]);
 
 export const VALID_AGGREGATIONS = new Map(Object.entries({
@@ -27,7 +36,8 @@ export const VALID_AGGREGATIONS = new Map(Object.entries({
 
 export const NULLARY_AGGREGATIONS = ["count", "cum_count"];
 export const UNARY_AGGREGATIONS = ["sum", "cum_sum", "distinct", "stddev", "avg", "min", "max"];
-export const UNARY_FUNCTIONS = ["round"];
+
+export const FUNCTIONS = Array.from(VALID_FUNCTIONS);
 
 export const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
 export const Plus = extendToken("Plus", /\+/, AdditiveOperator);
@@ -49,16 +59,15 @@ const unaryAggregationTokens = UNARY_AGGREGATIONS.map((short) =>
     extendToken(VALID_AGGREGATIONS.get(short), new RegExp(VALID_AGGREGATIONS.get(short), "i"), UnaryAggregation)
 );
 
-export const Function_ = extendToken("Function", Lexer.NA);
-
-export const UnaryFunction = extendToken("UnaryFunction", Function_);
-const unaryFunctionTokens = UNARY_FUNCTIONS.map((short) =>
-    extendToken(short, new RegExp(short, "i"), UnaryFunction)
+export const Function = extendToken("Function", Lexer.NA);
+const functionTokens = FUNCTIONS.map((short) =>
+    extendToken(short, new RegExp(short, "i"), Function)
 );
 
 export const Identifier = extendToken('Identifier', /\w+/);
 export const NumberLiteral = extendToken("NumberLiteral", /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/);
-export const StringLiteral = extendToken("StringLiteral", /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/);
+export const StringLiteralDouble = extendToken("StringLiteralDouble", /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/);
+export const StringLiteralSingle = extendToken("StringLiteralSingle", /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*'/);
 
 export const Comma = extendToken('Comma', /,/);
 Comma.LABEL = "comma";
@@ -80,7 +89,7 @@ export const allTokens = [
     Aggregation,
     NullaryAggregation, ...nullaryAggregationTokens,
     UnaryAggregation, ...unaryAggregationTokens,
-    Function_, UnaryFunction, ...unaryFunctionTokens,
-    StringLiteral, NumberLiteral,
+    Function, ...functionTokens,
+    StringLiteralDouble, StringLiteralSingle, NumberLiteral,
     Identifier
 ];

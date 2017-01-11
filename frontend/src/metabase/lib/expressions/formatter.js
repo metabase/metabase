@@ -20,7 +20,9 @@ export function format(expr, {
         return "";
     }
     if (typeof expr === "number") {
-        return formatLiteral(expr);
+        return formatNumber(expr);
+    } else if (typeof expr === "string") {
+        return formatString(expr);
     }
     if (isField(expr)) {
         return formatField(expr, info);
@@ -43,8 +45,13 @@ export function format(expr, {
     throw new Error("Unknown expression " + JSON.stringify(expr));
 }
 
-function formatLiteral(expr) {
+function formatNumber(expr) {
     return JSON.stringify(expr);
+}
+
+function formatString(expr) {
+    // HACK FIXME
+    return JSON.stringify(expr).replace(/"/g, "'");
 }
 
 function formatField([, fieldId], { tableMetadata: { fields } }) {

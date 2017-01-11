@@ -18,7 +18,8 @@
 }
 
 .Expression-metric,
-.Expression-field {
+.Expression-field,
+.Expression-string {
   margin: 1px 1px;
   padding: 1px 3px;
 }
@@ -34,6 +35,11 @@
   background-color: #C7E3FB;
 }
 
+.Expression-string {
+  border: 1px solid var(--grey-4);
+  background-color: var(--grey-1);
+}
+
 .Expression-selected.Expression-aggregation,
 .Expression-selected.Expression-metric,
 .Expression-selected .Expression-aggregation,
@@ -43,7 +49,13 @@
 }
 
 .Expression-selected.Expression-field,
-.Expression-selected .Expression-field {
+.Expression-selected .Expression-field  {
   color: white;
   background-color: #509EE3;
+}
+
+.Expression-selected.Expression-string,
+.Expression-selected .Expression-string {
+  color: white;
+  background-color: var(--grey-4);
 }

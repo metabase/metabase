@@ -2,16 +2,24 @@ import { Lexer, Parser, getImage } from "chevrotain";
 
 import _ from "underscore";
 
-import { formatFieldName, formatExpressionName, formatAggregationName, getAggregationFromName } from "../expressions";
+import {
+    formatFieldName,
+    formatExpressionName,
+    formatAggregationName,
+    getAggregationFromName,
+    parseStringSingle,
+    parseStringDouble
+} from "../expressions";
 
 import {
     allTokens,
-    LParen, RParen,
+    LParen, RParen, Comma,
     AdditiveOperator, MultiplicativeOperator,
     Aggregation, NullaryAggregation, UnaryAggregation,
-    UnaryFunction,
-    StringLiteral, NumberLiteral, Minus,
-    Identifier
+    Function,
+    StringLiteralDouble, StringLiteralSingle, NumberLiteral, Minus,
+    Identifier,
+    VALID_FUNCTIONS
 } from "./tokens";
 
 const ExpressionsLexer = new Lexer(allTokens);
@@ -92,9 +100,24 @@ class ExpressionsParser extends Parser {
             return this._aggregation(aggregation, lParen, arg, rParen);
         });
 
+        $.RULE("functionExpression", (outsideAggregation) => {
+            const func = $.CONSUME(Function);
+            const lParen = $.CONSUME(LParen);
+            const args = $.MANY_SEP(Comma, () => $.SUBRULE($.functionArgument, [outsideAggregation]));
+            const rParen = $.CONSUME(RParen);
+            return this._function(func, lParen, args, rParen);
+        });
+
+        $.RULE("functionArgument", (outsideAggregation) => {
+            return $.OR([
+                {ALT: () => $.SUBRULE($.stringLiteral)},
+                {ALT: () => $.SUBRULE2($.atomicExpression, [outsideAggregation])},
+            ]);
+        });
+
         $.RULE("metricExpression", () => {
             const metricName = $.OR([
-                {ALT: () => $.SUBRULE($.stringLiteral) },
+                {ALT: () => $.SUBRULE($.quotedIdentifier) },
                 {ALT: () => $.SUBRULE($.identifier) }
             ]);
 
@@ -107,7 +130,7 @@ class ExpressionsParser extends Parser {
 
         $.RULE("fieldExpression", () => {
             const fieldName = $.OR([
-                {ALT: () => $.SUBRULE($.stringLiteral) },
+                {ALT: () => $.SUBRULE($.quotedIdentifier) },
                 {ALT: () => $.SUBRULE($.identifier) }
             ]);
 
@@ -122,23 +145,18 @@ class ExpressionsParser extends Parser {
             return this._unknownField(fieldName);
         });
 
-        $.RULE("functionExpression", (outsideAggregation) => {
-            const { func, lParen, arg, rParen } = $.OR([
-                {ALT: () => ({
-                    func: $.CONSUME(UnaryFunction),
-                    ...$.SUBRULE($.unaryCall, [outsideAggregation])
-                })}
-            ]);
-            return this._function(func, lParen, arg, rParen);
-        })
-
         $.RULE("identifier", () => {
             const identifier = $.CONSUME(Identifier);
             return this._identifier(identifier);
         })
 
+        $.RULE("quotedIdentifier", () => {
+            const stringLiteral = $.CONSUME(StringLiteralDouble);
+            return this._stringLiteral(stringLiteral);
+        })
+
         $.RULE("stringLiteral", () => {
-            const stringLiteral = $.CONSUME(StringLiteral);
+            const stringLiteral = $.CONSUME(StringLiteralSingle);
             return this._stringLiteral(stringLiteral);
         })
 
@@ -207,8 +225,9 @@ class ExpressionsParserMBQL extends ExpressionsParser {
         const agg = getAggregationFromName(getImage(aggregation));
         return arg == null ? [agg] : [agg, arg];
     }
-    _function(func, lParen, arg, rParen) {
-        return [func.image, arg];
+    _function(func, lParen, args, rParen) {
+        const fn = getImage(func);
+        return [fn].concat(args.values);
     }
     _metricReference(metricName, metricId) {
         return ["METRIC", metricId];
@@ -230,7 +249,12 @@ class ExpressionsParserMBQL extends ExpressionsParser {
         return identifier.image;
     }
     _stringLiteral(stringLiteral) {
-        return JSON.parse(stringLiteral.image);
+        const image = getImage(stringLiteral);
+        if (image.charAt(0) === '"') {
+            return parseStringDouble(image);
+        } else {
+            return parseStringSingle(image);
+        }
     }
     _numberLiteral(minus, numberLiteral) {
         return parseFloat(numberLiteral.image) * (minus ? -1 : 1);
@@ -261,9 +285,10 @@ class ExpressionsParserSyntax extends ExpressionsParser {
     _aggregation(aggregation, lParen, arg, rParen) {
         return syntax("aggregation", token(aggregation), token(lParen), arg, token(rParen));
     }
-    _function(func, lParen, arg, rParen) {
-        return syntax("function", token(func), token(lParen), arg, token(rParen));
-    }
+    // FIXME: args
+    // _function(func, lParen, args, rParen) {
+    //     return syntax("function", token(func), token(lParen), ...args, token(rParen));
+    // }
     _metricReference(metricName, metricId) {
         return syntax("metric", metricName);
     }
@@ -406,7 +431,7 @@ export function suggest(source, {
                 prefixTrim: /\s*$/,
                 postfixTrim: /^\s*\)?\s*/
             });
-        } else if (nextTokenType === Identifier || nextTokenType === StringLiteral) {
+        } else if (nextTokenType === Identifier || nextTokenType === StringLiteralDouble) {
             if (!outsideAggregation) {
                 let fields = [];
                 if (startRule === "aggregation" && currentAggregationToken) {
@@ -431,7 +456,7 @@ export function suggest(source, {
                     postfixTrim: /^\w+\s*/
                 })));
             }
-        } else if (nextTokenType === Aggregation || nextTokenType === NullaryAggregation || nextTokenType === UnaryAggregation || nextTokenType === Identifier || nextTokenType === StringLiteral) {
+        } else if (nextTokenType === Aggregation || nextTokenType === NullaryAggregation || nextTokenType === UnaryAggregation || nextTokenType === Identifier || nextTokenType === StringLiteralDouble) {
             if (outsideAggregation) {
                 finalSuggestions.push(...tableMetadata.aggregation_options.filter(a => formatAggregationName(a)).map(aggregationOption => {
                     const arity = aggregationOption.fields.length;
@@ -453,6 +478,17 @@ export function suggest(source, {
                 //     postfixTrim: /^\w+\s*/
                 // })))
             }
+        } else if (nextTokenType === Function) {
+            finalSuggestions.push(...Array.from(VALID_FUNCTIONS).map(func => {
+                return {
+                    type: "function",
+                    name: func,
+                    text: func + "(",
+                    postfixText: ")",
+                    prefixTrim: /\w+$/,
+                    postfixTrim: /^\w+(\(\)?|$)/
+                };
+            }));
         } else if (nextTokenType === NumberLiteral) {
             // skip number literal
         } else {

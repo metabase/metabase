@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import "./TokenizedExpression.css";
+import { parseStringSingle, parseStringDouble } from "metabase/lib/expressions";
 
 import cx from "classnames";
 
@@ -30,7 +31,7 @@ function nextNonWhitespace(tokens, index) {
 }
 
 function parse(expressionString) {
-    let tokens = (expressionString || " ").match(/[a-zA-Z]\w*|"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"|\(|\)|\d+|\s+|[*/+-]|.+/g);
+    let tokens = (expressionString || " ").match(/[a-zA-Z]\w*|"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"|'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*'|\(|\)|\d+|\s+|[*/+-]|,|.+/g);
 
     let root = { type: "group", children: [] };
     let current = root;
@@ -68,14 +69,26 @@ function parse(expressionString) {
                     text: token
                 });
             }
-        } else if (/^"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"$/.test(token)) {
+        } else if (/^"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"|'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*'$/.test(token)) {
+            let quote = token.charAt(0);
+            let type, text;
+            if (quote === "'") {
+                type = "string";
+                text = parseStringSingle(token);
+            } else if (outsideAggregation) {
+                type = "metric";
+                text = parseStringDouble(token);
+            } else {
+                type = "field";
+                text = parseStringDouble(token);
+            }
             current.children.push({
                 type: "string-literal",
                 tokenized: true,
                 children: [
-                    { type: "open-quote", text: "\"" },
-                    { type: outsideAggregation ? "metric" : "field", text: JSON.parse(token) },
-                    { type: "close-quote", text: "\"" }
+                    { type: "open-quote", text: quote },
+                    { type: type, text: text },
+                    { type: "close-quote", text: quote }
                 ]
             });
         } else if (token === "(") {

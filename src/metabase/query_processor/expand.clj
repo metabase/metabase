@@ -421,6 +421,13 @@
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} round "Round function."                 (partial expression-fn :round))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} floor "Floor function."                 (partial expression-fn :floor))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} ceil "Round function."                  (partial expression-fn :ceil))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} abs "Absolute value function."          (partial expression-fn :abs))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} pi "Pi function."                       (partial expression-fn :pi))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} random "Random function."               (partial expression-fn :random))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} length "String length function."        (partial expression-fn :length))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.23.0"} concat "Concat string function."        (partial expression-fn :concat))
 
 ;;; EXPRESSION PARSING
 
