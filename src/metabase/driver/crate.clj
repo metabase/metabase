@@ -55,6 +55,8 @@
 (defn- string-length-fn [field-key]
   (hsql/call :char_length field-key))
 
+(defn- field->alias [field]
+  (str \" (name field) \"))
 
 (defrecord CrateDriver []
   clojure.lang.Named
@@ -76,7 +78,9 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :date                      crate-util/date
           :unix-timestamp->timestamp crate-util/unix-timestamp->timestamp
-          :current-datetime-fn       (constantly now)}))
+          :current-datetime-fn       (constantly now)
+          :quote-style               :ansi
+          :field->alias              (u/drop-first-arg field->alias)}))
 
 
 (driver/register-driver! :crate (CrateDriver.))
