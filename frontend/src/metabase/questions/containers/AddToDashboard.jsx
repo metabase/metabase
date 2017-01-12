@@ -25,6 +25,7 @@ export default class AddToDashboard extends Component {
             <ModalContent
                 title="Add question to dashboard?"
                 className="mx4 mb4"
+                onClose={() => this.props.onClose()}
             >
                 <div className="py1 flex align-center">
                     { !query ?
