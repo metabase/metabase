@@ -30,6 +30,7 @@
     "node-libs-browser": "^0.5.3",
     "normalizr": "^2.0.0",
     "number-to-locale-string": "^1.0.1",
+    "palx": "^1.0.2",
     "password-generator": "^2.0.1",
     "react": "^15.2.1",
     "react-addons-css-transition-group": "^15.2.1",
