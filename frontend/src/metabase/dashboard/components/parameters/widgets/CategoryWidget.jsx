@@ -1,26 +1,81 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
-const CategoryWidget = ({ value, values, setValue, onClose }) =>
-    <ul className="scroll-y scroll-show" style={{ maxWidth: 200, maxHeight: 300 }}>
-        {values.map(value =>
-            <li
-                key={value}
-                className="px2 py1 bg-brand-hover text-white-hover cursor-pointer"
-                onClick={() => { setValue(value); onClose(); }}
-            >
-                {value}
-            </li>
-        )}
-    </ul>
+import { createMultiwordSearchRegex } from "metabase/lib/string";
 
-CategoryWidget.format = (value) => value;
+import ListSearchField from "metabase/components/ListSearchField.jsx";
+import _ from "underscore";
 
-CategoryWidget.propTypes = {
-    value: PropTypes.any,
-    values: PropTypes.array.isRequired,
-    setValue: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired
-};
+export default class CategoryWidget extends Component {
+    constructor(props, context) {
+        super(props, context);
 
-export default CategoryWidget;
+        this.state = {
+            searchString: "",
+            searchRegex: null
+        };
+
+        _.bindAll(this, "updateSearchText");
+    }
+
+    static propTypes = {
+        value: PropTypes.any,
+        values: PropTypes.array.isRequired,
+        setValue: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired
+    };
+
+    updateSearchText(value) {
+        let regex = null;
+
+        if (value) {
+            regex = createMultiwordSearchRegex(value);
+        }
+
+        this.setState({
+            searchText: value,
+            searchRegex: regex
+        });
+    }
+
+    static format(value) {
+        return value;
+    }
+
+    render() {
+        let { values, setValue, onClose } = this.props;
+
+        let filteredValues = [];
+        let regex = this.state.searchRegex;
+
+        _.each(values, (val) => {
+            if (!regex || regex.test(val)) {
+                filteredValues.push(val);
+            }
+        });
+
+        return (
+            <div>
+                <div className="px1 pt1">
+                    <ListSearchField
+                        onChange={this.updateSearchText}
+                        searchText={this.state.searchText}
+                        placeholder="Find a value"
+                        autoFocus={true}
+                    />
+                </div>
+                <ul className="scroll-y scroll-show" style={{ maxWidth: 200, maxHeight: 300 }}>
+                    {filteredValues.map(value =>
+                        <li
+                            key={value}
+                            className="px2 py1 bg-brand-hover text-white-hover cursor-pointer"
+                            onClick={() => { setValue(value); onClose(); }}
+                        >
+                            {value}
+                        </li>
+                     )}
+                </ul>
+            </div>
+        );
+    }
+}
