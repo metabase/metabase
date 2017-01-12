@@ -96,7 +96,7 @@ export default class AddToDashboard extends Component {
                                 >
                                         <Icon
                                             className="mr2"
-                                            name="star"
+                                            name="everything"
                                         />
                                         <h3>Everything else</h3>
                                         <Icon
