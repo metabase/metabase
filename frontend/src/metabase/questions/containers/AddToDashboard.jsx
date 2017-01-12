@@ -68,7 +68,7 @@ export default class AddToDashboard extends Component {
                             <ol>
                                 { collections.map((collection, index) =>
                                     <li
-                                        className="text-brand-hover flex align-center border-bottom cursor-pointer py1 mb1"
+                                        className="text-brand-hover flex align-center border-bottom cursor-pointer py1 md-py2"
                                         key={index}
                                         onClick={() => this.setState({
                                             collection: collection,
@@ -88,7 +88,7 @@ export default class AddToDashboard extends Component {
                                     </li>
                                 )}
                                 <li
-                                    className="text-brand-hover flex align-center border-bottom cursor-pointer py1 mb1"
+                                    className="text-brand-hover flex align-center border-bottom cursor-pointer py1 md-py2"
                                     onClick={() => this.setState({
                                         collection: { name: "Everything else" },
                                         query: { collection: "" }
