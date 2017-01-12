@@ -123,7 +123,7 @@ export class Option extends Component {
         selected:   PropTypes.bool,
         disabled:   PropTypes.bool,
         onClick:    PropTypes.func,
-        icon:       PropTypes.string,
+        icon:       PropTypes.bool,
         iconColor:  PropTypes.string,
         iconSize:   PropTypes.number,
     };

@@ -22,9 +22,10 @@ const DownloadWidget = ({ className, card, datasetQuery, isLarge }) =>
                 </FieldSet>
             }
             <div className="flex flex-row mt2">
-                {["csv", "json"].map(type =>
+                {["csv", "json"].map((type, index) =>
                     <DownloadButton
                         className="mr1 text-uppercase text-default"
+                        key={index}
                         url={card.id != null ?
                             `/api/card/${card.id}/query/${type}`:
                             `/api/dataset/${type}`
