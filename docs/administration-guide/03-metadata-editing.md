@@ -27,7 +27,7 @@ If you ever want to see the original underlying schema for a given table, just c
 
 A field is a representation of either a column (when using a SQL based database, like PostgreSQL) or a field in a document (when using a document- or JSON-based database like MongoDB). Metabase automatically attempts to classify your fields and assign them a type. If Metabase misclassified any fields, you can correct that here.
 
-There are several pieces of metadata you can edit per field: name, description, visibility, type, and details:
+There are several pieces of metadata you can edit per field: name, description, visibility, and type.
 
 #### Name
 
@@ -39,22 +39,13 @@ This is a human-readable description of what the field is and how it is meant to
 
 #### Visibility
 
-If you have really long data in certain fields, like descriptions or biographies, you can set the visibility to display the field **Only in Detail Views** when looking at a single record. By default, any column with an average length of longer than 50 characters is assigned this setting.
+Every field in a table shows up in Metabase by default. If you have really long data in certain fields, like descriptions or biographies, you can set the visibility to display the field **Only in Detail Views** when looking at a single record. By default, any column with an average length of longer than 50 characters is assigned this setting.
 
 Similarly, if you have sensitive or irrelevant fields, you can set them to **Do Not Include**, preventing the field from being accessed by Metabase.
 
 #### Types
 
-**Type** assigns a field a high-level category, and changes how the field can be used within Metabase. For example, only Metric fields can be added or averaged. A field can be assigned one of four basic types:
-
-* Metric — a metric is a number that you expect to plot, sum, take averages of, etc. You could think of it as anything that would end up being plotted on the y-axis of a graph.
-* Dimension — This is any field that you expect to use as an x-axis of a graph or as part of a pivot table. Anything that you could group your results by could be called a dimension, such as dates.
-* Information — This is any other information that is not expected to be used in any kind of aggregate metrics but contains other information. Examples include descriptions, names, emails.
-* Sensitive Information — Use this setting for fields that you don’t want to show up anywhere in Metabase. This does the same thing as changing the visibility to Do Not Include, and in fact if you set a field’s visibility to Do Not Include, it’ll automatically get assigned the type Sensitive Information.
-
-#### Details
-
-A field’s detailed type is used to determine how to display it, and can also give certain types of fields special functionality. For example, by marking fields in a table as Latitude and Longitude, you allow the table to be used to create pin and heat maps. Similarly, marking a field as a URL allows users to click on it and go to that URL.
+A field’s "special type" is used to determine how to display it, and can also give certain types of fields special functionality. For example, by marking fields in a table as Latitude and Longitude, you allow the table to be used to create pin and heat maps. Similarly, marking a field as a URL allows users to click on it and go to that URL.
 
 This is also where you can set a field to be a **primary key** or **foreign key** of a table.
 
