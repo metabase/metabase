@@ -299,6 +299,12 @@
 .dc-chart .axis {
   z-index: -1;
 }
+
+/* TODO (@kdoh) remove this if dc-js/dc.js#1260 is merged */
+.dc-chart .axis text {
+  font-family: sans-serif;
+}
+
 .dc-chart .axis .domain,
 .dc-chart .axis .tick line {
   stroke: #EDEDED;
