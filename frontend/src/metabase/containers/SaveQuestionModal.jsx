@@ -227,7 +227,7 @@ export default class SaveQuestionModal extends Component {
                                                 <Option
                                                     key={index}
                                                     value={collection.id}
-                                                    icon={collection.id != null && "collection"}
+                                                    icon={collection.id != null ? "collection" : null}
                                                     iconColor={collection.color}
                                                     iconSize={18}
                                                 >
