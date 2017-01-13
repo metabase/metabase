@@ -151,14 +151,14 @@ export default class AggregationPopover extends Component {
                     isSelected: (aggregation) => AggregationClause.getMetric(aggregation) === metric.id,
                     metric: metric
                 })),
-                icon: "star-outline"
+                icon: "staroutline"
             });
         }
 
         let customExpressionIndex = sections.length;
         sections.push({
             name: CUSTOM_SECTION_NAME,
-            icon: "star-outline"
+            icon: "staroutline"
         });
 
         if (sections.length === 1) {
