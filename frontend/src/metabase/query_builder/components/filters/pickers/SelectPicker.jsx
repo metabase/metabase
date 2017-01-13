@@ -78,22 +78,29 @@ export default class SelectPicker extends Component {
         let validOptions = [];
         let regex = this.state.searchRegex;
 
-        _.each(options, (option) => {
-            if (!regex || regex.test(option.key) || regex.test(option.name)) {
-                validOptions.push(option);
-            }
-        });
+        if (regex){
+            _.each(options, (option) => {
+                if (regex.test(option.key) || regex.test(option.name)) {
+                    validOptions.push(option);
+                }
+            });
+        } else {
+            validOptions = options.slice();
+        }
 
         return (
             <div>
-                <div className="px1 pt1">
-                    <ListSearchField
-                        onChange={this.updateSearchText}
-                        searchText={this.state.searchText}
-                        placeholder="Find a value"
-                        autoFocus={true}
-                    />
-                </div>
+                { validOptions.length <= 5 && !regex ?
+                  null :
+                  <div className="px1 pt1">
+                      <ListSearchField
+                          onChange={this.updateSearchText}
+                          searchText={this.state.searchText}
+                          placeholder="Find a value"
+                          autoFocus={true}
+                      />
+                  </div>
+                }
                 <div className="px1 pt1" style={{maxHeight: '400px', overflowY: 'scroll'}}>
                     { placeholder ?
                       <h5>{placeholder}</h5>

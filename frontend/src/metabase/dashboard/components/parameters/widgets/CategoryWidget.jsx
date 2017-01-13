@@ -48,22 +48,29 @@ export default class CategoryWidget extends Component {
         let filteredValues = [];
         let regex = this.state.searchRegex;
 
-        _.each(values, (val) => {
-            if (!regex || regex.test(val)) {
-                filteredValues.push(val);
-            }
-        });
+        if (regex) {
+            _.each(values, (val) => {
+                if (regex.test(val)) {
+                    filteredValues.push(val);
+                }
+            });
+        } else {
+            filteredValues = values.slice();
+        }
 
         return (
             <div>
-                <div className="px1 pt1">
-                    <ListSearchField
-                        onChange={this.updateSearchText}
-                        searchText={this.state.searchText}
-                        placeholder="Find a value"
-                        autoFocus={true}
-                    />
-                </div>
+                { values.length <= 5 && !regex ?
+                  null :
+                  <div className="px1 pt1">
+                      <ListSearchField
+                          onChange={this.updateSearchText}
+                          searchText={this.state.searchText}
+                          placeholder="Find a value"
+                          autoFocus={true}
+                      />
+                  </div>
+                }
                 <ul className="scroll-y scroll-show" style={{ maxWidth: 200, maxHeight: 300 }}>
                     {filteredValues.map(value =>
                         <li
