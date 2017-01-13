@@ -52,7 +52,10 @@ export default class TextPicker extends Component<*, Props, *> {
             <div>
                 <ul>
                     {values.map((value, index) =>
-                        <li className="FilterInput px1 pt1 relative">
+                        <li
+                            className="FilterInput px1 pt1 relative"
+                            key={index}
+                        >
                             <input
                                 className={cx("input block full border-purple", { "border-error": validations[index] === false })}
                                 type="text"
