@@ -134,7 +134,7 @@ export default class FieldList extends Component {
     renderItemIcon(item) {
         let name;
         if (item.segment) {
-            name = "star-outline";
+            name = "staroutline";
         } else if (item.field) {
             name = getIconForField(item.field);
         } else if (item.customField) {
