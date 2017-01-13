@@ -103,7 +103,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         const { currentUser } = getState();
 
-        let card, databases, originalCard, uiControls = {};
+        let card, databases, originalCard, uiControls = { isEditing: false };
 
         // always start the QB by loading up the databases for the application
         try {
