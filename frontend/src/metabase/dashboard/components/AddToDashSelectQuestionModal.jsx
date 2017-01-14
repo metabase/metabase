@@ -44,6 +44,7 @@ export default class AddToDashSelectQuestionModal extends Component {
         return (
             <AddToDashboard
                 onAdd={(card) => this.onAdd(card)}
+                onClose={this.props.onClose}
             />
         )
     }
