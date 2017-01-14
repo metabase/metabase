@@ -242,8 +242,11 @@
                   ;; card was unarchived
                   (and (false? archived)
                        (:archived card))       :card-unarchive
-                  :else                        :card-update)]
-      (events/publish-event! event (assoc (Card id) :actor_id *current-user-id*)))))
+                  :else                        :card-update)
+          card   (assoc (Card id) :actor_id *current-user-id*)]
+      (events/publish-event! event card)
+      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with returned one -- See #4142
+      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
 
 
 (defendpoint DELETE "/:id"
