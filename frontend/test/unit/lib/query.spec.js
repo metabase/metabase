@@ -1,5 +1,4 @@
-import Query from "metabase/lib/query";
-import { createQuery, AggregationClause, BreakoutClause } from "metabase/lib/query";
+import Query, { createQuery, AggregationClause, BreakoutClause } from "metabase/lib/query";
 
 const mockTableMetadata = {
     display_name: "Order",

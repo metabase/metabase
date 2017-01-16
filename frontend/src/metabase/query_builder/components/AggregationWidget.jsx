@@ -6,8 +6,7 @@ import Clearable from './Clearable.jsx';
 
 import Popover from "metabase/components/Popover.jsx";
 
-import Query from "metabase/lib/query";
-import { AggregationClause, NamedClause } from "metabase/lib/query";
+import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
 import { getAggregator } from "metabase/lib/schema_metadata";
 import { format } from "metabase/lib/expressions/formatter";
 
