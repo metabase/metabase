@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
-import i from "icepick";
+import { getIn } from "icepick";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -79,7 +79,7 @@ export default class RevisionHistoryApp extends Component {
         const userColorAssignments = user && Object.keys(revisions).length > 0 ?
             assignUserColors(
                 Object.values(revisions)
-                    .map(revision => i.getIn(revision, ['user', 'id'])),
+                    .map(revision => getIn(revision, ['user', 'id'])),
                 user.id
             ) : {};
 
@@ -98,7 +98,7 @@ export default class RevisionHistoryApp extends Component {
                                             tableMetadata={tables[entity.table_id] || {}}
                                             objectName={entity.name}
                                             currentUser={user || {}}
-                                            userColor={userColorAssignments[i.getIn(revision, ['user', 'id'])]}
+                                            userColor={userColorAssignments[getIn(revision, ['user', 'id'])]}
                                         /> :
                                         null
                                     )

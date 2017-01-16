@@ -1,5 +1,5 @@
 import { handleActions } from "redux-actions";
-import i from "icepick";
+import { assoc } from "icepick";
 
 import {
     RESET_QB,
@@ -152,7 +152,7 @@ export const queryExecutionPromise = handleActions({
 }, null);
 
 export const parameterValues = handleActions({
-    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) }
+    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => assoc(state, id, value) }
 }, {});
 
 export const currentState = handleActions({

@@ -2,7 +2,7 @@
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import i from "icepick";
+import { assocIn } from "icepick";
 import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
@@ -382,7 +382,7 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
             delete updatedCard.description;
         }
 
-        return i.assocIn(updatedCard, ["dataset_query", "native", "template_tags", templateTag.name], templateTag);
+        return assocIn(updatedCard, ["dataset_query", "native", "template_tags", templateTag.name], templateTag);
     };
 });
 
