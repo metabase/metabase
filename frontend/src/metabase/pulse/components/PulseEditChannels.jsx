@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
-import i from "icepick";
+import { assoc, assocIn } from "icepick";
 
 import RecipientPicker from "./RecipientPicker.jsx";
 import SchedulePicker from "./SchedulePicker.jsx";
@@ -79,7 +79,7 @@ export default class PulseEditChannels extends Component {
 
     removeChannel(index) {
         let { pulse } = this.props;
-        this.props.setPulse(i.assocIn(pulse, ["channels", index, "enabled"], false));
+        this.props.setPulse(assocIn(pulse, ["channels", index, "enabled"], false));
     }
 
     onChannelPropertyChange(index, name, value) {
@@ -114,15 +114,15 @@ export default class PulseEditChannels extends Component {
         const { pulse } = this.props;
         if (enable) {
             if (pulse.channels.some(c => c.channel_type === type)) {
-                this.props.setPulse(i.assoc(pulse, "channels", pulse.channels.map(c =>
-                    c.channel_type === type ? i.assoc(c, "enabled", true) : c
+                this.props.setPulse(assoc(pulse, "channels", pulse.channels.map(c =>
+                    c.channel_type === type ? assoc(c, "enabled", true) : c
                 )));
             } else {
                 this.addChannel(type)
             }
         } else {
-            this.props.setPulse(i.assoc(pulse, "channels", pulse.channels.map(c =>
-                c.channel_type === type ? i.assoc(c, "enabled", false) : c
+            this.props.setPulse(assoc(pulse, "channels", pulse.channels.map(c =>
+                c.channel_type === type ? assoc(c, "enabled", false) : c
             )));
 
             MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveChannel", type);
