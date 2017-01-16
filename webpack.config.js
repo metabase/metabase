@@ -1,4 +1,5 @@
-/*eslint-env node */
+/* eslint-env node */
+/* eslint-disable import/no-commonjs */
 
 require("babel-register");
 require("babel-polyfill");

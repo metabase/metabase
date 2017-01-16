@@ -5,9 +5,8 @@ import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
 import UseForButton from "./UseForButton.jsx";
 
-import Query from "metabase/lib/query";
 import { createCard } from "metabase/lib/card";
-import { createQuery } from "metabase/lib/query";
+import Query, { createQuery } from "metabase/lib/query";
 import { isDimension, isSummable } from "metabase/lib/schema_metadata";
 import inflection from 'inflection';
 
