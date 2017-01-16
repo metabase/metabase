@@ -3,6 +3,7 @@
         "strict": [2, "never"],
         "no-undef": 2,
         "no-unused-vars": [1, {"vars": "all", "args": "none", "varsIgnorePattern": "React|PropTypes|Component"}],
+        "import/no-commonjs": 1,
         "quotes": 0,
         "camelcase": 0,
         "eqeqeq": 0,
@@ -51,5 +52,14 @@
         "react",
         "flowtype"
     ],
-    "extends": ["eslint:recommended", "plugin:react/recommended"]
+    "extends": [
+      "eslint:recommended",
+      "plugin:react/recommended",
+      "plugin:import/errors",
+      "plugin:import/warnings"
+    ],
+    "settings": {
+      "import/resolver": "webpack",
+      "import/ignore": ["\\.css$"]
+    }
 }

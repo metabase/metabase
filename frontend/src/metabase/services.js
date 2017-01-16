@@ -3,7 +3,7 @@
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
-import getGAMetadata from "promise?global!metabase/lib/ga-metadata";
+import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 export const ActivityApi = {
     list:                        GET("/api/activity"),
