@@ -58,6 +58,7 @@
     "redux-router": "^2.1.2",
     "redux-thunk": "^2.0.1",
     "reselect": "^2.0.1",
+    "resize-observer-polyfill": "^1.3.2",
     "screenfull": "^3.0.0",
     "stack-source-map": "^1.0.4",
     "tether": "^1.2.0",
