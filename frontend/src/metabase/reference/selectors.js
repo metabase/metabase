@@ -1,5 +1,5 @@
 import { createSelector } from 'reselect';
-import i from "icepick";
+import { assoc, getIn } from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
 import {
@@ -505,7 +505,7 @@ const getFieldBySegment = createSelector(
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
 
-const getQuestions = (state, props) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
+const getQuestions = (state, props) => getIn(state, ['questions', 'entities', 'cards']) || {};
 
 const getMetricQuestions = createSelector(
     [getMetricId, getQuestions],
@@ -516,19 +516,19 @@ const getMetricQuestions = createSelector(
                 AggregationClause.getMetric(aggregation) === metricId
             )
         )
-        .reduce((map, question) => i.assoc(map, question.id, question), {})
+        .reduce((map, question) => assoc(map, question.id, question), {})
 );
 
 const getRevisions = (state, props) => state.metadata.revisions;
 
 const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
-    (metricId, revisions) => i.getIn(revisions, ['metric', metricId]) || {}
+    (metricId, revisions) => getIn(revisions, ['metric', metricId]) || {}
 );
 
 const getSegmentRevisions = createSelector(
     [getSegmentId, getRevisions],
-    (segmentId, revisions) => i.getIn(revisions, ['segment', segmentId]) || {}
+    (segmentId, revisions) => getIn(revisions, ['segment', segmentId]) || {}
 );
 
 const getSegmentQuestions = createSelector(
@@ -539,7 +539,7 @@ const getSegmentQuestions = createSelector(
             Query.getFilters(question.dataset_query.query)
                 .some(filter => Query.isSegmentFilter(filter) && filter[1] === segmentId)
         )
-        .reduce((map, question) => i.assoc(map, question.id, question), {})
+        .reduce((map, question) => assoc(map, question.id, question), {})
 );
 
 const getTableQuestions = createSelector(

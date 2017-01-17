@@ -1,5 +1,5 @@
 import { handleActions } from "redux-actions";
-import i from "icepick";
+import { assoc } from "icepick";
 
 import {
     RESET_QB,
@@ -11,7 +11,6 @@ import {
     BEGIN_EDITING,
     CANCEL_EDITING,
 
-    LOAD_DATABASE,
     LOAD_TABLE_METADATA,
     LOAD_DATABASE_FIELDS,
     RELOAD_CARD,
@@ -116,13 +115,11 @@ export const databases = handleActions({
 // the table actively being queried against.  this is only used for MBQL queries.
 export const tableMetadata = handleActions({
     [RESET_QB]: { next: (state, { payload }) => null },
-    [LOAD_DATABASE]: { next: (state, { payload }) => null},
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.table ? payload.table : state }
 }, null);
 
 export const tableForeignKeys = handleActions({
     [RESET_QB]: { next: (state, { payload }) => null },
-    [LOAD_DATABASE]: { next: (state, { payload }) => null},
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.foreignKeys ? payload.foreignKeys : state }
 }, null);
 
@@ -152,7 +149,7 @@ export const queryExecutionPromise = handleActions({
 }, null);
 
 export const parameterValues = handleActions({
-    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) }
+    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => assoc(state, id, value) }
 }, {});
 
 export const currentState = handleActions({

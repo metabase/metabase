@@ -10,7 +10,7 @@ import { TYPE } from "metabase/lib/types";
 import { isNumber } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
-import i from "icepick";
+import { getIn } from "icepick";
 import d3 from "d3";
 
 export default class Scalar extends Component {
@@ -60,9 +60,9 @@ export default class Scalar extends Component {
         let { card, data, className, actionButtons, gridSize, settings } = this.props;
 
         let isSmall = gridSize && gridSize.width < 4;
-        const column = i.getIn(data, ["cols", 0]);
+        const column = getIn(data, ["cols", 0]);
 
-        let scalarValue = i.getIn(data, ["rows", 0, 0]);
+        let scalarValue = getIn(data, ["rows", 0, 0]);
         if (scalarValue == null) {
             scalarValue = "";
         }

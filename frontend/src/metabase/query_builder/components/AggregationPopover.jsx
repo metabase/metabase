@@ -8,8 +8,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Button from "metabase/components/Button.jsx";
 
-import Query from "metabase/lib/query";
-import { AggregationClause, NamedClause } from "metabase/lib/query";
+import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
 
 import _ from "underscore";
 

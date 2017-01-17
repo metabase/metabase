@@ -3,7 +3,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
-import { push } from "react-router-redux";
 
 import MetabaseAnalytics, { registerAnalyticsClickListener } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -16,7 +15,7 @@ import { getStore } from './store'
 import { refreshSiteSettings } from "metabase/redux/settings";
 
 import { Router, browserHistory } from "react-router";
-import { syncHistoryWithStore } from 'react-router-redux'
+import { push, syncHistoryWithStore } from 'react-router-redux'
 
 function init() {
     const store = getStore(browserHistory);
