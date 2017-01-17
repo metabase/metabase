@@ -16,7 +16,8 @@
             [metabase.pulse :as p]
             [metabase.pulse.render :as render]
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 
 (defendpoint GET "/"
@@ -37,10 +38,11 @@
 
 (defendpoint POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels]} :body}]
+  [:as {{:keys [name cards channels skip]} :body}]
   {name     su/NonBlankString
    cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])}
+   channels (su/non-empty [su/Map])
+   skip     s/Bool}
   (check-card-read-permissions cards)
   (check-500 (pulse/create-pulse! name *current-user-id* (map u/get-id cards) channels)))
 
@@ -54,16 +56,18 @@
 
 (defendpoint PUT "/:id"
   "Update a `Pulse` with ID."
-  [id :as {{:keys [name cards channels]} :body}]
+  [id :as {{:keys [name cards channels skip]} :body}]
   {name     su/NonBlankString
    cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])}
+   channels (su/non-empty [su/Map])
+   skip     s/Bool}
   (write-check Pulse id)
   (check-card-read-permissions cards)
   (pulse/update-pulse! {:id       id
                         :name     name
                         :cards    (map u/get-id cards)
-                        :channels channels})
+                        :channels channels
+                        :skip     skip})
   (pulse/retrieve-pulse id))
 
 
@@ -126,12 +130,14 @@
 
 (defendpoint POST "/test"
   "Test send an unsaved pulse."
-  [:as {{:keys [name cards channels] :as body} :body}]
+  [:as {{:keys [name cards channels skip] :as body} :body}]
   {name     su/NonBlankString
    cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])}
+   channels (su/non-empty [su/Map])
+   skip     s/Bool
+   }
   (check-card-read-permissions cards)
   (p/send-pulse! body)
-  {:ok true})
+  (merge body {:ok true}))
 
 (define-routes)
