@@ -6,7 +6,7 @@
             [metabase.api.session :as session-api]
             [metabase.db :as db]
             [metabase.email.messages :as email]
-            [metabase.models.user :refer [User create-user! set-user-password! set-user-password-reset-token! form-password-reset-url]]
+            [metabase.models.user :as user, :refer [User]]
             [metabase.util :as u]
             [metabase.util.schema :as su]))
 
@@ -47,7 +47,7 @@
     ;; this user already exists but is inactive, so simply reactivate the account
     (reactivate-user! existing-user first_name last_name)
     ;; new user account, so create it
-    (create-user! first_name last_name email, :password password, :send-welcome true, :invitor @*current-user*)))
+    (user/create-user! first_name last_name email, :password password, :send-welcome true, :invitor @*current-user*)))
 
 
 (defendpoint GET "/current"
@@ -90,7 +90,7 @@
     (when (and (not (:is_superuser @*current-user*))
                (= id *current-user-id*))
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
-  (set-user-password! id password)
+  (user/set-user-password! id password)
   (User id))
 
 
@@ -107,10 +107,10 @@
   [id]
   (check-superuser)
   (when-let [user (User :id id, :is_active true)]
-    (let [reset-token (set-user-password-reset-token! id)
+    (let [reset-token (user/set-user-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
-          join-url    (str (form-password-reset-url reset-token) "#new")]
-      (email/send-new-user-email user @*current-user* join-url))))
+          join-url    (str (user/form-password-reset-url reset-token) "#new")]
+      (email/send-new-user-email! user @*current-user* join-url))))
 
 
 (defendpoint DELETE "/:id"

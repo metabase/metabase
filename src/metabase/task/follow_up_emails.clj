@@ -115,7 +115,7 @@
                (public-settings/anon-tracking-enabled))
       ;; grab the oldest admins email address, that's who we'll send to
       (when-let [admin (User :is_superuser true, {:order-by [:date_joined]})]
-        (messages/send-follow-up-email (:email admin) "follow-up")))
+        (messages/send-follow-up-email! (:email admin) "follow-up")))
     (catch Throwable t
       (log/error "Problem sending follow-up email" t))
     (finally
@@ -135,7 +135,7 @@
                  (t/before? last-activity two-weeks-ago)
                  (t/before? last-view two-weeks-ago))
         (try
-          (messages/send-follow-up-email (:email admin) "abandon")
+          (messages/send-follow-up-email! (:email admin) "abandon")
           (catch Throwable t
             (log/error "Problem sending abandonment email" t))
           (finally
