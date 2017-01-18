@@ -11,9 +11,9 @@ const DEFAULT_SETTINGS = {
     "graph.colors": ["#000000"]
 };
 
-describe("LineAreaBarRenderer", () => {
+describe("LineAreaBarRenderer-scatter", () => {
     let element;
-    const qs = (selector) => element.querySelector(selector);
+    const qsa = (selector) => [...element.querySelectorAll(selector)];
 
     beforeEach(function() {
         document.body.insertAdjacentHTML('afterbegin', '<div id="fixture" style="height: 800px; width: 1200px;">');
@@ -43,7 +43,7 @@ describe("LineAreaBarRenderer", () => {
                 done()
             }
         });
-        dispatchUIEvent(qs("svg .bubble"), "mousemove");
+        dispatchUIEvent(qsa("svg .bubble")[0], "mousemove");
     });
 
     it("should render a scatter chart with 2 dimensions and 1 metric", function(done) {
@@ -71,6 +71,6 @@ describe("LineAreaBarRenderer", () => {
                 done()
             }
         });
-        dispatchUIEvent(qs("svg .bubble"), "mousemove");
+        dispatchUIEvent(qsa("svg .bubble")[0], "mousemove");
     });
 });
