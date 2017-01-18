@@ -60,6 +60,7 @@
    Upon success, this returns the MESSAGE that was just sent."
   {:style/indent 0}
   [& {:keys [subject recipients message-type message]}]
+  ;; TODO - should just use a schema to validate this
   {:pre [(string? subject)
          (sequential? recipients)
          (or (every? u/is-email? recipients)

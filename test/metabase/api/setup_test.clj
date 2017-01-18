@@ -9,27 +9,27 @@
             (metabase [public-settings :as public-settings]
                       [setup :as setup])
             (metabase.test [data :refer :all]
-                           [util :refer [match-$ random-name], :as tu])
+                           [util :refer [match-$], :as tu])
             [metabase.util :as u]))
 
 
 ;; ## POST /api/setup/user
 ;; Check that we can create a new superuser via setup-token
-(let [user-name (random-name)
-      email     (str user-name "@metbase.com")]
+(let [email (tu/random-email)]
   (expect
     [true
      email]
-    [(tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/create-token!)
-                                                              :prefs {:site_name "Metabase Test"}
-                                                              :user  {:first_name user-name
-                                                                      :last_name  user-name
-                                                                      :email      email
-                                                                      :password   "anythingUP12!!"}})))
-     (do
-       ;; reset our setup token
-       (setup/create-token!)
-       (public-settings/admin-email))]))
+    (tu/with-temporary-setting-values [admin-email nil]
+      [(tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/create-token!)
+                                                                :prefs {:site_name "Metabase Test"}
+                                                                :user  {:first_name (tu/random-name)
+                                                                        :last_name  (tu/random-name)
+                                                                        :email      email
+                                                                        :password   "anythingUP12!!"}})))
+       (do
+         ;; reset our setup token
+         (setup/create-token!)
+         (public-settings/admin-email))])))
 
 
 ;; Test input validations

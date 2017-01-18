@@ -113,8 +113,8 @@
   "Convenience function for creating a new `User` and sending out the welcome email."
   [first-name last-name email-address & {:keys [send-welcome invitor password google-auth?]
                                          :or   {send-welcome false
-                                                google-auth?  false}}]
-  {:pre [(string? first-name) (string? last-name) (string? email-address)]}
+                                                google-auth? false}}]
+  {:pre [(string? first-name) (string? last-name) (string? email-address) (u/maybe? map? invitor) (u/maybe? (u/rpartial contains? :is_active) invitor)]}
   (u/prog1 (db/insert! User
              :email       email-address
              :first_name  first-name
@@ -129,8 +129,11 @@
             join-url    (str (form-password-reset-url reset-token) "#new")]
         (email/send-new-user-email! <> invitor join-url)))
     ;; notifiy the admin of this MB instance that a new user has joined (TODO - are there cases where we *don't* want to do this)
-    (email/send-user-joined-admin-notification-email! <> invitor google-auth?)))
+    (when (or (:is_active invitor)
+              google-auth?)
+      (email/send-user-joined-admin-notification-email! <> invitor google-auth?))))
 
+;; TODO - rename to `set-password!`
 (defn set-user-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
@@ -143,6 +146,7 @@
       :reset_token     nil
       :reset_triggered nil)))
 
+;; TODO - rename to `set-password-reset-token!`
 (defn set-user-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]

@@ -66,24 +66,28 @@
       :message-type :html
       :message      message-body)))
 
+(defn- all-admin-recipients
+  "Return a `:recipients` vector for all Admin users."
+  []
+  (concat (db/select-field :email 'User, :is_superuser true, :is_active true)
+          (when-let [admin-email (setting/get :admin-email)]
+            [admin-email])))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the INVITOR (the Admin who invited NEW-USER) letting them know NEW-USER has joined."
-  [new-user invitor google-auth?]
+  [new-user {invitor-email :email} google-auth?]
   {:pre [(map? new-user)
          (m/boolean? google-auth?)
          (or google-auth?
-             (and (map? invitor)
-                  (u/is-email? (:email invitor))))]}
+             (u/is-email? invitor-email))]}
   (email/send-message!
     :subject      (format (if google-auth?
                             "%s created a Metabase account"
                             "%s accepted your Metabase invite")
                           (:common_name new-user))
     :recipients   (if google-auth?
-                    (vec (conj (db/select-field :email 'User, :is_superuser true) ; send email to all admins
-                               (setting/get :admin-email)))
-                    [(:email invitor)])
+                    (all-admin-recipients)
+                    [invitor-email])
     :message-type :html
     :message      (stencil/render-file "metabase/email/user_joined_notification"
                     (merge {:logoHeader        true
@@ -91,7 +95,7 @@
                             :joinedViaSSO      google-auth?
                             :joinedUserEmail   (:email new-user)
                             :joinedDate        (u/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
-                            :invitorEmail      (:email invitor)
+                            :invitorEmail      invitor-email
                             :joinedUserEditUrl (str (setting/get :-site-url) "/admin/people")}
                            (random-quote-context)))))
 

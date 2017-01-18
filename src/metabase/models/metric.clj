@@ -141,6 +141,7 @@
   (u/prog1 (retrieve-metric id)
     (events/publish-event! :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
+;; TODO - rename to `delete!`
 (defn delete-metric!
   "Delete a `Metric`.
 

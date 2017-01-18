@@ -18,7 +18,7 @@
   (let [appropriate-lock-emoji (if (= color 'yellow)
                                  "🔒"   ; lock (closed)
                                  "🔓")] ; lock (open
-    (println #_log/debug (u/format-color color (apply format (format "Permissions Check %s : %s" appropriate-lock-emoji format-str) format-args)))))
+    (log/debug (u/format-color color (apply format (format "Permissions Check %s : %s" appropriate-lock-emoji format-str) format-args)))))
 
 (defn- log-permissions-success-message {:style/indent 1} [format-string & format-args]
   (log-permissions-debug-message 'green (str "Yes ✅  " (apply format format-string format-args))))
@@ -33,7 +33,7 @@
     (:object permissions)))
 
 (defn- log-permissions-error []
-  (log/error (u/format-color 'red "Permissions Check 🔐 : No 🚫"))) ; lock (closed)
+  (log/warn (u/format-color 'red "Permissions Check 🔐 : No 🚫"))) ; lock (closed)
 
 ;; TODO - what status code / error message should we use when someone doesn't have permissions?
 (defn- throw-permissions-exception [format-str & format-args]

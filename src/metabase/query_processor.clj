@@ -514,7 +514,7 @@
   (when-not (contains? query-result :status)
     (throw (Exception. "invalid response from database driver. no :status provided")))
   (when (= :failed (:status query-result))
-    (log/error (u/pprint-to-str 'red query-result))
+    (log/warn (u/pprint-to-str 'red query-result))
     (throw (Exception. (str (get query-result :error "general error"))))))
 
 (defn dataset-query
@@ -563,7 +563,7 @@
         (assert-valid-query-result result)
         (query-complete query-execution result))
       (catch Throwable e
-        (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
+        (log/warn (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (query-fail query-execution (.getMessage e))))))
 
 (defn- query-fail
