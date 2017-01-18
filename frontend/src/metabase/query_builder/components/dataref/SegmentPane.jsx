@@ -6,9 +6,8 @@ import QueryButton from "metabase/components/QueryButton.jsx";
 import UseForButton from "./UseForButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
 
-import Query from "metabase/lib/query";
 import { createCard } from "metabase/lib/card";
-import { createQuery } from "metabase/lib/query";
+import Query, { createQuery } from "metabase/lib/query";
 
 import _ from "underscore";
 

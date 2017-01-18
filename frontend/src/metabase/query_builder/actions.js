@@ -2,7 +2,7 @@
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import i from "icepick";
+import { assocIn } from "icepick";
 import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
@@ -11,8 +11,7 @@ import { push, replace } from "react-router-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL, humanize } from "metabase/lib/formatting";
-import Query from "metabase/lib/query";
-import { createQuery } from "metabase/lib/query";
+import Query, { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
@@ -382,7 +381,7 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
             delete updatedCard.description;
         }
 
-        return i.assocIn(updatedCard, ["dataset_query", "native", "template_tags", templateTag.name], templateTag);
+        return assocIn(updatedCard, ["dataset_query", "native", "template_tags", templateTag.name], templateTag);
     };
 });
 

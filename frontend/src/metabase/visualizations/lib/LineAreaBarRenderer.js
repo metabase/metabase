@@ -12,7 +12,8 @@ import {
     getAvailableCanvasHeight,
     computeSplit,
     getFriendlyName,
-    getXValues
+    getXValues,
+    colorShades
 } from "./utils";
 
 import {
@@ -28,8 +29,6 @@ import {
 } from "./numeric";
 
 import { determineSeriesIndexFromElement } from "./tooltip";
-
-import { colorShades } from "./utils";
 
 import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";

@@ -43,7 +43,7 @@ Metabase currently supports:
 * Druid
 * H2
 * MongoDB (version 3.0 or higher)
-* MySQL (and MariaSQL)
+* MySQL (and MariaDB)
 * PostgreSQL
 * SQL Server
 * SQLite 

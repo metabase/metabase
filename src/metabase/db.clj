@@ -112,7 +112,7 @@
 (def ^:private ^:const ^String changelog-file "liquibase.yaml")
 
 (defn- migrations-sql
-  "Return a string of SQL containing the DDL statements needed to perform unran LIQUIBASE migrations."
+  "Return a string of SQL containing the DDL statements needed to perform unrun LIQUIBASE migrations."
   ^String [^Liquibase liquibase]
   (let [writer (StringWriter.)]
     (.update liquibase "" writer)
@@ -130,8 +130,8 @@
                        (re-find #"^--" line)))]
     line))
 
-(defn- has-unran-migrations?
-  "Does LIQUIBASE have migration change sets that haven't been ran yet?
+(defn- has-unrun-migrations?
+  "Does LIQUIBASE have migration change sets that haven't been run yet?
 
    It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because `migrations-sql` will
    always contain SQL to create and release migration locks, which is both slightly dangerous and a waste of time when we won't be using them."
@@ -153,15 +153,15 @@
       (throw (Exception. "Database has migration lock; cannot run migrations. You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))
 
 (defn- migrate-up-if-needed!
-  "Run any unran LIQUIBASE migrations, if needed.
+  "Run any unrun LIQUIBASE migrations, if needed.
 
    This creates SQL for the migrations to be performed, then executes each DDL statement.
    Running `.update` directly doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at
    the end of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do the trick."
   [conn, ^Liquibase liquibase]
-  (log/info "Checking if Database has unran migrations...")
-  (when (has-unran-migrations? liquibase)
-    (log/info "Database has unran migrations. Waiting for migration lock to be cleared...")
+  (log/info "Checking if Database has unrun migrations...")
+  (when (has-unrun-migrations? liquibase)
+    (log/info "Database has unrun migrations. Waiting for migration lock to be cleared...")
     (wait-for-migration-lock-to-be-cleared liquibase)
     (log/info "Migration lock is cleared. Running migrations...")
     (doseq [line (migrations-lines liquibase)]
@@ -178,7 +178,7 @@
    Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back without rolling back the entirety of changes
    that were made. (If a single statement in a transaction fails you can't do anything futher until you clear the error state by doing something like calling `.rollback`.)"
   [conn, ^Liquibase liquibase]
-  (when (has-unran-migrations? liquibase)
+  (when (has-unrun-migrations? liquibase)
     (doseq [line (migrations-lines liquibase)]
       (log/info line)
       (jdbc/with-db-transaction [nested-transaction-connection conn]
