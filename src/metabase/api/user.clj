@@ -110,7 +110,7 @@
     (let [reset-token (set-user-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (form-password-reset-url reset-token) "#new")]
-      (email/send-new-user-email user @*current-user* join-url))))
+      (email/send-new-user-email! user @*current-user* join-url))))
 
 
 (defendpoint DELETE "/:id"

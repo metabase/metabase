@@ -10,7 +10,8 @@
                              [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
                              [setting :as setting])
             [metabase.util :as u]
-            [metabase.models.permissions-group :as group]))
+            [metabase.models.permissions-group :as group])
+  (:import java.util.UUID))
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 
@@ -23,7 +24,7 @@
                (not (s/blank? password))))
   (assert (not (:password_salt user))
     "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
-  (let [salt     (str (java.util.UUID/randomUUID))
+  (let [salt     (str (UUID/randomUUID))
         defaults {:date_joined  (u/new-sql-timestamp)
                   :last_login   nil
                   :is_active    true
@@ -120,20 +121,20 @@
              :last_name   last-name
              :password    (if-not (nil? password)
                             password
-                            (str (java.util.UUID/randomUUID)))
+                            (str (UUID/randomUUID)))
              :google_auth google-auth?)
     (when send-welcome
       (let [reset-token (set-user-password-reset-token! (:id <>))
             ;; the new user join url is just a password reset with an indicator that this is a first time user
             join-url    (str (form-password-reset-url reset-token) "#new")]
-        (email/send-new-user-email <> invitor join-url)))
+        (email/send-new-user-email! <> invitor join-url)))
     ;; notifiy the admin of this MB instance that a new user has joined (TODO - are there cases where we *don't* want to do this)
-    (email/send-user-joined-admin-notification-email <> invitor google-auth?)))
+    (email/send-user-joined-admin-notification-email! <> invitor google-auth?)))
 
 (defn set-user-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
-  (let [salt     (str (java.util.UUID/randomUUID))
+  (let [salt     (str (UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
     ;; NOTE: any password change expires the password reset token
     (db/update! User user-id
@@ -146,7 +147,7 @@
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (u/prog1 (str user-id \_ (java.util.UUID/randomUUID))
+  (u/prog1 (str user-id \_ (UUID/randomUUID))
     (db/update! User user-id
       :reset_token     <>
       :reset_triggered (System/currentTimeMillis))))
