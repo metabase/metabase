@@ -8,7 +8,6 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import dc from "dc";
-import cx from "classnames";
 
 @ExplicitSize
 export default class CardRenderer extends Component {
