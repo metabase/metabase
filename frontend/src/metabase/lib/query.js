@@ -625,6 +625,7 @@ var Query = {
 }
 
 for (const prop in Q) {
+    // eslint-disable-next-line import/namespace
     Query[prop] = Q[prop];
 }
 

@@ -5,6 +5,11 @@
   margin-bottom: -0.5em;
 }
 
+/* TODO (@kdoh) remove this if dc-js/dc.js#1260 is merged */
+.LineAreaBarChart .dc-chart .axis text {
+  font-family: sans-serif;
+}
+
 .LineAreaBarChart .dc-chart .grid-line.horizontal {
   stroke: rgba(151, 151, 151, 0.2);
   stroke-dasharray: 5,5;

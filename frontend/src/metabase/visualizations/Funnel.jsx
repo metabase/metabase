@@ -5,7 +5,7 @@ import BarChart from "./BarChart.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getSettings } from "metabase/lib/visualization_settings";
-import i from "icepick";
+import { assocIn } from "icepick";
 
 export default class Funnel extends Component {
     static uiName = "Funnel";
@@ -52,7 +52,7 @@ export default class Funnel extends Component {
                  isScalarSeries={true}
                  settings={{
                      ...this.props.settings,
-                     ...getSettings(i.assocIn(this.props.series, [0, "card", "display"], "bar")),
+                     ...getSettings(assocIn(this.props.series, [0, "card", "display"], "bar")),
                      "bar.scalar_series": true
                  }}
              />

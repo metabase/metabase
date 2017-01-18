@@ -7,14 +7,14 @@ import {
     DIMENSION_DIMENSION_METRIC,
     DIMENSION_METRIC,
     DIMENSION_METRIC_METRIC,
-    getColumnCardinality
+    getColumnCardinality,
+    getCardColors,
+    getFriendlyName
 } from "metabase/visualizations/lib/utils";
 
 import { isNumeric, isDate, isMetric, isDimension, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import Query from "metabase/lib/query";
 import { capitalize } from "metabase/lib/formatting";
-
-import { getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
