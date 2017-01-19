@@ -194,5 +194,3 @@ export const UserApi = {
 export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
 };
-
-global.services = exports;

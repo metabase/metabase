@@ -4,14 +4,16 @@ import _ from "underscore";
 
 import { formatFieldName, formatExpressionName, formatAggregationName, getAggregationFromName } from "../expressions";
 
-import {
+// NOTE: this must be a `require` not an `import` when using Webpack 2 due to tree-shaking ES6 modules
+// https://github.com/SAP/chevrotain/issues/345
+const {
     allTokens,
     LParen, RParen,
     AdditiveOperator, MultiplicativeOperator,
     Aggregation, NullaryAggregation, UnaryAggregation,
     StringLiteral, NumberLiteral, Minus,
     Identifier
-} from "./tokens";
+} = require("./tokens"); // eslint-disable-line import/no-commonjs
 
 const ExpressionsLexer = new Lexer(allTokens);
 

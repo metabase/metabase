@@ -11,11 +11,11 @@ import createHistory from "history/createBrowserHistory";
 
 import { reduxReactRouter } from 'redux-router';
 
-import { setRequestState, clearRequestState } from "metabase/redux/requests";
-
 // convienence
 export { combineReducers } from "redux";
 export { handleActions, createAction } from "redux-actions";
+
+import { setRequestState, clearRequestState } from "metabase/redux/requests";
 
 import { DEBUG } from "metabase/lib/debug";
 
