@@ -13,6 +13,7 @@ import { getRoutes } from "./routes.jsx";
 import { getStore } from './store'
 
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { setErrorPage } from "metabase/redux/app";
 
 import { Router, browserHistory } from "react-router";
 import { push, syncHistoryWithStore } from 'react-router-redux'
@@ -63,7 +64,7 @@ function init() {
                 }
             }
         }
-        store.dispatch(push("/unauthorized"));
+        store.dispatch(setErrorPage(403));
     });
 }
 
