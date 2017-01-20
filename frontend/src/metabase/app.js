@@ -53,7 +53,10 @@ function init() {
     // we shouldn't redirect these URLs because we want to handle them differently
     let WHITELIST_FORBIDDEN_URLS = [
         /api\/card\/\d+\/query$/,
-        /api\/database\/\d+\/metadata$/
+        /api\/database\/\d+\/metadata$/,
+        /api\/database\/\d+\/fields/,
+        /api\/table\/\d+\/query_metadata$/,
+        /api\/table\/\d+\/fks$/
     ];
     // received a 403 response
     api.on("403", (url) => {
