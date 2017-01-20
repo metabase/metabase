@@ -217,6 +217,7 @@
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id], :as body} :body}]
   {name                   (s/maybe su/NonBlankString)
+   dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
    description            (s/maybe su/NonBlankString)
    visualization_settings (s/maybe su/Map)
@@ -228,7 +229,7 @@
       (check-permissions-for-collection collection_id))
     ;; ok, now save the Card
     (db/update! Card id
-      (merge {:collection_id collection_id}
+      (merge (when (contains? body :collection_id)   {:collection_id          collection_id})
              (when-not (nil? dataset_query)          {:dataset_query          dataset_query})
              (when-not (nil? description)            {:description            description})
              (when-not (nil? display)                {:display                display})

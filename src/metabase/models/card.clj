@@ -97,10 +97,12 @@
 
 (defn serialize-instance
   "Serialize a `Card` for use in a `Revision`."
-  [_ _ instance]
-  (->> (dissoc instance :created_at :updated_at)
-       (into {})                                 ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
-       (m/filter-vals (complement delay?))))
+  ([instance]
+   (serialize-instance nil nil instance))
+  ([_ _ instance]
+   (->> (dissoc instance :created_at :updated_at)
+        (into {})                                  ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
+        (m/filter-vals (complement delay?)))))     ; probably not needed anymore
 
 
 
