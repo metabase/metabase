@@ -90,7 +90,7 @@ export default class SelectPicker extends Component {
 
         return (
             <div>
-                { validOptions.length <= 5 && !regex ?
+                { validOptions.length <= 10 && !regex ?
                   null :
                   <div className="px1 pt1">
                       <ListSearchField

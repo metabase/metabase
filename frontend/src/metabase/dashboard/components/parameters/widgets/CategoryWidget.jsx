@@ -60,7 +60,7 @@ export default class CategoryWidget extends Component {
 
         return (
             <div>
-                { values.length <= 5 && !regex ?
+                { values.length <= 10 && !regex ?
                   null :
                   <div className="px1 pt1">
                       <ListSearchField
