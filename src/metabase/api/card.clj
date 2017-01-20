@@ -213,6 +213,12 @@
   [collection-id]
   (check-403 (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/collection-readwrite-path collection-id))))
 
+(defn check-data-permissions-for-query
+  "Check that we have *data* permissions to run the QUERY in question."
+  [query]
+  {:pre [(map? query)]}
+  (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set query :read))))
+
 (defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id], :as body} :body}]
@@ -227,6 +233,14 @@
     ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
     (when (and (not (nil? collection_id)) (not= (:collection_id card) collection_id))
       (check-permissions-for-collection collection_id))
+    ;; if the query is being modified, check that we have data permissions to run the query
+    (when (and dataset_query
+               (not= dataset_query (:dataset_query card)))
+      (check-data-permissions-for-query dataset_query))
+    ;; the same applies to unarchiving a Card: make sure we have data permissions for the Card query before doing so
+    (when (and (false? archived)
+               (:archived card))
+      (check-data-permissions-for-query (:dataset_query card)))
     ;; ok, now save the Card
     (db/update! Card id
       (merge (when (contains? body :collection_id)   {:collection_id          collection_id})
