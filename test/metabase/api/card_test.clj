@@ -199,8 +199,8 @@
 
 ;; Check that a user without permissions isn't allowed to fetch the card
 (expect-with-temp [Database  [{database-id :id}]
-                   Table     [{table-id :id}   {:db_id database-id}]
-                   Card      [card             {:dataset_query (mbql-count-query database-id table-id)}]]
+                   Table     [{table-id :id}    {:db_id database-id}]
+                   Card      [card              {:dataset_query (mbql-count-query database-id table-id)}]]
   "You don't have permissions to do that."
   (do
     ;; revoke permissions for default group to this database
