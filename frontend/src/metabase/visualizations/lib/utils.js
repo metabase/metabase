@@ -1,3 +1,4 @@
+/* @flow weak */
 
 import React from "react";
 import _ from "underscore";
@@ -74,7 +75,7 @@ export function computeSplit(extents) {
             bestCost = splitCost;
         }
     }
-    return best.sort((a,b) => a[0] - b[0]);
+    return best && best.sort((a,b) => a[0] - b[0]);
 }
 
 const FRIENDLY_NAME_MAP = {
@@ -87,7 +88,7 @@ const FRIENDLY_NAME_MAP = {
 
 export function getXValues(datas, chartType) {
     let xValues = _.chain(datas)
-        .map((data) => _.pluck(data, 0))
+        .map((data) => _.pluck(data, "0"))
         .flatten(true)
         .uniq()
         .value();

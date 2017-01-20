@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
@@ -26,7 +28,11 @@ const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 const PERCENT_REGEX = /percent/i;
 
-export default class PieChart extends Component {
+import type { VisualizationProps } from "metabase/visualizations";
+
+type Props = VisualizationProps;
+
+export default class PieChart extends Component<*, Props, *> {
     static uiName = "Pie";
     static identifier = "pie";
     static iconName = "pie";
@@ -66,7 +72,8 @@ export default class PieChart extends Component {
 
         const showPercentInTooltip = !PERCENT_REGEX.test(cols[metricIndex].name) && !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
-        let total = rows.reduce((sum, row) => sum + row[metricIndex], 0);
+        // $FlowFixMe
+        let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
         // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
         let sliceColors = Object.values(rows.length > 5 ? colors.harmony : colors.normal);

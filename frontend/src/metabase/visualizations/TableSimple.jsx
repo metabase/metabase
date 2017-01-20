@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import styles from "./Table.css";
@@ -12,10 +14,26 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import cx from "classnames";
 import _ from "underscore";
 
+import type { VisualizationProps } from "metabase/visualizations";
+
+type Props = VisualizationProps & {
+    height: number,
+    className?: string
+}
+
+type State = {
+    page: number,
+    pageSize: number,
+    sortColumn: ?number,
+    sortDescending: boolean
+}
+
 @ExplicitSize
-export default class TableSimple extends Component {
-    constructor(props, context) {
-        super(props, context);
+export default class TableSimple extends Component<*, Props, State> {
+    state: State;
+
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
             page: 0,
@@ -33,7 +51,7 @@ export default class TableSimple extends Component {
         className: ""
     };
 
-    setSort(colIndex) {
+    setSort(colIndex: number) {
         if (this.state.sortColumn === colIndex) {
             this.setState({ sortDescending: !this.state.sortDescending });
         } else {

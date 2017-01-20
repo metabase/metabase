@@ -1,3 +1,5 @@
+/* @flow weak */
+
 function getElementIndex(e) {
     return [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
 }

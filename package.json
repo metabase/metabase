@@ -63,7 +63,6 @@
     "stack-source-map": "^1.0.4",
     "tether": "^1.2.0",
     "underscore": "^1.8.3",
-    "xkcdplot": "^1.1.0",
     "z-index": "0.0.1"
   },
   "devDependencies": {

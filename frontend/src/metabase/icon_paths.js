@@ -1,3 +1,4 @@
+/* @flow weak */
 
 /*
     Metabase Icon Paths
@@ -238,6 +239,7 @@ export var ICON_PATHS = {
     }
 };
 
+// $FlowFixMe
 ICON_PATHS["illustration-line"] = ICON_PATHS['illustration-area'];
 
 export function loadIcon(name) {
