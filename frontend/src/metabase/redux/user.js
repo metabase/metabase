@@ -1,4 +1,6 @@
-import { createAction, handleActions } from 'redux-actions';
+/* @flow */
+
+import { createAction, handleActions } from "redux-actions";
 
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
 

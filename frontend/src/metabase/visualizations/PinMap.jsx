@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
@@ -11,12 +13,24 @@ import cx from "classnames";
 
 import L from "leaflet";
 
+import type { VisualizationProps } from "metabase/visualizations";
+
+type Props = VisualizationProps;
+
+type State = {
+    lat: ?number,
+    lng: ?number,
+    zoom: ?number,
+    points: L.Point[],
+    bounds: L.Bounds,
+};
+
 const MAP_COMPONENTS_BY_TYPE = {
     "markers": LeafletMarkerPinMap,
     "tiles": LeafletTilePinMap,
 }
 
-export default class PinMap extends Component {
+export default class PinMap extends Component<*, Props, State> {
     static uiName = "Pin Map";
     static identifier = "pin_map";
     static iconName = "pinmap";
@@ -29,24 +43,25 @@ export default class PinMap extends Component {
         if (!hasLatitudeAndLongitudeColumns(cols)) { throw new LatitudeLongitudeError(); }
     }
 
-    constructor(props, context) {
-        super(props, context);
+    state: State;
+
+    constructor(props: Props) {
+        super(props);
         this.state = {
             lat: null,
             lng: null,
             zoom: null,
             ...this._getPoints(props)
         };
-        _.bindAll(this, "onMapZoomChange", "onMapCenterChange", "updateSettings");
     }
 
-    componentWillReceiveProps(newProps) {
+    componentWillReceiveProps(newProps: Props) {
         if (newProps.series[0].data !== this.props.series[0].data) {
             this.setState(this._getPoints(newProps))
         }
     }
 
-    updateSettings() {
+    updateSettings = () => {
         let newSettings = {};
         if (this.state.lat != null) {
             newSettings["map.center_latitude"] = this.state.lat;
@@ -61,15 +76,15 @@ export default class PinMap extends Component {
         this.setState({ lat: null, lng: null, zoom: null });
     }
 
-    onMapCenterChange = (lat, lng) => {
+    onMapCenterChange = (lat: number, lng: number) => {
         this.setState({ lat, lng });
     }
 
-    onMapZoomChange = (zoom) => {
+    onMapZoomChange = (zoom: number) => {
         this.setState({ zoom });
     }
 
-    _getPoints(props) {
+    _getPoints(props: Props) {
         const { settings, series: [{ data: { cols, rows }}] } = props;
         const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
         const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
@@ -91,7 +106,7 @@ export default class PinMap extends Component {
         const { points, bounds } = this.state;//this._getPoints(this.props);
 
         return (
-            <div className={className + " PinMap relative"} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
+            <div className={cx(className, "PinMap relative")} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
                 { Map ?
                     <Map
                         {...this.props}

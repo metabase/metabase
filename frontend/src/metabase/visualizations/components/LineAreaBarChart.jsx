@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import CardRenderer from "./CardRenderer.jsx";
@@ -36,7 +38,11 @@ for (let i = 0; i < MAX_SERIES; i++) {
     addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bubble`, MUTE_STYLE);
 }
 
-export default class LineAreaBarChart extends Component {
+import type { VisualizationProps } from "metabase/visualizations";
+
+export default class LineAreaBarChart extends Component<*, VisualizationProps, *> {
+    static identifier;
+
     static noHeader = true;
     static supportsSeries = true;
 
@@ -97,7 +103,6 @@ export default class LineAreaBarChart extends Component {
 
     static propTypes = {
         series: PropTypes.array.isRequired,
-        onAddSeries: PropTypes.func,
         actionButtons: PropTypes.node,
         isDashboard: PropTypes.bool
     };

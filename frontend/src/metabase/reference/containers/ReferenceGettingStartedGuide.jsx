@@ -587,7 +587,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     { guide.things_to_know ? 'Other things to know about our data' : 'Find out more' }
                                 </SectionHeader>
                                 <GuideText>
-                                    { guide.things_to_know ? guide.things_to_know : "A good way to get to know your data is by spending a bit of time exploring the different tables and other info avaliable to you. It may take a while, but you'll start to recognize names and meanings over time."
+                                    { guide.things_to_know ? guide.things_to_know : "A good way to get to know your data is by spending a bit of time exploring the different tables and other info available to you. It may take a while, but you'll start to recognize names and meanings over time."
                                     }
                                 </GuideText>
                                 <Link className="Button link text-bold" to={'/reference/databases'}>

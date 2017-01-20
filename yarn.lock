@@ -2153,7 +2153,7 @@ cycle@1.0.x:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/cycle/-/cycle-1.0.3.tgz#21e80b2be8580f98b468f379430662b046c34ad2"
 
-d3@^3, d3@^3.5.17, d3@^3.5.x:
+d3@^3, d3@^3.5.17:
   version "3.5.17"
   resolved "https://registry.yarnpkg.com/d3/-/d3-3.5.17.tgz#bc46748004378b21a360c9fc7cf5231790762fb8"
 
@@ -7103,12 +7103,6 @@ xdg-basedir@^2.0.0:
   resolved "https://registry.yarnpkg.com/xdg-basedir/-/xdg-basedir-2.0.0.tgz#edbc903cc385fc04523d966a335504b5504d1bd2"
   dependencies:
     os-homedir "^1.0.0"
-
-xkcdplot@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/xkcdplot/-/xkcdplot-1.1.0.tgz#de8a9ba73c0f86ec72818bda1b5433f78d364836"
-  dependencies:
-    d3 "^3.5.x"
 
 xml-char-classes@^1.0.0:
   version "1.0.0"

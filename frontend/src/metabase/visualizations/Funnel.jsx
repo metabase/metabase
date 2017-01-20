@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -7,7 +9,9 @@ import { formatValue } from "metabase/lib/formatting";
 import { getSettings } from "metabase/lib/visualization_settings";
 import { assocIn } from "icepick";
 
-export default class Funnel extends Component {
+import type { VisualizationProps } from "metabase/visualizations";
+
+export default class Funnel extends Component<*, VisualizationProps, *> {
     static uiName = "Funnel";
     static identifier = "funnel";
     static iconName = "funnel";

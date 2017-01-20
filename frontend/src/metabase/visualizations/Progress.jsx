@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -10,7 +12,9 @@ import Color from "color";
 
 const BORDER_RADIUS = 5;
 
-export default class Progress extends Component {
+import type { VisualizationProps } from "metabase/visualizations";
+
+export default class Progress extends Component<*, VisualizationProps, *> {
     static uiName = "Progress";
     static identifier = "progress";
     static iconName = "progress";
@@ -76,7 +80,7 @@ export default class Progress extends Component {
 
     render() {
         const { series: [{ data: { rows } }], settings } = this.props;
-        const value = rows[0][0];
+        const value: number = rows[0][0];
         const goal = settings["progress.goal"] || 0;
 
         const mainColor = settings["progress.color"];

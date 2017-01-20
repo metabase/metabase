@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import { isNumeric } from "metabase/lib/schema_metadata";
 
 export function dimensionIsNumeric({ cols, rows }, i = 0) {

@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import styles from "./Scalar.css";
@@ -13,7 +15,9 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import d3 from "d3";
 
-export default class Scalar extends Component {
+import type { VisualizationProps } from "metabase/visualizations";
+
+export default class Scalar extends Component<*, VisualizationProps, *> {
     static uiName = "Number";
     static identifier = "scalar";
     static iconName = "number";

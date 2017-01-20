@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -24,10 +26,47 @@ const ROW_HEIGHT = 35;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
+import type { Column } from "metabase/meta/types/Dataset";
+import type { VisualizationProps } from "metabase/visualizations";
+
+type Props = VisualizationProps & {
+    width: number,
+    height: number,
+    sort: any,
+    isPivoted: boolean,
+    cellClickedFn: (number, number) => void,
+    cellIsClickableFn: (number, number) => boolean,
+    setSortFn: (/* TODO */) => void,
+}
+type State = {
+    popover: ?{ rowIndex: number, columnIndex: number },
+    columnWidths: number[],
+    contentWidths: ?number[]
+}
+
+type CellRendererProps = {
+    key: string,
+    style: { [key:string]: any },
+    columnIndex: number,
+    rowIndex: number
+}
+
+type GridComponent = Component<void, void, void> & { recomputeGridSize: () => void }
+
 @ExplicitSize
-export default class TableInteractive extends Component {
-    constructor(props, context) {
-        super(props, context);
+export default class TableInteractive extends Component<*, Props, State> {
+    state: State;
+    props: Props;
+
+    columnHasResized: { [key:number]: boolean };
+    columnNeedsResize: { [key:number]: boolean };
+    _div: HTMLElement;
+
+    header: GridComponent;
+    grid: GridComponent;
+
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
             popover: null,
@@ -35,8 +74,6 @@ export default class TableInteractive extends Component {
             contentWidths: null
         };
         this.columnHasResized = {};
-
-        _.bindAll(this, "onClosePopover", "cellRenderer", "tableHeaderRenderer");
     }
 
     static propTypes = {
@@ -61,29 +98,29 @@ export default class TableInteractive extends Component {
         this._div.style.display = "inline-block"
         this._div.style.position = "absolute"
         this._div.style.visibility = "hidden"
-        this._div.style.zIndex = -1
+        this._div.style.zIndex = "-1"
         document.body.appendChild(this._div);
 
         this._measure();
     }
 
     componentWillUnmount() {
-        if (this._div) {
+        if (this._div && this._div.parentNode) {
             this._div.parentNode.removeChild(this._div);
         }
     }
 
-    componentWillReceiveProps(newProps) {
+    componentWillReceiveProps(newProps: Props) {
         if (JSON.stringify(this.props.data && this.props.data.cols) !== JSON.stringify(newProps.data && newProps.data.cols)) {
             this.resetColumnWidths();
         }
     }
 
-    shouldComponentUpdate(nextProps, nextState) {
-        const PROP_KEYS = ["width", "height", "settings", "data"];
+    shouldComponentUpdate(nextProps: Props, nextState: State) {
+        const PROP_KEYS: string[] = ["width", "height", "settings", "data"];
         // compare specific props and state to determine if we should re-render
         return (
-            !_.isEqual(_.pick(this.props, PROP_KEYS), _.pick(nextProps, PROP_KEYS)) ||
+            !_.isEqual(_.pick(this.props, ...PROP_KEYS), _.pick(nextProps, ...PROP_KEYS)) ||
             !_.isEqual(this.state, nextState)
         );
     }
@@ -110,7 +147,7 @@ export default class TableInteractive extends Component {
             this._measureColumn(index)
         );
 
-        let columnWidths = cols.map((col, index) => {
+        let columnWidths: number[] = cols.map((col, index) => {
             if (this.columnNeedsResize) {
                 if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
                     this.columnHasResized[index] = true;
@@ -128,18 +165,18 @@ export default class TableInteractive extends Component {
         this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
     }
 
-    _measureColumn(columnIndex) {
+    _measureColumn(columnIndex: number) {
         const { data: { rows } } = this.props;
         let width = MIN_COLUMN_WIDTH;
 
         // measure column header
-        width = Math.max(width, this._measureCell(this.tableHeaderRenderer({ columnIndex })));
+        width = Math.max(width, this._measureCell(this.tableHeaderRenderer({ columnIndex, rowIndex: 0, key: "", style: {} })));
 
         // measure up to 10 non-nil cells
         let remaining = 10;
         for (let rowIndex = 0; rowIndex < rows.length && remaining > 0; rowIndex++) {
             if (rows[rowIndex][columnIndex] != null) {
-                const cellWidth = this._measureCell(this.cellRenderer({ rowIndex, columnIndex }));
+                const cellWidth = this._measureCell(this.cellRenderer({ rowIndex, columnIndex, key: "", style: {} }));
                 width = Math.max(width, cellWidth);
                 remaining--;
             }
@@ -148,7 +185,7 @@ export default class TableInteractive extends Component {
         return width;
     }
 
-    _measureCell(cell) {
+    _measureCell(cell: React.Element<any>) {
         ReactDOM.unstable_renderSubtreeIntoContainer(this, cell, this._div);
 
         // 2px for border?
@@ -170,13 +207,13 @@ export default class TableInteractive extends Component {
         this.setState({ contentWidths: null })
     }, 100)
 
-    onCellResize(columnIndex) {
+    onCellResize(columnIndex: number) {
         this.columnNeedsResize = this.columnNeedsResize || {}
         this.columnNeedsResize[columnIndex] = true;
         this.recomputeColumnSizes();
     }
 
-    onColumnResize(columnIndex, width) {
+    onColumnResize(columnIndex: number, width: number) {
         const { settings } = this.props;
         let columnWidthsSetting = settings["table.column_widths"] ? settings["table.column_widths"].slice() : [];
         columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
@@ -188,22 +225,22 @@ export default class TableInteractive extends Component {
         return (this.props.setSortFn !== undefined);
     }
 
-    setSort(column) {
+    setSort(column: Column) {
         // lets completely delegate this to someone else up the stack :)
         this.props.setSortFn(column);
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
     }
 
-    cellClicked(rowIndex, columnIndex) {
+    cellClicked(rowIndex: number, columnIndex: number) {
         this.props.cellClickedFn(rowIndex, columnIndex);
     }
 
-    popoverFilterClicked(rowIndex, columnIndex, operator) {
+    popoverFilterClicked(rowIndex: number, columnIndex: number, operator: string) {
         this.props.cellClickedFn(rowIndex, columnIndex, operator);
         this.setState({ popover: null });
     }
 
-    showPopover(rowIndex, columnIndex) {
+    showPopover(rowIndex: number, columnIndex: number) {
         this.setState({
             popover: {
                 rowIndex: rowIndex,
@@ -212,11 +249,11 @@ export default class TableInteractive extends Component {
         });
     }
 
-    onClosePopover() {
+    onClosePopover = () => {
         this.setState({ popover: null });
     }
 
-    cellRenderer({ key, style, rowIndex, columnIndex }) {
+    cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
         const { data: { cols, rows }} = this.props;
         const column = cols[columnIndex];
         const cellData = rows[rowIndex][columnIndex];
@@ -247,7 +284,7 @@ export default class TableInteractive extends Component {
                     <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
                     { popover && popover.rowIndex === rowIndex && popover.columnIndex === columnIndex &&
                         <QuickFilterPopover
-                            column={cols[this.state.popover.columnIndex]}
+                            column={cols[popover.columnIndex]}
                             onFilter={this.popoverFilterClicked.bind(this, rowIndex, columnIndex)}
                             onClose={this.onClosePopover}
                         />
@@ -257,7 +294,7 @@ export default class TableInteractive extends Component {
         }
     }
 
-    tableHeaderRenderer({ key, style, columnIndex }) {
+    tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
         const { sort, data: { cols }} = this.props;
         const isSortable = this.isSortable();
         const column = cols[columnIndex];
@@ -309,7 +346,7 @@ export default class TableInteractive extends Component {
         )
     }
 
-    getColumnWidth = ({ index }) => {
+    getColumnWidth = ({ index }: { index: number }) => {
         const { settings } = this.props;
         const { columnWidths } = this.state;
         const columnWidthsSetting = settings["table.column_widths"] || [];
