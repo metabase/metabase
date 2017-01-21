@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import CheckBox from 'metabase/components/CheckBox.jsx';
@@ -6,7 +8,22 @@ import { capitalize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
-export default class SelectPicker extends Component {
+type SelectOption = {
+    name: string,
+    key: string
+};
+
+type Props = {
+    options: Array<SelectOption>,
+    values: Array<string>,
+    onValuesChange: (values: any) => void,
+    placeholder?: string,
+    multi?: bool
+}
+
+export default class SelectPicker extends Component<*, Props, *> {
+    props: Props;
+
     static propTypes = {
         options: PropTypes.object.isRequired,
         values: PropTypes.array.isRequired,
@@ -15,7 +32,7 @@ export default class SelectPicker extends Component {
         multi: PropTypes.bool
     };
 
-    selectValue(key, selected) {
+    selectValue(key: string, selected: bool) {
         let values;
         if (this.props.multi) {
             values = this.props.values.slice().filter(v => v != null);
@@ -30,7 +47,7 @@ export default class SelectPicker extends Component {
         this.props.onValuesChange(values);
     }
 
-    nameForOption(option) {
+    nameForOption(option: SelectOption) {
         if (option.name === "") {
             return "Empty";
         } else if (typeof option.name === "string") {
