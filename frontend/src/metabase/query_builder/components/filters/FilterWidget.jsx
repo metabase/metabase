@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -12,15 +14,30 @@ import { isDate } from "metabase/lib/schema_metadata";
 import cx from "classnames";
 import _ from "underscore";
 
-export default class FilterWidget extends Component {
-    constructor(props, context) {
-        super(props, context);
+import type { FieldFilter } from "metabase/meta/types/Query";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+
+type Props = {
+    filter: FieldFilter,
+    tableMetadata: TableMetadata,
+    index: number,
+    updateFilter: (index: number, field: FieldFilter) => void,
+    removeFilter: (index: number) => void,
+    maxDisplayValues?: number
+}
+type State = {
+    isOpen: bool
+}
+
+export default class FilterWidget extends Component<*, Props, State> {
+    state: State;
+
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
             isOpen: this.props.filter[0] == undefined
         };
-
-        _.bindAll(this, "open", "close", "removeFilter");
     }
 
     static propTypes = {
@@ -35,15 +52,11 @@ export default class FilterWidget extends Component {
         maxDisplayValues: 1
     };
 
-    removeFilter() {
-        this.props.removeFilter(this.props.index);
-    }
-
-    open() {
+    open = () => {
         this.setState({ isOpen: true });
     }
 
-    close() {
+    close = () => {
         this.setState({ isOpen: false });
     }
 
@@ -55,6 +68,7 @@ export default class FilterWidget extends Component {
         let fieldDef = target && target.field;
         let operatorDef = fieldDef && fieldDef.operators_lookup[operator];
 
+        // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
         if (operatorDef && operatorDef.multi && values.length > maxDisplayValues) {
             values = [values.length + " selections"];
         }
@@ -133,7 +147,7 @@ export default class FilterWidget extends Component {
     }
 
     render() {
-        const { filter } = this.props;
+        const { filter, index, removeFilter } = this.props;
         return (
             <div className={cx("Query-filter p1 pl2", { "selected": this.state.isOpen })}>
                 <div>
@@ -144,8 +158,8 @@ export default class FilterWidget extends Component {
                     }
                     {this.renderPopover()}
                 </div>
-                { this.props.removeFilter &&
-                    <a className="text-grey-2 no-decoration px1 flex align-center" onClick={this.removeFilter}>
+                { removeFilter &&
+                    <a className="text-grey-2 no-decoration px1 flex align-center" onClick={() => removeFilter(index)}>
                         <Icon name='close' size={14} />
                     </a>
                 }
