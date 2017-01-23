@@ -259,7 +259,7 @@ export default class ExpressionEditorTextfield extends Component {
                     autoFocus
                     parserInfo={this._getParserInfo()}
                 />
-                <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
+                <div className={cx(S.equalSign, "spread flex align-center h4", { [S.placeholder]: !this.state.expressionString })}>=</div>
                 { suggestions.length ?
                     <Popover
                         className="pb1 not-rounded border-dark"

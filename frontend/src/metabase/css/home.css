@@ -20,11 +20,11 @@
 }
 
 .NavNewQuestion {
-    box-shadow: 0px 2px 2px 0px rgba(77, 136, 189, 0.69);
+    box-shadow: 0px 2px 2px 0px rgba(77, 136, 189, 0.69); /* warcrime */
 }
 .NavNewQuestion:hover {
-    box-shadow: 0px 3px 2px 2px rgba(77, 136, 189, 0.75);
-    color: #3875AC;
+    box-shadow: 0px 3px 2px 2px rgba(77, 136, 189, 0.75); /* warcrime */
+    color: #3875AC; /* warcrime */
 }
 
 .Greeting {
@@ -45,7 +45,7 @@
 }
 .bullet:before {
     content: "\2022";
-    color: #6FB0EB;
+    color: #6FB0EB; /* warcrime */
     position: absolute;
     top: 0;
     margin-top: 16px;
@@ -87,7 +87,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    box-shadow: 0 0 4px rgba(0, 0, 0, .12);
+    box-shadow: 0 0 4px rgba(0, 0, 0, .12); /* warcrime */
     background-clip: padding-box;
 }
 
@@ -115,7 +115,7 @@
 
 .NavDropdown.open .NavDropdown-button,
 .NavDropdown .NavDropdown-content-layer {
-    background-color: #6FB0EB;
+    background-color: #6FB0EB; /* warcrime */
 }
 
 .NavDropdown .NavDropdown-content-layer {
@@ -172,8 +172,8 @@
     position: absolute;
     background-color: #fff;
     border-radius: 2px;
-    box-shadow: 1px 1px 1px rgba(0, 0, 0, .12);
-    color: #ddd;
+    box-shadow: 1px 1px 1px rgba(0, 0, 0, .12); /* warcrime */
+    color: #ddd; /* warcrime */
 }
 
 .TableDescription {
@@ -184,7 +184,7 @@
 .Layout-sidebar {
   min-height: 100vh;
   width: 346px;
-  background-color: #F9FBFC;
+  background-color: #F9FBFC; /* warcrime */
   border-left: 2px solid var(--border-color);
 }
 .Layout-mainColumn {

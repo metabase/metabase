@@ -1,5 +1,5 @@
 :root {
-    --selection-color: #ccdff6;
+    --selection-color: #ccdff6; /* warcrime */
 }
 
 #react_qb_viz {
@@ -24,7 +24,7 @@
 .QueryHeader-section {
     padding-right: 1em;
     margin-right: 1em;
-    border-right: 1px solid rgba(0,0,0,0.2);
+    border-right: 1px solid rgba(0,0,0,0.2); /* warcrime */
 }
 
 .QueryHeader-section:last-child {
@@ -33,7 +33,7 @@
 
 .Icon-download,
 .Icon-addToDash {
-    fill: #919191;
+    fill: #919191; /* warcrime */
     transition: fill .3s linear;
 }
 
@@ -64,7 +64,7 @@
     text-transform: uppercase;
     font-size: 10px;
     font-weight: 700;
-    color: color(var(--base-grey) shade(30%));
+    color: color(var(--base-grey) shade(30%)); /* warcrime */
 }
 
 .Query-filters {
@@ -193,7 +193,7 @@
 }
 
 .SelectionModule-description {
-    color: color(var(--base-grey) shade(40%));
+    color: color(var(--base-grey) shade(40%)); /* warcrime */
     font-size: 0.8rem;
 }
 
@@ -225,7 +225,7 @@
 }
 
 .Loading {
-    background-color: rgba(255, 255, 255, 0.82);
+    background-color: rgba(255, 255, 255, 0.82); /* warcrime */
 }
 
 /* query errors */
@@ -287,7 +287,7 @@
   position: relative;
   display: inline-block;
   border-radius: var(--default-border-radius);
-  border: 1px solid rgb(197, 197, 197);
+  border: 1px solid rgb(197, 197, 197); /* warcrime */
   margin-top: var(--margin-2);
   padding: var(--padding-1) var(--padding-4) var(--padding-1) var(--padding-4);
 }
@@ -318,7 +318,7 @@
 }
 
 .QueryError2-detailBody {
-    background-color: #f8f8f8;
+    background-color: #f8f8f8; /* warcrime */
     max-height: 15rem;
     overflow: auto;
 }
@@ -334,7 +334,7 @@
     z-index: 2;
     background-color: #fff;
 
-    border: 1px solid #e0e0e0;
+    border: 1px solid #e0e0e0; /* warcrime */
 }
 
 /* for medium breakpoint only expand if data reference is not shown */
@@ -346,22 +346,22 @@
 
 /* un-expanded (default) */
 .GuiBuilder-row {
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0; /* warcrime */
 }
 .GuiBuilder-row:last-child {
     border-bottom-color: transparent;
 }
 .GuiBuilder-data {
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0; /* warcrime */
 }
 .GuiBuilder-filtered-by {
     border-right: 1px solid transparent;
 }
 .GuiBuilder-view {
-    border-right: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0; /* warcrime */
 }
 .GuiBuilder-sort-limit {
-    border-left: 1px solid #e0e0e0;
+    border-left: 1px solid #e0e0e0; /* warcrime */
 }
 
 /* expanded */
@@ -370,10 +370,10 @@
 }
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-row:last-child {
     border-right-color: transparent;
-    border-bottom-color: #e0e0e0;
+    border-bottom-color: #e0e0e0; /* warcrime */
 }
 .GuiBuilder.GuiBuilder--expand .GuiBuilder-filtered-by {
-    border-right-color: #e0e0e0;
+    border-right-color: #e0e0e0; /* warcrime */
 }
 
 
@@ -393,7 +393,7 @@
 }
 
 .QueryOption {
-    color: color(var(--base-grey) shade(20%));
+    color: color(var(--base-grey) shade(20%)); /* warcrime */
     font-weight: 700;
 }
 
@@ -500,7 +500,7 @@
     height: 38px;
     border-radius: 38px;
     background-color: white;
-    border: 1px solid #ccdff6;
+    border: 1px solid #ccdff6; /* warcrime */
 }
 
 .ChartType-popover {
@@ -509,7 +509,7 @@
 
 .ChartType--selected {
     color: white;
-    background-color: rgb(74, 144, 226);
+    background-color: rgb(74, 144, 226); /* warcrime */
 }
 
 .ChartType--notSensible {
@@ -526,7 +526,7 @@
 .RunButton {
     z-index: 1;
     opacity: 1;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .22);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .22); /* warcrime */
     transition: margin-top 0.5s, opacity 0.5s;
     min-width: 8em;
 }
@@ -545,7 +545,7 @@
     right: 0;
     width: 300px;
     height: 100%;
-    background-color: #F9FBFC;
+    background-color: #F9FBFC; /* warcrime */
     overflow: hidden;
 }
 
@@ -570,7 +570,7 @@
     width: 100%;
     margin: 0 auto;
     margin-bottom: 2rem;
-    border: 1px solid #DEDEDE;
+    border: 1px solid #DEDEDE; /* warcrime */
 }
 
 @media screen and (--breakpoint-min-xl) {
@@ -579,11 +579,11 @@
 }
 
 .ObjectDetail-headingGroup {
-    border-bottom: 1px solid #DEDEDE;
+    border-bottom: 1px solid #DEDEDE; /* warcrime */
 }
 
 .ObjectDetail-infoMain {
-    border-right: 1px solid #DEDEDE;
+    border-right: 1px solid #DEDEDE; /* warcrime */
     margin-left: 2.4rem;
     font-size: 1rem;
 }
@@ -592,8 +592,8 @@
     max-height: 200px;
     overflow: scroll;
     padding: 1em;
-    background-color: #F8F8F8;
-    border: 1px solid #dedede;
+    background-color: #F8F8F8; /* warcrime */
+    border: 1px solid #dedede; /* warcrime */
     border-radius: 2px;
 }
 
@@ -619,12 +619,12 @@
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
     visibility: visible;
-    border-left: 2px solid rgba(0,0,0,0.1);
-    color: rgba(255,255,255,0.5);
+    border-left: 2px solid rgba(0,0,0,0.1); /* warcrime */
+    color: rgba(255,255,255,0.5); /* warcrime */
 }
 
 .QuestionTooltipTarget {
-  color: rgb(225,225,225);
+  color: rgb(225,225,225); /* warcrime */
   display: inline-block;
   border: 2px solid currentColor;
   border-radius: 99px;
@@ -676,8 +676,8 @@
   white-space: pre-wrap;
   white-space: -moz-pre-wrap;
   white-space: -o-pre-wrap;
-  background-color: #F9FBFC;
-  border: 1px solid #D5DBE3;
+  background-color: #F9FBFC; /* warcrime */
+  border: 1px solid #D5DBE3; /* warcrime */
   border-radius: 4px;
 }
 
@@ -698,5 +698,5 @@
 }
 
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
-    color: var(--grey-4);
+    color: var(--grey-4); /* warcrime */
 }

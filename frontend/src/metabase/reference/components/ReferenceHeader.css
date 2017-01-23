@@ -1,13 +1,13 @@
 :root {
-    --title-color: #606E7B;
+    --title-color: var(--new-grey-5); /* warcrime */
     --icon-width: calc(48px + 1rem);
 }
 
 :local(.headerBody) {
-    composes: flex flex-full border-bottom text-dark text-bold from "style";
+    composes: flex flex-full border-bottom text-bold from "style";
     overflow: hidden;
     align-items: center;
-    border-color: #EDF5FB;
+    border-color: #EDF5FB; /* warcrime */
 }
 
 :local(.headerTextInput) {
@@ -23,7 +23,6 @@
 }
 
 :local(.subheaderBody) {
-    composes: text-dark from "style";
     margin-left: var(--icon-width);
     font-size: 16px;
 }
@@ -34,7 +33,7 @@
 }
 
 :local(.subheaderLink):hover {
-    color: color(var(--primary-button-border-color) shade(10%));
+    color: color(var(--primary-button-border-color) shade(10%)); /* warcrime */
     transition: color .3s linear;
 }
 

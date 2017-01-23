@@ -251,7 +251,7 @@ export default class DataSelector extends Component {
 
         let header = (
             <span className="flex align-center">
-                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleSources })} onClick={hasMultipleSources && this.onBack}>
+                <span className={cx("flex align-center text-grey-4", { "cursor-pointer": hasMultipleSources })} onClick={hasMultipleSources && this.onBack}>
                     { hasMultipleSources && <Icon name="chevronleft" size={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
@@ -306,7 +306,7 @@ export default class DataSelector extends Component {
         const { segments } = this.props;
         const header = (
             <span className="flex align-center">
-                <span className="flex align-center text-slate cursor-pointer" onClick={this.onBack}>
+                <span className="flex align-center text-grey-4 cursor-pointer" onClick={this.onBack}>
                     <Icon name="chevronleft" size={18} />
                     <span className="ml1">Segments</span>
                 </span>

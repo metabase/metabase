@@ -1,7 +1,7 @@
 :root {
     --indicator-size: 3.000em; /* ~ 42 px */
     --indicator-border-radius: 99px;
-    --setup-border-color: #D7D7D7;
+    --setup-border-color: #D7D7D7; /* warcrime */
 }
 
 .SetupSteps {
@@ -9,7 +9,7 @@
 }
 
 .SetupNav {
-    border-bottom: 1px solid #f5f5f5;
+    border-bottom: 1px solid #f5f5f5; /* warcrime */
 }
 
 .Setup-brandWordMark {
@@ -32,7 +32,7 @@
 
 .SetupStep.SetupStep--todo {
     color: var(--brand-color);
-    background-color: #EDF2F8;
+    background-color: #EDF2F8; /* warcrime */
     border-style: dashed;
 }
 
@@ -41,7 +41,7 @@
     width: var(--indicator-size);
     height: var(--indicator-size);
     border-radius: var(--indicator-border-radius);
-    border-color: color(var(--base-grey) shade(20%));
+    border-color: color(var(--base-grey) shade(20%)); /* warcrime */
     font-weight: bold;
     line-height: 1;
     background-color: #fff;
@@ -62,8 +62,8 @@
 }
 
 .SetupStep.SetupStep--completed .SetupStep-indicator {
-    border-color: #9CC177;
-    background-color: #C8E1B0;
+    border-color: #9CC177; /* warcrime */
+    background-color: #C8E1B0; /* warcrime */
 }
 
 .SetupStep.SetupStep--completed .SetupStep-check {
@@ -81,8 +81,4 @@
 .SetupCompleted .SetupStep-title {
     font-size: 2rem;
     line-height: 2rem;
-}
-
-.SetupHelp {
-    color: var(--body-text-color);
 }

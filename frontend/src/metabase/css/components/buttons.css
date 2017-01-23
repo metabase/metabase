@@ -1,16 +1,16 @@
 :root {
   --default-button-border-radius: 4px;
-  --default-button-border-color: #b9b9b9;
-  --default-button-background-color: #fff;
+  --default-button-border-color: #b9b9b9; /* warcrime */
+  --default-button-background-color: #fff; /* warcrime */
 
-  --primary-button-border-color: #509EE3;
-  --primary-button-bg-color: #509EE3;
-  --warning-button-border-color: #E35050;
-  --warning-button-bg-color: #E35050;
-  --selected-button-bg-color: #F4F6F8;
+  --primary-button-border-color: #509EE3; /* warcrime */
+  --primary-button-bg-color: #509EE3; /* warcrime */
+  --warning-button-border-color: #E35050; /* warcrime */
+  --warning-button-bg-color: #E35050; /* warcrime */
+  --selected-button-bg-color: #F4F6F8; /* warcrime */
 
-  --danger-button-bg-color: #EF8C8C;
-  --success-button-color: var(--success-color);
+  --danger-button-bg-color: #EF8C8C; /* warcrime */
+  --success-button-color: var(--success-color); /* warcrime */
 }
 
 .Button {
@@ -18,9 +18,8 @@
   box-sizing: border-box;
   text-decoration: none;
   padding: 0.5rem 0.75rem;
-  background: #FBFCFD;
-  border: 1px solid #ddd;
-  color: #444;
+  background: #FBFCFD; /* warcrime */
+  border: 1px solid #ddd; /* warcrime */
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
@@ -93,28 +92,28 @@
 
 .Button--white {
     background-color: white;
-    color: color(var(--base-grey) shade(30%));
-    border-color: color(var(--base-grey) shade(30%));
+    color: var(--grey-3); /* warcrime */
+    border-color: var(--grey-3); /* warcrime */
 }
 
 .Button--purple {
     color: white;
-    background-color: #A989C5;
-    border: 1px solid #A989C5;
+    background-color: #A989C5; /* warcrime */
+    border: 1px solid #A989C5; /* warcrime */
 }
 
 .Button--purple:hover {
-    background-color: #885AB1;
-    border-color: #885AB1;
+    background-color: #885AB1; /* warcrime */
+    border-color: #885AB1; /* warcrime */
 }
 
 .Button--borderless {
   border: none;
   background: transparent;
-  color: color(var(--base-grey) shade(40%));
+  color: var(--grey-3); /* warcrime */
 }
 .Button--borderless:hover {
-  color: color(var(--base-grey) shade(50%));
+  color: var(--grey-3); /* warcrime */
 }
 
 .Button-group {
@@ -145,16 +144,16 @@
 }
 
 .Button-group--blue {
-  border-color: rgb(194,216,242);
+  border-color: rgb(194,216,242); /* warcrime */
 }
 
 .Button-group--blue .Button {
-  color: rgb(147,155,178);
+  color: rgb(147,155,178); /* warcrime */
 }
 
 .Button-group--blue .Button--active {
-  background-color: rgb(227,238,250);
-  color: rgb(74,144,226);
+  background-color: rgb(227,238,250); /* warcrime */
+  color: rgb(74,144,226); /* warcrime */
 }
 
 .Button-group--brand {
@@ -164,7 +163,7 @@
 .Button-group--brand .Button {
   border-color: white;
   color: var(--brand-color);
-  background-color: #E5E5E5;
+  background-color: #E5E5E5; /* warcrime */
 }
 
 .Button-group--brand .Button--active {
@@ -208,10 +207,10 @@
 
 /* toggle button */
 .Button-toggle {
-    color: var(--grey-text-color);
+    color: var(--new-grey-5); /* warcrime */
     display: flex;
     line-height: 1;
-    border: 1px solid #ddd;
+    border: 1px solid #ddd; /* warcrime */
     border-radius: 40px;
     width: 3rem;
     transition: background .2s linear .2s, border .2s linear .2s;
@@ -223,9 +222,9 @@
     align-items: center;
     justify-content: center;
     padding: 0.25rem;
-    border: 1px solid #ddd;
+    border: 1px solid #ddd; /* warcrime */
     border-radius: 99px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .02);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .02); /* warcrime */
     transition: margin .3s linear;
     background-color: #fff;
 }

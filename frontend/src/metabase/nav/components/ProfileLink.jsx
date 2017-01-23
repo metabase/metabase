@@ -141,9 +141,9 @@ export default class ProfileLink extends Component {
                             <div className="text-brand pb2">
                                 <LogoIcon width={48} height={48} />
                             </div>
-                            <h2 style={{fontSize: "1.75em"}} className="text-dark">Thanks for using Metabase!</h2>
+                            <h2 style={{fontSize: "1.75em"}}>Thanks for using Metabase!</h2>
                             <div className="pt2">
-                                <h3 className="text-dark mb1">You're on version {tag}</h3>
+                                <h3 className="mb1">You're on version {tag}</h3>
                                 <p className="text-grey-3 text-bold">Built on {date}</p>
                                 { !/^v\d+\.\d+\.\d+$/.test(tag) &&
                                     <div>

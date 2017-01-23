@@ -7,13 +7,11 @@
   border: 4px solid transparent;
   border-top-color: currentColor;
   border-radius: 99px;
-
   animation: LoadingSpinner-transition 0.8s infinite linear;
 }
 
 .LoadingSpinner:after {
   content: "";
-
   display: inherit;
   box-sizing: inherit;
   width: inherit;
@@ -21,7 +19,6 @@
   border: inherit;
   border-color: currentColor;
   border-radius: inherit;
-
   opacity: 0.25;
   position: relative;
   top: -4px;

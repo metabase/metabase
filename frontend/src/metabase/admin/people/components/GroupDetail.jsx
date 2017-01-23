@@ -90,7 +90,11 @@ const AddUserRow = ({ users, text, selectedUsers, onCancel, onDone, onTextChange
                 { selectedUsers.map(user =>
                     <div className="bg-slate-light p1 px2 mr1 rounded flex align-center">
                         {user.common_name}
-                        <Icon className="pl1 cursor-pointer text-slate text-grey-4-hover" name="close" onClick={() => onRemoveUserFromSelection(user)} />
+                        <Icon
+                            className="pl1 cursor-pointer text-grey-4 text-grey-5-hover"
+                            name="close"
+                            onClick={() => onRemoveUserFromSelection(user)}
+                        />
                     </div>
                 )}
                 <div className="absolute bottom left">

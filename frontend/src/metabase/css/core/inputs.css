@@ -1,11 +1,10 @@
 :root {
-  --input-border-color: #d9d9d9;
-  --input-border-active-color: #4E82C0;
+  --input-border-color: #d9d9d9; /* warcrime */
+  --input-border-active-color: #4E82C0; /* warcrime */
   --input-border-radius: 4px;
 }
 
 .input, :local(.input) {
-  color: var(--dark-color);
   font-size: 1.12em;
   padding: 0.75rem 0.75rem;
   border: 1px solid var(--input-border-color);
@@ -22,7 +21,6 @@
   outline: none;
   border: 1px solid var(--input-border-active-color);
   transition: border .3s linear;
-  color: #222;
 }
 
 .input--borderless,

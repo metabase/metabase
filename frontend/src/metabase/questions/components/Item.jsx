@@ -144,7 +144,7 @@ const ItemBody = pure(({ entity, id, name, description, labels, favorite, collec
             }
             <Labels labels={labels} />
         </div>
-        <div className={cx({ 'text-slate': description }, { 'text-light-blue': !description })}>
+        <div className={cx({ 'text-grey-4': description }, { 'text-light-blue': !description })}>
             {description ? description : "No description yet"}
         </div>
     </div>

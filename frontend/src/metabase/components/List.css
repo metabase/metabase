@@ -1,8 +1,8 @@
 :root {
-    --title-color: #606E7B;
-    --subtitle-color: #AAB7C3;
-    --muted-color: #DEEAF1;
-    --blue-color: #2D86D4;
+    --title-color: var(--new-grey-5); /* warcrime - grey-5 */
+    --subtitle-color: #AAB7C3; /* warcrime */
+    --muted-color: #DEEAF1; /* warcrime */
+    --blue-color: #2D86D4; /* warcrime */
 }
 
 :local(.list) {
@@ -23,7 +23,7 @@
 :local(.header) {
     composes: flex flex-row from "style";
     composes: mt4 mb2 from "style";
-    color: var(--title-color);
+    color: var(--title-color); /* warcrime */
     font-size: 24px;
     min-height: 48px;
 }
@@ -32,7 +32,7 @@
     composes: flex flex-full pb2 border-bottom from "style";
     align-items: center;
     height: 100%;
-    border-color: #EDF5FB;
+    border-color: #EDF5FB; /* warcrime */
 }
 
 :local(.headerLink) {
@@ -61,7 +61,7 @@
     max-width: 550px;
     padding-top: 20px;
     padding-bottom: 20px;
-    border-color: #EDF5FB;
+    border-color: #EDF5FB; /* warcrime */
 }
 
 :local(.itemTitle) {
@@ -84,7 +84,7 @@
 }
 
 :local(.itemSubtitle) {
-    color: var(--subtitle-color);
+    color: var(--subtitle-color); /* warcrime */
     font-size: 14px;
 }
 
@@ -94,7 +94,7 @@
 }
 
 :local(.itemSubtitleBold) {
-    color: var(--title-color);
+    color: var(--title-color); /* warcrime */
 }
 
 :local(.icons) {
@@ -124,7 +124,7 @@
 
 :local(.icon) {
     composes: relative from "style";
-    color: var(--muted-color);
+    color: var(--muted-color); /* warcrime */
 }
 
 :local(.item) :local(.icon) {
@@ -134,7 +134,7 @@
     visibility: visible;
 }
 :local(.icon):hover {
-    color: var(--blue-color);
+    color: var(--blue-color); /* warcrime */
     transition: color .3s linear;
 }
 
@@ -150,7 +150,7 @@
     display: inline;
 }
 :local(.item.selected) :local(.itemCheckbox) {
-    color: var(--blue-color);
+    color: var(--blue-color); /* warcrime */
 }
 
 /* ITEM ICON */
@@ -182,18 +182,18 @@
 /* TAG */
 :local(.open) :local(.tagIcon) {
     visibility: visible;
-    color: var(--blue-color);
+    color: var(--blue-color); /* warcrime */
 }
 
 /* FAVORITE */
 :local(.item.favorite) :local(.favoriteIcon) {
     visibility: visible;
-    color: var(--blue-color);
+    color: var(--blue-color); /* warcrime */
 }
 
 /* ARCHIVE */
 :local(.item.archived) :local(.archiveIcon) {
-    color: var(--blue-color);
+    color: var(--blue-color); /* warcrime */
 }
 
 :local(.trigger) {

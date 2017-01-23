@@ -222,7 +222,7 @@ export default class Visualization extends Component<*, Props, State> {
         let extra = (
             <span className="flex align-center">
                 {isSlow && !loading &&
-                    <LoadingSpinner size={18} className={cx("Visualization-slow-spinner", isSlow === "usually-slow" ? "text-gold" : "text-slate")}/>
+                    <LoadingSpinner size={18} className={cx("Visualization-slow-spinner", isSlow === "usually-slow" ? "text-gold" : "text-grey-4")}/>
                 }
                 {actionButtons}
             </span>
@@ -251,7 +251,7 @@ export default class Visualization extends Component<*, Props, State> {
                     replacementContent
                 // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
                 : isDashboard && noResults ?
-                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
+                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-grey-2" : "text-grey-4")}>
                         <Tooltip tooltip="No results!" isEnabled={small}>
                             <img src="/app/img/no_results.svg" />
                         </Tooltip>
@@ -262,7 +262,7 @@ export default class Visualization extends Component<*, Props, State> {
                         }
                     </div>
                 : error ?
-                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
+                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-grey-2" : "text-grey-4")}>
                         <Tooltip tooltip={error} isEnabled={small}>
                             <Icon className="mb2" name={errorIcon || "warning"} size={50} />
                         </Tooltip>
@@ -275,7 +275,7 @@ export default class Visualization extends Component<*, Props, State> {
                 : loading ?
                     <div className="flex-full p1 text-centered text-brand flex flex-column layout-centered">
                         { isSlow ?
-                            <div className="text-slate">
+                            <div className="text-grey-4">
                                 <div className="h4 text-bold mb1">Still Waiting...</div>
                                 { isSlow === "usually-slow" ?
                                     <div>
@@ -290,7 +290,7 @@ export default class Visualization extends Component<*, Props, State> {
                                 }
                             </div>
                         :
-                            <LoadingSpinner className="text-slate" />
+                            <LoadingSpinner className="text-grey-4" />
                         }
                     </div>
                 :

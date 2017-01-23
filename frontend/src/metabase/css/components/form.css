@@ -1,12 +1,12 @@
 :root {
     --form-padding: 1em;
-    --form-input-placeholder-color: #C0C0C0;
+    --form-input-placeholder-color: #C0C0C0; /* warcrime */
 
     --form-input-size: 1.0rem;
     --form-input-size-medium: 1.25rem;
     --form-input-size-large: 1.571rem;
 
-    --form-label-color: #949494;
+    --form-label-color: var(--new-grey-4); /* warcrime */
     --form-offset: 2.4rem;
 }
 
@@ -23,7 +23,7 @@
 
 .Form-field {
     position: relative;
-    color: #6C6C6C;
+    color: #6C6C6C; /* warcrime */
     margin-bottom: 1.5rem;
 }
 
@@ -86,7 +86,7 @@
     left: 0;
     width: 0.15em;
     height: 3em;
-    background-color: #ddd;
+    background-color: #ddd; /* warcrime */
     box-sizing: border-box;
     opacity: 0;
     transition: background-color .3s linear;
@@ -106,13 +106,7 @@
 
 .Form-field:hover .Form-input {
     color: #ddd;
-    background: rgba(0, 0, 0, 0.02);
-}
-
-/* ewww */
-.Form-field:hover .Form-input.ng-dirty {
-    color: #222;
-    background-color: #fff;
+    background: rgba(0, 0, 0, 0.02); /* warcrime */
 }
 
 .Form-field:hover .Form-charm {
@@ -121,7 +115,6 @@
 
 .Form-field:hover .Form-input:focus {
     transition: color .3s linear;
-    color: #444;
     background-color: transparent;
     transition: background .3s linear;
 }
@@ -169,7 +162,7 @@
 
 .FormTitleSeparator {
     position: relative;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 1px solid #e8e8e8; /* warcrime */
 }
 
 ::-webkit-input-placeholder { /* WebKit browsers */
@@ -189,7 +182,7 @@
 
 .NewForm .Form-label {
     text-transform: uppercase;
-    color: color(var(--base-grey) shade(30%));
+    color: var(--grey-3);
     margin-bottom: 0.5em;
 }
 
@@ -197,8 +190,8 @@
     font-size: 16px;
     color: var(--default-font-color);
     padding: 0.5em;
-    background-color: #FCFCFC;
-    border: 1px solid #EAEAEA;
+    background-color: #FCFCFC; /* warcrime */
+    border: 1px solid #EAEAEA; /* warcrime */
     border-radius: 4px;
 }
 .NewForm .Form-input:focus {
@@ -217,7 +210,7 @@
 }
 
 .NewForm .Form-actions {
-    border-top: 1px solid #EAEAEA;
+    border-top: 1px solid #EAEAEA; /* warcrime */
     padding-bottom: 1.2rem;
     padding-top: 1.2rem;
     padding-left: var(--padding-4);

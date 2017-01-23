@@ -104,7 +104,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             rows[i] = (
                 <div className="Grid mb2" key={i}>
                     <div className="Grid-cell">{keyCell}</div>
-                    <div style={{wordWrap: 'break-word'}} className="Grid-cell text-bold text-dark">{valueCell}</div>
+                    <div style={{wordWrap: 'break-word'}} className="Grid-cell text-bold">{valueCell}</div>
                 </div>
             );
         }
@@ -166,7 +166,6 @@ export default class QueryVisualizationObjectDetailTable extends Component {
                 'border-bottom': true,
                 'text-brand-hover': fkClickable,
                 'cursor-pointer': fkClickable,
-                'text-dark': fkClickable,
                 'text-grey-3': !fkClickable
             });
 
@@ -221,7 +220,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
                         <div className="p4 flex align-center text-bold text-grey-3">
                             <Icon name="connections" size={17} />
                             <div className="ml2">
-                                This <span className="text-dark">{tableName}</span> is connected to:
+                                This <span>{tableName}</span> is connected to:
                             </div>
                         </div>
                     </div>

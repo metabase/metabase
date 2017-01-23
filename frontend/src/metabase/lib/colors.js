@@ -1,3 +1,11 @@
+export const grey = {
+    1: '#f8f9fa',
+    2: '#dce1e4',
+    3: '#bcc5ca',
+    4: '#93a1ab',
+    5: '#616d75',
+    6: '#394044',
+}
 export const normal = {
     blue: '#509EE3',
     green: '#9CC177',

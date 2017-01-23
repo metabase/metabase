@@ -10,7 +10,7 @@ export default class SavedQuestionIntroModal extends Component {
             <Modal small isOpen={this.props.isShowingNewbModal}>
                 <div className="Modal-content Modal-content--small NewForm">
                     <div className="Modal-header Form-header">
-                        <h2 className="pb2 text-dark">It's okay to play around with saved questions</h2>
+                        <h2 className="pb2">It's okay to play around with saved questions</h2>
 
                         <div className="pb1 text-grey-4">You won't make any permanent changes to a saved question unless you click the edit icon in the top-right.</div>
                     </div>
