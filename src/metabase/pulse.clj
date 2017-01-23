@@ -66,20 +66,18 @@
 (defn is-card-empty?
   "Check if the card is empty"
   [card]
-  (or (= 0
-         (-> card :result :row-count))
-      (= '((nil))
+  (or (zero? (-> card :result :row-count))
+      (= [[nil]]
          (-> card :result :data :rows))
       (and (= [["count"]]
               (-> card :card :dataset_query :query :aggregation))
-           (= '((0))
+           (= [[0]]
               (-> card :result :data :rows)))))
 
 (defn are-all-cards-empty?
   "Do none of the cards have any results?"
   [results]
-  (apply = (conj (map is-card-empty? results)
-                 true)))
+  (every? is-card-empty? results))
 
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each

@@ -134,10 +134,9 @@
   {name     su/NonBlankString
    cards    (su/non-empty [su/Map])
    channels (su/non-empty [su/Map])
-   skip     s/Bool
-   }
+   skip     s/Bool}
   (check-card-read-permissions cards)
   (p/send-pulse! body)
-  (merge body {:ok true}))
+  (assoc body :ok true))
 
 (define-routes)
