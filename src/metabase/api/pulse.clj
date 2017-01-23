@@ -2,6 +2,7 @@
   "/api/pulse endpoints."
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [hiccup.core :refer [html]]
+            [schema.core :as s]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.email :as email]
@@ -16,8 +17,7 @@
             [metabase.pulse :as p]
             [metabase.pulse.render :as render]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [metabase.util.schema :as su]))
 
 
 (defendpoint GET "/"
