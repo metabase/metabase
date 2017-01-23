@@ -59,12 +59,21 @@ function getDefaultColumns(series) {
 }
 
 function getDefaultScatterColumns([{ data: { cols, rows } }]) {
-    // TODO
-    return {
-        dimensions: [null],
-        metrics: [null],
-        bubble: null
-    };
+    let dimensions = cols.filter(isDimension);
+    let metrics = cols.filter(isMetric);
+    if (dimensions.length === 2 && metrics.length < 2) {
+        return {
+            dimensions: [dimensions[0].name],
+            metrics: [dimensions[1].name],
+            bubble: metrics.length === 1 ? metrics[0].name : null
+        }
+    } else {
+        return {
+            dimensions: [null],
+            metrics: [null],
+            bubble: null
+        };
+    }
 }
 
 function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {

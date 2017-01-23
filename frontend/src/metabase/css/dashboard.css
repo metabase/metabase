@@ -100,12 +100,6 @@
   border: 1px solid rgb(219, 219, 219);
 }
 
-.Card-outer {
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
-}
-
 .DashCard .Card.Card--slow {
     border-color: var(--gold-color);
 }
@@ -290,177 +284,6 @@
   max-width: 1024px;
 }
 
-.dc-chart .grid-line.horizontal {
-  stroke: rgba(151, 151, 151, 0.2);
-  stroke-dasharray: 5,5;
-}
-
-
-.dc-chart .axis {
-  z-index: -1;
-}
-
-/* TODO (@kdoh) remove this if dc-js/dc.js#1260 is merged */
-.dc-chart .axis text {
-  font-family: sans-serif;
-}
-
-.dc-chart .axis .domain,
-.dc-chart .axis .tick line {
-  stroke: #EDEDED;
-}
-
-.dc-chart .axis .tick text {
-  fill: #C5C6C8;
-}
-
-/* turn off ticks and domain lines */
-.dc-chart .axis.y .domain,
-.dc-chart .axis.yr .domain,
-.dc-chart .axis.y .tick line,
-.dc-chart .axis.yr .tick line {
-  display: none;
-}
-
-.dc-chart .x-axis-label,
-.dc-chart .y-axis-label {
-  /*fill: #C5C6C8;*/
-  fill: #A2A2A2;
-}
-
-.dc-chart .tick line {
-  display: none;
-}
-
-/* gridline at 0 overlaps with X axis */
-.dc-chart .grid-line.horizontal line:first-child {
-  display: none;
-}
-
-/* disable dc default behavior */
-.Card-outer .dc-chart rect.bar:hover {
-  fill-opacity: 1;
-}
-/* highlight single series bar */
-.mute-0 .Card-outer .dc-chart rect.bar:hover {
-  opacity: 1;
-}
-
-.enable-dots .dc-tooltip circle.dot {
-  r: 3px !important;
-  fill: white;
-  stroke: currentColor;
-  stroke-width: 2;
-  fill-opacity: 1 !important;
-  stroke-opacity: 1 !important;
-}
-
-.dc-chart circle.bubble {
-    fill-opacity: 0.80;
-    stroke-width: 1;
-    stroke: white;
-}
-
-.enable-dots .dc-tooltip circle.dot:hover,
-.enable-dots .dc-tooltip circle.dot.hover {
-  fill: currentColor;
-}
-
-.enable-dots-onhover .dc-tooltip circle.dot:hover,
-.enable-dots-onhover .dc-tooltip circle.dot.hover {
-  r: 3px !important;
-  fill: white;
-  stroke: currentColor;
-  stroke-width: 2;
-  fill-opacity: 1 !important;
-  stroke-opacity: 1 !important;
-}
-
-.dc-chart .area,
-.dc-chart .bar,
-.dc-chart .line,
-.dc-chart .dot {
-  transition: opacity 0.1s linear;
-}
-
-.dc-chart .axis.y,
-.dc-chart .y-axis-label,
-.dc-chart .axis.yr,
-.dc-chart .yr-axis-label {
-  transition: opacity 0.25s linear;
-}
-
-/* individual chart (.chart-body is a direct grandchild of svg)*/
-.mute-0 svg > g > .chart-body .stack._0 .area,
-.mute-1 svg > g > .chart-body .stack._1 .area,
-.mute-2 svg > g > .chart-body .stack._2 .area,
-.mute-3 svg > g > .chart-body .stack._3 .area,
-.mute-4 svg > g > .chart-body .stack._4 .area,
-.mute-5 svg > g > .chart-body .stack._5 .area,
-.mute-0 svg > g > .chart-body .stack._0 .line,
-.mute-1 svg > g > .chart-body .stack._1 .line,
-.mute-2 svg > g > .chart-body .stack._2 .line,
-.mute-3 svg > g > .chart-body .stack._3 .line,
-.mute-4 svg > g > .chart-body .stack._4 .line,
-.mute-5 svg > g > .chart-body .stack._5 .line,
-.mute-0 svg > g > .chart-body .stack._0 .bar,
-.mute-1 svg > g > .chart-body .stack._1 .bar,
-.mute-2 svg > g > .chart-body .stack._2 .bar,
-.mute-3 svg > g > .chart-body .stack._3 .bar,
-.mute-4 svg > g > .chart-body .stack._4 .bar,
-.mute-5 svg > g > .chart-body .stack._5 .bar,
-.mute-0 svg > g > .chart-body .dc-tooltip._0 .dot,
-.mute-1 svg > g > .chart-body .dc-tooltip._1 .dot,
-.mute-2 svg > g > .chart-body .dc-tooltip._2 .dot,
-.mute-3 svg > g > .chart-body .dc-tooltip._3 .dot,
-.mute-4 svg > g > .chart-body .dc-tooltip._4 .dot,
-.mute-5 svg > g > .chart-body .dc-tooltip._5 .dot { opacity: 0.25; }
-
-/* composite charts */
-.mute-0 .sub._0 .bar,
-.mute-1 .sub._1 .bar,
-.mute-2 .sub._2 .bar,
-.mute-3 .sub._3 .bar,
-.mute-4 .sub._4 .bar,
-.mute-5 .sub._5 .bar,
-.mute-0 .sub._0 .line,
-.mute-1 .sub._1 .line,
-.mute-2 .sub._2 .line,
-.mute-3 .sub._3 .line,
-.mute-4 .sub._4 .line,
-.mute-5 .sub._5 .line,
-.mute-0 .sub._0 .dot,
-.mute-1 .sub._1 .dot,
-.mute-2 .sub._2 .dot,
-.mute-3 .sub._3 .dot,
-.mute-4 .sub._4 .dot,
-.mute-5 .sub._5 .dot,
-.mute-0 .sub._0 .bubble,
-.mute-1 .sub._1 .bubble,
-.mute-2 .sub._2 .bubble,
-.mute-3 .sub._3 .bubble,
-.mute-4 .sub._4 .bubble,
-.mute-5 .sub._5 .bubble { opacity: 0.25; }
-
-
-.mute-yl .dc-chart .axis.y,
-.mute-yl .dc-chart .y-axis-label.y-label {
-  opacity: 0;
-}
-
-.mute-yr .dc-chart .axis.yr,
-.mute-yr .dc-chart .y-axis-label.yr-label {
-  opacity: 0;
-}
-
-.voronoi {
-  fill: transparent;
-}
-
-/*.voronoi path {
-  fill: rgba(255,0,0,0.05);
-}*/
-
 /*
 
   fullscreen text size modifications
@@ -482,7 +305,7 @@
 }
 
 @media screen and (min-width: 1540px) {
-  .Dashboard.Dashboard--fullscreen { font-size: 1.6em; }
+  .Dashboard.Dashboard--fullscreen { font-size: 1.4em; }
 }
 
 

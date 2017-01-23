@@ -6,6 +6,7 @@ import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 
+import "./LineAreaBarChart.css";
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
 import { isNumeric, isDate } from "metabase/lib/schema_metadata";
@@ -13,6 +14,7 @@ import {
     getChartTypeFromData,
     getFriendlyName
 } from "metabase/visualizations/lib/utils";
+import { addCSSRule } from "metabase/lib/dom";
 
 import { getSettings } from "metabase/lib/visualization_settings";
 
@@ -21,6 +23,20 @@ import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/er
 import crossfilter from "crossfilter";
 import _ from "underscore";
 import cx from "classnames";
+
+const MAX_SERIES = 20;
+
+const MUTE_STYLE = "opacity: 0.25;"
+for (let i = 0; i < MAX_SERIES; i++) {
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .area`,       MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .line`,       MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .bar`,        MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .dc-tooltip._${i} .dot`,   MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bar`,    MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .line`,   MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .dot`,    MUTE_STYLE);
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bubble`, MUTE_STYLE);
+}
 
 import type { VisualizationProps } from "metabase/visualizations";
 
@@ -97,7 +113,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     getHoverClasses() {
         const { hovered } = this.props;
         if (hovered && hovered.index != null) {
-            let seriesClasses = _.range(0,5).filter(n => n !== hovered.index).map(n => "mute-"+n);
+            let seriesClasses = _.range(0, MAX_SERIES).filter(n => n !== hovered.index).map(n => "mute-"+n);
             let axisClasses =
                 hovered.axisIndex === 0 ? "mute-yr" :
                 hovered.axisIndex === 1 ? "mute-yl" :
@@ -180,7 +196,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
         }
 
         return (
-            <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
+            <div className={cx("LineAreaBarChart flex flex-column p1", this.getHoverClasses(), this.props.className)}>
                 { titleHeaderSeries ?
                     <LegendHeader
                         className="flex-no-shrink"
@@ -203,7 +219,8 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                     chartType={this.getChartType()}
                     series={series}
                     settings={settings}
-                    className="flex-full"
+                    className="renderer flex-full"
+                    maxSeries={MAX_SERIES}
                     renderer={lineAreaBarRenderer}
                 />
                 <ChartTooltip series={series} hovered={hovered} />
@@ -261,6 +278,8 @@ function transformSingleSeries(s, series) {
                     o.key
                 ].filter(n => n).join(": "),
                 _transformed: true,
+                _breakoutValue: o.key,
+                _breakoutColumn: cols[seriesIndex]
             },
             data: {
                 rows: o.value,
