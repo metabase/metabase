@@ -31,7 +31,10 @@ node-3() {
     if is_engine_enabled "vertica"; then
         run_step install-vertica
     fi
-    run_step lein-test
+    # this is redundant with node 0 unless one of the non-H2 driver tests is enabled
+    if [ ENGINES != "h2" ]; then
+        run_step lein-test
+    fi
 }
 node-4() {
     run_step lein bikeshed
@@ -137,9 +140,9 @@ fail_fast() {
   echo -e "========================================"
   echo -e "Failing fast! Stopping other nodes..."
   # ssh to the other CircleCI nodes and send SIGUSR1 to tell them to exit early
-  for (( i = 0; i <= $CIRCLE_NODE_TOTAL; i++ )); do
+  for (( i = 0; i < $CIRCLE_NODE_TOTAL; i++ )); do
     if [ $i != $CIRCLE_NODE_INDEX ]; then
-      ssh node$i 'touch /tmp/fail; pkill -SIGUSR1 -f "bash ./bin/ci"' || true
+      ssh node$i 'touch /tmp/fail; pkill -SIGUSR1 -f "bash ./bin/ci"' 2> /dev/null || true
     fi
   done
 }
