@@ -28,6 +28,7 @@ export default class LegendHeader extends Component {
         onRemoveSeries: PropTypes.func,
         actionButtons: PropTypes.node,
         linkToCard: PropTypes.bool,
+        description: PropTypes.string
     };
 
     static defaultProps = {
@@ -47,7 +48,7 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings } = this.props;
+        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings, description } = this.props;
         const showDots = series.length > 1;
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
