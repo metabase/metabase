@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
+import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 
@@ -26,7 +27,7 @@ export default class LegendItem extends Component {
     };
 
     render() {
-        const { title, href, color, showDot, showTitle, isMuted, showTooltip, showDotTooltip, onMouseEnter, onMouseLeave, className } = this.props;
+        const { title, href, color, showDot, showTitle, isMuted, showTooltip, showDotTooltip, onMouseEnter, onMouseLeave, className, description } = this.props;
         return (
             <LegendLink
                 href={href}
@@ -44,8 +45,16 @@ export default class LegendItem extends Component {
                     </Tooltip>
                 }
                 { showTitle &&
-                    <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
+                  <div className="flex align-center">
+                      <span className="mr1"><Ellipsified showTooltip={showTooltip}>{title}</Ellipsified></span>
+                      { description &&
+                        <Tooltip tooltip={description} maxWidth={'22em'}>
+                            <Icon name='info' />
+                        </Tooltip>
+                      }
+                  </div>
                 }
+
             </LegendLink>
         );
     }
