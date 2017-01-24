@@ -137,7 +137,7 @@ fail_fast() {
   echo -e "========================================"
   echo -e "Failing fast! Stopping other nodes..."
   # ssh to the other CircleCI nodes and send SIGUSR1 to tell them to exit early
-  for (( i = 1; i <= $CIRCLE_NODE_TOTAL; i++ )); do
+  for (( i = 0; i <= $CIRCLE_NODE_TOTAL; i++ )); do
     if [ $i != $CIRCLE_NODE_INDEX ]; then
       ssh node$i 'touch /tmp/fail; pkill -SIGUSR1 -f "bash ./bin/ci"' || true
     fi
