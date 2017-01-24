@@ -106,6 +106,53 @@
 ;;; |                                                        MIGRATE!                                                        |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
+(defn- filename-without-path-or-prefix
+  "Strip the path and/or prefix from a migration FILENAME if it has them."
+  [filename]
+  (s/replace filename #"^(?:migrations/)?([\w\d]+)(?:\.(?:json|yaml))?$" "$1"))
+
+(defn- migration-files:jar
+  "Return the set of migration filenames (without path or prefix) inside the uberjar.
+   (`io/resource` doesn't work here; this approach adapted from [this StackOverflow answer](http://stackoverflow.com/a/20073154/1198455).)"
+  []
+  ;; get path to the jar -- see this SO answer http://stackoverflow.com/a/320595/1198455
+  (let [^String                   jar-path (s/replace (-> ComboPooledDataSource .getProtectionDomain .getCodeSource .getLocation .getPath) #"%20" " ")
+        ^JarFile$JarEntryIterator entries  (.entries (JarFile. jar-path))
+        ^Atom                     files    (atom #{})]
+    (while (.hasMoreElements entries)
+      (let [^JarFile$JarFileEntry entry      (.nextElement entries)
+            ^String               entry-name (.getName entry)]
+        (when (and (.startsWith entry-name "migrations/")
+                   (not= entry-name "migrations/"))       ; skip the directory itself
+          (swap! files conj (filename-without-path-or-prefix entry-name)))))
+    @files))
+
+(defn- migration-files
+  "Return the set of migration filenames (without path or prefix) in the `resources/migrations` directory or from the JAR."
+  []
+  ;; unfortunately io/as-file doesn't seem to work for directories inside a JAR. Try it for local dev but fall back to hacky Java interop method if that fails
+  (try (set (map filename-without-path-or-prefix (.list (io/as-file (io/resource "migrations")))))
+       (catch Throwable _
+         (migration-files:jar))))
+
+(declare quote-fn)
+
+(defn- migration-entries
+  "Return a set of migration files (without path or prefix) that have already been run.
+   This is fetched from the `databasechangelog` table.
+     (migration-entires) -> #{\"001_initial_schema\", \"002_add_session_table\", ...}"
+  []
+  ;; an Exception will get thrown if there is no databasechangelog table yet; just return nil in that case because nil will never equal any set
+  (u/ignore-exceptions
+    (set (for [{filename :filename} (jdbc/query (jdbc-details) [(format "SELECT %s AS filename FROM %s;" ((quote-fn) "filename") ((quote-fn) "databasechangelog"))])]
+           (filename-without-path-or-prefix filename)))))
+
+(defn- has-unrun-migration-files?
+  "`true` if the set of migration files is the same as the set of migrations that have already been run."
+  ^Boolean []
+  (not= (migration-files)
+        (migration-entries)))
+
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run migrate up`):
 
@@ -251,15 +298,15 @@
   [auto-migrate? db-details]
   (when-not auto-migrate?
     (print-migrations-and-quit! db-details))
-  (log/info "Database has unran migrations. Preparing to run migrations...")
+  (log/info "Database has unrun migrations. Preparing to run migrations...")
   (migrate! db-details :up)
   (log/info "Database Migrations Current ... " (u/emoji "✅")))
 
 (defn- run-schema-migrations-if-needed!
   "Check and see if we need to run any schema migrations, and run them if needed."
   [auto-migrate? db-details]
-  (log/info "Checking to see if database has unran migrations...")
-  (if (has-unran-migration-files?)
+  (log/info "Checking to see if database has unrun migrations...")
+  (if (has-unrun-migration-files?)
     (run-schema-migrations! auto-migrate? db-details)
     (log/info "Database migrations are up to date. Skipping loading Liquibase.")))
 
