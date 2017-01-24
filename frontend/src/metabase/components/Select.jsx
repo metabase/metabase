@@ -138,11 +138,19 @@ export class Option extends Component {
                     "disabled": disabled
                 })}
             >
-                <Icon name="check" size={14} />
+                <Icon name="check" size={14} style={{ position: 'absolute' }} />
                 { icon &&
-                    <Icon name={icon} style={{ position: "absolute", color: iconColor, visibility: !selected ? "visible" : "hidden" }} size={iconSize} />
+                    <Icon
+                        name={icon}
+                        size={iconSize}
+                        style={{
+                            position: 'absolute',
+                            color: iconColor,
+                            visibility: !selected ? "visible" : "hidden"
+                        }}
+                    />
                 }
-                {children}
+                <span className="ml4">{children}</span>
             </div>
         );
     }

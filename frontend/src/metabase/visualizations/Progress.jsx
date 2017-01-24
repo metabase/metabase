@@ -9,8 +9,10 @@ import Icon from "metabase/components/Icon.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
 
 import Color from "color";
+import cx from "classnames";
 
 const BORDER_RADIUS = 5;
+const MAX_BAR_HEIGHT = 65;
 
 import type { VisualizationProps } from "metabase/visualizations";
 
@@ -36,9 +38,14 @@ export default class Progress extends Component<*, VisualizationProps, *> {
     }
 
     componentDidUpdate() {
+        const component = ReactDOM.findDOMNode(this);
         const pointer = ReactDOM.findDOMNode(this.refs.pointer);
         const label = ReactDOM.findDOMNode(this.refs.label);
         const container = ReactDOM.findDOMNode(this.refs.container);
+        const bar = ReactDOM.findDOMNode(this.refs.bar);
+
+        // Safari not respecting `height: 25%` so just do it here ¯\_(ツ)_/¯
+        bar.style.height = Math.min(MAX_BAR_HEIGHT, component.offsetHeight) + "px";
 
         if (this.props.gridSize && this.props.gridSize.height < 4) {
             pointer.parentNode.style.display = "none";
@@ -102,7 +109,7 @@ export default class Progress extends Component<*, VisualizationProps, *> {
         }
 
         return (
-            <div className="full-height flex layout-centered">
+            <div className={cx(this.props.className, "flex layout-centered")}>
                 <div className="flex-full full-height flex flex-column justify-center" style={{ padding: 10, paddingTop: 0 }}>
                     <div
                         ref="container"
@@ -131,11 +138,9 @@ export default class Progress extends Component<*, VisualizationProps, *> {
                             }}
                         />
                     </div>
-                    <div className="relative" style={{
+                    <div ref="bar" className="relative" style={{
                         backgroundColor: restColor,
                         borderRadius: BORDER_RADIUS,
-                        height: "25%",
-                        maxHeight: 65,
                         overflow: "hidden"
                     }}>
                         <div style={{

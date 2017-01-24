@@ -40,3 +40,15 @@
     (doseq [_ (range 5)]
       (db/select-one-count 'Database))
     (call-count)))
+
+
+;; tests for filename-without-path-or-prefix
+
+(tu/resolve-private-vars metabase.db filename-without-path-or-prefix)
+
+(expect "my_migration" (filename-without-path-or-prefix "migrations/my_migration.json"))
+(expect "my_migration" (filename-without-path-or-prefix "migrations/my_migration.yaml"))
+(expect "my_migration" (filename-without-path-or-prefix "my_migration.json"))
+(expect "my_migration" (filename-without-path-or-prefix "my_migration.yaml"))
+(expect "my_migration" (filename-without-path-or-prefix "migrations/my_migration"))
+(expect "my_migration" (filename-without-path-or-prefix "my_migration"))

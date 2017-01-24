@@ -276,7 +276,7 @@ export default class GuiQueryEditor extends Component {
                 const breakout = breakouts[i];
 
                 if (breakout == null) {
-                    breakoutList.push(<span className="ml1" />);
+                    breakoutList.push(<span key="nullBreakout" className="ml1" />);
                 }
 
                 breakoutList.push(

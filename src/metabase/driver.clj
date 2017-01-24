@@ -312,6 +312,7 @@
              [java.sql.Date                  :type/Date]
              [java.sql.Timestamp             :type/DateTime]
              [java.util.Date                 :type/DateTime]
+             [org.joda.time.DateTime         :type/DateTime]
              [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
@@ -363,8 +364,7 @@
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map & [rethrow-exceptions]]
-  {:pre [(keyword? engine)
-         (map? details-map)]}
+  {:pre [(keyword? engine) (map? details-map)]}
   (let [driver (engine->driver engine)]
     (try
       (u/with-timeout can-connect-timeout-ms

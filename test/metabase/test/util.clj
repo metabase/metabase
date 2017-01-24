@@ -70,6 +70,10 @@
     []
     (apply str (repeatedly 20 random-uppercase-letter))))
 
+(defn random-email
+  "Generate a random email address."
+  []
+  (str (random-name) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys with 'id' or '_at' to booleans."
@@ -195,7 +199,7 @@
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:first_name (random-name)
                                 :last_name  (random-name)
-                                :email      (str (random-name) "@metabase.com")
+                                :email      (random-email)
                                 :password   (random-name)})})
 
 

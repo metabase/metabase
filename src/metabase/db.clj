@@ -16,13 +16,10 @@
             [metabase.models.interface :as models]
             [metabase.util :as u]
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
-  (:import java.io.StringWriter
+  (:import (java.util.jar JarFile JarFile$JarEntryIterator JarFile$JarFileEntry)
            java.sql.Connection
-           com.mchange.v2.c3p0.ComboPooledDataSource
-           liquibase.Liquibase
-           (liquibase.database DatabaseFactory Database)
-           liquibase.database.jvm.JdbcConnection
-           liquibase.resource.ClassLoaderResourceAccessor))
+           clojure.lang.Atom
+           com.mchange.v2.c3p0.ComboPooledDataSource))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -106,100 +103,55 @@
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                        MIGRATE                                                         |
+;;; |                                                        MIGRATE!                                                        |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const ^String changelog-file "liquibase.yaml")
+(defn- filename-without-path-or-prefix
+  "Strip the path and/or prefix from a migration FILENAME if it has them."
+  [filename]
+  (s/replace filename #"^(?:migrations/)?([\w\d]+)(?:\.(?:json|yaml))?$" "$1"))
 
-(defn- migrations-sql
-  "Return a string of SQL containing the DDL statements needed to perform unrun LIQUIBASE migrations."
-  ^String [^Liquibase liquibase]
-  (let [writer (StringWriter.)]
-    (.update liquibase "" writer)
-    (.toString writer)))
+(defn- migration-files:jar
+  "Return the set of migration filenames (without path or prefix) inside the uberjar.
+   (`io/resource` doesn't work here; this approach adapted from [this StackOverflow answer](http://stackoverflow.com/a/20073154/1198455).)"
+  []
+  ;; get path to the jar -- see this SO answer http://stackoverflow.com/a/320595/1198455
+  (let [^String                   jar-path (s/replace (-> ComboPooledDataSource .getProtectionDomain .getCodeSource .getLocation .getPath) #"%20" " ")
+        ^JarFile$JarEntryIterator entries  (.entries (JarFile. jar-path))
+        ^Atom                     files    (atom #{})]
+    (while (.hasMoreElements entries)
+      (let [^JarFile$JarFileEntry entry      (.nextElement entries)
+            ^String               entry-name (.getName entry)]
+        (when (and (.startsWith entry-name "migrations/")
+                   (not= entry-name "migrations/"))       ; skip the directory itself
+          (swap! files conj (filename-without-path-or-prefix entry-name)))))
+    @files))
 
-(defn- migrations-lines
-  "Return a sequnce of DDL statements that should be used to perform migrations for LIQUIBASE.
+(defn- migration-files
+  "Return the set of migration filenames (without path or prefix) in the `resources/migrations` directory or from the JAR."
+  []
+  ;; unfortunately io/as-file doesn't seem to work for directories inside a JAR. Try it for local dev but fall back to hacky Java interop method if that fails
+  (try (set (map filename-without-path-or-prefix (.list (io/as-file (io/resource "migrations")))))
+       (catch Throwable _
+         (migration-files:jar))))
 
-   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run one statement at a time;
-   Liquibase puts each DDL statement on its own line automatically so just split by lines and filter out blank / comment lines. Even though this
-   is not neccesary for H2 or Postgres go ahead and do it anyway because it keeps the code simple and doesn't make a significant performance difference."
-  [^Liquibase liquibase]
-  (for [line  (s/split-lines (migrations-sql liquibase))
-        :when (not (or (s/blank? line)
-                       (re-find #"^--" line)))]
-    line))
+(declare quote-fn)
 
-(defn- has-unrun-migrations?
-  "Does LIQUIBASE have migration change sets that haven't been run yet?
+(defn- migration-entries
+  "Return a set of migration files (without path or prefix) that have already been run.
+   This is fetched from the `databasechangelog` table.
+     (migration-entires) -> #{\"001_initial_schema\", \"002_add_session_table\", ...}"
+  []
+  ;; an Exception will get thrown if there is no databasechangelog table yet; just return nil in that case because nil will never equal any set
+  (u/ignore-exceptions
+    (set (for [{filename :filename} (jdbc/query (jdbc-details) [(format "SELECT %s AS filename FROM %s;" ((quote-fn) "filename") ((quote-fn) "databasechangelog"))])]
+           (filename-without-path-or-prefix filename)))))
 
-   It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because `migrations-sql` will
-   always contain SQL to create and release migration locks, which is both slightly dangerous and a waste of time when we won't be using them."
-  ^Boolean [^Liquibase liquibase]
-  (boolean (seq (.listUnrunChangeSets liquibase nil))))
-
-(defn- has-migration-lock?
-  "Is a migration lock in place for LIQUIBASE?"
-  ^Boolean [^Liquibase liquibase]
-  (boolean (seq (.listLocks liquibase))))
-
-(defn- wait-for-migration-lock-to-be-cleared
-  "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times.
-   There's a chance the lock will end up clearing up so we can run migrations normally."
-  [^Liquibase liquibase]
-  (u/auto-retry 5
-    (when (has-migration-lock? liquibase)
-      (Thread/sleep 2000)
-      (throw (Exception. "Database has migration lock; cannot run migrations. You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))
-
-(defn- migrate-up-if-needed!
-  "Run any unrun LIQUIBASE migrations, if needed.
-
-   This creates SQL for the migrations to be performed, then executes each DDL statement.
-   Running `.update` directly doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at
-   the end of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do the trick."
-  [conn, ^Liquibase liquibase]
-  (log/info "Checking if Database has unrun migrations...")
-  (when (has-unrun-migrations? liquibase)
-    (log/info "Database has unrun migrations. Waiting for migration lock to be cleared...")
-    (wait-for-migration-lock-to-be-cleared liquibase)
-    (log/info "Migration lock is cleared. Running migrations...")
-    (doseq [line (migrations-lines liquibase)]
-      (jdbc/execute! conn [line]))))
-
-(defn- force-migrate-up-if-needed!
-  "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
-
-   1.  This doesn't check to make sure the DB locks are cleared
-   2.  Any DDL statements that fail are ignored
-
-   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in #3295.
-
-   Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back without rolling back the entirety of changes
-   that were made. (If a single statement in a transaction fails you can't do anything futher until you clear the error state by doing something like calling `.rollback`.)"
-  [conn, ^Liquibase liquibase]
-  (when (has-unrun-migrations? liquibase)
-    (doseq [line (migrations-lines liquibase)]
-      (log/info line)
-      (jdbc/with-db-transaction [nested-transaction-connection conn]
-        (try (jdbc/execute! nested-transaction-connection [line])
-             (log/info (u/format-color 'green "[SUCCESS]"))
-             (catch Throwable e
-               (.rollback (jdbc/get-connection nested-transaction-connection))
-               (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
-
-(def ^{:arglists '([])} ^DatabaseFactory database-factory
-  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because otherwise it adds 2 seconds to startup time."
-  (partial deref (future (DatabaseFactory/getInstance))))
-
-(defn- conn->liquibase
-  "Get a `Liquibase` object from JDBC CONN."
-  (^Liquibase []
-   (conn->liquibase (jdbc-details)))
-  (^Liquibase [conn]
-   (let [^JdbcConnection liquibase-conn (JdbcConnection. (jdbc/get-connection conn))
-         ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
-     (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
+(defn- has-unrun-migration-files?
+  "`true` if the set of migration files is the same as the set of migrations that have already been run."
+  ^Boolean []
+  (not= (migration-files)
+        (migration-entries)))
 
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run migrate up`):
@@ -211,37 +163,16 @@
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                          (This shouldn't be necessary now that we run migrations inside a transaction, but is available just in case).
 
-   Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by `metabase.db.migrations/run-all`.
-   (`setup-db!`, below, calls both this function and `run-all`)."
+   Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by `metabase.db.migrations/run-all!`.
+   (`setup-db!`, below, calls both this function and `run-all!`)."
   ([]
    (migrate! :up))
   ([direction]
    (migrate! @db-connection-details direction))
   ([db-details direction]
-   (jdbc/with-db-transaction [conn (jdbc-details db-details)]
-     ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
-     (jdbc/db-set-rollback-only! conn)
-     ;; Disable auto-commit. This should already be off but set it just to be safe
-     (.setAutoCommit (jdbc/get-connection conn) false)
-     ;; Set up liquibase and let it do its thing
-     (log/info "Setting up Liquibase...")
-     (try
-       (let [liquibase (conn->liquibase conn)]
-         (log/info "Liquibase is ready.")
-         (case direction
-           :up            (migrate-up-if-needed! conn liquibase)
-           :force         (force-migrate-up-if-needed! conn liquibase)
-           :down-one      (.rollback liquibase 1 "")
-           :print         (println (migrations-sql liquibase))
-           :release-locks (.forceReleaseLocks liquibase)))
-       ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
-       (jdbc/db-unset-rollback-only! conn)
-       :done
-       ;; If for any reason any part of the migrations fail then rollback all changes
-       (catch Throwable e
-         ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so better safe than sorry
-         (.rollback (jdbc/get-connection conn))
-         (throw e))))))
+   ;; Loading Liquibase is slow slow slow so only do it if we actually need to
+   (require 'metabase.db.liquibase)
+   ((resolve 'metabase.db.liquibase/migrate!) (jdbc-details db-details) direction)))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -349,6 +280,42 @@
    That's because they will end up doing things like creating duplicate entries for the \"magic\" groups and permissions entries. "
   false)
 
+(defn- print-migrations-and-quit!
+  "If we are not doing auto migrations then print out migration SQL for user to run manually.
+   Then throw an exception to short circuit the setup process and make it clear we can't proceed."
+  [db-details]
+  (let [sql (migrate! db-details :print)]
+    (log/info (str "Database Upgrade Required\n\n"
+                   "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                   "Please execute the following sql commands on your database before proceeding.\n\n"
+                   sql
+                   "\n\n"
+                   "Once your database is updated try running the application again.\n"))
+    (throw (java.lang.Exception. "Database requires manual upgrade."))))
+
+(defn- run-schema-migrations!
+  "Run Liquibase migrations if needed if AUTO-MIGRATE? is enabled, otherwise print migrations and quit."
+  [auto-migrate? db-details]
+  (when-not auto-migrate?
+    (print-migrations-and-quit! db-details))
+  (log/info "Database has unrun migrations. Preparing to run migrations...")
+  (migrate! db-details :up)
+  (log/info "Database Migrations Current ... " (u/emoji "✅")))
+
+(defn- run-schema-migrations-if-needed!
+  "Check and see if we need to run any schema migrations, and run them if needed."
+  [auto-migrate? db-details]
+  (log/info "Checking to see if database has unrun migrations...")
+  (if (has-unrun-migration-files?)
+    (run-schema-migrations! auto-migrate? db-details)
+    (log/info "Database migrations are up to date. Skipping loading Liquibase.")))
+
+(defn- run-data-migrations!
+  "Do any custom code-based migrations once the DB structure is up to date."
+  []
+  (require 'metabase.db.migrations)
+  ((resolve 'metabase.db.migrations/run-all!)))
+
 (defn setup-db!
   "Do general preparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
@@ -356,32 +323,10 @@
       :or   {db-details   @db-connection-details
              auto-migrate true}}]
   (reset! setup-db-has-been-called? true)
-
   (verify-db-connection (:type db-details) db-details)
-  (log/info "Running Database Migrations...")
-
-  ;; Run through our DB migration process and make sure DB is fully prepared
-  (if auto-migrate
-    (migrate! db-details :up)
-    ;; if we are not doing auto migrations then print out migration sql for user to run manually
-    ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
-    (let [sql (migrate! db-details :print)]
-      (log/info (str "Database Upgrade Required\n\n"
-                     "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                     "Please execute the following sql commands on your database before proceeding.\n\n"
-                     sql
-                     "\n\n"
-                     "Once your database is updated try running the application again.\n"))
-      (throw (java.lang.Exception. "Database requires manual upgrade."))))
-  (log/info "Database Migrations Current ... " (u/emoji "✅"))
-
-  ;; Establish our 'default' DB Connection
+  (run-schema-migrations-if-needed! auto-migrate db-details)
   (create-connection-pool! (jdbc-details db-details))
-
-  ;; Do any custom code-based migrations now that the db structure is up to date.
-  (when-not *disable-data-migrations*
-    (require 'metabase.db.migrations)
-    ((resolve 'metabase.db.migrations/run-all))))
+  (run-data-migrations!))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."

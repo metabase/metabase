@@ -70,7 +70,7 @@
   {:pre [(contains? usernames username)]}
   (m/mapply fetch-or-create-user! (user->info username)))
 
-(def user->id
+(def ^{:arglists '([username])} user->id
   "Memoized fn that returns the ID of User associated with USERNAME.
 
     (user->id :rasta) -> 4"
@@ -87,7 +87,7 @@
   {:pre [(contains? usernames username)]}
   (select-keys (user->info username) [:email :password]))
 
-(def id->user
+(def ^{:arglists '([id])} id->user
   "Reverse of `user->id`.
 
     (id->user 4) -> :rasta"
@@ -127,7 +127,7 @@
           (apply client-fn args))))))
 
 
-(defn delete-temp-users!
+(defn ^:deprecated delete-temp-users!
   "Delete all users besides the 4 persistent test users.
    This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to remove this. (TODO)"
   []
