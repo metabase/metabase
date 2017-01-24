@@ -6,13 +6,16 @@
             [clojure.walk :as walk]
             [cheshire.core :as json]
             (monger [collection :as mc]
-                    [operators :refer :all])
+                    [operators :refer :all]
+                    joda-time)
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             (metabase.query-processor [annotate :as annotate]
                                       [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [clj-time.core :as t]
+            [clj-time.coerce :as c])
   (:import java.sql.Timestamp
            java.util.Date
            (com.mongodb CommandResult DB)
@@ -158,7 +161,26 @@
 
   DateTimeField
   (->rvalue [this]
-    (str \$ (->lvalue this)))
+    ;; omf: date/time fields using native Mongo operators
+    (let [unit (:unit this)
+      field (:field this)]
+      (case (or unit :default)
+        :default         (->rvalue field)
+        :minute          {:$dateToString {:format "%Y-%m-%d %H:%M" :date (->rvalue field)}}
+        :minute-of-hour  {:$minute (->rvalue field)}
+        :hour            {:$dateToString {:format "%Y-%m-%d %H" :date (->rvalue field)}}
+        :hour-of-day     {:$hour (->rvalue field)}
+        :day             {:$dateToString {:format "%Y-%m-%d" :date (->rvalue field)}}
+        :day-of-week     {:$dayOfWeek (->rvalue field)}
+        :day-of-month    {:$dayOfMonth (->rvalue field)}
+        :day-of-year     {:$dayOfYear (->rvalue field)}
+        :week            {:$dateToString {:format "%Y-%m-%d" :date { :$subtract [ (->rvalue field) {:$multiply [ {:$subtract [{:$dayOfWeek (->rvalue field)}, 1]}, 86400000]}] }}}
+        :week-of-year    {:$add [{:$week (->rvalue field)}, 1]}
+        :month           {:$dateToString {:format "%Y-%m" :date (->rvalue field)}}
+        :month-of-year   {:$month (->rvalue field)}
+        :quarter         {:$dateToString {:format "%Y-%m" :date (->rvalue field)}} 
+        :quarter-of-year {:$substr [{:$add [{:$divide [{:$subtract [{:$month (->rvalue field)} ,1]} ,3]} ,1]} ,0 ,1]}
+        :year            {:$year (->rvalue field)})))
 
   Value
   (->rvalue [{value :value, {:keys [base-type]} :field}]
@@ -172,7 +194,8 @@
                       ([format-string]
                        (stringify format-string value))
                       ([format-string v]
-                       {:___date (u/format-date format-string v)}))
+                       ;; omf: date/time values as joda-times known to Monger 
+                       (c/from-long (c/to-long (u/format-date format-string v)))))
           extract   (u/rpartial u/date-extract value)]
       (case (or unit :default)
         :default         (u/->Date value)
@@ -190,7 +213,7 @@
         :month-of-year   (extract :month)
         :quarter         (stringify "yyyy-MM" (u/date-trunc :quarter value))
         :quarter-of-year (extract :quarter-of-year)
-        :year            (extract :year))))
+        :year            (stringify "yyyy" (u/date-trunc :year value)))))
 
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field]}]
@@ -211,16 +234,45 @@
 
 ;;; ### filter
 
+;; omf: 'max' date in a date range is next day at 00:00:00.000
+(defn- resolve-between [basetype minvalue maxvalue]
+  (cond (= basetype :type/DateTime)
+    {$gte minvalue
+     $lt (t/plus maxvalue (t/days 1))}
+  :else
+    {$gte minvalue
+     $lte maxvalue})
+)
+
+;; omf: a single day ends before next day at 00:00:00.000
+(defn- resolve-equal [basetype value unit]
+  (cond (= basetype :type/DateTime)
+    {$gte value
+     $lt (case unit
+           :year (t/plus value (t/years 1))
+           :month (t/plus value (t/months 1))
+           :week (t/plus value (t/weeks 1))
+           (t/plus value (t/days 1)))}
+  :else
+    {"$eq" value})
+)
+
 (defn- parse-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
-  (let [field (when field (->lvalue field))
+  ;; omf: Maybe there is a better way to do this. 'field' is being received as field: {...} or as field:{field: {...}}
+  ;; We need basetype so we can do a specific setup for 'between' and '=' for datetimes
+  ;; We need unit so we can do a specific setup for '=' for relative datetimes
+  (let [basetype (when field (or (:base-type field) (:base-type (:field field))))
+        unit (when field (or (:unit field) (:unit (:field field))))
+        field (when field (or (:field-name field) (:field-name (:field field))))
         value (when value (->rvalue value))
         v     (case filter-type
-                :between     {$gte (->rvalue (:min-val filter))
-                              $lte (->rvalue (:max-val filter))}
+                :between     (resolve-between basetype 
+                                              (->rvalue (:min-val filter))
+                                              (->rvalue (:max-val filter)))
                 :contains    (re-pattern value)
                 :starts-with (re-pattern (str \^ value))
                 :ends-with   (re-pattern (str value \$))
-                :=           {"$eq" value}
+                :=           (resolve-equal basetype value unit)
                 :!=          {$ne  value}
                 :<           {$lt  value}
                 :>           {$gt  value}
@@ -264,17 +316,27 @@
         breakout?     (seq breakout-fields)]
     (when (or aggregations? breakout?)
       (filter identity
-              [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
-               (when breakout?
-                 {$project (merge {"_id"      "$_id"
-                                   "___group" (into {} (for [field breakout-fields]
-                                                         {(->lvalue field) (->rvalue field)}))}
-                                  (into {} (for [{ag-field :field} aggregations
-                                                 :when             ag-field]
-                                             {(->lvalue ag-field) (->rvalue ag-field)})))})
+              [;; From this (~14 secs):
+               ;; [
+               ;; {"$project":{"_id":"$_id","___group":{"adr":"$adr"},"len":"$len"}},
+               ;; {"$group":{"_id":"$___group","avg":{"$avg":"$len"}}},
+               ;; {"$sort":{"_id":1}},
+               ;; {"$project":{"_id":false,"avg":true,"adr":"$_id.adr"}},
+               ;; {"$sort":{"adr":1}}
+               ;; ]
+               ;;
+               ;; To this (~6 secs):
+               ;; [
+               ;; {"$group":{"_id":{"adr":"$adr"},"avg":{"$avg":"$len"}}},
+               ;; {"$sort":{"_id":1}},
+               ;; {"$project":{"_id":false,"adr":"$_id.adr", "avg":1}},
+               ;; {"$sort":{"adr":1}}
+               ;; ]
+
                ;; Now project onto the __group and the aggregation rvalue
                {$group (merge {"_id" (when breakout?
-                                       "$___group")}
+                                       (into {} (for [field breakout-fields]
+                                                   {(->lvalue field) (->rvalue field)})))}
                               (into {} (for [{ag-type :aggregation-type, :as aggregation} aggregations]
                                          {(ag-type->field-name ag-type) (aggregation->rvalue aggregation)})))}
                ;; Sort by _id (___group)
@@ -282,12 +344,11 @@
                ;; now project back to the fields we expect
                {$project (merge {"_id" false}
                                 (into {} (for [{ag-type :aggregation-type} aggregations]
-                                           {(ag-type->field-name ag-type) (if (= ag-type :distinct)
-                                                                            {$size "$count"} ; HACK
-                                                                            true)}))
+                                         {(ag-type->field-name ag-type) (if (= ag-type :distinct)
+                                                                          {$size "$count"} ; HACK
+                                                                          true)}))
                                 (into {} (for [field breakout-fields]
                                            {(->lvalue field) (format "$_id.%s" (->lvalue field))})))}]))))
-
 
 ;;; ### order-by
 
@@ -329,7 +390,8 @@
 (defn- generate-aggregation-pipeline
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [query]
-  (loop [pipeline [], [f & more] [add-initial-projection
+  (loop [pipeline [], [f & more] [;; omf: disabled
+                                  ;;add-initial-projection
                                   handle-filter
                                   handle-breakout+aggregation
                                   handle-order-by
@@ -390,6 +452,32 @@
        :collection source-table-name
        :mbql?      true})))
 
+;; omf: if value 'is' a ISODate, extract the date/time string and convert it to date object
+(defn- to-date-object [value]
+  (if (and (string? value) (clojure.string/starts-with? value "ISODate"))
+    (let [reg (re-seq #"ISODate\((.*?)\)" value)
+          isodate (get (first reg) 1)]
+          (c/from-long (c/to-long isodate)))
+    value))
+
+;; omf: possibly reduce-recurse contained map objects rying to find ISODate values
+(defn recurse-map [altered-map k v]
+  (if (map? v)
+    (assoc altered-map k (reduce-kv recurse-map {} v))
+    (assoc altered-map k (to-date-object v)))
+)
+
+;; omf: parse the query collection and reduce-recurse each map object
+(defn- parse-dates [query]
+  (let [reg query]
+    (loop [f (first reg)
+           r (rest reg)
+           m []]
+      (if-not f
+        m
+        (recur (first r) (rest r) (conj m (reduce-kv recurse-map {} f))))
+    )))
+
 (defn execute-query
   "Process and run a native MongoDB query."
   [{{:keys [collection query mbql?]} :native, database :database}]
@@ -397,7 +485,7 @@
          (string? collection)
          (map? database)]}
   (let [query   (if (string? query)
-                  (json/parse-string query keyword)
+                  (parse-dates (json/parse-string query keyword))
                   query)
         results (mc/aggregate *mongo-connection* collection query
                               :allow-disk-use true)
@@ -414,3 +502,4 @@
      :rows      (for [row results]
                   (mapv row columns))
      :annotate? mbql?}))
+
