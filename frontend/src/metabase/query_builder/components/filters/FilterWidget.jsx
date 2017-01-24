@@ -78,7 +78,10 @@ export default class FilterWidget extends Component<*, Props, State> {
         }
 
         return (
-            <div onClick={this.open}>
+            <div
+                className="flex flex-column justify-center"
+                onClick={this.open}
+            >
                 <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
                     <FieldName
                         className="Filter-section Filter-section-field"
@@ -91,16 +94,18 @@ export default class FilterWidget extends Component<*, Props, State> {
                         <a className="QueryOption flex align-center">{operatorDef && operatorDef.moreVerboseName}</a>
                     </div>
                 </div>
-                <div className="flex align-center flex-wrap">
-                    {values.map((value, valueIndex) => {
-                        var valueString = value != null ? value.toString() : null;
-                        return value != undefined && (
-                            <div key={valueIndex} className="Filter-section Filter-section-value">
-                                <span className="QueryOption">{valueString}</span>
-                            </div>
-                        );
-                    })}
-                </div>
+                { values.length > 0 && (
+                    <div className="flex align-center flex-wrap">
+                        {values.map((value, valueIndex) => {
+                            var valueString = value != null ? value.toString() : null;
+                            return value != undefined && (
+                                <div key={valueIndex} className="Filter-section Filter-section-value">
+                                    <span className="QueryOption">{valueString}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         )
     }
@@ -150,7 +155,7 @@ export default class FilterWidget extends Component<*, Props, State> {
         const { filter, index, removeFilter } = this.props;
         return (
             <div className={cx("Query-filter p1 pl2", { "selected": this.state.isOpen })}>
-                <div>
+                <div className="flex justify-center">
                     {filter[0] === "SEGMENT" ?
                         this.renderSegmentFilter()
                     :
