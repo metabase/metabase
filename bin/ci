@@ -31,7 +31,10 @@ node-3() {
     if is_engine_enabled "vertica"; then
         run_step install-vertica
     fi
-    run_step lein-test
+    # this is redundant with node 0 unless one of the non-H2 driver tests is enabled
+    if [ ENGINES != "h2" ]; then
+        run_step lein-test
+    fi
 }
 node-4() {
     run_step lein bikeshed
@@ -106,25 +109,52 @@ is_engine_enabled() {
 }
 
 # print a summary on exit
+status=0
 summary=""
 
 # records the time and exit code of each step
 run_step() {
     status=0
     start=$(date +%s)
-    "$@" || status=$?
+    # run in the background then `wait` so fail_fast can interrupt it
+    "$@" &
+    wait $! || status=$?
     elapsed=$(expr $(date +%s) - $start || true)
     summary="${summary}status=$status time=$elapsed command=$@\n"
     return $status
 }
 
 summary() {
+    # if last status was failure then fail the rest of the nodes
+    if [ $status != 0 ]; then
+      fail_fast
+    fi
     echo -e "========================================"
     echo -en "$summary"
     echo -e "========================================"
 }
 
 trap summary EXIT
+
+fail_fast() {
+  echo -e "========================================"
+  echo -e "Failing fast! Stopping other nodes..."
+  # ssh to the other CircleCI nodes and send SIGUSR1 to tell them to exit early
+  for (( i = 0; i < $CIRCLE_NODE_TOTAL; i++ )); do
+    if [ $i != $CIRCLE_NODE_INDEX ]; then
+      ssh node$i 'touch /tmp/fail; pkill -SIGUSR1 -f "bash ./bin/ci"' 2> /dev/null || true
+    fi
+  done
+}
+
+exit_early() {
+  echo -e "========================================"
+  echo -e "Exited early! Did not necesssarily pass!"
+  pkill -TERM -P $$ || true
+  exit 0
+}
+
+trap exit_early SIGUSR1
 
 if [ -z ${CIRCLE_SHA1+x} ]; then
     export CIRCLE_SHA1="$(git rev-parse HEAD)"
@@ -135,6 +165,10 @@ if [ -z ${CIRCLE_BRANCH+x} ]; then
 fi
 
 export CIRCLE_COMMIT_MESSAGE="$(git log --format=oneline -n 1 $CIRCLE_SHA1)"
+
+if [ -f "/tmp/fail" ]; then
+  exit_early
+fi
 
 if [ -z ${CIRCLE_NODE_INDEX+x} ]; then
     # If CIRCLE_NODE_INDEX isn't set, read node numbers from the args
