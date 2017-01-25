@@ -6,20 +6,20 @@ import _ from "underscore";
 const SHORTCUTS = [
         { name: "Today",        operator: ["=", "<", ">"], values: [["relative_datetime", "current"]]},
         { name: "Yesterday",    operator: ["=", "<", ">"], values: [["relative_datetime", -1, "day"]]},
-        { name: "Past 7 days",  operator: "TIME_INTERVAL", values: [-7, "day"]},
-        { name: "Past 30 days", operator: "TIME_INTERVAL", values: [-30, "day"]}
+        { name: "Past 7 days",  operator: "time-interval", values: [-7, "day"]},
+        { name: "Past 30 days", operator: "time-interval", values: [-30, "day"]}
 ];
 
 const RELATIVE_SHORTCUTS = {
         "Last": [
-            { name: "Week",  operator: "TIME_INTERVAL", values: ["last", "week"]},
-            { name: "Month", operator: "TIME_INTERVAL", values: ["last", "month"]},
-            { name: "Year",  operator: "TIME_INTERVAL", values: ["last", "year"]}
+            { name: "Week",  operator: "time-interval", values: ["last", "week"]},
+            { name: "Month", operator: "time-interval", values: ["last", "month"]},
+            { name: "Year",  operator: "time-interval", values: ["last", "year"]}
         ],
         "This": [
-            { name: "Week",  operator: "TIME_INTERVAL", values: ["current", "week"]},
-            { name: "Month", operator: "TIME_INTERVAL", values: ["current", "month"]},
-            { name: "Year",  operator: "TIME_INTERVAL", values: ["current", "year"]}
+            { name: "Week",  operator: "time-interval", values: ["current", "week"]},
+            { name: "Month", operator: "time-interval", values: ["current", "month"]},
+            { name: "Year",  operator: "time-interval", values: ["current", "year"]}
         ]
 };
 
@@ -112,35 +112,35 @@ const FILTERS = {
     },
     "past7days": {
         name: "Past 7 Days",
-        mapping: ["TIME_INTERVAL", null, -7, "day"]
+        mapping: ["time-interval", null, -7, "day"]
     },
     "past30days": {
         name: "Past 30 Days",
-        mapping: ["TIME_INTERVAL", null, -30, "day"]
+        mapping: ["time-interval", null, -30, "day"]
     },
     "lastweek": {
         name: "Last Week",
-        mapping: ["TIME_INTERVAL", null, "last", "week"]
+        mapping: ["time-interval", null, "last", "week"]
     },
     "lastmonth": {
         name: "Last Month",
-        mapping: ["TIME_INTERVAL", null, "last", "month"]
+        mapping: ["time-interval", null, "last", "month"]
     },
     "lastyear": {
         name: "Last Year",
-        mapping: ["TIME_INTERVAL", null, "last", "year"]
+        mapping: ["time-interval", null, "last", "year"]
     },
     "thisweek": {
         name: "This Week",
-        mapping: ["TIME_INTERVAL", null, "current", "week"]
+        mapping: ["time-interval", null, "current", "week"]
     },
     "thismonth": {
         name: "This Month",
-        mapping: ["TIME_INTERVAL", null, "current", "month"]
+        mapping: ["time-interval", null, "current", "month"]
     },
     "thisyear": {
         name: "This Year",
-        mapping: ["TIME_INTERVAL", null, "current", "year"]
+        mapping: ["time-interval", null, "current", "year"]
     }
 };
 
