@@ -31,12 +31,6 @@ if [ -z ${DOCKERHUB_EMAIL+x} ] || [ -z ${DOCKERHUB_USERNAME+x} ] || [ -z ${DOCKE
     exit 1
 fi
 
-# ensure AWS is configured for the Beanstalk build
-if [ -z ${AWS_DEFAULT_PROFILE+x} ]; then
-    echo "Using default AWS_DEFAULT_PROFILE.";
-    AWS_DEFAULT_PROFILE=default    
-fi
-
 DEFAULT_KEYSTORE_PATH="$PWD/certs/metabase_keystore.jks"
 # ensure we have access to the keystore
 if [ -z "$KEYSTORE_PATH" ]; then
