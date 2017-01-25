@@ -10,3 +10,4 @@ DATE=$(git log -1 --pretty=%ad --date=short)
 
 # Return the version string used to describe this version of Metabase.
 echo "$VERSION $HASH $BRANCH $DATE"
+
