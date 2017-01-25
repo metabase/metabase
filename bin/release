@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
+# The expectation is that this script will be run in a directory 
+# containing a 'certs' subdirectory with the 
+# keystore file (named metabase_keystore.jks) and
+# The mac app pem signing key (named "key.pem")
+# If not, you will be prompted
+
+
 set -eu
 
-DEFAULT_KEYSTORE_PATH="$PWD/certs/metabase_keystore.jks"
-DEFAULT_KEY_PEM_PATH="$PWD/certs/key.pem"
-DEFAULT_CONFIG_JSON_PATH="$PWD/config.json"
 
 if [ $# -lt 1 ]; then
     echo "usage: $0 X.Y.Z [BRANCH]"
@@ -27,38 +31,48 @@ if [ -z ${DOCKERHUB_EMAIL+x} ] || [ -z ${DOCKERHUB_USERNAME+x} ] || [ -z ${DOCKE
     exit 1
 fi
 
-# ensure AWS is configured
+# ensure AWS is configured for the Beanstalk build
 if [ -z ${AWS_DEFAULT_PROFILE+x} ]; then
-    echo "Setting AWS Profile to 'default'.";
-    AWS_DEFAULT_PROFILE=default
+    echo "Using default AWS_DEFAULT_PROFILE.";
+    AWS_DEFAULT_PROFILE=default    
 fi
 
+DEFAULT_KEYSTORE_PATH="$PWD/certs/metabase_keystore.jks"
 # ensure we have access to the keystore
-if [ -f "$DEFAULT_KEYSTORE_PATH" ]; then
+if [ -z "$KEYSTORE_PATH" ]; then
     KEYSTORE_PATH="$DEFAULT_KEYSTORE_PATH"
-else
-    echo "Enter the path to JAR signing keystore ($DEFAULT_KEYSTORE_PATH by default)"
-    read KEYSTORE_PATH
-    [ -f "$KEYSTORE_PATH" ] || exit 1
+fi
+if [ !(-f "$KEYSTORE_PATH") ]; then
+    echo "Can't find Keystore with Jar signing key"
+    exit 1
 fi
 
+# commenting out the below section until we bring the mac build into this
 # # ensure we've configured the Mac signing key
-# if [ -f "$DEFAULT_KEY_PEM_PATH" ]; then
+# DEFAULT_KEY_PEM_PATH="$PWD/certs/key.pem"
+# if [ -z "$KEY_PEM_PATH" ]; then
 #     KEY_PEM_PATH="$DEFAULT_KEY_PEM_PATH"
-# else
-#     echo "Enter the path to Mac signing key ($DEFAULT_KEY_PEM_PATH by default)"
-#     read KEY_PEM_PATH
-#     [ -f "$KEY_PEM_PATH" ] || exit 1
 # fi
-#
+
+# if [ !(-f "$KEY_PEM_PATH") ]; then
+#     echo "Can't find Mac signing key"
+#     exit 1
+# fi
+
+
+# commenting out the below section until we bring the mac build into this
+# DEFAULT_CONFIG_JSON_PATH="$PWD/config.json"
 # # ensure we have access to the Mac build config
-# if [ -f "$DEFAULT_CONFIG_JSON_PATH" ]; then
+# if [ -f "$CONFIG_JSON_PATH" ]; then
 #     CONFIG_JSON_PATH="$DEFAULT_CONFIG_JSON_PATH"
-# else
-#     echo "Enter the path to Mac build config ($DEFAULT_CONFIG_JSON_PATH by default, template at metabase/bin/config.json.template)"
-#     read CONFIG_JSON_PATH
-#     [ -f "$CONFIG_JSON_PATH" ] || exit 1
 # fi
+
+# if [ !(-f "$CONFIG_JSON_PATH") ]; then
+#     echo "Can't find Mach build config"
+#     exit 1
+# fi
+
+
 
 # confirm the version and branch
 echo "Releasing v$VERSION from branch $BRANCH. Press enter to continue or ctrl-C to abort."
@@ -106,6 +120,7 @@ bin/docker/build_image.sh release "v$VERSION" --publish
 echo "create elastic beanstalk artifacts"
 bin/aws-eb-docker/release-eb-version.sh "v$VERSION"
 
+# commenting out the below section until we bring the mac build into this
 # mac it
 # git submodule update --init
 # brew install curl && brew link curl --force || true
