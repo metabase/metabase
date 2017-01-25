@@ -3,7 +3,6 @@
 # this script will finalize a set of release artifacts after testing
 set -eu
 
-DOCKERHUB_NAMESPACE=metabase
 
 if [ $# -lt 1 ]; then
     echo "usage: $0 X.Y.Z [BRANCH]"
@@ -26,9 +25,10 @@ if [ -z ${DOCKERHUB_EMAIL+x} ] || [ -z ${DOCKERHUB_USERNAME+x} ] || [ -z ${DOCKE
     exit 1
 fi
 
+DOCKERHUB_REPOSITORY=metabase/metabase
 
 # tag our recent versioned image as "latest"
-docker tag -f ${DOCKER_IMAGE} ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:latest
+docker tag -f ${DOCKERHUB_REPOSITORY}:v$VERSION ${DOCKERHUB_REPOSITORY}:latest
 
 # then push it as well
 docker push ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:latest
