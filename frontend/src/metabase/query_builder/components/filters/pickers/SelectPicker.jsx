@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import CheckBox from 'metabase/components/CheckBox.jsx';
@@ -6,19 +8,37 @@ import ListSearchField from "metabase/components/ListSearchField.jsx";
 import { capitalize } from "metabase/lib/formatting";
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
-import _ from "underscore";
 import cx from "classnames";
 
-export default class SelectPicker extends Component {
-    constructor(props, context) {
-        super(props, context);
+type SelectOption = {
+    name: string,
+    key: string
+};
+
+type Props = {
+    options: Array<SelectOption>,
+    values: Array<string>,
+    onValuesChange: (values: any) => void,
+    placeholder?: string,
+    multi?: bool
+}
+
+type State = {
+    searchText: string,
+    searchRegex: ?RegExp,
+}
+
+export default class SelectPicker extends Component<*, Props, State> {
+    state: State;
+    props: Props;
+
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
-            searchString: "",
+            searchText: "",
             searchRegex: null
         };
-
-        _.bindAll(this, "updateSearchText");
     }
 
     static propTypes = {
@@ -29,7 +49,7 @@ export default class SelectPicker extends Component {
         multi: PropTypes.bool
     };
 
-    updateSearchText(value) {
+    updateSearchText = (value: string) => {
         let regex = null;
 
         if (value) {
@@ -42,7 +62,7 @@ export default class SelectPicker extends Component {
         });
     }
 
-    selectValue(key, selected) {
+    selectValue(key: string, selected: bool) {
         let values;
         if (this.props.multi) {
             values = this.props.values.slice().filter(v => v != null);
@@ -57,7 +77,7 @@ export default class SelectPicker extends Component {
         this.props.onValuesChange(values);
     }
 
-    nameForOption(option) {
+    nameForOption(option: SelectOption) {
         if (option.name === "") {
             return "Empty";
         } else if (typeof option.name === "string") {
@@ -79,11 +99,11 @@ export default class SelectPicker extends Component {
         let regex = this.state.searchRegex;
 
         if (regex){
-            _.each(options, (option) => {
+            for (const option of options) {
                 if (regex.test(option.key) || regex.test(option.name)) {
                     validOptions.push(option);
                 }
-            });
+            }
         } else {
             validOptions = options.slice();
         }

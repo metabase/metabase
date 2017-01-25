@@ -364,7 +364,7 @@
 (defn is-email?
   "Is STRING a valid email address?"
   ^Boolean [^String s]
-  (boolean (when s
+  (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (s/lower-case s)))))
 

@@ -1,21 +1,34 @@
+/* @flow */
 /* eslint "react/prop-types": "warn" */
+
 import React, { Component, PropTypes } from "react";
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
 import ListSearchField from "metabase/components/ListSearchField.jsx";
-import _ from "underscore";
 
-export default class CategoryWidget extends Component {
-    constructor(props, context) {
-        super(props, context);
+type Props = {
+    value: any,
+    values: any[],
+    setValue: () => void,
+    onClose: () => void
+}
+type State = {
+    searchText: string,
+    searchRegex: ?RegExp,
+}
+
+export default class CategoryWidget extends Component<*, Props, State> {
+    props: Props;
+    state: State;
+
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
-            searchString: "",
+            searchText: "",
             searchRegex: null
         };
-
-        _.bindAll(this, "updateSearchText");
     }
 
     static propTypes = {
@@ -25,7 +38,7 @@ export default class CategoryWidget extends Component {
         onClose: PropTypes.func.isRequired
     };
 
-    updateSearchText(value) {
+    updateSearchText = (value: string) => {
         let regex = null;
 
         if (value) {
@@ -49,20 +62,19 @@ export default class CategoryWidget extends Component {
         let regex = this.state.searchRegex;
 
         if (regex) {
-            _.each(values, (val) => {
-                if (regex.test(val)) {
-                    filteredValues.push(val);
+            for (const value of values) {
+                if (regex.test(value)) {
+                    filteredValues.push(value);
                 }
-            });
+            }
         } else {
             filteredValues = values.slice();
         }
 
         return (
-            <div>
-                { values.length <= 10 && !regex ?
-                  null :
-                  <div className="px1 pt1">
+            <div style={{ maxWidth: 200 }}>
+                { values.length > 10 && regex &&
+                  <div className="p1">
                       <ListSearchField
                           onChange={this.updateSearchText}
                           searchText={this.state.searchText}
@@ -71,7 +83,7 @@ export default class CategoryWidget extends Component {
                       />
                   </div>
                 }
-                <ul className="scroll-y scroll-show" style={{ maxWidth: 200, maxHeight: 300 }}>
+                <ul className="scroll-y scroll-show" style={{ maxHeight: 300 }}>
                     {filteredValues.map(value =>
                         <li
                             key={value}

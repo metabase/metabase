@@ -8,7 +8,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 const label = new schema.Entity('labels');
 import { LabelApi } from "metabase/services";
 
-import i from "icepick";
+import { assoc, merge } from "icepick";
 import _ from "underscore";
 
 const LOAD_LABELS = 'metabase/labels/LOAD_LABELS';
@@ -77,10 +77,10 @@ const initialState = {
 
 export default function(state = initialState, { type, payload, error }) {
     if (payload && payload.entities) {
-        state = i.assoc(state, "entities", i.merge(state.entities, payload.entities));
+        state = assoc(state, "entities", merge(state.entities, payload.entities));
     }
     if (payload && payload.message) {
-        state = i.assoc(state, "message", payload.message);
+        state = assoc(state, "message", payload.message);
     }
 
     switch (type) {

@@ -34,7 +34,7 @@
 ;;; ------------------------------------------------------------ Ops Group ------------------------------------------------------------
 
 ;; ops group is a group with only one member: lucky
-(def ^:private ^:dynamic *ops-group*)
+(def ^:dynamic *ops-group*)
 
 (defn- with-ops-group [f]
   (fn []
@@ -50,14 +50,14 @@
 
 ;;; ------------------------------------------------------------ DBs, Tables, & Fields ------------------------------------------------------------
 
-(def ^:private db-details
+(def db-details
   (delay (db/select-one [Database :details :engine] :id (data/id))))
 
 (defn- test-db [db-name]
   (assoc (select-keys @db-details [:details :engine])
     :name db-name))
 
-(defn- table [db table-name]
+(defn table [db table-name]
   (db/select-one Table
     :%lower.name (s/lower-case (name table-name))
     :db_id       (u/get-id db)))
@@ -83,8 +83,8 @@
       ;; ok !
       (f db))))
 
-(def ^:private ^:dynamic *db1*)
-(def ^:private ^:dynamic *db2*)
+(def ^:dynamic *db1*)
+(def ^:dynamic *db2*)
 
 (defn- all-db-ids []
   #{(u/get-id *db1*)
@@ -132,14 +132,14 @@
                      :query    (format "SELECT count(*) FROM \"%s\";" (:name table))}}))
 
 
-(def ^:private ^:dynamic *card:db1-count-of-venues*)
-(def ^:private ^:dynamic *card:db1-count-of-users*)
-(def ^:private ^:dynamic *card:db1-count-of-checkins*)
-(def ^:private ^:dynamic *card:db1-sql-count-of-users*)
-(def ^:private ^:dynamic *card:db2-count-of-venues*)
-(def ^:private ^:dynamic *card:db2-count-of-users*)
-(def ^:private ^:dynamic *card:db2-count-of-checkins*)
-(def ^:private ^:dynamic *card:db2-sql-count-of-users*)
+(def ^:dynamic *card:db1-count-of-venues*)
+(def ^:dynamic *card:db1-count-of-users*)
+(def ^:dynamic *card:db1-count-of-checkins*)
+(def ^:dynamic *card:db1-sql-count-of-users*)
+(def ^:dynamic *card:db2-count-of-venues*)    ; all-users (rasta) has no access to DB2
+(def ^:dynamic *card:db2-count-of-users*)     ; ops (lucky) has access to venues and reading SQL (deprecated)
+(def ^:dynamic *card:db2-count-of-checkins*)
+(def ^:dynamic *card:db2-sql-count-of-users*)
 
 (defn- all-cards []
   #{*card:db1-count-of-venues*
@@ -177,9 +177,9 @@
 
 ;;; ------------------------------------------------------------ Dashboards ------------------------------------------------------------
 
-(def ^:private ^:dynamic *dash:db1-all*)
-(def ^:private ^:dynamic *dash:db2-all*)
-(def ^:private ^:dynamic *dash:db2-public*)
+(def ^:dynamic *dash:db1-all*)
+(def ^:dynamic *dash:db2-all*)
+(def ^:dynamic *dash:db2-public*)
 
 (defn- all-dashboards []
   #{*dash:db1-all*
@@ -220,11 +220,11 @@
 
 ;;; ------------------------------------------------------------ Pulses ------------------------------------------------------------
 
-(def ^:private ^:dynamic *pulse:all*)
-(def ^:private ^:dynamic *pulse:db1-all*)
-(def ^:private ^:dynamic *pulse:db2-all*)
-(def ^:private ^:dynamic *pulse:db2-public*)
-(def ^:private ^:dynamic *pulse:db2-restricted*)
+(def ^:dynamic *pulse:all*)
+(def ^:dynamic *pulse:db1-all*)
+(def ^:dynamic *pulse:db2-all*)
+(def ^:dynamic *pulse:db2-public*)
+(def ^:dynamic *pulse:db2-restricted*)
 
 (defn- all-pulse-ids []
   #{(u/get-id *pulse:all*)
@@ -299,9 +299,9 @@
 
 ;;; ------------------------------------------------------------ Metrics ------------------------------------------------------------
 
-(def ^:private ^:dynamic *metric:db1-venues-count*)
-(def ^:private ^:dynamic *metric:db2-venues-count*)
-(def ^:private ^:dynamic *metric:db2-users-count*)
+(def ^:dynamic *metric:db1-venues-count*)
+(def ^:dynamic *metric:db2-venues-count*)
+(def ^:dynamic *metric:db2-users-count*)
 
 (defn- all-metric-ids []
   #{(u/get-id *metric:db1-venues-count*)
@@ -328,9 +328,9 @@
 
 ;;; ------------------------------------------------------------ Segments ------------------------------------------------------------
 
-(def ^:private ^:dynamic *segment:db1-expensive-venues*)
-(def ^:private ^:dynamic *segment:db2-expensive-venues*)
-(def ^:private ^:dynamic *segment:db2-todays-users*)
+(def ^:dynamic *segment:db1-expensive-venues*)
+(def ^:dynamic *segment:db2-expensive-venues*)
+(def ^:dynamic *segment:db2-todays-users*)
 
 (defn- all-segment-ids []
   #{(u/get-id *segment:db1-expensive-venues*)

@@ -1,7 +1,7 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them.
    These migrations are all ran once when Metabase is first launched, except when transferring data from an existing H2 database.
-   When data is transferred from an H2 database, migrations will already have been ran against that data; thus, all of these migrations
+   When data is transferred from an H2 database, migrations will already have been run against that data; thus, all of these migrations
    need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
@@ -39,7 +39,7 @@
 
 (defn- run-migration-if-needed!
   "Run migration defined by MIGRATION-VAR if needed.
-   RAN-MIGRATIONS is a set of migrations names that have already been ran.
+   RAN-MIGRATIONS is a set of migrations names that have already been run.
 
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
   [ran-migrations migration-var]
@@ -59,8 +59,7 @@
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
-;; TODO - shouldn't this be called `run-all!`?
-(defn run-all
+(defn run-all!
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")

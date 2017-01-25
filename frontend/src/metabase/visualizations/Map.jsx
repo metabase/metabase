@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import ChoroplethMap from "./components/ChoroplethMap.jsx";
@@ -5,7 +7,9 @@ import PinMap from "./PinMap.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
-export default class Map extends Component {
+import type { VisualizationProps } from "metabase/visualizations";
+
+export default class Map extends Component<*, VisualizationProps, *> {
     static uiName = "Map";
     static identifier = "map";
     static iconName = "pinmap";

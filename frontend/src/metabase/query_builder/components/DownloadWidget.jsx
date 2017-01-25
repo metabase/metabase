@@ -25,6 +25,7 @@ const DownloadWidget = ({ className, card, datasetQuery, isLarge }) =>
                 {["csv", "json"].map(type =>
                     <DownloadButton
                         className="mr1 text-uppercase text-default"
+                        key={type}
                         url={card.id != null ?
                             `/api/card/${card.id}/query/${type}`:
                             `/api/dataset/${type}`

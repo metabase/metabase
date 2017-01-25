@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import { pluralize, titleCase, capitalize } from "humanize-plus";
 import cx from "classnames";
@@ -5,7 +7,9 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import NumericInput from "./NumericInput.jsx";
 
-const PERIODS = [
+import type { TimeIntervalFilter, RelativeDatetimeUnit } from "metabase/meta/types/Query";
+
+const PERIODS: RelativeDatetimeUnit[] = [
     "minute",
     "hour",
     "day",
@@ -14,10 +18,26 @@ const PERIODS = [
     "year"
 ];
 
-export default class RelativeDatePicker extends Component {
-    constructor () {
-        super();
-        this.state = { showUnits: false };
+
+type Props = {
+    filter: TimeIntervalFilter,
+    onFilterChange: (filter: TimeIntervalFilter) => void,
+    formatter: (value: any) => any
+}
+
+type State = {
+    showUnits: bool
+}
+
+export default class RelativeDatePicker extends Component<*, Props, State> {
+    props: Props;
+    state: State;
+
+    constructor (props: Props) {
+        super(props);
+        this.state = {
+            showUnits: false
+        };
     }
 
     static propTypes = {
@@ -51,6 +71,7 @@ export default class RelativeDatePicker extends Component {
                         this.setState({ showUnits: false });
                     }}
                     togglePicker={() => this.setState({ showUnits: !this.state.showUnits})}
+                    // $FlowFixMe: intervals could be a string like "current" "next"
                     intervals={intervals}
                     formatter={formatter}
                 />
@@ -59,7 +80,16 @@ export default class RelativeDatePicker extends Component {
     }
 }
 
-export const UnitPicker = ({ open, value, onChange, togglePicker, intervals, formatter }) =>
+type UnitPickerProps = {
+    value: RelativeDatetimeUnit,
+    onChange: (value: RelativeDatetimeUnit) => void,
+    open: bool,
+    intervals?: number,
+    togglePicker: () => void,
+    formatter: (value: ?number) => ?number
+}
+
+export const UnitPicker = ({ open, value, onChange, togglePicker, intervals, formatter }: UnitPickerProps) =>
    <div>
        <div
            onClick={() => togglePicker()}

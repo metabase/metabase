@@ -63,7 +63,6 @@ export default class DashboardGrid extends Component {
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        console.log("shouldComponentUpdate", !_.isEqual(this.props, nextProps), !_.isEqual(this.state, nextState));
         return !(_.isEqual(this.props, nextProps) && _.isEqual(this.state, nextState));
     }
 

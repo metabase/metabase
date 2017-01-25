@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import React, { Component, PropTypes } from "react";
 
 import Navbar from "metabase/nav/containers/Navbar.jsx";

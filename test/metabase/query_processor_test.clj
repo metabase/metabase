@@ -3,6 +3,7 @@
    namespaces; there are so many that it is no longer feasible to keep them all in this one.
    Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
+            [clojure.tools.logging :as log]
             [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.test.data :as data]
@@ -17,7 +18,7 @@
     (try
       (require test-ns)
       (catch Throwable e
-        (println (format "Error loading %s: %s" test-ns (.getMessage e)))))))
+        (log/warn (format "Error loading %s: %s" test-ns (.getMessage e)))))))
 
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------

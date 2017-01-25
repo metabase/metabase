@@ -7,14 +7,14 @@ import {
     DIMENSION_DIMENSION_METRIC,
     DIMENSION_METRIC,
     DIMENSION_METRIC_METRIC,
-    getColumnCardinality
+    getColumnCardinality,
+    getCardColors,
+    getFriendlyName
 } from "metabase/visualizations/lib/utils";
 
 import { isNumeric, isDate, isMetric, isDimension, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import Query from "metabase/lib/query";
 import { capitalize } from "metabase/lib/formatting";
-
-import { getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
@@ -59,12 +59,21 @@ function getDefaultColumns(series) {
 }
 
 function getDefaultScatterColumns([{ data: { cols, rows } }]) {
-    // TODO
-    return {
-        dimensions: [null],
-        metrics: [null],
-        bubble: null
-    };
+    let dimensions = cols.filter(isDimension);
+    let metrics = cols.filter(isMetric);
+    if (dimensions.length === 2 && metrics.length < 2) {
+        return {
+            dimensions: [dimensions[0].name],
+            metrics: [dimensions[1].name],
+            bubble: metrics.length === 1 ? metrics[0].name : null
+        }
+    } else {
+        return {
+            dimensions: [null],
+            metrics: [null],
+            bubble: null
+        };
+    }
 }
 
 function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
@@ -239,18 +248,13 @@ const SETTINGS = {
                 { name: "Stack - 100%", value: "normalized" }
             ]
         }),
-        getDefault: (series, vizSettings) =>
-            vizSettings["stackable.stacked"] ? "stacked" : null
-    },
-    // legacy, supeceded by stackable.stack_type
-    "stackable.stacked": {
-        readDependencies: ["graph.metrics"],
-        getDefault: ([{ card, data }], vizSettings) => (
-            // area charts should usually be stacked
-            card.display === "area" ||
-            // legacy default for D-M-M+ charts
-            (card.display === "area" && vizSettings["graph.metrics"].length > 1)
-        )
+        getDefault: ([{ card, data }], vizSettings) =>
+            // legacy setting and default for D-M-M+ charts
+            vizSettings["stackable.stacked"] || (card.display === "area" && vizSettings["graph.metrics"].length > 1) ?
+                "stacked" : null,
+        getHidden: (series) =>
+            series.length < 2,
+        readDependencies: ["graph.metrics"]
     },
     "graph.show_goal": {
         section: "Display",

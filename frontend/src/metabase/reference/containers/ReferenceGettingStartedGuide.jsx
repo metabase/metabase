@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { connect } from 'react-redux';
 import { push } from 'react-router-redux';
 import { reduxForm } from "redux-form";
-import i from "icepick";
+import { assoc } from "icepick";
 import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -75,15 +75,15 @@ const mapStateToProps = (state, props) => {
             {},
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ?
             guide.important_metrics
-                .map(metricId => metrics[metricId] && i.assoc(metrics[metricId], 'important_fields', guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId]))) :
+                .map(metricId => metrics[metricId] && assoc(metrics[metricId], 'important_fields', guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId]))) :
             [],
         important_segments_and_tables:
             (guide.important_segments && guide.important_segments.length > 0) ||
             (guide.important_tables && guide.important_tables.length > 0) ?
                 guide.important_segments
-                    .map(segmentId => segments[segmentId] && i.assoc(segments[segmentId], 'type', 'segment'))
+                    .map(segmentId => segments[segmentId] && assoc(segments[segmentId], 'type', 'segment'))
                     .concat(guide.important_tables
-                        .map(tableId => tables[tableId] && i.assoc(tables[tableId], 'type', 'table'))
+                        .map(tableId => tables[tableId] && assoc(tables[tableId], 'type', 'table'))
                     ) :
                 []
     };
@@ -587,7 +587,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     { guide.things_to_know ? 'Other things to know about our data' : 'Find out more' }
                                 </SectionHeader>
                                 <GuideText>
-                                    { guide.things_to_know ? guide.things_to_know : "A good way to get to know your data is by spending a bit of time exploring the different tables and other info avaliable to you. It may take a while, but you'll start to recognize names and meanings over time."
+                                    { guide.things_to_know ? guide.things_to_know : "A good way to get to know your data is by spending a bit of time exploring the different tables and other info available to you. It may take a while, but you'll start to recognize names and meanings over time."
                                     }
                                 </GuideText>
                                 <Link className="Button link text-bold" to={'/reference/databases'}>

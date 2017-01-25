@@ -28,4 +28,4 @@ Note: Metabase accounts created with Single Sign-On do not have passwords and mu
 ---
 
 ## Next: Creating a Getting Started Guide
-Learn how to easily [make a Getting Started Guide](10-getting-started-guide.md) for your team.
+Learn how to easily [make a Getting Started Guide](11-getting-started-guide.md) for your team.

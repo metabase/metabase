@@ -8,8 +8,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Button from "metabase/components/Button.jsx";
 
-import Query from "metabase/lib/query";
-import { AggregationClause, NamedClause } from "metabase/lib/query";
+import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -152,14 +151,14 @@ export default class AggregationPopover extends Component {
                     isSelected: (aggregation) => AggregationClause.getMetric(aggregation) === metric.id,
                     metric: metric
                 })),
-                icon: "star-outline"
+                icon: "staroutline"
             });
         }
 
         let customExpressionIndex = sections.length;
         sections.push({
             name: CUSTOM_SECTION_NAME,
-            icon: "star-outline"
+            icon: "staroutline"
         });
 
         if (sections.length === 1) {

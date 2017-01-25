@@ -212,7 +212,10 @@ export default class QueryHeader extends Component {
                 if (this.state.recentlySaved) {
                     // existing card + not editing + recently saved = save confirmation
                     buttonSections.push([
-                        <button key="recentlySaved" className="cursor-pointer bg-white text-success text-strong text-uppercase">
+                        <button
+                            key="recentlySaved"
+                            className="cursor-pointer bg-white text-success text-strong text-uppercase"
+                        >
                             <span>
                                 <Icon name='check' size={12} />
                                 <span className="ml1">Saved</span>
@@ -256,7 +259,11 @@ export default class QueryHeader extends Component {
                     <Tooltip key="delete" tooltip="Delete">
                         <ModalWithTrigger
                             ref="deleteModal"
-                            triggerElement={<span className="text-brand-hover"><Icon name="trash" size={16} /></span>}
+                            triggerElement={
+                                <span className="text-brand-hover">
+                                    <Icon name="trash" size={16} />
+                                </span>
+                            }
                         >
                             <DeleteQuestionModal
                                 card={this.props.card}
@@ -270,6 +277,7 @@ export default class QueryHeader extends Component {
                 buttonSections.push([
                     <ModalWithTrigger
                         ref="move"
+                        key="move"
                         full
                         triggerElement={
                             <Tooltip tooltip="Move question">

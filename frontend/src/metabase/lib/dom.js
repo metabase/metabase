@@ -137,3 +137,31 @@ function getTextNodeAtPosition(root, index) {
         position: c ? index :  0
     };
 }
+
+// https://davidwalsh.name/add-rules-stylesheets
+var STYLE_SHEET = (function() {
+    // Create the <style> tag
+    var style = document.createElement("style");
+    style.dataset.x = "x"
+
+    // Add a media (and/or media query) here if you'd like!
+    // style.setAttribute("media", "screen")
+    // style.setAttribute("media", "only screen and (max-width : 1024px)")
+
+    // WebKit hack :(
+    style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
+
+    // Add the <style> element to the page
+    document.head.appendChild(style);
+
+    return style.sheet;
+})();
+
+export function addCSSRule(selector, rules, index) {
+    if("insertRule" in STYLE_SHEET) {
+        STYLE_SHEET.insertRule(selector + "{" + rules + "}", index);
+    }
+    else if("addRule" in STYLE_SHEET) {
+        STYLE_SHEET.addRule(selector, rules, index);
+    }
+}
