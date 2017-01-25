@@ -1,23 +1,32 @@
 import _  from "underscore";
-import crossfilter from "crossfilter";
+
+import MetabaseSettings from "metabase/lib/settings";
 
 import {
     getChartTypeFromData,
     DIMENSION_DIMENSION_METRIC,
     DIMENSION_METRIC,
-    DIMENSION_METRIC_METRIC
+    DIMENSION_METRIC_METRIC,
+    getColumnCardinality,
+    getCardColors,
+    getFriendlyName
 } from "metabase/visualizations/lib/utils";
 
-import { isNumeric, isDate, isMetric, isDimension, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { isNumeric, isDate, isMetric, isDimension, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import Query from "metabase/lib/query";
+import { capitalize } from "metabase/lib/formatting";
 
-import { getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
+import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
+import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
+import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
+import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
 
@@ -37,20 +46,37 @@ function columnsAreValid(colNames, data, filter = () => true) {
     , true);
 }
 
-function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
-    const seriesDimension = vizSettings["graph.dimensions"][1];
-    if (seriesDimension != null) {
-        let seriesIndex = _.findIndex(cols, (col) => col.name === seriesDimension);
-        return crossfilter(rows).dimension(d => d[seriesIndex]).group().all().map(v => v.key);
+function getSeriesTitles(series, vizSettings) {
+    return series.map(s => s.card.name);
+}
+
+function getDefaultColumns(series) {
+    if (series[0].card.display === "scatter") {
+        return getDefaultScatterColumns(series);
     } else {
-        return vizSettings["graph.metrics"].map(name => {
-            let col = _.findWhere(cols, { name });
-            return col && getFriendlyName(col);
-        });
+        return getDefaultLineAreaBarColumns(series);
     }
 }
 
-function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
+function getDefaultScatterColumns([{ data: { cols, rows } }]) {
+    let dimensions = cols.filter(isDimension);
+    let metrics = cols.filter(isMetric);
+    if (dimensions.length === 2 && metrics.length < 2) {
+        return {
+            dimensions: [dimensions[0].name],
+            metrics: [dimensions[1].name],
+            bubble: metrics.length === 1 ? metrics[0].name : null
+        }
+    } else {
+        return {
+            dimensions: [null],
+            metrics: [null],
+            bubble: null
+        };
+    }
+}
+
+function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
     let type = getChartTypeFromData(cols, rows, false);
     switch (type) {
         case DIMENSION_DIMENSION_METRIC:
@@ -58,7 +84,7 @@ function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
             if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
                 // if the series dimension is a date but the axis dimension is not then swap them
                 dimensions.reverse();
-            } else if (dimensions[1].cardinality > dimensions[0].cardinality) {
+            } else if (getColumnCardinality(cols, rows, 1) > getColumnCardinality(cols, rows, 0)) {
                 // if the series dimension is higher cardinality than the axis dimension then swap them
                 dimensions.reverse();
             }
@@ -108,44 +134,90 @@ function getOptionFromColumn(col) {
 
 // const CURRENCIES = ["afn", "ars", "awg", "aud", "azn", "bsd", "bbd", "byr", "bzd", "bmd", "bob", "bam", "bwp", "bgn", "brl", "bnd", "khr", "cad", "kyd", "clp", "cny", "cop", "crc", "hrk", "cup", "czk", "dkk", "dop", "xcd", "egp", "svc", "eek", "eur", "fkp", "fjd", "ghc", "gip", "gtq", "ggp", "gyd", "hnl", "hkd", "huf", "isk", "inr", "idr", "irr", "imp", "ils", "jmd", "jpy", "jep", "kes", "kzt", "kpw", "krw", "kgs", "lak", "lvl", "lbp", "lrd", "ltl", "mkd", "myr", "mur", "mxn", "mnt", "mzn", "nad", "npr", "ang", "nzd", "nio", "ngn", "nok", "omr", "pkr", "pab", "pyg", "pen", "php", "pln", "qar", "ron", "rub", "shp", "sar", "rsd", "scr", "sgd", "sbd", "sos", "zar", "lkr", "sek", "chf", "srd", "syp", "tzs", "twd", "thb", "ttd", "try", "trl", "tvd", "ugx", "uah", "gbp", "usd", "uyu", "uzs", "vef", "vnd", "yer", "zwd"];
 
+import { normal } from "metabase/lib/colors";
+
+const isAnyField = () => true;
+
 const SETTINGS = {
+    "card.title": {
+        title: "Title",
+        widget: ChartSettingInput,
+        getDefault: (series) => series.length === 1 ? series[0].card.name : null,
+        dashboard: true,
+        useRawSeries: true
+    },
+    "graph._dimension_filter": {
+        getDefault: ([{ card }]) => card.display === "scatter" ? isAnyField : isDimension,
+        useRawSeries: true
+    },
+    "graph._metric_filter": {
+        getDefault: ([{ card }]) => card.display === "scatter" ? isNumeric : isMetric,
+        useRawSeries: true
+    },
     "graph.dimensions": {
         section: "Data",
         title: "X-axis",
         widget: ChartSettingFieldsPicker,
         isValid: ([{ card, data }], vizSettings) =>
-            columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
-            columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
+            columnsAreValid(card.visualization_settings["graph.dimensions"], data, vizSettings["graph._dimension_filter"]) &&
+            columnsAreValid(card.visualization_settings["graph.metrics"], data, vizSettings["graph._metric_filter"]),
         getDefault: (series, vizSettings) =>
-            getDefaultDimensionsAndMetrics(series).dimensions,
+            getDefaultColumns(series).dimensions,
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isDimension).map(getOptionFromColumn);
+            const options = data.cols.filter(vizSettings["graph._dimension_filter"]).map(getOptionFromColumn);
             return {
                 options,
-                addAnother: (options.length > value.length && value.length < 2) ? "Add a series breakout..." : null
+                addAnother: (options.length > value.length && value.length < 2 && vizSettings["graph.metrics"].length < 2) ?
+                    "Add a series breakout..." : null
             };
         },
-        writeDependencies: ["graph.metrics"]
+        readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
+        writeDependencies: ["graph.metrics"],
+        dashboard: false,
+        useRawSeries: true
     },
     "graph.metrics": {
         section: "Data",
         title: "Y-axis",
         widget: ChartSettingFieldsPicker,
         isValid: ([{ card, data }], vizSettings) =>
-            columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
-            columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
+            columnsAreValid(card.visualization_settings["graph.dimensions"], data, vizSettings["graph._dimension_filter"]) &&
+            columnsAreValid(card.visualization_settings["graph.metrics"], data, vizSettings["graph._metric_filter"]),
         getDefault: (series, vizSettings) =>
-            getDefaultDimensionsAndMetrics(series).metrics,
+            getDefaultColumns(series).metrics,
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isMetric).map(getOptionFromColumn);
+            const options = data.cols.filter(vizSettings["graph._metric_filter"]).map(getOptionFromColumn);
             return {
                 options,
-                addAnother: options.length > value.length ? "Add another series..." : null
+                addAnother: options.length > value.length && vizSettings["graph.dimensions"].length < 2 ?
+                    "Add another series..." : null
             };
         },
-        writeDependencies: ["graph.dimensions"]
+        readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
+        writeDependencies: ["graph.dimensions"],
+        dashboard: false,
+        useRawSeries: true
+    },
+    "scatter.bubble": {
+        section: "Data",
+        title: "Bubble size",
+        widget: ChartSettingFieldPicker,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid([card.visualization_settings["scatter.bubble"]], data, isNumeric),
+        getDefault: (series) =>
+            getDefaultColumns(series).bubble,
+        getProps: ([{ card, data }], vizSettings, onChange) => {
+            const options = data.cols.filter(isNumeric).map(getOptionFromColumn);
+            return {
+                options,
+                onRemove: vizSettings["scatter.bubble"] ? () => onChange(null) : null
+            };
+        },
+        writeDependencies: ["graph.dimensions"],
+        dashboard: false,
+        useRawSeries: true
     },
     "line.interpolate": {
         section: "Display",
@@ -165,20 +237,103 @@ const SETTINGS = {
         title: "Show point markers on lines",
         widget: ChartSettingToggle
     },
-    "stackable.stacked": {
+    "stackable.stack_type": {
         section: "Display",
-        title: "Stacked",
+        title: "Stacking",
+        widget: ChartSettingRadio,
+        getProps: (series, vizSettings) => ({
+            options: [
+                { name: "Don't stack", value: null },
+                { name: "Stack", value: "stacked" },
+                { name: "Stack - 100%", value: "normalized" }
+            ]
+        }),
+        getDefault: ([{ card, data }], vizSettings) =>
+            // legacy setting and default for D-M-M+ charts
+            vizSettings["stackable.stacked"] || (card.display === "area" && vizSettings["graph.metrics"].length > 1) ?
+                "stacked" : null,
+        getHidden: (series) =>
+            series.length < 2,
+        readDependencies: ["graph.metrics"]
+    },
+    "graph.show_goal": {
+        section: "Display",
+        title: "Show goal",
         widget: ChartSettingToggle,
-        readDependencies: ["graph.metrics"],
-        getDefault: ([{ card, data }], vizSettings) => (
-            // area charts should usually be stacked
-            card.display === "area" ||
-            // legacy default for D-M-M+ charts
-            (card.display === "area" && vizSettings["graph.metrics"].length > 1)
-        )
+        default: false
+    },
+    "graph.goal_value": {
+        section: "Display",
+        title: "Goal value",
+        widget: ChartSettingInputNumeric,
+        default: 0,
+        getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
+        readDependencies: ["graph.show_goal"]
+    },
+    "line.missing": {
+        section: "Display",
+        title: "Replace missing values with",
+        widget: ChartSettingSelect,
+        default: "interpolate",
+        getProps: (series, vizSettings) => ({
+            options: [
+                { name: "Zero", value: "zero" },
+                { name: "Nothing", value: "none" },
+                { name: "Linear Interpolated", value: "interpolate" },
+            ]
+        })
+    },
+    "graph.x_axis._is_timeseries": {
+        readDependencies: ["graph.dimensions"],
+        getDefault: ([{ data }], vizSettings) =>
+            dimensionIsTimeseries(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"].filter(d => d)[0]))
+    },
+    "graph.x_axis._is_numeric": {
+        readDependencies: ["graph.dimensions"],
+        getDefault: ([{ data }], vizSettings) =>
+            dimensionIsNumeric(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"].filter(d => d)[0]))
+    },
+    "graph.x_axis.scale": {
+        section: "Axes",
+        title: "X-axis scale",
+        widget: ChartSettingSelect,
+        default: "ordinal",
+        readDependencies: ["graph.x_axis._is_timeseries", "graph.x_axis._is_numeric"],
+        getDefault: (series, vizSettings) =>
+            vizSettings["graph.x_axis._is_timeseries"] ? "timeseries" :
+            vizSettings["graph.x_axis._is_numeric"] ? "linear" :
+            "ordinal",
+        getProps: (series, vizSettings) => {
+            const options = [];
+            if (vizSettings["graph.x_axis._is_timeseries"]) {
+                options.push({ name: "Timeseries", value: "timeseries" });
+            }
+            if (vizSettings["graph.x_axis._is_numeric"]) {
+                options.push({ name: "Linear", value: "linear" });
+                options.push({ name: "Power", value: "pow" });
+                options.push({ name: "Log", value: "log" });
+            }
+            options.push({ name: "Ordinal", value: "ordinal" });
+            return { options };
+        }
+    },
+    "graph.y_axis.scale": {
+        section: "Axes",
+        title: "Y-axis scale",
+        widget: ChartSettingSelect,
+        default: "linear",
+        getProps: (series, vizSettings) => ({
+            options: [
+                { name: "Linear", value: "linear" },
+                { name: "Power", value: "pow" },
+                { name: "Log", value: "log" }
+            ]
+        })
     },
     "graph.colors": {
         section: "Display",
+        getTitle: ([{ card: { display } }]) =>
+            capitalize(display === "scatter" ? "bubble" : display) + " colors",
         widget: ChartSettingColorsPicker,
         readDependencies: ["graph.dimensions", "graph.metrics"],
         getDefault: ([{ card, data }], vizSettings) => {
@@ -246,7 +401,8 @@ const SETTINGS = {
         section: "Axes",
         title: "Use a split y-axis when necessary",
         widget: ChartSettingToggle,
-        default: true
+        default: true,
+        getHidden: (series) => series.length < 2
     },
     "graph.x_axis.labels_enabled": {
         section: "Labels",
@@ -258,7 +414,10 @@ const SETTINGS = {
         section: "Labels",
         title: "X-axis label",
         widget: ChartSettingInput,
-        getHidden: (series, vizSettings) => vizSettings["graph.x_axis.labels_enabled"] === false
+        getHidden: (series, vizSettings) =>
+            vizSettings["graph.x_axis.labels_enabled"] === false,
+        getDefault: (series, vizSettings) =>
+            series.length === 1 ? getFriendlyName(series[0].data.cols[0]) : null
     },
     "graph.y_axis.labels_enabled": {
         section: "Labels",
@@ -270,11 +429,14 @@ const SETTINGS = {
         section: "Labels",
         title: "Y-axis label",
         widget: ChartSettingInput,
-        getHidden: (series, vizSettings) => vizSettings["graph.y_axis.labels_enabled"] === false
+        getHidden: (series, vizSettings) =>
+            vizSettings["graph.y_axis.labels_enabled"] === false,
+        getDefault: (series, vizSettings) =>
+            series.length === 1 ? getFriendlyName(series[0].data.cols[1]) : null
     },
     "pie.dimension": {
         section: "Data",
-        title: "Measure",
+        title: "Dimension",
         widget: ChartSettingSelect,
         isValid: ([{ card, data }], vizSettings) =>
             columnsAreValid(card.visualization_settings["pie.dimension"], data, isDimension),
@@ -286,7 +448,7 @@ const SETTINGS = {
     },
     "pie.metric": {
         section: "Data",
-        title: "Slice by",
+        title: "Measure",
         widget: ChartSettingSelect,
         isValid: ([{ card, data }], vizSettings) =>
             columnsAreValid(card.visualization_settings["pie.metric"], data, isMetric),
@@ -297,15 +459,20 @@ const SETTINGS = {
         }),
     },
     "pie.show_legend": {
-        section: "Legend",
+        section: "Display",
         title: "Show legend",
         widget: ChartSettingToggle
     },
     "pie.show_legend_perecent": {
-        section: "Legend",
+        section: "Display",
         title: "Show percentages in legend",
         widget: ChartSettingToggle,
         default: true
+    },
+    "pie.slice_threshold": {
+        section: "Display",
+        title: "Minimum slice percentage",
+        widget: ChartSettingInputNumeric
     },
     "scalar.locale": {
         title: "Separator style",
@@ -347,6 +514,18 @@ const SETTINGS = {
         title: "Multiply by a number",
         widget: ChartSettingInputNumeric
     },
+    "progress.goal": {
+        section: "Display",
+        title: "Goal",
+        widget: ChartSettingInputNumeric,
+        default: 0
+    },
+    "progress.color": {
+        section: "Display",
+        title: "Color",
+        widget: ChartSettingColorPicker,
+        default: normal.green
+    },
     "table.pivot": {
         title: "Pivot the table",
         widget: ChartSettingToggle,
@@ -356,7 +535,8 @@ const SETTINGS = {
         getDefault: ([{ card, data }]) => (
             (data && data.cols.length === 3) &&
             Query.isStructured(card.dataset_query) &&
-            !Query.isBareRowsAggregation(card.dataset_query.query)
+            data.cols.filter(isMetric).length === 1 &&
+            data.cols.filter(isDimension).length === 2
         )
     },
     "table.columns": {
@@ -368,11 +548,13 @@ const SETTINGS = {
             columnsAreValid(card.visualization_settings["table.columns"].map(x => x.name), data),
         getDefault: ([{ data: { cols }}]) => cols.map(col => ({
             name: col.name,
-            enabled: true
+            enabled: col.visibility_type !== "details-only"
         })),
         getProps: ([{ data: { cols }}]) => ({
             columnNames: cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col)}), {})
         })
+    },
+    "table.column_widths": {
     },
     "map.type": {
         title: "Map type",
@@ -403,7 +585,7 @@ const SETTINGS = {
         title: "Latitude field",
         widget: ChartSettingSelect,
         getDefault: ([{ card, data: { cols }}]) =>
-            (_.findWhere(cols, { special_type: "latitude" }) || {}).name,
+            (_.find(cols, isLatitude) || {}).name,
         getProps: ([{ card, data: { cols }}]) => ({
             options: cols.filter(isNumeric).map(getOptionFromColumn)
         }),
@@ -413,7 +595,7 @@ const SETTINGS = {
         title: "Longitude field",
         widget: ChartSettingSelect,
         getDefault: ([{ card, data: { cols }}]) =>
-            (_.findWhere(cols, { special_type: "longitude" }) || {}).name,
+            (_.find(cols, isLongitude) || {}).name,
         getProps: ([{ card, data: { cols }}]) => ({
             options: cols.filter(isNumeric).map(getOptionFromColumn)
         }),
@@ -431,12 +613,9 @@ const SETTINGS = {
                     return "us_states";
             }
         },
-        props: {
-            options: [
-                { name: "United States", value: "us_states" },
-                { name: "World", value: "world_countries" },
-            ]
-        },
+        getProps: () => ({
+            options: Object.entries(MetabaseSettings.get("custom_geojson", {})).map(([key, value]) => ({ name: value.name, value: key }))
+        }),
         getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
     },
     "map.metric": {
@@ -465,15 +644,21 @@ const SETTINGS = {
         }),
         getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
     },
-    // TODO: translate legacy settings
     "map.zoom": {
-        default: 9
     },
     "map.center_latitude": {
-        default: 37.7577 //defaults to SF ;-)
     },
     "map.center_longitude": {
-        default: -122.4376
+    },
+    "map.pin_type": {
+        title: "Pin type",
+        // Don't expose this in the UI for now
+        // widget: ChartSettingSelect,
+        props: {
+            options: [{ name: "Tiles", value: "tiles" }, { name: "Markers", value: "markers" }]
+        },
+        getDefault: (series) => series[0].data.rows.length >= 1000 ? "tiles" : "markers",
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
     }
 };
 
@@ -481,10 +666,12 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     line: ["graph.", "line."],
     area: ["graph.", "line.", "stackable."],
     bar: ["graph.", "stackable."],
+    scatter: ["graph.", "scatter."],
     pie: ["pie."],
     scalar: ["scalar."],
     table: ["table."],
-    map: ["map."]
+    map: ["map."],
+    progress: ["progress."],
 }
 
 // alias legacy map types
@@ -499,9 +686,14 @@ function getSetting(id, vizSettings, series) {
 
     const settingDef = SETTINGS[id];
     const [{ card }] = series;
+    const visualization_settings = card.visualization_settings || {};
 
     for (let dependentId of settingDef.readDependencies || []) {
         getSetting(dependentId, vizSettings, series);
+    }
+
+    if (settingDef.useRawSeries && series._raw) {
+        series = series._raw;
     }
 
     try {
@@ -509,9 +701,9 @@ function getSetting(id, vizSettings, series) {
             return vizSettings[id] = settingDef.getValue(series, vizSettings);
         }
 
-        if (card.visualization_settings[id] !== undefined) {
+        if (visualization_settings[id] !== undefined) {
             if (!settingDef.isValid || settingDef.isValid(series, vizSettings)) {
-                return vizSettings[id] = card.visualization_settings[id];
+                return vizSettings[id] = visualization_settings[id];
             }
         }
 
@@ -530,7 +722,7 @@ function getSetting(id, vizSettings, series) {
 
 function getSettingIdsForSeries(series) {
     const [{ card }] = series;
-    const prefixes = SETTINGS_PREFIXES_BY_CHART_TYPE[card.display] || [];
+    const prefixes = (SETTINGS_PREFIXES_BY_CHART_TYPE[card.display] || []).concat("card.");
     return Object.keys(SETTINGS).filter(id => _.any(prefixes, (p) => id.startsWith(p)))
 }
 
@@ -545,29 +737,37 @@ export function getSettings(series) {
 function getSettingWidget(id, vizSettings, series, onChangeSettings) {
     const settingDef = SETTINGS[id];
     const value = vizSettings[id];
+    const onChange = (value) => {
+        const newSettings = { [id]: value };
+        for (const id of (settingDef.writeDependencies || [])) {
+            newSettings[id] = vizSettings[id];
+        }
+        onChangeSettings(newSettings)
+    }
+    if (settingDef.useRawSeries && series._raw) {
+        series = series._raw;
+    }
     return {
         ...settingDef,
         id: id,
         value: value,
+        title: settingDef.getTitle ? settingDef.getTitle(series, vizSettings) : settingDef.title,
         hidden: settingDef.getHidden ? settingDef.getHidden(series, vizSettings) : false,
         disabled: settingDef.getDisabled ? settingDef.getDisabled(series, vizSettings) : false,
         props: {
             ...(settingDef.props ? settingDef.props : {}),
-            ...(settingDef.getProps ? settingDef.getProps(series, vizSettings) : {})
+            ...(settingDef.getProps ? settingDef.getProps(series, vizSettings, onChange) : {})
         },
-        onChange: (value) => {
-            const newSettings = { [id]: value };
-            for (const id of (settingDef.writeDependencies || [])) {
-                newSettings[id] = vizSettings[id];
-            }
-            onChangeSettings(newSettings)
-        }
+        onChange
     };
 }
 
-export function getSettingsWidgets(series, onChangeSettings) {
+export function getSettingsWidgets(series, onChangeSettings, isDashboard = false) {
     const vizSettings = getSettings(series);
     return getSettingIdsForSeries(series).map(id =>
         getSettingWidget(id, vizSettings, series, onChangeSettings)
+    ).filter(widget =>
+        widget.widget && !widget.hidden &&
+        (widget.dashboard === undefined || widget.dashboard === isDashboard)
     );
 }

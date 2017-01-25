@@ -1,6 +1,7 @@
-import React from 'react'
+import React from 'react';
+import { Link } from "react-router";
 
 const BackToLogin = () =>
-    <a className="link block" href="/auth/login">Back to login</a>
+    <Link to="/auth/login" className="link block">Back to login</Link>
 
 export default BackToLogin;

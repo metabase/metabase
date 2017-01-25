@@ -1,7 +1,9 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
+            [medley.core :as m]
+            [schema.core :as s]
             (metabase.api [common :refer :all]
-                          [database :refer [annotation:DBEngine]])
+                          [database :refer [DBEngine]])
             (metabase [db :as db]
                       [driver :as driver]
                       [email :as email]
@@ -11,27 +13,29 @@
                              [session :refer [Session]]
                              [setting :as setting]
                              [user :refer [User set-user-password!]])
+            [metabase.public-settings :as public-settings]
             [metabase.setup :as setup]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.schema :as su]))
 
-(defannotation SetupToken
-  "Check that param matches setup token or throw a 403."
-  [symb value]
-  (checkp-with setup/token-match? symb value "Token does not match the setup token."))
+(def ^:private SetupToken
+  "Schema for a string that matches the instance setup token."
+  (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
+    "Token does not match the setup token."))
 
 
 (defendpoint POST "/"
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
   [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body, :as request}]
-  {token      [Required SetupToken]
-   site_name  [Required NonEmptyString]
-   first_name [Required NonEmptyString]
-   last_name  [Required NonEmptyString]
-   email      [Required Email]
-   password   [Required ComplexPassword]}
-  ;; Call (metabase.core/site-url request) to set the Site URL setting if it's not already set
-  (@(ns-resolve 'metabase.core 'site-url) request)
+  {token      SetupToken
+   site_name  su/NonBlankString
+   first_name su/NonBlankString
+   last_name  su/NonBlankString
+   email      su/Email
+   password   su/ComplexPassword}
+  ;; Call (public-settings/site-url request) to set the Site URL setting if it's not already set
+  (public-settings/site-url request)
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
@@ -43,9 +47,11 @@
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (set-user-password! (:id new-user) password)
     ;; set a couple preferences
-    (setting/set! :site-name site_name)
-    (setting/set! :admin-email email)
-    (setting/set! :anon-tracking-enabled (or allow_tracking true))
+    (public-settings/site-name site_name)
+    (public-settings/admin-email email)
+    (public-settings/anon-tracking-enabled (if (m/boolean? allow_tracking)
+                                             allow_tracking
+                                             true)) ; default to `true` if allow_tracking isn't specified
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
       (->> (db/insert! Database
@@ -55,24 +61,24 @@
              :is_full_sync (if-not (nil? is_full_sync)
                              is_full_sync
                              true))
-           (events/publish-event :database-create)))
+           (events/publish-event! :database-create)))
     ;; clear the setup token now, it's no longer needed
-    (setup/token-clear)
+    (setup/clear-token!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (db/insert! Session
       :id      session-id
       :user_id (:id new-user))
     ;; notify that we've got a new user in the system AND that this user logged in
-    (events/publish-event :user-create {:user_id (:id new-user)})
-    (events/publish-event :user-login {:user_id (:id new-user), :session_id session-id, :first_login true})
+    (events/publish-event! :user-create {:user_id (:id new-user)})
+    (events/publish-event! :user-login {:user_id (:id new-user), :session_id session-id, :first_login true})
     {:id session-id}))
 
 
 (defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
-  {token      [Required SetupToken]
-   engine     [Required DBEngine]}
+  {token  SetupToken
+   engine DBEngine}
   (let [engine           (keyword engine)
         details          (assoc details :engine engine)
         response-invalid (fn [field m] {:status 400 :body (if (= :general field)
@@ -111,13 +117,13 @@
      {:title       "Set up email"
       :group       "Get connected"
       :description "Add email credentials so you can more easily invite team members and get updates via Pulses."
-      :link        "/admin/settings/?section=Email"
+      :link        "/admin/settings/email"
       :completed   (email/email-configured?)
       :triggered   :always}
      {:title       "Set Slack credentials"
       :group       "Get connected"
       :description "Does your team use Slack?  If so, you can send automated updates via pulses and ask questions with Metabot."
-      :link        "/admin/settings/?section=Slack"
+      :link        "/admin/settings/slack"
       :completed   (slack/slack-configured?)
       :triggered   :always}
      {:title       "Invite team members"

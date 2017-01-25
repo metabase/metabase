@@ -43,7 +43,7 @@
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  (let [{:keys [dbname host port user pass ssl]
+  (let [{:keys [dbname host port user pass ssl authdb]
          :or   {port 27017, pass "", ssl false}} (cond
                                                    (string? database)            {:dbname database}
                                                    (:dbname (:details database)) (:details database) ; entire Database obj
@@ -53,9 +53,12 @@
                            user)
         pass             (when (seq pass)
                            pass)
+        authdb           (if (seq authdb)
+                           authdb
+                           dbname)
         server-address   (mg/server-address host port)
         credentials      (when user
-                           (mcred/create user dbname pass))
+                           (mcred/create user authdb pass))
         connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
         conn             (if credentials
                            (connect credentials)
@@ -85,8 +88,9 @@
   [[binding database] & body]
   `(let [f# (fn [~binding]
               ~@body)]
-     (if *mongo-connection* (f# *mongo-connection*)
-         (-with-mongo-connection f# ~database))))
+     (if *mongo-connection*
+       (f# *mongo-connection*)
+       (-with-mongo-connection f# ~database))))
 
 ;; TODO - this isn't neccesarily Mongo-specific; consider moving
 (defn values->base-type
@@ -109,4 +113,4 @@
            last                     ; last result will be tuple with highest count
            first                    ; keep just the type
            driver/class->base-type) ; convert to Field base_type
-      :UnknownField))
+      :type/*))

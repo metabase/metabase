@@ -8,12 +8,25 @@ import { createSelector } from 'reselect';
 import * as Dashboard from "metabase/meta/Dashboard";
 import Metadata from "metabase/meta/metadata/Metadata";
 
-import Query from "metabase/lib/query";
+import type { CardId, Card } from "metabase/meta/types/Card";
+import type { ParameterId, DashCardId, ParameterMappingUIOption, Parameter, ParameterMapping } from "metabase/meta/types/Dashboard";
 
-import type { CardObject } from "metabase/meta/types/Card";
-import type { ParameterMappingOption, ParameterObject } from "metabase/meta/types/Dashboard";
+export type AugmentedParameterMapping = ParameterMapping & {
+    dashcard_id: DashCardId,
+    overlapMax?: number,
+    mappingsWithValues?: number,
+    values: Array<string>
+}
 
-export const getSelectedDashboard = state => state.router.params.dashboardId;
+export type MappingsByParameter = {
+    [key: ParameterId]: {
+        [key: DashCardId]: {
+            [key: CardId]: AugmentedParameterMapping
+        }
+    }
+}
+
+export const getDashboardId       = state => state.dashboard.dashboardId;
 export const getIsEditing         = state => state.dashboard.isEditing;
 export const getCards             = state => state.dashboard.cards;
 export const getDashboards        = state => state.dashboard.dashboards;
@@ -27,14 +40,13 @@ export const getParameterValues   = state => state.dashboard.parameterValues;
 export const getDatabases         = state => state.metadata.databases;
 
 export const getMetadata = createSelector(
-    [getDatabases],
-    (databases) =>
-        new Metadata(Object.entries(databases).map(([k,v]) => v)) // not sure why flow doesn't like Object.values() here
+    [state => state.metadata],
+    (metadata) => Metadata.fromEntities(metadata)
 )
 
 export const getDashboard = createSelector(
-    [getSelectedDashboard, getDashboards],
-    (selectedDashboard, dashboards) => dashboards[selectedDashboard]
+    [getDashboardId, getDashboards],
+    (dashboardId, dashboards) => dashboards[dashboardId]
 );
 
 export const getDashboardComplete = createSelector(
@@ -86,31 +98,31 @@ export const getParameterTarget = createSelector(
 export const getMappingsByParameter = createSelector(
     [getMetadata, getDashboardComplete],
     (metadata, dashboard) => {
-        let mappingsByParameter = {};
+        if (!dashboard) {
+            return {};
+        }
+
+        let mappingsByParameter: MappingsByParameter = {};
+        let mappings: Array<AugmentedParameterMapping> = [];
         let countsByParameter = {};
-        let mappings = [];
         for (const dashcard of dashboard.ordered_cards) {
-            for (let mapping of (dashcard.parameter_mappings || [])) {
-                let values = null;
-                if (mapping.target[0] === "dimension") {
-                    let dimension = mapping.target[1];
-                    let field = metadata.field(Query.getFieldTargetId(dimension));
-                    values = field && field.values() ;
-                    if (values) {
-                        for (const value of values) {
-                            countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
-                        }
-                    }
+            const cards: Array<Card> = [dashcard.card].concat(dashcard.series);
+            for (let mapping: ParameterMapping of (dashcard.parameter_mappings || [])) {
+                let card = _.findWhere(cards, { id: mapping.card_id });
+                let field = card && Dashboard.getParameterMappingTargetField(metadata, card, mapping.target);
+                let values = field && field.values() || [];
+                for (const value of values) {
+                    countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
                 }
-                mapping = {
+                let augmentedMapping: AugmentedParameterMapping = {
                     ...mapping,
                     parameter_id: mapping.parameter_id,
                     dashcard_id: dashcard.id,
                     card_id: mapping.card_id,
                     values
                 };
-                mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, dashcard.id, mapping.card_id], mapping);
-                mappings.push(mapping);
+                mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, dashcard.id, mapping.card_id], augmentedMapping);
+                mappings.push(augmentedMapping);
             }
         }
         let mappingsWithValuesByParameter = {};
@@ -134,7 +146,7 @@ export const getMappingsByParameter = createSelector(
 export const makeGetParameterMappingOptions = () => {
     const getParameterMappingOptions = createSelector(
         [getMetadata, getEditingParameter, getCard],
-        (metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> => {
+        (metadata, parameter: Parameter, card: Card): Array<ParameterMappingUIOption> => {
             return Dashboard.getParameterMappingOptions(metadata, parameter, card);
         }
     );

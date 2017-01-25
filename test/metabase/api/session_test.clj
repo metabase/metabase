@@ -11,7 +11,7 @@
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
-            [metabase.test.util :refer [random-name resolve-private-fns with-temporary-setting-values with-temp], :as tu]))
+            [metabase.test.util :refer [random-name resolve-private-vars with-temporary-setting-values with-temp], :as tu]))
 
 ;; ## POST /api/session
 ;; Test that we can login
@@ -21,10 +21,10 @@
       (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
 
 ;; Test for required params
-(expect {:errors {:email "field is a required param."}}
+(expect {:errors {:email "value must be a valid email address."}}
   (client :post 400 "session" {}))
 
-(expect {:errors {:password "field is a required param."}}
+(expect {:errors {:password "value must be a non-blank string."}}
   (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
@@ -76,7 +76,7 @@
     (reset-fields-set?)))
 
 ;; Test that email is required
-(expect {:errors {:email "field is a required param."}}
+(expect {:errors {:email "value must be a valid email address."}}
   (client :post 400 "session/forgot_password" {}))
 
 ;; Test that email not found also gives 200 as to not leak existence of user
@@ -86,32 +86,32 @@
 
 ;; POST /api/session/reset_password
 ;; Test that we can reset password from token (AND after token is used it gets removed)
-(expect
-  {:reset_token nil
-   :reset_triggered nil}
-  (let [user-last-name     (random-name)
-        password           {:old "password"
-                            :new "whateverUP12!!"}
-        {:keys [email id]} (create-user! :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
-        token              (u/prog1 (str id "_" (java.util.UUID/randomUUID))
-                             (db/update! User id, :reset_token <>))
-        creds              {:old {:password (:old password)
-                                  :email    email}
-                            :new {:password (:new password)
-                                  :email    email}}]
-    ;; Check that creds work
-    (client :post 200 "session" (:old creds))
 
-    ;; Call reset password endpoint to change the PW
-    (client :post 200 "session/reset_password" {:token    token
-                                                :password (:new password)})
-    ;; Old creds should no longer work
-    (assert (= (client :post 400 "session" (:old creds))
-              {:errors {:password "did not match stored password"}}))
-    ;; New creds *should* work
-    (client :post 200 "session" (:new creds))
-    ;; Double check that reset token was cleared
-    (db/select-one [User :reset_token :reset_triggered], :id id)))
+(expect
+  {:reset_token     nil
+   :reset_triggered nil}
+  (let [password {:old "password"
+                  :new "whateverUP12!!"}]
+    (tu/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
+      (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
+                    (db/update! User id, :reset_token <>))
+            creds {:old {:password (:old password)
+                         :email    email}
+                   :new {:password (:new password)
+                         :email    email}}]
+        ;; Check that creds work
+        (client :post 200 "session" (:old creds))
+
+        ;; Call reset password endpoint to change the PW
+        (client :post 200 "session/reset_password" {:token    token
+                                                    :password (:new password)})
+        ;; Old creds should no longer work
+        (assert (= (client :post 400 "session" (:old creds))
+                   {:errors {:password "did not match stored password"}}))
+        ;; New creds *should* work
+        (client :post 200 "session" (:new creds))
+        ;; Double check that reset token was cleared
+        (db/select-one [User :reset_token :reset_triggered], :id id)))))
 
 ;; Check that password reset returns a valid session token
 (expect
@@ -125,10 +125,10 @@
           (update :session_id tu/is-uuid-string?)))))
 
 ;; Test that token and password are required
-(expect {:errors {:token "field is a required param."}}
+(expect {:errors {:token "value must be a non-blank string."}}
   (client :post 400 "session/reset_password" {}))
 
-(expect {:errors {:password "field is a required param."}}
+(expect {:errors {:password "Insufficient password strength"}}
   (client :post 400 "session/reset_password" {:token "anything"}))
 
 ;; Test that malformed token returns 400
@@ -182,7 +182,7 @@
 
 ;;; ------------------------------------------------------------ TESTS FOR GOOGLE AUTH STUFF ------------------------------------------------------------
 
-(resolve-private-fns metabase.api.session email->domain email-in-domain? autocreate-user-allowed-for-email? google-auth-create-new-user! google-auth-fetch-or-create-user!)
+(resolve-private-vars metabase.api.session email->domain email-in-domain? autocreate-user-allowed-for-email? google-auth-create-new-user! google-auth-fetch-or-create-user!)
 
 ;;; tests for email->domain
 (expect "metabase.com"   (email->domain "cam@metabase.com"))

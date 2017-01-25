@@ -7,29 +7,29 @@
   {"movies"  {:name   "movies"
               :schema nil
               :fields #{{:name      "id"
-                         :base-type :IntegerField}
+                         :base-type :type/Integer}
                         {:name      "title"
-                         :base-type :TextField}
+                         :base-type :type/Text}
                         {:name      "filming"
-                         :base-type :BooleanField}}}
+                         :base-type :type/Boolean}}}
    "actors"  {:name   "actors"
               :schema nil
               :fields #{{:name      "id"
-                         :base-type :IntegerField}
+                         :base-type :type/Integer}
                         {:name      "name"
-                         :base-type :TextField}}}
+                         :base-type :type/Text}}}
    "roles"   {:name   "roles"
               :schema nil
               :fields #{{:name      "id"
-                         :base-type :IntegerField}
+                         :base-type :type/Integer}
                         {:name      "movie_id"
-                         :base-type :IntegerField}
+                         :base-type :type/Integer}
                         {:name      "actor_id"
-                         :base-type :IntegerField}
+                         :base-type :type/Integer}
                         {:name      "character"
-                         :base-type :TextField}
+                         :base-type :type/Text}
                         {:name      "salary"
-                         :base-type :DecimalField}}
+                         :base-type :type/Decimal}}
               :fks    #{{:fk-column-name   "movie_id"
                          :dest-table       {:name "movies"
                                             :schema nil}
@@ -41,11 +41,11 @@
    "reviews" {:name   "reviews"
               :schema nil
               :fields #{{:name      "id"
-                         :base-type :IntegerField}
+                         :base-type :type/Integer}
                         {:name      "movie_id"
-                         :base-type :IntegerField}
+                         :base-type :type/Integer}
                         {:name      "stars"
-                         :base-type :IntegerField}}
+                         :base-type :type/Integer}}
               :fks    #{{:fk-column-name   "movie_id"
                          :dest-table       {:name   "movies"
                                             :schema nil}
@@ -78,498 +78,189 @@
 
 (driver/register-driver! :moviedb (MovieDbDriver.))
 
+(def ^:private ^:const raw-table-defaults
+  {:schema      nil
+   :database_id true
+   :updated_at  true
+   :details     {}
+   :active      true
+   :id          true
+   :created_at  true})
+
+(def ^:private ^:const raw-field-defaults
+  {:raw_table_id        true
+   :fk_target_column_id false
+   :updated_at          true
+   :active              true
+   :id                  true
+   :is_pk               false
+   :created_at          true
+   :column_type         nil})
+
 
 (def ^:const moviedb-raw-tables
-  [{:schema      nil
-    :database_id true
-    :columns     [{:raw_table_id true
-                   :name "id"
-                   :fk_target_column_id false
-                   :updated_at true
-                   :details {:base-type "IntegerField"}
-                   :active true
-                   :id true
-                   :is_pk false
-                   :created_at true
-                   :column_type nil}
-                  {:raw_table_id true
-                   :name "name"
-                   :fk_target_column_id false
-                   :updated_at true
-                   :details {:base-type "TextField"}
-                   :active true
-                   :id true
-                   :is_pk false
-                   :created_at true
-                   :column_type nil}]
-    :name        "actors"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      nil
-    :database_id true
-    :columns     [{:raw_table_id        true
-                   :name                "filming"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "BooleanField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}
-                  {:raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}
-                  {:raw_table_id        true
-                   :name                "title"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}]
-    :name        "movies"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      nil
-    :database_id true
-    :columns     [{:raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}
-                  {:raw_table_id        true
-                   :name                "movie_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}
-                  {:raw_table_id        true
-                   :name                "stars"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}]
-    :name        "reviews"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      nil
-    :database_id true
-    :columns     [{:raw_table_id        true
-                   :name                "actor_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}
-                  {:raw_table_id        true
-                   :name                "character"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}
-                  {:raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}
-                  {:raw_table_id        true
-                   :name                "movie_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}
-                  {:raw_table_id        true
-                   :name                "salary"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "DecimalField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true
-                   :column_type         nil}]
-    :name        "roles"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}])
+  [(merge raw-table-defaults
+          {:columns [(merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "type/Integer"}})
+                     (merge raw-field-defaults
+                            {:name    "name"
+                             :details {:base-type "type/Text"}})]
+           :name    "actors"})
+   (merge raw-table-defaults
+          {:columns [(merge raw-field-defaults
+                            {:name    "filming"
+                             :details {:base-type "type/Boolean"}})
+                     (merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "type/Integer"}})
+                     (merge raw-field-defaults
+                            {:name    "title"
+                             :details {:base-type "type/Text"}})]
+           :name    "movies"})
+   (merge raw-table-defaults
+          {:columns [(merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "type/Integer"}})
+                     (merge raw-field-defaults
+                            {:name                "movie_id"
+                             :details             {:base-type "type/Integer"}
+                             :fk_target_column_id true})
+                     (merge raw-field-defaults
+                            {:name    "stars"
+                             :details {:base-type "type/Integer"}})]
+           :name    "reviews"})
+   (merge raw-table-defaults
+          {:columns [(merge raw-field-defaults
+                            {:name                "actor_id"
+                             :details             {:base-type "type/Integer"}
+                             :fk_target_column_id true})
+                     (merge raw-field-defaults
+                            {:name    "character"
+                             :details {:base-type "type/Text"}})
+                     (merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "type/Integer"}})
+                     (merge raw-field-defaults
+                            {:name                "movie_id"
+                             :details             {:base-type "type/Integer"}
+                             :fk_target_column_id true})
+                     (merge raw-field-defaults
+                            {:name    "salary"
+                             :details {:base-type "type/Decimal"}})]
+           :name    "roles"})])
 
+
+(def ^:private ^:const table-defaults
+  {:description             nil
+   :entity_type             nil
+   :caveats                 nil
+   :points_of_interest      nil
+   :show_in_getting_started false
+   :schema                  nil
+   :raw_table_id            true
+   :rows                    nil
+   :updated_at              true
+   :entity_name             nil
+   :active                  true
+   :id                      true
+   :db_id                   true
+   :visibility_type         nil
+   :created_at              true})
+
+(def ^:privaet ^:const field-defaults
+  {:description        nil
+   :table_id           true
+   :caveats            nil
+   :points_of_interest nil
+   :special_type       nil
+   :fk_target_field_id false
+   :updated_at         true
+   :active             true
+   :parent_id          false
+   :id                 true
+   :raw_column_id      true
+   :last_analyzed      false
+   :position           0
+   :visibility_type    :normal
+   :preview_display    true
+   :created_at         true})
 
 (def ^:const moviedb-tables-and-fields
-  [{:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  nil
-    :raw_table_id            true
-    :name                    "actors"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Name"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Actors"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  nil
-    :raw_table_id            true
-    :name                    "movies"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       nil
-                               :name               "filming"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Filming"
-                               :created_at         true
-                               :base_type          :BooleanField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       nil
-                               :name               "title"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Title"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Movies"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  nil
-    :raw_table_id            true
-    :name                    "reviews"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "movie_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Movie ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       nil
-                               :name               "stars"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Stars"
-                               :created_at         true
-                               :base_type          :IntegerField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Reviews"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  nil
-    :raw_table_id            true
-    :name                    "roles"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "actor_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Actor ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       nil
-                               :name               "character"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Character"
-                               :created_at         true
-                               :base_type          :TextField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "movie_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Movie ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       nil
-                               :name               "salary"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :field_type         :info
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Salary"
-                               :created_at         true
-                               :base_type          :DecimalField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Roles"
-    :created_at              true}])
+  [(merge table-defaults
+          {:name         "actors"
+           :fields       [(merge field-defaults
+                                 {:special_type :type/PK
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :type/Integer})
+                          (merge field-defaults
+                                 {:special_type :type/Name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :type/Text})]
+
+           :display_name "Actors"})
+   (merge table-defaults
+          {:name         "movies"
+           :fields       [(merge field-defaults
+                                 {:name         "filming"
+                                  :display_name "Filming"
+                                  :base_type    :type/Boolean})
+                          (merge field-defaults
+                                 {:special_type :type/PK
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :type/Integer})
+                          (merge field-defaults
+                                 {:name         "title"
+                                  :display_name "Title"
+                                  :base_type    :type/Text})]
+
+           :display_name "Movies"})
+   (merge table-defaults
+          {:name         "reviews"
+           :fields       [(merge field-defaults
+                                 {:special_type :type/PK
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :type/Integer})
+                          (merge field-defaults
+                                 {:special_type       :type/FK
+                                  :fk_target_field_id true
+                                  :name               "movie_id"
+                                  :display_name       "Movie ID"
+                                  :base_type          :type/Integer})
+                          (merge field-defaults
+                                 {:name         "stars"
+                                  :display_name "Stars"
+                                  :base_type    :type/Integer})]
+           :display_name "Reviews"})
+   (merge table-defaults
+          {:name         "roles"
+           :fields       [(merge field-defaults
+                                 {:special_type       :type/FK
+                                  :fk_target_field_id true
+                                  :name               "actor_id"
+                                  :display_name       "Actor ID"
+                                  :base_type          :type/Integer})
+                          (merge field-defaults
+                                 {:name         "character"
+                                  :display_name "Character"
+                                  :base_type    :type/Text})
+                          (merge field-defaults
+                                 {:special_type :type/PK
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :type/Integer})
+                          (merge field-defaults
+                                 {:special_type       :type/FK
+                                  :fk_target_field_id true
+                                  :name               "movie_id"
+                                  :display_name       "Movie ID"
+                                  :base_type          :type/Integer})
+                          (merge field-defaults
+                                 {:name         "salary"
+                                  :display_name "Salary"
+                                  :base_type    :type/Decimal})]
+           :display_name "Roles"})])

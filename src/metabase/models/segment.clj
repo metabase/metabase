@@ -10,14 +10,20 @@
 
 (i/defentity Segment :segment)
 
+(defn- perms-objects-set [segment read-or-write]
+  (let [table (or (:table segment)
+                  (db/select-one ['Table :db_id :schema :id] :id (:table_id segment)))]
+    (i/perms-objects-set table read-or-write)))
+
 (u/strict-extend (class Segment)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types           (constantly {:definition :json, :description :clob})
-          :timestamped?    (constantly true)
-          :hydration-keys  (constantly [:segment])
-          :can-read?       (constantly true)
-          :can-write?      i/superuser?}))
+         {:types             (constantly {:definition :json, :description :clob})
+          :timestamped?      (constantly true)
+          :hydration-keys    (constantly [:segment])
+          :perms-objects-set perms-objects-set
+          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -67,7 +73,7 @@
                   :description description
                   :is_active   true
                   :definition  definition)]
-    (-> (events/publish-event :segment-create segment)
+    (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 
 (defn exists?
@@ -97,9 +103,9 @@
 
 (defn update-segment!
   "Update an existing `Segment`.
-
    Returns the updated `Segment` or throws an Exception."
-  [{:keys [id name description caveats points_of_interest definition revision_message]} user-id]
+  {:style/indent 0}
+  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -107,13 +113,17 @@
          (string? revision_message)]}
   ;; update the segment itself
   (db/update! Segment id
-    :name               name
-    :description        description
-    :caveats            caveats
-    :points_of_interest points_of_interest
-    :definition         definition)
+    (merge
+     {:name        name
+      :description description
+      :caveats     caveats
+      :definition  definition}
+     (when (seq points_of_interest)
+       {:points_of_interest points_of_interest})
+     (when (not (nil? show_in_getting_started))
+       {:show_in_getting_started show_in_getting_started})))
   (u/prog1 (retrieve-segment id)
-    (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
+    (events/publish-event! :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
 (defn delete-segment!
   "Delete a `Segment`.
@@ -130,4 +140,4 @@
   (db/update! Segment id, :is_active false)
   ;; retrieve the updated segment (now retired)
   (u/prog1 (retrieve-segment id)
-    (events/publish-event :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))
+    (events/publish-event! :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

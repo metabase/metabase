@@ -7,8 +7,7 @@
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
-                      [driver :as driver]
-                      [util :as u])
+                      [driver :as driver])
             (metabase.models [setting :as setting]
                              [table :refer [Table]])
             [metabase.test.data :as data]
@@ -77,8 +76,8 @@
   (let [start-jetty! (future (core/start-jetty!))]
 
     (try
-      (log/info "Setting up test DB and running migrations...")
-      (db/setup-db :auto-migrate true)
+      (log/info (format "Setting up %s test DB and running migrations..." (name (db/db-type))))
+      (db/setup-db! :auto-migrate true)
       (setting/set! :site-name "Metabase Test")
       (core/initialization-complete!)
 

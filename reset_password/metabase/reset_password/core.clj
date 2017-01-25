@@ -12,7 +12,7 @@
 
 (defn -main
   [email-address]
-  (db/setup-db)
+  (db/setup-db!)
   (println (format "Resetting password for %s..." email-address))
   (try
     (println (format "OK [[[%s]]]" (set-reset-token! email-address)))

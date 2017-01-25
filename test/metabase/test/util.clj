@@ -5,11 +5,12 @@
             [expectations :refer :all]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
-                             [common :as common]
+                             [collection :refer [Collection]]
                              [dashboard :refer [Dashboard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [metric :refer [Metric]]
+                             [permissions-group :refer [PermissionsGroup]]
                              [pulse :refer [Pulse]]
                              [pulse-channel :refer [PulseChannel]]
                              [raw-column :refer [RawColumn]]
@@ -69,6 +70,10 @@
     []
     (apply str (repeatedly 20 random-uppercase-letter))))
 
+(defn random-email
+  "Generate a random email address."
+  []
+  (str (random-name) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys with 'id' or '_at' to booleans."
@@ -88,6 +93,13 @@
                  [k (f v)])))))
 
 
+(defn- user-id [username]
+  (require 'metabase.test.data.users)
+  ((resolve 'metabase.test.data.users/user->id) username))
+
+(defn- rasta-id     [] (user-id :rasta))
+
+
 (defprotocol ^:private WithTempDefaults
   (^:private with-temp-defaults [this]))
 
@@ -95,24 +107,23 @@
   WithTempDefaults
   {:with-temp-defaults (constantly {})})
 
-(defn- rasta-id []
-  (require 'metabase.test.data.users)
-  ((resolve 'metabase.test.data.users/user->id) :rasta))
-
 (u/strict-extend (class Card)
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
                                 :dataset_query          {}
                                 :display                :table
                                 :name                   (random-name)
-                                :public_perms           common/perms-none
                                 :visualization_settings {}})})
+
+(u/strict-extend (class Collection)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:name  (random-name)
+                                :color "#ABCDEF"})})
 
 (u/strict-extend (class Dashboard)
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
-                                :name         (random-name)
-                                :public_perms 0})})
+                                :name         (random-name)})})
 
 (u/strict-extend (class Database)
   WithTempDefaults
@@ -123,13 +134,10 @@
 
 (u/strict-extend (class Field)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active          true
-                                :base_type       :TextField
-                                :field_type      :info
-                                :name            (random-name)
-                                :position        1
-                                :preview_display true
-                                :table_id        (data/id :venues)})})
+  {:with-temp-defaults (fn [_] {:base_type :type/Text
+                                :name      (random-name)
+                                :position  1
+                                :table_id  (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
   WithTempDefaults
@@ -137,7 +145,11 @@
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
-                                :table_id    (data/id :venues)})})
+                                :table_id    (data/id :checkins)})})
+
+(u/strict-extend (class PermissionsGroup)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:name (random-name)})})
 
 (u/strict-extend (class Pulse)
   WithTempDefaults
@@ -173,7 +185,7 @@
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
-                                :table_id    (data/id :venues)})})
+                                :table_id    (data/id :checkins)})})
 
 ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
@@ -187,7 +199,7 @@
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:first_name (random-name)
                                 :last_name  (random-name)
-                                :email      (str (random-name) "@metabase.com")
+                                :email      (random-email)
                                 :password   (random-name)})})
 
 
@@ -215,9 +227,8 @@
    `with-temp` should be preferrable going forward over creating random objects *without*
    deleting them afterward.
 
-    (with-temp EmailReport [report {:creator_id      (user->id :rasta)
-                                    :name            (random-name)
-                                    :organization_id @org-id}]
+    (with-temp EmailReport [report {:creator_id (user->id :rasta)
+                                    :name       (random-name)}]
       ...)"
   [entity [binding-form & [options-map]] & body]
   `(do-with-temp ~entity ~options-map (fn [~binding-form]
@@ -262,7 +273,7 @@
   (or (symbol? x)
       (instance? clojure.lang.Namespace x)))
 
-(defn resolve-private-fns* [source-namespace target-namespace symbols]
+(defn resolve-private-vars* [source-namespace target-namespace symbols]
   {:pre [(namespace-or-symbol? source-namespace)
          (namespace-or-symbol? target-namespace)
          (every? symbol? symbols)]}
@@ -272,13 +283,13 @@
                          (throw (Exception. (str source-namespace "/" symb " doesn't exist!"))))]]
     (intern target-namespace symb varr)))
 
-(defmacro resolve-private-fns
+(defmacro resolve-private-vars
   "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so we can test them.
 
-    (resolve-private-fns metabase.driver.generic-sql.sync
+    (resolve-private-vars metabase.driver.generic-sql.sync
       field-avg-length field-percent-urls)"
   [namespc & symbols]
-  `(resolve-private-fns* (quote ~namespc) *ns* (quote ~symbols)))
+  `(resolve-private-vars* (quote ~namespc) *ns* (quote ~symbols)))
 
 
 (defn obj->json->obj

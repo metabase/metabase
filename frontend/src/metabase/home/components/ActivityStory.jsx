@@ -1,5 +1,5 @@
 import React, { Component, PropTypes } from 'react';
-
+import { Link } from "react-router";
 
 export default class ActivityStory extends Component {
     constructor(props, context) {
@@ -26,7 +26,7 @@ export default class ActivityStory extends Component {
             <div className="mt1 border-left flex mr2" style={{borderWidth: '3px', marginLeft: '22px', borderColor: '#F2F5F6'}}>
                 <div className="flex full ml4 bordered rounded p2" style={this.styles}>
                     { story.bodyLink ?
-                        <a data-metabase-event={"Activity Feed;Story Clicked;"+story.topic} className="link" href={story.bodyLink}>{story.body}</a>
+                        <Link to={story.bodyLink} data-metabase-event={"Activity Feed;Story Clicked;"+story.topic} className="link">{story.body}</Link>
                     :
                         <span>{story.body}</span>
                     }

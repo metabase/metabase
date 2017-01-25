@@ -1,4 +1,6 @@
 (ns metabase.email-test
+  "Various helper functions for testing email functionality."
+  ;; TODO - Move to something like `metabase.test.util.email`?
   (:require [expectations :refer :all]
             [metabase.email :as email]))
 
@@ -36,13 +38,13 @@
 
 ;; simple test of email sending capabilities
 (expect
-  [{:from "notifications@metabase.com",
-    :to ["test@test.com"],
+  [{:from    "notifications@metabase.com",
+    :to      ["test@test.com"],
     :subject "101 Reasons to use Metabase",
-    :body [{:type    "text/html; charset=utf-8"
-            :content "101. Metabase will make you a better person"}]}]
+    :body    [{:type    "text/html; charset=utf-8"
+               :content "101. Metabase will make you a better person"}]}]
   (with-fake-inbox
-    (email/send-message
+    (email/send-message!
       :subject      "101 Reasons to use Metabase"
       :recipients   ["test@test.com"]
       :message-type :html

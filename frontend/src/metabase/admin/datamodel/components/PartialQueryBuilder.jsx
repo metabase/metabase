@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import GuiQueryEditor from "metabase/query_builder/GuiQueryEditor.jsx";
+import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor.jsx";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 
@@ -62,7 +62,7 @@ export default class PartialQueryBuilder extends Component {
                 }
             }
         };
-        let previewUrl = "/q/" + serializeCardForUrl(previewCard);
+        let previewUrl = "/q#" + serializeCardForUrl(previewCard);
 
         return (
             <div className="py1">

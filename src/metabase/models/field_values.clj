@@ -33,9 +33,9 @@
          (contains? field :base_type)
          (contains? field :special_type)]}
   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
-       (not (contains? #{:DateField :DateTimeField :TimeField} (keyword base_type)))
-       (or (contains? #{:category :city :state :country :name} (keyword special_type))
-           (= (keyword base_type) :BooleanField))))
+       (not (isa? (keyword base_type) :type/DateTime))
+       (or (isa? (keyword base_type) :type/Boolean)
+           (isa? (keyword special_type) :type/Category))))
 
 (defn- create-field-values!
   "Create `FieldValues` for a `Field`."

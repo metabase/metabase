@@ -1,7 +1,8 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
-import i from "icepick";
+import { assoc, assocIn } from "icepick";
 
 import RecipientPicker from "./RecipientPicker.jsx";
 import SchedulePicker from "./SchedulePicker.jsx";
@@ -16,8 +17,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { channelIsValid } from "metabase/lib/pulse";
 
-import { testPulse } from "../actions";
-
 import cx from "classnames";
 
 const CHANNEL_ICONS = {
@@ -31,7 +30,16 @@ export default class PulseEditChannels extends Component {
         this.state = {};
     }
 
-    static propTypes = {};
+    static propTypes = {
+        pulse: PropTypes.object.isRequired,
+        pulseId: PropTypes.number,
+        pulseIsValid: PropTypes.bool.isRequired,
+        formInput: PropTypes.object.isRequired,
+        user: PropTypes.object.isRequired,
+        userList: PropTypes.array.isRequired,
+        setPulse: PropTypes.func.isRequired,
+        testPulse: PropTypes.func.isRequired
+    };
     static defaultProps = {};
 
     addChannel(type) {
@@ -71,7 +79,7 @@ export default class PulseEditChannels extends Component {
 
     removeChannel(index) {
         let { pulse } = this.props;
-        this.props.setPulse(i.assocIn(pulse, ["channels", index, "enabled"], false));
+        this.props.setPulse(assocIn(pulse, ["channels", index, "enabled"], false));
     }
 
     onChannelPropertyChange(index, name, value) {
@@ -106,15 +114,15 @@ export default class PulseEditChannels extends Component {
         const { pulse } = this.props;
         if (enable) {
             if (pulse.channels.some(c => c.channel_type === type)) {
-                this.props.setPulse(i.assoc(pulse, "channels", pulse.channels.map(c =>
-                    c.channel_type === type ? i.assoc(c, "enabled", true) : c
+                this.props.setPulse(assoc(pulse, "channels", pulse.channels.map(c =>
+                    c.channel_type === type ? assoc(c, "enabled", true) : c
                 )));
             } else {
                 this.addChannel(type)
             }
         } else {
-            this.props.setPulse(i.assoc(pulse, "channels", pulse.channels.map(c =>
-                c.channel_type === type ? i.assoc(c, "enabled", false) : c
+            this.props.setPulse(assoc(pulse, "channels", pulse.channels.map(c =>
+                c.channel_type === type ? assoc(c, "enabled", false) : c
             )));
 
             MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "RemoveChannel", type);
@@ -123,7 +131,7 @@ export default class PulseEditChannels extends Component {
 
     onTestPulseChannel(channel) {
         // test a single channel
-        return this.props.dispatch(testPulse({ ...this.props.pulse, channels: [channel] }));
+        return this.props.testPulse({ ...this.props.pulse, channels: [channel] });
     }
 
     renderFields(channel, index, channelSpec) {

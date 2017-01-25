@@ -8,7 +8,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-fns], :as tu]
+            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-vars], :as tu]
             [metabase.util :as u]))
 
 ;; GET /
@@ -26,8 +26,7 @@
                                            :model     "dashboard"
                                            :model_id  1234
                                            :details   {:description  "Because I can!"
-                                                       :name         "Bwahahaha"
-                                                       :public_perms 2}
+                                                       :name         "Bwahahaha"}
                                            :timestamp (u/->Timestamp "2015-09-10T18:53:01.632Z")}]
                       Activity [activity3 {:topic     "user-joined"
                                            :user_id   (user->id :rasta)
@@ -123,17 +122,14 @@
 
 (expect-with-temp [Card      [card1 {:name                   "rand-name"
                                      :creator_id             (user->id :crowberto)
-                                     :public_perms           2
                                      :display                "table"
                                      :dataset_query          {}
                                      :visualization_settings {}}]
                    Dashboard [dash1 {:name         "rand-name"
                                      :description  "rand-name"
-                                     :creator_id   (user->id :crowberto)
-                                     :public_perms 2}]
+                                     :creator_id   (user->id :crowberto)}]
                    Card      [card2 {:name                   "rand-name"
                                      :creator_id             (user->id :crowberto)
-                                     :public_perms           2
                                      :display                "table"
                                      :dataset_query          {}
                                      :visualization_settings {}}]]
@@ -172,7 +168,7 @@
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 
-(resolve-private-fns metabase.api.activity activities->referenced-objects referenced-objects->existing-objects add-model-exists-info)
+(resolve-private-vars metabase.api.activity activities->referenced-objects referenced-objects->existing-objects add-model-exists-info)
 
 (def ^:private ^:const fake-activities
   [{:model "dashboard", :model_id  43, :topic :dashboard-create,    :details {}}

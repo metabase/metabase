@@ -61,7 +61,7 @@ export default class DashboardHeader extends Component {
     }
 
     onRevert() {
-        this.props.fetchDashboard(this.props.dashboard.id);
+        this.props.fetchDashboard(this.props.dashboard.id, this.props.location.query);
     }
 
     async onSave() {
@@ -76,8 +76,7 @@ export default class DashboardHeader extends Component {
 
     async onDelete() {
         await this.props.deleteDashboard(this.props.dashboard.id);
-        this.props.onDashboardDeleted(this.props.dashboard.id)
-        this.props.onChangeLocation("/")
+        this.props.onChangeLocation("/");
     }
 
     // 1. fetch revisions
@@ -93,27 +92,18 @@ export default class DashboardHeader extends Component {
     // 3. finished reverting to a revision
     onRevertedRevision() {
         this.refs.dashboardHistory.toggle();
-        this.props.fetchDashboard(this.props.dashboard.id);
+        this.props.fetchDashboard(this.props.dashboard.id, this.props.location.query);
     }
 
     getEditingButtons() {
         return [
-            <ActionButton
-                key="save"
-                actionFn={() => this.onSave()}
-                className="Button Button--small Button--primary text-uppercase"
-                normalText="Save"
-                activeText="Saving…"
-                failedText="Save failed"
-                successText="Saved"
-            />,
-            <a data-metabase-event="Dashboard;Cancel Edits" key="cancel" className="Button Button--small text-uppercase" onClick={() => this.onCancel()}>
+            <a data-metabase-event="Dashboard;Cancel Edits" key="cancel" className="Button Button--small" onClick={() => this.onCancel()}>
                 Cancel
             </a>,
             <ModalWithTrigger
                 key="delete"
                 ref="deleteDashboardModal"
-                triggerClasses="Button Button--small text-uppercase"
+                triggerClasses="Button Button--small"
                 triggerElement="Delete"
             >
                 <DeleteDashboardModal
@@ -121,14 +111,23 @@ export default class DashboardHeader extends Component {
                     onClose={() => this.refs.deleteDashboardModal.toggle()}
                     onDelete={() => this.onDelete()}
                 />
-            </ModalWithTrigger>
+            </ModalWithTrigger>,
+            <ActionButton
+                key="save"
+                actionFn={() => this.onSave()}
+                className="Button Button--small Button--primary"
+                normalText="Save"
+                activeText="Saving…"
+                failedText="Save failed"
+                successText="Saved"
+            />
         ];
     }
 
     getHeaderButtons() {
         const { dashboard, parameters, isEditing, isFullscreen, isNightMode } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
-        const canEdit = dashboard && dashboard.can_write;
+        const canEdit = !!dashboard;
 
         const buttons = [];
 
@@ -201,6 +200,7 @@ export default class DashboardHeader extends Component {
         if (!isFullscreen && canEdit) {
             buttons.push(
                 <ModalWithTrigger
+                    full
                     key="add"
                     ref="addQuestionModal"
                     triggerElement={

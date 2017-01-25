@@ -12,7 +12,6 @@ export default class TextWidget extends Component {
     static propTypes = {
         value: PropTypes.any,
         setValue: PropTypes.func.isRequired,
-        onClose: PropTypes.func.isRequired,
         className: PropTypes.string,
         isEditing: PropTypes.bool,
         commitImmediately: PropTypes.bool,

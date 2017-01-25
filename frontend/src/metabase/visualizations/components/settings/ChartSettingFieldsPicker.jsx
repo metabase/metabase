@@ -1,39 +1,30 @@
 import React, { Component, PropTypes } from "react";
 
-import Icon from "metabase/components/Icon";
-import cx from "classnames";
+import ChartSettingFieldPicker from "./ChartSettingFieldPicker.jsx";
 
-import ChartSettingSelect from "./ChartSettingSelect.jsx";
-
-const ChartSettingFieldsPicker = ({ value = [], onChange, options, addAnother }) =>
+const ChartSettingFieldsPicker = ({ value = [], options, onChange, addAnother }) =>
     <div>
         { Array.isArray(value) ? value.map((v, index) =>
-            <div key={index} className="flex align-center">
-                <ChartSettingSelect
-                    value={v}
-                    options={options}
-                    onChange={(v) => {
-                        let newValue = [...value];
-                        // this swaps the position of the existing value
-                        let existingIndex = value.indexOf(v);
-                        if (existingIndex >= 0) {
-                            newValue.splice(existingIndex, 1, value[index]);
-                        }
-                        // replace with the new value
-                        newValue.splice(index, 1, v);
-                        onChange(newValue);
-                    }}
-                    isInitiallyOpen={v === undefined}
-                />
-                <Icon
-                    name="close"
-                    className={cx("ml1 text-grey-4 text-brand-hover cursor-pointer", {
-                        "disabled hidden": value.filter(v => v != null).length < 2
-                    })}
-                    width={12} height={12}
-                    onClick={() => onChange([...value.slice(0, index), ...value.slice(index + 1)])}
-                />
-            </div>
+            <ChartSettingFieldPicker
+                key={index}
+                value={v}
+                options={options}
+                onChange={(v) => {
+                    let newValue = [...value];
+                    // this swaps the position of the existing value
+                    let existingIndex = value.indexOf(v);
+                    if (existingIndex >= 0) {
+                        newValue.splice(existingIndex, 1, value[index]);
+                    }
+                    // replace with the new value
+                    newValue.splice(index, 1, v);
+                    onChange(newValue);
+                }}
+                onRemove={value.filter(v => v != null).length > 1 || (value.length > 1 && v == null) ?
+                    () => onChange([...value.slice(0, index), ...value.slice(index + 1)]) :
+                    null
+                }
+            />
         ) : <span className="text-error">error</span>}
         { addAnother &&
             <div className="mt1">

@@ -4,11 +4,10 @@ import _ from "underscore";
 
 import { getTemplateTags } from "metabase/meta/Card";
 
-import { isCardDirty } from "metabase/lib/card";
-import * as DataGrid from "metabase/lib/data_grid";
-import Query from "metabase/lib/query";
+import { isCardDirty, isCardRunnable } from "metabase/lib/card";
 import { parseFieldTarget } from "metabase/lib/query_time";
-
+import { isPK } from "metabase/lib/types";
+import Query from "metabase/lib/query";
 
 export const uiControls                = state => state.qb.uiControls;
 
@@ -31,9 +30,9 @@ export const getDatabaseId = createSelector(
 );
 
 export const databases                 = state => state.qb.databases;
-export const tableMetadata             = state => state.qb.tableMetadata;
 export const tableForeignKeys          = state => state.qb.tableForeignKeys;
 export const tableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
+
 export const tables = createSelector(
 	[getDatabaseId, databases],
     (databaseId, databases) => {
@@ -47,6 +46,21 @@ export const tables = createSelector(
         return [];
     }
 );
+
+export const getNativeDatabases = createSelector(
+	databases,
+	(databases) =>
+		databases && databases.filter(db => db.native_permissions === "write")
+)
+
+export const tableMetadata = createSelector(
+	state => state.qb.tableMetadata,
+	databases,
+	(tableMetadata, databases) => tableMetadata && {
+		...tableMetadata,
+		db: _.findWhere(databases, { id: tableMetadata.db_id })
+	}
+)
 
 export const getSampleDatasetId = createSelector(
 	[databases],
@@ -80,9 +94,7 @@ export const isObjectDetail = createSelector(
 	    if (dataset_query.query &&
 	            dataset_query.query.source_table &&
 	            dataset_query.query.filter &&
-	            dataset_query.query.aggregation &&
-	            dataset_query.query.aggregation.length > 0 &&
-	            dataset_query.query.aggregation[0] === "rows" &&
+				Query.isBareRows(dataset_query.query) &&
 	            data.rows &&
 	            data.rows.length === 1) {
 
@@ -90,16 +102,14 @@ export const isObjectDetail = createSelector(
 	        let pkField;
 	        for (var i=0; i < data.cols.length; i++) {
 	            let coldef = data.cols[i];
-	            if (coldef.table_id === dataset_query.query.source_table &&
-	                    coldef.special_type === "id") {
+	            if (coldef.table_id === dataset_query.query.source_table && isPK(coldef.special_type)) {
 	                pkField = coldef.id;
 	            }
 	        }
 
 	        // now check that we have a filter clause w/ '=' filter on PK column
 	        if (pkField !== undefined) {
-	            for (var j=0; j < dataset_query.query.filter.length; j++) {
-	                let filter = dataset_query.query.filter[j];
+	            for (const filter of Query.getFilters(dataset_query.query)) {
 	                if (Array.isArray(filter) &&
 	                        filter.length === 3 &&
 	                        filter[0] === "=" &&
@@ -117,18 +127,8 @@ export const isObjectDetail = createSelector(
 );
 
 export const queryResult = createSelector(
-	[state => state.qb.queryResult, isObjectDetail],
-	(queryResult, isObjectDetail) => {
-		// if we are display bare rows, filter out columns with visibility_type = details-only
-        if (queryResult && queryResult.json_query && !isObjectDetail &&
-        		Query.isStructured(queryResult.json_query) &&
-                Query.isBareRowsAggregation(queryResult.json_query.query)) {
-        	// TODO: mutability?
-            queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
-        }
-
-        return queryResult;
-	}
+	[state => state.qb.queryResult],
+	(queryResult) => queryResult
 );
 
 export const getImplicitParameters = createSelector(
@@ -149,3 +149,8 @@ export const getParameters = createSelector(
 	[getImplicitParameters],
 	(implicitParameters) => implicitParameters
 );
+
+export const getIsRunnable = createSelector(
+	[card, tableMetadata],
+	(card, tableMetadata) => isCardRunnable(card, tableMetadata)
+)

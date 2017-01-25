@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
-import { AngularResourceProxy } from "metabase/lib/redux";
+import { Link } from "react-router";
 
 import cx from "classnames";
 
@@ -9,21 +9,21 @@ import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 
 import * as authActions from "../auth";
 
 
-const SessionApi = new AngularResourceProxy("Session", ["password_reset_token_valid"]);
+import { SessionApi } from "metabase/services";
 
 const mapStateToProps = (state, props) => {
     return {
-        token:            state.router && state.router.params && state.router.params.token,
+        token:            props.params.token,
         resetError:       state.auth && state.auth.resetError,
         resetSuccess:     state.auth && state.auth.resetSuccess,
-        newUserJoining:   state.router && state.router.location && state.router.location.hash === "#new",
-        onChangeLocation: props.onChangeLocation
+        newUserJoining:   props.location.hash === "#new"
     }
 }
 
@@ -83,10 +83,10 @@ export default class PasswordResetApp extends Component {
     formSubmitted(e) {
         e.preventDefault();
 
-        let { token, passwordReset, onChangeLocation } = this.props;
+        let { token, passwordReset } = this.props;
         let { credentials } = this.state;
 
-        passwordReset(token, credentials, onChangeLocation);
+        passwordReset(token, credentials);
     }
 
     render() {
@@ -106,7 +106,7 @@ export default class PasswordResetApp extends Component {
                                     <h3 className="Login-header Form-offset mt4">Whoops, that's an expired link</h3>
                                     <p className="Form-offset mb4 mr4">
                                         For security reasons, password reset links expire after a little while. If you still need
-                                        to reset your password, you can <a href="/auth/forgot_password" className="link">request a new reset email</a>.
+                                        to reset your password, you can <Link to="/auth/forgot_password" className="link">request a new reset email</Link>.
                                     </p>
                                 </div>
                             </div>
@@ -155,14 +155,14 @@ export default class PasswordResetApp extends Component {
                           <div className="Grid-cell">
                               <div className="SuccessGroup bg-white bordered rounded shadowed">
                                   <div className="SuccessMark">
-                                      <mb-icon name="check"></mb-icon>
+                                      <Icon name="check" />
                                   </div>
                                   <p>Your password has been reset.</p>
                                   <p>
                                       { newUserJoining ?
-                                      <a href="/?new" className="Button Button--primary">Sign in with your new password</a>
+                                      <Link to="/?new" className="Button Button--primary">Sign in with your new password</Link>
                                       :
-                                      <a href="/" className="Button Button--primary">Sign in with your new password</a>
+                                      <Link to="/" className="Button Button--primary">Sign in with your new password</Link>
                                       }
                                   </p>
                               </div>

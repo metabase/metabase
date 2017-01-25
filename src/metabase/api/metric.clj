@@ -1,23 +1,27 @@
 (ns metabase.api.metric
   "/api/metric endpoints."
   (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
+            [schema.core :as s]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
+                             [interface :as models]
                              [metric :refer [Metric], :as metric]
                              [revision :as revision]
-                             [table :refer [Table]])))
+                             [table :refer [Table]])
+            [metabase.util.schema :as su]))
 
 
 (defendpoint POST "/"
   "Create a new `Metric`."
   [:as {{:keys [name description table_id definition]} :body}]
-  {name       [Required NonEmptyString]
-   table_id   [Required Integer]
-   definition [Required Dict]}
+  {name       su/NonBlankString
+   table_id   su/IntGreaterThanZero
+   definition su/Map}
   (check-superuser)
-  (checkp #(db/exists? Table :id table_id) "table_id" "Table does not exist.")
+  (write-check Table table_id)
   (check-500 (metric/create-metric! table_id name description *current-user-id* definition)))
 
 
@@ -25,61 +29,63 @@
   "Fetch `Metric` with ID."
   [id]
   (check-superuser)
-  (check-404 (metric/retrieve-metric id)))
+  (read-check (metric/retrieve-metric id)))
+
 
 (defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
-  (-> (db/select Metric, :is_active true)
-      (hydrate :creator)))
+  (filter models/can-read? (-> (db/select Metric, :is_active true)
+                               (hydrate :creator))))
 
 
 (defendpoint PUT "/:id"
   "Update a `Metric` with ID."
-  [id :as {{:keys [name description caveats points_of_interest how_is_this_calculated definition revision_message]} :body}]
-  {name             [Required NonEmptyString]
-   revision_message [Required NonEmptyString]
-   definition       [Required Dict]}
+  [id :as {{:keys [name description caveats points_of_interest how_is_this_calculated show_in_getting_started definition revision_message]} :body}]
+  {name             su/NonBlankString
+   revision_message su/NonBlankString
+   definition       su/Map}
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (metric/update-metric!
-    {:id                     id
-     :name                   name
-     :description            description
-     :caveats                caveats
-     :points_of_interest     points_of_interest
-     :how_is_this_calculated how_is_this_calculated
-     :definition             definition
-     :revision_message       revision_message}
+    {:id                      id
+     :name                    name
+     :description             description
+     :caveats                 caveats
+     :points_of_interest      points_of_interest
+     :how_is_this_calculated  how_is_this_calculated
+     :show_in_getting_started show_in_getting_started
+     :definition              definition
+     :revision_message        revision_message}
     *current-user-id*))
 
 (defendpoint PUT "/:id/important_fields"
   "Update the important `Fields` for a `Metric` with ID.
    (This is used for the Getting Started guide)."
   [id :as {{:keys [important_field_ids]} :body}]
-  {important_field_ids [Required ArrayOfIntegers]}
+  {important_field_ids [su/IntGreaterThanZero]}
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (check (<= (count important_field_ids) 3)
     [400 "A Metric can have a maximum of 3 important fields."])
-  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id 1))
+  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id id))
                                                     (set important_field_ids))]
+
     ;; delete old fields as needed
     (when (seq fields-to-remove)
       (db/delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
     (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
                                              {:metric_id id, :field_id field-id}))
-    ;; we're done (TODO - Do we want to return anything here?)
     {:success true}))
 
 
 (defendpoint DELETE "/:id"
   "Delete a `Metric`."
   [id revision_message]
-  {revision_message [Required NonEmptyString]}
+  {revision_message su/NonBlankString}
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (metric/delete-metric! id *current-user-id* revision_message)
   {:success true})
 
@@ -88,16 +94,16 @@
   "Fetch `Revisions` for `Metric` with ID."
   [id]
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (revision/revisions+details Metric id))
 
 
 (defendpoint POST "/:id/revert"
   "Revert a `Metric` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id [Required Integer]}
+  {revision_id su/IntGreaterThanZero}
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (revision/revert!
     :entity      Metric
     :id          id

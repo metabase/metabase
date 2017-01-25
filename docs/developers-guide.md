@@ -1,9 +1,9 @@
+**This guide will teach you:**
 
-> **This guide will teach you:**
-> How to compile your own copy of Metabase
-> How to set up a development environment
-> How to run the Metabase Server
-> How to contribute back to the Metabase project
+> * How to compile your own copy of Metabase
+> * How to set up a development environment
+> * How to run the Metabase Server
+> * How to contribute back to the Metabase project
 
 
 # Contributing
@@ -19,9 +19,10 @@ We don't like getting sued, so before merging any pull request, we'll need each 
 
 These are the set of tools which are required in order to complete any build of the Metabase code.  Follow the links to download and install them on your own before continuing.
 
-1. Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-2. Node.js for npm (http://nodejs.org/)
-3. Leiningen (http://leiningen.org/)
+1. [Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
+2. [Node.js (http://nodejs.org/)](http://nodejs.org/)
+3. [Yarn package manager for Node.js](https://yarnpkg.com/)
+3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
 
 # Build Metabase
@@ -32,7 +33,7 @@ The entire Metabase application is compiled and assembled into a single .jar fil
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
 
-## Building the OS X App
+## Building `Metabase.app`
 
 See [this guide](developers-guide-osx.md).
 
@@ -52,13 +53,11 @@ Both components are built and assembled together into a single jar file which ru
 
 ### 3rd party dependencies
 
-Metabase depends on lots of other 3rd party libraries to run, so as you are developing you'll need to keep those up to date.  These don't run automatically during development, so kick them off manually when needed.
+Metabase depends on lots of other 3rd party libraries to run, so as you are developing you'll need to keep those up to date. Leiningen will automatically fetch Clojure dependencies when needed, but for JavaScript dependencies you'll need to kick off the installation process manually when needed.
 
 ```sh
-# clojure dependencies
-$ lein deps
 # javascript dependencies
-$ npm install
+$ yarn
 ```
 
 ### Development server (quick start)
@@ -69,7 +68,7 @@ Run your backend development server with
 
 Start the frontend build process with
 
-    npm run build-hot
+    yarn run build-hot
 
 This will get you a full development server running on port :3000 by default.
 
@@ -81,18 +80,18 @@ We use these technologies for our FE build process to allow us to use modules, e
 - babel
 - cssnext
 
-Frontend tasks are managed by `npm`. All available tasks can be found in `package.json` under *scripts*.
+Frontend tasks are executed using `yarn run`. All available tasks can be found in `package.json` under *scripts*.
 
 To build the frontend client without watching for changes, you can use:
 
 ```sh
-$ npm run build
+$ yarn run build
 ```
 
 If you're working on the frontend directly, you'll most likely want to reload changes on save, and in the case of React components, do so while maintaining state. To start a build with hot reloading, use:
 
 ```sh
-$ npm run build-hot
+$ yarn run build-hot
 ```
 
 Note that at this time if you change CSS variables, those changes will only be picked up when a build is restarted.
@@ -100,19 +99,20 @@ Note that at this time if you change CSS variables, those changes will only be p
 There is also an option to reload changes on save without hot reloading if you prefer that.
 
 ```sh
-$ npm run build-watch
+$ yarn run build-watch
 ```
 
 #### Unit Tests / Linting
 
 Run unit tests with
 
-    npm run test             # Karma
-    npm run test-e2e         # Protractor
+    yarn run test             # Karma
+    yarn run test-e2e         # Selenium Webdriver
 
-Run the linters with
+Run the linters and type checker with
 
-    npm run lint
+    yarn run lint
+    yarn run flow
 
 
 ## Backend development

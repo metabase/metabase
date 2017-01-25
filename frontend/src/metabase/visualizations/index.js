@@ -1,14 +1,58 @@
+/* @flow weak */
+
+import { Component } from "react";
 
 import Scalar     from "./Scalar.jsx";
+import Progress   from "./Progress.jsx";
 import Table      from "./Table.jsx";
 import LineChart  from "./LineChart.jsx";
 import BarChart   from "./BarChart.jsx";
 import PieChart   from "./PieChart.jsx";
 import AreaChart  from "./AreaChart.jsx";
 import MapViz     from "./Map.jsx";
+import ScatterPlot from "./ScatterPlot.jsx";
+import Funnel     from "./Funnel.jsx";
+
+import _ from "underscore";
+
+import type { DatasetData } from "metabase/meta/types/Dataset";
+import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+
+export type HoverObject = {
+    index?: number,
+    axisIndex?: number
+}
+
+// type Visualization = Component<*, VisualizationProps, *>;
+
+// $FlowFixMe
+export type Series = { card: Card, data: DatasetData }[] & { _raw: Series }
+
+export type VisualizationProps = {
+    series: Series,
+    card: Card,
+    data: DatasetData,
+    settings: VisualizationSettings,
+
+    className?: string,
+    gridSize: ?{
+        width: number,
+        height: number
+    },
+
+    isDashboard: boolean,
+    isEditing: boolean,
+    actionButtons: Node,
+
+    hovered: ?HoverObject,
+    onHoverChange: (?HoverObject) => void,
+
+    onUpdateVisualizationSettings: ({ [key: string]: any }) => void
+}
 
 const visualizations = new Map();
 const aliases = new Map();
+// $FlowFixMe
 visualizations.get = function(key) {
     return Map.prototype.get.call(this, key) || aliases.get(key) || Table;
 }
@@ -27,18 +71,49 @@ export function registerVisualization(visualization) {
     }
 }
 
+export function getVisualizationRaw(series: Series) {
+    return {
+        series: series,
+        CardVisualization: visualizations.get(series[0].card.display)
+    };
+}
+
+export function getVisualizationTransformed(series: Series) {
+    // don't transform if we don't have the data
+    if (_.any(series, s => s.data == null)) {
+        return getVisualizationRaw(series);
+    }
+
+    // if a visualization has a transformSeries function, do the transformation until it returns the same visualization / series
+    let CardVisualization, lastSeries;
+    do {
+        CardVisualization = visualizations.get(series[0].card.display);
+        if (!CardVisualization) {
+            throw new Error("No visualization for " + series[0].card.display);
+        }
+        lastSeries = series;
+        if (typeof CardVisualization.transformSeries === "function") {
+            series = CardVisualization.transformSeries(series);
+        }
+        if (series !== lastSeries) {
+            series = [...series];
+            // $FlowFixMe
+            series._raw = lastSeries;
+        }
+    } while (series !== lastSeries);
+
+    return { series, CardVisualization };
+}
+
 registerVisualization(Scalar);
+registerVisualization(Progress);
 registerVisualization(Table);
 registerVisualization(LineChart);
 registerVisualization(BarChart);
-registerVisualization(PieChart);
 registerVisualization(AreaChart);
+registerVisualization(ScatterPlot);
+registerVisualization(PieChart);
 registerVisualization(MapViz);
-
-
-import { enableVisualizationEasterEgg } from "./lib/utils";
-import XKCDChart from "./XKCDChart.jsx";
-import LineAreaBarChart from "./components/LineAreaBarChart.jsx";
-enableVisualizationEasterEgg("XKCD", LineAreaBarChart, XKCDChart);
+registerVisualization(Funnel);
 
 export default visualizations;

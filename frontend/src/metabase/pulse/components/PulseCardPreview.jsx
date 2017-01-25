@@ -1,11 +1,9 @@
+/* eslint "react/prop-types": "warn" */
 /*eslint-disable react/no-danger */
-
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-
-import { fetchPulseCardPreview } from "../actions";
 
 export default class PulseCardPreview extends Component {
     constructor(props, context) {
@@ -15,11 +13,12 @@ export default class PulseCardPreview extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         cardPreview: PropTypes.object,
-        onRemove: PropTypes.func.isRequired
+        onRemove: PropTypes.func.isRequired,
+        fetchPulseCardPreview: PropTypes.func.isRequired,
     };
 
     componentWillMount() {
-        this.props.dispatch(fetchPulseCardPreview(this.props.card.id));
+        this.props.fetchPulseCardPreview(this.props.card.id);
     }
 
     render() {

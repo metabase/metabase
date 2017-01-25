@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import Icon from "metabase/components/Icon.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -36,7 +37,7 @@ const CompletionBadge = ({completed}) =>
 
 
 export const Task = ({title, description, completed, link}) =>
-  <a className="bordered border-brand-hover rounded transition-border flex align-center p2 no-decoration" href={link}>
+  <Link to={link} className="bordered border-brand-hover rounded transition-border flex align-center p2 no-decoration">
     <CompletionBadge completed={completed} />
     <div>
       <TaskTitle title={title} titleClassName={
@@ -44,7 +45,7 @@ export const Task = ({title, description, completed, link}) =>
         } />
       { !completed ? <TaskDescription description={description} /> : null }
     </div>
-  </a>
+  </Link>
 
 export default class SettingsSetupList extends Component {
     constructor(props, context) {

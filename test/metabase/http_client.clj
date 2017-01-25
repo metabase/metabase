@@ -1,18 +1,127 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [clj-http.client :as client]
             [metabase.config :as config]
             [metabase.util :as u]))
 
-(declare authenticate auto-deserialize-dates build-url -client)
 
-;; ## API CLIENT
+;;; build-url
 
 (def ^:dynamic *url-prefix*
   "Prefix to automatically prepend to the URL of calls made with `client`."
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
+
+(defn build-url
+  "Build an API URL for `localhost` and `MB_JETTY_PORT` with URL-PARAM-KWARGS.
+
+     (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
+  [url url-param-kwargs]
+  {:pre [(string? url) (u/maybe? map? url-param-kwargs)]}
+  (str *url-prefix* url (when (seq url-param-kwargs)
+                          (str "?" (s/join \& (for [[k v] url-param-kwargs]
+                                                (str (if (keyword? k) (name k) k)
+                                                     \=
+                                                     (if (keyword? v) (name v) v))))))))
+
+
+;;; parse-response
+
+(def ^:private ^:const auto-deserialize-dates-keys
+  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
+
+(defn- auto-deserialize-dates
+  "Automatically recurse over RESPONSE and look for keys that are known to correspond to dates.
+   Parse their values and convert to `java.sql.Timestamps`."
+  [response]
+  (cond (sequential? response) (map auto-deserialize-dates response)
+        (map? response) (->> response
+                             (map (fn [[k v]]
+                                    {k (cond
+                                         (contains? auto-deserialize-dates-keys k) (u/->Timestamp v)
+                                         (coll? v) (auto-deserialize-dates v)
+                                         :else v)}))
+                             (into {}))
+        :else response))
+
+(defn- parse-response
+  "Deserialize the JSON response or return as-is if that fails."
+  [body]
+  (try
+    (auto-deserialize-dates (json/parse-string body keyword))
+    (catch Throwable _
+      (when-not (s/blank? body)
+        body))))
+
+
+;;; authentication
+
+(declare client)
+
+(defn authenticate [{:keys [email password] :as credentials}]
+  {:pre [(string? email) (string? password)]}
+  (try
+    (:id (client :post 200 "session" credentials))
+    (catch Throwable e
+      (log/error "Failed to authenticate with email:" email "and password:" password ":" (.getMessage e)))))
+
+
+;;; client
+
+(defn- build-request-map [credentials http-body]
+  (cond-> {:accept  :json
+           :headers {"X-METABASE-SESSION" (when credentials
+                                            (if (map? credentials)
+                                              (authenticate credentials)
+                                              credentials))}}
+    (seq http-body) (assoc
+                      :content-type :json
+                      :body         (json/generate-string http-body))))
+
+(defn- check-status-code
+  "If an EXPECTED-STATUS-CODE was passed to the client, check that the actual status code matches, or throw an exception."
+  [method-name url body expected-status-code actual-status-code]
+  (when expected-status-code
+    (when (not= actual-status-code expected-status-code)
+      (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status-code actual-status-code)
+            body    (try
+                      (json/parse-string body keyword)
+                      (catch Throwable _
+                        body))]
+        (log/error (u/pprint-to-str 'red body))
+        (throw (ex-info message {:status-code actual-status-code}))))))
+
+(defn- method->request-fn [method]
+  (case method
+    :get    client/get
+    :post   client/post
+    :put    client/put
+    :delete client/delete))
+
+(defn- -client [credentials method expected-status url http-body url-param-kwargs]
+  ;; Since the params for this function can get a little complicated make sure we validate them
+  {:pre [(or (u/maybe? map? credentials)
+             (string? credentials))
+         (contains? #{:get :post :put :delete} method)
+         (u/maybe? integer? expected-status)
+         (string? url)
+         (u/maybe? map? http-body)
+         (u/maybe? map? url-param-kwargs)]}
+  (let [request-map (build-request-map credentials http-body)
+        request-fn  (method->request-fn method)
+        url         (build-url url url-param-kwargs)
+        method-name (s/upper-case (name method))
+        ;; Now perform the HTTP request
+        {:keys [status body]} (try (request-fn url request-map)
+                                   (catch clojure.lang.ExceptionInfo e
+                                     (log/debug method-name url)
+                                     (:object (ex-data e))))]
+    (log/debug method-name url status)
+    (check-status-code method-name url body expected-status status)
+    (parse-response body)))
+
 
 (defn client
   "Perform an API call and return the response (for test purposes).
@@ -40,101 +149,3 @@
         [expected-status [url & args]]    (u/optional integer? args)
         [body [& {:as url-param-kwargs}]] (u/optional map? args)]
     (-client credentials method expected-status url body url-param-kwargs)))
-
-
-;; ## INTERNAL FUNCTIONS
-
-(defn- -client [credentials method expected-status url http-body url-param-kwargs]
-  ;; Since the params for this function can get a little complicated make sure we validate them
-  {:pre [(or (nil? credentials)
-             (map? credentials)
-             (string? credentials))
-         (contains? #{:get :post :put :delete} method)
-         (or (nil? expected-status)
-             (integer? expected-status))
-         (string? url)
-         (or (nil? http-body)
-             (map? http-body))
-         (or (nil? url-param-kwargs)
-             (map? url-param-kwargs))]}
-
-  (let [request-map (cond-> {:accept  :json
-                             :headers {"X-METABASE-SESSION" (when credentials (if (map? credentials) (authenticate credentials)
-                                                                                  credentials))}}
-                      (seq http-body) (assoc
-                                       :content-type :json
-                                       :body         (json/generate-string http-body)))
-        request-fn  (case method
-                      :get    client/get
-                      :post   client/post
-                      :put    client/put
-                      :delete client/delete)
-        url         (build-url url url-param-kwargs)
-        method-name (.toUpperCase ^String (name method))
-
-        ;; Now perform the HTTP request
-        {:keys [status body]} (try (request-fn url request-map)
-                                   (catch clojure.lang.ExceptionInfo e
-                                     (log/debug method-name url)
-                                     (:object (ex-data e))))]
-
-    ;; -check the status code if EXPECTED-STATUS was passed
-    (log/debug method-name url status)
-    (when expected-status
-      (when-not (= status expected-status)
-        (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status status)
-              body    (try (-> (json/parse-string body)
-                               clojure.walk/keywordize-keys)
-                           (catch Throwable _ body))]
-          (log/error (u/pprint-to-str 'red body))
-          (throw (ex-info message {:status-code status})))))
-
-    ;; Deserialize the JSON response or return as-is if that fails
-    (try (-> body
-             json/parse-string
-             clojure.walk/keywordize-keys
-             auto-deserialize-dates)
-         (catch Throwable _
-           (if (clojure.string/blank? body) nil
-               body)))))
-
-(defn authenticate [{:keys [email password] :as credentials}]
-  {:pre [(string? email) (string? password)]}
-  (try
-    (:id (client :post 200 "session" credentials))
-    (catch Throwable e
-      (log/error "Failed to authenticate with email:" email "and password:" password ":" (.getMessage e)))))
-
-(defn- build-url [url url-param-kwargs]
-  {:pre [(string? url)
-         (or (nil? url-param-kwargs)
-             (map? url-param-kwargs))]}
-  (str *url-prefix* url (when-not (empty? url-param-kwargs)
-                          (str "?" (->> url-param-kwargs
-                                        (map (fn [[k v]]
-                                               [(if (keyword? k) (name k) k)
-                                                (if (keyword? v) (name v) v)]))
-                                        (map (partial interpose "="))
-                                        (map (partial apply str))
-                                        (interpose "&")
-                                        (apply str))))))
-
-
-;; ## AUTO-DESERIALIZATION
-
-(def ^:private ^:const auto-deserialize-dates-keys
-  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
-
-(defn- auto-deserialize-dates
-  "Automatically recurse over RESPONSE and look for keys that are known to correspond to dates.
-   Parse their values and convert to `java.sql.Timestamps`."
-  [response]
-  (cond (sequential? response) (map auto-deserialize-dates response)
-        (map? response) (->> response
-                             (map (fn [[k v]]
-                                    {k (cond
-                                         (contains? auto-deserialize-dates-keys k) (u/->Timestamp v)
-                                         (coll? v) (auto-deserialize-dates v)
-                                         :else v)}))
-                             (into {}))
-        :else response))

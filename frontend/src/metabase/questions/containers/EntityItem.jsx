@@ -29,26 +29,26 @@ export default class EntityItem extends Component {
         item:               PropTypes.object.isRequired,
         setItemSelected:    PropTypes.func.isRequired,
         setFavorited:       PropTypes.func.isRequired,
-        setArchived:        PropTypes.func.isRequired
+        setArchived:        PropTypes.func.isRequired,
+        editable:           PropTypes.bool,
+        showCollectionName: PropTypes.bool,
+        onEntityClick:      PropTypes.func,
+        onMove:             PropTypes.func,
     };
 
     render() {
-        let { item, setItemSelected, setFavorited, setArchived } = this.props;
+        let { item, editable, setItemSelected, setFavorited, setArchived, onMove, onEntityClick, showCollectionName } = this.props;
         return (
             <li className="relative" style={{ display: item.visible ? undefined : "none" }}>
                 <Item
-                    id={item.id}
-                    name={item.name}
-                    created={item.created}
-                    by={item.by}
-                    favorite={item.favorite}
-                    archived={item.archived}
-                    icon={item.icon}
-                    selected={item.selected}
-                    labels={item.labels}
-                    setItemSelected={setItemSelected}
-                    setFavorited={setFavorited}
-                    setArchived={setArchived}
+                    setItemSelected={editable ? setItemSelected : null}
+                    setFavorited={editable ? setFavorited : null}
+                    setArchived={editable ? setArchived : null}
+                    onMove={editable ? onMove : null}
+                    onEntityClick={onEntityClick}
+                    showCollectionName={showCollectionName}
+                    entity={item}
+                    {...item}
                 />
             </li>
         )

@@ -3,9 +3,9 @@
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [clj-http.client :as http]
-            (clojurewerkz.quartzite [jobs :as jobs]
-                                    [triggers :as triggers])
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.triggers :as triggers]
             (metabase [config :as config]
                       [public-settings :as public-settings]
                       [task :as task])))

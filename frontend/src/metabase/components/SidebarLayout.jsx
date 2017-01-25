@@ -1,9 +1,8 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
-import cx from "classnames"
 
 const SidebarLayout = ({ className, style, sidebar, children }) =>
-    <div className={cx('spread', className)} style={{ ...style, display: "flex", flexDirection: "row"}}>
+    <div className={className} style={{ ...style, display: "flex", flexDirection: "row"}}>
         { React.cloneElement(
             sidebar,
             { style: { flexShrink: 0 },

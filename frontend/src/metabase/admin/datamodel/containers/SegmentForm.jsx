@@ -1,9 +1,10 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import FormLabel from "../components/FormLabel.jsx";
 import FormInput from "../components/FormInput.jsx";
 import FormTextArea from "../components/FormTextArea.jsx";
-import FieldSet from "../components/FieldSet.jsx";
+import FieldSet from "metabase/components/FieldSet.jsx";
 import PartialQueryBuilder from "../components/PartialQueryBuilder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -54,7 +55,7 @@ export default class SegmentForm extends Component {
         return (
             <div>
                 <button className={cx("Button", { "Button--primary": !invalid, "disabled": invalid })} onClick={handleSubmit}>Save changes</button>
-                <a className="Button Button--borderless mx1" href={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id}>Cancel</a>
+                <Link to={"/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id} className="Button Button--borderless mx1">Cancel</Link>
             </div>
         )
     }

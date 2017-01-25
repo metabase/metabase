@@ -115,33 +115,54 @@ NSString *BaseURL() {
 	[self.webView.mainFrame loadRequest:request];
 }
 
-- (void)saveCSV:(NSString *)datasetQuery {
+- (void)downloadWithMethod:(NSString *)methodString url:(NSString *)urlString params:(NSDictionary *)paramsDict extensions:(NSArray *)extensions {
 	NSSavePanel *savePanel			= [NSSavePanel savePanel];
-	savePanel.allowedFileTypes		= @[@"csv"];
-	savePanel.allowsOtherFileTypes	= NO;
 	savePanel.extensionHidden		= NO;
 	savePanel.showsTagField			= NO;
+    if ([extensions count] > 0) {
+        savePanel.allowedFileTypes = extensions;
+        savePanel.allowsOtherFileTypes = NO;
+    }
 	
 	NSString *downloadsDirectory	=  NSSearchPathForDirectoriesInDomains(NSDownloadsDirectory, NSUserDomainMask, YES)[0];
 	savePanel.directoryURL			= [NSURL URLWithString:downloadsDirectory];
-	
+    
+    // TODO: either figure out how to pull default filename from the Content-Disposition header or pass it in from JS land.
 	NSDateFormatter *dateFormatter	= [[NSDateFormatter alloc] init];
 	dateFormatter.locale			= [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
 	dateFormatter.dateFormat		= @"yyyy-MM-dd'T'HH_mm_ss";
 	savePanel.nameFieldStringValue	= [NSString stringWithFormat:@"query_result_%@", [dateFormatter stringFromDate:[NSDate date]]];
 	
 	if ([savePanel runModal] == NSFileHandlingPanelOKButton) {
-		NSLog(@"Will save CSV at: %@", savePanel.URL);
+		NSLog(@"Will save file at: %@", savePanel.URL);
 		
-		NSURL *url = [NSURL URLWithString:@"/api/dataset/csv" relativeToURL:[NSURL URLWithString:BaseURL()]];
-        NSString *postBody = [@"query=" stringByAppendingString:datasetQuery];
-        NSData *data = [postBody dataUsingEncoding:NSUTF8StringEncoding];
-		NSMutableURLRequest *csvRequest = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0f];
-        csvRequest.HTTPMethod = @"POST";
-        [csvRequest setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
-        [csvRequest setValue:[NSString stringWithFormat:@"%lu", (NSUInteger)data.length] forHTTPHeaderField:@"Content-Length"];
-        csvRequest.HTTPBody = data;
-		[NSURLConnection sendAsynchronousRequest:csvRequest queue:[[NSOperationQueue alloc] init] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
+        NSString *method = [methodString uppercaseString];
+        
+		NSURL *url = [NSURL URLWithString:urlString relativeToURL:[NSURL URLWithString:BaseURL()]];
+
+        NSMutableString *query = [NSMutableString string];
+        for (NSString* key in paramsDict) {
+            NSString* value = [paramsDict objectForKey:key];
+            [query appendFormat:@"%@=%@",
+                                [key stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]],
+                                [value stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]]];
+        }
+        
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0f];
+        request.HTTPMethod = [method uppercaseString];
+        
+        if ([query length] > 0) {
+            if ([request.HTTPMethod isEqualToString:@"POST"] || [request.HTTPMethod isEqualToString:@"PUT"]) {
+                NSData *data = [query dataUsingEncoding:NSUTF8StringEncoding];
+                [request setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
+                [request setValue:[NSString stringWithFormat:@"%lu", (NSUInteger)data.length] forHTTPHeaderField:@"Content-Length"];
+                request.HTTPBody = data;
+            } else {
+                [request setURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@?%@", urlString, query] relativeToURL:[NSURL URLWithString:BaseURL()]]];
+            }
+        }
+
+		[NSURLConnection sendAsynchronousRequest:request queue:[[NSOperationQueue alloc] init] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
 			NSError *writeError = nil;
 			[data writeToURL:savePanel.URL options:NSDataWritingAtomic error:&writeError];
 			
@@ -165,11 +186,11 @@ NSString *BaseURL() {
 	};
 	
 	// custom functions for OS X integration are available to the frontend as properties of window.OSX
-	context[@"OSX"] = @{@"saveCSV": ^(JSValue *datasetQuery){
-		[self saveCSV:datasetQuery.description];
-	}, @"resetPassword": ^(){
+    context[@"OSX"] = @{@"download": ^(JSValue *method, JSValue *url, JSValue *params, JSValue *extensions) {
+        [self downloadWithMethod:[method toString] url:[url toString] params:[params toDictionary] extensions:[extensions toArray]];
+    }, @"resetPassword": ^(){
 		[self resetPassword:nil];
-	}};
+    }};
 }
 
 

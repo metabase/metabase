@@ -12,19 +12,22 @@ import NewUserOnboardingModal from '../components/NewUserOnboardingModal.jsx';
 import NextStep from "../components/NextStep.jsx";
 
 import * as homepageActions from "../actions";
-import { getActivity, getRecentViews, getUser, getShowOnboarding } from "../selectors";
+import { getActivity, getRecentViews, getUser } from "../selectors";
 
 const mapStateToProps = (state, props) => {
     return {
         activity:       getActivity(state),
         recentViews:    getRecentViews(state),
         user:           getUser(state),
-        showOnboarding: getShowOnboarding(state)
+        showOnboarding: "new" in props.location.query
     }
 }
 
+import { push } from "react-router-redux";
+
 const mapDispatchToProps = {
-    ...homepageActions
+    ...homepageActions,
+    onChangeLocation: push
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -68,7 +71,7 @@ export default class HomepageApp extends Component {
                     <Modal>
                         <NewUserOnboardingModal
                             user={user}
-                            closeFn={() => (this.completeOnboarding())}
+                            onClose={() => (this.completeOnboarding())}
                         />
                     </Modal>
                 : null }
@@ -78,7 +81,7 @@ export default class HomepageApp extends Component {
                         <div className="Layout-mainColumn">
                             <header style={this.styles.headerGreeting} className="flex align-center pb4 pt1">
                                 <Smile />
-                                <div className="ml2">{this.state.greeting}</div>
+                                <div id="Greeting" className="ml2">{this.state.greeting}</div>
                             </header>
                         </div>
                     </div>

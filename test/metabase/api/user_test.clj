@@ -97,20 +97,20 @@
 
 ;; Test input validations
 (expect
-  {:errors {:first_name "field is a required param."}}
+  {:errors {:first_name "value must be a non-blank string."}}
   ((user->client :crowberto) :post 400 "user" {}))
 
 (expect
-  {:errors {:last_name "field is a required param."}}
+  {:errors {:last_name "value must be a non-blank string."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"}))
 
 (expect
-  {:errors {:email "field is a required param."}}
+  {:errors {:email "value must be a valid email address."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"
                                                :last_name  "whatever"}))
 
 (expect
-  {:errors {:email "Invalid value 'whatever' for 'email': Not a valid email address."}}
+  {:errors {:email "value must be a valid email address."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"
                                                :last_name  "whatever"
                                                :email      "whatever"}))
@@ -127,7 +127,6 @@
      :date_joined  $
      :last_login   $
      :is_active    true
-     :is_staff     true
      :is_superuser false
      :is_qbnewb    true
      :google_auth  false
@@ -228,7 +227,7 @@
 
 ;; Test input validations on password change
 (expect
-  {:errors {:password "field is a required param."}}
+  {:errors {:password "Insufficient password strength"}}
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {}))
 
 ;; Make sure that if current password doesn't match we get a 400
@@ -273,3 +272,18 @@
 ;; Check that non-superusers are denied access to resending invites
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :post 403 (format "user/%d/send_invite" (user->id :crowberto))))
+
+
+;; test that when disabling Google auth if a user gets disabled and reënabled they are no longer Google Auth (Bug #3323)
+(expect
+  {:is_active true, :google_auth false}
+  (tu/with-temporary-setting-values [google-auth-client-id "ABCDEFG"]
+    (tu/with-temp User [user {:google_auth true}]
+      (db/update! User (u/get-id user)
+        :is_active false)
+      (tu/with-temporary-setting-values [google-auth-client-id nil]
+        ((user->client :crowberto) :post 200 "user"
+         {:first_name "Cam"
+          :last_name  "Era"
+          :email      (:email user)})
+        (db/select-one [User :is_active :google_auth] :id (u/get-id user))))))

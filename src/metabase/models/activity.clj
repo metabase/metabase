@@ -10,23 +10,48 @@
             [metabase.util :as u]))
 
 
+;;; ------------------------------------------------------------ Perms Checking ------------------------------------------------------------
+
+(def ^:private model->entity
+  {"card"      Card
+   "dashboard" Dashboard
+   "metric"    Metric
+   "pulse"     Pulse
+   "segment"   Segment})
+
+(defn- can-? [f {model :model, model-id :model_id, :as activity}]
+  (if-let [object (when-let [entity (model->entity model)]
+                    (entity model-id))]
+    (f object)
+    true))
+
+
+;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+
 (i/defentity Activity :activity)
 
 (defn- pre-insert [activity]
   (let [defaults {:timestamp (u/new-sql-timestamp)
-                  :details {}}]
+                  :details   {}}]
     (merge defaults activity)))
 
 (u/strict-extend (class Activity)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types       (constantly {:details :json, :topic :keyword})
-          :can-read?   i/publicly-readable?
-          :can-write?  i/publicly-writeable?
-          :pre-insert  pre-insert}))
+         {:types             (constantly {:details :json, :topic :keyword})
+          :can-read?         (partial can-? i/can-read?)
+          :can-write?        (partial can-? i/can-write?)
+          :pre-insert        pre-insert}))
+
+
+;;; ------------------------------------------------------------ Etc. ------------------------------------------------------------
 
 
 ;; ## Persistence Functions
+
+;; TODO - this is probably the exact wrong way to have written this functionality.
+;; This could have been a multimethod or protocol, and various entity classes could implement it;
+;; Furthermore, we could have just used *current-user-id* to get the responsible user, instead of leaving it open to user error.
 
 (defn record-activity!
   "Inserts a new `Activity` entry.

@@ -1,907 +1,198 @@
-import _ from "underscore";
-
-import MetabaseAnalytics from 'metabase/lib/analytics';
-import MetabaseCookies from 'metabase/lib/cookies';
-import * as MetabaseCore from 'metabase/lib/core';
-import MetabaseSettings from 'metabase/lib/settings';
-
-
-var MetabaseServices = angular.module('metabase.services', ['http-auth-interceptor', 'ipCookie', 'metabase.core.services']);
-
-MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interval', '$timeout', 'ipCookie', 'Session', 'User', 'Settings',
-    function($rootScope, $q, $location, $interval, $timeout, ipCookie, Session, User, Settings) {
-        // this is meant to be a global service used for keeping track of our overall app state
-        // we fire 2 events as things change in the app
-        // 1. appstate:user
-
-        var initPromise;
-        var currentUserPromise;
-
-        var service = {
-
-            model: {
-                setupToken: null,
-                currentUser: null,
-                appContext: 'none',
-                requestedUrl: null
-            },
-
-            init: function() {
-
-                if (!initPromise) {
-                    // hackery to allow MetabaseCookies to tie into Angular
-                    MetabaseCookies.bootstrap($rootScope, $location, ipCookie);
-
-                    var deferred = $q.defer();
-                    initPromise = deferred.promise;
-
-                    // grab our global settings
-                    service.refreshSiteSettings();
-
-                    // just make sure we grab the current user
-                    service.refreshCurrentUser().then(function(user) {
-                        deferred.resolve();
-                    }, function(error) {
-                        deferred.resolve();
-                    });
-                }
-
-                return initPromise;
-            },
-
-            clearState: function() {
-                currentUserPromise = null;
-                service.model.currentUser = null;
-
-                // clear any existing session cookies if they exist
-                ipCookie.remove('metabase.SESSION_ID');
-            },
-
-            refreshCurrentUser: function() {
-
-                // this is meant to be called once on app startup
-                var userRefresh = User.current(function(result) {
-                    service.model.currentUser = result;
-
-                    $rootScope.$broadcast('appstate:user', result);
-
-                }, function(error) {
-                    console.log('unable to get current user', error);
-                });
-
-                // NOTE: every time we refresh the user we update our current promise to ensure that
-                //       we can guarantee we've resolved the current user
-                currentUserPromise = userRefresh.$promise;
-
-                return currentUserPromise;
-            },
-
-            refreshSiteSettings: function() {
-
-                var settingsRefresh = Session.properties(function(settings) {
-
-                    MetabaseSettings.setAll(_.omit(settings, function(value, key, object) {
-                        return (key.indexOf('$') === 0);
-                    }));
-
-                    $rootScope.$broadcast('appstate:site-settings', settings);
-
-                }, function(error) {
-                    console.log('unable to get site settings', error);
-                });
-
-                return settingsRefresh.$promise;
-            },
-
-            // This function performs whatever state cleanup and next steps are required when a user tries to access
-            // something they are not allowed to.
-            invalidAccess: function(user, url, message) {
-                $location.path('/unauthorized/');
-            },
-
-            setAppContext: function(appContext) {
-                service.model.appContext = appContext;
-                $rootScope.$broadcast('appstate:context-changed', service.model.appContext);
-            },
-
-            locationChanged: function(event) {
-                // establish our application context based on the route (URI)
-                // valid app contexts are: 'setup', 'auth', 'main', 'admin', or 'unknown'
-                var routeContext;
-                if ($location.path().indexOf('/auth/') === 0) {
-                    routeContext = 'auth';
-                } else if ($location.path().indexOf('/setup/') === 0) {
-                    routeContext = 'setup';
-                } else if ($location.path().indexOf('/admin/') === 0) {
-                    routeContext = 'admin';
-                } else if ($location.path() === '/') {
-                    routeContext = 'home';
-                } else {
-                    routeContext = 'main';
-                }
-
-                // if the context of the app has changed due to this route change then send out an event
-                if (service.model.appContext !== routeContext) {
-                    service.setAppContext(routeContext);
-                }
-
-                // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
-                // code meant to establish app context based on the current route
-                if (currentUserPromise) {
-                    currentUserPromise.then(function(user) {
-                        service.locationChangedImpl(event);
-                    }, function(error) {
-                        service.locationChangedImpl(event);
-                    });
-                } else {
-                    service.locationChangedImpl(event);
-                }
-            },
-
-            locationChangedImpl: function(event) {
-                // whenever we have a route change (including initial page load) we need to establish some context
-
-                // handle routing protections for /setup/
-                if ($location.path().indexOf('/setup') === 0 && !MetabaseSettings.hasSetupToken()) {
-                    // someone trying to access setup process without having a setup token, so block that.
-                    $location.path('/');
-                    return;
-                } else if ($location.path().indexOf('/setup') !== 0 && MetabaseSettings.hasSetupToken()) {
-                    // someone who has a setup token but isn't routing to setup yet, so send them there!
-                    $location.path('/setup/');
-                    return;
-                }
-
-                // if we don't have a current user then the only sensible destination is the login page
-                if (!service.model.currentUser) {
-                    // make sure we clear out any current state just to be safe
-                    service.clearState();
-
-                    if ($location.path().indexOf('/auth/') !== 0 && $location.path().indexOf('/setup/') !== 0) {
-                        // if the user is asking for a url outside of /auth/* then record the url then send them
-                        // to login page, otherwise we will let the user continue on to their requested page
-                        service.model.requestedUrl = $location.path();
-                        $location.path('/auth/login');
-                    }
-
-                    return;
-                }
-
-                if ($location.path().indexOf('/admin/') === 0) {
-                    // the user is trying to change to a superuser page
-                    if (!service.model.currentUser.is_superuser) {
-                        service.invalidAccess(service.model.currentUser, $location.url(), "user is not a superuser!!!");
-                        return;
-                    }
-
-                }
-            },
-
-            redirectAfterLogin: function() {
-                if (service.model.requestedUrl) {
-                    $location.path(service.model.requestedUrl);
-                    delete service.model.requestedUrl;
-                } else {
-                    $location.path('/');
-                }
-            }
-        };
-
-        // listen for location changes and use that as a trigger for page view tracking
-        $rootScope.$on('$locationChangeSuccess', function(event) {
-        service.locationChanged(event);
-            // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
-            MetabaseAnalytics.trackPageView($location.path());
-        });
-
-        // login just took place, so lets force a refresh of the current user
-        $rootScope.$on("appstate:login", function(event, session_id) {
-            service.refreshCurrentUser();
-        });
-
-        // logout just took place, do some cleanup
-        $rootScope.$on("appstate:logout", function(event, session_id) {
-
-            // clear out any current state
-            service.clearState();
-
-            // NOTE that we don't really care about callbacks in this case
-            Session.delete({
-                'session_id': session_id
-            });
-        });
-
-        // enable / disable GA based on opt-out of anonymous tracking
-        $rootScope.$on("appstate:site-settings", function(event, settings) {
-            const ga_code = MetabaseSettings.get('ga_code');
-            if (MetabaseSettings.isTrackingEnabled()) {
-                // we are doing tracking
-                window['ga-disable-'+ga_code] = null;
-            } else {
-                // tracking is disabled
-                window['ga-disable-'+ga_code] = true;
-            }
-        });
-
-        // NOTE: the below events are generated from the http-auth-interceptor which listens on our $http calls
-        //       and intercepts calls that result in a 401 or 403 so that we can handle them here.  You must be
-        //       careful to consider the implications of this because any endpoint that returns a 401/403 can
-        //       have its call stack interrupted now and handled here instead of its normal callback sequence.
-
-        // $http interceptor received a 401 response
-        $rootScope.$on("event:auth-loginRequired", function() {
-            // this is effectively just like a logout, we want to reset everything to a base state, then force login
-            service.clearState();
-
-            // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
-            $timeout(function() {
-                $location.path('/auth/login');
-            }, 300);
-        });
-
-        // $http interceptor received a 403 response
-        $rootScope.$on("event:auth-forbidden", function() {
-            $location.path("/unauthorized");
-        });
-
-        return service;
-    }
-]);
-
-MetabaseServices.service('MetabaseCore', ['User', function(User) {
-    // this just makes it easier to access the current user
-    this.currentUser = User.current;
-
-    // copy over MetabaseCore properties and functions
-    angular.forEach(MetabaseCore, (value, key) => this[key] = value);
-}]);
-
-
-// API Services
-var CoreServices = angular.module('metabase.core.services', ['ngResource', 'ngCookies']);
-
-CoreServices.factory('Activity', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/activity', {}, {
-        list: {
-            method: 'GET',
-            isArray: true
-        },
-        recent_views: {
-            url: '/api/activity/recent_views',
-            method: 'GET',
-            isArray: true
-        }
-    });
-}]);
-
-CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/card/:cardId', {}, {
-        list: {
-            url: '/api/card',
-            method: 'GET',
-            isArray: true
-        },
-        create: {
-            url: '/api/card',
-            method: 'POST'
-        },
-        get: {
-            method: 'GET',
-            params: {
-                cardId: '@cardId'
-            }
-        },
-        update: {
-            method: 'PUT',
-            params: {
-                cardId: '@id'
-            }
-        },
-        delete: {
-            method: 'DELETE',
-            params: {
-                cardId: '@cardId'
-            }
-        },
-        isfavorite: {
-            url: '/api/card/:cardId/favorite',
-            method: 'GET',
-            params: {
-                cardId: '@cardId'
-            }
-        },
-        favorite: {
-            url: '/api/card/:cardId/favorite',
-            method: 'POST',
-            params: {
-                cardId: '@cardId'
-            }
-        },
-        unfavorite: {
-            url: '/api/card/:cardId/favorite',
-            method: 'DELETE',
-            params: {
-                cardId: '@cardId'
-            }
-        },
-        updateLabels: {
-            url: '/api/card/:cardId/labels',
-            method: 'POST',
-            params: {
-                cardId: '@cardId',
-                label_ids: '@label_ids'
-            }
-        }
-    });
-}]);
-
-CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/dashboard/:dashId', {}, {
-        list: {
-            url:'/api/dashboard',
-            method:'GET',
-            isArray:true
-        },
-        create: {
-            url:'/api/dashboard',
-            method:'POST'
-        },
-        get: {
-            method:'GET',
-            params:{dashId:'@dashId'},
-        },
-        update: {
-            method:'PUT',
-            params:{dashId:'@id'}
-        },
-        delete: {
-            method:'DELETE',
-            params:{dashId:'@dashId'}
-        },
-        addcard: {
-            url:'/api/dashboard/:dashId/cards',
-            method:'POST',
-            params:{dashId:'@dashId'}
-        },
-        removecard: {
-            url:'/api/dashboard/:dashId/cards',
-            method:'DELETE',
-            params:{dashId:'@dashId'}
-        },
-        reposition_cards: {
-            url:'/api/dashboard/:dashId/cards',
-            method:'PUT',
-            params:{dashId:'@dashId'}
-        }
-    });
-}]);
-
-CoreServices.factory('Email', ['$resource', function($resource) {
-    return $resource('/api/email', {}, {
-
-        updateSettings: {
-            url: '/api/email/',
-            method: 'PUT'
-        },
-
-        sendTest: {
-            url: '/api/email/test',
-            method: 'POST'
-        }
-    });
-}]);
-
-CoreServices.factory('Slack', ['$resource', function($resource) {
-    return $resource('/api/slack', {}, {
-
-        updateSettings: {
-            url: '/api/slack/settings',
-            method: 'PUT'
-        }
-    });
-}]);
-
-CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
-    return $resource('/api/meta', {}, {
-        db_list: {
-            url: '/api/database/',
-            method: 'GET',
-            isArray: true
-        },
-        db_list_with_tables: {
-            method: 'GET',
-            url: '/api/database/',
-            params: {
-                include_tables: 'true'
-            },
-            isArray: true
-        },
-        db_create: {
-            url: '/api/database/',
-            method: 'POST'
-        },
-        db_add_sample_dataset: {
-            url: '/api/database/sample_dataset',
-            method: 'POST'
-        },
-        db_get: {
-            url: '/api/database/:dbId',
-            method: 'GET',
-            params: {
-                dbId: '@dbId'
-            }
-        },
-        db_update: {
-            url: '/api/database/:dbId',
-            method: 'PUT',
-            params: {
-                dbId: '@id'
-            }
-        },
-        db_delete: {
-            url: '/api/database/:dbId',
-            method: 'DELETE',
-            params: {
-                dbId: '@dbId'
-            }
-        },
-        db_metadata: {
-            url: '/api/database/:dbId/metadata',
-            method: 'GET',
-            params: {
-                dbId: '@dbId'
-            }
-        },
-        db_tables: {
-            url: '/api/database/:dbId/tables',
-            method: 'GET',
-            params: {
-                dbId: '@dbId'
-            },
-            isArray: true
-        },
-        db_fields: {
-            url: '/api/database/:dbId/fields',
-            method: 'GET',
-            params: {
-                dbId: '@dbId'
-            },
-            isArray: true
-        },
-        db_idfields: {
-            url: '/api/database/:dbId/idfields',
-            method: 'GET',
-            params: {
-                dbId: '@dbId'
-            },
-            isArray: true
-        },
-        db_autocomplete_suggestions: {
-            url: '/api/database/:dbId/autocomplete_suggestions?prefix=:prefix',
-            method: 'GET',
-            params: {
-                dbId: '@dbId'
-            },
-            isArray: true
-        },
-        db_sync_metadata: {
-            url: '/api/database/:dbId/sync',
-            method: 'POST',
-            params: {
-                dbId: '@dbId'
-            }
-        },
-        table_list: {
-            url: '/api/table/',
-            method: 'GET',
-            params: {
-                tableId: '@tableId'
-            },
-            isArray: true
-        },
-        table_get: {
-            url: '/api/table/:tableId',
-            method: 'GET',
-            params: {
-                tableId: '@tableId'
-            }
-        },
-        table_update: {
-            url: '/api/table/:tableId',
-            method: 'PUT',
-            params: {
-                tableId: '@id'
-            }
-        },
-        table_fields: {
-            url: '/api/table/:tableId/fields',
-            method: 'GET',
-            params: {
-                tableId: '@tableId'
-            },
-            isArray: true
-        },
-        table_fks: {
-            url: '/api/table/:tableId/fks',
-            method: 'GET',
-            params: {
-                tableId: '@tableId'
-            },
-            isArray: true
-        },
-        table_reorder_fields: {
-            url: '/api/table/:tableId/reorder',
-            method: 'POST',
-            params: {
-                tableId: '@tableId'
-            }
-        },
-        table_query_metadata: {
-            url: '/api/table/:tableId/query_metadata',
-            method: 'GET',
-            params: {
-                dbId: '@tableId'
-            }
-        },
-        table_sync_metadata: {
-            url: '/api/table/:tableId/sync',
-            method: 'POST',
-            params: {
-                tableId: '@tableId'
-            }
-        },
-        field_get: {
-            url: '/api/field/:fieldId',
-            method: 'GET',
-            params: {
-                fieldId: '@fieldId'
-            }
-        },
-        field_summary: {
-            url: '/api/field/:fieldId/summary',
-            method: 'GET',
-            params: {
-                fieldId: '@fieldId'
-            },
-            isArray: true
-        },
-        field_values: {
-            url: '/api/field/:fieldId/values',
-            method: 'GET',
-            params: {
-                fieldId: '@fieldId'
-            }
-        },
-        field_value_map_update: {
-            url: '/api/field/:fieldId/value_map_update',
-            method: 'POST',
-            params: {
-                fieldId: '@fieldId'
-            }
-        },
-        field_update: {
-            url: '/api/field/:fieldId',
-            method: 'PUT',
-            params: {
-                fieldId: '@id'
-            }
-        },
-        dataset: {
-            url: '/api/dataset',
-            method: 'POST',
-            then: function(resolve) {
-                // enable cancelling of the request using this technique:
-                // http://www.nesterovsky-bros.com/weblog/2015/02/02/CancelAngularjsResourceRequest.aspx
-                if (this.params) {
-                    this.timeout = this.params.timeout;
-                    delete this.params.timeout;
-                }
-                delete this.then;
-                resolve(this);
-            }
-        },
-        dataset_duration: {
-            url: '/api/dataset/duration',
-            method: 'POST'
-        }
-    });
-}]);
-
-CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/pulse/:pulseId', {}, {
-        list: {
-            url: '/api/pulse',
-            method: 'GET',
-            isArray: true
-        },
-        create: {
-            url: '/api/pulse',
-            method: 'POST'
-        },
-        get: {
-            method: 'GET',
-            params: { pulseId: '@pulseId' },
-        },
-        update: {
-            method: 'PUT',
-            params: { pulseId: '@id' }
-        },
-        delete: {
-            method: 'DELETE',
-            params: { pulseId: '@pulseId' }
-        },
-        test: {
-            url: '/api/pulse/test',
-            method: 'POST'
-        },
-        form_input: {
-            url: '/api/pulse/form_input',
-            method: 'GET',
-        },
-        preview_card: {
-            url: '/api/pulse/preview_card_info/:id',
-            params: { id: '@id' },
-            method: 'GET',
-        }
-    });
-}]);
-
-CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/segment/:segmentId', {}, {
-        list: {
-            url: '/api/segment',
-            method: 'GET',
-            isArray: true
-        },
-        create: {
-            url: '/api/segment',
-            method: 'POST'
-        },
-        get: {
-            method: 'GET',
-            params: { segmentId: '@segmentId' },
-        },
-        update: {
-            method: 'PUT',
-            params: { segmentId: '@id' }
-        },
-        delete: {
-            method: 'DELETE',
-            params: { segmentId: '@segmentId' }
-        }
-    });
-}]);
-
-CoreServices.factory('Metric', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/metric/:metricId', {}, {
-        list: {
-            url: '/api/metric',
-            method: 'GET',
-            isArray: true
-        },
-        create: {
-            url: '/api/metric',
-            method: 'POST'
-        },
-        get: {
-            method: 'GET',
-            params: { metricId: '@metricId' },
-        },
-        update: {
-            method: 'PUT',
-            params: { metricId: '@id' }
-        },
-        delete: {
-            method: 'DELETE',
-            params: { metricId: '@metricId' }
-        }
-    });
-}]);
-
-CoreServices.factory('Revision', ['$resource', function($resource) {
-    return $resource('/api/revision', {}, {
-        list: {
-            url: '/api/revision',
-            method: 'GET',
-            isArray: true,
-            params: {
-                'entity': '@entity',
-                'id': '@id'
-            }
-        },
-        revert: {
-            url: '/api/revision/revert',
-            method: 'POST',
-            params: {
-                'entity': '@entity',
-                'id': '@id',
-                'revision_id': '@revision_id'
-            }
-        }
-    });
-}]);
-
-// Revisions V2
-CoreServices.factory('Revisions', ['$resource', function($resource) {
-    return $resource('/api/:entity/:id/revisions', {}, {
-        get: {
-            method: 'GET',
-            isArray: true,
-            params: {
-                'entity': '@entity',
-                'id': '@id'
-            }
-        }
-    });
-}]);
-
-CoreServices.factory('Label', ['$resource', function($resource) {
-    return $resource('/api/label/:id', {}, {
-        list: {
-            url: '/api/label',
-            method: 'GET',
-            isArray: true
-        },
-        create: {
-            url: '/api/label',
-            method: 'POST'
-        },
-        update: {
-            method: 'PUT',
-            params: {
-                id: '@id'
-            }
-        },
-        delete: {
-            method: 'DELETE',
-            params: {
-                id: '@id'
-            }
-        }
-    });
-}]);
-
-CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/session/', {}, {
-        create: {
-            method: 'POST',
-            ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
-        },
-        createWithGoogleAuth: {
-            url: '/api/session/google_auth',
-            method: 'POST',
-            ignoreAuthModule: true
-        },
-        delete: {
-            method: 'DELETE'
-        },
-        properties: {
-            url: '/api/session/properties',
-            method: 'GET'
-        },
-        forgot_password: {
-            url: '/api/session/forgot_password',
-            method: 'POST'
-        },
-        reset_password: {
-            url: '/api/session/reset_password',
-            method: 'POST'
-        },
-        password_reset_token_valid: {
-            url: '/api/session/password_reset_token_valid',
-            method: 'GET'
-        }
-    });
-}]);
-
-CoreServices.factory('Settings', ['$resource', function($resource) {
-    return $resource('/api/setting', {}, {
-        list: {
-            url: '/api/setting',
-            method: 'GET',
-            isArray: true,
-        },
-        // POST endpoint handles create + update in this case
-        put: {
-            url: '/api/setting/:key',
-            method: 'PUT',
-            params: {
-                key: '@key'
-            }
-        },
-        // set multiple values at once
-        setAll: {
-            url: '/api/setting/',
-            method: 'PUT',
-            isArray: true
-        },
-        delete: {
-            url: '/api/setting/:key',
-            method: 'DELETE',
-            params: {
-                key: '@key'
-            }
-        }
-    });
-}]);
-
-CoreServices.factory('Setup', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/setup/', {}, {
-        create: {
-            method: 'POST'
-        },
-        validate_db: {
-            url: '/api/setup/validate',
-            method: 'POST'
-        }
-    });
-}]);
-
-CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/user/:userId', {}, {
-        create: {
-            url: '/api/user',
-            method: 'POST'
-        },
-        list: {
-            url: '/api/user/',
-            method: 'GET',
-            isArray: true
-        },
-        current: {
-            url: '/api/user/current/',
-            method: 'GET',
-            ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
-        },
-        get: {
-            url: '/api/user/:userId',
-            method: 'GET',
-            params: {
-                'userId': '@userId'
-            }
-        },
-        update: {
-            url: '/api/user/:userId',
-            method: 'PUT',
-            params: {
-                'userId': '@id'
-            }
-        },
-        update_password: {
-            url: '/api/user/:userId/password',
-            method: 'PUT',
-            params: {
-                'userId': '@id'
-            }
-        },
-        update_qbnewb: {
-            url: '/api/user/:userId/qbnewb',
-            method: 'PUT',
-            params: {
-                'userId': '@id'
-            }
-        },
-        delete: {
-            method: 'DELETE',
-            params: {
-                'userId': '@userId'
-            }
-        },
-        send_invite: {
-            url: '/api/user/:userId/send_invite',
-            method: 'POST',
-            params: {
-                'userId': '@id'
-            }
-        }
-    });
-}]);
-
-CoreServices.factory('Util', ['$resource', '$cookies', function($resource, $cookies) {
-    return $resource('/api/util/', {}, {
-        password_check: {
-            url: '/api/util/password_check',
-            method: 'POST'
-        }
-    });
-}]);
+/* @flow */
+
+import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+
+// $FlowFixMe: Flow doesn't understand webpack loader syntax
+import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
+
+export const ActivityApi = {
+    list:                        GET("/api/activity"),
+    recent_views:                GET("/api/activity/recent_views"),
+};
+
+export const CardApi = {
+    list:                        GET("/api/card", (cards, { data }) =>
+                                    // support for the "q" query param until backend implements it
+                                    cards.filter(card => !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0)
+                                 ),
+    create:                     POST("/api/card"),
+    get:                         GET("/api/card/:cardId"),
+    update:                      PUT("/api/card/:id"),
+    delete:                   DELETE("/api/card/:cardId"),
+    query:                      POST("/api/card/:cardId/query"),
+    // isfavorite:                  GET("/api/card/:cardId/favorite"),
+    favorite:                   POST("/api/card/:cardId/favorite"),
+    unfavorite:               DELETE("/api/card/:cardId/favorite"),
+    updateLabels:               POST("/api/card/:cardId/labels"),
+};
+
+export const DashboardApi = {
+    list:                        GET("/api/dashboard"),
+    create:                     POST("/api/dashboard"),
+    get:                         GET("/api/dashboard/:dashId"),
+    update:                      PUT("/api/dashboard/:id"),
+    delete:                   DELETE("/api/dashboard/:dashId"),
+    addcard:                    POST("/api/dashboard/:dashId/cards"),
+    removecard:               DELETE("/api/dashboard/:dashId/cards"),
+    reposition_cards:            PUT("/api/dashboard/:dashId/cards"),
+};
+
+export const CollectionsApi = {
+    list:                        GET("/api/collection"),//  () => []),
+    create:                     POST("/api/collection"),
+    get:                         GET("/api/collection/:id"),
+    update:                      PUT("/api/collection/:id"),
+    delete:                   DELETE("/api/collection/:id"),
+    graph:                       GET("/api/collection/graph"),
+    updateGraph:                 PUT("/api/collection/graph"),
+};
+
+export const EmailApi = {
+    updateSettings:              PUT("/api/email"),
+    sendTest:                   POST("/api/email/test"),
+};
+
+export const SlackApi = {
+    updateSettings:              PUT("/api/slack/settings"),
+};
+
+export const MetabaseApi = {
+    db_list:                     GET("/api/database"),
+    db_list_with_tables:         GET("/api/database?include_tables=true"),
+    db_create:                  POST("/api/database"),
+    db_add_sample_dataset:      POST("/api/database/sample_dataset"),
+    db_get:                      GET("/api/database/:dbId"),
+    db_update:                   PUT("/api/database/:id"),
+    db_delete:                DELETE("/api/database/:dbId"),
+    db_metadata:                 GET("/api/database/:dbId/metadata"),
+    // db_tables:                   GET("/api/database/:dbId/tables"),
+    db_fields:                   GET("/api/database/:dbId/fields"),
+    db_idfields:                 GET("/api/database/:dbId/idfields"),
+    db_autocomplete_suggestions: GET("/api/database/:dbId/autocomplete_suggestions?prefix=:prefix"),
+    db_sync_metadata:           POST("/api/database/:dbId/sync"),
+    table_list:                  GET("/api/table"),
+    // table_get:                   GET("/api/table/:tableId"),
+    table_update:                PUT("/api/table/:id"),
+    // table_fields:                GET("/api/table/:tableId/fields"),
+    table_fks:                   GET("/api/table/:tableId/fks"),
+    // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
+    table_query_metadata:        GET("/api/table/:tableId/query_metadata", async (table) => {
+                                    // HACK: inject GA metadata that we don't have intergrated on the backend yet
+                                    if (table && table.db && table.db.engine === "googleanalytics") {
+                                        let GA = await getGAMetadata();
+                                        table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
+                                        table.metrics.push(...GA.metrics);
+                                        table.segments.push(...GA.segments);
+                                    }
+                                    return table;
+                                 }),
+    // table_sync_metadata:        POST("/api/table/:tableId/sync"),
+    // field_get:                   GET("/api/field/:fieldId"),
+    // field_summary:               GET("/api/field/:fieldId/summary"),
+    // field_values:                GET("/api/field/:fieldId/values"),
+    // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
+    field_update:                PUT("/api/field/:id"),
+    dataset:                    POST("/api/dataset"),
+    dataset_duration:           POST("/api/dataset/duration"),
+};
+
+export const PulseApi = {
+    list:                        GET("/api/pulse"),
+    create:                     POST("/api/pulse"),
+    get:                         GET("/api/pulse/:pulseId"),
+    update:                      PUT("/api/pulse/:id"),
+    delete:                   DELETE("/api/pulse/:pulseId"),
+    test:                       POST("/api/pulse/test"),
+    form_input:                  GET("/api/pulse/form_input"),
+    preview_card:                GET("/api/pulse/preview_card_info/:id"),
+};
+
+export const SegmentApi = {
+    list:                        GET("/api/segment"),
+    create:                     POST("/api/segment"),
+    get:                         GET("/api/segment/:segmentId"),
+    update:                      PUT("/api/segment/:id"),
+    delete:                   DELETE("/api/segment/:segmentId"),
+};
+
+export const MetricApi = {
+    list:                        GET("/api/metric"),
+    create:                     POST("/api/metric"),
+    get:                         GET("/api/metric/:metricId"),
+    update:                      PUT("/api/metric/:id"),
+    update_important_fields:     PUT("/api/metric/:metricId/important_fields"),
+    delete:                   DELETE("/api/metric/:metricId"),
+};
+
+export const RevisionApi = {
+    list:                        GET("/api/revision"),
+    revert:                     POST("/api/revision/revert"),
+};
+
+export const RevisionsApi = {
+    get:                         GET("/api/:entity/:id/revisions"),
+};
+
+export const LabelApi = {
+    list:                        GET("/api/label"),
+    create:                     POST("/api/label"),
+    update:                      PUT("/api/label/:id"),
+    delete:                   DELETE("/api/label/:id"),
+};
+
+export const SessionApi = {
+    create:                     POST("/api/session"),
+    createWithGoogleAuth:       POST("/api/session/google_auth"),
+    delete:                   DELETE("/api/session"),
+    properties:                  GET("/api/session/properties"),
+    forgot_password:            POST("/api/session/forgot_password"),
+    reset_password:             POST("/api/session/reset_password"),
+    password_reset_token_valid:  GET("/api/session/password_reset_token_valid"),
+};
+
+export const SettingsApi = {
+    list:                        GET("/api/setting"),
+    put:                         PUT("/api/setting/:key"),
+    // setAll:                      PUT("/api/setting"),
+    // delete:                   DELETE("/api/setting/:key"),
+};
+
+export const PermissionsApi = {
+    groups:                      GET("/api/permissions/group"),
+    groupDetails:                GET("/api/permissions/group/:id"),
+    graph:                       GET("/api/permissions/graph"),
+    updateGraph:                 PUT("/api/permissions/graph"),
+    createGroup:                POST("/api/permissions/group"),
+    memberships:                 GET("/api/permissions/membership"),
+    createMembership:           POST("/api/permissions/membership"),
+    deleteMembership:         DELETE("/api/permissions/membership/:id"),
+    updateGroup:                 PUT("/api/permissions/group/:id"),
+    deleteGroup:              DELETE("/api/permissions/group/:id"),
+};
+
+export const GettingStartedApi = {
+    get:                         GET("/api/getting_started"),
+};
+
+export const SetupApi = {
+    create:                     POST("/api/setup"),
+    validate_db:                POST("/api/setup/validate"),
+};
+
+export const UserApi = {
+    create:                     POST("/api/user"),
+    list:                        GET("/api/user"),
+    current:                     GET("/api/user/current"),
+    // get:                         GET("/api/user/:userId"),
+    update:                      PUT("/api/user/:id"),
+    update_password:             PUT("/api/user/:id/password"),
+    update_qbnewb:               PUT("/api/user/:id/qbnewb"),
+    delete:                   DELETE("/api/user/:userId"),
+    send_invite:                POST("/api/user/:id/send_invite"),
+};
+
+export const UtilApi = {
+    password_check:             POST("/api/util/password_check"),
+};
+
+global.services = exports;

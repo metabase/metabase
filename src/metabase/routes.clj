@@ -15,7 +15,7 @@
                                {:bootstrap_json (json/generate-string (public-settings/public-settings))})
         (slurp (io/resource "frontend_client/init.html")))
       resp/response
-      (resp/content-type "text/html")))
+      (resp/content-type "text/html; charset=utf-8")))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
@@ -26,4 +26,4 @@
     (route/resources "/" {:root "frontend_client/app"})  ; ^/app/        -> static files under frontend_client/app
     (route/not-found {:status 404                        ; return 404 for anything else starting with ^/app/ that doesn't exist
                       :body "Not found."}))
-  (GET "*" [] index))                                    ; Anything else (e.g. /user/edit_current) should serve up index.html; Angular app will handle the rest
+  (GET "*" [] index))                                    ; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest

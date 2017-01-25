@@ -32,7 +32,7 @@ export function pulseIsValid(pulse, channelSpecs) {
         pulse.name &&
         pulse.cards.length > 0 &&
         pulse.channels.filter((c) => channelIsValid(c, channelSpecs && channelSpecs[c.channel_type])).length > 0
-    );
+    ) || false;
 }
 
 export function cleanPulse(pulse, channelSpecs) {

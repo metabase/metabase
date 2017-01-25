@@ -4,7 +4,7 @@
     composes: full flex align-center from "style";
     line-height: 1;
     font-size: 14px;
-    color: var(--blue-color);
+    color: var(--brand-color);
 }
 
 :local(.selectedCount) {

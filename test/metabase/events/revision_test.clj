@@ -18,8 +18,7 @@
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
   []
-  {:public_perms           2
-   :display                "table"
+  {:display                "table"
    :dataset_query          {:database (id)
                             :type     "query"
                             :query    {:aggregation ["rows"]
@@ -31,7 +30,6 @@
   {:description            nil
    :table_id               (id :categories)
    :database_id            (id)
-   :organization_id        nil
    :query_type             "query"
    :name                   (:name card)
    :creator_id             (:creator_id card)
@@ -39,13 +37,12 @@
    :id                     (:id card)
    :display                "table"
    :visualization_settings {}
-   :public_perms           (:public_perms card)
+   :collection_id          nil
    :archived               false})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil
-   :name         (:name dashboard)
-   :public_perms (:public_perms dashboard)})
+   :name         (:name dashboard)})
 
 
 ;; :card-create
@@ -164,8 +161,8 @@
                                                                         :card_id card-id
                                                                         :sizeX   4
                                                                         :sizeY   2
-                                                                        :row     nil
-                                                                        :col     nil
+                                                                        :row     0
+                                                                        :col     0
                                                                         :series  []}])
    :is_reversion false
    :is_creation  false}

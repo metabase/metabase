@@ -1,10 +1,9 @@
 import _ from "underscore";
 import moment from "moment";
 
-import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/lib/redux";
 
-// resource wrappers
-const ActivityApi = new AngularResourceProxy("Activity", ["list", "recent_views"]);
+import { ActivityApi } from "metabase/services";
 
 
 // action constants

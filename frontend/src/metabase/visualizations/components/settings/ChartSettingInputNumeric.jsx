@@ -39,5 +39,3 @@ export default class ChartSettingInputNumeric extends Component {
         );
     }
 }
-
-export default ChartSettingInputNumeric;

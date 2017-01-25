@@ -1,4 +1,6 @@
-import React, { Component, PropTypes } from "react";
+/* @flow weak */
+
+import React, { Component, PropTypes, Element } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
@@ -6,81 +8,173 @@ import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
-import { duration } from "metabase/lib/formatting";
+import { duration, formatNumber } from "metabase/lib/formatting";
 
-import visualizations from "metabase/visualizations";
+import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/lib/visualization_settings";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
+import Utils from "metabase/lib/utils";
 
-import { assoc, getIn } from "icepick";
+import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
+
+import { assoc, getIn, setIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
+export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
+export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
+
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { HoverObject, Series } from "metabase/visualizations";
+
+type Props = {
+    series: Series,
+
+    className: string,
+
+    isDashboard: boolean,
+    isEditing: boolean,
+
+    actionButtons: Element<any>,
+
+    // errors
+    error: string,
+    errorIcon: string,
+
+    // slow card warnings
+    isSlow: boolean,
+    expectedDuration: number,
+
+    // injected by ExplicitSize
+    width: number,
+    height: number,
+
+    // settings overrides from settings panel
+    settings: VisualizationSettings,
+
+    // used for showing content in place of visualization, e.x. dashcard filter mapping
+    replacementContent: Element<any>,
+
+    // used by TableInteractive
+    setSortFn: (any) => void,
+    cellIsClickableFn: (number, number) => boolean,
+    cellClickedFn: (number, number) => void,
+
+    // misc
+    onUpdateWarnings: (string[]) => void,
+    onOpenChartSettings: () => void,
+}
+
+type State = {
+    series: ?Series,
+    CardVisualization: ?(Component<*, VisualizationSettings, *> & {
+        checkRenderable: (any, any) => void,
+        noHeader: boolean
+    }),
+
+    hovered: ?HoverObject,
+    error: ?Error,
+    warnings: string[],
+    yAxisSplit: ?number[][],
+}
 
 @ExplicitSize
-export default class Visualization extends Component {
-    constructor(props, context) {
-        super(props, context)
+export default class Visualization extends Component<*, Props, State> {
+    state: State;
+    props: Props;
+
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
-            renderInfo: null,
             hovered: null,
-            error: null
+            error: null,
+            warnings: [],
+            yAxisSplit: null,
+            series: null,
+            CardVisualization: null
         };
-
-        _.bindAll(this, "onRender", "onRenderError", "onHoverChange");
     }
-
-    static propTypes = {
-        series: PropTypes.array.isRequired,
-
-        isDashboard: PropTypes.bool,
-        isEditing: PropTypes.bool,
-
-        // used by TableInteractive
-        setSortFn: PropTypes.func,
-        cellIsClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func
-    };
 
     static defaultProps = {
         isDashboard: false,
         isEditing: false,
-        onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
+        onUpdateVisualizationSettings: (...args) => console.warn("onUpdateVisualizationSettings", args)
     };
 
-    componentWillReceiveProps() {
-        // clear the error so we can try to render again
-        this.setState({ error: null });
+    componentWillMount() {
+        this.transform(this.props);
     }
 
-    onHoverChange(hovered) {
-        const { renderInfo } = this.state;
+    componentWillReceiveProps(newProps) {
+        if (!isSameSeries(newProps.series, this.props.series) || !Utils.equals(newProps.settings, this.props.settings)) {
+            this.transform(newProps);
+        }
+    }
+
+    componentDidMount() {
+        this.updateWarnings();
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        if (!Utils.equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
+            this.updateWarnings();
+        }
+    }
+
+    // $FlowFixMe
+    getWarnings(props = this.props, state = this.state) {
+        let warnings = state.warnings || [];
+        // don't warn about truncated data for table since we show a warning in the row count
+        if (state.series[0].card.display !== "table") {
+            warnings = warnings.concat(props.series
+                .filter(s => s.data && s.data.rows_truncated != null)
+                .map(s => `Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`));
+        }
+        return warnings;
+    }
+
+    updateWarnings() {
+        if (this.props.onUpdateWarnings) {
+            this.props.onUpdateWarnings(this.getWarnings() || []);
+        }
+    }
+
+    transform(newProps) {
+        this.setState({
+            yAxisSplit: null,
+            warnings: [],
+            ...getVisualizationTransformed(newProps.series)
+        });
+    }
+
+    onHoverChange = (hovered) => {
+        const { yAxisSplit } = this.state;
         if (hovered) {
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
-            if (renderInfo && renderInfo.yAxisSplit) {
-                const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
+            if (yAxisSplit) {
+                const axisIndex = _.findIndex(yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
                 hovered = assoc(hovered, "axisIndex", axisIndex);
             }
         }
         this.setState({ hovered });
     }
 
-    onRender(renderInfo) {
-        this.setState({ renderInfo });
+    onRender = ({ yAxisSplit, warnings = [] } = {}) => {
+        this.setState({ yAxisSplit, warnings });
     }
 
-    onRenderError(error) {
+    onRenderError = (error) => {
         this.setState({ error })
     }
 
     render() {
-        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent } = this.props;
-        const CardVisualization = visualizations.get(series[0].card.display);
+        const { actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
+        const { series, CardVisualization } = this.state;
         const small = width < 330;
 
         let error = this.props.error || this.state.error;
-        let loading = !(series.length > 0 && _.every(series, (s) => s.data));
+        let loading = !(series && series.length > 0 && _.every(series, (s) => s.data));
         let noResults = false;
 
         // don't try to load settings unless data is loaded
@@ -93,34 +187,60 @@ export default class Visualization extends Component {
             } else {
                 try {
                     if (CardVisualization.checkRenderable) {
+                        // $FlowFixMe
                         CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows, settings);
                     }
                 } catch (e) {
-                    // MinRowsError
-                    if (e.actualRows === 0) {
+                    error = e.message || "Could not display this chart with this data.";
+                    if (e instanceof ChartSettingsError && this.props.onOpenChartSettings) {
+                        error = (
+                            <div>
+                                <div>{error}</div>
+                                <div className="mt2">
+                                    <button className="Button Button--primary Button--medium" onClick={this.props.onOpenChartSettings}>
+                                        {e.buttonText}
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    } else if (e instanceof MinRowsError) {
                         noResults = true;
                     }
-                    error = e.message || "Could not display this chart with this data.";
                 }
             }
         }
+
+        // if on dashoard, and error didn't come from props replace it with the generic error message
+        if (isDashboard && error && this.props.error !== error) {
+            error = ERROR_MESSAGE_GENERIC;
+        }
+
         if (!error) {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
 
-        let extra;
-        if (!loading) {
-            extra = actionButtons;
-        } else if (isSlow) {
-            extra = <LoadingSpinner className={isSlow === "usually-slow" ? "text-gold" : "text-slate"} size={18} />
-        }
+        let extra = (
+            <span className="flex align-center">
+                {isSlow && !loading &&
+                    <LoadingSpinner size={18} className={cx("Visualization-slow-spinner", isSlow === "usually-slow" ? "text-gold" : "text-slate")}/>
+                }
+                {actionButtons}
+            </span>
+        );
 
         return (
             <div className={cx(className, "flex flex-column")}>
-                { isDashboard && (loading || error || !CardVisualization.noHeader) || replacementContent ?
+                { isDashboard && (settings["card.title"] || extra) && (loading || error || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
-                            series={series}
+                            series={
+                                settings["card.title"] ?
+                                    // if we have a card title set, use it
+                                    // $FlowFixMe
+                                    setIn(series, [0, "card", "name"], settings["card.title"]) :
+                                    // otherwise use the original series
+                                    series
+                            }
                             actionButtons={extra}
                             settings={settings}
                         />
@@ -131,7 +251,7 @@ export default class Visualization extends Component {
                     replacementContent
                 // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
                 : isDashboard && noResults ?
-                    <div className="flex-full px1 pb1 text-centered text-slate flex flex-column layout-centered">
+                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
                         <Tooltip tooltip="No results!" isEnabled={small}>
                             <img src="/app/img/no_results.svg" />
                         </Tooltip>
@@ -142,13 +262,13 @@ export default class Visualization extends Component {
                         }
                     </div>
                 : error ?
-                    <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
-                        <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
-                            <Icon className="mb2" name="warning" size={50} />
+                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
+                        <Tooltip tooltip={error} isEnabled={small}>
+                            <Icon className="mb2" name={errorIcon || "warning"} size={50} />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
-                                { isDashboard ? ERROR_MESSAGE_GENERIC : error }
+                                {error}
                             </span>
                         }
                     </div>
@@ -174,12 +294,15 @@ export default class Visualization extends Component {
                         }
                     </div>
                 :
+                    // $FlowFixMe
                     <CardVisualization
                         {...this.props}
                         className="flex-full"
                         series={series}
                         settings={settings}
+                        // $FlowFixMe
                         card={series[0].card} // convienence for single-series visualizations
+                        // $FlowFixMe
                         data={series[0].data} // convienence for single-series visualizations
                         hovered={this.state.hovered}
                         onHoverChange={this.onHoverChange}

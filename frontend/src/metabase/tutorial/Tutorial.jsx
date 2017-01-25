@@ -23,7 +23,7 @@ export function qsWithContent(selector, content) {
     }
 }
 
-const STEP_WARNING_TIMEOUT = 10 * 1000; // 10 seconds
+const STEP_WARNING_TIMEOUT = 60 * 1000; // 60 seconds
 const STEP_SKIP_TIMEOUT = 500; // 500 ms
 
 export default class Tutorial extends Component {
@@ -202,7 +202,7 @@ export default class Tutorial extends Component {
         let step = this.props.steps[this.state.step];
 
         if (!step) {
-            return <span />;
+            return null;
         }
 
         const { missingTarget, pageFlagTarget, portalTarget, modalTarget } = this.getTargets(step);

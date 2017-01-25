@@ -1,26 +1,34 @@
+/* @flow weak */
+
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
 import moment from "moment";
+import _ from "underscore";
+import { updateIn } from "icepick";
 
 import {
     getAvailableCanvasWidth,
     getAvailableCanvasHeight,
     computeSplit,
     getFriendlyName,
-    getXValues
+    getXValues,
+    colorShades
 } from "./utils";
 
 import {
-    minTimeseriesUnit,
     dimensionIsTimeseries,
+    minTimeseriesUnit,
     computeTimeseriesDataInverval,
     computeTimeseriesTicksInterval
 } from "./timeseries";
 
-import { determineSeriesIndexFromElement } from "./tooltip";
+import {
+    dimensionIsNumeric,
+    computeNumericDataInverval
+} from "./numeric";
 
-import { colorShades } from "./utils";
+import { determineSeriesIndexFromElement } from "./tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
@@ -36,11 +44,27 @@ const DOT_OVERLAP_DISTANCE = 8;
 const VORONOI_TARGET_RADIUS = 50;
 const VORONOI_MAX_POINTS = 300;
 
-function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
-    let numTicks = axis.ticks();
+// min margin
+const MARGIN_TOP_MIN = 20; // needs to be large enough for goal line text
+const MARGIN_BOTTOM_MIN = 10;
+const MARGIN_HORIZONTAL_MIN = 20;
+
+// extra padding for axis
+const X_AXIS_PADDING = 0;
+const Y_AXIS_PADDING = 8;
+
+// label offset (doesn't increase padding)
+const X_LABEL_PADDING = 10;
+const Y_LABEL_PADDING = 22;
+
+const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
+const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
+
+function adjustTicksIfNeeded(axis, axisSize: number, minPixelsPerTick: number) {
+    const ticks = axis.ticks();
     // d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
     // if it's an array then convert to a num
-    numTicks = numTicks.length != null ? numTicks[0] : numTicks;
+    const numTicks: number = Array.isArray(ticks) ? ticks[0] : ticks;
 
     if ((axisSize / numTicks) < minPixelsPerTick) {
         axis.ticks(Math.round(axisSize / minPixelsPerTick));
@@ -51,22 +75,10 @@ function getDcjsChartType(cardType) {
     switch (cardType) {
         case "line": return "lineChart";
         case "area": return "lineChart";
-        case "bar":  return "barChart";
+        case "bar":     return "barChart";
+        case "scatter": return "bubbleChart";
         default:     return "barChart";
     }
-}
-
-function initializeChart(card, element, chartType = getDcjsChartType(card.display)) {
-    // create the chart
-    let chart = dc[chartType](element);
-
-    // set width and height
-    chart = applyChartBoundary(chart, element);
-
-    // disable animations
-    chart.transitionDuration(0);
-
-    return chart;
 }
 
 function applyChartBoundary(chart, element) {
@@ -75,21 +87,19 @@ function applyChartBoundary(chart, element) {
         .height(getAvailableCanvasHeight(element));
 }
 
-function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
+function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
     // setup an x-axis where the dimension is a timeseries
     let dimensionColumn = series[0].data.cols[0];
 
-    let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+    // get the data's timezone offset from the first row
+    let dataOffset = parseTimestamp(series[0].data.rows[0][0]).utcOffset() / 60;
 
     // compute the data interval
-    let dataInterval = computeTimeseriesDataInverval(xValues, unit);
+    let dataInterval = xInterval;
     let tickInterval = dataInterval;
 
-    // compute the domain
-    let xDomain = d3.extent(xValues);
-
     if (settings["graph.x_axis.labels_enabled"]) {
-        chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn));
+        chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn), X_LABEL_PADDING);
     }
     if (settings["graph.x_axis.axis_enabled"]) {
         chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
@@ -99,13 +109,14 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
         }
 
         chart.xAxis().tickFormat(timestamp => {
-            // these dates are in the browser's timezone, change to UTC
-            let timestampUTC = moment(timestamp).format().replace(/[+-]\d+:\d+$/, "Z");
-            return formatValue(timestampUTC, { column: dimensionColumn })
+            // timestamp is a plain Date object which discards the timezone,
+            // so add it back in so it's formatted correctly
+            const timestampFixed = moment(timestamp).utcOffset(dataOffset).format();
+            return formatValue(timestampFixed, { column: dimensionColumn })
         });
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        tickInterval = computeTimeseriesTicksInterval(xValues, unit, chart.width(), MIN_PIXELS_PER_TICK.x);
+        tickInterval = computeTimeseriesTicksInterval(xDomain, dataInterval, chart.width(), MIN_PIXELS_PER_TICK.x, );
         chart.xAxis().ticks(d3.time[tickInterval.interval], tickInterval.count);
     } else {
         chart.xAxis().ticks(0);
@@ -122,11 +133,49 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
     chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, dataInterval.interval) / dataInterval.count));
 }
 
+function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval) {
+    const dimensionColumn = series[0].data.cols[0];
+
+    if (settings["graph.x_axis.labels_enabled"]) {
+        chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn), X_LABEL_PADDING);
+    }
+    if (settings["graph.x_axis.axis_enabled"]) {
+        chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
+        adjustTicksIfNeeded(chart.xAxis(), chart.width(), MIN_PIXELS_PER_TICK.x);
+
+        chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn }));
+    } else {
+        chart.xAxis().ticks(0);
+        chart.xAxis().tickFormat('');
+    }
+
+    let scale;
+    if (settings["graph.x_axis.scale"] === "pow") {
+        scale = d3.scale.pow().exponent(0.5);
+    } else if (settings["graph.x_axis.scale"] === "log") {
+        scale = d3.scale.log().base(Math.E);
+        if (!((xDomain[0] < 0 && xDomain[1] < 0) || (xDomain[0] > 0 && xDomain[1] > 0))) {
+            throw "X-axis must not cross 0 when using log scale.";
+        }
+    } else {
+        scale = d3.scale.linear();
+    }
+
+    // pad the domain slightly to prevent clipping
+    xDomain = [
+        xDomain[0] - xInterval * 0.75,
+        xDomain[1] + xInterval * 0.75
+    ];
+
+    chart.x(scale.domain(xDomain))
+        .xUnits(dc.units.fp.precision(xInterval));
+}
+
 function applyChartOrdinalXAxis(chart, settings, series, xValues) {
     const dimensionColumn = series[0].data.cols[0];
 
     if (settings["graph.x_axis.labels_enabled"]) {
-        chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn));
+        chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn), X_LABEL_PADDING);
     }
     if (settings["graph.x_axis.axis_enabled"]) {
         chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
@@ -154,51 +203,125 @@ function applyChartOrdinalXAxis(chart, settings, series, xValues) {
         .xUnits(dc.units.ordinal);
 }
 
-function applyChartYAxis(chart, settings, series, yAxisSplit) {
+function applyChartYAxis(chart, settings, series, yExtent, axisName) {
+    let axis;
+    if (axisName !== "right") {
+        axis = {
+            scale:   (...args) => chart.y(...args),
+            axis:    (...args) => chart.yAxis(...args),
+            label:   (...args) => chart.yAxisLabel(...args),
+            setting: (name) => settings["graph.y_axis." + name]
+        };
+    } else {
+        axis = {
+            scale:   (...args) => chart.rightY(...args),
+            axis:    (...args) => chart.rightYAxis(...args),
+            label:   (...args) => chart.rightYAxisLabel(...args),
+            setting: (name) => settings["graph.y_axis." + name] // TODO: right axis settings
+        };
+    }
 
-    if (settings["graph.y_axis.labels_enabled"]) {
+    if (axis.setting("labels_enabled")) {
         // left
-        if (settings["graph.y_axis.title_text"]) {
-            chart.yAxisLabel(settings["graph.y_axis.title_text"]);
-        } else if (yAxisSplit[0].length === 1) {
-            chart.yAxisLabel(getFriendlyName(series[yAxisSplit[0][0]].data.cols[1]));
-        }
-        // right
-        if (yAxisSplit.length > 1 && yAxisSplit[1].length === 1) {
-            chart.rightYAxisLabel(getFriendlyName(series[yAxisSplit[1][0]].data.cols[1]));
+        if (axis.setting("title_text")) {
+            axis.label(axis.setting("title_text"), Y_LABEL_PADDING);
+        } else {
+            // only use the column name if all in the series are the same
+            const labels = _.uniq(series.map(s => getFriendlyName(s.data.cols[1])));
+            if (labels.length === 1) {
+                axis.label(labels[0], Y_LABEL_PADDING);
+            }
         }
     }
 
-    if (settings["graph.y_axis.axis_enabled"]) {
+    if (axis.setting("axis_enabled")) {
+        // special case for normalized stacked charts
+        if (settings["stackable.stack_type"] === "normalized") {
+            axis.axis().tickFormat(value => (value * 100) + "%");
+        }
         chart.renderHorizontalGridLines(true);
-
-        adjustTicksIfNeeded(chart.yAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
-        if (yAxisSplit.length > 1 && chart.rightYAxis) {
-            adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
-        }
+        adjustTicksIfNeeded(axis.axis(), chart.height(), MIN_PIXELS_PER_TICK.y);
     } else {
-        chart.yAxis().ticks(0);
-        if (chart.rightYAxis) {
-            chart.rightYAxis().ticks(0);
-        }
+        axis.axis().ticks(0);
     }
 
-    if (settings["graph.y_axis.auto_range"]) {
-        chart.elasticY(true);
+    let scale;
+    if (axis.setting("scale") === "pow") {
+        scale = d3.scale.pow().exponent(0.5);
+    } else if (axis.setting("scale") === "log") {
+        scale = d3.scale.log().base(Math.E);
+        // axis.axis().tickFormat((d) => scale.tickFormat(4,d3.format(",d"))(d));
     } else {
-        chart.y(d3.scale.linear().domain([settings["graph.y_axis.min"], settings["graph.y_axis.max"]]))
+        scale = d3.scale.linear();
+    }
+
+    if (axis.setting("auto_range")) {
+        // elasticY not compatible with log scale
+        if (axis.setting("scale") !== "log") {
+            // TODO: right axis?
+            chart.elasticY(true);
+        } else {
+            if (!((yExtent[0] < 0 && yExtent[1] < 0) || (yExtent[0] > 0 && yExtent[1] > 0))) {
+                throw "Y-axis must not cross 0 when using log scale.";
+            }
+            scale.domain(yExtent);
+        }
+        axis.scale(scale);
+    } else {
+        if (axis.setting("scale") === "log" && !(
+            (axis.setting("min") < 0 && axis.setting("max") < 0) ||
+            (axis.setting("min") > 0 && axis.setting("max") > 0)
+        )) {
+            throw "Y-axis must not cross 0 when using log scale.";
+        }
+        axis.scale(scale.domain([axis.setting("min"), axis.setting("max")]))
     }
 }
 
-function applyChartTooltips(chart, onHoverChange) {
+function applyChartTooltips(chart, series, isStacked, onHoverChange) {
+    let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
-        chart.selectAll(".bar, .dot, .area, .line, g.pie-slice, g.features")
+        chart.selectAll(".bar, .dot, .area, .line, .bubble")
             .on("mousemove", function(d, i) {
+                const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
+                const card = series[seriesIndex].card;
+                const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
+                const isArea = this.classList.contains("area");
+
+                let data = [];
+                if (Array.isArray(d.key)) { // scatter
+                    data = d.key.map((value, index) => (
+                        { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
+                    ));
+                } else if (d.data) { // line, area, bar
+                    if (!isSingleSeriesBar) {
+                        cols = series[seriesIndex].data.cols;
+                    }
+                    data = [
+                        { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
+                        { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
+                    ];
+                }
+
+                if (data && series.length > 1) {
+                    if (card._breakoutColumn) {
+                        data.unshift({
+                            key: getFriendlyName(card._breakoutColumn),
+                            value: card._breakoutValue,
+                            col: card._breakoutColumn
+                        });
+                    }
+                }
+
+                data = _.uniq(data, (d) => d.col);
+
                 onHoverChange && onHoverChange({
-                    index: determineSeriesIndexFromElement(this),
-                    element: this,
-                    d: d,
-                    data: d.data
+                    // for single series bar charts, fade the series and highlght the hovered element with CSS
+                    index: isSingleSeriesBar ? -1 : seriesIndex,
+                    // for area charts, use the mouse location rather than the DOM element
+                    element: isArea ? null : this,
+                    event: isArea ? d3.event : null,
+                    data: data.length > 0 ? data : null,
                 });
             })
             .on("mouseleave", function() {
@@ -209,7 +332,7 @@ function applyChartTooltips(chart, onHoverChange) {
     });
 }
 
-function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimeseries) {
+function applyChartLineBarSettings(chart, settings, chartType) {
     // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
     if (chart.brushOn) {
         chart.brushOn(false);
@@ -234,11 +357,11 @@ function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimes
     if (chart.barPadding) {
         chart
             .barPadding(BAR_PADDING_RATIO)
-            .centerBar(isLinear || isTimeseries);
+            .centerBar(settings["graph.x_axis.scale"] !== "ordinal");
     }
 }
 
-function lineAndBarOnRender(chart, settings) {
+function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked) {
     // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 
     function removeClipPath() {
@@ -294,7 +417,7 @@ function lineAndBarOnRender(chart, settings) {
 
     function voronoiHover() {
         const parent = chart.svg().select("svg > g");
-        const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
+        const dots = chart.svg().selectAll(".sub .dc-tooltip .dot")[0];
 
         if (dots.length === 0 || dots.length > VORONOI_MAX_POINTS) {
             return;
@@ -346,6 +469,7 @@ function lineAndBarOnRender(chart, settings) {
 
         function dispatchUIEvent(element, eventName) {
             let e = document.createEvent("UIEvents");
+            // $FlowFixMe
             e.initUIEvent(eventName, true, true, window, 1);
             element.dispatchEvent(e);
         }
@@ -375,12 +499,12 @@ function lineAndBarOnRender(chart, settings) {
         }
     }
 
-    function adjustMargin(margin, direction, axisSelector, labelSelector, enabled) {
+    function adjustMargin(margin, direction, padding, axisSelector, labelSelector, enabled) {
         let axis = chart.select(axisSelector).node();
         let label = chart.select(labelSelector).node();
         let axisSize = axis ? axis.getBoundingClientRect()[direction] + 10 : 0;
         let labelSize = label ? label.getBoundingClientRect()[direction] + 5 : 0;
-        chart.margins()[margin] = axisSize + labelSize;
+        chart.margins()[margin] = axisSize + labelSize + padding;
     }
 
     function computeMinHorizontalMargins() {
@@ -403,6 +527,59 @@ function lineAndBarOnRender(chart, settings) {
             });
     }
 
+    function fixStackZIndex() {
+        // reverse the order of .stack-list and .dc-tooltip-list children so 0 points in stacked
+        // charts don't appear on top of non-zero points
+        for (const list of chart.selectAll(".stack-list, .dc-tooltip-list")[0]) {
+            for (const child of list.childNodes) {
+                list.insertBefore(list.firstChild, child);
+            }
+        }
+    }
+
+    function cleanupGoal() {
+        // remove dots
+        chart.selectAll(".goal .dot").remove();
+
+        // move to end of the parent node so it's on top
+        chart.selectAll(".goal").each(function() { this.parentNode.appendChild(this); });
+        chart.selectAll(".goal .line").attr({
+            "stroke": "rgba(157,160,164, 0.7)",
+            "stroke-dasharray": "5,5"
+        });
+
+        // add the label
+        let goalLine = chart.selectAll(".goal .line")[0][0];
+        if (goalLine) {
+
+            // stretch the goal line all the way across, use x axis as reference
+            let xAxisLine = chart.selectAll(".axis.x .domain")[0][0];
+            if (xAxisLine) {
+                goalLine.setAttribute("d", `M0,${goalLine.getBBox().y}L${xAxisLine.getBBox().width},${goalLine.getBBox().y}`)
+            }
+
+            let { x, y, width } = goalLine.getBBox();
+
+            const labelOnRight = !isSplitAxis;
+            chart.selectAll(".goal .stack._0")
+                .append("text")
+                .text("Goal")
+                .attr({
+                    x: labelOnRight ? x + width : x,
+                    y: y - 5,
+                    "text-anchor": labelOnRight ? "end" : "start",
+                    "font-weight": "bold",
+                    fill: "rgb(157,160,164)",
+                })
+                .on("mouseenter", function() { onGoalHover(this); })
+                .on("mouseleave", function() { onGoalHover(null); })
+        }
+    }
+
+    function setClassName() {
+        chart.svg().classed("stacked", isStacked);
+    }
+
     // run these first so the rest of the margin computations take it into account
     hideDisabledLabels();
     hideDisabledAxis();
@@ -412,14 +589,15 @@ function lineAndBarOnRender(chart, settings) {
     let mins = computeMinHorizontalMargins()
 
     // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
-    adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label", settings["graph.x_axis.labels_enabled"]);
-    adjustMargin("left",   "width",  ".axis.y",  ".y-axis-label.y-label", settings["graph.y_axis.labels_enabled"]);
-    adjustMargin("right",  "width",  ".axis.yr", ".y-axis-label.yr-label", settings["graph.y_axis.labels_enabled"]);
+    adjustMargin("bottom", "height", X_AXIS_PADDING, ".axis.x",  ".x-axis-label", settings["graph.x_axis.labels_enabled"]);
+    adjustMargin("left",   "width", Y_AXIS_PADDING, ".axis.y",  ".y-axis-label.y-label", settings["graph.y_axis.labels_enabled"]);
+    adjustMargin("right",  "width", Y_AXIS_PADDING, ".axis.yr", ".y-axis-label.yr-label", settings["graph.y_axis.labels_enabled"]);
 
     // set margins to the max of the various mins
-    chart.margins().left = Math.max(5, mins.left, chart.margins().left);
-    chart.margins().right = Math.max(5, mins.right, chart.margins().right);
-    chart.margins().bottom = Math.max(10, chart.margins().bottom);
+    chart.margins().top = Math.max(MARGIN_TOP_MIN, chart.margins().top);
+    chart.margins().left = Math.max(MARGIN_HORIZONTAL_MIN, mins.left, chart.margins().left);
+    chart.margins().right = Math.max(MARGIN_HORIZONTAL_MIN, mins.right, chart.margins().right);
+    chart.margins().bottom = Math.max(MARGIN_BOTTOM_MIN, chart.margins().bottom);
 
     chart.on("renderlet.on-render", function() {
         removeClipPath();
@@ -427,72 +605,174 @@ function lineAndBarOnRender(chart, settings) {
         setDotStyle();
         enableDots();
         voronoiHover();
+        cleanupGoal(); // do this before hiding x-axis
         hideDisabledLabels();
         hideDisabledAxis();
         hideBadAxis();
         disableClickFiltering();
+        fixStackZIndex();
+        setClassName();
     });
 
     chart.render();
 }
 
-export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
+function reduceGroup(group, key, warnUnaggregated) {
+    return group.reduce(
+        (acc, d) => {
+            if (acc == null && d[key] == null) {
+                return null;
+            } else {
+                if (acc != null) {
+                    warnUnaggregated();
+                    return acc + (d[key] || 0);
+                } else {
+                    return (d[key] || 0);
+                }
+            }
+        },
+        (acc, d) => {
+            if (acc == null && d[key] == null) {
+                return null;
+            } else {
+                if (acc != null) {
+                    warnUnaggregated();
+                    return acc - (d[key] || 0);
+                } else {
+                    return - (d[key] || 0);
+                }
+            }
+        },
+        () => null
+    );
+}
+
+function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
+    try {
+        return datas.map(rows => {
+            const fillValues = rows[0].slice(1).map(d => fillValue);
+
+            let map = new Map();
+            for (const row of rows) {
+                map.set(getKey(row[0]), row);
+            }
+            let newRows = xValues.map(value => {
+                const key = getKey(value);
+                const row = map.get(key);
+                if (row) {
+                    map.delete(key);
+                    return [value, ...row.slice(1)];
+                } else {
+                    return [value, ...fillValues];
+                }
+            });
+            if (map.size > 0) {
+                console.warn("xValues missing!", map, newRows)
+            }
+            return newRows;
+        });
+    } catch (e) {
+        console.warn(e);
+        return datas;
+    }
+}
+
+// Crossfilter calls toString on each moment object, which calls format(), which is very slow.
+// Replace toString with a function that just returns the unparsed ISO input date, since that works
+// just as well and is much faster
+let HACK_parseTimestamp = (value, unit, warn) => {
+    if (value == null) {
+        warn(NULL_DIMENSION_WARNING);
+        return null;
+    } else {
+        let m = parseTimestamp(value, unit);
+        m.toString = moment_fast_toString
+        return m;
+    }
+}
+
+function moment_fast_toString() {
+    return this._i;
+}
+
+export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings, maxSeries }) {
     const colors = settings["graph.colors"];
 
-    const isTimeseries = dimensionIsTimeseries(series[0].data);
-    const isLinear = false;
+    const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
+    const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
+    const isOrdinal = !isTimeseries && !isQuantitative;
 
-    // validation.  we require at least 2 rows for line charting
+    const isDimensionTimeseries = dimensionIsTimeseries(series[0].data);
+    const isDimensionNumeric = dimensionIsNumeric(series[0].data);
+
     if (series[0].data.cols.length < 2) {
-        return;
+        throw new Error("This chart type requires at least 2 columns.");
+    }
+
+    if (series.length > maxSeries) {
+        throw new Error(`This chart type doesn't support more than ${maxSeries} series of data.`);
+    }
+
+    const warnings = {};
+    const warn = (id) => {
+        warnings[id] = (warnings[id] || 0) + 1;
     }
 
     let datas = series.map((s, index) =>
         s.data.rows.map(row => [
-            (isTimeseries) ? parseTimestamp(row[0]) : String(row[0]),
-            ...row.slice(1)
+            // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
+            (isDimensionTimeseries && !isQuantitative) ?
+                HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
+            : isDimensionNumeric ?
+                row[0]
+            :
+                String(row[0])
+            , ...row.slice(1)
         ])
     );
 
+    // compute the x-values
     let xValues = getXValues(datas, chartType);
 
-    let dimension, groups, yAxisSplit;
+    // compute the domain
+    let xDomain = d3.extent(xValues);
 
-    if (settings["stackable.stacked"] && datas.length > 1) {
-        let dataset = crossfilter();
-        datas.map((data, i) =>
-            dataset.add(data.map(d => ({
-                [0]: d[0],
-                [i + 1]: d[1]
-            })))
-        );
+    let xInterval;
+    if (isTimeseries) {
+        // compute the interval
+        let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+        xInterval = computeTimeseriesDataInverval(xValues, unit);
+    } else if (isQuantitative) {
+        xInterval = computeNumericDataInverval(xValues);
+    }
 
-        dimension = dataset.dimension(d => d[0]);
-        groups = [
-            datas.map((data, i) =>
-                dimension.group().reduceSum(d => (d[i + 1] || 0))
-            )
-        ];
-
-        yAxisSplit = [series.map((s,i) => i)];
-    } else {
-        let dataset = crossfilter();
-        datas.map(data => dataset.add(data));
-
-        dimension = dataset.dimension(d => d[0]);
-        groups = datas.map(data => {
-            let dim = crossfilter(data).dimension(d => d[0]);
-            return data[0].slice(1).map((_, i) =>
-                dim.group().reduceSum(d => (d[i + 1] || 0))
-            )
-        });
-
-        let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
-
-        if (!isScalarSeries && settings["graph.y_axis.auto_split"] !== false) {
-            yAxisSplit = computeSplit(yExtents);
+    if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {
+        if (isTimeseries) {
+            // $FlowFixMe
+            const { interval, count } = xInterval;
+            // replace xValues with
+            xValues = d3.time[interval]
+                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
+                .map(d => moment(d));
+            datas = fillMissingValues(
+                datas,
+                xValues,
+                settings["line.missing"] === "zero" ? 0 : null,
+                (m) => d3.round(m.toDate().getTime(), -1) // sometimes rounds up 1ms?
+            );
+        } if (isQuantitative) {
+            xValues = d3.range(xDomain[0], xDomain[1] + xInterval, xInterval);
+            datas = fillMissingValues(
+                datas,
+                xValues,
+                settings["line.missing"] === "zero" ? 0 : null,
+            );
         } else {
-            yAxisSplit = [series.map((s,i) => i)];
+            datas = fillMissingValues(
+                datas,
+                xValues,
+                settings["line.missing"] === "zero" ? 0 : null
+            );
         }
     }
 
@@ -500,38 +780,144 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         xValues = datas.map(data => data[0][0]);
     }
 
-    // HACK: This ensures each group is sorted by the same order as xValues,
-    // otherwise we can end up with line charts with x-axis labels in the correct order
-    // but the points in the wrong order. There may be a more efficient way to do this.
-    let sortMap = new Map()
-    for (const [index, key] of xValues.entries()) {
-        sortMap.set(key, index);
-    }
-    for (const group of groups) {
-        group.forEach(g => {
-            const sorted = g.top(Infinity).sort((a, b) => sortMap.get(a.key) - sortMap.get(b.key));
-            g.all = () => sorted;
+    let dimension, groups, yAxisSplit;
+
+    const isScatter = chartType === "scatter";
+    const isStacked = settings["stackable.stack_type"] && datas.length > 1;
+    const isNormalized = isStacked && settings["stackable.stack_type"] === "normalized";
+
+    if (isScatter) {
+        let dataset = crossfilter();
+        datas.map(data => dataset.add(data));
+
+        dimension = dataset.dimension(d => [d[0], d[1]]);
+        groups = datas.map(data => {
+            let dim = crossfilter(data).dimension(d => d);
+            return [
+                dim.group().reduceSum((d) => d[2] || 1)
+            ]
+        });
+    } else if (isStacked) {
+        let dataset = crossfilter();
+
+        // get the sum of the metric for each dimension value in order to scale
+        let scaleFactors = {};
+        if (isNormalized) {
+            for (let data of datas) {
+                for (let [d, m] of data) {
+                    scaleFactors[d] = (scaleFactors[d] || 0) + m;
+                }
+            }
+
+            series = series.map(s => updateIn(s, ["data", "cols", 1], (col) => ({
+                ...col,
+                display_name: "% " + getFriendlyName(col)
+            })));
+        }
+
+        datas.map((data, i) =>
+            dataset.add(data.map(d => ({
+                [0]: d[0],
+                [i + 1]: isNormalized ? (d[1] / scaleFactors[d[0]]) : d[1]
+            })))
+        );
+
+        dimension = dataset.dimension(d => d[0]);
+        groups = [
+            datas.map((data, seriesIndex) =>
+                reduceGroup(dimension.group(), seriesIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
+            )
+        ];
+    } else {
+        let dataset = crossfilter();
+        datas.map(data => dataset.add(data));
+
+        dimension = dataset.dimension(d => d[0]);
+        groups = datas.map((data, seriesIndex) => {
+            let dim = crossfilter(data).dimension(d => d[0]);
+            return data[0].slice(1).map((_, metricIndex) =>
+                reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
+            );
         });
     }
 
-    let parent;
-    if (groups.length > 1) {
-        parent = initializeChart(series[0].card, element, "compositeChart")
+    let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+    let yExtent = d3.extent([].concat(...yExtents));
+
+    // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
+    const hasDifferentYAxisColumns = _.uniq(series.map(s => s.data.cols[1])).length > 1;
+    if (!isScalarSeries && !isScatter && !isStacked && hasDifferentYAxisColumns && settings["graph.y_axis.auto_split"] !== false) {
+        yAxisSplit = computeSplit(yExtents);
     } else {
-        parent = element;
+        yAxisSplit = [series.map((s,i) => i)];
     }
+
+    // HACK: This ensures each group is sorted by the same order as xValues,
+    // otherwise we can end up with line charts with x-axis labels in the correct order
+    // but the points in the wrong order. There may be a more efficient way to do this.
+    // Don't apply to linear or timeseries X-axis since the points are always plotted in order
+    if (!isTimeseries && !isQuantitative) {
+        let sortMap = new Map()
+        for (const [index, key] of xValues.entries()) {
+            sortMap.set(key, index);
+        }
+        for (const group of groups) {
+            group.forEach(g => {
+                const sorted = g.top(Infinity).sort((a, b) => sortMap.get(a.key) - sortMap.get(b.key));
+                g.all = () => sorted;
+            });
+        }
+    }
+
+    let parent = dc.compositeChart(element);
+    applyChartBoundary(parent, element);
+    parent.transitionDuration(0);
 
     let charts = groups.map((group, index) => {
         let chart = dc[getDcjsChartType(chartType)](parent);
+
+        // disable clicks
+        chart.onClick = () => {};
 
         chart
             .dimension(dimension)
             .group(group[0])
             .transitionDuration(0)
-            .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+            .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
+
+        if (isScatter) {
+            chart
+                .keyAccessor((d) => d.key[0])
+                .valueAccessor((d) => d.key[1])
+
+            if (chart.radiusValueAccessor) {
+                const isBubble = datas[index][0].length > 2;
+                if (isBubble) {
+                    const BUBBLE_SCALE_FACTOR_MAX = 64;
+                    chart
+                        .radiusValueAccessor((d) => d.value)
+                        .r(d3.scale.sqrt()
+                            .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
+                            .range([0, 1])
+                        );
+                } else {
+                    chart.radiusValueAccessor((d) => 1)
+                    chart.MIN_RADIUS = 3
+                }
+                chart.minRadiusWithLabel(Infinity);
+            }
+        }
+
+        if (chart.defined) {
+            chart.defined(
+                settings["line.missing"] === "none" ?
+                    (d) => d.y != null :
+                    (d) => true
+            );
+        }
 
         // multiple series
-        if (groups.length > 1) {
+        if (groups.length > 1 || isScatter) {
             // multiple stacks
             if (group.length > 1) {
                 // compute shades of the assigned color
@@ -547,62 +933,90 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             chart.stack(group[i])
         }
 
-        applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimeseries);
+        applyChartLineBarSettings(chart, settings, chartType);
 
         return chart;
     });
 
-    let chart;
-    if (charts.length > 1) {
-        chart = parent.compose(charts);
+    let onGoalHover = () => {};
+    if (settings["graph.show_goal"]) {
+        const goalData = [[xDomain[0], settings["graph.goal_value"]], [xDomain[1], settings["graph.goal_value"]]];
+        const goalDimension = crossfilter(goalData).dimension(d => d[0]);
+        const goalGroup = goalDimension.group().reduceSum(d => d[1]);
+        const goalIndex = charts.length;
+        let goalChart = dc.lineChart(parent)
+            .dimension(goalDimension)
+            .group(goalGroup)
+            .on('renderlet', function (chart) {
+                // remove "sub" class so the goal is not used in voronoi computation
+                chart.select(".sub._"+goalIndex)
+                    .classed("sub", false)
+                    .classed("goal", true);
+            });
+        charts.push(goalChart);
 
-        if (!isScalarSeries) {
-            chart.on("renderlet.grouped-bar", function (chart) {
-                // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
-                // https://github.com/dc-js/dc.js/issues/558
-                let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
-                if (barCharts.length > 0) {
-                    let oldBarWidth = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
-                    let newBarWidthTotal = oldBarWidth / barCharts.length;
-                    let seriesPadding =
-                        newBarWidthTotal < 4 ? 0 :
-                        newBarWidthTotal < 8 ? 1 :
-                                               2;
-                    let newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
-
-                    chart.selectAll("g.sub rect").attr("width", newBarWidth);
-                    barCharts.forEach((barChart, index) => {
-                        barChart.setAttribute("transform", "translate(" + ((newBarWidth + seriesPadding) * index) + ", 0)");
-                    });
-                }
-            })
+        onGoalHover = (element) => {
+            onHoverChange(element && {
+                element: element,
+                data: [{ key: "Goal", value: settings["graph.goal"] }]
+            });
         }
+    }
 
-        // HACK: compositeChart + ordinal X axis shenanigans
-        if (chartType === "bar") {
-            chart._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
-        } else {
-            chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
-        }
+    let chart = parent.compose(charts);
+
+    if (groups.length > 1 && !isScalarSeries) {
+        chart.on("renderlet.grouped-bar", function (chart) {
+            // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
+            // https://github.com/dc-js/dc.js/issues/558
+            let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
+            if (barCharts.length > 0) {
+                let oldBarWidth = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
+                let newBarWidthTotal = oldBarWidth / barCharts.length;
+                let seriesPadding =
+                    newBarWidthTotal < 4 ? 0 :
+                    newBarWidthTotal < 8 ? 1 :
+                                           2;
+                let newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
+
+                chart.selectAll("g.sub rect").attr("width", newBarWidth);
+                barCharts.forEach((barChart, index) => {
+                    barChart.setAttribute("transform", "translate(" + ((newBarWidth + seriesPadding) * index) + ", 0)");
+                });
+            }
+        })
+    }
+
+    // HACK: compositeChart + ordinal X axis shenanigans
+    if (chartType === "bar") {
+        chart._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
     } else {
-        chart = charts[0];
-        chart.transitionDuration(0)
-        applyChartBoundary(chart, element);
+        chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
     }
 
     // x-axis settings
-    // TODO: we should support a linear (numeric) x-axis option
     if (isTimeseries) {
-        applyChartTimeseriesXAxis(chart, settings, series, xValues);
+        applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval);
+    } else if (isQuantitative) {
+        applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval);
     } else {
         applyChartOrdinalXAxis(chart, settings, series, xValues);
     }
 
     // y-axis settings
-    // TODO: if we are multi-series this could be split axis
-    applyChartYAxis(chart, settings, series, yAxisSplit);
+    let [left, right] = yAxisSplit.map(indexes => ({
+        series: indexes.map(index => series[index]),
+        extent: d3.extent([].concat(...indexes.map(index => yExtents[index])))
+    }));
+    if (left && left.series.length > 0) {
+        applyChartYAxis(chart, settings, left.series, left.extent, "left");
+    }
+    if (right && right.series.length > 0) {
+        applyChartYAxis(chart, settings, right.series, right.extent, "right");
+    }
+    const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
-    applyChartTooltips(chart, (hovered) => {
+    applyChartTooltips(chart, series, isStacked, (hovered) => {
         if (onHoverChange) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {
@@ -621,9 +1035,17 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     chart.render();
 
     // apply any on-rendering functions
-    lineAndBarOnRender(chart, settings);
+    lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked);
 
-    onRender && onRender({ yAxisSplit });
+    // only ordinal axis can display "null" values
+    if (isOrdinal) {
+        delete warnings[NULL_DIMENSION_WARNING];
+    }
+
+    onRender && onRender({
+        yAxisSplit,
+        warnings: Object.keys(warnings)
+    });
 
     return chart;
 }

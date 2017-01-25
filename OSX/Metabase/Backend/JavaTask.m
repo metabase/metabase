@@ -16,7 +16,7 @@ NSString *UberjarPath() {
 	return [[NSBundle mainBundle] pathForResource:@"metabase" ofType:@"jar"];
 }
 
-NSString *DBPath() {
+NSString *ApplicationSupportDirPath() {
 	NSString *applicationSupportDir = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES)[0] stringByAppendingPathComponent:@"Metabase"];
 	if (![[NSFileManager defaultManager] fileExistsAtPath:applicationSupportDir]) {
 		NSError *error = nil;
@@ -25,7 +25,15 @@ NSString *DBPath() {
 			NSLog(@"Error creating %@: %@", applicationSupportDir, error.localizedDescription);
 		}
 	}
-	return [applicationSupportDir stringByAppendingPathComponent:@"metabase.db"];
+	return applicationSupportDir;
+}
+
+NSString *DBPath() {
+	return [ApplicationSupportDirPath() stringByAppendingPathComponent:@"metabase.db"];
+}
+
+NSString *PluginsDirPath() {
+	return [ApplicationSupportDirPath() stringByAppendingPathComponent:@"Plugins"];
 }
 
 

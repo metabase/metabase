@@ -37,9 +37,9 @@
    :model_id    (:id card)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Card", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Card", :description nil}}
   (with-temp-activities
-    (process-activity-event {:topic :card-create, :item card})
+    (process-activity-event! {:topic :card-create, :item card})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "card-create"
       :model_id (:id card))))
@@ -53,9 +53,9 @@
    :model_id    (:id card)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Card", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Card", :description nil}}
   (with-temp-activities
-    (process-activity-event {:topic :card-update, :item card})
+    (process-activity-event! {:topic :card-update, :item card})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "card-update"
       :model_id (:id card))))
@@ -69,9 +69,9 @@
    :model_id    (:id card)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Card", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Card", :description nil}}
   (with-temp-activities
-    (process-activity-event {:topic :card-delete, :item card})
+    (process-activity-event! {:topic :card-delete, :item card})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "card-delete"
       :model_id (:id card))))
@@ -85,9 +85,9 @@
    :model_id    (:id dashboard)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Dashboard", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Dashboard", :description nil}}
   (with-temp-activities
-    (process-activity-event {:topic :dashboard-create, :item dashboard})
+    (process-activity-event! {:topic :dashboard-create, :item dashboard})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "dashboard-create"
       :model_id (:id dashboard))))
@@ -101,9 +101,9 @@
    :model_id    (:id dashboard)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Dashboard", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Dashboard", :description nil}}
   (with-temp-activities
-    (process-activity-event {:topic :dashboard-delete, :item dashboard})
+    (process-activity-event! {:topic :dashboard-delete, :item dashboard})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "dashboard-delete"
       :model_id (:id dashboard))))
@@ -121,14 +121,12 @@
    :table_id    nil
    :details     {:name         "My Cool Dashboard"
                  :description  nil
-                 :public_perms 0
                  :dashcards    [{:description  (:description card)
                                  :name         (:name card)
-                                 :public_perms (:public_perms card)
                                  :id           (:id dashcard)
                                  :card_id      (:id card)}]}}
   (with-temp-activities
-    (process-activity-event {:topic :dashboard-add-cards
+    (process-activity-event! {:topic :dashboard-add-cards
                              :item  {:id        (:id dashboard)
                                      :actor_id  (user->id :rasta)
                                      :dashcards [dashcard]}})
@@ -149,14 +147,12 @@
    :table_id    nil
    :details     {:name         "My Cool Dashboard"
                  :description  nil
-                 :public_perms 0
                  :dashcards    [{:description  (:description card)
                                  :name         (:name card)
-                                 :public_perms (:public_perms card)
                                  :id           (:id dashcard)
                                  :card_id      (:id card)}]}}
   (with-temp-activities
-    (process-activity-event {:topic :dashboard-remove-cards
+    (process-activity-event! {:topic :dashboard-remove-cards
                              :item  {:id        (:id dashboard)
                                      :actor_id  (user->id :rasta)
                                      :dashcards [dashcard]}})
@@ -173,7 +169,7 @@
    :model_id nil
    :details  {}}
   (with-temp-activities
-    (process-activity-event {:topic :install, :item {}})
+    (process-activity-event! {:topic :install, :item {}})
     (db/select-one [Activity :topic :user_id :model :model_id :details], :topic "install")))
 
 
@@ -188,7 +184,7 @@
    :details     {:name        (:name metric)
                  :description (:description metric)}}
   (with-temp-activities
-    (process-activity-event {:topic :metric-create, :item metric})
+    (process-activity-event! {:topic :metric-create, :item metric})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "metric-create"
       :model_id (:id metric))))
@@ -206,7 +202,7 @@
                  :description      (:description metric)
                  :revision_message "update this mofo"}}
   (with-temp-activities
-    (process-activity-event {:topic :metric-update, :item (-> (assoc metric
+    (process-activity-event! {:topic :metric-update, :item (-> (assoc metric
                                                                 :actor_id         (user->id :rasta)
                                                                 :revision_message "update this mofo")
                                                               ;; doing this specifically to ensure :actor_id is utilized
@@ -228,7 +224,7 @@
                  :description      (:description metric)
                  :revision_message "deleted"}}
   (with-temp-activities
-    (process-activity-event {:topic :metric-delete, :item (assoc metric
+    (process-activity-event! {:topic :metric-delete, :item (assoc metric
                                                             :actor_id         (user->id :rasta)
                                                             :revision_message "deleted")})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
@@ -244,10 +240,9 @@
    :model_id    (:id pulse)
    :database_id nil
    :table_id    nil
-   :details     {:name         (:name pulse)
-                 :public_perms 2}}
+   :details     {:name (:name pulse)}}
   (with-temp-activities
-    (process-activity-event {:topic :pulse-create, :item pulse})
+    (process-activity-event! {:topic :pulse-create, :item pulse})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "pulse-create"
       :model_id (:id pulse))))
@@ -261,10 +256,9 @@
    :model_id    (:id pulse)
    :database_id nil
    :table_id    nil
-   :details     {:name         (:name pulse)
-                 :public_perms 2}}
+   :details     {:name (:name pulse)}}
   (with-temp-activities
-    (process-activity-event {:topic :pulse-delete, :item pulse})
+    (process-activity-event! {:topic :pulse-delete, :item pulse})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "pulse-delete"
       :model_id (:id pulse))))
@@ -277,11 +271,11 @@
    :model       "segment"
    :model_id    (:id segment)
    :database_id (id)
-   :table_id    (id :venues)
+   :table_id    (id :checkins)
    :details     {:name        (:name segment)
                  :description (:description segment)}}
   (with-temp-activities
-    (process-activity-event {:topic :segment-create, :item segment})
+    (process-activity-event! {:topic :segment-create, :item segment})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
       :topic    "segment-create"
       :model_id (:id segment))))
@@ -294,12 +288,12 @@
    :model       "segment"
    :model_id    (:id segment)
    :database_id (id)
-   :table_id    (id :venues)
+   :table_id    (id :checkins)
    :details     {:name             (:name segment)
                  :description      (:description segment)
                  :revision_message "update this mofo"}}
   (with-temp-activities
-    (process-activity-event {:topic :segment-update, :item (-> segment
+    (process-activity-event! {:topic :segment-update, :item (-> segment
                                                                (assoc :actor_id         (user->id :rasta)
                                                                       :revision_message "update this mofo")
                                                                ;; doing this specifically to ensure :actor_id is utilized
@@ -316,12 +310,12 @@
    :model       "segment"
    :model_id    (:id segment)
    :database_id (id)
-   :table_id    (id :venues)
+   :table_id    (id :checkins)
    :details     {:name             (:name segment)
                  :description      (:description segment)
                  :revision_message "deleted"}}
   (with-temp-activities
-    (process-activity-event {:topic :segment-delete, :item (assoc segment
+    (process-activity-event! {:topic :segment-delete, :item (assoc segment
                                                              :actor_id         (user->id :rasta)
                                                              :revision_message "deleted")})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
@@ -338,8 +332,8 @@
    :model_id    (user->id :rasta)
    :details     {}}
   (with-temp-activities
-    (process-activity-event {:topic :user-login
-                             :item  {:user_id     (user->id :rasta)
-                                     :session_id  (str (java.util.UUID/randomUUID))
-                                     :first_login true}})
+    (process-activity-event! {:topic :user-login
+                              :item  {:user_id     (user->id :rasta)
+                                      :session_id  (str (java.util.UUID/randomUUID))
+                                      :first_login true}})
     (db/select-one [Activity :topic :user_id :model :model_id :details], :topic "user-joined")))

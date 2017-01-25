@@ -83,7 +83,7 @@
     border-color: var(--success-color) !important;
 }
 
-.border-brand {
+.border-brand, :local(.border-brand) {
     border-color: var(--brand-color) !important;
 }
 

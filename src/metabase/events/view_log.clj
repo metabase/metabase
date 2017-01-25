@@ -49,4 +49,4 @@
 (defn events-init
   "Automatically called during startup; start the events listener for view events."
   []
-  (events/start-event-listener view-counts-topics view-counts-channel process-view-count-event))
+  (events/start-event-listener! view-counts-topics view-counts-channel process-view-count-event))

@@ -9,6 +9,7 @@
 NSString *JREPath();
 NSString *UberjarPath();
 NSString *DBPath();			///< Path to the H2 DB file
+NSString *PluginsDirPath(); ///< Path for plugins
 
 /// Base class for running JRE-based NSTasks
 @interface JavaTask : NSObject

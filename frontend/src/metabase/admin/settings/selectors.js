@@ -2,6 +2,9 @@ import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { slugify } from "metabase/lib/formatting";
+
+import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
 
 const SECTIONS = [
     {
@@ -46,11 +49,16 @@ const SECTIONS = [
                 key: "enable-advanced-humanization",
                 display_name: "Friendly Table and Field Names",
                 type: "boolean"
-            },
+            }
+        ]
+    },
+    {
+        name: "Updates",
+        settings: [
             {
-                key: "google-maps-api-key",
-                display_name: "Google Maps API Key",
-                type: "string"
+                key: "check-for-updates",
+                display_name: "Check for updates",
+                type: "boolean"
             }
         ]
     },
@@ -114,31 +122,22 @@ const SECTIONS = [
                 description: "",
                 placeholder: "Enter the token you received from Slack",
                 type: "string",
-                required: true,
+                required: false,
                 autoFocus: true
             },
             {
                 key: "metabot-enabled",
                 display_name: "Metabot",
                 type: "boolean",
-                defaultValue: "true",
+                // TODO: why do we have "defaultValue" in addition to "default" in the backend?
+                defaultValue: false,
                 required: true,
                 autoFocus: false
             },
         ]
     },
     {
-        name: "Updates",
-        settings: [
-            {
-                key: "check-for-updates",
-                display_name: "Check for updates",
-                type: "boolean"
-            }
-        ]
-    },
-    {
-        name: "Single Sign On",
+        name: "Single Sign-On",
         settings: [
             {
                 key: "google-auth-client-id"
@@ -147,8 +146,29 @@ const SECTIONS = [
                 key: "google-auth-auto-create-accounts-domain"
             }
         ]
+    },
+    {
+        name: "Maps",
+        settings: [
+            {
+                key: "map-tile-server-url",
+                display_name: "Map tile server URL",
+                note: "Metabase uses OpenStreetMaps by default.",
+                type: "string"
+            },
+            {
+                key: "custom-geojson",
+                display_name: "Custom Maps",
+                description: "Add your own GeoJSON files to enable different region map visualizations",
+                widget: CustomGeoJSONWidget,
+                noHeader: true
+            }
+        ]
     }
 ];
+for (const section of SECTIONS) {
+    section.slug = slugify(section.name);
+}
 
 export const getSettings = state => state.settings.settings;
 
@@ -171,26 +191,29 @@ export const getSections = createSelector(
             let sectionSettings = section.settings.map(function(setting) {
                 const apiSetting = settingsByKey[setting.key][0];
                 if (apiSetting) {
-                    apiSetting.placeholder = apiSetting.default;
-                    return _.extend(apiSetting, setting);
+                    return {
+                        placeholder: apiSetting.default,
+                        ...apiSetting,
+                        ...setting
+                    };
                 }
             });
-
-            let updatedSection = _.clone(section);
-            updatedSection.settings = sectionSettings;
-            return updatedSection;
+            return {
+                ...section,
+                settings: sectionSettings
+            };
         });
     }
 );
 
-export const getActiveSectionName = (state) => state.router && state.router.location && state.router.location.query.section
+export const getActiveSectionName = (state, props) => props.params.section
 
 export const getActiveSection = createSelector(
     getActiveSectionName,
     getSections,
-    (section = "Setup", sections) => {
+    (section = "setup", sections) => {
         if (sections) {
-            return _.findWhere(sections, {name: section});
+            return _.findWhere(sections, { slug: section });
         } else {
             return null;
         }

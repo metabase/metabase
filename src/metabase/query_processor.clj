@@ -6,6 +6,7 @@
             (schema [core :as s]
                     utils)
             [swiss.arrows :refer [<<-]]
+            [metabase.api.common :refer [*current-user-id*]]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
@@ -17,6 +18,7 @@
                                       [interface :refer :all]
                                       [macros :as macros]
                                       [parameters :as params]
+                                      [permissions :as perms]
                                       [resolve :as resolve])
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
@@ -33,7 +35,7 @@
 
 ;;;  DYNAMIC VARS
 
-(def ^:dynamic *disable-qp-logging*
+(def ^:dynamic ^Boolean *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
@@ -65,11 +67,11 @@
 
 (defn- query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
-  [{{{ag-type :aggregation-type} :aggregation, :keys [limit page]} :query}]
+  [{{aggregations :aggregation, :keys [limit page]} :query}]
   (and (not limit)
        (not page)
-       (or (not ag-type)
-           (= ag-type :rows))))
+       (or (empty? aggregations)
+           (= (:aggregation-type (first aggregations)) :rows))))
 
 (defn- fail [query, ^Throwable e, & [additional-info]]
   (merge {:status         :failed
@@ -127,57 +129,56 @@
            (fail query e)))))
 
 
-(defn- pre-add-settings
+(defn- add-settings
   "Adds the `:settings` map to the query which can contain any fixed properties that would be useful at execution time.
    Currently supports a settings object like:
 
-       {:report-timezone \"US/Pacific\"}
-   "
-  [qp]
-  (fn [{:keys [driver] :as query}]
-    (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
-                                       (let [report-tz (driver/report-timezone)]
-                                         (when-not (empty? report-tz)
-                                           report-tz)))}]
-      (qp (assoc query :settings (m/filter-vals (complement nil?) settings))))))
+       {:report-timezone \"US/Pacific\"}"
+  [{:keys [driver] :as query}]
+  (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
+                                     (let [report-tz (driver/report-timezone)]
+                                       (when-not (empty? report-tz)
+                                         report-tz)))}]
+    (assoc query :settings (m/filter-vals (complement nil?) settings))))
+
+(defn- pre-add-settings [qp] (comp qp add-settings))
 
 
-(defn- pre-expand-macros
+(defn- expand-macros
   "Looks for macros in a structured (unexpanded) query and substitutes the macros for their contents."
-  [qp]
-  (fn [query]
-    ;; if necessary, handle macro substitution
-    (let [query (if-not (mbql-query? query)
-                  query
-                  ;; for MBQL queries run our macro expansion
-                  (u/prog1 (macros/expand-macros query)
-                    (when (and (not *disable-qp-logging*)
-                               (not= <> query))
-                      (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
-      (qp query))))
+  [query]
+  (if-not (mbql-query? query)
+    query
+    (u/prog1 (macros/expand-macros query)
+      (when (and (not *disable-qp-logging*)
+                 (not= <> query))
+        (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str <>)))))))
 
-(defn- pre-substitute-parameters
+(defn- pre-expand-macros [qp] (comp qp expand-macros))
+
+
+(defn- substitute-parameters
   "If any parameters were supplied then substitute them into the query."
-  [qp]
-  (fn [query]
-    ;; if necessary, handle parameters substitution
-    (let [query (u/prog1 (params/expand-parameters query)
-                  (when (and (not *disable-qp-logging*)
-                             (not= <> query))
-                    (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>)))))]
-      (qp query))))
+  [query]
+  (u/prog1 (params/expand-parameters query)
+    (when (and (not *disable-qp-logging*)
+               (not= <> query))
+      (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str <>))))))
 
-(defn- pre-expand-resolve
+(defn- pre-substitute-parameters [qp] (comp qp substitute-parameters))
+
+
+(defn- expand-resolve
   "Transforms an MBQL into an expanded form with more information and structure. Also resolves references to fields, tables,
    etc, into their concrete details which are necessary for query formation by the executing driver."
-  [qp]
-  (fn [{database-id :database, :as query}]
-    (let [resolved-db (db/select-one [database/Database :name :id :engine :details], :id database-id)
-          query       (if-not (mbql-query? query)
-                        query
-                        ;; for MBQL queries we expand first, then resolve
-                        (resolve/resolve (expand/expand query)))]
-      (qp (assoc query :database resolved-db)))))
+  [{database-id :database, :as query}]
+  (let [resolved-db (db/select-one [database/Database :name :id :engine :details], :id database-id)
+        query       (if-not (mbql-query? query)
+                      query
+                      (resolve/resolve (expand/expand query)))]
+    (assoc query :database resolved-db)))
+
+(defn- pre-expand-resolve [qp] (comp qp expand-resolve))
 
 
 (defn- post-add-row-count-and-status
@@ -218,15 +219,15 @@
         (update results :rows (partial format-rows settings))))))
 
 
-(defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query, :as query}]
+(defn- should-add-implicit-fields? [{{:keys [fields breakout], aggregations :aggregation} :query, :as query}]
   (and (mbql-query? query)
-       (not (or ag-type
+       (not (or (seq aggregations)
                 (seq breakout)
                 (seq fields)))))
 
 (defn- datetime-field? [{:keys [base-type special-type]}]
-  (or (contains? #{:DateField :DateTimeField} base-type)
-      (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type)))
+  (or (isa? base-type :type/DateTime)
+      (isa? special-type :type/DateTime)))
 
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
@@ -243,152 +244,92 @@
         (map->DateTimeField {:field field, :unit :default})
         field))))
 
-(defn- pre-add-implicit-fields
+(defn- add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
-  [qp]
-  (fn [{{:keys [source-table]} :query, :as query}]
-    (let [query (if-not (should-add-implicit-fields? query)
-                  query
-                  ;; this is a structured `:rows` query, so lets add a `:fields` clause with all fields from the source table + expressions
-                  (let [fields      (fields-for-source-table source-table)
-                        expressions (for [[expression-name] (get-in query [:query :expressions])]
-                                      (strict-map->ExpressionRef {:expression-name (name expression-name)}))]
-                    (when-not (seq fields)
-                      (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
-                    (-> query
-                        (assoc-in [:query :fields-is-implicit] true)
-                        (assoc-in [:query :fields] (concat fields expressions)))))]
-      (qp query))))
+  [{{:keys [source-table]} :query, :as query}]
+  (if-not (should-add-implicit-fields? query)
+    query
+    ;; this is a structured `:rows` query, so lets add a `:fields` clause with all fields from the source table + expressions
+    (let [fields      (fields-for-source-table source-table)
+          expressions (for [[expression-name] (get-in query [:query :expressions])]
+                        (strict-map->ExpressionRef {:expression-name (name expression-name)}))]
+      (when-not (seq fields)
+        (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
+      (-> query
+          (assoc-in [:query :fields-is-implicit] true)
+          (assoc-in [:query :fields] (concat fields expressions))))))
+
+(defn- pre-add-implicit-fields [qp] (comp qp add-implicit-fields))
 
 
-(defn- pre-add-implicit-breakout-order-by
+(defn- add-implicit-breakout-order-by
   "`Fields` specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that field is *explicitly* referenced in `order-by`."
-  [qp]
-  (fn [{{breakout-fields :breakout, order-by :order-by} :query, :as query}]
-    (if (mbql-query? query)
-      (let [order-by-fields                   (set (map :field order-by))
-            implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
-                                                      breakout-fields)]
-        (qp (cond-> query
-              (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
-                                                                                             {:field field, :direction :ascending})))))
-      ;; for non-MBQL queries we do nothing
-      (qp query))))
+  [{{breakout-fields :breakout, order-by :order-by} :query, :as query}]
+  (if-not (mbql-query? query)
+    query
+    (let [order-by-fields                   (set (map :field order-by))
+          implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
+                                                    breakout-fields)]
+      (cond-> query
+        (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
+                                                                                       {:field field, :direction :ascending}))))))
+
+(defn- pre-add-implicit-breakout-order-by [qp] (comp qp add-implicit-breakout-order-by))
 
 
-(defn- pre-cumulative-sum
-  "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
-   (Cumulative sum is a special case; it is implemented in post-processing).
-   Return a pair of [`cumulative-sum-field?` `query`]."
-  [{{{ag-type :aggregation-type, ag-field :field} :aggregation, breakout-fields :breakout} :query, :as query}]
-  (let [cum-sum?                    (= ag-type :cumulative-sum)
-        cum-sum-with-breakout?      (and cum-sum?
-                                         (seq breakout-fields))
-        cum-sum-with-same-breakout? (and cum-sum-with-breakout?
-                                         (= (count breakout-fields) 1)
-                                         (= (first breakout-fields) ag-field))]
+;;; ------------------------------------------------------------ CUMULATIVE-SUM & CUMULATIVE-COUNT ------------------------------------------------------------
 
-    ;; Cumulative sum is only applicable if it has breakout fields
-    ;; For these, store the cumulative sum field under the key :cumulative-sum so we know which one to sum later
-    ;; Cumulative summing happens in post-processing
-    (cond
-      ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
-      ;; to just fetch all the values of the field in question.
-      cum-sum-with-same-breakout? [ag-field (update query :query (fn [query]
-                                                                   (-> query
-                                                                       (dissoc :breakout :aggregation)
-                                                                       (assoc :fields [ag-field]))))]
+(defn- cumulative-aggregation-clause
+  "Does QUERY have any aggregations of AGGREGATION-TYPE?"
+  [aggregation-type {{aggregations :aggregation} :query, :as query}]
+  (when (mbql-query? query)
+    (some (fn [{ag-type :aggregation-type, :as ag}]
+            (when (= ag-type aggregation-type)
+              ag))
+          aggregations)))
 
-      ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
-      cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
+(defn- pre-cumulative-aggregation
+  "Rewrite queries containing a cumulative aggregation (e.g. `:cumulative-count`) as a different 'basic' aggregation (e.g. `:count`).
+   This lets various drivers handle the aggregation normallly; we implement actual behavior here in post-processing."
+  [cumlative-ag-type basic-ag-type ag-field {{aggregations :aggregation, breakout-fields :breakout} :query, :as query}]
+  (update-in query [:query :aggregation] (fn [aggregations]
+                                           (for [{ag-type :aggregation-type, :as ag} aggregations]
+                                             (if-not (= ag-type cumlative-ag-type)
+                                               ag
+                                               {:aggregation-type basic-ag-type, :field ag-field})))))
 
-      ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
-      cum-sum? [false (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
-
-      ;; Otherwise if this isn't a cumulative sum query return it as-is
-      :else [false query])))
-
-
-(defn- post-cumulative-sum
-  "Cumulative sum the values of the aggregate `Field` in RESULTS."
-  [cum-sum-field {rows :rows, cols :cols, :as results}]
+(defn- post-cumulative-aggregation [basic-ag-type ag-field {rows :rows, cols :cols, :as results}]
   (let [ ;; Determine the index of the field we need to cumulative sum
-        cum-sum-field-index (u/prog1 (u/first-index-satisfying (fn [{:keys [name id]}]
-                                                                 (or (= name "sum")
-                                                                     (= id   (:field-id cum-sum-field))))
-                                                               cols)
-                              (assert (integer? <>)))
+        field-index (u/prog1 (u/first-index-satisfying (comp (partial = (name basic-ag-type)) :name)
+                               cols)
+                      (assert (integer? <>)))
         ;; Now make a sequence of cumulative sum values for each row
-        values              (reductions + (for [row rows]
-                                            (nth row cum-sum-field-index)))
+        values      (reductions + (for [row rows]
+                                    (nth row field-index)))
         ;; Update the values in each row
-        rows                (map (fn [row value]
-                                   (assoc (vec row) cum-sum-field-index value))
-                                 rows values)]
+        rows        (map (fn [row value]
+                           (assoc (vec row) field-index value))
+                         rows values)]
     (assoc results :rows rows)))
 
-
-(defn- cumulative-sum [qp]
-  (fn [query]
-    (if (mbql-query? query)
-      (let [[cumulative-sum-field query] (pre-cumulative-sum query)]
-        (cond->> (qp query)
-                 cumulative-sum-field (post-cumulative-sum cumulative-sum-field)))
-      ;; for non-MBQL queries we do nothing
-      (qp query))))
-
-
-(defn- pre-cumulative-count
-  "Rewrite queries containing a cumulative count (`cum_count`) aggregation as `count` aggregation queries instead.
-   (Cumulative count is a special case; it is implemented in post-processing).
-
-   Returns a pair like `[is-cumulative-count-query? query]`."
-  [{{{ag-type :aggregation-type} :aggregation, breakout-fields :breakout} :query, :as query}]
-  (let [cum-count?               (= ag-type :cumulative-count)
-        cum-count-with-breakout? (and cum-count?
-                                    (seq breakout-fields))]
-
-    ;; Cumulative count is only applicable if it has breakout field(s)
-    ;; Cumulative counting happens in post-processing
-    (cond
-      ;; If we have breakout field(s), rewrite the query as a "count" aggregation
-      cum-count-with-breakout? [true (assoc-in query [:query :aggregation] {:aggregation-type :count})]
-
-      ;; Cumulative count without any breakout fields should just be treated the same way as "count". Rewrite query as such
-      cum-count? [false (assoc-in query [:query :aggregation] {:aggregation-type :count})]
-
-      ;; Otherwise if this isn't a cumulative count query return it as-is
-      :else [false query])))
+(defn- cumulative-aggregation [cumulative-ag-type basic-ag-type qp]
+  (let [cumulative-ag-clause (partial cumulative-aggregation-clause cumulative-ag-type)
+        pre-cumulative-ag    (partial pre-cumulative-aggregation cumulative-ag-type basic-ag-type)
+        post-cumulative-ag   (partial post-cumulative-aggregation basic-ag-type)]
+    (fn [query]
+      (if-let [{ag-field :field} (cumulative-ag-clause query)]
+        (post-cumulative-ag ag-field (qp (pre-cumulative-ag ag-field query)))
+        (qp query)))))
 
 
-(defn- post-cumulative-count
-  "Cumulative count the values of the aggregate `Field` in RESULTS."
-  [{rows :rows, cols :cols, :as results}]
-  (let [ ;; Determine the index of the count field; this is what we need to cumulative count
-        cum-count-field-index (u/prog1 (u/first-index-satisfying (comp (partial = "count") :name)
-                                                                 cols)
-                                (assert (integer? <>)))
-        ;; Now make a sequence of cumulative count values for each row
-        values                 (reductions + (for [row rows]
-                                               (nth row cum-count-field-index)))
-        ;; Update the values in each row
-        rows                   (map (fn [row value]
-                                      (assoc (vec row) cum-count-field-index value))
-                                    rows values)]
-    (assoc results :rows rows)))
+(def ^:private ^{:arglists '([qp])} cumulative-sum
+  (partial cumulative-aggregation :cumulative-sum :sum))
+
+(def ^:private ^{:arglists '([qp])} cumulative-count
+  (partial cumulative-aggregation :cumulative-count :count))
 
 
-(defn- cumulative-count [qp]
-  (fn [query]
-    (if (mbql-query? query)
-      (let [[is-cumulative-count? query] (pre-cumulative-count query)
-            results                      (qp query)]
-        (if is-cumulative-count?
-          (post-cumulative-count results)
-          results))
-      ;; for non-MBQL queries we do nothing
-      (qp query))))
-
+;;; ------------------------------------------------------------ LIMIT, &C. ------------------------------------------------------------
 
 (defn- limit
   "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that can be returned in post-processing."
@@ -402,12 +343,12 @@
       (update results :rows (partial take (or max-results
                                               absolute-max-results))))))
 
-
-(defn- pre-log-query [qp]
-  (fn [query]
+(defn- log-query [query]
+  (u/prog1 query
     (when (and (mbql-query? query)
                (not *disable-qp-logging*))
-      (log/debug (u/format-color 'magenta "\nPREPROCESSED/EXPANDED: 😻\n%s"
+      (log/debug (u/format-color 'magenta "\nPREPROCESSED/EXPANDED: %s\n%s"
+                   (u/emoji "😻")
                    (u/pprint-to-str
                     ;; Remove empty kv pairs because otherwise expanded query is HUGE
                     (walk/prewalk
@@ -416,8 +357,16 @@
                                (m/filter-vals identity (into {} f))))
                      ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
                      (-> query
-                         (assoc-in [:database :details] "😋 ") ; :yum:
-                         (update :driver name)))))))
+                         (assoc-in [:database :details] (u/emoji "😋 ")) ; :yum:
+                         (update :driver name)))))))))
+
+(defn- pre-log-query [qp] (comp qp log-query))
+
+(defn- pre-check-query-permissions [qp]
+  (fn [query]
+    (when *current-user-id*
+      (perms/check-query-permissions *current-user-id* query))
+    ;; TODO - what should we do if there is no *current-user-id* (for something like a pulse?)
     (qp query)))
 
 ;; The following are just assertions that check the behavior of the QP. It doesn't make sense to run them on prod because at best they
@@ -431,11 +380,11 @@
   (if config/is-prod?
     identity
     (fn [qp]
-      (let [called? (atom false)]
-        (fn [query]
-          (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
-          (reset! called? true)
-          (qp query))))))
+      (comp qp (let [called? (atom false)]
+                 (fn [query]
+                   (u/prog1 query
+                     (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
+                     (reset! called? true))))))))
 
 
 (def ^:private post-check-results-format
@@ -445,9 +394,7 @@
   (if config/is-prod?
     identity
     (fn [qp]
-      (fn [query]
-        (u/prog1 (qp query)
-          (validate-results <>))))))
+      (comp validate-results qp))))
 
 (defn query->remark
   "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
@@ -477,7 +424,7 @@
                                 (:native query)
                                 (driver/mbql->native (:driver query) query))
                        (when-not *disable-qp-logging*
-                         (log/debug (u/format-color 'green "NATIVE FORM: 😳\n%s\n" (u/pprint-to-str <>)))))
+                         (log/debug (u/format-color 'green "NATIVE FORM: %s\n%s\n" (u/emoji "😳") (u/pprint-to-str <>)))))
         native-query (if-not (mbql-query? query)
                        query
                        (assoc query :native native-form))
@@ -520,22 +467,21 @@
 ;;
 ;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
-
 (defn process-query
   "Process an MBQL structured or native query, and return the result."
   {:style/indent 0}
   [query]
   (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
+    (log/debug (u/format-color 'blue "\nQUERY: %s\n%s"  (u/emoji "😎") (u/pprint-to-str query))))
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
       ((<<- wrap-catch-exceptions
             pre-add-settings
+            (driver/process-query-in-context driver)
             pre-expand-macros
             pre-substitute-parameters
             pre-expand-resolve
-            (driver/process-query-in-context driver)
             post-add-row-count-and-status
             post-format-rows
             pre-add-implicit-fields
@@ -545,72 +491,34 @@
             limit
             post-check-results-format
             pre-log-query
+            pre-check-query-permissions
             guard-multiple-calls
             run-query) (assoc query :driver driver)))))
+
+
+(def ^{:arglists '([query])} expand
+  "Expand a QUERY the same way it would normally be done as part of query processing.
+   This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
+  (comp expand-resolve
+        substitute-parameters
+        expand-macros))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
 
-(declare query-fail query-complete save-query-execution!)
+(defn- save-query-execution!
+  "Save (or update) a `QueryExecution`."
+  [{:keys [id], :as query-execution}]
+  (if id
+    ;; execution has already been saved, so update it
+    (u/prog1 query-execution
+      (db/update! QueryExecution id query-execution))
+    ;; first time saving execution, so insert it
+    (db/insert! QueryExecution query-execution)))
 
-(defn- assert-valid-query-result [query-result]
-  (when-not (contains? query-result :status)
-    (throw (Exception. "invalid response from database driver. no :status provided")))
-  (when (= :failed (:status query-result))
-    (log/error (u/pprint-to-str 'red query-result))
-    (throw (Exception. (str (get query-result :error "general error"))))))
-
-(defn dataset-query
-  "Process and run a json based dataset query and return results.
-
-  Takes 2 arguments:
-
-  1.  the json query as a dictionary
-  2.  query execution options specified in a dictionary
-
-  Depending on the database specified in the query this function will delegate to a driver specific implementation.
-  For the purposes of tracking we record each call to this function as a QueryExecution in the database.
-
-  Possible caller-options include:
-
-    :executed_by [int]  (user_id of caller)"
-  {:arglists '([query options])}
-  [query {:keys [executed_by]}]
-  {:pre [(integer? executed_by)]}
-  (let [query-uuid      (str (java.util.UUID/randomUUID))
-        query-hash      (hash query)
-        query-execution {:uuid              query-uuid
-                         :executor_id       executed_by
-                         :json_query        query
-                         :query_hash        query-hash
-                         :query_id          nil
-                         :version           0
-                         :status            :starting
-                         :error             ""
-                         :started_at        (u/new-sql-timestamp)
-                         :finished_at       (u/new-sql-timestamp)
-                         :running_time      0
-                         :result_rows       0
-                         :result_file       ""
-                         :result_data       "{}"
-                         :raw_query         ""
-                         :additional_info   ""
-                         :start_time_millis (System/currentTimeMillis)}
-        query           (assoc query :info {:executed-by executed_by
-                                            :uuid        query-uuid
-                                            :query-hash  query-hash
-                                            :query-type  (if (mbql-query? query) "MBQL" "native")})]
-    (try
-      (let [result (process-query query)]
-        (assert-valid-query-result result)
-        (query-complete query-execution result))
-      (catch Throwable e
-        (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
-        (query-fail query-execution (.getMessage e))))))
-
-(defn- query-fail
+(defn- save-and-return-failed-query!
   "Save QueryExecution state and construct a failed query response"
   [query-execution error-message]
   (let [updates {:status       :failed
@@ -630,7 +538,7 @@
                            :cols    []
                            :columns []}))))
 
-(defn- query-complete
+(defn- save-and-return-successful-query!
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
@@ -646,13 +554,78 @@
       (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))
 
-(defn- save-query-execution!
-  "Save (or update) a `QueryExecution`."
-  [{:keys [id], :as query-execution}]
-  (if id
-    ;; execution has already been saved, so update it
-    (do
-      (db/update! QueryExecution id query-execution)
-      query-execution)
-    ;; first time saving execution, so insert it
-    (db/insert! QueryExecution query-execution)))
+
+(defn- assert-query-status-successful
+  "Make sure QUERY-RESULT `:status` is something other than `nil`or `:failed`, or throw an Exception."
+  [query-result]
+  (when-not (contains? query-result :status)
+    (throw (Exception. "invalid response from database driver. no :status provided")))
+  (when (= :failed (:status query-result))
+    (log/warn (u/pprint-to-str 'red query-result))
+    (throw (Exception. (str (get query-result :error "general error"))))))
+
+(def ^:dynamic ^Boolean *allow-queries-with-no-executor-id*
+  "Should we allow running queries (via `dataset-query`) without specifying the `executed-by` User ID?
+   By default this is `false`, but this constraint can be disabled for running queries not executed by a specific user
+   (e.g., public Cards)."
+  false)
+
+(defn- query-execution-info
+  "Return the info for the `QueryExecution` entry for this QUERY."
+  [{{:keys [uuid executed-by query-hash]} :info, :as query}]
+  {:uuid              (or uuid (throw (Exception. "Missing query UUID!")))
+   :executor_id       executed-by
+   :json_query        (dissoc query :info)
+   :query_hash        (or query-hash (throw (Exception. "Missing query hash!")))
+   :version           0
+   :error             ""
+   :started_at        (u/new-sql-timestamp)
+   :finished_at       (u/new-sql-timestamp)
+   :running_time      0
+   :result_rows       0
+   :result_file       ""
+   :result_data       "{}"
+   :raw_query         ""
+   :additional_info   ""
+   :start_time_millis (System/currentTimeMillis)})
+
+(defn- run-and-save-query!
+  "Run QUERY and save appropriate `QueryExecution` info, and then return results (or an error message) in the usual format."
+  [query]
+  (let [query-execution (query-execution-info query)]
+    (try
+      (let [result (process-query query)]
+        (assert-query-status-successful result)
+        (save-and-return-successful-query! query-execution result))
+      (catch Throwable e
+        (log/warn (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
+        (save-and-return-failed-query! query-execution (.getMessage e))))))
+
+(defn dataset-query
+  "Process and run a json based dataset query and return results.
+
+  Takes 2 arguments:
+
+  1.  the json query as a dictionary
+  2.  query execution options specified in a dictionary
+
+  Depending on the database specified in the query this function will delegate to a driver specific implementation.
+  For the purposes of tracking we record each call to this function as a QueryExecution in the database.
+
+  Possible caller-options include:
+
+    :executed-by [int]  (User ID of caller)
+    :card-id     [int]  (ID of Card associated with this execution)"
+  {:arglists '([query options])}
+  [query {:keys [executed-by card-id]}]
+  {:pre [(or (integer? executed-by)
+             *allow-queries-with-no-executor-id*)
+         (u/maybe? integer? card-id)]}
+  (let [query-uuid (str (java.util.UUID/randomUUID))
+        query-hash (hash query)
+        query      (assoc query :info {:executed-by executed-by
+                                       :card-id     card-id
+                                       :uuid        query-uuid
+                                       :query-hash  query-hash
+                                       :query-type  (if (mbql-query? query) "MBQL" "native")})]
+    (run-and-save-query! query)))

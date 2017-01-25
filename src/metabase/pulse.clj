@@ -25,7 +25,7 @@
   (when-let [card (Card card-id)]
     (let [{:keys [creator_id dataset_query]} card]
       (try
-        {:card card :result (qp/dataset-query dataset_query {:executed_by creator_id})}
+        {:card card :result (qp/dataset-query dataset_query {:executed-by creator_id})}
         (catch Throwable t
           (log/warn (format "Error running card query (%n)" card-id) t))))))
 
@@ -35,7 +35,7 @@
   (log/debug (format "Sending Pulse (%d: %s) via Channel :email" id name))
   (let [email-subject    (str "Pulse: " name)
         email-recipients (filterv u/is-email? (map :email recipients))]
-    (email/send-message
+    (email/send-message!
       :subject      email-subject
       :recipients   email-recipients
       :message-type :attachments

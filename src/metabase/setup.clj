@@ -15,13 +15,13 @@
   {:pre [(string? token)]}
   (= token @setup-token))
 
-(defn token-create
+(defn create-token!
   "Create and set a new `@setup-token`.
    Returns the newly created token."
   []
   (reset! setup-token (str (java.util.UUID/randomUUID))))
 
-(defn token-clear
+(defn clear-token!
   "Clear the `@setup-token` if it exists and reset it to nil."
   []
   (reset! setup-token nil))

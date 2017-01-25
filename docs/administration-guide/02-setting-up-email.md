@@ -44,5 +44,6 @@ You should see this form:
 * If your email service has a whitelist of email addresses that are allowed to send email, be sure to whitelist the email address that you put in the **From Address** field to ensure you and your teammates receive all emails from Metabase.
 
 ---
+
 ## Next: editing your metadata
 Taking just a few minutes to edit and add info to your database’s metadata can greatly enhance your experience with Metabase. Let’s learn [how to edit your metadata](03-metadata-editing.md).
