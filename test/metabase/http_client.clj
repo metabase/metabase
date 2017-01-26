@@ -62,6 +62,7 @@
 
 (defn authenticate [{:keys [email password] :as credentials}]
   {:pre [(string? email) (string? password)]}
+  (println "Authenticating" email) ; DEBUG
   (try
     (:id (client :post 200 "session" credentials))
     (catch Throwable e

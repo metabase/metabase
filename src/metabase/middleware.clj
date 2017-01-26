@@ -53,27 +53,44 @@
                     (assoc request :metabase-session-id session-id)
                     request))))
 
+(defn- session-with-id
+  "Fetch a session with SESSION-ID, and include the User ID and superuser status associated with it."
+  [session-id]
+  (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
+    (db/join [Session :user_id] [User :id])
+    (db/qualify User :is_active) true
+    (db/qualify Session :id) session-id))
 
-(defn- add-current-user-id [{:keys [metabase-session-id] :as request}]
-  (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-        (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-                             (db/join [Session :user_id] [User :id])
-                             (db/qualify User :is_active) true
-                             (db/qualify Session :id) metabase-session-id)]
-          (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
-                                                                   (.getTime created-at))
-                                                                 0))]
-            ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-            (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-              (assoc request
-                :metabase-user-id (:user_id session)
-                :is-superuser?    (:is_superuser session))))))
-      request))
+(defn- session-age-ms [session]
+  (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                      (.getTime created-at))
+                                    0)))
+
+(defn- session-age-minutes [session]
+  (quot (session-age-ms session) 60000))
+
+(defn- session-expired? [session]
+  (> (session-age-minutes session)
+     (config/config-int :max-session-age)))
+
+(defn- current-user-info-for-session
+  "Return User ID and superuser status for Session with SESSION-ID if it is valid and not expired."
+  [session-id]
+  (when (and session-id ((resolve 'metabase.core/initialized?)))
+    (when-let [session (session-with-id session-id)]
+      (when-not (session-expired? session)
+        {:metabase-user-id (:user_id session)
+         :is-superuser?    (:is_superuser session)}))))
+
+(defn- add-current-user-info [{:keys [metabase-session-id], :as request}]
+  (when-not ((resolve 'metabase.core/initialized?))
+    (println "Metabase is not initialized yet!")) ; DEBUG
+  (merge request (current-user-info-for-session metabase-session-id)))
 
 (defn wrap-current-user-id
   "Add `:metabase-user-id` to the request if a valid session token was passed."
   [handler]
-  (comp handler add-current-user-id))
+  (comp handler add-current-user-info))
 
 
 (defn enforce-authentication
