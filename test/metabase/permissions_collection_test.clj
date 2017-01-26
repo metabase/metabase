@@ -18,7 +18,7 @@
 (defn- api-call-was-successful? {:style/indent 0} [response]
   (when (and (string? response)
              (not= response "You don't have permissions to do that."))
-    (println "RESPONSE:" [response]))
+    (println "RESPONSE:" response)) ; DEBUG
   (not= response "You don't have permissions to do that."))
 
 (defn- can-run-query? [username]
