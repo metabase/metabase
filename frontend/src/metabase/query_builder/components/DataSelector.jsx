@@ -358,7 +358,7 @@ export default class DataSelector extends Component {
         let dbId = this.getDatabaseId();
         let tableId = this.getTableId();
         var database = _.find(databases, (db) => db.id === dbId);
-        var table = _.find(database.tables, (table) => table.id === tableId);
+        var table = _.find(database && database.tables, (table) => table.id === tableId);
 
         var content;
         if (this.props.includeTables && this.props.segments) {
