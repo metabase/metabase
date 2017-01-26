@@ -35,19 +35,19 @@
             [environ.core :as env]
             [medley.core :as m]
             [schema.core :as s]
-            (metabase [db :as db]
-                      [events :as events])
-            [metabase.models.interface :as i]
+            (toucan [db :as db]
+                    [models :as models])
+            [metabase.events :as events]
             [metabase.util :as u]))
 
 
-(i/defentity Setting
+(models/defmodel Setting
   "The model that underlies `defsetting`."
   :setting)
 
 (u/strict-extend (class Setting)
-  i/IEntity
-  (merge i/IEntityDefaults
+  models/IModel
+  (merge models/IModelDefaults
          {:types (constantly {:value :clob})}))
 
 
@@ -180,7 +180,7 @@
     (restore-cache-if-needed!)
     ;; write to DB
     (cond
-      (not new-value)                 (db/delete! Setting :key setting-name)
+      (not new-value)                 (db/simple-delete! Setting :key setting-name)
       ;; if there's a value in the cache then the row already exists in the DB; update that
       (contains? @cache setting-name) (db/update-where! Setting {:key setting-name}
                                         :value new-value)

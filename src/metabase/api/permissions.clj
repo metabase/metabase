@@ -2,10 +2,10 @@
   "/api/permissions endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             [metabase.metabot :as metabot]
             (metabase.models [database :as database]
-                             [hydrate :refer [hydrate]]
                              [permissions :refer [Permissions], :as perms]
                              [permissions-group :refer [PermissionsGroup], :as group]
                              [permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -136,7 +136,8 @@
   "Delete a specific `PermissionsGroup`."
   [group-id]
   (check-superuser)
-  (db/cascade-delete! PermissionsGroup :id group-id))
+  (db/delete! PermissionsGroup :id group-id)
+  generic-204-no-content)
 
 
 ;;; ---------------------------------------- Group Membership Endpoints ----------------------------------------
@@ -168,8 +169,8 @@
   [id]
   (check-superuser)
   (check-404 (db/exists? PermissionsGroupMembership :id id))
-  (db/cascade-delete! PermissionsGroupMembership
-    :id id))
+  (db/delete! PermissionsGroupMembership :id id)
+  generic-204-no-content)
 
 
 (define-routes)

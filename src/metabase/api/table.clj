@@ -3,11 +3,11 @@
   (:require [compojure.core :refer [GET POST PUT]]
             [schema.core :as s]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             [metabase.driver :as driver]
             (metabase.models [field :refer [Field]]
-                             [hydrate :refer :all]
-                             [interface :as models]
+                             [interface :as mi]
                              [table :refer [Table] :as table])
             [metabase.sync-database :as sync-database]
             [metabase.util.schema :as su]))
@@ -25,7 +25,7 @@
   []
   (for [table (-> (db/select Table, :active true, {:order-by [[:name :asc]]})
                   (hydrate :db))
-        :when (models/can-read? table)]
+        :when (mi/can-read? table)]
     ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf. TODO - should that be part of `post-select` instead?
     (update table :rows (fn [n]
                           (or n 0)))))

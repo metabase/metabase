@@ -6,7 +6,7 @@
                      [string :as str])
             [clojure.tools.logging :as log]
             [schema.core :as s]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.interface :refer [*driver*], :as i]
             [metabase.util :as u]

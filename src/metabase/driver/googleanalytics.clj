@@ -6,7 +6,7 @@
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [metabase.config :as config]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.google :as google]
             (metabase.driver.googleanalytics [query-processor :as qp])

@@ -1,5 +1,6 @@
 (ns metabase.models.permissions-test
   (:require [expectations :refer :all]
+            [toucan.util.test :as tt]
             (metabase.models [permissions :as perms]
                              [permissions-group :refer [PermissionsGroup]])
             [metabase.test.data :as data]
@@ -514,7 +515,7 @@
 (expect
   [{(data/id :categories) :none, (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}
    {(data/id :categories) :all,  (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}]
-  (tu/with-temp PermissionsGroup [group]
+  (tt/with-temp PermissionsGroup [group]
     ;; first, graph permissions only for VENUES
     (perms/grant-permissions! group (perms/object-path (data/id) "PUBLIC" (data/id :venues)))
     [(test-data-graph group)

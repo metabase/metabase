@@ -1,11 +1,12 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [http-client :as http]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
+            [toucan.util.test :as tt]
+            (metabase [http-client :as http]
                       [middleware :as middleware])
-            (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer [Card]]
+            (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
                              [dashboard-card-series :refer [DashboardCardSeries]]
@@ -128,7 +129,7 @@
                                                        :archived               false}
                               :series                 []}]}
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+  (tt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                   Card          [{card-id :id}      {:name "Dashboard Test Card"}]
                   DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
     (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))
@@ -163,7 +164,7 @@
     :updated_at              true
     :created_at              true
     :parameters              []}]
-  (tu/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+  (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
     (mapv dashboard-response [(Dashboard dashboard-id)
                               ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:name         "My Cool Dashboard"
                                                                                                :description  "Some awesome description"
@@ -175,7 +176,7 @@
 ;; ## DELETE /api/dashboard/:id
 (expect
   [nil nil]
-  (tu/with-temp Dashboard [{dashboard-id :id}]
+  (tt/with-temp Dashboard [{dashboard-id :id}]
     [((user->client :rasta) :delete 204 (format "dashboard/%d" dashboard-id))
      (Dashboard dashboard-id)]))
 
@@ -200,7 +201,7 @@
      :row                    4
      :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
      :visualization_settings {}}]]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
     [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId                 card-id
                                                                                       :row                    4
@@ -233,7 +234,7 @@
      :col   4
      :row   4}]
    #{0}]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
     (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
@@ -252,7 +253,7 @@
    {:success true}
    0]
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp* [Dashboard           [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard           [{dashboard-id :id}]
                   Card                [{card-id :id}]
                   Card                [{series-id-1 :id}]
                   Card                [{series-id-2 :id}]
@@ -308,7 +309,7 @@
      :created_at             true
      :updated_at             true}]]
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp* [Dashboard     [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
                   DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
@@ -353,7 +354,7 @@
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         nil
     :description  nil}]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Revision  [_ {:model        "Dashboard"
                                 :model_id     dashboard-id
                                 :object       {:name         "b"
@@ -424,7 +425,7 @@
                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         nil
      :description  nil}]]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Revision  [{revision-id :id} {:model        "Dashboard"
                                                 :model_id     dashboard-id
                                                 :object       {:name         "a"

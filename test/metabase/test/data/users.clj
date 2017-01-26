@@ -2,8 +2,8 @@
   "Code related to creating / managing fake `Users` for testing purposes."
   ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
-            (metabase [db :as db]
-                      [http-client :as http])
+            [toucan.db :as db]
+            [metabase.http-client :as http]
             (metabase.models [permissions-group :as perms-group]
                              [user :refer [User]])
             [metabase.util :as u]
@@ -141,4 +141,4 @@
   "Delete all users besides the 4 persistent test users.
    This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to remove this. (TODO)"
   []
-  (db/cascade-delete! 'User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))
+  (db/delete! 'User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))

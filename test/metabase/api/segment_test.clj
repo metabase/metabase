@@ -1,10 +1,11 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
   (:require [expectations :refer :all]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
-                             [hydrate :refer [hydrate]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment], :as segment]
                              [table :refer [Table]])
@@ -84,7 +85,7 @@
    :is_active               true
    :definition              {:database 21
                              :query    {:filter ["abc"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]]
     (segment-response ((user->client :crowberto) :post 200 "segment" {:name                    "A Segment"
                                                                       :description             "I did it!"
@@ -137,7 +138,7 @@
    :is_active               true
    :definition              {:database 2
                              :query    {:filter ["not" "the toucans you're looking for"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]}   {:table_id table-id}]]
     (segment-response ((user->client :crowberto) :put 200 (format "segment/%d" id) {:id                      id
@@ -179,7 +180,7 @@
     :updated_at              true
     :is_active               false
     :definition              {}}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id table-id}]]
     [((user->client :crowberto) :delete 200 (format "segment/%d" id) :revision_message "carryon")
@@ -206,7 +207,7 @@
    :is_active               true
    :definition              {:database 123
                              :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]}   {:creator_id (user->id :crowberto)
                                             :table_id   table-id
@@ -238,7 +239,7 @@
     :diff         {:name       {:after "b"}
                    :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]} {:creator_id (user->id :crowberto)
                                           :table_id   table-id
@@ -310,7 +311,7 @@
                     :definition  {:after {:database 123
                                           :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
      :description  nil}]]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Segment  [{:keys [id]}      {:creator_id              (user->id :crowberto)
                                                :table_id                table-id
@@ -359,7 +360,7 @@
 
 
 ;;; GET /api/segement/
-(tu/expect-with-temp [Segment [segment-1]
+(tt/expect-with-temp [Segment [segment-1]
                       Segment [segment-2]
                       Segment [_          {:is_active false}]] ; inactive segments shouldn't show up
   (tu/mappify (hydrate [segment-1
@@ -368,7 +369,7 @@
 
 
 ;;; PUT /api/segment/id. Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?
-(tu/expect-with-temp [Segment [segment]]
+(tt/expect-with-temp [Segment [segment]]
   :ok
   (do ((user->client :crowberto) :put 200 (str "segment/" (u/get-id segment))
        {:name             "Cool name"

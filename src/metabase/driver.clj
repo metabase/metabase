@@ -2,8 +2,8 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            (metabase [config :as config]
-                      [db :as db])
+            [toucan.db :as db]
+            [metabase.config :as config]
             (metabase.models [database :refer [Database]]
                              field
                              [query-execution :refer [QueryExecution]]

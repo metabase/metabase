@@ -1,8 +1,8 @@
 (ns metabase.query-processor.sql-parameters-test
   (:require [clj-time.core :as t]
             [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [metabase.driver :as driver]
             [metabase.models.table :as table]
             [metabase.query-processor :as qp]
             [metabase.query-processor.sql-parameters :refer :all]

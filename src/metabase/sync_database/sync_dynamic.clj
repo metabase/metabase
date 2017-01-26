@@ -4,7 +4,7 @@
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [schema.core :as schema]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.models.field :as field]
             [metabase.models.raw-table :as raw-table]

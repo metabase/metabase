@@ -1,9 +1,9 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
   (:require [expectations :refer :all]
+            [toucan.util.test :as tt]
             [metabase.models.permissions-group :refer [PermissionsGroup], :as group]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
             [metabase.util :as u]))
 
 
@@ -20,7 +20,7 @@
   (fetch-groups))
 
 ;; The endpoint should however return empty groups!
-(tu/expect-with-temp [PermissionsGroup [group]]
+(tt/expect-with-temp [PermissionsGroup [group]]
   #{{:id (u/get-id (group/all-users)), :name "All Users",      :members 3}
     {:id (u/get-id (group/admin)),     :name "Administrators", :members 1}
     (assoc (into {} group) :members 0)}

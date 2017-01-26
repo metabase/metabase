@@ -1,16 +1,17 @@
 (ns metabase.models.card-test
   (:require [expectations :refer :all]
             [metabase.api.common :refer [*current-user-permissions-set* *is-superuser?*]]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             (metabase.models [card :refer :all]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
-                             [interface :as models]
+                             [interface :as mi]
                              [permissions :as perms])
             [metabase.query-processor.expand :as ql]
             [metabase.test.data :refer [id]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [random-name with-temp], :as tu]
+            [metabase.test.util :refer [random-name], :as tu]
             [metabase.util :as u]))
 
 
@@ -20,7 +21,7 @@
 ;; Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in
 (expect
   [0 1 2]
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (let [get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
 
       [(get-dashboard-count)
@@ -58,26 +59,26 @@
 
 (expect
   false
-  (with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
+  (tt/with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
     (binding [*current-user-permissions-set* (delay #{})]
-      (models/can-read? card))))
+      (mi/can-read? card))))
 
 (expect
-  (with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
+  (tt/with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
     (binding [*current-user-permissions-set* (delay #{(perms/native-read-path (id))})]
-      (models/can-read? card))))
+      (mi/can-read? card))))
 
 ;; in order to *write* a native card user should need native readwrite access
 (expect
   false
-  (with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
+  (tt/with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
     (binding [*current-user-permissions-set* (delay #{(perms/native-read-path (id))})]
-      (models/can-write? card))))
+      (mi/can-write? card))))
 
 (expect
-  (with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
+  (tt/with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
     (binding [*current-user-permissions-set* (delay #{(perms/native-readwrite-path (id))})]
-      (models/can-write? card))))
+      (mi/can-write? card))))
 
 
 ;;; check permissions sets for queries
@@ -128,8 +129,8 @@
 ;; Test that when somebody archives a Card, it is removed from any Dashboards it belongs to
 (expect
   0
-  (tu/with-temp* [Dashboard     [dashboard]
+  (tt/with-temp* [Dashboard     [dashboard]
                   Card          [card]
                   DashboardCard [dashcard  {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}]]
     (db/update! Card (u/get-id card) :archived true)
-    (db/select-one-count DashboardCard :dashboard_id (u/get-id dashboard))))
+    (db/count DashboardCard :dashboard_id (u/get-id dashboard))))

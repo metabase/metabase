@@ -1,10 +1,11 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
-            (metabase [db :as db]
-                      [events :as events])
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]]
+                    [models :as models])
+            [metabase.events :as events]
             (metabase.models [card :refer [Card], :as card]
                              [dashboard-card :refer [DashboardCard], :as dashboard-card]
-                             [hydrate :refer [hydrate]]
                              [interface :as i]
                              [permissions :as perms]
                              [revision :as revision])
@@ -31,26 +32,28 @@
 
 ;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
 
-(defn- pre-cascade-delete [dashboard]
-  (db/cascade-delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
-  (db/cascade-delete! DashboardCard :dashboard_id (u/get-id dashboard)))
+(defn- pre-delete [dashboard]
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
+  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
 
 (defn- pre-insert [dashboard]
   (let [defaults {:parameters   []}]
     (merge defaults dashboard)))
 
 
-(i/defentity Dashboard :report_dashboard)
+(models/defmodel Dashboard :report_dashboard)
 
 (u/strict-extend (class Dashboard)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped?       (constantly true)
-          :types              (constantly {:description :clob, :parameters :json})
-          :can-read?          can-read?
-          :can-write?         can-read?
-          :pre-cascade-delete pre-cascade-delete
-          :pre-insert         pre-insert}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties (constantly {:timestamped? true})
+          :types      (constantly {:description :clob, :parameters :json})
+          :pre-delete pre-delete
+          :pre-insert pre-insert})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?  can-read?
+          :can-write? can-read?}))
 
 
 ;;; ---------------------------------------- Hydration ----------------------------------------

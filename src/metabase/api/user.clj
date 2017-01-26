@@ -4,7 +4,7 @@
             [schema.core :as s]
             [metabase.api.common :refer :all]
             [metabase.api.session :as session-api]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.email.messages :as email]
             [metabase.models.user :as user, :refer [User]]
             [metabase.util :as u]
@@ -114,7 +114,7 @@
 
 
 (defendpoint DELETE "/:id"
-  "Disable a `User`.  This does not remove the `User` from the db and instead disables their account."
+  "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (check-superuser)
   (check-500 (db/update! User id

@@ -1,6 +1,8 @@
 (ns metabase.models.table
   (:require [metabase.api.common :refer [*current-user-permissions-set*]]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
+            [metabase.db :as mdb]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
@@ -23,7 +25,7 @@
   #{:hidden :technical :cruft})
 
 
-(i/defentity Table :metabase_table)
+(models/defmodel Table :metabase_table)
 
 
 ;;; ------------------------------------------------------------ Lifecycle ------------------------------------------------------------
@@ -32,26 +34,29 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))}]
     (merge defaults table)))
 
-(defn- pre-cascade-delete [{:keys [db_id schema id]}]
-  (db/cascade-delete! Segment     :table_id id)
-  (db/cascade-delete! Metric      :table_id id)
-  (db/cascade-delete! Field       :table_id id)
-  (db/cascade-delete! 'Card       :table_id id)
-  (db/cascade-delete! Permissions :object [:like (str (perms/object-path db_id schema id) "%")]))
+(defn- pre-delete [{:keys [db_id schema id]}]
+  (db/delete! Segment     :table_id id)
+  (db/delete! Metric      :table_id id)
+  (db/delete! Field       :table_id id)
+  (db/delete! 'Card       :table_id id)
+  (db/delete! Permissions :object [:like (str (perms/object-path db_id schema id) "%")]))
 
 (defn- perms-objects-set [table _]
   #{(perms/object-path (:db_id table) (:schema table) (:id table))})
 
 (u/strict-extend (class Table)
-  i/IEntity (merge i/IEntityDefaults
-                   {:hydration-keys     (constantly [:table])
-                    :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
-                    :timestamped?       (constantly true)
-                    :can-read?          (partial i/current-user-has-full-permissions? :read)
-                    :can-write?         i/superuser?
-                    :pre-insert         pre-insert
-                    :pre-cascade-delete pre-cascade-delete
-                    :perms-objects-set  perms-objects-set}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:hydration-keys     (constantly [:table])
+          :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
+          :properties         (constantly {:timestamped? true})
+          :pre-insert         pre-insert
+          :pre-delete pre-delete})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?          (partial i/current-user-has-full-permissions? :read)
+          :can-write?         i/superuser?
+          :perms-objects-set  perms-objects-set}))
 
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
@@ -86,7 +91,7 @@
   "Return the ID of the primary key `Field` for TABLE."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
-  (db/select-one-id Field, :table_id id, :special_type (db/isa :type/PK), :visibility_type [:not-in ["sensitive" "retired"]]))
+  (db/select-one-id Field, :table_id id, :special_type (mdb/isa :type/PK), :visibility_type [:not-in ["sensitive" "retired"]]))
 
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]

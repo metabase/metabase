@@ -5,7 +5,8 @@
                      [walk :as walk])
             [medley.core :as m]
             [schema.core :as s]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [metabase.db :as mdb]
             (metabase.models [field :as field]
                              [table :refer [Table]])
             [metabase.query-processor.interface :refer :all]
@@ -225,7 +226,7 @@
                            [Table :target-table]    [:= :target-pk.table_id :target-table.id]]
                :where     [:and [:in :source-fk.id      (set fk-field-ids)]
                                 [:=  :source-fk.table_id     source-table-id]
-                                (db/isa :source-fk.special_type :type/FK)]})))
+                                (mdb/isa :source-fk.special_type :type/FK)]})))
 
 (defn- fk-field-ids->joined-tables
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."

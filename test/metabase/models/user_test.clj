@@ -1,6 +1,7 @@
 (ns metabase.models.user-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             [metabase.email-test :as email-test]
             (metabase.models [permissions :as perms]
                              [permissions-group :refer [PermissionsGroup]]
@@ -21,7 +22,7 @@
 
 ;; Ok, adding a group with *no* permissions shouldn't suddenly break all the permissions sets
 ;; (This was a bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).
-(expect (tu/with-temp* [PermissionsGroup           [{group-id :id}]
+(expect (tt/with-temp* [PermissionsGroup           [{group-id :id}]
                         PermissionsGroupMembership [_              {:group_id group-id, :user_id (user->id :rasta)}]]
           (perms/is-permissions-set? (user/permissions-set (user->id :rasta)))))
 
@@ -37,7 +38,7 @@
         (apply user/create-user! (tu/random-name) (tu/random-name) email create-user-args)
         (set (keys @email-test/inbox))
         (finally
-          (db/cascade-delete! User :email email)))))) ; Clean up after ourselves
+          (db/delete! User :email email)))))) ; Clean up after ourselves
 
 ;; admin should get an email when a new user joins...
 (expect
@@ -51,7 +52,7 @@
   #{}
   (do
     (test-users/delete-temp-users!)
-    (tu/with-temp User [inactive-admin {:is_superuser true, :is_active false}]
+    (tt/with-temp User [inactive-admin {:is_superuser true, :is_active false}]
       (create-user-and-check-inbox! :invitor (assoc inactive-admin :is_active false)))))
 
 ;; for google auth, all admins should get an email...
@@ -59,7 +60,7 @@
   #{"crowberto@metabase.com" "some_other_admin@metabase.com"}
   (do
     (test-users/delete-temp-users!)
-    (tu/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+    (tt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
       (create-user-and-check-inbox! :google-auth? true))))
 
 ;; ...including the site admin if it is set...
@@ -67,7 +68,7 @@
   #{"crowberto@metabase.com" "some_other_admin@metabase.com" "cam@metabase.com"}
   (tu/with-temporary-setting-values [admin-email "cam@metabase.com"]
     (test-users/delete-temp-users!)
-    (tu/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+    (tt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
       (create-user-and-check-inbox! :google-auth? true))))
 
 ;; ...unless they are inactive
@@ -75,5 +76,5 @@
   #{"crowberto@metabase.com"}
   (do
     (test-users/delete-temp-users!)
-    (tu/with-temp User [_ {:is_superuser true, :is_active false}]
+    (tt/with-temp User [_ {:is_superuser true, :is_active false}]
       (create-user-and-check-inbox! :google-auth? true))))

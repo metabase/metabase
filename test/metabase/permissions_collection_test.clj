@@ -1,7 +1,8 @@
 (ns metabase.permissions-collection-test
   "A test suite for permissions `Collections`. Reüses functions from `metabase.permissions-test`."
   (:require  [expectations :refer :all]
-             [metabase.db :as db]
+             [toucan.db :as db]
+             [toucan.util.test :as tt]
              (metabase.models [card :refer [Card], :as card]
                               [collection :refer [Collection]]
                               [permissions :as permissions]
@@ -43,14 +44,14 @@
 ;; if a card is in a collection and we don't have permissions for that collection, we shouldn't be able to run it
 (perms-test/expect-with-test-data
   false
-  (tu/with-temp Collection [collection]
+  (tt/with-temp Collection [collection]
     (set-card-collection! collection)
     (can-run-query? :rasta)))
 
 ;; if a card is in a collection and we have permissions for that collection, we should be able to run it
 (perms-test/expect-with-test-data
   true
-  (tu/with-temp Collection [collection]
+  (tt/with-temp Collection [collection]
     (set-card-collection! collection)
     (permissions/grant-collection-read-permissions! (group/all-users) collection)
     (can-run-query? :rasta)))
@@ -66,7 +67,7 @@
 (expect
   false
   (perms-test/with-test-data
-    (tu/with-temp Collection [collection]
+    (tt/with-temp Collection [collection]
       (set-card-collection! collection)
       (permissions/grant-collection-readwrite-permissions! (group/all-users) collection)
       (api-call-was-successful?
@@ -77,7 +78,7 @@
 (expect
   false
   (perms-test/with-test-data
-    (tu/with-temp Collection [collection]
+    (tt/with-temp Collection [collection]
       (set-card-collection! collection)
       (permissions/grant-collection-readwrite-permissions! (group/all-users) collection)
       (db/update! Card (u/get-id *card:db2-count-of-venues*)
@@ -91,10 +92,10 @@
 (expect
   false
   (perms-test/with-test-data
-    (tu/with-temp Collection [collection]
+    (tt/with-temp Collection [collection]
       (set-card-collection! collection)
       (permissions/grant-collection-readwrite-permissions! (group/all-users) collection)
-      (tu/with-temp Revision [revision {:model    "Card"
+      (tt/with-temp Revision [revision {:model    "Card"
                                         :model_id (u/get-id *card:db2-count-of-venues*)
                                         :object   (card/serialize-instance (assoc (Card (u/get-id *card:db2-count-of-venues*))
                                                                              :dataset_query (query-rasta-has-no-data-perms-for)))}]

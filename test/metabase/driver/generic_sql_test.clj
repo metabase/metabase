@@ -1,7 +1,7 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [metabase.driver :as driver]
             (metabase.driver [generic-sql :refer :all]
                              h2)
             (metabase.models [field :refer [Field]]

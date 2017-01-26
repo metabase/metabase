@@ -4,11 +4,12 @@
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
             monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
-            (metabase [config :as config]
-                      [db :as db])
-            (metabase.models [interface :as models]
-                             [session :refer [Session]]
+            [metabase.config :as config]
+            [metabase.db :as mdb]
+            (metabase.models [session :refer [Session]]
                              [setting :refer [defsetting]]
                              [user :refer [User], :as user])
             [metabase.util :as u])
@@ -57,7 +58,7 @@
   "Fetch a session with SESSION-ID, and include the User ID and superuser status associated with it."
   [session-id]
   (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-    (db/join [Session :user_id] [User :id])
+    (mdb/join [Session :user_id] [User :id])
     (db/qualify User :is_active) true
     (db/qualify Session :id) session-id))
 

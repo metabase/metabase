@@ -3,19 +3,19 @@
             [cheshire.core :as json]
             [compojure.core :refer [GET POST DELETE PUT]]
             [schema.core :as s]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             (metabase.api [common :refer :all]
                           [dataset :as dataset-api]
                           [label :as label-api])
-            (metabase [db :as db]
-                      [events :as events])
-            (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer [Card], :as card]
+            [metabase.events :as events]
+            (metabase.models [card :refer [Card], :as card]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
                              [collection :refer [Collection]]
                              [common :as common]
                              [database :refer [Database]]
-                             [interface :as models]
+                             [interface :as mi]
                              [label :refer [Label]]
                              [permissions :as perms]
                              [table :refer [Table]]
@@ -171,7 +171,7 @@
         :database (read-check Database model_id)
         :table    (read-check Database (db/select-one-field :db_id Table, :id model_id))))
     (->> (cards-for-filter-option f model_id label collection)
-         (filterv models/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
+         (filterv mi/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
 
 
 (defendpoint POST "/"
@@ -268,8 +268,9 @@
   "Delete a `Card`."
   [id]
   (let [card (write-check Card id)]
-    (u/prog1 (db/cascade-delete! Card :id id)
-      (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))))
+    (db/delete! Card :id id)
+    (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))
+  generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
@@ -286,7 +287,8 @@
   [card-id]
   (read-check Card card-id)
   (let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
-    (db/cascade-delete! CardFavorite, :id id)))
+    (db/delete! CardFavorite, :id id))
+  generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ Editing Card Labels ------------------------------------------------------------
@@ -302,7 +304,7 @@
   (let [[labels-to-remove labels-to-add] (data/diff (set (db/select-field :label_id CardLabel :card_id card-id))
                                                     (set label_ids))]
     (when (seq labels-to-remove)
-      (db/cascade-delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
+      (db/delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
     (doseq [label-id labels-to-add]
       (db/insert! CardLabel :label_id label-id, :card_id card-id)))
   {:status :ok})

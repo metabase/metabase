@@ -2,7 +2,8 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [honeysql.core :as hsql]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [metabase.db :as mdb]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
@@ -105,7 +106,7 @@
                                                           "ACCESS_MODE_DATA" "r"}))))
 
 (defn- connection-details->spec [details]
-  (dbspec/h2 (if db/*allow-potentailly-unsafe-connections*
+  (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
                details
                (update details :db connection-string-set-safe-options))))
 

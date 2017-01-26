@@ -1,7 +1,7 @@
 (ns metabase.sync-database
   "The logic for doing DB and Table syncing itself."
   (:require [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
             [metabase.driver :as driver]

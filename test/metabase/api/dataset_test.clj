@@ -2,8 +2,8 @@
   "Unit tests for /api/dataset endpoints."
   (:require [clojure.string :as s]
             [expectations :refer :all]
+            [toucan.db :as db]
             [metabase.api.dataset :refer [default-query-constraints]]
-            [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [query-execution :refer [QueryExecution]])
             [metabase.query-processor.expand :as ql]

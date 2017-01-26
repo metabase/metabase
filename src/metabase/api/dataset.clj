@@ -4,10 +4,10 @@
             [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
-                             [hydrate :refer [hydrate]]
                              [query-execution :refer [QueryExecution]])
             (metabase [query-processor :as qp]
                       [util :as u])

@@ -9,8 +9,9 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [schema.core :as s]
+            (toucan [db :as db]
+                    [models :as models])
             (metabase [config :as config]
-                      [db :as db]
                       [driver :as driver]
                       types)
             [metabase.events.activity-feed :refer [activity-feed-topics]]
@@ -21,7 +22,6 @@
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
-                             [interface :refer [defentity]]
                              [label :refer [Label]]
                              [permissions :refer [Permissions], :as perms]
                              [permissions-group :as perm-group]
@@ -35,7 +35,7 @@
 
 ;;; # Migration Helpers
 
-(defentity DataMigrations :data_migrations)
+(models/defmodel DataMigrations :data_migrations)
 
 (defn- run-migration-if-needed!
   "Run migration defined by MIGRATION-VAR if needed.
@@ -79,7 +79,7 @@
 ;; the values for `:database_id`, `:table_id`, and `:query_type` if possible.
 (defmigration ^{:author "agilliland", :added "0.12.0"} set-card-database-and-table-ids
   ;; only execute when `:database_id` column on all cards is `nil`
-  (when (zero? (db/select-one-count Card
+  (when (zero? (db/count Card
                  :database_id [:not= nil]))
     (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
       (when type
@@ -118,7 +118,7 @@
 ;; Remove old `database-sync` activity feed entries
 (defmigration ^{:author "agilliland", :added "0.13.0"} remove-database-sync-activity-entries
   (when-not (contains? activity-feed-topics :database-sync-begin)
-    (db/delete! Activity :topic "database-sync")))
+    (db/simple-delete! Activity :topic "database-sync")))
 
 
 ;; Migrate dashboards to the new grid
@@ -134,7 +134,7 @@
 
 ;; migrate data to new visibility_type column on field
 (defmigration ^{:author "agilliland",:added "0.16.0"} migrate-field-visibility-type
-  (when-not (zero? (db/select-one-count Field :visibility_type "unset"))
+  (when-not (zero? (db/count Field :visibility_type "unset"))
     ;; start by marking all inactive fields as :retired
     (db/update-where! Field {:visibility_type "unset"
                              :active          false}
@@ -154,7 +154,7 @@
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
 ;; TODO - this function is way to big and hard to read -- See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#break-up-larger-functions
 (defmigration ^{:author "agilliland",:added "0.17.0"} create-raw-tables
-  (when (zero? (db/select-one-count RawTable))
+  (when (zero? (db/count RawTable))
     (binding [db/*disable-db-logging* true]
       (db/transaction
        (doseq [{database-id :id, :keys [name engine]} (db/select Database)]

@@ -1,7 +1,7 @@
 (ns metabase.driver.mongo-test
   "Tests for Mongo driver."
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
