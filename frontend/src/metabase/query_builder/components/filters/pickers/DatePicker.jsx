@@ -9,6 +9,8 @@ import Calendar from "metabase/components/Calendar";
 
 import moment from "moment";
 
+import { mbqlEq } from "metabase/lib/query/util";
+
 import _ from "underscore";
 
 import type { FieldFilter, TimeIntervalFilter } from "metabase/meta/types/Query";
@@ -79,8 +81,8 @@ class CurrentPicker extends Component<*, CurentPickerProps, CurrentPickerState> 
 }
 
 
-const getIntervals = ([op, field, value, unit]) => op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
-const getUnit      = ([op, field, value, unit]) => op === "time-interval" && unit ? unit : "day";
+const getIntervals = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && typeof value === "number" ? Math.abs(value) : 30;
+const getUnit      = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && unit ? unit : "day";
 const getDate      = (value) => typeof value === "string" && moment(value).isValid() ? value : moment().format("YYYY-MM-DD");
 
 
@@ -96,20 +98,20 @@ const OPERATORS: Operator[] = [
         name: "Previous",
         init: (filter) => ["time-interval", filter[1], -getIntervals(filter), getUnit(filter)],
         // $FlowFixMe
-        test: ([op, field, value]) => op === "time-interval" && value < 0 || Object.is(value, -0),
+        test: ([op, field, value]) => mbqlEq(op, "time-interval") && value < 0 || Object.is(value, -0),
         widget: PreviousPicker,
     },
     {
         name: "Next",
         init: (filter) => ["time-interval", filter[1], getIntervals(filter), getUnit(filter)],
         // $FlowFixMe
-        test: ([op, field, value]) => op === "time-interval" && value >= 0,
+        test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
         widget: NextPicker,
     },
     {
         name: "Current",
         init: (filter) => ["time-interval", filter[1], "current", getUnit(filter)],
-        test: ([op, field, value]) => op === "time-interval" && value === "current",
+        test: ([op, field, value]) => mbqlEq(op, "time-interval") && value === "current",
         widget: CurrentPicker,
     },
     {

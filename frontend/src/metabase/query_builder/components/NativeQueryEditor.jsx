@@ -100,7 +100,7 @@ export default class NativeQueryEditor extends Component {
         }
 
         if (modeInfo) {
-            if (modeInfo.database.native_permissions !== "write") {
+            if (!modeInfo.database || modeInfo.database.native_permissions !== "write") {
                 editor.setReadOnly(true);
                 editorElement.classList.add("read-only");
             } else {

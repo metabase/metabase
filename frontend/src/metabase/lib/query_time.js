@@ -1,9 +1,11 @@
 import moment from "moment";
 import inflection from "inflection";
 
+import { mbqlEq } from "metabase/lib/query/util";
+
 export function computeFilterTimeRange(filter) {
     let expandedFilter;
-    if (filter[0] === "TIME_INTERVAL") {
+    if (mbqlEq(filter[0], "time-interval")) {
         expandedFilter = expandTimeIntervalFilter(filter);
     } else {
         expandedFilter = filter;
@@ -34,8 +36,8 @@ export function computeFilterTimeRange(filter) {
 export function expandTimeIntervalFilter(filter) {
     let [operator, field, n, unit] = filter;
 
-    if (operator !== "TIME_INTERVAL") {
-        throw new Error("translateTimeInterval expects operator TIME_INTERVAL");
+    if (!mbqlEq(operator, "time-interval")) {
+        throw new Error("translateTimeInterval expects operator 'time-interval'");
     }
 
     if (n === "current") {
@@ -63,7 +65,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
     let [operator, field, ...values] = filter;
     let bucketing = parseFieldBucketing(field);
 
-    if (operator === "TIME_INTERVAL") {
+    if (mbqlEq(operator, "time-interval")) {
         let [n, unit] = values;
         return generateTimeIntervalDescription(n, unit);
     } else {
