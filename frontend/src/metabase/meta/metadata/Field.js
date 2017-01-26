@@ -7,7 +7,7 @@ import type { FieldId, Field as FieldObject } from "metabase/meta/types/Field";
 import type { TableId } from "metabase/meta/types/Table";
 
 import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
-import { isPK } from "metabase/lib/types";
+import { isa, isPK, TYPE } from "metabase/lib/types";
 
 export default class Field extends Base {
     static type = "fields";
@@ -44,6 +44,7 @@ export default class Field extends Base {
     isMetric()    { return isMetric(this._object); }
     isDimension() { return isDimension(this._object); }
     isID()        { return isPK(this.special_type); }
+    isEntityName(){ return isa(this.special_type, TYPE.Name); }
 
     values(): Array<string> {
         let values = this._object.values;

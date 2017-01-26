@@ -49,15 +49,28 @@ export default class ParameterWidget extends Component {
             .value();
     }
 
+    getFieldId() {
+        const { parameter, mappingsByParameter } = this.props;
+        let ids = _.chain(mappingsByParameter[parameter.id])
+            .map(_.values)
+            .flatten()
+            .map(m => m.field_id)
+            .uniq()
+            .value();
+        return ids.length === 1 ? ids[0] : null;
+    }
+
     renderPopover(value, setValue) {
         const { parameter, editingParameter } = this.props;
         const isEditingParameter = !!(editingParameter && editingParameter.id === parameter.id);
         const values = this.getValues();
+        const fieldId = this.getFieldId();
         return (
             <ParameterValueWidget
                 parameter={parameter}
                 value={value}
                 values={values}
+                fieldId={fieldId}
                 setValue={setValue}
                 isEditing={isEditingParameter}
             />

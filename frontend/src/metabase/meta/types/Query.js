@@ -110,7 +110,7 @@ export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDateti
 export type SegmentFilter      = ["segment", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
-export type OrderBy = ["asc"|"desc", Field];
+export type OrderBy = [Field, "descending"|"ascending"];
 
 export type LimitClause = number;
 
@@ -151,4 +151,4 @@ export type Expression =
 export type ExpressionOperator = "+" | "-" | "*" | "/";
 export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
 
-export type FieldsClause = FieldId[];
+export type FieldsClause = Field[];

@@ -114,12 +114,14 @@ export const getMappingsByParameter = createSelector(
                 for (const value of values) {
                     countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
                 }
+                let fieldTarget = field && field.target();
                 let augmentedMapping: AugmentedParameterMapping = {
                     ...mapping,
                     parameter_id: mapping.parameter_id,
                     dashcard_id: dashcard.id,
                     card_id: mapping.card_id,
-                    values
+                    field_id: field && (fieldTarget ? fieldTarget.id : field.id),
+                    values,
                 };
                 mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, dashcard.id, mapping.card_id], augmentedMapping);
                 mappings.push(augmentedMapping);

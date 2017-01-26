@@ -48,8 +48,10 @@ export default ({ optionFilter = DEFAULT_FILTER_OPTIONS, optionIsEqual = DEFAULT
             e.preventDefault();
             this.onPressDown();
         } else if (e.keyCode === KEYCODE_ENTER) {
-            e.preventDefault();
-            this.onSuggestionAccepted(this.state.selectedSuggestion);
+            if (this.state.selectedSuggestion != null) {
+                e.preventDefault();
+                this.onSuggestionAccepted(this.state.selectedSuggestion);
+            }
         }
     }
 

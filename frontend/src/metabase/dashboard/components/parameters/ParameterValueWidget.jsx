@@ -11,6 +11,7 @@ import DateMonthYearWidget from "./widgets/DateMonthYearWidget.jsx";
 import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget.jsx";
 import CategoryWidget from "./widgets/CategoryWidget.jsx";
 import TextWidget from "./widgets/TextWidget.jsx";
+import SearchTextWidget from "./widgets/SearchTextWidget.jsx";
 
 import S from "../../containers/ParameterWidget.css";
 
@@ -35,6 +36,7 @@ export default class ParameterValueWidget extends Component {
         isEditing: PropTypes.bool,
         noReset: PropTypes.bool,
         commitImmediately: PropTypes.bool,
+        fieldId: PropTypes.number
     };
 
     static defautProps = {
@@ -44,27 +46,29 @@ export default class ParameterValueWidget extends Component {
         commitImmediately: false,
     };
 
-    static getWidget(parameter, values) {
+    static getWidget(parameter, values, fieldId) {
         if (values && values.length > 0) {
             return CategoryWidget;
         } else if (WIDGETS[parameter.type]) {
             return WIDGETS[parameter.type];
+        } else if (fieldId != null) {
+            return SearchTextWidget;
         } else {
             return TextWidget;
         }
     }
 
     render() {
-        const { parameter, value, values, setValue, isEditing, placeholder, noReset, commitImmediately } = this.props;
+        const { parameter, value, values, fieldId, setValue, isEditing, placeholder, noReset, commitImmediately } = this.props;
 
         let hasValue = value != null;
 
-        let Widget = ParameterValueWidget.getWidget(parameter, values);
+        let Widget = ParameterValueWidget.getWidget(parameter, values, fieldId);
 
         if (Widget.noPopover) {
             return (
                 <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
-                    <Widget value={value} values={values} setValue={setValue} isEditing={isEditing} commitImmediately={commitImmediately} />
+                    <Widget value={value} values={values} setValue={setValue} fieldId={fieldId} isEditing={isEditing} commitImmediately={commitImmediately} />
                     { hasValue && !noReset &&
                         <Icon name="close" className="flex-align-right cursor-pointer" size={12} onClick={(e) => {
                             if (hasValue) {
@@ -84,7 +88,7 @@ export default class ParameterValueWidget extends Component {
                 ref="valuePopover"
                 triggerElement={
                     <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
-                        <div className="mr1">{ hasValue ? Widget.format(value) : placeholderText }</div>
+                        <div className="mr1">{ hasValue ? Widget.format(value, fieldId) : placeholderText }</div>
                         { hasValue && !noReset ?
                             <Icon name="close" className="flex-align-right" size={12} onClick={(e) => {
                                 e.stopPropagation();
@@ -98,7 +102,13 @@ export default class ParameterValueWidget extends Component {
                 }
                 target={() => this.refs.trigger} // not sure why this is necessary
             >
-                <Widget value={value} values={values} setValue={setValue} onClose={() => this.refs.valuePopover.close()} />
+                <Widget
+                    value={value}
+                    setValue={setValue}
+                    values={values}
+                    fieldId={fieldId}
+                    onClose={() => this.refs.valuePopover.close()}
+                />
             </PopoverWithTrigger>
         );
     }
