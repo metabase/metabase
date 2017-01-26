@@ -38,13 +38,13 @@
 
 (defendpoint POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels skip]} :body}]
-  {name     su/NonBlankString
-   cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])
-   skip     s/Bool}
+  [:as {{:keys [name cards channels skip_if_empty]} :body}]
+  {name          su/NonBlankString
+   cards         (su/non-empty [su/Map])
+   channels      (su/non-empty [su/Map])
+   skip_if_empty s/Bool}
   (check-card-read-permissions cards)
-  (check-500 (pulse/create-pulse! name *current-user-id* (map u/get-id cards) channels)))
+  (check-500 (pulse/create-pulse! name *current-user-id* (map u/get-id cards) channels skip_if_empty)))
 
 
 (defendpoint GET "/:id"
@@ -56,18 +56,18 @@
 
 (defendpoint PUT "/:id"
   "Update a `Pulse` with ID."
-  [id :as {{:keys [name cards channels skip]} :body}]
-  {name     su/NonBlankString
-   cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])
-   skip     s/Bool}
+  [id :as {{:keys [name cards channels skip_if_empty]} :body}]
+  {name          su/NonBlankString
+   cards         (su/non-empty [su/Map])
+   channels      (su/non-empty [su/Map])
+   skip_if_empty s/Bool}
   (write-check Pulse id)
   (check-card-read-permissions cards)
-  (pulse/update-pulse! {:id       id
-                        :name     name
-                        :cards    (map u/get-id cards)
-                        :channels channels
-                        :skip     skip})
+  (pulse/update-pulse! {:id            id
+                        :name          name
+                        :cards         (map u/get-id cards)
+                        :channels      channels
+                        :skip_if_empty skip_if_empty})
   (pulse/retrieve-pulse id))
 
 
@@ -130,11 +130,11 @@
 
 (defendpoint POST "/test"
   "Test send an unsaved pulse."
-  [:as {{:keys [name cards channels skip] :as body} :body}]
-  {name     su/NonBlankString
-   cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])
-   skip     s/Bool}
+  [:as {{:keys [name cards channels skip_if_empty] :as body} :body}]
+  {name          su/NonBlankString
+   cards         (su/non-empty [su/Map])
+   channels      (su/non-empty [su/Map])
+   skip_if_empty s/Bool}
   (check-card-read-permissions cards)
   (p/send-pulse! body)
   (assoc body :ok true))

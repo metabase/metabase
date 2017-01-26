@@ -4,49 +4,24 @@ import ReactDOM from "react-dom";
 import Toggle from "metabase/components/Toggle.jsx";
 
 export default class PulseEditSkip extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {};
-    }
+    static propTypes = {
+        pulse: PropTypes.object.isRequired,
+        setPulse: PropTypes.func.isRequired,
+    };
 
-    static propTypes = {};
-    static defaultProps = {};
-
-    toggleSkip(e) {
-        let { pulse } = this.props;
-        this.props.setPulse({ ...pulse, skip: !e });
-        console.log(pulse);
-        console.log(e);
-    }
-    toggleSkip2(e)
-    {
-        let { pulse } = this.props;
-        this.props.setPulse({ ...pulse, skip: !e});
-        //console.log("this");
-        //console.log(this);
-        //console.log(this.props);
-        console.log(pulse);
-        //console.log({ ...pulse, skip: !e})
-        //console.log({ ...pulse, skip: e})
-        console.log(e);
-        //console.log(this.props.name);
-        //console.log("out");
-        //console.log({ ...pulse, skip:e});
-        //on = !on;
+    toggle = () => {
+        const { pulse, setPulse } = this.props;
+        setPulse({ ...pulse, skip_if_empty: !pulse.skip_if_empty });
     }
 
     render() {
-        let { pulse } = this.props;
-        //console.log(pulse);
-        const value = pulse.skip || false;
-        const on = value === true;
+        const { pulse } = this.props;
         return (
             <div className="py1">
                 <h2>Skip if no results</h2>
                 <p className="mt1 h4 text-bold text-grey-3">Skip pulse if none of the cards have any results.</p>
                 <div className="my3">
-                    <Toggle value={on} onChange={ () => this.toggleSkip2(on) } />
-
+                    <Toggle value={pulse.skip_if_empty || false} onChange={this.toggle} />
                 </div>
             </div>
         );

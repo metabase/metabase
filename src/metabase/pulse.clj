@@ -86,12 +86,12 @@
    Example:
        (send-pulse! pulse)                       Send to all Channels
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
-  [{:keys [cards skip] :as pulse} & {:keys [channel-ids]}]
+  [{:keys [cards skip_if_empty] :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (every? map? cards) (every? :id cards)]}
   (let [results     (for [card cards]
                       (execute-card (:id card)))
         channel-ids (or channel-ids (mapv :id (:channels pulse)))]
-    (if-not (and skip (are-all-cards-empty? results));(are-all-cards-empty? results) ; ;; TODO check skip type
+    (if-not (and skip_if_empty (are-all-cards-empty? results));(are-all-cards-empty? results) ; ;; TODO check skip_if_empty type
       (doseq [channel-id channel-ids]
         (let [{:keys [channel_type details recipients]} (some #(when (= channel-id (:id %)) %)
                                                               (:channels pulse))]

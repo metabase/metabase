@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 49
+      author: tlrobinson
+      changes:
+        ######################################## add skip_if_empty column to pulse ########################################
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: skip_if_empty
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
