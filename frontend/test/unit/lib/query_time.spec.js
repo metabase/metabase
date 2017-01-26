@@ -1,21 +1,21 @@
 import moment from "moment";
 
-import { expandTimeIntervalFilter, computeFilterTimeRange, absolute } from 'metabase/lib/query_time';
+import { expandTimeIntervalFilter, computeFilterTimeRange, absolute, generateTimeFilterValuesDescriptions } from 'metabase/lib/query_time';
 
 describe('query_time', () => {
     describe('expandTimeIntervalFilter', () => {
         it('translate ["current" "month"] correctly', () => {
             expect(
-                JSON.stringify(expandTimeIntervalFilter(["TIME_INTERVAL", 100, "current", "month"]))
-            ).toBe(
-                JSON.stringify(["=", ["datetime_field", 100, "as", "month"], ["relative_datetime", "current"]])
+                expandTimeIntervalFilter(["time-interval", 100, "current", "month"])
+            ).toEqual(
+                ["=", ["datetime_field", 100, "as", "month"], ["relative_datetime", "current"]]
             );
         });
         it('translate [-30, "day"] correctly', () => {
             expect(
-                JSON.stringify(expandTimeIntervalFilter(["TIME_INTERVAL", 100, -30, "day"]))
-            ).toBe(
-                JSON.stringify(["BETWEEN", ["datetime_field", 100, "as", "day"], ["relative_datetime", -31, "day"], ["relative_datetime", -1, "day"]])
+                expandTimeIntervalFilter(["time-interval", 100, -30, "day"])
+            ).toEqual(
+                ["BETWEEN", ["datetime_field", 100, "as", "day"], ["relative_datetime", -31, "day"], ["relative_datetime", -1, "day"]]
             );
         });
     });
@@ -43,6 +43,29 @@ describe('query_time', () => {
             ).toBe(
                 moment().subtract(1, "month").format("YYYY-MM-DD HH")
             );
+        });
+    });
+
+    describe("generateTimeFilterValuesDescriptions", () => {
+        it ("should format simple operator values correctly", () => {
+            expect(generateTimeFilterValuesDescriptions(["<", null, "2016-01-01"])).toEqual(["January 1, 2016"])
+        })
+        it ("should format 'time-interval' correctly", () => {
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, -30, "day"])).toEqual(["Past 30 Days"])
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, 1, "month"])).toEqual(["Next 1 Month"])
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, 2, "month"])).toEqual(["Next 2 Months"])
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, 0, "month"])).toEqual(["This Month"])
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, -1, "month"])).toEqual(["Past 1 Month"])
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, -2, "month"])).toEqual(["Past 2 Months"])
+        });
+        it ("should format 'time-interval' short names correctly", () => {
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, -1, "day"])).toEqual(["Yesterday"])
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, 0, "day"])).toEqual(["Today"])
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, "current", "day"])).toEqual(["Today"])
+            expect(generateTimeFilterValuesDescriptions(["time-interval", null, 1, "day"])).toEqual(["Tomorrow"])
+        });
+        it ("should format legacy 'TIME_INTERVAL' correctly", () => {
+            expect(generateTimeFilterValuesDescriptions(["TIME_INTERVAL", null, -30, "day"])).toEqual(["Past 30 Days"])
         });
     });
 
@@ -93,14 +116,14 @@ describe('query_time', () => {
             });
         });
 
-        describe('TIME_INTERVAL', () => {
+        describe('time-interval', () => {
             it ('should handle "Past x days"', () => {
-                let [start, end] = computeFilterTimeRange(["TIME_INTERVAL", 1, -7, "day"]);
+                let [start, end] = computeFilterTimeRange(["time-interval", 1, -7, "day"]);
                 expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(8, "day").format("YYYY-MM-DD 00:00:00"));
                 expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "day").format("YYYY-MM-DD 23:59:59"));
             });
             // it ('should handle "last week"', () => {
-            //     let [start, end] = computeFilterTimeRange(["TIME_INTERVAL", 1, "last", "week"]);
+            //     let [start, end] = computeFilterTimeRange(["time-interval", 1, "last", "week"]);
             //     expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").startOf("week").format("YYYY-MM-DD 00:00:00"));
             //     expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").endOf("week")..format("YYYY-MM-DD 23:59:59"));
             // });

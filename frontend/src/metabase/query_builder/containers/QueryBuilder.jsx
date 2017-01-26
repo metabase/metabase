@@ -210,7 +210,9 @@ export default class QueryBuilder extends Component {
                         { card && card.dataset_query && card.dataset_query.type === "native" ?
                             <NativeQueryEditor {...this.props} isOpen={!card.dataset_query.native.query || isDirty} />
                         :
-                            <div className="wrapper"><GuiQueryEditor {...this.props}/></div>
+                            <div className="wrapper">
+                                <GuiQueryEditor {...this.props}/>
+                            </div>
                         }
                     </div>
 
