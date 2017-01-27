@@ -190,6 +190,7 @@ export default class FilterPopover extends Component<*, Props, State> {
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}
+                        onCommit={this.onCommit}
                     />
                 );
             } else if (operatorField.type === "text") {
@@ -199,6 +200,7 @@ export default class FilterPopover extends Component<*, Props, State> {
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}
+                        onCommit={this.onCommit}
                     />
                 );
             } else if (operatorField.type === "number") {
@@ -208,11 +210,18 @@ export default class FilterPopover extends Component<*, Props, State> {
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}
+                        onCommit={this.onCommit}
                     />
                 );
             }
             return <span>not implemented {operatorField.type} {operator.multi ? "true" : "false"}</span>;
         });
+    }
+
+    onCommit = () => {
+        if (this.isValid()) {
+            this.commitFilter(this.state.filter)
+        }
     }
 
     render() {

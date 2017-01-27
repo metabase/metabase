@@ -10,7 +10,8 @@ type Props = {
     onValuesChange: (values: Array<string|null>) => void,
     validations: bool[],
     placeholder?: string,
-    multi?: bool
+    multi?: bool,
+    onCommit: () => void,
 };
 
 export default class TextPicker extends Component<*, Props, *> {
@@ -19,7 +20,8 @@ export default class TextPicker extends Component<*, Props, *> {
         onValuesChange: PropTypes.func.isRequired,
         placeholder: PropTypes.string,
         validations: PropTypes.array,
-        multi: PropTypes.bool
+        multi: PropTypes.bool,
+        onCommit: PropTypes.func,
     };
 
     static defaultProps = {
@@ -46,7 +48,7 @@ export default class TextPicker extends Component<*, Props, *> {
     }
 
     render() {
-        let { values, validations, multi } = this.props;
+        let { values, validations, multi, onCommit } = this.props;
 
         return (
             <div>
@@ -61,6 +63,11 @@ export default class TextPicker extends Component<*, Props, *> {
                                 type="text"
                                 value={value}
                                 onChange={(e) => this.setValue(index, e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === "Enter" && onCommit) {
+                                        onCommit();
+                                    }
+                                }}
                                 placeholder={this.props.placeholder}
                                 autoFocus={true}
                             />
