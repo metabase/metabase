@@ -102,11 +102,6 @@
 (defn- rasta-id     [] (user-id :rasta))
 
 
-;; NOCOMMIT -- remove once we upgrade to newer version of Toucan
-(u/strict-extend Object
-  test/WithTempDefaults
-  {:with-temp-defaults (constantly {})})
-
 (u/strict-extend (class Card)
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)

@@ -10,8 +10,6 @@
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]))
 
-;; NOCOMIIT - Once we update to toucan 1.0.1 this is no longer private
-(alter-meta! #'toucan.db/simple-insert! dissoc :private)
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 
@@ -23,7 +21,7 @@
 
 ;; no session-id in the request
 (expect nil
-  (-> (wrapped-handler (mock/request :get "/anyurl") )
+  (-> (wrapped-handler (mock/request :get "/anyurl"))
       :metabase-session-id))
 
 
