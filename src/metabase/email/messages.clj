@@ -148,7 +148,7 @@
   [email context]
   {:pre [(u/is-email? email) (map? context)]}
   (let [context      (merge (update context :dependencies build-dependencies)
-                            (notification-context)
+                            notification-context
                             (random-quote-context))
         message-body (stencil/render-file "metabase/email/notification" context)]
     (email/send-message!
@@ -164,11 +164,11 @@
   (let [subject      (if (= "abandon" msg-type)
                        "[Metabase] Help make Metabase better."
                        "[Metabase] Tell us how things are going.")
-        context      (merge (notification-context)
+        context      (merge notification-context
                             (random-quote-context)
                             (if (= "abandon" msg-type)
-                              (abandonment-context)
-                              (follow-up-context)))
+                              abandonment-context
+                              follow-up-context))
         message-body (stencil/render-file "metabase/email/follow_up_email" context)]
     (email/send-message!
       :subject      subject

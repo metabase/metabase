@@ -18,6 +18,7 @@
 (defn- api-call-was-successful? {:style/indent 0} [response]
   (when (and (string? response)
              (not= response "You don't have permissions to do that."))
+    (println "created users:" (db/select-field :email 'User)) ; NOCOMMIT
     (println "RESPONSE:" response)) ; DEBUG
   (not= response "You don't have permissions to do that."))
 
