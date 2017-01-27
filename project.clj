@@ -74,7 +74,8 @@
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]                               ; 'Magic wand' macro -<>, etc.
-                 [toucan "1.0.0"]]                                    ; Model layer, hydration, and DB utilities
+                 [toucan "1.0.0"                                      ; Model layer, hydration, and DB utilities
+                  :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
   :plugins [[lein-environ "1.0.3"]                                    ; easy access to environment variables
             [lein-ring "0.9.7"                                        ; start the HTTP server with 'lein ring server'
