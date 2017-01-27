@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
 # this script will finalize a set of release artifacts after testing
+# It should be run inside the metabase git repo, as it pulls out the latest 
+# hash on the release branch 
+
 set -eu
 
 
@@ -28,10 +31,10 @@ fi
 DOCKERHUB_REPOSITORY=metabase/metabase
 
 # tag our recent versioned image as "latest"
-docker tag -f ${DOCKERHUB_REPOSITORY}:v$VERSION ${DOCKERHUB_REPOSITORY}:latest
+docker tag ${DOCKERHUB_REPOSITORY}:v$VERSION ${DOCKERHUB_REPOSITORY}:latest
 
 # then push it as well
-docker push ${DOCKERHUB_NAMESPACE}/${DOCKERHUB_REPOSITORY}:latest
+docker push ${DOCKERHUB_REPOSITORY}:latest
 
 
 
