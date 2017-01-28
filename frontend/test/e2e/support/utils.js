@@ -7,8 +7,6 @@ import { Driver } from "webchauffeur";
 
 const DEFAULT_TIMEOUT = 50000;
 
-const delay = (timeout = 0) => new Promise((resolve) => setTimeout(resolve, timeout));
-
 const log = (message) => {
     console.log(message);
 };
@@ -133,7 +131,7 @@ export const screenshotFailures = async (driver) => {
 export const getJson = async (driver, url) => {
     await driver.get(url);
     try {
-        let source = await driver.getPageSource();
+        let source = await driver.findElement(By.tagName("body")).getText();
         return JSON.parse(source);
     } catch (e) {
         return null;
@@ -145,17 +143,45 @@ export const checkLoggedIn = async (server, driver, email) => {
     return currentUser && currentUser.email === email;
 }
 
+const getSessionId = (server, email) => {
+    server.sessions = server.sessions || {};
+    return server.sessions[email];
+}
+const setSessionId = (server, email, sessionId) => {
+    server.sessions = server.sessions || {};
+    server.sessions[email] = sessionId;
+}
+
 export const ensureLoggedIn = async (server, driver, email, password) => {
     if (await checkLoggedIn(server, driver, email)) {
-        console.log("already logged in");
+        console.log("LOGIN: already logged in");
         return;
     }
-    console.log("logging in");
+    const sessionId = getSessionId(server, email);
+    if (sessionId != null) {
+        console.log("LOGIN: trying previous session");
+        await driver.get(`${server.host}/`);
+        await driver.manage().deleteAllCookies();
+        await driver.manage().addCookie("metabase.SESSION_ID", sessionId);
+        await driver.get(`${server.host}/`);
+        if (await checkLoggedIn(server, driver, email)) {
+            console.log("LOGIN: cached session succeeded");
+            return;
+        } else {
+            console.log("LOGIN: cached session failed");
+            setSessionId(server, email, null);
+        }
+    }
+
+    console.log("LOGIN: logging in manually");
     await driver.get(`${server.host}/`);
     await driver.manage().deleteAllCookies();
     await driver.get(`${server.host}/`);
     await loginMetabase(driver, email, password);
     await waitForUrl(driver, `${server.host}/`);
+
+    const sessionCookie = await driver.manage().getCookie("metabase.SESSION_ID");
+    setSessionId(server, email, sessionCookie.value);
 }
 
 export const loginMetabase = async (driver, email, password) => {
@@ -191,7 +217,9 @@ export const describeE2E = (name, options, describeCallback) => {
             ]);
 
             global.driver = webdriver.driver;
-            global.d = new Driver(webdriver.driver);
+            global.d = new Driver(webdriver.driver, {
+                base: server.host
+            });
             global.server = server;
 
             await driver.get(`${server.host}/`);

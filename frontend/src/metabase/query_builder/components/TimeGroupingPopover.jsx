@@ -39,7 +39,7 @@ export default class TimeGroupingPopover extends Component {
     static defaultProps = {
         groupingOptions: [
             // "default",
-            // "minute",
+            "minute",
             "hour",
             "day",
             "week",

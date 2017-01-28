@@ -3,12 +3,23 @@
    namespaces; there are so many that it is no longer feasible to keep them all in this one.
    Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
+            [clojure.tools.logging :as log]
             [expectations :refer :all]
             [metabase.driver :as driver]
-            #_[metabase.query-processor :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
+            metabase.test.data.interface
             [metabase.util :as u]))
+
+;; make sure all the driver test extension namespaces are loaded <3
+;; if this isn't done some things will get loaded at the wrong time which can end up causing test databases to be created more than once, which fails
+(doseq [engine (keys (driver/available-drivers))]
+  (let [test-ns (symbol (str "metabase.test.data." (name engine)))]
+    (try
+      (require test-ns)
+      (catch Throwable e
+        (log/warn (format "Error loading %s: %s" test-ns (.getMessage e)))))))
+
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 
@@ -278,15 +289,22 @@
 
 
 (defn rows
-  "Return the result rows from query results, or throw an Exception if they're missing."
+  "Return the result rows from query RESULTS, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (vec (or (-> results :data :rows)
+  (vec (or (get-in results [:data :rows])
            (println (u/pprint-to-str 'red results))
            (throw (Exception. "Error!")))))
 
+(defn rows+column-names
+  "Return the result rows and column names from query RESULTS, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  {:rows    (rows results)
+   :columns (get-in results [:data :columns])})
+
 (defn first-row
-  "Return the first row in the results of a query, or throw an Exception if they're missing."
+  "Return the first row in the RESULTS of a query, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
   (first (rows results)))

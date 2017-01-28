@@ -1,10 +1,9 @@
-import i from 'icepick';
+import { assoc } from 'icepick';
 
 import {
     handleActions,
     createAction,
     createThunkAction,
-    cleanResource,
     fetchData
 } from 'metabase/lib/redux';
 
@@ -18,8 +17,7 @@ export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
         const requestStatePath = ["reference", 'guide'];
         const existingStatePath = requestStatePath;
         const getData = async () => {
-            const guide = await GettingStartedApi.get();
-            return cleanResource(guide);
+            return await GettingStartedApi.get();
         };
 
         return await fetchData({
@@ -78,36 +76,36 @@ const initialState = {
 };
 export default handleActions({
     [FETCH_GUIDE]: {
-        next: (state, { payload }) => i.assoc(state, 'guide', payload)
+        next: (state, { payload }) => assoc(state, 'guide', payload)
     },
     [SET_ERROR]: {
-        throw: (state, { payload }) => i.assoc(state, 'error', payload)
+        throw: (state, { payload }) => assoc(state, 'error', payload)
     },
     [CLEAR_ERROR]: {
-        next: (state) => i.assoc(state, 'error', null)
+        next: (state) => assoc(state, 'error', null)
     },
     [START_LOADING]: {
-        next: (state) => i.assoc(state, 'isLoading', true)
+        next: (state) => assoc(state, 'isLoading', true)
     },
     [END_LOADING]: {
-        next: (state) => i.assoc(state, 'isLoading', false)
+        next: (state) => assoc(state, 'isLoading', false)
     },
     [START_EDITING]: {
-        next: (state) => i.assoc(state, 'isEditing', true)
+        next: (state) => assoc(state, 'isEditing', true)
     },
     [END_EDITING]: {
-        next: (state) => i.assoc(state, 'isEditing', false)
+        next: (state) => assoc(state, 'isEditing', false)
     },
     [EXPAND_FORMULA]: {
-        next: (state) => i.assoc(state, 'isFormulaExpanded', true)
+        next: (state) => assoc(state, 'isFormulaExpanded', true)
     },
     [COLLAPSE_FORMULA]: {
-        next: (state) => i.assoc(state, 'isFormulaExpanded', false)
+        next: (state) => assoc(state, 'isFormulaExpanded', false)
     },
     [SHOW_DASHBOARD_MODAL]: {
-        next: (state) => i.assoc(state, 'isDashboardModalOpen', true)
+        next: (state) => assoc(state, 'isDashboardModalOpen', true)
     },
     [HIDE_DASHBOARD_MODAL]: {
-        next: (state) => i.assoc(state, 'isDashboardModalOpen', false)
+        next: (state) => assoc(state, 'isDashboardModalOpen', false)
     }
 }, initialState);

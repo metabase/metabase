@@ -35,15 +35,24 @@ export default class VisualizationSettings extends React.Component {
 
         var triggerElement = (
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
-                <Icon name={CardVisualization.iconName} size={12} />
-                {CardVisualization.displayName}
+                <Icon
+                    className="mr1"
+                    name={CardVisualization.iconName}
+                    size={12}
+                />
+                {CardVisualization.uiName}
                 <Icon className="ml1" name="chevrondown" size={8} />
             </span>
         );
 
         return (
             <div className="relative">
-                <span className="GuiBuilder-section-label Query-label">Visualization</span>
+                <span
+                    className="GuiBuilder-section-label pl0 Query-label"
+                    style={{ marginLeft: 4 }}
+                >
+                    Visualization
+                </span>
                 <PopoverWithTrigger
                     id="VisualizationPopover"
                     ref="displayPopover"
@@ -64,7 +73,7 @@ export default class VisualizationSettings extends React.Component {
                                 onClick={this.setDisplay.bind(null, vizType)}
                             >
                                 <Icon name={viz.iconName} size={12} />
-                                <span className="ml1">{viz.displayName}</span>
+                                <span className="ml1">{viz.uiName}</span>
                             </li>
                         )}
                     </ul>
@@ -83,8 +92,12 @@ export default class VisualizationSettings extends React.Component {
                 <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
                     <ModalWithTrigger
-                        className="Modal Modal--wide Modal--tall"
-                        triggerElement={<span data-metabase-event="Query Builder;Chart Settings"><Icon name="gear"/></span>}
+                        wide tall
+                        triggerElement={
+                            <span data-metabase-event="Query Builder;Chart Settings">
+                                <Icon name="gear"/>
+                            </span>
+                        }
                         triggerClasses="text-brand-hover"
                         ref="popover"
                     >

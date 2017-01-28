@@ -20,8 +20,8 @@ function makeMethod(method: string, hasBody: boolean = false) {
             params = {};
         }
         return function(
-            data: { [key:string]: any },
-            options: { [key:string]: any } = {}
+            data?: { [key:string]: any },
+            options?: { [key:string]: any } = {}
         ): Promise<any> {
             let url = urlTemplate;
             data = { ...data };
@@ -62,7 +62,7 @@ function makeMethod(method: string, hasBody: boolean = false) {
                         let body = xhr.responseText;
                         try { body = JSON.parse(body); } catch (e) {}
                         if (xhr.status >= 200 && xhr.status <= 299) {
-                            resolve(transformResponse(body));
+                            resolve(transformResponse(body, { data }));
                         } else {
                             reject({
                                 status: xhr.status,

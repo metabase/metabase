@@ -2,8 +2,8 @@
 
 import type { TableId } from "./Table";
 import type { FieldId } from "./Field";
+import type { SegmentId } from "./Segment";
 
-export type SegmentId = number;
 export type MetricId = number;
 
 export type ExpressionName = string;
@@ -38,28 +38,76 @@ export type StructuredQuery = {
     filter?:      FilterClause,
     order_by?:    OrderByClause,
     limit?:       LimitClause,
-    expressions?: { [key: ExpressionName]: Expression }
+    expressions?: ExpressionClause,
+    fields?:      FieldsClause,
 };
 
 export type AggregationClause =
-    ["rows"] | // deprecated
-    ["count"] |
-    ["count"|"avg"|"cum_sum"|"distinct"|"stddev"|"sum"|"min"|"max", ConcreteField] |
-    ["metric", MetricId];
+    Aggregation | // deprecated
+    Array<Aggregation>;
 
-export type BreakoutClause = Array<ConcreteField>;
-export type FilterClause =
-    ["and"|"or",            FilterClause, FilterClause] |
-    ["not",                 FilterClause] |
-    ["="|"!=",              ConcreteField, Value] |
-    ["<"|">"|"<="|">=",     ConcreteField, OrderableValue] |
-    ["is-null"|"not-null",  ConcreteField] |
-    ["between",             ConcreteField, OrderableValue, OrderableValue] |
-    ["inside",              ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral] |
-    ["starts-with"|"contains"|"does-not-contain"|"ends-with",
-                            ConcreteField, StringLiteral] |
-    ["time-interval",       ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit] |
-    ["segment",             SegmentId];
+export type Aggregation =
+    Rows | // deprecated
+    CountAgg |
+    CountFieldAgg |
+    AvgAgg |
+    CumSumAgg |
+    DistinctAgg |
+    StdDevAgg |
+    SumAgg |
+    MinAgg |
+    MaxAgg |
+    MetricAgg;
+
+type Rows           = ["rows"]; // deprecated
+type CountAgg       = ["count"];
+type CountFieldAgg  = ["count", ConcreteField];
+type AvgAgg         = ["avg", ConcreteField];
+type CumSumAgg      = ["cum_sum", ConcreteField];
+type DistinctAgg    = ["distinct", ConcreteField];
+type StdDevAgg      = ["stddev", ConcreteField];
+type SumAgg         = ["sum", ConcreteField];
+type MinAgg         = ["min", ConcreteField];
+type MaxAgg         = ["max", ConcreteField];
+type MetricAgg      = ["metric", MetricId];
+
+export type BreakoutClause = Array<Breakout>;
+export type Breakout =
+    ConcreteField;
+
+export type FilterClause = Filter;
+export type Filter = FieldFilter | CompoundFilter | NotFilter | SegmentFilter;
+
+export type CompoundFilter =
+    AndFilter          |
+    OrFilter;
+
+export type FieldFilter =
+    EqualityFilter     |
+    ComparisonFilter   |
+    BetweenFilter      |
+    StringFilter       |
+    NullFilter         |
+    NotNullFilter      |
+    InsideFilter       |
+    TimeIntervalFilter;
+
+export type AndFilter          = ["and", Filter, Filter];
+export type OrFilter           = ["or", Filter, Filter];
+
+export type NotFilter          = ["not", Filter];
+
+export type EqualityFilter     = ["="|"!=", ConcreteField, Value];
+export type ComparisonFilter   = ["<"|"<="|">="|">", ConcreteField, OrderableValue];
+export type BetweenFilter      = ["between", ConcreteField, OrderableValue, OrderableValue];
+export type StringFilter       = ["starts-with"|"contains"|"does-not-contain"|"ends-with", ConcreteField, StringLiteral];
+
+export type NullFilter         = ["is-null", ConcreteField];
+export type NotNullFilter      = ["not-null", ConcreteField];
+export type InsideFilter       = ["inside", ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral];
+export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit];
+
+export type SegmentFilter      = ["segment", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc"|"desc", Field];
@@ -92,8 +140,15 @@ export type DatetimeField =
 
 export type AggregateField = ["aggregation", number];
 
-export type ExpressionOperator = "+" | "-" | "*" | "/";
-export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
+
+export type ExpressionClause = {
+    [key: ExpressionName]: Expression
+};
 
 export type Expression =
     [ExpressionOperator, ExpressionOperand, ExpressionOperand];
+
+export type ExpressionOperator = "+" | "-" | "*" | "/";
+export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
+
+export type FieldsClause = FieldId[];

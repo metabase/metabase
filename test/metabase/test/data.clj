@@ -105,6 +105,7 @@
   "Call `driver/process-query` on expanded inner QUERY, looking up the `Database` ID for the `source-table.`
 
      (run-query* (query (source-table 5) ...))"
+  {:style/indent 0}
   [query :- qi/Query]
   (qp/process-query (wrap-inner-query query)))
 
@@ -166,95 +167,68 @@
 
 ;; ## Loading / Deleting Test Datasets
 
+(defn- add-extra-metadata!
+  "Add extra metadata like Field base-type, etc."
+  [database-definition db]
+  (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
+    (let [table-name (:table-name table-definition)
+          table      (delay (or  (i/metabase-instance table-definition db)
+                                 (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
+                                                            table-name
+                                                            (u/pprint-to-str (dissoc table-definition :rows))
+                                                            (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
+      (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
+        (let [field (delay (or (i/metabase-instance field-definition @table)
+                               (throw (Exception. (format "Field '%s' not loaded from definition:\n"
+                                                          field-name
+                                                          (u/pprint-to-str field-definition))))))]
+          (when visibility-type
+            (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
+            (db/update! Field (:id @field) :visibility_type (name visibility-type)))
+          (when special-type
+            (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
+            (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
+
+(defn- create-database! [{:keys [database-name], :as database-definition} engine driver]
+  ;; Create the database
+  (i/create-db! driver database-definition)
+  ;; Add DB object to Metabase DB
+  (u/prog1 (db/insert! Database
+             :name    database-name
+             :engine  (name engine)
+             :details (i/database->connection-details driver :db database-definition))
+    ;; sync newly added DB
+    (sync-database/sync-database! <>)
+    ;; add extra metadata for fields
+    (add-extra-metadata! database-definition <>)))
+
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
-   DATASET-LOADER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `dataset-loader` for the
+   DRIVER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `driver` for the
    current dataset (`*driver*`), which is H2 by default."
-  ([^DatabaseDefinition database-definition]
+  ([database-definition]
    (get-or-create-database! *driver* database-definition))
-  ([dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
-   (let [engine (i/engine dataset-loader)]
+  ([driver database-definition]
+   (let [engine (i/engine driver)]
      (or (i/metabase-instance database-definition engine)
-         (do
-           ;; Create the database
-           (i/create-db! dataset-loader database-definition)
-
-           ;; Add DB object to Metabase DB
-           (let [db (db/insert! Database
-                      :name    database-name
-                      :engine  (name engine)
-                      :details (i/database->connection-details dataset-loader :db database-definition))]
-
-             ;; Sync the database
-             (sync-database/sync-database! db)
-
-             ;; Add extra metadata like Field base-type, etc.
-             (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
-               (let [table-name (:table-name table-definition)
-                     table      (delay (or  (i/metabase-instance table-definition db)
-                                            (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
-                                                                       table-name
-                                                                       (u/pprint-to-str (dissoc table-definition :rows))
-                                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-                 (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
-                   (let [field (delay (or (i/metabase-instance field-definition @table)
-                                          (throw (Exception. (format "Field '%s' not loaded from definition:\n"
-                                                                     field-name
-                                                                     (u/pprint-to-str field-definition))))))]
-                     (when visibility-type
-                       (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
-                       (db/update! Field (:id @field) :visibility_type (name visibility-type)))
-                     (when special-type
-                       (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-                       (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type)))))))
-             db))))))
-
-(defn remove-database!
-  "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS.
-   DATASET-LOADER should be an object that implements `IDatasetLoader`; by default it is the value returned by the method `dataset-loader` for the
-   current dataset, bound to `*driver*`."
-  ([^DatabaseDefinition database-definition]
-   (remove-database! *driver* database-definition))
-  ([dataset-loader ^DatabaseDefinition database-definition]
-   ;; Delete the Metabase Database and associated objects
-   (db/cascade-delete! Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
-
-   ;; now delete the DBMS database
-   (i/destroy-db! dataset-loader database-definition)))
-
-
-(def ^:private loader->loaded-db-def
-  (atom #{}))
-
-(defn destroy-loaded-temp-dbs!
-  "Destroy all temporary databases created by `with-temp-db`."
-  {:expectations-options :after-run}
-  []
-  (binding [db/*disable-db-logging* true]
-    (doseq [[loader dbdef] @loader->loaded-db-def]
-      (try
-        (remove-database! loader dbdef)
-        (catch Throwable e
-          (println "Error destroying database:" e)))))
-  (reset! loader->loaded-db-def #{}))
+         (create-database! database-definition engine driver)))))
 
 
 (defn do-with-temp-db
   "Execute F with DBDEF loaded as the current dataset. F takes a single argument, the `DatabaseInstance` that was loaded and synced from DBDEF."
   [^DatabaseDefinition dbdef, f]
-  (let [loader *driver*
+  (let [driver *driver*
         dbdef  (i/map->DatabaseDefinition dbdef)]
-    (swap! loader->loaded-db-def conj [loader dbdef])
     (binding [db/*disable-db-logging* true]
-      (let [db (get-or-create-database! loader dbdef)]
+      (let [db (get-or-create-database! driver dbdef)]
         (assert db)
-        (assert (db/exists? Database :id (:id db)))
+        (assert (db/exists? Database :id (u/get-id db)))
         (with-db db
           (f db))))))
 
 
 (defmacro with-temp-db
-  "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with the newly created `Database` bound to DB-BINDING,
+  "Load and sync DATABASE-DEFINITION with DRIVER and execute BODY with the newly created `Database` bound to DB-BINDING,
    and make it the current database for `metabase.test.data` functions like `id`.
 
      (with-temp-db [db tupac-sightings]
@@ -264,9 +238,8 @@
                                           :aggregation  [\"count\"]
                                           :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))
 
-   A given Database is only created once per run of the test suite, and is automatically destroyed at the conclusion of the suite.
-   (The created Database is added to `loader->loaded-db-def`, which can be destroyed with `destroy-loaded-temp-dbs!`, which is automatically ran at the end of the test suite.)"
-  [[db-binding ^DatabaseDefinition database-definition] & body]
+   A given Database is only created once per run of the test suite, and is automatically destroyed at the conclusion of the suite."
+  [[db-binding, ^DatabaseDefinition database-definition] & body]
   `(do-with-temp-db ~database-definition
      (fn [~db-binding]
        ~@body)))

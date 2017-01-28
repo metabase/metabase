@@ -1,12 +1,12 @@
 /* @flow weak */
 
-import i from "icepick";
+import { assoc, assocIn, dissoc, getIn, chain} from "icepick";
 import _ from "underscore";
 import moment from "moment";
 
 import { createAction } from "redux-actions";
 import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
-import { normalize, Schema, arrayOf } from "normalizr";
+import { normalize, schema } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -23,11 +23,10 @@ const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
 // normalizr schemas
-const dashcard = new Schema('dashcard');
-const card = new Schema('card');
-const dashboard = new Schema('dashboard');
-dashboard.define({
-    ordered_cards: arrayOf(dashcard)
+const dashcard = new schema.Entity('dashcard');
+const card = new schema.Entity('card');
+const dashboard = new schema.Entity('dashboard', {
+    ordered_cards: [dashcard]
 });
 
 // action constants
@@ -85,13 +84,14 @@ export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
 
+// TODO: consolidate with questions reducer
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "all") {
     return async function(dispatch, getState) {
         let cards = await CardApi.list({ f: filterMode });
         for (var c of cards) {
             c.updated_at = moment(c.updated_at);
         }
-        return normalize(cards, arrayOf(card));
+        return normalize(cards, [card]);
     };
 });
 
@@ -158,7 +158,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
 
         if (!reload) {
             // if reload not set, check to see if the last result has the same query dict and return that
-            const lastResult = i.getIn(dashcardData, [dashcard.id, card.id]);
+            const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
             // "constraints" is added by the backend, remove it when comparing
             if (lastResult && Utils.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)) {
                 return {
@@ -411,6 +411,7 @@ const isEditing = handleActions({
     [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload }
 }, false);
 
+// TODO: consolidate with questions reducer
 const cards = handleActions({
     [FETCH_CARDS]: { next: (state, { payload }) => ({ ...payload.entities.card }) }
 }, {});
@@ -443,14 +444,14 @@ const dashcards = handleActions({
     },
     [UPDATE_DASHCARD_VISUALIZATION_SETTINGS]: {
         next: (state, { payload: { id, settings } }) =>
-            i.chain(state)
+            chain(state)
                 .updateIn([id, "visualization_settings"], (value = {}) => ({ ...value, ...settings }))
                 .assocIn([id, "isDirty"], true)
                 .value()
     },
     [REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS]: {
         next: (state, { payload: { id, settings } }) =>
-            i.chain(state)
+            chain(state)
                 .assocIn([id, "visualization_settings"], settings)
                 .assocIn([id, "isDirty"], true)
                 .value()
@@ -481,13 +482,13 @@ const dashcardData = handleActions({
     // clear existing dashboard data when loading a dashboard
     [INITIALIZE]: { next: (state) => ({}) },
     [FETCH_CARD_DATA]: { next: (state, { payload: { dashcard_id, card_id, result }}) =>
-        i.assocIn(state, [dashcard_id, card_id], result)
+        assocIn(state, [dashcard_id, card_id], result)
     },
     [CLEAR_CARD_DATA]: { next: (state, { payload: { cardId, dashcardId }}) =>
-        i.assocIn(state, [dashcardId, cardId])
+        assocIn(state, [dashcardId, cardId])
     },
     [UPDATE_DASHCARD_ID]: { next: (state, { payload: { oldDashcardId, newDashcardId }}) =>
-        i.chain(state)
+        chain(state)
             .assoc(newDashcardId, state[oldDashcardId])
             .dissoc(oldDashcardId)
             .value()
@@ -500,8 +501,8 @@ const cardDurations = handleActions({
 
 const parameterValues = handleActions({
     [INITIALIZE]: { next: () => ({}) }, // reset values
-    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) },
-    [REMOVE_PARAMETER]: { next: (state, { payload: { id }}) => i.dissoc(state, id) }
+    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => assoc(state, id, value) },
+    [REMOVE_PARAMETER]: { next: (state, { payload: { id }}) => dissoc(state, id) }
 }, {});
 
 const dashboardListing = handleActions({

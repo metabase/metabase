@@ -22,7 +22,7 @@ const QUERY_BUILDER_STEPS = [
         getModalTarget: () => qs(".GuiBuilder-data"),
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/table.png" width={157} />
+                <RetinaImage id="QB-TutorialTableImg" className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/table.png" width={157} />
                 <h3>Start by picking the table with the data that you have a question about.</h3>
                 <p>Go ahead and select the "Orders" table from the dropdown menu.</p>
             </div>,
@@ -44,7 +44,13 @@ const QUERY_BUILDER_STEPS = [
         getModalTarget: () => qs(".GuiBuilder-filtered-by"),
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/funnel.png" width={135} />
+                <RetinaImage
+                    className="mb2"
+                    forceOriginalDimensions={false}
+                    id="QB-TutorialFunnelImg"
+                    src="/app/img/qb_tutorial/funnel.png"
+                    width={135}
+                />
                 <h3>Filter your data to get just what you want.</h3>
                 <p>Click the plus button and select the "Created At" field.</p>
             </div>,
@@ -57,9 +63,9 @@ const QUERY_BUILDER_STEPS = [
     },
     {
         getPortalTarget: () => qs(".GuiBuilder-filtered-by"),
-        getPageFlagText: () => "This will let us select only orders that were created this year",
-        getPageFlagTarget: () => qs('[data-ui-tag="relative-date-shortcut-this-year"]'),
-        shouldAllowEvent: (e) => qs('[data-ui-tag="relative-date-shortcut-this-year"]').contains(e.target)
+        getPageFlagText: () => "Here we can pick how many days we want to see data for, try 10",
+        getPageFlagTarget: () => qs('[data-ui-tag="relative-date-input"]'),
+        shouldAllowEvent: (e) => qs('[data-ui-tag="relative-date-input"]').contains(e.target)
     },
     {
         getPortalTarget: () => qs(".GuiBuilder-filtered-by"),
@@ -71,7 +77,13 @@ const QUERY_BUILDER_STEPS = [
         getModalTarget: () => qs(".Query-section-aggregation"),
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/calculator.png" width={115} />
+                <RetinaImage
+                    className="mb2"
+                    forceOriginalDimensions={false}
+                    id="QB-TutorialCalculatorImg"
+                    src="/app/img/qb_tutorial/calculator.png"
+                    width={115}
+                />
                 <h3>Here's where you can choose to add or average your data, count the number of rows in the table, or just view the raw data.</h3>
                 <p>Try it: click on <strong>Raw Data</strong> to change it to <strong>Count of rows</strong> so we can count how many orders there are in this table.</p>
             </div>,
@@ -87,7 +99,13 @@ const QUERY_BUILDER_STEPS = [
         getModalTarget: () => qs(".Query-section-breakout"),
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/banana.png" width={232} />
+                <RetinaImage
+                    className="mb2"
+                    forceOriginalDimensions={false}
+                    id="QB-TutorialBananaImg"
+                    src="/app/img/qb_tutorial/banana.png"
+                    width={232}
+                />
                 <h3>Add a grouping to break out your results by category, day, month, and more.</h3>
                 <p>Let's do it: click on <strong>Add a grouping</strong>, and choose <strong>Created At: by Week</strong>.</p>
             </div>,
@@ -109,7 +127,13 @@ const QUERY_BUILDER_STEPS = [
         getModalTarget: () => qs(".RunButton"),
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/rocket.png" width={217} />
+                <RetinaImage
+                    className="mb2"
+                    forceOriginalDimensions={false}
+                    id="QB-TutorialRocketImg"
+                    src="/app/img/qb_tutorial/rocket.png"
+                    width={217}
+                />
                 <h3>Run Your Query.</h3>
                 <p>You're doing so well! Click <strong>Run query</strong> to get your results!</p>
             </div>,
@@ -120,7 +144,13 @@ const QUERY_BUILDER_STEPS = [
         getModalTarget: () => qs(".VisualizationSettings"),
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/chart.png" width={160} />
+                <RetinaImage
+                    className="mb2"
+                    forceOriginalDimensions={false}
+                    id="QB-TutorialChartImg"
+                    src="/app/img/qb_tutorial/chart.png"
+                    width={160}
+                />
                 <h3>You can view your results as a chart instead of a table.</h3>
                 <p>Everbody likes charts! Click the <strong>Visualization</strong> dropdown and select <strong>Line</strong>.</p>
             </div>,
@@ -135,7 +165,12 @@ const QUERY_BUILDER_STEPS = [
         getPortalTarget: () => true,
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/boat.png" width={190} />
+                <RetinaImage
+                    className="mb2"
+                    forceOriginalDimensions={false}
+                    id="QB-TutorialBoatImg"
+                    src="/app/img/qb_tutorial/boat.png" width={190}
+                />
                 <h3>Well done!</h3>
                 <p>That's all! If you still have questions, check out our <a className="link" target="_blank" href="http://www.metabase.com/docs/latest/users-guide/start">User's Guide</a>. Have fun exploring your data!</p>
                 <a className="Button Button--primary" onClick={props.onNext}>Thanks!</a>

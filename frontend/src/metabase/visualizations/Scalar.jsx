@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import styles from "./Scalar.css";
@@ -10,11 +12,13 @@ import { TYPE } from "metabase/lib/types";
 import { isNumber } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
-import i from "icepick";
+import { getIn } from "icepick";
 import d3 from "d3";
 
-export default class Scalar extends Component {
-    static displayName = "Number";
+import type { VisualizationProps } from "metabase/visualizations";
+
+export default class Scalar extends Component<*, VisualizationProps, *> {
+    static uiName = "Number";
     static identifier = "scalar";
     static iconName = "number";
 
@@ -41,11 +45,18 @@ export default class Scalar extends Component {
     static transformSeries(series) {
         if (series.length > 1) {
             return series.map(s => ({
-                card: { ...s.card, display: "funnel" },
+                card: {
+                    ...s.card,
+                    display: "funnel",
+                    visualization_settings: {
+                        ...s.card.visualization_settings,
+                        "graph.x_axis.labels_enabled": false
+                    }
+                },
                 data: {
                     cols: [
-                        { base_type: TYPE.Text, display_name: "Name", name: "dimension" },
-                        { ...s.data.cols[0], display_name: "Value", name: "metric" }],
+                        { base_type: TYPE.Text, display_name: "Name", name: "name" },
+                        { ...s.data.cols[0] }],
                     rows: [
                         [s.card.name, s.data.rows[0][0]]
                     ]
@@ -60,9 +71,9 @@ export default class Scalar extends Component {
         let { card, data, className, actionButtons, gridSize, settings } = this.props;
 
         let isSmall = gridSize && gridSize.width < 4;
-        const column = i.getIn(data, ["cols", 0]);
+        const column = getIn(data, ["cols", 0]);
 
-        let scalarValue = i.getIn(data, ["rows", 0, 0]);
+        let scalarValue = getIn(data, ["rows", 0, 0]);
         if (scalarValue == null) {
             scalarValue = "";
         }
@@ -124,7 +135,12 @@ export default class Scalar extends Component {
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>
                 <div className="Card-title absolute top right p1 px2">{actionButtons}</div>
-                <Ellipsified className={cx(styles.Value, 'ScalarValue', 'fullscreen-normal-text', 'fullscreen-night-text')} tooltip={fullScalarValue} alwaysShowTooltip={fullScalarValue !== compactScalarValue}>
+                <Ellipsified
+                    className={cx(styles.Value, 'ScalarValue', 'fullscreen-normal-text', 'fullscreen-night-text')}
+                    tooltip={fullScalarValue}
+                    alwaysShowTooltip={fullScalarValue !== compactScalarValue}
+                    style={{maxWidth: '100%'}}
+                >
                     {compactScalarValue}
                 </Ellipsified>
                 <Ellipsified className={styles.Title} tooltip={card.name}>

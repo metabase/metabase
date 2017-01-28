@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import Input from "metabase/components/Input.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
 
+import cx from "classnames";
 
 export default class Header extends Component {
 
@@ -13,7 +14,7 @@ export default class Header extends Component {
     };
 
     render() {
-        const { isEditing, name, description, breadcrumb, buttons, className } = this.props;
+        const { isEditing, name, description, breadcrumb, buttons, className, badge } = this.props;
 
         let titleAndDescription;
         if (isEditing) {
@@ -27,7 +28,7 @@ export default class Header extends Component {
             if (name && description) {
                 titleAndDescription = (
                     <TitleAndDescription
-                        title={name} 
+                        title={name}
                         description={description}
                     />
                 );
@@ -41,8 +42,11 @@ export default class Header extends Component {
         }
 
         return (
-            <div className={"QueryBuilder-section flex align-center " + className}>
-                <div className="Entity py1">
+            <div className={cx("QueryBuilder-section flex align-center", className)}>
+                <div className={cx("py1 relative flex-full", { "pt2": badge })}>
+                    { badge &&
+                        <div className="absolute top left">{badge}</div>
+                    }
                     {titleAndDescription}
                 </div>
 

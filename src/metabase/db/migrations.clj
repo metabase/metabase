@@ -1,13 +1,14 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them.
    These migrations are all ran once when Metabase is first launched, except when transferring data from an existing H2 database.
-   When data is transferred from an H2 database, migrations will already have been ran against that data; thus, all of these migrations
+   When data is transferred from an H2 database, migrations will already have been run against that data; thus, all of these migrations
    need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [schema.core :as s]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver]
@@ -15,10 +16,13 @@
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
+                             [card-label :refer [CardLabel]]
+                             [collection :refer [Collection], :as collection]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [interface :refer [defentity]]
+                             [label :refer [Label]]
                              [permissions :refer [Permissions], :as perms]
                              [permissions-group :as perm-group]
                              [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
@@ -35,7 +39,7 @@
 
 (defn- run-migration-if-needed!
   "Run migration defined by MIGRATION-VAR if needed.
-   RAN-MIGRATIONS is a set of migrations names that have already been ran.
+   RAN-MIGRATIONS is a set of migrations names that have already been run.
 
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
   [ran-migrations migration-var]
@@ -55,8 +59,7 @@
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
-;; TODO - shouldn't this be called `run-all!`?
-(defn run-all
+(defn run-all!
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
@@ -297,14 +300,14 @@
 (defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:%lower.special_type (s/lower-case old-type)}
+    (db/update-where! 'Field {:%lower.special_type (str/lower-case old-type)}
       :special_type new-type)
     ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
     (db/update-where! 'Field {:special_type (name (keyword new-type))}
       :special_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
     ;; migrate things like :DateTimeField -> :type/DateTime
-    (db/update-where! 'Field {:%lower.base_type (s/lower-case old-type)}
+    (db/update-where! 'Field {:%lower.base_type (str/lower-case old-type)}
       :base_type new-type)
     ;; migrate things like :DateTime -> :type/DateTime
     (db/update-where! 'Field {:base_type (name (keyword new-type))}

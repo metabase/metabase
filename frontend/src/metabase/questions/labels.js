@@ -1,14 +1,14 @@
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { reset } from 'redux-form';
-import { normalize, Schema, arrayOf } from 'normalizr';
+import { normalize, schema } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-const label = new Schema('labels');
+const label = new schema.Entity('labels');
 import { LabelApi } from "metabase/services";
 
-import i from "icepick";
+import { assoc, merge } from "icepick";
 import _ from "underscore";
 
 const LOAD_LABELS = 'metabase/labels/LOAD_LABELS';
@@ -19,7 +19,7 @@ const DELETE_LABEL = 'metabase/labels/DELETE_LABEL';
 export const loadLabels = createThunkAction(LOAD_LABELS, () => {
     return async (dispatch, getState) => {
         let response = await LabelApi.list();
-        return normalize(response, arrayOf(label));
+        return normalize(response, [label]);
     }
 });
 
@@ -77,10 +77,10 @@ const initialState = {
 
 export default function(state = initialState, { type, payload, error }) {
     if (payload && payload.entities) {
-        state = i.assoc(state, "entities", i.merge(state.entities, payload.entities));
+        state = assoc(state, "entities", merge(state.entities, payload.entities));
     }
     if (payload && payload.message) {
-        state = i.assoc(state, "message", payload.message);
+        state = assoc(state, "message", payload.message);
     }
 
     switch (type) {

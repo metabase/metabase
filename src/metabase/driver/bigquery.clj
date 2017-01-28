@@ -87,13 +87,17 @@
    {:pre [client (seq project-id) (seq dataset-id) (seq table-id)]}
    (google/execute (.get (.tables client) project-id dataset-id table-id))))
 
-(def ^:private ^:const  bigquery-type->base-type
-  {"BOOLEAN"   :type/Boolean
-   "FLOAT"     :type/Float
-   "INTEGER"   :type/Integer
-   "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
-   "STRING"    :type/Text
-   "TIMESTAMP" :type/DateTime})
+(defn- bigquery-type->base-type [field-type]
+  (case field-type
+    "BOOLEAN"   :type/Boolean
+    "FLOAT"     :type/Float
+    "INTEGER"   :type/Integer
+    "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
+    "STRING"    :type/Text
+    "DATE"      :type/Date
+    "DATETIME"  :type/DateTime
+    "TIMESTAMP" :type/DateTime
+    :type/*))
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]
@@ -106,7 +110,7 @@
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
-(def ^:private ^:const query-timeout-seconds 60)
+(def ^:private ^:const ^Integer query-timeout-seconds 60)
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
@@ -142,6 +146,8 @@
    "INTEGER"   #(Long/parseLong %)
    "RECORD"    identity
    "STRING"    identity
+   "DATE"      parse-timestamp-str
+   "DATETIME"  parse-timestamp-str
    "TIMESTAMP" parse-timestamp-str})
 
 (defn- post-process-native
@@ -236,6 +242,9 @@
     :quarter-of-year (hx/quarter expr)
     :year            (hx/year expr)))
 
+(defn- date-string->literal [^String date-string]
+  (hx/->timestamp (hx/literal (u/format-date "yyyy-MM-dd 00:00" (u/->Date date-string)))))
+
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :sec_to_timestamp  expr)
@@ -326,6 +335,12 @@
                     ag-type)))
     :else (str schema-name \. table-name \. field-name)))
 
+;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
+(defn- field->identifier [{table-id :table_id, :as field}]
+  (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
+        dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
+    (hsql/raw (apply format "[%s.%s.%s]" dataset (field/qualified-name-components field)))))
+
 ;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
 ;; BAD:
 ;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp], count(*) AS [count]
@@ -381,9 +396,11 @@
           :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
+          :date-string->literal      (u/drop-first-arg date-string->literal)
           :field->alias              (u/drop-first-arg field->alias)
+          :field->identifier         (u/drop-first-arg field->identifier)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this]
+          :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this] initially (we have to convert them to [like.this] before executing)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)})
 
@@ -419,9 +436,15 @@
           ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
           ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
           ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
-          :features              (constantly (when-not config/is-test?
-                                               ;; during unit tests don't treat bigquery as having FK support
-                                               #{:foreign-keys}))
+          :features              (constantly (set/union #{:basic-aggregations
+                                                          :standard-deviation-aggregations
+                                                          :native-parameters
+                                                          ;; Expression aggregations *would* work, but BigQuery doesn't support the auto-generated column names. BQ column names
+                                                          ;; can only be alphanumeric or underscores. If we slugified the auto-generated column names, we could enable this feature.
+                                                          #_:expression-aggregations}
+                                                        (when-not config/is-test?
+                                                          ;; during unit tests don't treat bigquery as having FK support
+                                                          #{:foreign-keys})))
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg mbql->native)}))
 

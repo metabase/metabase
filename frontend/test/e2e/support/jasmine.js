@@ -11,7 +11,7 @@ if (!global.jasmineRequire) {
 require('jasmine-promises');
 
 // Console spec reporter
-import SpecReporter from "jasmine-spec-reporter";
+import { SpecReporter } from "jasmine-spec-reporter";
 jasmine.getEnv().addReporter(new SpecReporter());
 
 // JUnit XML reporter for CircleCI

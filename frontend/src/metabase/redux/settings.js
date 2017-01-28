@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import { createThunkAction } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 

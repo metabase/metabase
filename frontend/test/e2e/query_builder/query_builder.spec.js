@@ -1,16 +1,6 @@
 
-import { By, until } from "selenium-webdriver";
-
 import {
-    waitForElement,
-    waitForElementText,
-    waitForElementRemoved,
-    findElement,
-    waitForElementAndClick,
-    waitForElementAndSendKeys,
-    waitForUrl,
     screenshot,
-    loginMetabase,
     describeE2E,
     ensureLoggedIn
 } from "../support/utils";
@@ -24,132 +14,134 @@ describeE2E("query_builder", () => {
 
     describe("tables", () => {
         it("should allow users to create pivot tables", async () => {
-            await driver.get(`${server.host}/q`);
+            // load the query builder and screenshot blank
+            await d.get("/q");
+            await d.screenshot("screenshots/qb-initial.png");
 
-            await screenshot(driver, "screenshots/qb-initial.png");
+            // pick the orders table (assumes database is already selected, i.e. there's only 1 database)
+            await d.select("#TablePicker .List-item a:contains(Orders)").wait().click();
 
-            await waitForElementAndClick(driver, "#TablePicker .List-item:first-child>a");
+            await d.select(":react(AggregationWidget)").wait().click();
 
-            await waitForElementAndClick(driver, "#Query-section-aggregation");
-            await waitForElementAndClick(driver, "#AggregationPopover .List-item:nth-child(2)>a");
+            await d.select("#AggregationPopover .List-item:nth-child(2)>a").wait().click();
 
-            await waitForElementAndClick(driver, ".Query-section.Query-section-breakout #BreakoutWidget");
-            await waitForElementAndClick(driver, "#BreakoutPopover .List-section:nth-child(3) .List-section-header");
-            await waitForElementAndClick(driver, "#BreakoutPopover .List-item:nth-child(12)>a");
+            await d.select(".Query-section.Query-section-breakout #BreakoutWidget").wait().click();
+            await d.select("#BreakoutPopover .List-section:nth-child(3) .List-section-header").wait().click();
+            await d.select("#BreakoutPopover .List-item:nth-child(12)>a").wait().click();
 
-            await waitForElementAndClick(driver, ".Query-section.Query-section-breakout #BreakoutWidget .AddButton");
-            await waitForElementAndClick(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
-            await waitForElementAndClick(driver, "#TimeGroupingPopover .List-item:nth-child(4)>a");
+            await d.select(".Query-section.Query-section-breakout #BreakoutWidget .AddButton").wait().click();
+            await d.select("#BreakoutPopover .List-item:first-child .Field-extra>a").wait().click();
+            await d.select("#TimeGroupingPopover .List-item:nth-child(4)>a").wait().click();
 
-            await waitForElementAndClick(driver, ".Button.RunButton");
+            await d.select(".Button.RunButton").wait().click();
 
-            await waitForElementRemoved(driver, ".Loading", 20000);
-            await screenshot(driver, "screenshots/qb-pivot-table.png");
+            await d.select(".Loading").waitRemoved(20000);
+            await d.screenshot("screenshots/qb-pivot-table.png");
 
             // save question
-            await waitForElementAndClick(driver, ".Header-buttonSection:first-child");
-            await waitForElementAndSendKeys(driver, "#SaveQuestionModal input[name='name']", 'Pivot Table');
-            await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
+            await d.select(".Header-buttonSection:first-child").wait().click();
+            await d.select("#SaveQuestionModal input[name='name']").wait().sendKeys("Pivot Table");
+            await d.select("#SaveQuestionModal .Button.Button--primary").wait().click().waitRemoved(); // wait for the modal to be removed
 
             // add to new dashboard
-            await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
-            await waitForElementAndSendKeys(driver, "#CreateDashboardModal input[name='name']", 'Main Dashboard');
-            await waitForElementAndClick(driver, "#CreateDashboardModal .Button.Button--primary");
+            await d.select("#QuestionSavedModal .Button.Button--primary").wait().click();
+            await d.select("#CreateDashboardModal input[name='name']").wait().sendKeys("Main Dashboard");
+            await d.select("#CreateDashboardModal .Button.Button--primary").wait().click().waitRemoved(); // wait for the modal to be removed
 
             // save dashboard
-            await waitForElementAndClick(driver, ".EditHeader .Button.Button--primary");
-            await waitForElementRemoved(driver, ".EditHeader");
+            await d.select(".EditHeader .Button.Button--primary").wait().click();
+            await d.select(".EditHeader").waitRemoved();
         });
     });
 
     describe("charts", () => {
         xit("should allow users to create line charts", async () => {
-            await driver.get(`${server.host}/q`);
+            await d.get("/q");
 
             // select orders table
-            await waitForElementAndClick(driver, "#TablePicker .List-item:first-child>a");
+            await d.select("#TablePicker .List-item:first-child>a").wait().click();
 
             // select filters
-            await waitForElementAndClick(driver, ".GuiBuilder-filtered-by .Query-section:not(.disabled) a");
+            await d.select(".GuiBuilder-filtered-by .Query-section:not(.disabled) a").wait().click();
 
-            await waitForElementAndClick(driver, "#FilterPopover .List-item:first-child>a");
+            await d.select("#FilterPopover .List-item:first-child>a").wait().click();
 
-            await waitForElementAndClick(driver, ".Button[data-ui-tag='relative-date-shortcut-this-year']");
-            await waitForElementAndClick(driver, ".Button[data-ui-tag='add-filter']:not(.disabled)");
+            await d.select(".Button[data-ui-tag='relative-date-shortcut-this-year']").wait().click();
+            await d.select(".Button[data-ui-tag='add-filter']:not(.disabled)").wait().click();
 
             // select aggregations
-            await waitForElementAndClick(driver, "#Query-section-aggregation");
-            await waitForElementAndClick(driver, "#AggregationPopover .List-item:nth-child(2)>a");
+            await d.select("#Query-section-aggregation").wait().click();
+            await d.select("#AggregationPopover .List-item:nth-child(2)>a").wait().click();
 
             // select breakouts
-            await waitForElementAndClick(driver, ".Query-section.Query-section-breakout>div");
+            await d.select(".Query-section.Query-section-breakout>div").wait().click();
 
-            await waitForElementAndClick(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
-            await waitForElementAndClick(driver, "#TimeGroupingPopover .List-item:nth-child(3)>a");
+            await d.select("#BreakoutPopover .List-item:first-child .Field-extra>a").wait().click();
+            await d.select("#TimeGroupingPopover .List-item:nth-child(3)>a").wait().click();
 
             // run query
-            await waitForElementAndClick(driver, ".Button.RunButton");
+            await d.select(".Button.RunButton").wait().click();
 
-            await waitForElementAndClick(driver, "#VisualizationTrigger");
+            await d.select("#VisualizationTrigger").wait().click();
             // this step occassionally fails without the timeout
-            await driver.sleep(500);
-            await waitForElementAndClick(driver, "#VisualizationPopover li:nth-child(3)");
+            await d.sleep(500);
+            await d.select("#VisualizationPopover li:nth-child(3)").wait().click();
 
             await screenshot(driver, "screenshots/qb-line-chart.png");
 
             // save question
-            await waitForElementAndClick(driver, ".Header-buttonSection:first-child");
-            await waitForElementAndSendKeys(driver, "#SaveQuestionModal input[name='name']", 'Line Chart');
-            await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
+            await d.select(".Header-buttonSection:first-child").wait().click();
+            await d.select("#SaveQuestionModal input[name='name']").wait().sendKeys("Line Chart");
+            await d.select("#SaveQuestionModal .Button.Button--primary").wait().click();
 
             // add to existing dashboard
-            await driver.sleep(500);
-            await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
-            await waitForElementAndClick(driver, "#AddToDashSelectDashModal .SortableItemList-list li:first-child>a");
+            await d.sleep(500);
+            await d.select("#QuestionSavedModal .Button.Button--primary").wait().click();
+            await d.select("#AddToDashSelectDashModal .SortableItemList-list li:first-child>a").wait().click();
 
             // save dashboard
-            await waitForElementAndClick(driver, ".EditHeader .Button.Button--primary");
-            await waitForElementRemoved(driver, ".EditHeader");
+            await d.select(".EditHeader .Button.Button--primary").wait().click();
+            await d.select(".EditHeader").waitRemoved();
         });
 
         xit("should allow users to create bar charts", async () => {
             // load line chart
-            await driver.get(`${server.host}/card/2`);
+            await d.get("/card/2");
 
             // dismiss saved questions modal
-            await waitForElementAndClick(driver, ".Modal .Button.Button--primary");
+            await d.select(".Modal .Button.Button--primary").wait().click();
 
             // change breakouts
-            await waitForElementAndClick(driver, ".View-section-breakout.SelectionModule");
+            await d.select(".View-section-breakout.SelectionModule").wait().click();
 
-            await waitForElementAndClick(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
-            await waitForElementAndClick(driver, "#TimeGroupingPopover .List-item:nth-child(4)>a");
+            await d.select("#BreakoutPopover .List-item:first-child .Field-extra>a").wait().click();
+            await d.select("#TimeGroupingPopover .List-item:nth-child(4)>a").wait().click();
 
             // change visualization
-            await waitForElementAndClick(driver, "#VisualizationTrigger");
+            await d.select("#VisualizationTrigger").wait().click();
             // this step occassionally fails without the timeout
-            await driver.sleep(500);
-            await waitForElementAndClick(driver, "#VisualizationPopover li:nth-child(4)");
+            await d.sleep(500);
+            await d.select("#VisualizationPopover li:nth-child(4)").wait().click();
 
             // run query
-            await waitForElementAndClick(driver, ".Button.RunButton");
-            await waitForElementRemoved(driver, ".Loading", 20000);
+            await d.select(".Button.RunButton").wait().click();
+            await d.select(".Loading").waitRemoved(20000);
 
             await screenshot(driver, "screenshots/qb-bar-chart.png");
 
             // save question
-            await waitForElementAndClick(driver, ".Header-buttonSection:first-child");
-            await waitForElementAndSendKeys(driver, "#SaveQuestionModal input[name='name']", 'Bar Chart');
-            await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
+            await d.select(".Header-buttonSection:first-child").wait().click();
+            await d.select("#SaveQuestionModal input[name='name']").wait().sendKeys("Bar Chart");
+            await d.select("#SaveQuestionModal .Button.Button--primary").wait().click();
 
             // add to existing dashboard
-            await driver.sleep(500);
-            await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
-            await waitForElementAndClick(driver, "#AddToDashSelectDashModal .SortableItemList-list li:first-child>a");
+            await d.sleep(500);
+            await d.select("#QuestionSavedModal .Button.Button--primary").wait().click();
+            await d.select("#AddToDashSelectDashModal .SortableItemList-list li:first-child>a").wait().click();
 
             // save dashboard
-            await waitForElementAndClick(driver, ".EditHeader .Button.Button--primary");
-            await waitForElementRemoved(driver, ".EditHeader");
+            await d.select(".EditHeader .Button.Button--primary").wait().click();
+            await d.select(".EditHeader").waitRemoved();
         });
     });
 });

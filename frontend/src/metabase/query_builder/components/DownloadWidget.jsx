@@ -7,6 +7,8 @@ import DownloadButton from "metabase/components/DownloadButton.jsx";
 
 import FieldSet from "metabase/components/FieldSet.jsx";
 
+import _ from "underscore";
+
 const DownloadWidget = ({ className, card, datasetQuery, isLarge }) =>
     <PopoverWithTrigger
         triggerElement={<Icon className={className} title="Download this data" name='download' size={16} />}
@@ -23,13 +25,15 @@ const DownloadWidget = ({ className, card, datasetQuery, isLarge }) =>
                 {["csv", "json"].map(type =>
                     <DownloadButton
                         className="mr1 text-uppercase text-default"
+                        key={type}
                         url={card.id != null ?
                             `/api/card/${card.id}/query/${type}`:
                             `/api/dataset/${type}`
                         }
                         params={card.id != null ?
                             { parameters: JSON.stringify(datasetQuery.parameters) } :
-                            { query: JSON.stringify(datasetQuery) }
+                            // exclude `constraints` to ensure we download all rows (up to hard-coded 1M):
+                            { query: JSON.stringify(_.omit(datasetQuery, "constraints")) }
                         }
                         extensions={[type]}
                     >

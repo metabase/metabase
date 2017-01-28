@@ -82,7 +82,7 @@
   (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email, :is_active true)]
     (let [reset-token        (set-user-password-reset-token! user-id)
           password-reset-url (str (public-settings/site-url request) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email email google-auth? server-name password-reset-url)
+      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
       (log/info password-reset-url))))
 
 

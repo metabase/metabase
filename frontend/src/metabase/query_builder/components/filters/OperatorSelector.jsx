@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -5,13 +7,28 @@ import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
 import _ from "underscore";
 
-export default class OperatorSelector extends Component {
-    constructor(props, context) {
-        super(props, context);
+import type { Operator, OperatorName } from "metabase/meta/types/Metadata"
+
+type Props = {
+    operator: string,
+    operators: Operator[],
+    onOperatorChange: (name: OperatorName) => void
+};
+
+type State = {
+    expanded: bool
+};
+
+export default class OperatorSelector extends Component<*, Props, State> {
+    props: Props;
+    state: State;
+
+    constructor(props: Props) {
+        super(props);
         // if the initial operator is "advanced" expand the list
         let operator = _.find(props.operators, o => o.name === props.operator);
         this.state = {
-            expanded: operator && operator.advanced
+            expanded: !!(operator && operator.advanced)
         };
     }
 
@@ -34,7 +51,9 @@ export default class OperatorSelector extends Component {
         }
 
         return (
-            <div id="OperatorSelector" className="border-bottom p1">
+            <div id="OperatorSelector" className="border-bottom p1" style={{
+                maxWidth: 300
+            }}>
                 { visibleOperators.map(o =>
                     <button
                         key={o.name}

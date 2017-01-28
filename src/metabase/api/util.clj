@@ -2,7 +2,8 @@
   (:require [compojure.core :refer [defroutes GET POST]]
             [metabase.api.common :refer :all]
             [metabase.logger :as logger]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [metabase.util.stats :as stats]))
 
 (defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
@@ -16,5 +17,11 @@
   (check-superuser)
   (logger/get-messages))
 
+(defendpoint GET "/stats"
+  "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
+  what is being phoned home."
+  []
+  (check-superuser)
+  (stats/anonymous-usage-stats))
 
 (define-routes)

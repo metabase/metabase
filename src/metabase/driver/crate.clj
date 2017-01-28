@@ -1,10 +1,8 @@
 (ns metabase.driver.crate
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
-            (metabase.driver.crate [query-processor :as qp]
-                                   [util :as crate-util])
+            [metabase.driver.crate.util :as crate-util]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]))
 
@@ -44,16 +42,15 @@
 
 (defn- crate-spec
   [{:keys [hosts]
-    :or   {hosts "//localhost:4300"}
     :as   opts}]
   (merge {:classname   "io.crate.client.jdbc.CrateDriver" ; must be in classpath
           :subprotocol "crate"
-          :subname     (str hosts)}
+          :subname     (str "//" hosts "/")}
          (dissoc opts :hosts)))
 
 (defn- can-connect? [details]
   (let [connection-spec (crate-spec details)]
-    (= 1 (first (vals (first (jdbc/query connection-spec ["select 1 from sys.cluster"])))))))
+    (= 1 (first (vals (first (jdbc/query connection-spec ["select 1"])))))))
 
 (defn- string-length-fn [field-key]
   (hsql/call :char_length field-key))
@@ -70,14 +67,13 @@
           :date-interval  crate-util/date-interval
           :details-fields (constantly [{:name         "hosts"
                                         :display-name "Hosts"
-                                        :default      "//localhost:4300"}])
-          :features       (comp (u/rpartial set/difference #{:foreign-keys}) sql/features)})
+                                        :default      "localhost:5432"}])
+          :features       (comp (u/rpartial disj :foreign-keys) sql/features)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg crate-spec)
           :column->base-type         (u/drop-first-arg column->base-type)
           :string-length-fn          (u/drop-first-arg string-length-fn)
-          :apply-filter              qp/apply-filter
           :date                      crate-util/date
           :unix-timestamp->timestamp crate-util/unix-timestamp->timestamp
           :current-datetime-fn       (constantly now)}))

@@ -21,6 +21,7 @@ When you select a saved question, Metabase will show you a preview of how it’l
 ![Behold! The metamorphosis.](images/pulses/04-transformation.png)
 
 Currently, there are a few restrictions on what kinds of saved questions you can put into a pulse:
+
 * Raw data can’t be put in a pulse
 * Tables will be cropped to a maximum of three columns and 10 rows
 * Bar charts (and pie charts which get turned into bar charts) will be cropped to one column for the labels, one column for the values, and 10 total rows

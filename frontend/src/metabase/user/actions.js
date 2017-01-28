@@ -4,7 +4,7 @@ import { createThunkAction } from "metabase/lib/redux";
 
 import { UserApi } from "metabase/services";
 
-import { refreshCurrentUser } from "metabase/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 
 // action constants
 export const CHANGE_TAB = 'CHANGE_TAB';

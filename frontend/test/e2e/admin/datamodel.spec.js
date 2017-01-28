@@ -1,16 +1,9 @@
-
-import { By, until } from "selenium-webdriver";
-
 import {
-    waitForElement,
     waitForElementText,
-    waitForElementRemoved,
     findElement,
     waitForElementAndClick,
     waitForElementAndSendKeys,
-    waitForUrl,
     screenshot,
-    loginMetabase,
     ensureLoggedIn,
     describeE2E
 } from "../support/utils";
@@ -61,7 +54,7 @@ describeE2E("admin/datamodel", () => {
             await waitForElementAndClick(driver, ".GuiBuilder-filtered-by a");
             await waitForElementAndClick(driver, "#FilterPopover .List-item:nth-child(4)>a");
             const addFilterButton = findElement(driver, "#FilterPopover .Button.disabled");
-            await waitForElementAndClick(driver, "#OperatorSelector .Button.Button-normal.Button--medium:nth-child(3)");
+            await waitForElementAndClick(driver, "#OperatorSelector .Button.Button-normal.Button--medium:nth-child(2)");
             await waitForElementAndSendKeys(driver, "#FilterPopover input.border-purple", 'gmail');
             expect(await addFilterButton.isEnabled()).toBe(true);
             await addFilterButton.click();

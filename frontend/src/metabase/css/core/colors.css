@@ -50,7 +50,8 @@
 }
 
 .bg-brand,
-.bg-brand-hover:hover { background-color: var(--brand-color); }
+.bg-brand-hover:hover,
+.bg-brand-active:active { background-color: var(--brand-color); }
 
 
 /* success */
@@ -127,7 +128,7 @@
 .bg-green { background-color: var(--green-color); }
 
 /* alt */
-.bg-alt { background-color: var(--alt-color); }
+.bg-alt, .bg-alt-hover:hover { background-color: var(--alt-color); }
 
 /* grey */
 .text-grey-1, :local(.text-grey-1),
@@ -142,7 +143,8 @@
 .text-grey-4,
 .text-grey-4-hover:hover { color: var(--grey-4) }
 
-.bg-grey-0 { background-color: var(--base-grey) }
+.bg-grey-0,
+.bg-grey-0-hover:hover { background-color: var(--base-grey) }
 .bg-grey-1 { background-color: var(--grey-1) }
 .bg-grey-2 { background-color: var(--grey-2) }
 .bg-grey-3 { background-color: var(--grey-3) }
@@ -172,7 +174,12 @@
 
 .bg-light-blue { background-color: #F5FAFC; }
 
+.bg-light-blue-hover:hover {
+  background-color: #E4F0FA;
+}
+
 .text-light-blue,
 .text-light-blue-hover:hover {
   color: #CFE4F5
 }
+.text-slate { color: #606E7B; }

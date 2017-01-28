@@ -6,16 +6,19 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat]
-                      [helpers :as h])
+                      [helpers :as h]
+                      types)
             (metabase [config :as config]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.query-processor :as qp]
-            metabase.query-processor.interface
+            (metabase.query-processor [annotate :as annotate]
+                                      interface)
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Timestamp
            java.util.Date
+           clojure.lang.Keyword
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
@@ -54,14 +57,17 @@
   (or (get-in *query* [:query :expressions (keyword expression-name)]) (:expressions (:query *query*))
       (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
+;; TODO - maybe this fn should be called `->honeysql` instead.
 (defprotocol ^:private IGenericSQLFormattable
   (formatted [this]
     "Return an appropriate HoneySQL form for an object."))
 
 (extend-protocol IGenericSQLFormattable
-  nil    (formatted [_] nil)
-  Number (formatted [this] this)
-  String (formatted [this] this)
+  nil                    (formatted [_] nil)
+  Number                 (formatted [this] this)
+  String                 (formatted [this] this)
+  Keyword                (formatted [this] this) ; HoneySQL fn calls and keywords (e.g. `:%count.*`) are
+  honeysql.types.SqlCall (formatted [this] this) ; already converted to HoneySQL so just return them as-is
 
   Expression
   (formatted [{:keys [operator args]}]
@@ -113,35 +119,55 @@
 
 ;;; ## Clause Handlers
 
+(defn- aggregation->honeysql
+  "Generate the HoneySQL form for an aggregation."
+  [driver aggregation-type field]
+  {:pre [(keyword? aggregation-type)]}
+  (if-not field
+    ;; aggregation clauses w/o a field
+    (do (assert (= aggregation-type :count)
+          (format "Aggregations of type '%s' must specify a field." aggregation-type))
+        :%count.*)
+    ;; aggregation clauses w/ a Field
+    (hsql/call (case aggregation-type
+                 :avg      :avg
+                 :count    :count
+                 :distinct :distinct-count
+                 :stddev   (sql/stddev-fn driver)
+                 :sum      :sum
+                 :min      :min
+                 :max      :max)
+      (formatted field))))
+
+(defn- expression-aggregation->honeysql
+  "Generate the HoneySQL form for an expression aggregation."
+  [driver expression]
+  (formatted (update expression :args (fn [args]
+                                        (for [arg args]
+                                          (cond
+                                            (number? arg)           arg
+                                            (:aggregation-type arg) (aggregation->honeysql driver (:aggregation-type arg) (:field arg))
+                                            (:operator arg)         (expression-aggregation->honeysql driver arg)))))))
+
+(defn- apply-expression-aggregation [driver honeysql-form expression]
+  (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)
+                                 (hx/escape-dots (annotate/aggregation-name expression))]))
+
+(defn- apply-single-aggregation [driver honeysql-form {:keys [aggregation-type field], :as aggregation}]
+  (h/merge-select honeysql-form [(aggregation->honeysql driver aggregation-type field)
+                                 (hx/escape-dots (annotate/aggregation-name aggregation))]))
+
 (defn apply-aggregation
   "Apply a `aggregation` clauses to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
-  ([driver honeysql-form {aggregations :aggregation}]
-   (loop [form honeysql-form, [{:keys [aggregation-type field]} & more] aggregations]
-     (let [form (apply-aggregation driver form aggregation-type (formatted field))]
-       (if-not (seq more)
-         form
-         (recur form more)))))
+  [driver honeysql-form {aggregations :aggregation}]
+  (loop [form honeysql-form, [ag & more] aggregations]
+    (let [form (if (instance? Expression ag)
+                 (apply-expression-aggregation driver form ag)
+                 (apply-single-aggregation driver form ag))]
+      (if-not (seq more)
+        form
+        (recur form more)))))
 
-  ([driver honeysql-form aggregation-type field]
-   (h/merge-select honeysql-form [(if-not field
-                                    ;; aggregation clauses w/o a field
-                                    (do (assert (= aggregation-type :count)
-                                          (format "Aggregations of type '%s' must specify a field." aggregation-type))
-                                        :%count.*)
-                                    ;; aggregation clauses w/ a Field
-                                    (hsql/call (case  aggregation-type
-                                                 :avg      :avg
-                                                 :count    :count
-                                                 :distinct :distinct-count
-                                                 :stddev   (sql/stddev-fn driver)
-                                                 :sum      :sum
-                                                 :min      :min
-                                                 :max      :max)
-                                      field))
-                                  ;; the column alias is always the same as the ag type except for `:distinct` with is called `:count` (WHY?)
-                                  (if (= aggregation-type :distinct)
-                                    :count
-                                    aggregation-type)])))
 
 (defn apply-breakout
   "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."

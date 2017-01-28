@@ -2,7 +2,7 @@
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import i from "icepick";
+import { assocIn } from "icepick";
 import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
@@ -11,8 +11,7 @@ import { push, replace } from "react-router-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL, humanize } from "metabase/lib/formatting";
-import Query from "metabase/lib/query";
-import { createQuery } from "metabase/lib/query";
+import Query, { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
@@ -104,7 +103,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         const { currentUser } = getState();
 
-        let card, databases, originalCard, uiControls = {};
+        let card, databases, originalCard, uiControls = { isEditing: false };
 
         // always start the QB by loading up the databases for the application
         try {
@@ -382,7 +381,7 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
             delete updatedCard.description;
         }
 
-        return i.assocIn(updatedCard, ["dataset_query", "native", "template_tags", templateTag.name], templateTag);
+        return assocIn(updatedCard, ["dataset_query", "native", "template_tags", templateTag.name], templateTag);
     };
 });
 
@@ -904,7 +903,6 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
         } else {
             // this is applying a filter by clicking on a cell value
             let dataset_query = JSON.parse(JSON.stringify(card.dataset_query));
-            Query.addFilter(dataset_query.query);
 
             if (coldef.unit && coldef.unit != "default" && filter === "=") {
                 // this is someone using quick filters on a datetime value
@@ -917,11 +915,10 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
                     case "year": start = moment(value, "YYYY").format("YYYY-MM-DD");
                                  end = moment(value, "YYYY").add(1, "years").subtract(1, "days").format("YYYY-MM-DD"); break;
                 }
-                Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, ["BETWEEN", fieldRefForm, start, end]);
-
+                Query.addFilter(dataset_query.query, ["BETWEEN", fieldRefForm, start, end]);
             } else {
                 // quick filtering on a normal value (string/number)
-                Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, fieldRefForm, value]);
+                Query.addFilter(dataset_query.query, [filter, fieldRefForm, value]);
             }
 
             // update and run the query
