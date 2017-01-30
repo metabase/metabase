@@ -4,7 +4,7 @@ Metabase provides an official Docker image via Dockerhub that can be used for de
 
 ### Launching Metabase on a new container
 
-Here's a quick one-liner to get you off the ground:
+Here's a quick one-liner to get you off the ground (please note, we recommend further configuration for production deployments below):
 
     docker run -d -p 3000:3000 --name metabase metabase/metabase
 
@@ -43,6 +43,7 @@ In this scenario all you need to do is make sure you launch Metabase with the co
 
 Keep in mind that Metabase will be connecting from within your docker container, so make sure that either you're using a fully qualified hostname or that you've set a proper entry in your container's `/etc/hosts file`.
 
+See instructions for [migrating from H2 to MySQL or Postgres](./start.md#migrating-from-using-the-h2-database-to-mysql-or-postgres).
 
 ### Setting the Java Timezone
 
