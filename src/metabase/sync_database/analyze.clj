@@ -21,7 +21,7 @@
 
 (def ^:private ^:const low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`."
-  40)
+  300)
 
 (def ^:private ^:const field-values-entry-max-length
   "The maximum character length for a stored `FieldValues` entry."
