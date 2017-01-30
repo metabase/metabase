@@ -58,3 +58,10 @@ It's best to set your Java timezone to match the timezone you'd like all your re
 While running Metabase on docker you can use any of the custom settings from [Customizing the Metabase Jetty Webserver](./start.md#customizing-the-metabase-jetty-webserver) by setting environment variables on your docker run command.
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
+
+
+### Copying the application database
+
+If you forget to configure to the application database, it will be located at `/metabase.db.mv.db` in the container. You can copy it out of the container using the following command (replacing `CONTAINER_ID` with the actual container ID or `metabase` if you named the container):
+
+    docker cp CONTAINER_ID:/metabase.db.mv.db metabase.db.mv.db
