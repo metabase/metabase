@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import moment from "moment";
 
 import visualizations from "metabase/visualizations";
+import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -106,7 +107,7 @@ export default class ReferenceEntityList extends Component {
                                     createSchemaSeparator,
                                     createListItem
                                 ) :
-                                Object.values(entities).map((entity, index) =>
+                                Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
                                         createListItem(entity, index, section)
                                 )
