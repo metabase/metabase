@@ -23,7 +23,11 @@
   :default "Metabase")
 
 (defsetting -site-url
-  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
+  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".
+   This is *guaranteed* never to have a tailing slash."
+  :setter (fn [new-value]
+            (setting/set-string! :-site-url (when new-value
+                                              (s/replace new-value #"/$" "")))))
 
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")
@@ -48,10 +52,22 @@
   [{{:strs [origin host]} :headers}]
   {:pre  [(or origin host)]
    :post [(string? %)]}
-  (or (some-> (-site-url)
-              (s/replace #"/$" "")) ; strip off trailing slash if one was included
+  (or (-site-url)
       (-site-url (or origin host))))
 
+(defsetting enable-public-sharing
+  "Enable admins to create publically viewable links for Cards and Dashboards?"
+  :type    :boolean
+  :default false)
+
+(defn remove-public-uuid-if-public-sharing-is-disabled
+  "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it won't work).
+   Intended for use as part of a `post-select` implementation for Cards and Dashboards."
+  [object]
+  (if (and (:public_uuid object)
+           (not (enable-public-sharing)))
+    (assoc object :public_uuid nil)
+    object))
 
 
 (defn- short-timezone-name*
@@ -78,6 +94,7 @@
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :map_tile_server_url   (map-tile-server-url)
    :password_complexity   password/active-password-complexity
+   :public_sharing        (enable-public-sharing)
    :report_timezone       (setting/get :report-timezone)
    :setup_token           ((resolve 'metabase.setup/token-value))
    :site_name             (site-name)

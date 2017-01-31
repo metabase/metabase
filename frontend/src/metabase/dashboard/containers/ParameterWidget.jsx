@@ -65,18 +65,25 @@ export default class ParameterWidget extends Component {
     }
 
     render() {
-        const { className, parameter, parameterValue, parameters, isEditing, isFullscreen, editingParameter, setEditingParameterId, setName, setValue, setDefaultValue, remove } = this.props;
+        const { className, parameter, parameters, isEditing, isFullscreen, isQB, editingParameter, setEditingParameter, setName, setValue, setDefaultValue, remove } = this.props;
 
         const isEditingDashboard = isEditing;
         const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
 
+        let containerClassName = S.container;
+        let nameClassName = S.name;
+        if (isQB) {
+            containerClassName = "pl2 GuiBuilder-section flex align-center";
+            nameClassName = "GuiBuilder-section-label Query-label";
+        }
+
         if (isFullscreen) {
-            if (parameterValue != null) {
+            if (parameter.value != null) {
                 return (
                     <div className={cx(className, S.container, S.fullscreen)}>
                         <div className={S.name}>{parameter.name}</div>
                         <div className={cx(S.parameter, S.selected)}>
-                            {ParameterValueWidget.getWidget(parameter, this.getValues()).format(parameterValue)}
+                            {ParameterValueWidget.getWidget(parameter, this.getValues()).format(parameter.value)}
                         </div>
                     </div>
                 );
@@ -85,9 +92,9 @@ export default class ParameterWidget extends Component {
             }
         } else if (!isEditingDashboard) {
             return (
-                <div className={cx(className, S.container)}>
-                    <div className={S.name}>{parameter.name}</div>
-                    {this.renderPopover(parameterValue, (value) => setValue(value))}
+                <div className={cx(className, containerClassName)}>
+                    <div className={nameClassName}>{parameter.name}</div>
+                    {this.renderPopover(parameter.value, (value) => setValue(value))}
                 </div>
             );
         } else if (isEditingParameter) {
@@ -121,7 +128,7 @@ export default class ParameterWidget extends Component {
                 <div className={cx(className, S.container, { [S.deemphasized]: !isEditingParameter && editingParameter != null})}>
                     <div className={S.name}>{parameter.name}</div>
                     <div className={cx(S.parameter, S.parameterButtons)}>
-                        <div className={S.editButton} onClick={() => setEditingParameterId(parameter.id)}>
+                        <div className={S.editButton} onClick={() => setEditingParameter(parameter.id)}>
                             <Icon name="pencil" />
                             <span className="ml1">Edit</span>
                         </div>

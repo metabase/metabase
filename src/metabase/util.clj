@@ -787,3 +787,27 @@
                      :when   (and (.startsWith (name ns-symb) "metabase.")
                                   (not (.contains (name ns-symb) "test")))]
                  ns-symb))))
+
+(def ^:const ^java.util.regex.Pattern uuid-regex
+  "A regular expression for matching canonical string representations of UUIDs."
+  #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
+
+
+(defn select-nested-keys
+  "Like `select-keys`, but can also handle nested keypaths:
+
+     (select-nested-keys {:a 100, :b {:c 200, :d 300}} [:a [:b :d] :c])
+     ;; -> {:a 100, :b {:d 300}}
+
+   The values of KEYSEQ can be either regular keys, which work the same way as `select-keys`,
+   or vectors of the form `[k & nested-keys]`, which call `select-nested-keys` recursively
+   on the value of `k`. "
+  [m keyseq]
+  ;; TODO - use (empty m) once supported by model instances
+  (into {} (for [k     keyseq
+                 :let  [[k & nested-keys] (if (sequential? k) k [k])
+                        v                 (get m k)]
+                 :when (contains? m k)]
+             {k (if-not (seq nested-keys)
+                  v
+                  (select-nested-keys v nested-keys))})))

@@ -6,24 +6,43 @@
             [ring.util.response :as resp]
             [stencil.core :as stencil]
             [metabase.api.routes :as api]
-            [metabase.public-settings :as public-settings]))
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
+            [metabase.util.embed :as embed]))
 
-(defn- index [_]
+
+(defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if ((resolve 'metabase.core/initialized?))
-        (stencil/render-string (slurp (or (io/resource "frontend_client/index.html")
-                                          (throw (Exception. "Cannot find './resources/frontend_client/index.html'. Did you remember to build the Metabase frontend?"))))
-                               {:bootstrap_json (json/generate-string (public-settings/public-settings))})
+        (stencil/render-string (slurp (or (io/resource (str "frontend_client/" entry ".html"))
+                                          (throw (Exception. (str "Cannot find './resources/frontend_client/" entry ".html'. Did you remember to build the Metabase frontend?")))))
+                               {:bootstrap_json (json/generate-string (public-settings/public-settings))
+                                :embed_code     (when embeddable? (embed/head uri))})
         (slurp (io/resource "frontend_client/init.html")))
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
 
+(def ^:private index  (partial entrypoint "index"  (not :embeddable)))
+(def ^:private public (partial entrypoint "public" :embeddable))
+
+(defroutes ^:private public-routes
+  (GET ["/question/:uuid.csv"  :uuid u/uuid-regex] [uuid] (resp/redirect (format "/api/public/card/%s/query/csv"  uuid)))
+  (GET ["/question/:uuid.json" :uuid u/uuid-regex] [uuid] (resp/redirect (format "/api/public/card/%s/query/json" uuid)))
+  (GET "*" [] public))
+
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
-  (GET "/" [] index)                                     ; ^/$           -> index.html
+  ;; ^/$ -> index.html
+  (GET "/" [] index)
   (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
-  (context "/api" [] api/routes)                         ; ^/api/        -> API routes
+  ;; ^/api/ -> API routes
+  (context "/api" [] api/routes)
+  ; ^/app/ -> static files under frontend_client/app
   (context "/app" []
-    (route/resources "/" {:root "frontend_client/app"})  ; ^/app/        -> static files under frontend_client/app
-    (route/not-found {:status 404                        ; return 404 for anything else starting with ^/app/ that doesn't exist
+    (route/resources "/" {:root "frontend_client/app"})
+    ;; return 404 for anything else starting with ^/app/ that doesn't exist
+    (route/not-found {:status 404
                       :body "Not found."}))
-  (GET "*" [] index))                                    ; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
+  ;; ^/public/ -> Public frontend and download routes
+  (context "/public" [] public-routes)
+  ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
+  (GET "*" [] index))

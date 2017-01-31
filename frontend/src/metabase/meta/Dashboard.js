@@ -291,6 +291,7 @@ export function createParameter(option: ParameterOption, parameters: Array<Param
     }
     let parameter = {
        name: "",
+       slug: "",
        id: Math.floor(Math.random()*Math.pow(2,32)).toString(16),
        type: option.type,
     };
@@ -298,10 +299,11 @@ export function createParameter(option: ParameterOption, parameters: Array<Param
 }
 
 export function setParameterName(parameter: Parameter, name: string): Parameter {
+    let slug = slugify(name);
     return {
         ...parameter,
         name: name,
-        slug: slugify(name)
+        slug: slug
     };
 }
 

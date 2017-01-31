@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.22.0-snapshot
+# API Documentation for Metabase v0.23.0-snapshot
 
 ## `GET /api/activity/`
 
@@ -13,6 +13,17 @@ Get the list of 10 things the current user has been viewing most recently.
 ## `DELETE /api/card/:card-id/favorite`
 
 Unfavorite a Card.
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+
+## `DELETE /api/card/:card-id/public_link`
+
+Delete the publically-accessible link to this Card.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -100,6 +111,19 @@ Update the set of `Labels` that apply to a `Card`.
 *  **`card-id`** 
 
 *  **`label_ids`** value must be an array. Each value must be an integer greater than zero.
+
+
+## `POST /api/card/:card-id/public_link`
+
+Generate publically-accessible links for this Card. Returns UUID to be used in public links.
+   (If this Card has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`card-id`** 
 
 
 ## `POST /api/card/:card-id/query`
@@ -236,6 +260,17 @@ Do a batch update of Collections Permissions by passing in a modified graph.
 *  **`body`** value must be a map.
 
 
+## `DELETE /api/dashboard/:dashboard-id/public_link`
+
+Delete the publically-accessible link to this Dashboard.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
+
+
 ## `DELETE /api/dashboard/:id`
 
 Delete a `Dashboard`.
@@ -297,6 +332,19 @@ Create a new `Dashboard`.
 *  **`parameters`** value must be an array. Each value must be a map.
 
 *  **`dashboard`** 
+
+
+## `POST /api/dashboard/:dashboard-id/public_link`
+
+Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links.
+   (If this Dashboard has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
 
 
 ## `POST /api/dashboard/:id/cards`
@@ -909,6 +957,61 @@ You must be a superuser to do this.
 *  **`group-id`** 
 
 *  **`name`** value must be a non-blank string.
+
+
+## `GET /api/public/card/:uuid`
+
+Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/card/:uuid/csv`
+
+Fetch a publically-accessible Card and return query results as CSV. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/card/:uuid/json`
+
+Fetch a publically-accessible Card and return query results as JSON. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/dashboard/:uuid`
+
+Fetch a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+
+## `GET /api/public/dashboard/:uuid/card/:card-id`
+
+Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 
 ## `DELETE /api/pulse/:id`

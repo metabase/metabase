@@ -22,7 +22,8 @@
                              [view-log :refer [ViewLog]])
             (metabase [query-processor :as qp]
                       [util :as u])
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su])
+  (:import java.util.UUID))
 
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
@@ -374,6 +375,41 @@
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
   (dataset-api/as-json (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+
+
+;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
+
+(defendpoint POST "/:card-id/public_link"
+  "Generate publically-accessible links for this Card. Returns UUID to be used in public links.
+   (If this Card has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled."
+  [card-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (check-not-archived (read-check Card card-id))
+  {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
+             (u/prog1 (str (UUID/randomUUID))
+               (db/update! Card card-id
+                 :public_uuid       <>
+                 :made_public_by_id *current-user-id*)))})
+
+(defendpoint DELETE "/:card-id/public_link"
+  "Delete the publically-accessible link to this Card."
+  [card-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (check-exists? Card :id card-id, :public_uuid [:not= nil])
+  (db/update! Card card-id
+    :public_uuid       nil
+    :made_public_by_id nil)
+  {:status 204, :body nil})
+
+(defendpoint GET "/public"
+  "Fetch a list of Cards with public UUIDs. These cards are publically-accessible *if* public sharing is enabled."
+  []
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 
 (define-routes)

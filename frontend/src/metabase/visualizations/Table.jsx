@@ -7,6 +7,7 @@ import TableSimple from "./TableSimple.jsx";
 
 import * as DataGrid from "metabase/lib/data_grid";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
@@ -25,7 +26,7 @@ type State = {
     columnIndexes: number[]
 }
 
-export default class Bar extends Component<*, Props, State> {
+export default class Table extends Component<*, Props, State> {
     state: State;
 
     static uiName = "Table";
@@ -96,7 +97,7 @@ export default class Bar extends Component<*, Props, State> {
     render() {
         const { card, cellClickedFn, cellIsClickableFn, setSortFn, isDashboard, settings } = this.props;
         const { data } = this.state;
-        const sort = card.dataset_query.query && card.dataset_query.query.order_by || null;
+        const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
         const isPivoted = settings["table.pivot"];
         const TableComponent = isDashboard ? TableSimple : TableInteractive;
         return (

@@ -154,3 +154,17 @@
         [(update serialized-dashboard :cards check-ids)
          serialized-dashboard2
          (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids)]))))
+
+
+;; test that a Dashboard's :public_uuid comes back if public sharing is enabled...
+(expect
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (boolean (:public_uuid dashboard)))))
+
+;; ...but if public sharing is *disabled* it should come back as `nil`
+(expect
+  nil
+  (tu/with-temporary-setting-values [enable-public-sharing false]
+    (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (:public_uuid dashboard))))

@@ -5,6 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { slugify } from "metabase/lib/formatting";
 
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
+import { PublicLinksDashboardListing, PublicLinksQuestionListing } from "./components/widgets/PublicLinksListing.jsx";
 
 const SECTIONS = [
     {
@@ -164,6 +165,28 @@ const SECTIONS = [
                 noHeader: true
             }
         ]
+    },
+    {
+        name: "Public Links",
+        settings: [
+            {
+                key: "enable-public-sharing",
+                display_name: "Enable Public Sharing",
+                type: "boolean"
+            },
+            {
+                key: "-public-sharing-dashboards",
+                display_name: "Shared Dashboards",
+                widget: PublicLinksDashboardListing,
+                getHidden: (settings) => !settings["enable-public-sharing"]
+            },
+            {
+                key: "-public-sharing-questions",
+                display_name: "Shared Questions",
+                widget: PublicLinksQuestionListing,
+                getHidden: (settings) => !settings["enable-public-sharing"]
+            }
+        ]
     }
 ];
 for (const section of SECTIONS) {
@@ -171,6 +194,17 @@ for (const section of SECTIONS) {
 }
 
 export const getSettings = state => state.settings.settings;
+
+export const getSettingValues = createSelector(
+    getSettings,
+    (settings) => {
+        const settingValues = {};
+        for (const setting of settings) {
+            settingValues[setting.key] = setting.value;
+        }
+        return settingValues;
+    }
+)
 
 export const getNewVersionAvailable = createSelector(
     getSettings,
@@ -189,13 +223,15 @@ export const getSections = createSelector(
         let settingsByKey = _.groupBy(settings, 'key');
         return SECTIONS.map(function(section) {
             let sectionSettings = section.settings.map(function(setting) {
-                const apiSetting = settingsByKey[setting.key][0];
+                const apiSetting = settingsByKey[setting.key] && settingsByKey[setting.key][0];
                 if (apiSetting) {
                     return {
                         placeholder: apiSetting.default,
                         ...apiSetting,
                         ...setting
                     };
+                } else {
+                    return setting;
                 }
             });
             return {

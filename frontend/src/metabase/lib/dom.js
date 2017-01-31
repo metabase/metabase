@@ -1,4 +1,13 @@
 
+// denotes whether the current page is loaded in an iframe or not
+export const IFRAMED = (function() {
+    try {
+        return window.self !== window.top;
+    } catch (e) {
+        return true;
+    }
+})();
+
 export function isObscured(element, offset) {
     // default to the center of the element
     offset = offset || {

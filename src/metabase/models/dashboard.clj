@@ -10,6 +10,7 @@
                              [permissions :as perms]
                              [revision :as revision])
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
 
@@ -46,10 +47,11 @@
 (u/strict-extend (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties (constantly {:timestamped? true})
-          :types      (constantly {:description :clob, :parameters :json})
-          :pre-delete pre-delete
-          :pre-insert pre-insert})
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:description :clob, :parameters :json})
+          :pre-delete  pre-delete
+          :pre-insert  pre-insert
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:can-read?  can-read?

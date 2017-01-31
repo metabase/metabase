@@ -9,6 +9,7 @@
             [toucan.db :as db]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
 (declare check-403 check-404)
@@ -299,6 +300,12 @@
 
 
 ;;; ------------------------------------------------------------ OTHER HELPER FNS ------------------------------------------------------------
+
+(defn check-public-sharing-enabled
+  "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
+  []
+  (check (public-settings/enable-public-sharing)
+    [400 "Public sharing is not enabled."]))
 
 (defn check-not-archived
   "Check that the OBJECT is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
