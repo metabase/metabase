@@ -3,6 +3,7 @@
   ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
             [toucan.db :as db]
+            [metabase.core :as core]
             [metabase.http-client :as http]
             (metabase.models [permissions-group :as perms-group]
                              [user :refer [User]])
@@ -51,6 +52,9 @@
       :or {superuser false
            active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
+  (when-not (core/initialized?)
+    (println "Metabase is not yet initialized, waiting 5 seconds...")
+    (Thread/sleep 5000))
   (or (User :email email)
       (db/insert! User
         :email        email
