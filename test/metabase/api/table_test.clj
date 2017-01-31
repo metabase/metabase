@@ -1,7 +1,8 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
-            [toucan.db :as db]
+            (toucan [db :as db]
+                    [hydrate :as hydrate])
             [toucan.util.test :as tt]
             (metabase [driver :as driver]
                       [http-client :as http]
@@ -127,7 +128,7 @@
 ;; ## GET /api/table/:id/query_metadata
 (expect
   (merge (table-defaults)
-         (match-$ (Table (id :categories))
+         (match-$ (hydrate/hydrate (Table (id :categories)) :field_values)
            {:schema       "PUBLIC"
             :name         "CATEGORIES"
             :display_name "Categories"
@@ -160,7 +161,8 @@
             :updated_at   $
             :id           (id :categories)
             :raw_table_id $
-            :created_at   $}))
+            :created_at   $
+            :field_values (tu/obj->json->obj (:field_values $$))}))
   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
 
 

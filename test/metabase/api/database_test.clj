@@ -1,6 +1,7 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
+            (toucan [db :as db]
+                    [hydrate :as hydrate])
             [toucan.util.test :as tt]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
@@ -252,7 +253,7 @@
                           :schema                  "PUBLIC"
                           :name                    "CATEGORIES"
                           :display_name            "Categories"
-                          :fields                  [(match-$ (Field (id :categories :id))
+                          :fields                  [(match-$ (hydrate/hydrate (Field (id :categories :id)) :values)
                                                       {:description        nil
                                                        :table_id           (id :categories)
                                                        :caveats            nil
@@ -273,8 +274,8 @@
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
-                                                       :values             []})
-                                                    (match-$ (Field (id :categories :name))
+                                                       :values             $})
+                                                    (match-$ (hydrate/hydrate (Field (id :categories :name)) :values)
                                                       {:description        nil
                                                        :table_id           (id :categories)
                                                        :caveats            nil
@@ -295,7 +296,7 @@
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
-                                                       :values             []})]
+                                                       :values             $})]
                           :segments                []
                           :metrics                 []
                           :rows                    75
