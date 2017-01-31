@@ -1,7 +1,7 @@
 (ns metabase.driver.google-analytics-test
   "Tests for the Google Analytics driver and query processor."
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver.googleanalytics :as ga]
             [metabase.driver.googleanalytics.query-processor :as qp]
             [metabase.models.database :refer [Database]]

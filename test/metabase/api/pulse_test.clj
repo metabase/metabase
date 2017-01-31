@@ -1,8 +1,9 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [http-client :as http]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
@@ -84,7 +85,7 @@
   (for [channel channels]
     (dissoc channel :id :pulse_id :created_at :updated_at)))
 
-(tu/expect-with-temp [Card [card1]
+(tt/expect-with-temp [Card [card1]
                       Card [card2]]
   {:name         "A Pulse"
    :creator_id   (user->id :rasta)
@@ -140,7 +141,7 @@
                                              :cards    [{:id 100} {:id 200}]
                                              :channels ["abc"]}))
 
-(tu/expect-with-temp [Pulse [pulse]
+(tt/expect-with-temp [Pulse [pulse]
                       Card  [card]]
   {:name         "Updated Pulse"
    :creator_id   (user->id :rasta)
@@ -169,7 +170,7 @@
 
 
 ;; ## DELETE /api/pulse/:id
-(tu/expect-with-temp [Pulse [pulse]]
+(tt/expect-with-temp [Pulse [pulse]]
   nil
   (do
     ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
@@ -177,16 +178,16 @@
 
 
 ;; ## GET /api/pulse -- should come back in alphabetical order
-(tu/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
+(tt/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
                       Pulse [pulse2 {:name "GHIJKL"}]]
   [(assoc (pulse-details pulse1) :read_only false)
    (assoc (pulse-details pulse2) :read_only false)]
-  (do (db/cascade-delete! Pulse :id [:not-in #{(:id pulse1)
+  (do (db/delete! Pulse :id [:not-in #{(:id pulse1)
                                                (:id pulse2)}]) ; delete anything else in DB just to be sure; this step may not be neccesary any more
       ((user->client :rasta) :get 200 "pulse")))
 
 
 ;; ## GET /api/pulse/:id
-(tu/expect-with-temp [Pulse [pulse]]
+(tt/expect-with-temp [Pulse [pulse]]
   (pulse-details pulse)
   ((user->client :rasta) :get 200 (str "pulse/" (:id pulse))))

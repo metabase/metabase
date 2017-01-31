@@ -34,7 +34,7 @@
                               (match-$ 1)
                               (merge-with 1)
                               (post-select 1)
-                              (pre-cascade-delete 1)
+                              (pre-delete 1)
                               (pre-insert 1)
                               (pre-update 1)
                               (project 1)

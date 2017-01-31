@@ -1,18 +1,18 @@
 (ns metabase.models.revision-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
+            [toucan.util.test :as tt]
             (metabase.models [card :refer [Card]]
-                             [interface :refer [defentity]]
                              [revision :refer :all])
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [with-temp]]
             [metabase.util :as u]))
 
 (def ^:private reverted-to
   (atom nil))
 
-(defentity ^:private FakedCard :report_card)
+(models/defmodel ^:private FakedCard :report_card)
 
 (extend-type (class FakedCard)
   IRevisioned
@@ -73,7 +73,7 @@
 ;; Test that a newly created Card doesn't have any revisions
 (expect
   []
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (revisions FakedCard card-id)))
 
 ;; Test that we can add a revision
@@ -85,7 +85,7 @@
      :is_reversion false
      :is_creation  false
      :message      "yay!"})]
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day", :message "yay!")
     (for [revision (revisions FakedCard card-id)]
       (dissoc revision :timestamp :id :model_id))))
@@ -105,7 +105,7 @@
            :is_reversion false
            :is_creation  false
            :message      nil})]
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")
     (->> (revisions FakedCard card-id)
@@ -113,7 +113,7 @@
 
 ;; Check that old revisions get deleted
 (expect max-revisions
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     ;; e.g. if max-revisions is 15 then insert 16 revisions
     (dorun (repeatedly (inc max-revisions) #(push-fake-revision card-id, :name "Tips Created by Day")))
     (count (revisions FakedCard card-id))))
@@ -130,7 +130,7 @@
    :diff         {:o1 {:name "Initial Name", :serialized true}
                   :o2 {:name "Modified Name", :serialized true}}
    :description  "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}"}
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Initial Name")
     (push-fake-revision card-id, :name "Modified Name")
     (let [revisions (revisions FakedCard card-id)]
@@ -147,7 +147,7 @@
            :diff         {:o1 nil
                           :o2 {:name "Tips Created by Day", :serialized true}}
            :description  nil})]
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (->> (revisions+details FakedCard card-id)
          (map (u/rpartial dissoc :timestamp :id :model_id)))))
@@ -169,7 +169,7 @@
            :diff         {:o1 nil
                           :o2 {:name "Tips Created by Day", :serialized true}}
            :description  nil})]
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")
     (->> (revisions+details FakedCard card-id)
@@ -179,7 +179,7 @@
 
 ;; Check that revert defers to revert-to-revision!
 (expect {:name "Tips Created by Day"}
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (let [[{revision-id :id}] (revisions FakedCard card-id)]
       (revert! :entity FakedCard, :id card-id, :user-id (user->id :rasta), :revision-id revision-id)
@@ -188,7 +188,7 @@
 ;; Check default impl of revert-to-revision! just does mapply upd
 (expect ["Spots Created By Day"
          "Tips Created by Day"]
-  (with-temp Card [{card-id :id} {:name "Spots Created By Day"}]
+  (tt/with-temp Card [{card-id :id} {:name "Spots Created By Day"}]
     (push-revision! :entity Card, :id card-id, :user-id (user->id :rasta), :object {:name "Tips Created by Day"})
     (push-revision! :entity Card, :id card-id, :user-id (user->id :rasta), :object {:name "Spots Created by Day"})
     [(:name (Card card-id))
@@ -218,7 +218,7 @@
            :is_reversion false
            :is_creation  false
            :message      nil})]
-  (with-temp Card [{card-id :id}]
+  (tt/with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")
     (let [[_ {old-revision-id :id}] (revisions FakedCard card-id)]

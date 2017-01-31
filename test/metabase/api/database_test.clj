@@ -1,7 +1,8 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
@@ -30,7 +31,7 @@
     (try
       (f db)
       (finally
-        (db/cascade-delete! Database :id (:id db))))))
+        (db/delete! Database :id (:id db))))))
 
 (defmacro ^:private expect-with-temp-db-created-via-api {:style/indent 1} [[binding & [options]] expected actual]
   ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
@@ -143,7 +144,7 @@
 (defn- ^:deprecated delete-randomly-created-databases!
   "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
   [& {:keys [skip]}]
-  (db/cascade-delete! Database :id [:not-in (into (set skip)
+  (db/delete! Database :id [:not-in (into (set skip)
                                                   (for [engine datasets/all-valid-engines
                                                         :let   [id (datasets/when-testing-engine engine
                                                                      (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]

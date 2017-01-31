@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as async]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]

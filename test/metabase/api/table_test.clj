@@ -1,8 +1,9 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            (metabase [driver :as driver]
                       [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
@@ -115,7 +116,7 @@
   ((user->client :rasta) :get 200 (format "table/%d" (id :venues))))
 
 ;; GET /api/table/:id should return a 403 for a user that doesn't have read permissions for the table
-(tu/expect-with-temp [Database [{database-id :id}]
+(tt/expect-with-temp [Database [{database-id :id}]
                       Table    [{table-id :id}    {:db_id database-id}]]
   "You don't have permissions to do that."
   (do
@@ -331,7 +332,7 @@
   #{{:name "id", :target false}
     {:name "fk", :target false}}
   ;; create a temp DB with two tables; table-2 has an FK to table-1
-  (tu/with-temp* [Database [db]
+  (tt/with-temp* [Database [db]
                   Table    [table-1    {:db_id (u/get-id db)}]
                   Table    [table-2    {:db_id (u/get-id db)}]
                   Field    [table-1-id {:table_id (u/get-id table-1), :name "id", :base_type :type/Integer, :special_type :type/PK}]
@@ -347,7 +348,7 @@
 
 
 ;; ## PUT /api/table/:id
-(tu/expect-with-temp [Table [table {:rows 15}]]
+(tt/expect-with-temp [Table [table {:rows 15}]]
   (merge (-> (table-defaults)
              (dissoc :segments :field_values :metrics)
              (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))

@@ -6,7 +6,7 @@
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :refer [*current-user-permissions-set*]]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.permissions :as perms]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))

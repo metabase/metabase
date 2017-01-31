@@ -4,20 +4,20 @@
             [schema.core :as s]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard], :as dashboard]
                              [dashboard-card :refer [DashboardCard create-dashboard-card! update-dashboard-card! delete-dashboard-card!]]
-                             [interface :as models]
-                             [hydrate :refer [hydrate]])
+                             [interface :as mi])
             [metabase.models.revision :as revision]
             [metabase.util :as u]
             [metabase.util.schema :as su]))
 
 
 (defn- dashboards-list [filter-option]
-  (filter models/can-read? (-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
+  (filter mi/can-read? (-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
                                                                  :all  true
                                                                  :mine [:= :creator_id *current-user-id*])
                                                      :order-by [:%lower.name]})
@@ -43,7 +43,7 @@
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
-  (if (models/can-read? card)
+  (if (mi/can-read? card)
     card
     (select-keys card [:id])))
 
@@ -79,8 +79,9 @@
   "Delete a `Dashboard`."
   [id]
   (let [dashboard (write-check Dashboard id)]
-    (u/prog1 (db/cascade-delete! Dashboard :id id)
-      (events/publish-event! :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))))
+    (db/delete! Dashboard :id id)
+    (events/publish-event! :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))
+  generic-204-no-content)
 
 
 (defendpoint POST "/:id/cards"
@@ -129,7 +130,7 @@
   (write-check Dashboard id)
   (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (check-500 (delete-dashboard-card! dashboard-card *current-user-id*))
-    {:success true}))
+    {:success true})) ; TODO - why doesn't this return a 204 'No Content' response?
 
 
 (defendpoint GET "/:id/revisions"

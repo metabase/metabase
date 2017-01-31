@@ -6,8 +6,8 @@
             [medley.core :as m]
             (stencil [core :as stencil]
                      [loader :as stencil-loader])
+            [toucan.db :as db]
             (metabase [config :as config]
-                      [db :as db]
                       [email :as email])
             [metabase.models.setting :as setting]
             [metabase.pulse.render :as render]

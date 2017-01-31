@@ -2,7 +2,7 @@
   "Param substitution for *SQL* queries."
   (:require [clojure.string :as s]
             [honeysql.core :as hsql]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.field :refer [Field], :as field]
             [metabase.query-processor.expand :as ql]
             [metabase.util :as u])

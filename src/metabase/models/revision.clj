@@ -1,9 +1,9 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
-            [metabase.db :as db]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [interface :as i]
-                             [user :refer [User]])
+            (toucan [db :as db]
+                    [models :as models]
+                    [hydrate :refer [hydrate]])
+            [metabase.models.user :refer [User]]
             [metabase.models.revision.diff :refer [diff-string]]
             [metabase.util :as u]))
 
@@ -58,14 +58,14 @@
 
 ;;; # Revision Entity
 
-(i/defentity Revision :revision)
+(models/defmodel Revision :revision)
 
 (defn- pre-insert [revision]
   (assoc revision :timestamp (u/new-sql-timestamp)))
 
 (u/strict-extend (class Revision)
-  i/IEntity
-  (merge i/IEntityDefaults
+  models/IModel
+  (merge models/IModelDefaults
          {:types      (constantly {:object :json, :message :clob})
           :pre-insert pre-insert
           :pre-update (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
@@ -88,7 +88,7 @@
 (defn revisions
   "Get the revisions for ENTITY with ID in reverse chronological order."
   [entity id]
-  {:pre [(i/metabase-entity? entity)
+  {:pre [(models/model? entity)
          (integer? id)]}
   (db/select Revision, :model (:name entity), :model_id id, {:order-by [[:id :desc]]}))
 
@@ -105,9 +105,9 @@
 (defn- delete-old-revisions!
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
-  {:pre [(i/metabase-entity? entity) (integer? id)]}
+  {:pre [(models/model? entity) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id], :model (:name entity), :model_id id, {:order-by [[:timestamp :desc]]}))))]
-    (db/cascade-delete! Revision :id [:in old-revisions])))
+    (db/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
   "Record a new `Revision` for ENTITY with ID.
@@ -116,7 +116,7 @@
   [& {object :object,
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
-  {:pre [(i/metabase-entity? entity)
+  {:pre [(models/model? entity)
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? id)
@@ -140,7 +140,7 @@
   "Revert ENTITY with ID to a given `Revision`."
   {:style/indent 0}
   [& {:keys [entity id user-id revision-id]}]
-  {:pre [(i/metabase-entity? entity)
+  {:pre [(models/model? entity)
          (integer? id)
          (db/exists? entity :id id)
          (integer? user-id)

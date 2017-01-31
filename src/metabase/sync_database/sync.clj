@@ -2,8 +2,9 @@
   (:require (clojure [set :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
             (metabase.models [field :refer [Field], :as field]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable], :as raw-table]
@@ -105,7 +106,7 @@
   {:pre [(integer? database-id)]}
   ;; retire tables (and their fields) as needed
   (when-let [table-ids-to-remove (db/select-ids Table
-                                   (db/join [Table :raw_table_id] [RawTable :id])
+                                   (mdb/join [Table :raw_table_id] [RawTable :id])
                                    :db_id database-id
                                    (db/qualify Table :active) true
                                    (db/qualify RawTable :active) false)]
@@ -127,7 +128,7 @@
 
           ;; handle setting any fk relationships
           (when-let [table-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
-                                 (db/join [RawColumn :raw_table_id] [RawTable :id])
+                                 (mdb/join [RawColumn :raw_table_id] [RawTable :id])
                                  (db/qualify RawTable :database_id) database-id
                                  (db/qualify RawTable :id) raw-table-id
                                  (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
@@ -219,7 +220,7 @@
   "Handle setting any FK relationships. This must be done after fully syncing the tables/fields because we need all tables/fields in place."
   [database]
   (when-let [db-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
-                      (db/join [RawColumn :raw_table_id] [RawTable :id])
+                      (mdb/join [RawColumn :raw_table_id] [RawTable :id])
                       (db/qualify RawTable :database_id) (:id database)
                       (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
     (save-fks! db-fks)))

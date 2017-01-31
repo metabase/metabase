@@ -6,8 +6,8 @@
             [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
-            (metabase [db :as db]
-                      [email :as email])
+            [toucan.db :as db]
+            [metabase.email :as email]
             [metabase.email.messages :as messages]
             (metabase.models [activity :refer [Activity]]
                              [setting :as setting]

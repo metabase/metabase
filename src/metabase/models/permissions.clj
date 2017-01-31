@@ -5,10 +5,10 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [schema.core :as s]
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.api.common :refer [*current-user-id*]]
-            [metabase.db :as db]
-            (metabase.models [interface :as i]
-                             [permissions-group :as group]
+            (metabase.models [permissions-group :as group]
                              [permissions-revision :refer [PermissionsRevision] :as perms-revision])
             [metabase.util :as u]
             (metabase.util [honeysql-extensions :as hx]
@@ -169,7 +169,7 @@
 ;;; |                                                                 ENTITY + LIFECYCLE                                                                   |
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-(i/defentity Permissions :permissions)
+(models/defmodel Permissions :permissions)
 
 (defn- pre-insert [permissions]
   (u/prog1 permissions
@@ -179,16 +179,16 @@
 (defn- pre-update [_]
   (throw (Exception. "You cannot update a permissions entry! Delete it and create a new one.")))
 
-(defn- pre-cascade-delete [permissions]
+(defn- pre-delete [permissions]
   (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
   (assert-not-admin-group permissions))
 
 
 (u/strict-extend (class Permissions)
-  i/IEntity (merge i/IEntityDefaults
+  models/IModel (merge models/IModelDefaults
                    {:pre-insert         pre-insert
                     :pre-update         pre-update
-                    :pre-cascade-delete pre-cascade-delete}))
+                    :pre-delete pre-delete}))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -322,7 +322,7 @@
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/get-id group-or-id) revoked))
-      (db/cascade-delete! Permissions where))))
+      (db/delete! Permissions where))))
 
 (defn revoke-permissions!
   "Revoke all permissions for GROUP-OR-ID to object with PATH-COMPONENTS, *including* related permissions."

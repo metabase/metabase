@@ -1,4 +1,4 @@
 (ns metabase.models.pulse-card
-  (:require [metabase.models.interface :as i]))
+  (:require [toucan.models :as models]))
 
-(i/defentity PulseCard :pulse_card)
+(models/defmodel PulseCard :pulse_card)

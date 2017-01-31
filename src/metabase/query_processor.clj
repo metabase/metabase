@@ -6,9 +6,9 @@
             (schema [core :as s]
                     utils)
             [swiss.arrows :refer [<<-]]
+            [toucan.db :as db]
             [metabase.api.common :refer [*current-user-id*]]
             (metabase [config :as config]
-                      [db :as db]
                       [driver :as driver])
             [metabase.models.database :as database]
             (metabase.models [field :refer [Field]]

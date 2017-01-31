@@ -5,7 +5,7 @@
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [schema.core :as schema]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.db.metadata-queries :as queries]
             [metabase.driver :as driver]
             (metabase.models [field :as field]

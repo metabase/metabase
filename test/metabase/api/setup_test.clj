@@ -1,7 +1,7 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.http-client :as http]
             (metabase.models [session :refer [Session]]
                              [setting :as setting]

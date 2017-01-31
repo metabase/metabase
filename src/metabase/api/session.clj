@@ -8,7 +8,7 @@
             [schema.core :as s]
             [throttle.core :as throttle]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.email.messages :as email]
             [metabase.events :as events]
             (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!], :as user]
@@ -59,7 +59,8 @@
   [session_id]
   {session_id su/NonBlankString}
   (check-exists? Session session_id)
-  (db/cascade-delete! Session, :id session_id))
+  (db/delete! Session :id session_id)
+  generic-204-no-content)
 
 ;; Reset tokens:
 ;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.

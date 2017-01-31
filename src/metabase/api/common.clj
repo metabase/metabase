@@ -6,9 +6,9 @@
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
             [medley.core :as m]
+            [toucan.db :as db]
             [metabase.api.common.internal :refer :all]
-            [metabase.db :as db]
-            [metabase.models.interface :as models]
+            [metabase.models.interface :as mi]
             [metabase.util :as u]))
 
 (declare check-403 check-404)
@@ -209,6 +209,10 @@
 (defmacro ->500     "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->`."  [& body] `(api->     ~generic-500 ~@body))
 (defmacro ->>500    "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-500 ~@body))
 
+(def ^:const generic-204-no-content
+  "A 'No Content' response for `DELETE` endpoints to return."
+  {:status 204, :body nil})
+
 
 ;;; ------------------------------------------------------------ DEFENDPOINT AND RELATED FUNCTIONS ------------------------------------------------------------
 
@@ -272,7 +276,7 @@
   {:style/indent 2}
   ([obj]
    (check-404 obj)
-   (check-403 (models/can-read? obj))
+   (check-403 (mi/can-read? obj))
    obj)
   ([entity id]
    (read-check (entity id)))
@@ -286,7 +290,7 @@
   {:style/indent 2}
   ([obj]
    (check-404 obj)
-   (check-403 (models/can-write? obj))
+   (check-403 (mi/can-write? obj))
    obj)
   ([entity id]
    (write-check (entity id)))

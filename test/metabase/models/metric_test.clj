@@ -1,7 +1,8 @@
 (ns metabase.models.metric-test
   (:require [expectations :refer :all]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]
             (metabase.models [database :refer [Database]]
-                             [hydrate :refer :all]
                              [metric :refer :all, :as metric]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
@@ -39,7 +40,7 @@
    :points_of_interest      nil
    :is_active               true
    :definition              {:clause ["a" "b"]}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]}      {:db_id database-id}]]
     (create-metric-then-select! id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
 
@@ -48,7 +49,7 @@
 (expect
   [true
    false]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-id :id}   {:table_id   table-id
                                                :definition {:database 45
@@ -70,7 +71,7 @@
    :is_active               true
    :definition              {:database 45
                              :query    {:filter ["yay"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-id :id}   {:table_id    table-id
                                                :definition  {:database 45
@@ -92,7 +93,7 @@
     :points_of_interest      nil
     :is_active               true
     :definition              {}}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]
                   Table    [{table-id-2 :id}    {:db_id database-id}]
                   Metric   [{segement-id-1 :id} {:table_id table-id-1, :name "Metric 1", :description nil}]
@@ -123,7 +124,7 @@
    :is_active               true
    :definition              {:database 2
                              :query    {:filter ["not" "the toucans you're looking for"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table  [{table-id :id}  {:db_id database-id}]
                   Metric [{metric-id :id} {:table_id table-id}]]
     (update-metric-then-select! {:id                      metric-id
@@ -151,7 +152,7 @@
    :points_of_interest      nil
    :is_active               false
    :definition              {}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}  {:db_id database-id}]
                   Metric   [{metric-id :id} {:table_id table-id}]]
     (delete-metric! metric-id (user->id :crowberto) "revision message")
@@ -176,7 +177,7 @@
    :definition              {:aggregation ["count"]
                              :filter      ["AND" [">" 4 "2014-10-19"]]}
    :is_active               true}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
                                             :definition {:aggregation ["count"]
@@ -194,7 +195,7 @@
                  :after  "BBB"}
    :name        {:before "Toucans in the rainforest"
                  :after  "Something else"}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
                                             :definition {:filter ["AND" [">" 4 "2014-10-19"]]}}]]

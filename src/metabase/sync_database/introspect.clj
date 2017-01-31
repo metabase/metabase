@@ -3,8 +3,8 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [schema.core :as schema]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [metabase.driver :as driver]
             (metabase.models [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]])
             [metabase.sync-database.interface :as i]

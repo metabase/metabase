@@ -1,6 +1,7 @@
 (ns metabase.models.collection-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             (metabase.models [card :refer [Card]]
                              [collection :refer [Collection]])
             [metabase.test.util :as tu]
@@ -13,7 +14,7 @@
    :description nil
    :color       "#ABCDEF"
    :archived    false}
-  (tu/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
+  (tt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]
     (dissoc collection :id)))
 
 ;; check that the color is validated
@@ -26,27 +27,27 @@
 ;; double-check that `with-temp-defaults` are working correctly for Collection
 (expect
   :ok
-  (tu/with-temp* [Collection [_]]
+  (tt/with-temp* [Collection [_]]
     :ok))
 
 ;; test that duplicate names aren't allowed
 (expect
   Exception
-  (tu/with-temp* [Collection [_ {:name "My Favorite Cards"}]
+  (tt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
                   Collection [_ {:name "My Favorite Cards"}]]
     :ok))
 
 ;; things with different names that would cause the same slug shouldn't be allowed either
 (expect
   Exception
-  (tu/with-temp* [Collection [_ {:name "My Favorite Cards"}]
+  (tt/with-temp* [Collection [_ {:name "My Favorite Cards"}]
                   Collection [_ {:name "my_favorite Cards"}]]
     :ok))
 
 ;; check that archiving a collection archives its cards as well
 (expect
   true
-  (tu/with-temp* [Collection [collection]
+  (tt/with-temp* [Collection [collection]
                   Card       [card       {:collection_id (u/get-id collection)}]]
     (db/update! Collection (u/get-id collection)
       :archived true)
@@ -55,7 +56,7 @@
 ;; check that unarchiving a collection unarchives its cards as well
 (expect
   false
-  (tu/with-temp* [Collection [collection {:archived true}]
+  (tt/with-temp* [Collection [collection {:archived true}]
                   Card       [card       {:collection_id (u/get-id collection), :archived true}]]
     (db/update! Collection (u/get-id collection)
       :archived false)
@@ -64,12 +65,12 @@
 ;; check that collections' names cannot be blank
 (expect
   Exception
-  (tu/with-temp Collection [collection {:name ""}]
+  (tt/with-temp Collection [collection {:name ""}]
     collection))
 
 ;; check we can't change the name of a Collection to a blank string
 (expect
   Exception
-  (tu/with-temp Collection [collection]
+  (tt/with-temp Collection [collection]
     (db/update! Collection (u/get-id collection)
       :name "")))

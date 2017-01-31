@@ -1,7 +1,7 @@
 (ns metabase.public-settings
   (:require [clojure.string :as s]
-            (metabase [config :as config]
-                      [db :as db])
+            [toucan.db :as db]
+            [metabase.config :as config]
             (metabase.models [common :as common]
                              [setting :refer [defsetting], :as setting])
             [metabase.types :as types]

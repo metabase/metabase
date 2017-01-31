@@ -2,10 +2,10 @@
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cemerick.friend.credentials :as creds]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.email.messages :as email]
-            (metabase.models [interface :as i]
-                             [permissions :as perms]
+            (metabase.models [permissions :as perms]
                              [permissions-group :as perm-group]
                              [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
                              [setting :as setting])
@@ -15,7 +15,7 @@
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 
-(i/defentity User :core_user)
+(models/defmodel User :core_user)
 
 (defn- pre-insert [{:keys [email password reset_token] :as user}]
   (assert (u/is-email? email)
@@ -63,7 +63,7 @@
                                          :group_id (:id (group/admin))
                                          :user_id  id)
         (and (not is_superuser)
-             membership-exists?)       (db/delete! PermissionsGroupMembership ; don't use cascade-delete! here because that does the opposite and tries to update this user
+             membership-exists?)       (db/simple-delete! PermissionsGroupMembership ; don't use cascade-delete! here because that does the opposite and tries to update this user
                                          :group_id (:id (group/admin))         ; which leads to a stack overflow of calls between the two
                                          :user_id  id))))                      ; TODO - we could fix this issue by having a `post-cascade-delete!` method
   (when email
@@ -75,7 +75,7 @@
   (cond-> user
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
-(defn- pre-cascade-delete [{:keys [id]}]
+(defn- pre-delete [{:keys [id]}]
   (binding [perm-membership/*allow-changing-all-users-group-members* true]
     (doseq [[model k] [['Activity                   :user_id]
                        ['Card                       :creator_id]
@@ -89,18 +89,18 @@
                        [PermissionsGroupMembership :user_id]
                        ['PermissionsRevision        :user_id]
                        ['ViewLog                    :user_id]]]
-      (db/cascade-delete! model k id))))
+      (db/delete! model k id))))
 
 (u/strict-extend (class User)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:default-fields     (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
-          :hydration-keys     (constantly [:author :creator :user])
-          :pre-insert         pre-insert
-          :post-insert        post-insert
-          :pre-update         pre-update
-          :post-select        post-select
-          :pre-cascade-delete pre-cascade-delete}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:default-fields (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+          :hydration-keys (constantly [:author :creator :user])
+          :pre-insert     pre-insert
+          :post-insert    post-insert
+          :pre-update     pre-update
+          :post-select    post-select
+          :pre-delete     pre-delete}))
 
 
 ;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
