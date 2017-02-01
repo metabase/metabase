@@ -208,7 +208,7 @@
 (def ^:private DBPermissionsGraph
   {(s/optional-key :native)  NativePermissionsGraph
    (s/optional-key :schemas) (s/cond-pre (s/enum :all :none)
-                                         {(s/maybe s/Str) SchemaPermissionsGraph})})
+                                         {s/Str SchemaPermissionsGraph})})
 
 (def ^:private GroupPermissionsGraph
   {su/IntGreaterThanZero DBPermissionsGraph})
@@ -268,7 +268,7 @@
     :all  :all
     :none :none
     :some (into {} (for [table tables]
-                     {(:id table) (permissions-for-path permissions-set (table->table-object-path table))}))))
+                     {(u/get-id table) (permissions-for-path permissions-set (table->table-object-path table))}))))
 
 (s/defn ^:private db-graph :- DBPermissionsGraph [permissions-set tables]
   {:native  (case (permissions-for-path permissions-set (table->native-readwrite-path (first tables)))
@@ -278,8 +278,9 @@
    :schemas (case (permissions-for-path permissions-set (table->all-schemas-path (first tables)))
               :all  :all
               :none :none
-              (m/map-vals (partial schema-graph permissions-set)
-                          (group-by :schema tables)))})
+              (into {} (for [[schema tables] (group-by :schema tables)]
+                         ;; if schema is nil, replace it with an empty string, since that's how it will get encoded in JSON :D
+                         {(str schema) (schema-graph permissions-set tables)})))})
 
 (s/defn ^:private group-graph :- GroupPermissionsGraph [permissions-set tables]
   (m/map-vals (partial db-graph permissions-set)
