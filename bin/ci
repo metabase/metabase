@@ -19,7 +19,7 @@ node-1() {
         run_step lein-test
 }
 node-2() {
-    is_enabled "drivers" && export ENGINES="h2,postgres,sqlite,crate" || export ENGINES="h2"
+    is_enabled "drivers" && export ENGINES="h2,postgres,sqlite" || export ENGINES="h2"
     if is_engine_enabled "crate"; then
         run_step install-crate
     fi
