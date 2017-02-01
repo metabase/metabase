@@ -23,7 +23,6 @@
                               (execute-query 1)
                               (execute-sql! 2)
                               (expect 0)
-                              (expect-when-testing-engine 1)
                               (expect-with-all-engines 0)
                               (expect-with-engine 1)
                               (expect-with-engines 1)
