@@ -13,6 +13,7 @@
                              [permissions :as perms]
                              [revision :as revision]
                              [user :as user])
+            [metabase.public-settings :as public-settings]
             [metabase.query :as q]
             [metabase.query-processor :as qp]
             [metabase.query-processor.permissions :as qp-perms]
@@ -154,7 +155,8 @@
           :properties     (constantly {:timestamped? true})
           :pre-update     (comp populate-query-fields pre-update)
           :pre-insert     (comp populate-query-fields pre-insert)
-          :pre-delete     pre-delete})
+          :pre-delete     pre-delete
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults

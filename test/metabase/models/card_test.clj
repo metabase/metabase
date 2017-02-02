@@ -134,3 +134,17 @@
                   DashboardCard [dashcard  {:dashboard_id (u/get-id dashboard), :card_id (u/get-id card)}]]
     (db/update! Card (u/get-id card) :archived true)
     (db/count DashboardCard :dashboard_id (u/get-id dashboard))))
+
+
+;; test that a Card's :public_uuid comes back if public sharing is enabled...
+(expect
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [card {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (boolean (:public_uuid card)))))
+
+;; ...but if public sharing is *disabled* it should come back as `nil`
+(expect
+  nil
+  (tu/with-temporary-setting-values [enable-public-sharing false]
+    (tt/with-temp Card [card {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (:public_uuid card))))

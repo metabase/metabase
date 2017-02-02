@@ -29,8 +29,13 @@
   (or (zero? (count uri))
       (not (or (re-matches #"^/app/.*$" uri)
                (re-matches #"^/api/.*$" uri)
+               (re-matches #"^/public/.*$" uri)
                (re-matches #"^/favicon.ico$" uri)))))
 
+(defn- public?
+  "Is this ring request one that will serve `public.html`?"
+  [{:keys [uri]}]
+  (re-matches #"^/public/.*$" uri))
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
@@ -178,7 +183,8 @@
                                                                     "*.intercom.io"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
-                                                      :frame-src   ["https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
+                                                      :frame-src   ["'self'"
+                                                                    "https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
@@ -210,13 +216,14 @@
          strict-transport-security-header
          #_(public-key-pins-header)))
 
-(defn- index-page-security-headers []
+(defn- html-page-security-headers [& {:keys [allow-iframes?] }]
   (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
          #_(public-key-pins-header)
-         {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
-          "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
+         (when-not allow-iframes?
+           {"X-Frame-Options"                 "DENY"})        ; Tell browsers not to render our site as an iframe (prevent clickjacking)
+         {"X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
           "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.
           "X-Content-Type-Options"            "nosniff"}))    ; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
 
@@ -227,7 +234,8 @@
     (let [response (handler request)]
       (update response :headers merge (cond
                                         (api-call? request) (api-security-headers)
-                                        (index? request)    (index-page-security-headers))))))
+                                        (public? request)   (html-page-security-headers, :allow-iframes? true)
+                                        (index? request)    (html-page-security-headers))))))
 
 
 ;;; # ------------------------------------------------------------ JSON SERIALIZATION CONFIG ------------------------------------------------------------

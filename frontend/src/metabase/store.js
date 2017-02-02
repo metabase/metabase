@@ -17,9 +17,7 @@ if (DEBUG) {
     middleware.push(logger());
 }
 
-import reducers from './reducers';
-
-export function getStore(history, intialState) {
+export function getStore(reducers, history, intialState) {
     const reducer = combineReducers({
         ...reducers,
         form,

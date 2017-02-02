@@ -9,6 +9,7 @@ export type CardId = number;
 export type Card = {
     id: CardId,
     name: ?string,
+    description: ?string,
     dataset_query: DatasetQuery,
     display: string,
     visualization_settings: VisualizationSettings

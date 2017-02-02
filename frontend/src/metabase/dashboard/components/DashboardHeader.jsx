@@ -11,9 +11,12 @@ import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import DashboardShareWidget from "../containers/DashboardShareWidget";
 
 import ParametersPopover from "./parameters/ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
+
+import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 
@@ -30,6 +33,7 @@ export default class DashboardHeader extends Component {
     static propTypes = {
         dashboard: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
+        isEditable: PropTypes.bool.isRequired,
         isEditing: PropTypes.bool.isRequired,
         isFullscreen: PropTypes.bool.isRequired,
         isNightMode: PropTypes.bool.isRequired,
@@ -125,18 +129,19 @@ export default class DashboardHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { dashboard, parameters, isEditing, isFullscreen, isNightMode } = this.props;
+        const { dashboard, parameters, isEditing, isFullscreen, isNightMode, isEditable, isAdmin } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
-        const canEdit = !!dashboard;
+        const canEdit = isEditable && !!dashboard;
+
+        const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
 
         const buttons = [];
 
         if (isFullscreen && parameters) {
-            buttons.push(...parameters);
+            buttons.push(parameters);
         }
 
         if (isEditing) {
-
             // Parameters
             buttons.push(
                 <span>
@@ -223,6 +228,12 @@ export default class DashboardHeader extends Component {
             );
         }
 
+        if (!isFullscreen && isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) {
+            buttons.push(
+                <DashboardShareWidget dashboard={dashboard} isAdmin={isAdmin} />
+            )
+        }
+
         if (!isEditing && !isEmpty) {
             buttons.push(
                 <RefreshWidget data-metabase-event="Dashboard;Refresh Menu Open" className="text-brand-hover" key="refresh" period={this.props.refreshPeriod} elapsed={this.props.refreshElapsed} onChangePeriod={this.props.setRefreshPeriod} />
@@ -269,7 +280,7 @@ export default class DashboardHeader extends Component {
                 setItemAttributeFn={this.props.setDashboardAttribute}
                 headerModalMessage={this.props.isEditingParameter ?
                     "Select the field that should be filtered for each card" : null}
-                onHeaderModalDone={() => this.props.setEditingParameterId(null)}
+                onHeaderModalDone={() => this.props.setEditingParameter(null)}
             >
             </Header>
         );

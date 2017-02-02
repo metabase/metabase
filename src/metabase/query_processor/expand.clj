@@ -501,3 +501,14 @@
   `(-> {}
        ~@body
        expand-inner))
+
+
+;;; ------------------------------------------------------------ Other Helper Fns ------------------------------------------------------------
+
+(defn is-clause?
+  "Check to see whether CLAUSE is an instance of the clause named by normalized CLAUSE-KEYWORD.
+
+     (is-clause? :field-id [\"FIELD-ID\" 2000]) ; -> true"
+  [clause-keyword clause]
+  (core/and (sequential? clause)
+            (core/= (normalize-token (first clause)) clause-keyword)))

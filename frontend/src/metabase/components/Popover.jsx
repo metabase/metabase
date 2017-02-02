@@ -87,7 +87,11 @@ export default class Popover extends Component {
     _popoverComponent() {
         return (
             <OnClickOutsideWrapper handleDismissal={this.handleDismissal} dismissOnEscape={this.props.dismissOnEscape} dismissOnClickOutside={this.props.dismissOnClickOutside}>
-                <div id={this.props.id} className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
+                <div
+                    id={this.props.id}
+                    className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}
+                    style={this.props.style}
+                >
                     { typeof this.props.children === "function" ?
                         this.props.children()
                     :

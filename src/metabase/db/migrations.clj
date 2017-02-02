@@ -31,6 +31,7 @@
                              [table :refer [Table] :as table]
                              [setting :as setting]
                              [user :refer [User]])
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
 ;;; # Migration Helpers
@@ -319,3 +320,10 @@
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
     :special_type nil))
+
+;; make sure there are no trailing slashes on the `-site-url` setting. This could be the case in some situtations if the setting was set
+;; by some other method besides the `site-url` helper function before the magic setter was in place
+(defmigration ^{:atuhor "camsaul", :added "0.23.0"} remove-trailing-slashes-from-site-url-setting
+  ;; just fetching the setting and setting it again via the magic setter will remove the trailing slash
+  (when-let [site-url (public-settings/-site-url)]
+    (public-settings/-site-url site-url)))

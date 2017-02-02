@@ -9,6 +9,7 @@
             (metabase.models [card :refer [Card]]
                              [collection :refer [Collection]]
                              [dashboard :refer [Dashboard]]
+                             [dashboard-card-series :refer [DashboardCardSeries]]
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [metric :refer [Metric]]
@@ -119,6 +120,10 @@
   test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
                                 :name         (random-name)})})
+
+(u/strict-extend (class DashboardCardSeries)
+  test/WithTempDefaults
+  {:with-temp-defaults (constantly {:position 0})})
 
 (u/strict-extend (class Database)
   test/WithTempDefaults

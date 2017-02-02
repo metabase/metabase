@@ -39,7 +39,9 @@
    :display                "table"
    :visualization_settings {}
    :collection_id          nil
-   :archived               false})
+   :archived               false
+   :public_uuid            nil
+   :made_public_by_id      nil})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil

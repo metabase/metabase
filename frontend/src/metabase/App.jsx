@@ -21,9 +21,9 @@ export default class App extends Component {
         return (
             <div className="spread flex flex-column">
                 <Navbar location={location} className="flex-no-shrink" />
-                { errorPage === 403 ?
+                { errorPage && errorPage.status === 403 ?
                     <Unauthorized />
-                : errorPage === 404 ?
+                : errorPage && errorPage.status === 404 ?
                     <NotFound />
                 :
                     children

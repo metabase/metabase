@@ -84,7 +84,7 @@ export default class NewUserOnboardingModal extends Component {
                             {this.renderStep()}
                             <span className="flex-align-right">
                                 <a className="text-underline-hover cursor-pointer mr3" onClick={() => (this.closeModal())}>skip for now</a>
-                                <Link to="/q?tutorial" className="Button Button--primary">Let's do it!</Link>
+                                <Link to="/q#?tutorial" className="Button Button--primary">Let's do it!</Link>
                             </span>
                         </div>
                     </div>

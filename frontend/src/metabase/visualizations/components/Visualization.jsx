@@ -63,6 +63,13 @@ type Props = {
     // misc
     onUpdateWarnings: (string[]) => void,
     onOpenChartSettings: () => void,
+
+    // number of grid cells wide and tall
+    gridSize?: { width: number, height: number },
+    // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
+    gridUnit?: number,
+
+    linkToCard?: bool,
 }
 
 type State = {
@@ -99,6 +106,7 @@ export default class Visualization extends Component<*, Props, State> {
     static defaultProps = {
         isDashboard: false,
         isEditing: false,
+        linkToCard: true,
         onUpdateVisualizationSettings: (...args) => console.warn("onUpdateVisualizationSettings", args)
     };
 
@@ -169,7 +177,7 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     render() {
-        const { actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
+        const { actionButtons, className, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, linkToCard } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -228,6 +236,14 @@ export default class Visualization extends Component<*, Props, State> {
             </span>
         );
 
+        let { gridSize, gridUnit } = this.props;
+        if (!gridSize && gridUnit) {
+            gridSize = {
+                width: Math.round(width / (gridUnit * 4)),
+                height: Math.round(height / (gridUnit * 3)),
+            };
+        }
+
         return (
             <div className={cx(className, "flex flex-column")}>
                 { isDashboard && (settings["card.title"] || extra) && (loading || error || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
@@ -243,6 +259,7 @@ export default class Visualization extends Component<*, Props, State> {
                             }
                             actionButtons={extra}
                             settings={settings}
+                            linkToCard={linkToCard}
                         />
                     </div>
                 : null
@@ -308,6 +325,8 @@ export default class Visualization extends Component<*, Props, State> {
                         onHoverChange={this.onHoverChange}
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
+                        gridSize={gridSize}
+                        linkToCard={linkToCard}
                     />
                 }
             </div>

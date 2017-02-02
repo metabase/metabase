@@ -97,7 +97,7 @@
      :parser            Function that should be used to parse args"
   {:int  {:route-param-regex #"[0-9]+"
           :parser            'metabase.api.common.internal/parse-int}
-   :uuid {:route-param-regex #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+   :uuid {:route-param-regex u/uuid-regex
           :parser            nil}})
 
 (def ^:private ^:const  auto-parse-arg-name-patterns

@@ -15,6 +15,7 @@
                           [metric :as metric]
                           [notify :as notify]
                           [permissions :as permissions]
+                          [public :as public]
                           [pulse :as pulse]
                           [revision :as revision]
                           [segment :as segment]
@@ -54,6 +55,7 @@
   (context "/metric"          [] (+auth metric/routes))
   (context "/notify"          [] (+apikey notify/routes))
   (context "/permissions"     [] (+auth permissions/routes))
+  (context "/public"          [] public/routes)
   (context "/pulse"           [] (+auth pulse/routes))
   (context "/revision"        [] (+auth revision/routes))
   (context "/segment"         [] (+auth segment/routes))

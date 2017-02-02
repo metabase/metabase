@@ -38,6 +38,7 @@ export default class DashCard extends Component {
         parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
+        linkToCard: PropTypes.bool,
     };
 
     async componentDidMount() {
@@ -73,7 +74,7 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
+        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove, linkToCard } = this.props;
 
         const mainCard = {
             ...dashcard.card,
@@ -138,6 +139,7 @@ export default class DashCard extends Component {
                     }
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
+                    linkToCard={linkToCard}
                 />
             </div>
         );
