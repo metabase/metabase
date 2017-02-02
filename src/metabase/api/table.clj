@@ -76,15 +76,14 @@
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
   (read-check Table id)
-  (let [field-ids (db/select-ids Field, :table_id id, :visibility_type [:not= "retired"])]
-    (when (seq field-ids)
-      (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids])]
-        ;; it's silly to be hydrating some of these tables/dbs
-        {:relationship   :Mt1
-         :origin_id      (:id origin-field)
-         :origin         (hydrate origin-field [:table :db])
-         :destination_id (:fk_target_field_id origin-field)
-         :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)}))))
+  (when-let [field-ids (seq (db/select-ids Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
+    (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids], :active true)]
+      ;; it's silly to be hydrating some of these tables/dbs
+      {:relationship   :Mt1
+       :origin_id      (:id origin-field)
+       :origin         (hydrate origin-field [:table :db])
+       :destination_id (:fk_target_field_id origin-field)
+       :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)})))
 
 
 (define-routes)
