@@ -1,8 +1,12 @@
 (ns metabase.models.permissions-test
   (:require [expectations :refer :all]
+            [toucan.db :as db]
             [toucan.util.test :as tt]
-            (metabase.models [permissions :as perms]
-                             [permissions-group :refer [PermissionsGroup]])
+            (metabase.models [database :refer [Database]]
+                             [permissions :as perms]
+                             [permissions-group :refer [PermissionsGroup]]
+                             [permissions-group-membership :refer [PermissionsGroupMembership]]
+                             [table :refer [Table]])
             [metabase.test.data :as data]
             [metabase.test.util :as tu]
             [metabase.util :as u]))
@@ -505,7 +509,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                 TODO - Permissions Graph Tests                                                                 |
+;;; |                                                                    Permissions Graph Tests                                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 (defn- test-data-graph [group]
@@ -523,3 +527,16 @@
      (do
        (perms/update-graph! [(u/get-id group) (data/id) :schemas "PUBLIC" (data/id :categories)] :all)
        (test-data-graph group))]))
+
+;;; Make sure that the graph functions work correctly for DBs with no schemas
+;; See https://github.com/metabase/metabase/issues/4000
+(tt/expect-with-temp [PermissionsGroup [group]
+                      Database         [database]
+                      Table            [table    {:db_id (u/get-id database)}]]
+  {"" {(u/get-id table) :all}}
+  (do
+    ;; try to grant idential permissions to the table twice
+    (perms/update-graph! [(u/get-id group) (u/get-id database) :schemas] {"" {(u/get-id table) :all}})
+    (perms/update-graph! [(u/get-id group) (u/get-id database) :schemas] {"" {(u/get-id table) :all}})
+    ;; now fetch the perms that have been granted
+    (get-in (perms/graph) [:groups (u/get-id group) (u/get-id database) :schemas])))

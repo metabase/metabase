@@ -60,7 +60,10 @@
 
 (declare client)
 
-(defn authenticate [{:keys [email password] :as credentials}]
+(defn authenticate
+  "Authenticate a test user with EMAIL and PASSWORD, returning their Metabase Session token;
+   or throw an Exception if that fails."
+  [{:keys [email password], :as credentials}]
   {:pre [(string? email) (string? password)]}
   (println "Authenticating" email) ; DEBUG
   (try
