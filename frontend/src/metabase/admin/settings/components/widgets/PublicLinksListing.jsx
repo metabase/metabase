@@ -5,6 +5,7 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
+import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { CardApi, DashboardApi } from "metabase/services";
@@ -90,11 +91,16 @@ export default class PublicLinksListing extends Component<*, Props, State> {
                                     </ExternalLink>
                                 </td>
                                 <td className="flex layout-centered">
-                                    <Icon
-                                        name="close"
-                                        className="text-grey-2 text-grey-4-hover cursor-pointer"
-                                        onClick={() => this.revoke(link)}
-                                    />
+                                    <Confirm
+                                        title="Disable this link?"
+                                        content="They won't work any more, and can't be restored, but you can create new links."
+                                        action={() => this.revoke(link)}
+                                    >
+                                        <Icon
+                                            name="close"
+                                            className="text-grey-2 text-grey-4-hover cursor-pointer"
+                                        />
+                                    </Confirm>
                                 </td>
                             </tr>
                         ) }
