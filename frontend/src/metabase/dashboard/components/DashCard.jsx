@@ -15,6 +15,12 @@ import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
 
+const HEADER_ICON_SIZE = 16;
+
+const HEADER_ACTION_STYLE = {
+    padding: 4
+};
+
 export default class DashCard extends Component {
     constructor(props, context) {
         super(props, context);
@@ -139,7 +145,7 @@ export default class DashCard extends Component {
 }
 
 const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisualizationSettings }) =>
-    <span className="DashCard-actions flex align-center">
+    <span className="DashCard-actions flex align-center" style={{ lineHeight: 1 }}>
         { getVisualizationRaw(series).CardVisualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
@@ -152,8 +158,8 @@ const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisu
 const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     <ModalWithTrigger
         wide tall
-        triggerElement={<Icon name="gear" />}
-        triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer mr1 flex align-center flex-no-shrink"
+        triggerElement={<Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />}
+        triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer flex align-center flex-no-shrink"
     >
         <ChartSettings
             series={series}
@@ -163,19 +169,26 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     </ModalWithTrigger>
 
 const RemoveButton = ({ onRemove }) =>
-    <a className="text-grey-2 text-grey-4-hover expand-clickable" data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
-        <Icon name="close" size={14} />
+    <a className="text-grey-2 text-grey-4-hover " data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove} style={HEADER_ACTION_STYLE}>
+        <Icon name="close" size={HEADER_ICON_SIZE} />
     </a>
 
 const AddSeriesButton = ({ series, onAddSeries }) =>
     <a
         data-metabase-event={"Dashboard;Edit Series Modal;open"}
-        className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative"
+        className="text-grey-2 text-grey-4-hover cursor-pointer h3 flex-no-shrink relative"
         onClick={onAddSeries}
+        style={HEADER_ACTION_STYLE}
     >
-        <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" size={8} />
-        <Icon name={getSeriesIconName(series)} size={12} />
-        <span className="flex-no-shrink">{ series.length > 1 ? "Edit" : "Add" }</span>
+        <span className="flex align-center">
+            <span className="flex" style={{ marginRight: 1 }}>
+                <Icon className="absolute" name="add" style={{ top: 0, left: 0 }} size={HEADER_ICON_SIZE / 2} />
+                <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE} />
+            </span>
+            <span className="flex-no-shrink text-bold">
+                { series.length > 1 ? "Edit" : "Add" }
+            </span>
+        </span>
     </a>
 
 function getSeriesIconName(series) {
