@@ -123,7 +123,7 @@
   {:style/indent 1}
   ^String [sql params]
   {:pre [(string? sql) (seq sql) (u/maybe? map? params)]}
-  (loop [s sql, [[match optional] & more] (re-seq #"\[\[([^\]]+)\]\]" sql)]
+  (loop [s sql, [[match optional] & more] (re-seq #"\[\[(.+?)\]\]" sql)]
     (if-not match
       (s/trim (handle-simple s params))
       (let [s (s/replace-first s match (handle-optional optional params))]

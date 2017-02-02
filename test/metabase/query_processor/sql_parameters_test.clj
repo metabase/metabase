@@ -145,6 +145,14 @@
   (substitute "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
     {:num_toucans 5}))
 
+;; Make sure that substiutions still work if the subsitution contains brackets inside it (#3657)
+(expect
+  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
+  ((resolve 'metabase.query-processor.sql-parameters/substitute)
+   "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
+   {:foobar_id 100}))
+
+
 ;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
 
 (tu/resolve-private-vars metabase.query-processor.sql-parameters value-for-tag)
