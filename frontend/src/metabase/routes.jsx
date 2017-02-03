@@ -2,7 +2,8 @@
 
 import React, { Component, PropTypes } from "react";
 
-import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
+import { Route } from "metabase/hoc/Title";
+import { Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
@@ -105,7 +106,7 @@ const IsAdmin = MetabaseIsSetup(UserIsAuthenticated(UserIsAdmin(({ children }) =
 const IsNotAuthenticated = MetabaseIsSetup(UserIsNotAuthenticated(({ children }) => children));
 
 export const getRoutes = (store) =>
-    <Route component={App}>
+    <Route title="Metabase" component={App}>
         {/* SETUP */}
         <Route path="/setup" component={SetupApp} onEnter={(nextState, replace) => {
             if (!MetabaseSettings.hasSetupToken()) {
