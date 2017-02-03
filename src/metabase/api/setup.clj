@@ -101,7 +101,7 @@
   (let [has-dbs?           (db/exists? Database, :is_sample false)
         has-dashboards?    (db/exists? 'Dashboard)
         has-pulses?        (db/exists? 'Pulse)
-        has-labels?        (db/exists? 'Label)
+        has-collections?   (db/exists? 'Collection)
         has-hidden-tables? (db/exists? 'Table, :visibility_type [:not= nil])
         has-metrics?       (db/exists? 'Metric)
         has-segments?      (db/exists? 'Segment)
@@ -142,9 +142,9 @@
       :triggered   (>= num-tables 20)}
      {:title       "Organize questions"
       :group       "Curate your data"
-      :description "Have a lot of saved questions in Metabase? Create labels to help manage them and add context."
-      :link        "/questions/all"
-      :completed   has-labels?
+      :description "Have a lot of saved questions in Metabase? Create collections to help manage them and add context."
+      :link        "/questions/"
+      :completed   has-collections?
       :triggered   (>= num-cards 30)}
      {:title       "Create metrics"
       :group       "Curate your data"
