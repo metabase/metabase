@@ -1,0 +1,85 @@
+import React, { Component, PropTypes } from "react";
+
+import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
+
+import cx from "classnames";
+
+const BUCKETINGS = [
+    "default",
+    "minute",
+    "hour",
+    "day",
+    "week",
+    "month",
+    "quarter",
+    "year",
+    null,
+    "minute-of-hour",
+    "hour-of-day",
+    "day-of-week",
+    "day-of-month",
+    "day-of-year",
+    "week-of-year",
+    "month-of-year",
+    "quarter-of-year",
+];
+
+export default class TimeGroupingPopover extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.state = {};
+    }
+
+    static propTypes = {
+        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+        value: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
+        onFieldChange: PropTypes.func.isRequired
+    };
+
+    static defaultProps = {
+        groupingOptions: [
+            // "default",
+            "minute",
+            "hour",
+            "day",
+            "week",
+            "month",
+            "quarter",
+            "year",
+            // "minute-of-hour",
+            "hour-of-day",
+            "day-of-week",
+            "day-of-month",
+            // "day-of-year",
+            "week-of-year",
+            "month-of-year",
+            "quarter-of-year",
+        ]
+    }
+
+    setField(bucketing) {
+        this.props.onFieldChange(["datetime_field", this.props.value, "as", bucketing]);
+    }
+
+    render() {
+        const { field } = this.props;
+        const enabledOptions = new Set(this.props.groupingOptions);
+        return (
+            <div className="px2 pt2 pb1" style={{width:"250px"}}>
+                <h3 className="List-section-header mx2">Group time by</h3>
+                <ul className="py1">
+                { BUCKETINGS.filter(o => o == null || enabledOptions.has(o)).map((bucketing, bucketingIndex) =>
+                    bucketing == null ?
+                        <hr key={bucketingIndex} style={{ "border": "none" }}/>
+                    :
+                        <li key={bucketingIndex} className={cx("List-item", { "List-item--selected": parseFieldBucketing(field) === bucketing })}>
+                            <a className="List-item-title full px2 py1 cursor-pointer" onClick={this.setField.bind(this, bucketing)}>
+                                {formatBucketing(bucketing)}
+                            </a>
+                        </li>
+                )}
+                </ul>
+            </div>
+        );
+    }
+}

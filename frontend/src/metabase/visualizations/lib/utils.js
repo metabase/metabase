@@ -1,7 +1,10 @@
+/* @flow weak */
 
 import React from "react";
 import _ from "underscore";
 import d3 from "d3";
+
+import crossfilter from "crossfilter";
 
 import * as colors from "metabase/lib/colors";
 
@@ -72,7 +75,7 @@ export function computeSplit(extents) {
             bestCost = splitCost;
         }
     }
-    return best.sort((a,b) => a[0] - b[0]);
+    return best && best.sort((a,b) => a[0] - b[0]);
 }
 
 const FRIENDLY_NAME_MAP = {
@@ -85,7 +88,7 @@ const FRIENDLY_NAME_MAP = {
 
 export function getXValues(datas, chartType) {
     let xValues = _.chain(datas)
-        .map((data) => _.pluck(data, 0))
+        .map((data) => _.pluck(data, "0"))
         .flatten(true)
         .uniq()
         .value();
@@ -129,7 +132,7 @@ export function getCardColors(card) {
         chartColor = settings.line.lineColor;
         chartColorList = settings.line.colors;
     }
-    return _.uniq([chartColor || Object.values(colors.normal)[0]].concat(chartColorList || Object.values(colors.normal)));
+    return _.uniq([chartColor || Object.values(colors.harmony)[0]].concat(chartColorList || Object.values(colors.harmony)));
 }
 
 export function isSameSeries(seriesA, seriesB) {
@@ -160,7 +163,6 @@ export function colorShade(hex, shade = 0) {
 }
 
 import { isDimension, isMetric } from "metabase/lib/schema_metadata";
-import crossfilter from "crossfilter";
 
 export const DIMENSION_METRIC = "DIMENSION_METRIC";
 export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
@@ -184,24 +186,24 @@ export const isDimensionMetricMetric = (cols, strict = true) =>
     isDimension(cols[0]) &&
     cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
 
+// cache computed cardinalities in a weak map since they are computationally expensive
+const cardinalityCache = new WeakMap();
 
-function computeColumnCardinality(cols, rows) {
-    let dataset = crossfilter(rows);
-    for (const [index, col] of Object.entries(cols)) {
-        if (col.cardinality == null) {
-            col.cardinality = dataset.dimension(d => d[index]).group().size();
-        }
+export function getColumnCardinality(cols, rows, index) {
+    const col = cols[index];
+    if (!cardinalityCache.has(col)) {
+        let dataset = crossfilter(rows);
+        cardinalityCache.set(col, dataset.dimension(d => d[index]).group().size())
     }
+    return cardinalityCache.get(col);
 }
 
 export function getChartTypeFromData(cols, rows, strict = true) {
-    computeColumnCardinality(cols, rows);
-
     // this should take precendence for backwards compatibilty
     if (isDimensionMetricMetric(cols, strict)) {
         return DIMENSION_METRIC_METRIC;
     } else if (isDimensionDimensionMetric(cols, strict)) {
-        if (cols[0].cardinality < MAX_SERIES || cols[1].cardinality < MAX_SERIES) {
+        if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
             return DIMENSION_DIMENSION_METRIC;
         }
     } else if (isDimensionMetric(cols, strict)) {

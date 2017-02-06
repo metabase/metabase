@@ -1,32 +1,39 @@
 /* @flow weak */
 
-// angular:
-import "./services";
-
-angular
-.module('metabase', ['ipCookie', 'metabase.controllers'])
-.run([function() {}])
-
-angular
-.module('metabase.controllers', ['metabase.services'])
-.controller('Metabase', [function() {}]);
+import 'babel-polyfill';
+import 'number-to-locale-string';
 
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
-import { push } from "react-router-redux";
 
 import MetabaseAnalytics, { registerAnalyticsClickListener } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { getRoutes } from "./routes.jsx";
+import api from "metabase/lib/api";
+
 import { getStore } from './store'
 
-import { Router, browserHistory } from "react-router";
-import { syncHistoryWithStore } from 'react-router-redux'
+import { refreshSiteSettings } from "metabase/redux/settings";
+import { setErrorPage } from "metabase/redux/app";
 
-function init() {
-    const store = getStore(browserHistory);
+import { Router, browserHistory } from "react-router";
+import { push, syncHistoryWithStore } from 'react-router-redux'
+
+// we shouldn't redirect these URLs because we want to handle them differently
+const WHITELIST_FORBIDDEN_URLS = [
+    // on dashboards, we show permission errors for individual cards we don't have access to
+    /api\/card\/\d+\/query$/,
+    // metadata endpoints should not cause redirects
+    // we should gracefully handle cases where we don't have access to metadata
+    /api\/database\/\d+\/metadata$/,
+    /api\/database\/\d+\/fields/,
+    /api\/table\/\d+\/query_metadata$/,
+    /api\/table\/\d+\/fks$/
+];
+
+function _init(reducers, getRoutes, callback) {
+    const store = getStore(reducers, browserHistory);
     const routes = getRoutes(store);
     const history = syncHistoryWithStore(browserHistory, store);
 
@@ -45,24 +52,39 @@ function init() {
 
     registerAnalyticsClickListener();
 
+    store.dispatch(refreshSiteSettings());
+
     // enable / disable GA based on opt-out of anonymous tracking
     MetabaseSettings.on("anon_tracking_enabled", () => {
         window['ga-disable-' + MetabaseSettings.get('ga_code')] = MetabaseSettings.isTrackingEnabled() ? null : true;
     });
 
-    // $http interceptor received a 401 response
-    angular.element(document.body).injector().get("$rootScope").$on("event:auth-loginRequired", function() {
+    // received a 401 response
+    api.on("401", () => {
         store.dispatch(push("/auth/login"));
     });
 
-    // $http interceptor received a 403 response
-    angular.element(document.body).injector().get("$rootScope").$on("event:auth-forbidden", function() {
-        store.dispatch(push("/unauthorized"));
+    // received a 403 response
+    api.on("403", (url) => {
+        if (url) {
+            for (const regex of WHITELIST_FORBIDDEN_URLS) {
+                if (regex.test(url)) {
+                    return;
+                }
+            }
+        }
+        store.dispatch(setErrorPage({ status: 403 }));
     });
+
+    if (callback) {
+        callback(store);
+    }
 }
 
-if (document.readyState != 'loading') {
-    init();
-} else {
-    document.addEventListener('DOMContentLoaded', init);
+export function init(...args) {
+    if (document.readyState != 'loading') {
+        _init(...args);
+    } else {
+        document.addEventListener('DOMContentLoaded', () => _init(...args));
+    }
 }

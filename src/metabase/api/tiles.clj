@@ -1,9 +1,13 @@
 (ns metabase.api.tiles
+  "`/api/tiles` endpoints."
   (:require [clojure.core.match :refer [match]]
             [clojure.java.io :as io]
+            [cheshire.core :as json]
             [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
-            [metabase.query-processor :as qp])
+            [metabase.query-processor :as qp]
+            [metabase.util :as u]
+            [metabase.util.schema :as su])
   (:import java.awt.Color
            java.awt.image.BufferedImage
            (java.io ByteArrayOutputStream IOException)
@@ -98,27 +102,33 @@
       (catch Throwable e
         (byte-array 0)) ; return empty byte array if we fail for some reason
       (finally
-        (try
-          (.close output-stream)
-          (catch Throwable _))))))
+        (u/ignore-exceptions
+          (.close output-stream))))))
+
 
 
 ;;; # ------------------------------------------------------------ ENDPOINT ------------------------------------------------------------
 
-(defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field/:lat-col-idx/:lon-col-idx/"
-  "This endpoints provides an image with the appropriate pins rendered given a json query.
+(defendpoint GET "/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/"
+  "This endpoints provides an image with the appropriate pins rendered given a MBQL QUERY (passed as a GET query string param).
    We evaluate the query and find the set of lat/lon pairs which are relevant and then render the appropriate ones.
    It's expected that to render a full map view several calls will be made to this endpoint in parallel."
-  [zoom x y lat-field lon-field lat-col-idx lon-col-idx query]
-  {zoom        String->Integer
-   x           String->Integer
-   y           String->Integer
-   lat-field   String->Integer
-   lon-field   String->Integer
-   lat-col-idx String->Integer
-   lon-col-idx String->Integer
-   query       String->Dict}
-  (let [updated-query (update query :query #(query-with-inside-filter % lat-field lon-field x y zoom))
+  [zoom x y lat-field-id lon-field-id lat-col-idx lon-col-idx query]
+  {zoom         su/IntString
+   x            su/IntString
+   y            su/IntString
+   lat-field-id su/IntGreaterThanZero
+   lon-field-id su/IntGreaterThanZero
+   lat-col-idx  su/IntString
+   lon-col-idx  su/IntString
+   query        su/JSONString}
+  (let [zoom          (Integer/parseInt zoom)
+        x             (Integer/parseInt x)
+        y             (Integer/parseInt y)
+        lat-col-idx   (Integer/parseInt lat-col-idx)
+        lon-col-idx   (Integer/parseInt lon-col-idx)
+        query         (json/parse-string query keyword)
+        updated-query (update query :query (u/rpartial query-with-inside-filter lat-field-id lon-field-id x y zoom))
         result        (qp/dataset-query updated-query {:executed-by   *current-user-id*
                                                        :synchronously true})
         points        (for [row (-> result :data :rows)]
@@ -126,9 +136,7 @@
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image
     {:status  200
      :headers {"Content-Type" "image/png"}
-     :body    (-> (create-tile zoom points)
-                  tile->byte-array
-                  java.io.ByteArrayInputStream.)}))
+     :body    (java.io.ByteArrayInputStream. (tile->byte-array (create-tile zoom points)))}))
 
 
 (define-routes)

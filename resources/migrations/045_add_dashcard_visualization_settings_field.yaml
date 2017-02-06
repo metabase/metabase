@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 45
+      author: tlrobinson
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: visualization_settings
+                  type: text
+        - addNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: visualization_settings
+            columnDataType: text
+            defaultNullValue: '{}'

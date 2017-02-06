@@ -69,8 +69,8 @@
   ;; string-encoded booleans + dates are treated as strings (!)
   {:name      field-name
    :base-type (if (= :metric druid-field-type)
-                :FloatField
-                :TextField)})
+                :type/Float
+                :type/Text)})
 
 (defn- describe-table [database table]
   (let [details                      (:details database)
@@ -80,7 +80,7 @@
      :fields (set (concat
                     ;; every Druid table is an event stream w/ a timestamp field
                     [{:name       "timestamp"
-                      :base-type  :DateTimeField
+                      :base-type  :type/DateTime
                       :pk?        true}]
                     (map (partial describe-table-field :dimension) dimensions)
                     (map (partial describe-table-field :metric) metrics)))}))
@@ -158,7 +158,7 @@
                                                :type         :integer
                                                :default      8082}])
           :execute-query         (fn [_ query] (qp/execute-query do-query query))
-          :features              (constantly #{:set-timezone})
+          :features              (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg qp/mbql->native)}))
 

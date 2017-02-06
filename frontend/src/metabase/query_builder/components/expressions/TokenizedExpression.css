@@ -1,0 +1,49 @@
+.Expression-node {
+  /* this is required to get top/bottom padding to work, but breaks some keyboard shortcuts */
+  /*display: inline-block;*/
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.Expression-open-quote,
+.Expression-close-quote {
+  opacity: 0.5;
+}
+
+.Expression-aggregation {
+  padding: 3px 3px;
+}
+.Expression-aggregation-name {
+  padding: 0 2px;
+}
+
+.Expression-metric,
+.Expression-field {
+  margin: 1px 1px;
+  padding: 1px 3px;
+}
+
+.Expression-aggregation,
+.Expression-metric {
+  border: 1px solid #9CC177;
+  background-color: #E4F7D1;
+}
+
+.Expression-field {
+  border: 1px solid #509EE3;
+  background-color: #C7E3FB;
+}
+
+.Expression-selected.Expression-aggregation,
+.Expression-selected.Expression-metric,
+.Expression-selected .Expression-aggregation,
+.Expression-selected .Expression-metric {
+  color: white;
+  background-color: #9CC177;
+}
+
+.Expression-selected.Expression-field,
+.Expression-selected .Expression-field {
+  color: white;
+  background-color: #509EE3;
+}

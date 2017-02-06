@@ -3,42 +3,44 @@
             (clojure [set :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            (honeysql [core :as hsql]
+                      [helpers :as h])
             [metabase.config :as config]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
 (def ^:private ^:const pattern->type
   [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578
-   [#"ANYDATA"     :UnknownField]  ; Instance of a given type with data plus a description of the type (?)
-   [#"ANYTYPE"     :UnknownField]  ; Can be any named SQL type or an unnamed transient type
-   [#"ARRAY"       :UnknownField]
-   [#"BFILE"       :UnknownField]
-   [#"BLOB"        :UnknownField]
-   [#"RAW"         :UnknownField]
-   [#"CHAR"        :TextField]
-   [#"CLOB"        :TextField]
-   [#"DATE"        :DateField]
-   [#"DOUBLE"      :FloatField]
-   [#"^EXPRESSION" :UnknownField]  ; Expression filter type
-   [#"FLOAT"       :FloatField]
-   [#"INTERVAL"    :DateTimeField] ; Does this make sense?
-   [#"LONG RAW"    :UnknownField]
-   [#"LONG"        :TextField]
-   [#"^ORD"        :UnknownField]  ; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
-   [#"NUMBER"      :DecimalField]
-   [#"REAL"        :FloatField]
-   [#"REF"         :UnknownField]
-   [#"ROWID"       :UnknownField]
-   [#"^SDO_"       :UnknownField]  ; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
-   [#"STRUCT"      :UnknownField]
-   [#"TIMESTAMP"   :DateTimeField]
-   [#"URI"         :TextField]
-   [#"XML"         :UnknownField]])
+   [#"ANYDATA"     :type/*]  ; Instance of a given type with data plus a description of the type (?)
+   [#"ANYTYPE"     :type/*]  ; Can be any named SQL type or an unnamed transient type
+   [#"ARRAY"       :type/*]
+   [#"BFILE"       :type/*]
+   [#"BLOB"        :type/*]
+   [#"RAW"         :type/*]
+   [#"CHAR"        :type/Text]
+   [#"CLOB"        :type/Text]
+   [#"DATE"        :type/Date]
+   [#"DOUBLE"      :type/Float]
+   [#"^EXPRESSION" :type/*]  ; Expression filter type
+   [#"FLOAT"       :type/Float]
+   [#"INTERVAL"    :type/DateTime] ; Does this make sense?
+   [#"LONG RAW"    :type/*]
+   [#"LONG"        :type/Text]
+   [#"^ORD"        :type/*]  ; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
+   [#"NUMBER"      :type/Decimal]
+   [#"REAL"        :type/Float]
+   [#"REF"         :type/*]
+   [#"ROWID"       :type/*]
+   [#"^SDO_"       :type/*]  ; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
+   [#"STRUCT"      :type/*]
+   [#"TIMESTAMP"   :type/DateTime]
+   [#"URI"         :type/Text]
+   [#"XML"         :type/*]])
 
 (defn- connection-details->spec [{:keys [sid], :as details}]
   (update (dbspec/oracle details) :subname (u/rpartial str \: sid)))
@@ -84,6 +86,11 @@
                            3)
     :year            (hsql/call :extract :year v)))
 
+(defn- date-string->literal [^String date-string]
+  (hsql/call :to_timestamp
+    (hx/literal (u/format-date "yyyy-MM-dd" (u/->Date date-string)))
+    (hx/literal "YYYY-MM-DD")))
+
 (def ^:private ^:const now             (hsql/raw "SYSDATE"))
 (def ^:private ^:const date-1970-01-01 (hsql/call :to_timestamp (hx/literal :1970-01-01) (hx/literal :YYYY-MM-DD)))
 
@@ -110,26 +117,52 @@
                                                       :seconds      field-or-value
                                                       :milliseconds (hx// field-or-value (hsql/raw 1000))))))
 
-(defn- apply-offset-and-limit
-  "Append SQL like `OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY` to the end of the query."
-  [honeysql-query offset limit]
-  (assoc honeysql-query
-    :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY" offset limit))))
+
+;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't supported on Oracle versions older than 12).
+;; This has to wrap the actual query, e.g.
+;;
+;; SELECT *
+;; FROM (
+;;     SELECT *
+;;     FROM employees
+;;     ORDER BY employee_id
+;; )
+;; WHERE ROWNUM < 10;
+;;
+;; To do an offset we have to do something like:
+;;
+;; SELECT *
+;; FROM (
+;;     SELECT __table__.*, ROWNUM AS __rownum__
+;;     FROM (
+;;         SELECT *
+;;         FROM employees
+;;         ORDER BY employee_id
+;;     ) __table__
+;;     WHERE ROWNUM <= 150
+;; )
+;; WHERE __rownum__ >= 100;
+;;
+;; See issue #3568 and the Oracle documentation for more details: http://docs.oracle.com/cd/B19306_01/server.102/b14200/pseudocolumns009.htm
 
 (defn- apply-limit [honeysql-query {value :limit}]
-  ;; HoneySQL doesn't support ANSI SQL "OFFSET <n> ROWS FETCH NEXT <n> ROWS ONLY"
-  ;; The semi-official workaround as suggested by yours truly is just to pass a
-  ;; raw string as the `:offset` which HoneySQL puts in the appropriate place
-  ;; see my comment here: https://github.com/jkk/honeysql/issues/58#issuecomment-220450400
-  (apply-offset-and-limit honeysql-query 0 value))
+  {:pre [(integer? value)]}
+  {:select [:*]
+   :from   [honeysql-query]
+   :where  [:<= (hsql/raw "rownum") value]})
 
 (defn- apply-page [honeysql-query {{:keys [items page]} :page}]
-  ;; ex.:
-  ;; items | page | sql
-  ;; ------+------+------------------------
-  ;;     5 |    1 | OFFSET 0 ROWS FETCH FIRST 5 ROWS ONLY
-  ;;     5 |    2 | OFFSET 5 ROWS FETCH FIRST 5 ROWS ONLY
-  (apply-offset-and-limit honeysql-query (* (dec page) items) items))
+  (let [offset (* (dec page) items)]
+    (if (zero? offset)
+      ;; if there's no offset we can use use the single-nesting implementation for `apply-limit`
+      (apply-limit honeysql-query {:limit items})
+      ;; if we need to do an offset we have to do double-nesting
+      {:select [:*]
+       :from   [{:select [:__table__.* [(hsql/raw "rownum") :__rownum__]]
+                 :from   [[honeysql-query :__table__]]
+                 :where  [:<= (hsql/raw "rownum") (+ offset items)]}]
+       :where  [:> :__rownum__ offset]})))
+
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defn- prepare-value [{value :value}]
@@ -140,6 +173,17 @@
 
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
+
+
+(defn- remove-rownum-column
+  "Remove the `:__rownum__` column from results, if present."
+  [{:keys [columns rows], :as results}]
+  (if-not (contains? (set columns) :__rownum__)
+    results
+    ;; if we added __rownum__ it will always be the last column and value so we can just remove that
+    {:columns (butlast columns)
+     :rows    (for [row rows]
+                (butlast row))}))
 
 
 (defrecord OracleDriver []
@@ -168,7 +212,8 @@
                                        {:name         "password"
                                         :display-name "Database password"
                                         :type         :password
-                                        :placeholder  "*******"}])})
+                                        :placeholder  "*******"}])
+          :execute-query  (comp remove-rownum-column sqlqp/execute-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -178,6 +223,7 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :current-datetime-fn       (constantly now)
           :date                      (u/drop-first-arg date)
+          :date-string->literal      (u/drop-first-arg date-string->literal)
           :excluded-schemas          (fn [& _]
                                        (set/union
                                         #{"ANONYMOUS"

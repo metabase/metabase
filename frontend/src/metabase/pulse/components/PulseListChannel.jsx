@@ -71,7 +71,7 @@ export default class PulseListChannel extends Component {
     }
 
     render() {
-        let { channel, channelSpec, user } = this.props;
+        let { pulse, channel, channelSpec, user } = this.props;
 
         let subscribable = channelSpec && channelSpec.allows_recipients;
         let subscribed = false;
@@ -89,12 +89,12 @@ export default class PulseListChannel extends Component {
                                 <div className="pl2">You get this {channel.channel_type}</div>
                                 <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" size={12} onClick={this.unsubscribe}/>
                             </div>
-                        :
+                        : !pulse.read_only ?
                             <div className="flex align-center rounded bordered bg-white text-default text-bold cursor-pointer" onClick={this.subscribe}>
                                 <Icon className="p2" name="add" size={12}/>
                                 <div className="pr2">Get this {channel.channel_type}</div>
                             </div>
-                        }
+                        : null }
                     </div>
                 }
             </div>

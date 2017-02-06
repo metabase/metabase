@@ -1,7 +1,11 @@
 import { createSelector } from 'reselect';
-import i from "icepick";
+import { assoc, getIn } from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
+import {
+    resourceListToMap
+} from 'metabase/lib/redux';
+
 import {
     idsToObjectMap,
     buildBreadcrumbs,
@@ -9,18 +13,28 @@ import {
     getQuestionUrl
 } from "./utils";
 
+import _ from "underscore";
+
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
 //TODO: refactor to use different container components for each section
 // initialize section metadata in there
 // may not be worthwhile due to the extra boilerplate required
-// ideal solution is to pass metadata to each section through router
+// try using a higher-order component to reduce boilerplate?
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
-        name: "Understanding our data",
+        name: "Start here",
         breadcrumb: "Guide",
-        icon: "reference"
+        fetch: {
+            fetchGuide: [],
+            fetchDashboards: [],
+            fetchMetrics: [],
+            fetchSegments: [],
+            fetchDatabasesWithMetadata: []
+        },
+        icon: "reference",
+        sidebar: false
     },
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
@@ -31,11 +45,14 @@ const referenceSections = {
             message: "Metrics will appear here once your admins have created some",
             image: "/app/img/metrics-list",
             adminAction: "Learn how to create metrics",
-            adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
+            adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
         },
         breadcrumb: "Metrics",
         // mapping of propname to args of dispatch function
-        fetch: {fetchMetrics: []},
+        fetch: {
+            fetchMetrics: [],
+            fetchSegments: []
+        },
         get: 'getMetrics',
         icon: "ruler"
     },
@@ -48,10 +65,13 @@ const referenceSections = {
             message: "Segments will appear here once your admins have created some",
             image: "/app/img/segments-list",
             adminAction: "Learn how to create segments",
-            adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
+            adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
         },
         breadcrumb: "Segments",
-        fetch: {fetchSegments: []},
+        fetch: {
+            fetchMetrics: [],
+            fetchSegments: []
+        },
         get: 'getSegments',
         icon: "segment"
     },
@@ -67,7 +87,11 @@ const referenceSections = {
             adminLink: "/admin/databases/create"
         },
         breadcrumb: "Databases",
-        fetch: {fetchDatabases: []},
+        fetch: {
+            fetchMetrics: [],
+            fetchSegments: [],
+            fetchDatabases: []
+        },
         get: 'getDatabases',
         icon: "database",
         itemIcon: "database"
@@ -83,7 +107,11 @@ const getMetricSections = (metric, table, user) => metric ? {
         update: 'updateMetric',
         type: 'metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetricTable: [metric.id]},
+        fetch: {
+            fetchMetricTable: [metric.id],
+            // currently the only way to fetch metrics important fields
+            fetchGuide: []
+        },
         get: 'getMetric',
         icon: "document",
         headerIcon: "ruler",
@@ -414,21 +442,21 @@ export const getUser = (state, props) => state.currentUser;
 export const getSectionId = (state, props) => props.location.pathname;
 
 export const getMetricId = (state, props) => Number.parseInt(props.params.metricId);
-const getMetrics = (state, props) => state.metadata.metrics;
+export const getMetrics = (state, props) => state.metadata.metrics;
 export const getMetric = createSelector(
     [getMetricId, getMetrics],
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
 export const getSegmentId = (state, props) => Number.parseInt(props.params.segmentId);
-const getSegments = (state, props) => state.metadata.segments;
+export const getSegments = (state, props) => state.metadata.segments;
 export const getSegment = createSelector(
     [getSegmentId, getSegments],
     (segmentId, segments) => segments[segmentId] || { id: segmentId }
 );
 
 export const getDatabaseId = (state, props) => Number.parseInt(props.params.databaseId);
-const getDatabases = (state, props) => state.metadata.databases;
+export const getDatabases = (state, props) => state.metadata.databases;
 const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
     (databaseId, databases) => databases[databaseId] || { id: databaseId }
@@ -459,7 +487,7 @@ export const getTable = createSelector(
 );
 
 export const getFieldId = (state, props) => Number.parseInt(props.params.fieldId);
-const getFields = (state, props) => state.metadata.fields;
+export const getFields = (state, props) => state.metadata.fields;
 const getFieldsByTable = createSelector(
     [getTable, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
@@ -477,28 +505,30 @@ const getFieldBySegment = createSelector(
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
 
-const getQuestions = (state, props) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
+const getQuestions = (state, props) => getIn(state, ['questions', 'entities', 'cards']) || {};
 
 const getMetricQuestions = createSelector(
     [getMetricId, getQuestions],
     (metricId, questions) => Object.values(questions)
         .filter(question =>
             question.dataset_query.type === "query" &&
-            AggregationClause.getMetric(question.dataset_query.query.aggregation) === metricId
+            _.any(Query.getAggregations(question.dataset_query.query), (aggregation) =>
+                AggregationClause.getMetric(aggregation) === metricId
+            )
         )
-        .reduce((map, question) => i.assoc(map, question.id, question), {})
+        .reduce((map, question) => assoc(map, question.id, question), {})
 );
 
 const getRevisions = (state, props) => state.metadata.revisions;
 
 const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
-    (metricId, revisions) => i.getIn(revisions, ['metric', metricId]) || {}
+    (metricId, revisions) => getIn(revisions, ['metric', metricId]) || {}
 );
 
 const getSegmentRevisions = createSelector(
     [getSegmentId, getRevisions],
-    (segmentId, revisions) => i.getIn(revisions, ['segment', segmentId]) || {}
+    (segmentId, revisions) => getIn(revisions, ['segment', segmentId]) || {}
 );
 
 const getSegmentQuestions = createSelector(
@@ -509,7 +539,7 @@ const getSegmentQuestions = createSelector(
             Query.getFilters(question.dataset_query.query)
                 .some(filter => Query.isSegmentFilter(filter) && filter[1] === segmentId)
         )
-        .reduce((map, question) => i.assoc(map, question.id, question), {})
+        .reduce((map, question) => assoc(map, question.id, question), {})
 );
 
 const getTableQuestions = createSelector(
@@ -541,11 +571,15 @@ export const getForeignKeys = createSelector(
 )
 
 export const getSections = createSelector(
-    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getTableBySegment, getTableByMetric, getUser, getReferenceSections],
-    (sectionId, metric, segment, database, table, field, fieldBySegment, tableBySegment, tableByMetric, user, referenceSections) => {
+    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getTableBySegment, getTableByMetric, getUser, getReferenceSections, getSegments, getMetrics],
+    (sectionId, metric, segment, database, table, field, fieldBySegment, tableBySegment, tableByMetric, user, referenceSections, segments, metrics) => {
         // can be simplified if we had a single map of all sections
         if (referenceSections[sectionId]) {
-            return referenceSections;
+            // filter out segments or metrics if we're not on that particular section and there are none
+            return _.omit(referenceSections,
+                Object.keys(metrics).length === 0 && sectionId !== "/reference/metrics" && "/reference/metrics",
+                Object.keys(segments).length === 0 && sectionId !== "/reference/segments"  && "/reference/segments",
+            );
         }
 
         const metricSections = getMetricSections(metric, tableByMetric, user);
@@ -660,3 +694,10 @@ export const getHasQuestions = createSelector(
 export const getIsEditing = (state, props) => state.reference.isEditing;
 
 export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaExpanded;
+
+export const getGuide = (state, props) => state.reference.guide;
+
+export const getDashboards = (state, props) => state.dashboard.dashboardListing &&
+    resourceListToMap(state.dashboard.dashboardListing);
+
+export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;

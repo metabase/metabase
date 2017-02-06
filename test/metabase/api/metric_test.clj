@@ -1,10 +1,11 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
   (:require [expectations :refer :all]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
-                             [hydrate :refer [hydrate]]
                              [metric :refer [Metric], :as metric]
                              [revision :refer [Revision]]
                              [table :refer [Table]])
@@ -51,21 +52,21 @@
                                              :definition {}}))
 
 ;; test validations
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :crowberto) :post 400 "metric" {}))
 
-(expect {:errors {:table_id "field is a required param."}}
+(expect {:errors {:table_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "metric" {:name "abc"}))
 
-(expect {:errors {:table_id "Invalid value 'foobar' for 'table_id': value must be an integer."}}
+(expect {:errors {:table_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "metric" {:name     "abc"
                                                  :table_id "foobar"}))
 
-(expect {:errors {:definition "field is a required param."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :post 400 "metric" {:name     "abc"
                                                  :table_id 123}))
 
-(expect {:errors {:definition "Invalid value 'foobar' for 'definition': value must be a dictionary."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :post 400 "metric" {:name       "abc"
                                                  :table_id   123
                                                  :definition "foobar"}))
@@ -84,7 +85,7 @@
    :is_active               true
    :definition              {:database 21
                              :query    {:filter ["abc"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]]
     (metric-response ((user->client :crowberto) :post 200 "metric" {:name                    "A Metric"
                                                                     :description             "I did it!"
@@ -106,21 +107,21 @@
                                               :revision_message "something different"}))
 
 ;; test validations
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {}))
 
-(expect {:errors {:revision_message "field is a required param."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name "abc"}))
 
-(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
                                                    :revision_message ""}))
 
-(expect {:errors {:definition "field is a required param."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
                                                    :revision_message "123"}))
 
-(expect {:errors {:definition "Invalid value 'foobar' for 'definition': value must be a dictionary."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
                                                    :revision_message "123"
                                                    :definition       "foobar"}))
@@ -139,7 +140,7 @@
    :is_active               true
    :definition              {:database 2
                              :query    {:filter ["not" "the toucans you're looking for"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]} {:table_id table-id}]]
     (metric-response ((user->client :crowberto) :put 200 (format "metric/%d" id) {:id                      id
@@ -163,10 +164,10 @@
 
 
 ;; test validations
-(expect {:errors {:revision_message "field is a required param."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :delete 400 "metric/1" {:name "abc"}))
 
-(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :delete 400 "metric/1" :revision_message ""))
 
 (expect
@@ -183,7 +184,7 @@
     :updated_at              true
     :is_active               false
     :definition              {}}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:table_id table-id}]]
     [((user->client :crowberto) :delete 200 (format "metric/%d" id) :revision_message "carryon")
@@ -210,7 +211,7 @@
    :updated_at              true
    :is_active               true
    :definition              {}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:creator_id  (user->id :crowberto)
                                             :table_id    table-id}]]
@@ -240,7 +241,7 @@
     :diff         {:name       {:after "b"}
                    :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:creator_id              (user->id :crowberto)
                                             :table_id                table-id
@@ -274,10 +275,10 @@
   ((user->client :rasta) :post 403 "metric/1/revert" {:revision_id 56}))
 
 
-(expect {:errors {:revision_id "field is a required param."}}
+(expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "metric/1/revert" {}))
 
-(expect {:errors {:revision_id "Invalid value 'foobar' for 'revision_id': value must be an integer."}}
+(expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "metric/1/revert" {:revision_id "foobar"}))
 
 
@@ -314,7 +315,7 @@
                     :definition  {:after {:database 123
                                           :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
      :description  nil}]]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{:keys [id]}      {:creator_id              (user->id :crowberto)
                                                :table_id                table-id
@@ -368,8 +369,8 @@
 
 ;;; GET /api/metric/
 
-(tu/expect-with-temp [Metric [metric-1]
-                      Metric [metric-2]
+(tt/expect-with-temp [Metric [metric-1 {:name "Metric A"}]
+                      Metric [metric-2 {:name "Metric B"}]
                       Metric [_        {:is_active false}]] ; inactive metrics shouldn't show up
   (tu/mappify (hydrate [metric-1
                         metric-2] :creator))

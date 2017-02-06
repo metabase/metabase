@@ -102,7 +102,7 @@ export default class PulseEdit extends Component {
                         triggerClasses="text-brand text-bold flex-align-right"
                     >
                         <ModalContent
-                            closeFn={() => this.refs.pulseInfo.close()}
+                            onClose={() => this.refs.pulseInfo.close()}
                         >
                             <div className="mx4 mb4">
                                 <WhatsAPulse

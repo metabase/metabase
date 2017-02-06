@@ -23,8 +23,12 @@ import {
 } from '../utils';
 
 import {
-    selectSection as fetchQuestions
+    loadEntities
 } from 'metabase/questions/questions';
+
+import {
+    fetchDashboards
+} from 'metabase/dashboard/dashboard';
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
@@ -36,7 +40,8 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-    fetchQuestions,
+    fetchQuestions: () => loadEntities("card", {}),
+    fetchDashboards,
     ...metadataActions,
     ...actions
 };
@@ -73,10 +78,16 @@ export default class ReferenceApp extends Component {
     render() {
         const {
             children,
+            section,
             sections,
             breadcrumbs,
             isEditing
         } = this.props;
+
+        if (section.sidebar === false) {
+            return children;
+        }
+
         return (
             <SidebarLayout
                 className="flex-full relative"
@@ -85,6 +96,6 @@ export default class ReferenceApp extends Component {
             >
                 {children}
             </SidebarLayout>
-        )
+        );
     }
 }

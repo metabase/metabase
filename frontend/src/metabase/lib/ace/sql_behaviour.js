@@ -1,5 +1,6 @@
 /*global ace*/
 /* eslint "no-redeclare": 0 */
+/* eslint "import/no-commonjs": 0 */
 
 // Modified from https://github.com/ajaxorg/ace/blob/b8804b1e9db1f7f02337ca884f4780f3579cc41b/lib/ace/mode/behaviour/cstyle.js
 

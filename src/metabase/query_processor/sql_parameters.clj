@@ -1,8 +1,8 @@
 (ns metabase.query-processor.sql-parameters
-  "Param substitution for *SQL* drivers."
+  "Param substitution for *SQL* queries."
   (:require [clojure.string :as s]
             [honeysql.core :as hsql]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.field :refer [Field], :as field]
             [metabase.query-processor.expand :as ql]
             [metabase.util :as u])
@@ -20,32 +20,41 @@
 (defprotocol ^:private ISQLParamSubstituion
   (^:private ->sql ^String [this]))
 
-(defrecord ^:private Dimension [^FieldInstance field, param])
+(defrecord ^:private Dimension [^FieldInstance field, param]) ;; param is either a single param or a vector of params
+
+(defrecord ^:private Date [s])
 
 (defrecord ^:private DateRange [start end])
 
 (defrecord ^:private NumberValue [value])
 
-(defn- dimension-value->sql [dimension-type value]
-  (if (contains? #{"date/range" "date/month-year" "date/quarter-year"} dimension-type)
+(defn- dimension-value->sql
+  "Return an appropriate operator and rhs of a SQL `WHERE` clause, e.g. \"= 100\"."
+  ^String [dimension-type value]
+  (cond
+    ;; for relative dates convert the param to a `DateRange` record type and call `->sql` on it
+    (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative"} dimension-type)
     (->sql (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value *timezone*))) ; TODO - get timezone from query dict
+    ;; for other date types convert the param to a date
+    (s/starts-with? dimension-type "date/")
+    (str "= " (->sql (map->Date {:s value})))
+    ;; for everything else just call `->sql` on it directly
+    :else
     (str "= " (->sql value))))
 
 (defn- honeysql->sql ^String [x]
   (first (hsql/format x
            :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))))
 
-(defn- format-oracle-date [s]
-  (format "TO_TIMESTAMP('%s', 'yyyy-MM-dd')" (u/format-date "yyyy-MM-dd" (u/->Date s))))
-
-(defn- oracle-driver? ^Boolean []
-  (when-let [oracle-driver-class (u/ignore-exceptions (Class/forName "metabase.driver.oracle.OracleDriver"))]
-    (instance? oracle-driver-class *driver*)))
+(defn- format-date-string
+  "Format DATE-STRING as an appropriate literal using the driver's definition of `date-string->literal`."
+  ^String [^String date-string]
+  (honeysql->sql ((resolve 'metabase.driver.generic-sql/date-string->literal) *driver* date-string)))
 
 (extend-protocol ISQLParamSubstituion
   nil         (->sql [_]    "NULL")
   Object      (->sql [this] (str this))
-  Boolean     (->sql [this] (if this "TRUE" "FALSE"))
+  Boolean     (->sql [this] (honeysql->sql this))
   NumberValue (->sql [this] (:value this))
   String      (->sql [this] (str \' (s/replace this #"'" "\\\\'") \')) ; quote single quotes inside the string
   Keyword     (->sql [this] (honeysql->sql this))
@@ -53,31 +62,32 @@
 
   FieldInstance
   (->sql [this]
-    (->sql (let [identifier (apply hsql/qualify (field/qualified-name-components this))]
+    (->sql (let [identifier ((resolve 'metabase.driver.generic-sql/field->identifier) *driver* this)]
              (if (re-find #"^date/" (:type this))
                ((resolve 'metabase.driver.generic-sql/date) *driver* :day identifier)
                identifier))))
 
+  Date
+  (->sql [{:keys [s]}]
+    (format-date-string s))
+
   DateRange
   (->sql [{:keys [start end]}]
-    ;; This is a dirty dirty HACK! Unfortuantely Oracle is super-dumb when it comes to automatically converting strings to dates
-    ;; so we need to add the cast here
-    ;; TODO - fix this when we move to support native params in non-SQL databases
-    ;; Perhaps by making ->sql a multimethod that dispatches off of type and engine
-    (if (oracle-driver?)
-      (if (= start end)
-        (format "= %s" (format-oracle-date start))
-        (format "BETWEEN %s AND %s" (format-oracle-date start) (format-oracle-date end)))
-      ;; Not the Oracle driver
-      (if (= start end)
-        (format "= '%s'" start)
-        (format "BETWEEN '%s' AND '%s'" start end))))
+    (if (= start end)
+      (format "= %s" (format-date-string start))
+      (format "BETWEEN %s AND %s" (format-date-string start) (format-date-string end))))
 
   Dimension
-  (->sql [{:keys [field param]}]
-    (if-not param
+  (->sql [{:keys [field param], :as dimension}]
+    (cond
       ;; if the param is `nil` just put in something that will always be true, such as `1` (e.g. `WHERE 1 = 1`)
-      "1 = 1"
+      (nil? param) "1 = 1"
+      ;; if we have a vector of multiple params recursively convert them to SQL and combine into an `AND` clause
+      (vector? param)
+      (format "(%s)" (s/join " AND " (for [p param]
+                                       (->sql (assoc dimension :param p)))))
+      ;; otherwise convert single param to SQL
+      :else
       (let [param-type (:type param)]
         (format "%s %s" (->sql (assoc field :type param-type)) (dimension-value->sql param-type (:value param)))))))
 
@@ -89,12 +99,17 @@
         v (->sql (k params))]
     (s/replace-first s match v)))
 
-(defn- handle-simple [s params]  (loop [s s, [[match param] & more] (re-seq #"\{\{\s*(\w+)\s*\}\}" s)]
+(defn- handle-simple
+  "Replace a 'simple' SQL parameter (curly brackets only, i.e. `{{...}}`)."
+  [s params]
+  (loop [s s, [[match param] & more] (re-seq #"\{\{\s*(\w+)\s*\}\}" s)]
     (if-not match
       s
       (recur (replace-param s params match param) more))))
 
-(defn- handle-optional [s params]
+(defn- handle-optional
+  "Replace an 'optional' parameter."
+  [s params]
   (try (handle-simple s params)
        (catch Throwable _
          "")))
@@ -108,7 +123,7 @@
   {:style/indent 1}
   ^String [sql params]
   {:pre [(string? sql) (seq sql) (u/maybe? map? params)]}
-  (loop [s sql, [[match optional] & more] (re-seq #"\[\[([^\]]+)\]\]" sql)]
+  (loop [s sql, [[match optional] & more] (re-seq #"\[\[(.+?)\]\]" sql)]
     (if-not match
       (s/trim (handle-simple s params))
       (let [s (s/replace-first s match (handle-optional optional params))]
@@ -117,11 +132,16 @@
 
 ;;; ------------------------------------------------------------ Param Resolution ------------------------------------------------------------
 
-(defn- param-with-target [params target]
-  (some (fn [param]
-          (when (= (:target param) target)
-            param))
-        params))
+(defn- param-with-target
+  "Return the param in PARAMS with a matching TARGET."
+  [params target]
+  (when-let [matching-params (seq (for [param params
+                                        :when (= (:target param) target)]
+                                    param))]
+    ;; if there's only one matching param no need to nest it inside a vector. Otherwise return vector of params
+    ((if (= (count matching-params) 1)
+       first
+       vec) matching-params)))
 
 (defn- param-value-for-tag [tag params]
   (when (not= (:type tag) "dimension")
@@ -144,10 +164,10 @@
 
 (defn- parse-value-for-type [param-type value]
   (cond
-    (= param-type "number")                                (->NumberValue value)
+    (= param-type "number")                          (->NumberValue value)
     (and (= param-type "dimension")
-         (= (get-in value [:param :type]) "number"))       (update-in value [:param :value] ->NumberValue)
-    :else                                                  value))
+         (= (get-in value [:param :type]) "number")) (update-in value [:param :value] ->NumberValue)
+    :else                                            value))
 
 (defn- value-for-tag
   "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS sequence.
@@ -158,7 +178,16 @@
                                         (dimension-value-for-tag tag params)
                                         (default-value-for-tag tag))))
 
-(defn- query->params-map [{{tags :template_tags} :native, params :parameters}]
+(defn- query->params-map
+  "Extract parameters info from QUERY. Return a map of parameter name -> value.
+
+     (query->params-map some-query)
+      ->
+      {:checkin_date {:field {:name \"date\", :parent_id nil, :table_id 1375}
+                      :param {:type   \"date/range\"
+                              :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
+                              :value  \"2015-01-01~2016-09-01\"}}}"
+  [{{tags :template_tags} :native, params :parameters}]
   (into {} (for [[k tag] tags
                  :let    [v (value-for-tag tag params)]
                  :when   v]

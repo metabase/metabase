@@ -1,9 +1,8 @@
 (ns metabase.query-processor.sql-parameters-test
-  (:require [clojure.set :as set]
-            [clj-time.core :as t]
+  (:require [clj-time.core :as t]
             [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [metabase.driver :as driver]
             [metabase.models.table :as table]
             [metabase.query-processor :as qp]
             [metabase.query-processor.sql-parameters :refer :all]
@@ -12,12 +11,15 @@
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.generic-sql :as generic-sql]
             [metabase.test.util :as tu]
-            [metabase.test.data.generic-sql :as generic]))
+            [metabase.test.data.generic-sql :as generic]
+            [metabase.util :as u]))
 
 
 ;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
 
-(tu/resolve-private-fns metabase.query-processor.sql-parameters substitute)
+(defn- substitute {:style/indent 1} [sql params]
+  (binding [metabase.query-processor.sql-parameters/*driver* (driver/engine->driver :h2)] ; apparently you can still bind private dynamic vars
+    ((resolve 'metabase.query-processor.sql-parameters/substitute) sql params)))
 
 (expect "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
   (substitute "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
@@ -143,9 +145,17 @@
   (substitute "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
     {:num_toucans 5}))
 
+;; Make sure that substiutions still work if the subsitution contains brackets inside it (#3657)
+(expect
+  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
+  ((resolve 'metabase.query-processor.sql-parameters/substitute)
+   "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
+   {:foobar_id 100}))
+
+
 ;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
 
-(tu/resolve-private-fns metabase.query-processor.sql-parameters value-for-tag)
+(tu/resolve-private-vars metabase.query-processor.sql-parameters value-for-tag)
 
 ;; variable -- specified
 (expect
@@ -180,7 +190,23 @@
            :parent_id nil
            :table_id  (data/id :checkins)}
    :param nil}
-  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]} nil)))
+  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                          nil)))
+
+;; multiple values for the same tag should return a vector with multiple params instead of a single param
+(expect
+  {:field {:name      "DATE"
+           :parent_id nil
+           :table_id  (data/id :checkins)}
+   :param [{:type   "date/range"
+            :target ["dimension" ["template-tag" "checkin_date"]]
+            :value  "2015-01-01~2016-09-01"}
+           {:type   "date/single"
+            :target ["dimension" ["template-tag" "checkin_date"]]
+            :value  "2015-07-01"}]}
+  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                          [{:type "date/range",  :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-01-01~2016-09-01"}
+                           {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}])))
 
 
 ;;; ------------------------------------------------------------ expansion tests: variables ------------------------------------------------------------
@@ -333,34 +359,60 @@
   (generic-sql/quote-name datasets/*driver* identifier))
 
 (defn- checkins-identifier []
-  (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
-    (str (when (seq schema)
-           (str (quote-name schema) \.))
-         (quote-name table-name))))
+  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery we will just hackily return the correct identifier here
+  (if (= datasets/*engine* :bigquery)
+    "[test_data.checkins]"
+    (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
+      (str (when (seq schema)
+             (str (quote-name schema) \.))
+           (quote-name table-name)))))
 
-;; as with the MBQL parameters tests redshift and crate fail for unknown reasons; disable their tests for now
+;; as with the MBQL parameters tests Redshift and Crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
-  (set/difference (engines-that-support :native-parameters) #{:redshift :crate}))
+  (disj (engines-that-support :native-parameters) :redshift :crate))
+
+(defn- process-native {:style/indent 0} [& kvs]
+  (qp/process-query
+    (apply assoc {:database (data/id), :type :native} kvs)))
 
 (datasets/expect-with-engines sql-parameters-engines
   [29]
   (first-row
     (format-rows-by [int]
-      (qp/process-query
-        {:database   (data/id)
-         :type       :native
-         :native     {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
-                      :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
-         :parameters [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}]}))))
+      (process-native
+        :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                     :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+        :parameters [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}]))))
 
 ;; no parameter -- should give us a query with "WHERE 1 = 1"
 (datasets/expect-with-engines sql-parameters-engines
   [1000]
   (first-row
     (format-rows-by [int]
-      (qp/process-query
-        {:database   (data/id)
-         :type       :native
-         :native     {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
-                      :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
-         :parameters []}))))
+      (process-native
+        :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                     :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+        :parameters []))))
+
+;; test that relative dates work correctly. It should be enough to try just one type of relative date here,
+;; since handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
+(datasets/expect-with-engines sql-parameters-engines
+  [0]
+  (first-row
+    (format-rows-by [int]
+      (process-native
+        :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                     :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+        :parameters [{:type "date/relative", :target ["dimension" ["template-tag" "checkin_date"]], :value "thismonth"}]))))
+
+
+;; test that multiple filters applied to the same variable combine into `AND` clauses (#3539)
+(datasets/expect-with-engines sql-parameters-engines
+  [4]
+  (first-row
+    (format-rows-by [int]
+      (process-native
+       :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                    :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+       :parameters [{:type "date/range",  :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-01-01~2016-09-01"}
+                    {:type "date/single", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-07-01"}]))))

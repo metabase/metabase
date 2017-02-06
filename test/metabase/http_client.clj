@@ -14,11 +14,13 @@
   "Prefix to automatically prepend to the URL of calls made with `client`."
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
-(defn- build-url [url url-param-kwargs]
-  {:pre [(string? url)
-         (or (nil? url-param-kwargs)
-             (map? url-param-kwargs))]}
-  (str *url-prefix* url (when-not (empty? url-param-kwargs)
+(defn build-url
+  "Build an API URL for `localhost` and `MB_JETTY_PORT` with URL-PARAM-KWARGS.
+
+     (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
+  [url url-param-kwargs]
+  {:pre [(string? url) (u/maybe? map? url-param-kwargs)]}
+  (str *url-prefix* url (when (seq url-param-kwargs)
                           (str "?" (s/join \& (for [[k v] url-param-kwargs]
                                                 (str (if (keyword? k) (name k) k)
                                                      \=
@@ -58,8 +60,12 @@
 
 (declare client)
 
-(defn authenticate [{:keys [email password] :as credentials}]
+(defn authenticate
+  "Authenticate a test user with EMAIL and PASSWORD, returning their Metabase Session token;
+   or throw an Exception if that fails."
+  [{:keys [email password], :as credentials}]
   {:pre [(string? email) (string? password)]}
+  (println "Authenticating" email) ; DEBUG
   (try
     (:id (client :post 200 "session" credentials))
     (catch Throwable e

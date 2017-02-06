@@ -8,37 +8,37 @@
 (def ^:private ^:const schema-per-customer-tables
   {nil      {"city"   {:name   "city"
                        :fields #{{:name         "id"
-                                  :base-type    :IntegerField
+                                  :base-type    :type/Integer
                                   :pk?          true}
                                  {:name         "name"
-                                  :base-type    :TextField
-                                  :special-type :name}}}
+                                  :base-type    :type/Text
+                                  :special-type :type/Name}}}
              "venue"  {:name   "venue"
                        :fields #{{:name         "id"
-                                  :base-type    :IntegerField
+                                  :base-type    :type/Integer
                                   :pk?          true}
                                  {:name         "name"
-                                  :base-type    :TextField
-                                  :special-type :name}
+                                  :base-type    :type/Text
+                                  :special-type :type/Name}
                                  {:name         "city_id"
-                                  :base-type    :IntegerField}}}
+                                  :base-type    :type/Integer}}}
              "review" {:name   "review"
                        :fields #{{:name         "id"
-                                  :base-type    :IntegerField
+                                  :base-type    :type/Integer
                                   :pk?          true}
                                  {:name         "text"
-                                  :base-type    :TextField
-                                  :special-type :name}
+                                  :base-type    :type/Text
+                                  :special-type :type/Name}
                                  {:name         "venue_id"
-                                  :base-type    :IntegerField}
+                                  :base-type    :type/Integer}
                                  {:name         "reviewer_id"
-                                  :base-type    :IntegerField}}}}
+                                  :base-type    :type/Integer}}}}
    "common" {"user"   {:name   "user"
                        :fields #{{:name         "id"
-                                  :base-type    :IntegerField
+                                  :base-type    :type/Integer
                                   :pk?          true}
                                  {:name         "name"
-                                  :base-type    :TextField}}}}})
+                                  :base-type    :type/Text}}}}})
 
 (defrecord SchemaPerCustomerDriver []
   clojure.lang.Named
@@ -105,31 +105,31 @@
           {:schema  "s3"
            :columns [(merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name    "name"
-                             :details {:base-type "TextField", :special-type "name"}})]
+                             :details {:base-type "type/Text", :special-type "type/Name"}})]
            :name    "city"})
    (merge raw-table-defaults
           {:schema  "s2"
            :columns [(merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name                "reviewer_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})
+                             :details             {:base-type "type/Integer"}})
                      (merge raw-field-defaults
                             {:name    "text"
-                             :details {:base-type "TextField", :special-type "name"}})
+                             :details {:base-type "type/Text", :special-type "type/Name"}})
                      (merge raw-field-defaults
                             {:name                "venue_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "s2", :name "venue", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})]
+                             :details             {:base-type "type/Integer"}})]
            :name    "review"})
    (merge raw-table-defaults
           {:schema  "s3"
@@ -137,24 +137,24 @@
                             {:name                "city_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "s3", :name "city", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})
+                             :details             {:base-type "type/Integer"}})
                      (merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name    "name"
-                             :details {:base-type "TextField", :special-type "name"}})]
+                             :details {:base-type "type/Text", :special-type "type/Name"}})]
            :name    "venue"})
    (merge raw-table-defaults
           {:schema  "s2"
            :columns [(merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name    "name"
-                             :details {:base-type "TextField", :special-type "name"}})]
+                             :details {:base-type "type/Text", :special-type "type/Name"}})]
            :name    "city"})
    (merge raw-table-defaults
           {:schema  "s1"
@@ -162,44 +162,44 @@
                             {:name                "city_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "s1", :name "city", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})
+                             :details             {:base-type "type/Integer"}})
                      (merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name    "name"
-                             :details {:base-type "TextField", :special-type "name"}})]
+                             :details {:base-type "type/Text", :special-type "type/Name"}})]
            :name    "venue"})
    (merge raw-table-defaults
           {:schema  "common"
            :columns [(merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name    "name"
-                             :details {:base-type "TextField"}})]
+                             :details {:base-type "type/Text"}})]
            :name    "user"})
    (merge raw-table-defaults
           {:schema  "s3"
            :columns [(merge raw-field-defaults
                             {:name                "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk               true})
                      (merge raw-field-defaults
                             {:name                "reviewer_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})
+                             :details             {:base-type "type/Integer"}})
                      (merge raw-field-defaults
                             {:name    "text"
-                             :details {:base-type "TextField", :special-type "name"}})
+                             :details {:base-type "type/Text", :special-type "type/Name"}})
                      (merge raw-field-defaults
                             {:name                "venue_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "s3", :name "venue", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})]
+                             :details             {:base-type "type/Integer"}})]
            :name    "review"})
    (merge raw-table-defaults
           {:schema  "s2"
@@ -207,44 +207,44 @@
                             {:name                "city_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "s2", :name "city", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})
+                             :details             {:base-type "type/Integer"}})
                      (merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name    "name"
-                             :details {:base-type "TextField", :special-type "name"}})]
+                             :details {:base-type "type/Text", :special-type "type/Name"}})]
            :name    "venue"})
    (merge raw-table-defaults
           {:schema  "s1"
            :columns [(merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name                "reviewer_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})
+                             :details             {:base-type "type/Integer"}})
                      (merge raw-field-defaults
                             {:name    "text"
-                             :details {:base-type "TextField", :special-type "name"}})
+                             :details {:base-type "type/Text", :special-type "type/Name"}})
                      (merge raw-field-defaults
                             {:name                "venue_id"
                              :fk_target_column_id true
                              :fk_target_column    {:schema "s1", :name "venue", :col-name "id"}
-                             :details             {:base-type "IntegerField"}})]
+                             :details             {:base-type "type/Integer"}})]
            :name    "review"})
    (merge raw-table-defaults
           {:schema  "s1"
            :columns [(merge raw-field-defaults
                             {:name    "id"
-                             :details {:base-type "IntegerField"}
+                             :details {:base-type "type/Integer"}
                              :is_pk   true})
                      (merge raw-field-defaults
                             {:name    "name"
-                             :details {:base-type "TextField", :special-type "name"}})]
+                             :details {:base-type "type/Text", :special-type "type/Name"}})]
            :name    "city"})])
 
 
@@ -289,202 +289,202 @@
           {:schema       "common"
            :name         "user"
            :fields       [(merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField})]
+                                  :base_type    :type/Text})]
            :display_name "User"})
    (merge table-defaults
           {:schema       "s1"
            :name         "city"
            :fields       [(merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField})]
+                                  :base_type    :type/Text})]
            :display_name "City"})
    (merge table-defaults
           {:schema       "s1"
            :name         "review"
            :fields       [(merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "reviewer_id"
                                   :fk_target_field_id true
                                   :display_name       "Reviewer ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "common", :name "user", :col-name "id"}})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "text"
                                   :display_name "Text"
-                                  :base_type    :TextField})
+                                  :base_type    :type/Text})
                           (merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "venue_id"
                                   :fk_target_field_id true
                                   :display_name       "Venue ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "s1", :name "venue", :col-name "id"}})]
            :display_name "Review"})
    (merge table-defaults
           {:schema       "s1"
            :name         "venue"
            :fields       [(merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "city_id"
                                   :fk_target_field_id true
                                   :display_name       "City ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "s1", :name "city", :col-name "id"}})
                           (merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField})]
+                                  :base_type    :type/Text})]
            :display_name "Venue"})
    (merge table-defaults
           {:schema       "s2"
            :name         "city"
            :fields       [(merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField})]
+                                  :base_type    :type/Text})]
            :display_name "City"})
    (merge table-defaults
           {:schema       "s2"
            :name         "review"
            :fields       [(merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "reviewer_id"
                                   :fk_target_field_id true
                                   :display_name       "Reviewer ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "common", :name "user", :col-name "id"}})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "text"
                                   :display_name "Text"
-                                  :base_type    :TextField})
+                                  :base_type    :type/Text})
                           (merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "venue_id"
                                   :fk_target_field_id true
                                   :display_name       "Venue ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "s2", :name "venue", :col-name "id"}})]
            :display_name "Review"})
    (merge table-defaults
           {:schema       "s2"
            :name         "venue"
            :fields       [(merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "city_id"
                                   :fk_target_field_id true
                                   :display_name       "City ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "s2", :name "city", :col-name "id"}})
                           (merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField})]
+                                  :base_type    :type/Text})]
            :display_name "Venue"})
    (merge table-defaults
           {:schema       "s3"
            :name         "city"
            :fields       [(merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField})]
+                                  :base_type    :type/Text})]
            :display_name "City"})
    (merge table-defaults
           {:schema       "s3"
            :name         "review"
            :fields       [(merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "reviewer_id"
                                   :fk_target_field_id true
                                   :display_name       "Reviewer ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "common", :name "user", :col-name "id"}})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "text"
                                   :display_name "Text"
-                                  :base_type    :TextField})
+                                  :base_type    :type/Text})
                           (merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "venue_id"
                                   :fk_target_field_id true
                                   :display_name       "Venue ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "s3", :name "venue", :col-name "id"}})]
            :display_name "Review"})
    (merge table-defaults
           {:schema       "s3"
            :name         "venue"
            :fields       [(merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "city_id"
                                   :fk_target_field_id true
                                   :display_name       "City ID"
-                                  :base_type          :IntegerField
+                                  :base_type          :type/Integer
                                   :fk_target_field    {:schema "s3", :name "city", :col-name "id"}})
                           (merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField})]
+                                  :base_type    :type/Text})]
            :display_name "Venue"})])

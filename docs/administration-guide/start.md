@@ -8,10 +8,13 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Enabling features that send email (SMTP)](02-setting-up-email.md)
 * [Editing your database metadata](03-metadata-editing.md)
 * [Managing user accounts](04-managing-users.md)
-* [Creating segments and metrics](05-segments-and-metrics.md)
-* [Configuring settings](06-configuration-settings.md)
-* [Setting up Slack integration](07-setting-up-slack.md)
-* [Enabling single sign-on with Google](08-single-sign-on.md)
+* [Setting data permissions](05-setting-permissions.md)
+* [Creating and managing collections](06-collections.md)
+* [Creating segments and metrics](07-segments-and-metrics.md)
+* [Configuring settings](08-configuration-settings.md)
+* [Setting up Slack integration](09-setting-up-slack.md)
+* [Enabling single sign-on with Google](10-single-sign-on.md)
+* [Creating a Getting Started Guide for your team](11-getting-started-guide.md)
 
 First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.md#installing-and-running-metabase) will help you through the process.
 

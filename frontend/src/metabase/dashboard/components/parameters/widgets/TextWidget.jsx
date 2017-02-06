@@ -12,7 +12,6 @@ export default class TextWidget extends Component {
     static propTypes = {
         value: PropTypes.any,
         setValue: PropTypes.func.isRequired,
-        onClose: PropTypes.func.isRequired,
         className: PropTypes.string,
         isEditing: PropTypes.bool,
         commitImmediately: PropTypes.bool,
@@ -38,7 +37,7 @@ export default class TextWidget extends Component {
             <input
                 className={className}
                 type="text"
-                value={this.state.value}
+                value={this.state.value || ""}
                 onChange={(e) => {
                     this.setState({ value: e.target.value })
                     if (this.props.commitImmediately) {

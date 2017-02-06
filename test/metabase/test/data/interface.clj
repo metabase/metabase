@@ -16,8 +16,8 @@
 
 (s/defrecord FieldDefinition [field-name      :- su/NonBlankString
                               base-type       :- (s/cond-pre {:native su/NonBlankString}
-                                                             (apply s/enum field/base-types))
-                              special-type    :- (s/maybe (apply s/enum field/special-types))
+                                                             su/FieldType)
+                              special-type    :- (s/maybe su/FieldType)
                               visibility-type :- (s/maybe (apply s/enum field/visibility-types))
                               fk              :- (s/maybe s/Keyword)])
 
@@ -26,11 +26,7 @@
                               rows              :- [[s/Any]]])
 
 (s/defrecord DatabaseDefinition [database-name     :- su/NonBlankString
-                                 table-definitions :- [TableDefinition]
-                                 ;; Optional. Set this to non-nil to let dataset loaders know that we don't intend to keep it
-                                 ;; for long -- they can adjust connection behavior, e.g. choosing simple connections instead of creating pools.
-                                 ;; TODO - not sure this is still used now that we create connection pools directly via C3P0; we might be able to remove it
-                                 short-lived?      :- (s/maybe s/Bool)])
+                                 table-definitions :- [TableDefinition]])
 
 (defn escaped-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."
@@ -45,6 +41,20 @@
   {:pre [(string? database-name) (string? table-name)]}
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
   (apply str (take-last 30 (str/replace (str/lower-case (str database-name \_ table-name)) #"-" "_"))))
+
+(defn single-db-qualified-name-components
+  "Implementation of `qualified-name-components` for drivers like Oracle and Redshift that must use a single existing DB for testing.
+   This implementation simulates separate databases by doing two things:
+
+     1.  Using a \"session schema\" to make sure each test run is isolated from other test runs
+     2.  Embedding the name of the database into table names, e.g. to differentiate \"test_data_categories\" and \"tupac_sightings_categories\".
+
+   To use this implementation, partially bind this function with a SESSION-SCHEMA:
+
+     {:qualified-name-components (partial i/single-db-qualified-name-components my-session-schema-name)}"
+  ([_              _ db-name]                       [db-name])
+  ([session-schema _ db-name table-name]            [session-schema (db-qualified-table-name db-name table-name)])
+  ([session-schema _ db-name table-name field-name] [session-schema (db-qualified-table-name db-name table-name) field-name]))
 
 
 (defprotocol IMetabaseInstance
@@ -68,7 +78,7 @@
   (metabase-instance [{:keys [database-name]} engine-kw]
     (assert (string? database-name))
     (assert (keyword? engine-kw))
-    (db/setup-db-if-needed, :auto-migrate true)
+    (db/setup-db-if-needed!, :auto-migrate true)
     (Database :name database-name, :engine (name engine-kw))))
 
 
@@ -92,11 +102,6 @@
      and add the appropriate data. This method should drop existing databases with the same name if applicable.
      (This refers to creating the actual *DBMS* database itself, *not* a Metabase `Database` object.)")
 
-  (destroy-db! [this, ^DatabaseDefinition database-definition]
-    "Destroy database, if any, associated with DATABASE-DEFINITION.
-     This refers to destroying a *DBMS* database -- removing an H2 file, dropping a Postgres database, etc.
-     This does not need to remove corresponding Metabase definitions -- this is handled by `DatasetLoader`.")
-
   ;; TODO - this would be more useful if DATABASE-DEFINITION was a parameter
   (default-schema ^String [this]
     "*OPTIONAL* Return the default schema name that tables for this DB should be expected to have.")
@@ -105,7 +110,7 @@
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
      The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
      can specifiy what type we should expect in the results instead.
-     For example, Oracle has `INTEGER` data types, so `:IntegerField` test values are instead stored as `NUMBER`, which we map to `:DecimalField`.")
+     For example, Oracle has `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`.")
 
   (format-name ^String [this, ^String table-or-field-name]
     "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
@@ -116,7 +121,7 @@
      Defaults to `(not (contains? (metabase.driver/features this) :set-timezone)`")
 
   (id-field-type ^clojure.lang.Keyword [this]
-    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
+    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."))
 
 (def IDatasetLoaderDefaultsMixin
   {:expected-base-type->actual         (u/drop-first-arg identity)
@@ -124,7 +129,7 @@
    :format-name                        (u/drop-first-arg identity)
    :has-questionable-timezone-support? (fn [driver]
                                          (not (contains? (driver/features driver) :set-timezone)))
-   :id-field-type                      (constantly :IntegerField)})
+   :id-field-type                      (constantly :type/Integer)})
 
 
 ;; ## Helper Functions for Creating New Definitions

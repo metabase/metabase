@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
-import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
+import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
 
 import cx from "classnames";
@@ -20,6 +20,7 @@ export default class Popover extends Component {
     }
 
     static propTypes = {
+        id: PropTypes.string,
         isOpen: PropTypes.bool,
         hasArrow: PropTypes.bool,
         // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
@@ -85,8 +86,12 @@ export default class Popover extends Component {
 
     _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
-                <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
+            <OnClickOutsideWrapper handleDismissal={this.handleDismissal} dismissOnEscape={this.props.dismissOnEscape} dismissOnClickOutside={this.props.dismissOnClickOutside}>
+                <div
+                    id={this.props.id}
+                    className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}
+                    style={this.props.style}
+                >
                     { typeof this.props.children === "function" ?
                         this.props.children()
                     :

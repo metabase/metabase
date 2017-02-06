@@ -3,15 +3,19 @@
             [compojure.route :as route]
             (metabase.api [activity :as activity]
                           [card :as card]
+                          [collection :as collection]
                           [dashboard :as dashboard]
                           [database :as database]
                           [dataset :as dataset]
                           [email :as email]
                           [field :as field]
                           [getting-started :as getting-started]
+                          [geojson :as geojson]
                           [label :as label]
                           [metric :as metric]
                           [notify :as notify]
+                          [permissions :as permissions]
+                          [public :as public]
                           [pulse :as pulse]
                           [revision :as revision]
                           [segment :as segment]
@@ -36,18 +40,22 @@
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"        [] (+auth activity/routes))
   (context "/card"            [] (+auth card/routes))
+  (context "/collection"      [] (+auth collection/routes))
   (context "/dashboard"       [] (+auth dashboard/routes))
   (context "/database"        [] (+auth database/routes))
   (context "/dataset"         [] (+auth dataset/routes))
   (context "/email"           [] (+auth email/routes))
   (context "/field"           [] (+auth field/routes))
   (context "/getting_started" [] (+auth getting-started/routes))
+  (context "/geojson"         [] (+auth geojson/routes))
   (GET     "/health"          [] (if ((resolve 'metabase.core/initialized?))
                                    {:status 200, :body {:status "ok"}}
                                    {:status 503, :body {:status "initializing", :progress ((resolve 'metabase.core/initialization-progress))}}))
   (context "/label"           [] (+auth label/routes))
   (context "/metric"          [] (+auth metric/routes))
   (context "/notify"          [] (+apikey notify/routes))
+  (context "/permissions"     [] (+auth permissions/routes))
+  (context "/public"          [] public/routes)
   (context "/pulse"           [] (+auth pulse/routes))
   (context "/revision"        [] (+auth revision/routes))
   (context "/segment"         [] (+auth segment/routes))

@@ -1,12 +1,12 @@
 (ns metabase.util.password-test
   (:require [expectations :refer :all]
-            [metabase.test.util :refer [resolve-private-fns]]
+            [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util.password :refer :all]))
 
 
 ;; Password Complexity testing
 
-(resolve-private-fns metabase.util.password count-occurrences password-has-char-counts?)
+(resolve-private-vars metabase.util.password count-occurrences password-has-char-counts?)
 
 ;; Check that password occurance counting works
 (expect {:total  3, :lower 3, :upper 0, :letter 3, :digit 0, :special 0} (count-occurrences "abc"))

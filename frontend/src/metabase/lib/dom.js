@@ -1,4 +1,13 @@
 
+// denotes whether the current page is loaded in an iframe or not
+export const IFRAMED = (function() {
+    try {
+        return window.self !== window.top;
+    } catch (e) {
+        return true;
+    }
+})();
+
 export function isObscured(element, offset) {
     // default to the center of the element
     offset = offset || {
@@ -32,4 +41,136 @@ export function findPosition(element, excludeScroll = false) {
         offset.top -= scroll.top;
     }
     return offset;
+}
+
+// based on http://stackoverflow.com/a/38039019/113
+export function elementIsInView(element, percentX = 1, percentY = 1) {
+    const tolerance = 0.01;   //needed because the rects returned by getBoundingClientRect provide the position up to 10 decimals
+
+    const elementRect = element.getBoundingClientRect();
+    const parentRects = [];
+
+    while (element.parentElement != null) {
+        parentRects.push(element.parentElement.getBoundingClientRect());
+        element = element.parentElement;
+    }
+
+    return parentRects.every((parentRect) => {
+        const visiblePixelX = Math.min(elementRect.right, parentRect.right) - Math.max(elementRect.left, parentRect.left);
+        const visiblePixelY = Math.min(elementRect.bottom, parentRect.bottom) - Math.max(elementRect.top, parentRect.top);
+        const visiblePercentageX = visiblePixelX / elementRect.width;
+        const visiblePercentageY = visiblePixelY / elementRect.height;
+        return visiblePercentageX + tolerance > percentX && visiblePercentageY + tolerance > percentY;
+    });
+}
+
+export function getSelectionPosition(element) {
+    // input, textarea, IE
+    if (element.setSelectionRange || element.createTextRange) {
+        return [element.selectionStart, element.selectionEnd];
+    }
+    // contenteditable
+    else {
+        try {
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            const { startContainer, startOffset } = range;
+            range.setStart(element, 0);
+            const end = range.toString().length;
+            range.setEnd(startContainer, startOffset);
+            const start = range.toString().length;
+
+            return [start, end];
+        } catch (e) {
+            return [0, 0];
+        }
+    }
+}
+
+export function setSelectionPosition(element, [start, end]) {
+    // input, textarea
+    if (element.setSelectionRange) {
+        element.focus();
+        element.setSelectionRange(start, end);
+    }
+    // IE
+    else if (element.createTextRange) {
+        const range = element.createTextRange();
+        range.collapse(true);
+        range.moveEnd("character", end);
+        range.moveStart("character", start);
+        range.select();
+    }
+    // contenteditable
+    else {
+        const selection = window.getSelection();
+        const startPos = getTextNodeAtPosition(element, start);
+        const endPos = getTextNodeAtPosition(element, end);
+        selection.removeAllRanges();
+        const range = new Range();
+        range.setStart(startPos.node, startPos.position);
+        range.setEnd(endPos.node, endPos.position);
+        selection.addRange(range);
+    }
+}
+
+export function saveSelection(element) {
+    let range = getSelectionPosition(element);
+    return () => setSelectionPosition(element, range);
+}
+
+export function getCaretPosition(element) {
+    return getSelectionPosition(element)[1];
+}
+
+export function setCaretPosition(element, position) {
+    setSelectionPosition(element, [position, position]);
+}
+
+export function saveCaretPosition(element) {
+    let position = getCaretPosition(element);
+    return () => setCaretPosition(element, position);
+}
+
+function getTextNodeAtPosition(root, index) {
+    let treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, (elem) => {
+        if (index > elem.textContent.length){
+            index -= elem.textContent.length;
+            return NodeFilter.FILTER_REJECT
+        }
+        return NodeFilter.FILTER_ACCEPT;
+    });
+    var c = treeWalker.nextNode();
+    return {
+        node: c ? c : root,
+        position: c ? index :  0
+    };
+}
+
+// https://davidwalsh.name/add-rules-stylesheets
+var STYLE_SHEET = (function() {
+    // Create the <style> tag
+    var style = document.createElement("style");
+    style.dataset.x = "x"
+
+    // Add a media (and/or media query) here if you'd like!
+    // style.setAttribute("media", "screen")
+    // style.setAttribute("media", "only screen and (max-width : 1024px)")
+
+    // WebKit hack :(
+    style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
+
+    // Add the <style> element to the page
+    document.head.appendChild(style);
+
+    return style.sheet;
+})();
+
+export function addCSSRule(selector, rules, index) {
+    if("insertRule" in STYLE_SHEET) {
+        STYLE_SHEET.insertRule(selector + "{" + rules + "}", index);
+    }
+    else if("addRule" in STYLE_SHEET) {
+        STYLE_SHEET.addRule(selector, rules, index);
+    }
 }

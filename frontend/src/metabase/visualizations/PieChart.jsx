@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
@@ -24,8 +26,14 @@ const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
 const SLICE_THRESHOLD = 1 / 360; // 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
-export default class PieChart extends Component {
-    static displayName = "Pie";
+const PERCENT_REGEX = /percent/i;
+
+import type { VisualizationProps } from "metabase/visualizations";
+
+type Props = VisualizationProps;
+
+export default class PieChart extends Component<*, Props, *> {
+    static uiName = "Pie";
     static identifier = "pie";
     static iconName = "pie";
 
@@ -37,7 +45,7 @@ export default class PieChart extends Component {
 
     static checkRenderable(cols, rows, settings) {
         if (!settings["pie.dimension"] || !settings["pie.metric"]) {
-            throw new ChartSettingsError("Please select columns in the chart settings.", "Data");
+            throw new ChartSettingsError("Which columns do want to use?", "Data");
         }
     }
 
@@ -62,10 +70,14 @@ export default class PieChart extends Component {
         const formatMetric    =    (metric, jsx = true) => formatValue(metric, { column: cols[metricIndex], jsx, majorWidth: 0 })
         const formatPercent   =               (percent) => (100 * percent).toFixed(2) + "%"
 
-        let total = rows.reduce((sum, row) => sum + row[metricIndex], 0);
+        const showPercentInTooltip = !PERCENT_REGEX.test(cols[metricIndex].name) && !PERCENT_REGEX.test(cols[metricIndex].display_name);
+
+        // $FlowFixMe
+        let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
         // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
         let sliceColors = Object.values(rows.length > 5 ? colors.harmony : colors.normal);
+        let sliceThreshold = typeof settings["pie.slice_threshold"] === "number" ? settings["pie.slice_threshold"] / 100 : SLICE_THRESHOLD;
 
         let [slices, others] = _.chain(rows)
             .map((row, index) => ({
@@ -74,7 +86,7 @@ export default class PieChart extends Component {
                 percentage: row[metricIndex] / total,
                 color: sliceColors[index % sliceColors.length]
             }))
-            .partition((d) => d.percentage > SLICE_THRESHOLD)
+            .partition((d) => d.percentage > sliceThreshold)
             .value();
 
         let otherTotal = others.reduce((acc, o) => acc + o.value, 0);
@@ -95,7 +107,7 @@ export default class PieChart extends Component {
         }
 
         let legendTitles = slices.map(slice => [
-            slice.key === "Other" ? slice.key : formatDimension(slice.key, false),
+            slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
             settings["pie.show_legend_perecent"] ? formatPercent(slice.percentage) : undefined
         ]);
         let legendColors = slices.map(slice => slice.color);
@@ -119,8 +131,7 @@ export default class PieChart extends Component {
             : [
                 { key: getFriendlyName(cols[dimensionIndex]), value: formatDimension(slices[index].key) },
                 { key: getFriendlyName(cols[metricIndex]), value: formatMetric(slices[index].value) },
-                { key: "Percentage", value: formatPercent(slices[index].percentage) }
-            ]
+            ].concat(showPercentInTooltip ? [{ key: "Percentage", value: formatPercent(slices[index].percentage) }] : [])
         });
 
         let value, title;

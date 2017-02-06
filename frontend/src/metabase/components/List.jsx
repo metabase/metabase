@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 
 import S from "./List.css";
-import { pure } from "recompose";
+import pure from "recompose/pure";
 
 const List = ({ children }) =>
     <ul className={S.list}>

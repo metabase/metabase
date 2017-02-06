@@ -1,15 +1,15 @@
 var webpackConfig = require('../../webpack.config');
-webpackConfig.module.postLoaders = [
-    { test: /\.js$/, exclude: /(\.spec\.js|vendor|node_modules)/, loader: 'istanbul-instrumenter' }
-];
+webpackConfig.module.loaders.forEach(function(loader) {
+    loader.loader = loader.loader.replace(/^.*extract-text-webpack-plugin[^!]+!/, "");
+});
 
 module.exports = function(config) {
     config.set({
         basePath: '../',
         files: [
             'test/metabase-bootstrap.js',
-            '../node_modules/angular-mocks/angular-mocks.js',
-            'test/unit/**/*.spec.js'
+            // prevent tests from running twice: https://github.com/nikku/karma-browserify/issues/67#issuecomment-84448491
+            { pattern: 'test/unit/**/*.spec.js', watched: false, included: true, served: true }
         ],
         exclude: [
         ],
@@ -22,22 +22,18 @@ module.exports = function(config) {
         ],
         reporters: [
             'progress',
-            'coverage'
+            'junit'
         ],
         webpack: {
             resolve: webpackConfig.resolve,
-            module: webpackConfig.module
+            module: webpackConfig.module,
+            postcss: webpackConfig.postcss
         },
-        coverageReporter: {
-            dir: '../coverage/',
-            subdir: function(browser) {
-                return browser.toLowerCase().split(/[ /-]/)[0];
-            },
-            reporters: [
-                { type: 'text', file: 'text.txt' },
-                { type: 'text-summary', file: 'text-summary.txt' },
-                { type: 'html' }
-            ]
+        webpackMiddleware: {
+            stats: "errors-only"
+        },
+        junitReporter: {
+            outputDir: (process.env["CIRCLE_TEST_REPORTS"] || "..") + "/test-report-frontend"
         },
         port: 9876,
         colors: true,

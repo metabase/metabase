@@ -3,16 +3,24 @@
 import Base from "./Base";
 import Table from "./Table";
 
+import type { FieldId, Field as FieldObject } from "metabase/meta/types/Field";
+import type { TableId } from "metabase/meta/types/Table";
+
 import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
+import { isPK } from "metabase/lib/types";
 
 export default class Field extends Base {
     static type = "fields";
     static schema = {};
 
-    id: number;
+    _object: FieldObject;
+
+    id: FieldId;
     display_name: string;
-    table_id: number;
-    fk_target_field_id: number;
+    table_id: TableId;
+    fk_target_field_id: FieldId;
+
+    base_type: string;
     special_type: string;
 
     table(): Table {
@@ -35,10 +43,18 @@ export default class Field extends Base {
     isCategory()  { return isCategory(this._object); }
     isMetric()    { return isMetric(this._object); }
     isDimension() { return isDimension(this._object); }
-    isID()        { return this.special_type === "id"; }
+    isID()        { return isPK(this.special_type); }
 
-    values() {
-        return (this._object.values && this._object.values.length > 0 && this._object.values[0].values) || []
+    values(): Array<string> {
+        let values = this._object.values;
+        // https://github.com/metabase/metabase/issues/3417
+        if (Array.isArray(values)) {
+            return values;
+        } else if (values && Array.isArray(values.values)) {
+            return values.values;
+        } else {
+            return [];
+        }
     }
 
     icon() {

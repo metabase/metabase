@@ -3,34 +3,34 @@ import React, { Component, PropTypes } from 'react';
 import "./Calendar.css";
 
 import cx from 'classnames';
-import moment from "moment";
+import moment from 'moment';
 
-import Icon from 'metabase/components/Icon.jsx';
-import Tooltip from 'metabase/components/Tooltip.jsx';
-
-const MODES = ['month', 'year', 'decade'];
+import Icon from 'metabase/components/Icon';
 
 export default class Calendar extends Component {
-    constructor(props, context) {
-        super(props, context);
+    constructor(props) {
+        super(props);
 
         this.state = {
-            current: moment(props.initial || undefined),
-            currentMode: MODES[0]
+            current: moment(props.initial || undefined)
         };
 
         this.previous = this.previous.bind(this);
         this.next = this.next.bind(this);
-        this.cycleMode = this.cycleMode.bind(this);
         this.onClickDay = this.onClickDay.bind(this);
     }
 
     static propTypes = {
         selected: PropTypes.object,
-        selectedEnd: PropTypes.object,
         onChange: PropTypes.func.isRequired,
         onAfterClick: PropTypes.func,
         onBeforeClick: PropTypes.func,
+        isRangePicker: PropTypes.bool,
+        isDual: PropTypes.bool,
+    };
+
+    static defaultProps = {
+        isRangePicker: true
     };
 
     componentWillReceiveProps(nextProps) {
@@ -50,8 +50,8 @@ export default class Calendar extends Component {
     }
 
     onClickDay(date, e) {
-        let { selected, selectedEnd } = this.props;
-        if (!selected || selectedEnd) {
+        let { selected, selectedEnd, isRangePicker } = this.props;
+        if (!isRangePicker || !selected || selectedEnd) {
             this.props.onChange(date.format("YYYY-MM-DD"), null);
         } else if (!selectedEnd) {
             if (date.isAfter(selected)) {
@@ -60,15 +60,6 @@ export default class Calendar extends Component {
                 this.props.onChange(date.format("YYYY-MM-DD"), selected.format("YYYY-MM-DD"));
             }
         }
-    }
-
-    cycleMode() {
-        // let i = this.currentMode
-        // console.log('mode cycle y\'all')
-        // let i = ++i%this.state.modes.length;
-        // this.setState({
-        //     mode: this.modes[i]
-        // })
     }
 
     previous() {
@@ -83,18 +74,24 @@ export default class Calendar extends Component {
         this.setState({ month: month });
     }
 
-    renderMonthHeader() {
+    renderMonthHeader(current, side) {
         return (
             <div className="Calendar-header flex align-center">
-                <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1" onClick={this.previous}>
-                    <Icon name="chevronleft" size={10} />
-                </div>
+                { side !=="right" &&
+                    <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1" onClick={this.previous}>
+                        <Icon name="chevronleft" size={10} />
+                    </div>
+                }
                 <span className="flex-full" />
-                <h4 className="bordered border-hover cursor-pointer rounded p1" onClick={this.cycleMode}>{this.state.current.format("MMMM YYYY")}</h4>
+                <h4 className="cursor-pointer rounded p1">
+                    {current.format("MMMM YYYY")}
+                </h4>
                 <span className="flex-full" />
-                <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
-                    <Icon name="chevronright" size={10} />
-                </div>
+                { side !=="left" &&
+                    <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
+                        <Icon name="chevronright" size={10} />
+                    </div>
+                }
             </div>
         )
     }
@@ -108,10 +105,10 @@ export default class Calendar extends Component {
         );
     }
 
-    renderWeeks() {
+    renderWeeks(current) {
         var weeks = [],
             done = false,
-            date = moment(this.state.current).startOf("month").add("w" -1).day("Sunday"),
+            date = moment(current).startOf("month").add("w" -1).day("Sunday"),
             monthIndex = date.month(),
             count = 0;
 
@@ -120,7 +117,7 @@ export default class Calendar extends Component {
                 <Week
                     key={date.toString()}
                     date={moment(date)}
-                    month={this.state.current}
+                    month={current}
                     onClickDay={this.onClickDay}
                     selected={this.props.selected}
                     selectedEnd={this.props.selectedEnd}
@@ -132,35 +129,37 @@ export default class Calendar extends Component {
         }
 
         return (
-            <div className="relative">
-                <div className="Calendar-weeks">
-                    {weeks}
-                </div>
-                {this.props.onBeforeClick &&
-                    <div className="absolute top left z2" style={{marginTop: "-12px", marginLeft: "-12px"}}>
-                        <Tooltip tooltip={"Everything before " + this.props.selected.format("MMMM Do, YYYY")}>
-                            <a className="circle-button cursor-pointer" onClick={this.props.onBeforeClick}>«</a>
-                        </Tooltip>
-                    </div>
-                }
-                {this.props.onAfterClick &&
-                    <div className="absolute bottom right z2" style={{marginBottom: "-12px", marginRight: "-12px"}}>
-                        <Tooltip tooltip={"Everything after " + this.props.selected.format("MMMM Do, YYYY")}>
-                            <a className="circle-button cursor-pointer" onClick={this.props.onAfterClick}>»</a>
-                        </Tooltip>
-                    </div>
-                }
+            <div className="Calendar-weeks relative">
+                {weeks}
             </div>
         );
     }
-    render() {
+
+    renderCalender(current, side) {
         return (
-            <div className={cx("Calendar", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
-                {this.renderMonthHeader()}
-                {this.renderDayNames()}
-                {this.renderWeeks()}
+            <div className={
+                cx("Calendar", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
+                {this.renderMonthHeader(current, side)}
+                {this.renderDayNames(current)}
+                {this.renderWeeks(current)}
             </div>
         );
+    }
+
+    render() {
+        const { current } = this.state;
+        if (this.props.isDual) {
+            return (
+                <div className="flex">
+                    <div className="mr3">
+                        {this.renderCalender(current, "left")}
+                    </div>
+                    {this.renderCalender(moment(current).add(1, "month"), "right")}
+                </div>
+            )
+        } else {
+            return this.renderCalender(current);
+        }
     }
 }
 
@@ -169,10 +168,6 @@ class Week extends Component {
         selected: PropTypes.object,
         selectedEnd: PropTypes.object,
         onClickDay: PropTypes.func.isRequired
-    }
-
-    _dayIsSelected(day) {
-        return
     }
 
     render() {

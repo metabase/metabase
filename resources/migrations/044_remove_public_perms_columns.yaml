@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 44
+      author: camsaul
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: public_perms
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: public_perms
+        - dropColumn:
+            tableName: pulse
+            columnName: public_perms

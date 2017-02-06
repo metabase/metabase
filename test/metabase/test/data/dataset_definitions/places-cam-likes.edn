@@ -1,7 +1,7 @@
 [["places" [{:field-name "name"
-             :base-type :CharField}
+             :base-type :type/Text}
             {:field-name "liked"
-             :base-type :BooleanField}]
+             :base-type :type/Boolean}]
   [["Tempest" true]
    ["Bullit" true]
    ["The Dentist" false]]]]
