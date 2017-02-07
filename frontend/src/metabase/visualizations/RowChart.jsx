@@ -2,8 +2,6 @@
 
 import React, { Component, PropTypes } from "react";
 
-import dc from "dc";
-
 import LineAreaBarChart from "./components/LineAreaBarChart.jsx";
 import { rowRenderer } from "./lib/LineAreaBarRenderer";
 

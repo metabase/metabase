@@ -253,6 +253,7 @@ export var ICON_PATHS = {
 ICON_PATHS["illustration-line"] = ICON_PATHS['illustration-area'];
 ICON_PATHS["illustration-scatter"] = ICON_PATHS['illustration-area'];
 
+// $FlowFixMe
 ICON_PATHS["horizontal_bar"] = {
     path: ICON_PATHS["bar"],
     attrs: {

@@ -7,7 +7,6 @@ import LegendHeader from "./LegendHeader.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 
 import "./LineAreaBarChart.css";
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
 import { isNumeric, isDate } from "metabase/lib/schema_metadata";
 import {
@@ -45,7 +44,8 @@ for (let i = 0; i < MAX_SERIES; i++) {
 import type { VisualizationProps } from "metabase/visualizations";
 
 export default class LineAreaBarChart extends Component<*, VisualizationProps, *> {
-    static identifier;
+    static identifier: string;
+    static renderer: (element: Element, props: VisualizationProps) => any;
 
     static noHeader = true;
     static supportsSeries = true;
