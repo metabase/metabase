@@ -4,8 +4,8 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 
-import ChartTooltip from "./components/ChartTooltip.jsx";
-import ChartWithLegend from "./components/ChartWithLegend.jsx";
+import ChartTooltip from "../components/ChartTooltip.jsx";
+import ChartWithLegend from "../components/ChartWithLegend.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";

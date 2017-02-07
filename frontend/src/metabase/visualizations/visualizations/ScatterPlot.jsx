@@ -2,8 +2,8 @@
 
 import React, { Component, PropTypes } from "react";
 
-import LineAreaBarChart from "./components/LineAreaBarChart.jsx";
-import { scatterRenderer } from "./lib/LineAreaBarRenderer";
+import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
+import { scatterRenderer } from "../lib/LineAreaBarRenderer";
 
 export default class ScatterPlot extends LineAreaBarChart {
     static uiName = "Scatter";

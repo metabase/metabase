@@ -2,8 +2,8 @@
 
 import React, { Component, PropTypes } from "react";
 
-import TableInteractive from "./TableInteractive.jsx";
-import TableSimple from "./TableSimple.jsx";
+import TableInteractive from "../components/TableInteractive.jsx";
+import TableSimple from "../components/TableSimple.jsx";
 
 import * as DataGrid from "metabase/lib/data_grid";
 import _ from "underscore";

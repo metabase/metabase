@@ -2,8 +2,8 @@
 
 import React, { Component, PropTypes } from "react";
 
-import ChoroplethMap from "./components/ChoroplethMap.jsx";
-import PinMap from "./PinMap.jsx";
+import ChoroplethMap from "../components/ChoroplethMap.jsx";
+import PinMap from "../components/PinMap.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 

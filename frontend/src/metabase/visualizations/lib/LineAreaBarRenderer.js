@@ -1096,7 +1096,7 @@ export function rowRenderer(
     .ordering(d => d.index);
 
   let labelPadHorizontal = 5;
-  let labelPadVertical = 2;
+  let labelPadVertical = 1;
   let labelsOutside = false;
 
   chart.on("renderlet.bar-labels", chart => {
