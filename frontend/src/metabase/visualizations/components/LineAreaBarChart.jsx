@@ -32,10 +32,14 @@ for (let i = 0; i < MAX_SERIES; i++) {
     addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .line`,       MUTE_STYLE);
     addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .stack._${i} .bar`,        MUTE_STYLE);
     addCSSRule(`.LineAreaBarChart.mute-${i} svg.stacked .dc-tooltip._${i} .dot`,   MUTE_STYLE);
+
     addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bar`,    MUTE_STYLE);
     addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .line`,   MUTE_STYLE);
     addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .dot`,    MUTE_STYLE);
     addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .sub._${i} .bubble`, MUTE_STYLE);
+
+    // row charts don't support multiseries
+    addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
 import type { VisualizationProps } from "metabase/visualizations";
@@ -122,10 +126,6 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
         } else {
             return null;
         }
-    }
-
-    getChartType() {
-        return this.constructor.identifier;
     }
 
     getFidelity() {
@@ -218,12 +218,11 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                 : null }
                 <CardRenderer
                     {...this.props}
-                    chartType={this.getChartType()}
                     series={series}
                     settings={settings}
                     className="renderer flex-full"
                     maxSeries={MAX_SERIES}
-                    renderer={lineAreaBarRenderer}
+                    renderer={this.constructor.renderer}
                 />
                 <ChartTooltip series={series} hovered={hovered} />
             </div>
