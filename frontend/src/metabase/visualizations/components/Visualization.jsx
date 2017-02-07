@@ -11,7 +11,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import { duration, formatNumber } from "metabase/lib/formatting";
 
 import { getVisualizationTransformed } from "metabase/visualizations";
-import { getSettings } from "metabase/lib/visualization_settings";
+import { getSettings } from "metabase/visualizations/lib/settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import Utils from "metabase/lib/utils";
 

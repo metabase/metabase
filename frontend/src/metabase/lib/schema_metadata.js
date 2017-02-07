@@ -108,6 +108,8 @@ export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = (col) => (col && col.source !== "aggregation");
 export const isMetric    = (col) => (col && col.source !== "breakout") && isSummable(col);
 
+export const isAny = (col) => true;
+
 export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.Number);
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers

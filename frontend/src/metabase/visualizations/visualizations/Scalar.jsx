@@ -67,6 +67,38 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
         }
     }
 
+    static settings = {
+        "scalar.locale": {
+            title: "Separator style",
+            widget: "select",
+            props: {
+                options: [
+                    { name: "100000.00", value: null },
+                    { name: "100,000.00", value: "en" },
+                    { name: "100 000,00", value: "fr" },
+                    { name: "100.000,00", value: "de" }
+                ]
+            },
+            default: "en"
+        },
+        "scalar.decimals": {
+            title: "Number of decimal places",
+            widget: "number"
+        },
+        "scalar.prefix": {
+            title: "Add a prefix",
+            widget: "input"
+        },
+        "scalar.suffix": {
+            title: "Add a suffix",
+            widget: "input"
+        },
+        "scalar.scale": {
+            title: "Multiply by a number",
+            widget: "number"
+        },
+    };
+
     render() {
         let { card, data, className, actionButtons, gridSize, settings, linkToCard } = this.props;
 

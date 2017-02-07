@@ -6,7 +6,7 @@ import ReactDOM from "react-dom";
 import BarChart from "./BarChart.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
-import { getSettings } from "metabase/lib/visualization_settings";
+import { getSettings } from "metabase/visualizations/lib/settings";
 import { assocIn } from "icepick";
 
 import type { VisualizationProps } from "metabase/visualizations";
