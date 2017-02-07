@@ -269,7 +269,7 @@ export default class Dashboard extends Component {
                         />
                     </header>
                     {!isFullscreen && parameters &&
-                        <div className="wrapper flex flex-column align-start mt1">
+                        <div className="wrapper flex flex-column align-start mt1 relative z2">
                             {parameters}
                         </div>
                     }
