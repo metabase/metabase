@@ -150,8 +150,10 @@ export default class Visualization extends Component<*, Props, State> {
 
     transform(newProps) {
         this.setState({
-            yAxisSplit: null,
+            hovered: null,
+            error: null,
             warnings: [],
+            yAxisSplit: null,
             ...getVisualizationTransformed(newProps.series)
         });
     }

@@ -15,12 +15,12 @@ import {
     getFriendlyName
 } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
+import { formatValue } from "metabase/lib/formatting";
 
 import { getSettings } from "metabase/lib/visualization_settings";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
-import crossfilter from "crossfilter";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -93,7 +93,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     }
 
     static transformSeries(series) {
-        let newSeries = [].concat(...series.map((s) => transformSingleSeries(s, series)));
+        let newSeries = [].concat(...series.map((s, seriesIndex) => transformSingleSeries(s, series, seriesIndex)));
         if (_.isEqual(series, newSeries) || newSeries.length === 0) {
             return series;
         } else {
@@ -238,7 +238,7 @@ function getColumnsFromNames(cols, names) {
     return names.map(name => _.findWhere(cols, { name }));
 }
 
-function transformSingleSeries(s, series) {
+function transformSingleSeries(s, series, seriesIndex) {
     const { card, data } = s;
 
     // HACK: prevents cards from being transformed too many times
@@ -251,25 +251,38 @@ function transformSingleSeries(s, series) {
 
     const dimensions = settings["graph.dimensions"].filter(d => d != null);
     const metrics = settings["graph.metrics"].filter(d => d != null);
-    const dimensionIndexes = dimensions.map(dimensionName =>
+    const dimensionColumnIndexes = dimensions.map(dimensionName =>
         _.findIndex(cols, (col) => col.name === dimensionName)
     );
-    const metricIndexes = metrics.map(metricName =>
+    const metricColumnIndexes = metrics.map(metricName =>
         _.findIndex(cols, (col) => col.name === metricName)
     );
-
-    const bubbleIndex = settings["scatter.bubble"] && _.findIndex(cols, (col) => col.name === settings["scatter.bubble"]);
-    const extraIndexes = bubbleIndex && bubbleIndex >= 0 ? [bubbleIndex] : [];
+    const bubbleColumnIndex = settings["scatter.bubble"] && _.findIndex(cols, (col) => col.name === settings["scatter.bubble"]);
+    const extraColumnIndexes = bubbleColumnIndex && bubbleColumnIndex >= 0 ? [bubbleColumnIndex] : [];
 
     if (dimensions.length > 1) {
-        const dataset = crossfilter(rows);
-        const [dimensionIndex, seriesIndex] = dimensionIndexes;
-        const rowIndexes = [dimensionIndex].concat(metricIndexes, extraIndexes);
-        const seriesGroup = dataset.dimension(d => d[seriesIndex]).group()
-        return seriesGroup.reduce(
-            (p, v) => p.concat([rowIndexes.map(i => v[i])]),
-            (p, v) => null, () => []
-        ).all().map(o => ({
+        const [dimensionColumnIndex, seriesColumnIndex] = dimensionColumnIndexes;
+        const rowColumnIndexes = [dimensionColumnIndex].concat(metricColumnIndexes, extraColumnIndexes);
+
+        const breakoutValues = [];
+        const breakoutRowsByValue = new Map;
+
+        for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+            const row = rows[rowIndex];
+            const seriesValue = row[seriesColumnIndex];
+
+            let seriesRows = breakoutRowsByValue.get(seriesValue);
+            if (!seriesRows) {
+                breakoutRowsByValue.set(seriesValue, seriesRows = []);
+                breakoutValues.push(seriesValue);
+            }
+
+            let newRow = rowColumnIndexes.map(columnIndex => row[columnIndex]);
+            newRow._origin = { seriesIndex, rowIndex, row, cols };
+            seriesRows.push(newRow);
+        }
+
+        return breakoutValues.map((breakoutValue) => ({
             card: {
                 ...card,
                 // if multiseries include the card title as well as the breakout value
@@ -277,22 +290,23 @@ function transformSingleSeries(s, series) {
                     // show series title if it's multiseries
                     series.length > 1 && card.name,
                     // always show grouping value
-                    o.key
+                    formatValue(breakoutValue, cols[seriesColumnIndex])
                 ].filter(n => n).join(": "),
                 _transformed: true,
-                _breakoutValue: o.key,
-                _breakoutColumn: cols[seriesIndex]
+                _breakoutValue: breakoutValue,
+                _breakoutColumn: cols[seriesColumnIndex]
             },
             data: {
-                rows: o.value,
-                cols: rowIndexes.map(i => cols[i])
+                rows: breakoutRowsByValue.get(breakoutValue),
+                cols: rowColumnIndexes.map(i => cols[i]),
+                _rawCols: cols
             }
         }));
     } else {
-        const dimensionIndex = dimensionIndexes[0];
-        return metricIndexes.map(metricIndex => {
-            const col = cols[metricIndex];
-            const rowIndexes = [dimensionIndex].concat(metricIndex, extraIndexes);
+        const dimensionColumnIndex = dimensionColumnIndexes[0];
+        return metricColumnIndexes.map(metricColumnIndex => {
+            const col = cols[metricColumnIndex];
+            const rowColumnIndexes = [dimensionColumnIndex].concat(metricColumnIndex, extraColumnIndexes);
             return {
                 card: {
                     ...card,
@@ -300,15 +314,18 @@ function transformSingleSeries(s, series) {
                         // show series title if it's multiseries
                         series.length > 1 && card.name,
                         // show column name if there are multiple metrics
-                        metricIndexes.length > 1 && getFriendlyName(col)
+                        metricColumnIndexes.length > 1 && getFriendlyName(col)
                     ].filter(n => n).join(": "),
                     _transformed: true,
                 },
                 data: {
-                    rows: rows.map(row =>
-                        rowIndexes.map(i => row[i])
-                    ),
-                    cols: rowIndexes.map(i => cols[i])
+                    rows: rows.map((row, rowIndex) => {
+                        const newRow = rowColumnIndexes.map(i => row[i]);
+                        newRow._origin = { seriesIndex, rowIndex, row, cols };
+                        return newRow;
+                    }),
+                    cols: rowColumnIndexes.map(i => cols[i]),
+                    _rawCols: cols
                 }
             };
         });
