@@ -737,6 +737,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
                     String(row[0])
                 , ...row.slice(1)
             ]
+            // $FlowFixMe: _origin not typed
             newRow._origin = row._origin;
             return newRow;
         })
