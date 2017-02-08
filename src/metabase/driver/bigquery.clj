@@ -242,9 +242,6 @@
     :quarter-of-year (hx/quarter expr)
     :year            (hx/year expr)))
 
-(defn- date-string->literal [^String date-string]
-  (hx/->timestamp (hx/literal (u/format-date "yyyy-MM-dd 00:00" (u/->Date date-string)))))
-
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :sec_to_timestamp  expr)
@@ -396,7 +393,6 @@
           :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
-          :date-string->literal      (u/drop-first-arg date-string->literal)
           :field->alias              (u/drop-first-arg field->alias)
           :field->identifier         (u/drop-first-arg field->identifier)
           :prepare-value             (u/drop-first-arg prepare-value)
