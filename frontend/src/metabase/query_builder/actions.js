@@ -110,7 +110,11 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         const { currentUser } = getState();
 
-        let card, databases, originalCard, uiControls = { isEditing: false };
+        let card, databases, originalCard;
+        let uiControls = {
+            isEditing: false,
+            isShowingTemplateTagsEditor: false
+        };
 
         // always start the QB by loading up the databases for the application
         try {
@@ -119,11 +123,8 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             console.log("error fetching dbs", error);
 
             // if we can't actually get the databases list then bail now
-            return {
-                uiControls: {
-                    is500: true
-                }
-            }
+            uiControls.is500 = true;
+            return { uiControls };
         }
 
         // load up or initialize the card we'll be working on
