@@ -141,6 +141,18 @@
     ;; send an email to everyone including the site admin if that's set
     (email/send-user-joined-admin-notification-email! <>, :google-auth? true)))
 
+(defn create-new-ldap-auth-user!
+  "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active admins will recieve an email right away."
+  [first-name last-name email-address]
+  {:pre [(string? first-name) (string? last-name) (u/is-email? email-address)]}
+  (u/prog1 (db/insert! User
+             :email      email-address
+             :first_name first-name
+             :last_name  last-name
+             :password   (str (UUID/randomUUID))
+             :ldap_auth  true)
+    ;; send an email to everyone including the site admin if that's set
+    (email/send-user-joined-admin-notification-email! <>, :ldap-auth? true)))
 
 
 (defn set-password!

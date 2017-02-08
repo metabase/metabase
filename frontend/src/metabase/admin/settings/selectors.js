@@ -157,6 +157,77 @@ const SECTIONS = [
         ]
     },
     {
+        name: "LDAP",
+        settings: [
+            {
+                key: "ldap-host",
+                display_name: "LDAP Host",
+                placeholder: "ldap.yourdomain.org",
+                type: "string",
+                required: true,
+                autoFocus: true
+            },
+            {
+                key: "ldap-port",
+                display_name: "LDAP Port",
+                placeholder: "389",
+                type: "string",
+                required: true,
+                validations: [["integer", "That's not a valid port number"]]
+            },
+            {
+                key: "ldap-security",
+                display_name: "LDAP Security",
+                description: null,
+                type: "radio",
+                options: { none: "None", ssl: "SSL", tls: "TLS" },
+                defaultValue: 'none'
+            },
+            {
+                key: "ldap-bind-dn",
+                display_name: "Username or DN",
+                type: "string",
+                required: true
+            },
+            {
+                key: "ldap-password",
+                display_name: "Password",
+                type: "password",
+                required: true
+            },
+            {
+                key: "ldap-base",
+                display_name: "Search base",
+                type: "string",
+                required: true
+            },
+            {
+                key: "ldap-user-filter",
+                display_name: "User filter",
+                type: "string",
+                required: true
+            },
+            {
+                key: "ldap-attribute-email",
+                display_name: "User email attribute",
+                type: "string",
+                required: true
+            },
+            {
+                key: "ldap-attribute-firstname",
+                display_name: "User first name attribute",
+                type: "string",
+                required: true
+            },
+            {
+                key: "ldap-attribute-lastname",
+                display_name: "User last name attribute",
+                type: "string",
+                required: true
+            }
+        ]
+    },
+    {
         name: "Maps",
         settings: [
             {
