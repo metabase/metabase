@@ -289,10 +289,10 @@
 ;;
 ;; The details maps returned have the format:
 ;;
-;;    {:param-key               :timestamp                           ; name of the param being replaced
-;;     :original-snippet        "[[AND timestamp < {{timestamp}}]]"  ; full text of the snippet to be replaced
-;;     :optional-snippet        "AND timestamp < {{timestamp}}"      ; portion of the snippet inside [[optional]] brackets, or `nil` if the snippet isn't optional
-;;     :variable-snippet        "{{timestamp}}"}                     ; portion of the snippet referencing the variable itself, e.g. {{x}}
+;;    {:param-key        :timestamp                           ; name of the param being replaced
+;;     :original-snippet "[[AND timestamp < {{timestamp}}]]"  ; full text of the snippet to be replaced
+;;     :optional-snippet "AND timestamp < {{timestamp}}"      ; portion of the snippet inside [[optional]] brackets, or `nil` if the snippet isn't optional
+;;     :variable-snippet "{{timestamp}}"}                     ; portion of the snippet referencing the variable itself, e.g. {{x}}
 
 (s/defn ^:private ^:always-validate param-snippet->param-name :- s/Keyword
   "Return the keyword name of the param being referenced inside PARAM-SNIPPET.

@@ -11,6 +11,7 @@
             [metabase.driver.google :as google]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
@@ -294,8 +295,10 @@
        :table-name table-name
        :mbql?      true})))
 
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native, :as outer-query}]
-  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" sql)
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
+  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" (if (seq params)
+                                                                 (unprepare/unprepare (cons sql params))
+                                                                 sql))
         results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
