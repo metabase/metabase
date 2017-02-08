@@ -79,6 +79,17 @@
 
      Return `nil` to prevent FIELD from being aliased.")
 
+  (prepare-sql-param [this obj]
+    "*OPTIONAL*. Do any neccesary type conversions, etc. to an object being passed as a prepared statment argument in a parameterized raw SQL query.
+     For example, a raw SQL query with a date param, `x`, e.g. `WHERE date > {{x}}`, is converted to SQL like `WHERE date > ?`, and the value of
+     `x` is passed as a `java.sql.Timestamp`. Some databases, notably SQLite, don't work with `Timestamps`, and dates must be passed as string literals
+     instead; the SQLite driver overrides this method to convert dates as needed.
+
+  The default implementation is `identity`.
+
+  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because other functions like `prepare-value` are
+  used for similar purposes; at some point in the future, we might be able to combine them into a single method used in both places.")
+
   (prepare-value [this, ^Value value]
     "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a HoneySQL form. By default, this returns VALUE's `:value` as-is, which
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
@@ -424,6 +435,7 @@
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
    :field-percent-urls   fast-field-percent-urls
+   :prepare-sql-param    (u/drop-first-arg identity)
    :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
    :set-timezone-sql     (constantly nil)

@@ -377,7 +377,8 @@
   (log/debug (format "PARAM INFO: %s\n%s" (u/emoji "🔥") (u/pprint-to-str 'yellow param-snippets-info)))
   (loop [sql sql, prepared-statement-args [], [snippet-info & more] param-snippets-info]
     (if-not snippet-info
-      {:query (str/trim sql), :params prepared-statement-args}
+      {:query (str/trim sql), :params (for [arg prepared-statement-args]
+                                        ((resolve 'metabase.driver.generic-sql/prepare-sql-param) *driver* arg))}
       (recur (substitute-one sql snippet-info)
              (concat prepared-statement-args (:prepared-statement-args snippet-info))
              more))))
