@@ -174,3 +174,27 @@ export function addCSSRule(selector, rules, index) {
         STYLE_SHEET.addRule(selector, rules, index);
     }
 }
+
+const POINTER_EVENTS_NONE_CLASS = "__POINTER_EVENTS_NONE__";
+
+addCSSRule("." + POINTER_EVENTS_NONE_CLASS, "pointer-events: none;");
+
+export function elementsAtEvent(e) {
+    const x = e.clientX;
+    const y = e.clientY;
+    const stack = [];
+
+    let elementMouseIsOver = document.elementFromPoint(x, y);
+    stack.push(elementMouseIsOver);
+    while (elementMouseIsOver.tagName !== 'HTML') {
+        elementMouseIsOver.classList.add(POINTER_EVENTS_NONE_CLASS);
+        elementMouseIsOver = document.elementFromPoint(x, y);
+        stack.push(elementMouseIsOver);
+    }
+
+    for (const element of stack) {
+        element.classList.remove(POINTER_EVENTS_NONE_CLASS);
+    }
+
+    return stack;
+}

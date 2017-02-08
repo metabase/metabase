@@ -19,7 +19,7 @@ export default class ChartTooltip extends Component {
     };
 
     componentWillReceiveProps({ hovered }) {
-        if (hovered && !Array.isArray(hovered.data)) {
+        if (hovered && hovered.data != null && !Array.isArray(hovered.data)) {
             console.warn("hovered.data should be an array of { key, value, col }", hovered.data);
         }
     }
@@ -39,13 +39,16 @@ export default class ChartTooltip extends Component {
                 <table className="py1 px2">
                     <tbody>
                         { Array.isArray(hovered.data)  ?
-                            hovered.data.map(({ key, value, col }, index) =>
-                                <TooltipRow
-                                    key={index}
-                                    name={key}
-                                    value={value}
-                                    column={col}
-                                />
+                            hovered.data.map((data, index) =>
+                                data ?
+                                    <TooltipRow
+                                        key={index}
+                                        name={data.key}
+                                        value={data.value}
+                                        column={data.col}
+                                    />
+                                :
+                                    <tr><td>&nbsp;</td></tr>
                             )
                         :
                             [["key", 0], ["value", 1]].map(([propName, colIndex]) =>

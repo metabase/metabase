@@ -32,6 +32,7 @@ import { determineSeriesIndexFromElement } from "./tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
+import { elementsAtEvent } from "metabase/lib/dom";
 
 const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
@@ -278,49 +279,70 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, series, isStacked, onHoverChange) {
+function getTooltipForElement(d, element, series, { isStacked, isSingleSeriesBar, isArea }) {
     let [{ data: { cols } }] = series;
+
+    const seriesIndex = determineSeriesIndexFromElement(element, isStacked);
+    const card = series[seriesIndex].card;
+
+    let data = [];
+    if (Array.isArray(d.key)) { // scatter
+        if (d.key._origin) {
+            data = d.key._origin.row.map((value, index) => {
+                const col = d.key._origin.cols[index];
+                return { key: getFriendlyName(col), value: value, col };
+            });
+        } else {
+            data = d.key.map((value, index) => (
+                { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
+            ));
+        }
+    } else if (d.data) { // line, area, bar
+        if (!isSingleSeriesBar) {
+            cols = series[seriesIndex].data.cols;
+        }
+        data = [
+            { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
+            { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
+        ];
+    }
+
+    if (data && series.length > 1) {
+        if (card._breakoutColumn) {
+            data.unshift({
+                key: getFriendlyName(card._breakoutColumn),
+                value: card._breakoutValue,
+                col: card._breakoutColumn
+            });
+        }
+    }
+
+    return data;
+}
+
+function applyChartTooltips(chart, series, isStacked, onHoverChange) {
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll(".bar, .dot, .area, .line, .bubble")
             .on("mousemove", function(d, i) {
-                const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
-                const card = series[seriesIndex].card;
-                const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
-                const isArea = this.classList.contains("area");
+                const element = this;
 
-                let data = [];
-                if (Array.isArray(d.key)) { // scatter
-                    if (d.key._origin) {
-                        data = d.key._origin.row.map((value, index) => {
-                            const col = d.key._origin.cols[index];
-                            return { key: getFriendlyName(col), value: value, col };
-                        });
-                    } else {
-                        data = d.key.map((value, index) => (
-                            { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
-                        ));
-                    }
-                } else if (d.data) { // line, area, bar
-                    if (!isSingleSeriesBar) {
-                        cols = series[seriesIndex].data.cols;
-                    }
-                    data = [
-                        { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
-                        { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
-                    ];
+                const isSingleSeriesBar = element.classList.contains("bar") && series.length === 1;
+                const isArea = element.classList.contains("area");
+                const seriesIndex = determineSeriesIndexFromElement(element, isStacked);
+
+                let data = getTooltipForElement(d, element, series, { isStacked, isSingleSeriesBar, isArea });
+
+                if (this.classList.contains("dot")) {
+                    let elements = new Set(elementsAtEvent(d3.event));
+                    chart.selectAll(".dot")
+                        .filter(function(d,i) { return elements.has(this) && this !== element})
+                        .each(function(d,i) {
+                            data.push(
+                                null,
+                                ...getTooltipForElement(d, this, series, { isStacked, isSingleSeriesBar, isArea })
+                            )
+                        })
                 }
-
-                if (data && series.length > 1) {
-                    if (card._breakoutColumn) {
-                        data.unshift({
-                            key: getFriendlyName(card._breakoutColumn),
-                            value: card._breakoutValue,
-                            col: card._breakoutColumn
-                        });
-                    }
-                }
-
-                data = _.uniq(data, (d) => d.col);
 
                 onHoverChange && onHoverChange({
                     // for single series bar charts, fade the series and highlght the hovered element with CSS
