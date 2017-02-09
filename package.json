@@ -46,7 +46,7 @@
     "react-resizable": "^1.0.1",
     "react-retina-image": "^2.0.0",
     "react-router": "^3.0.0",
-    "react-router-redux": "^4.0.5",
+    "react-router-redux": "4.0.6",
     "react-sortable": "^1.2.0",
     "react-virtualized": "^8.6.0",
     "recompose": "^0.21.2",
