@@ -43,7 +43,7 @@ export default class PieChart extends Component<*, Props, *> {
         return cols.length === 2;
     }
 
-    static checkRenderable(cols, rows, settings) {
+    static checkRenderable([{ data: { cols, rows} }], settings) {
         if (!settings["pie.dimension"] || !settings["pie.metric"]) {
             throw new ChartSettingsError("Which columns do want to use?", "Data");
         }

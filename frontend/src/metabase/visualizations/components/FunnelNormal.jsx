@@ -73,7 +73,7 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
             }
         }];
 
-        var remaining: number = rows[0][1];
+        var remaining: number = rows[0][metricIndex];
 
         rows.map((row, rowIndex) => {
             remaining -= (infos[rowIndex].value - row[metricIndex]);
@@ -92,7 +92,7 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                         value: formatDimension(row[dimensionIndex]),
                     },
                     {
-                        key: getFriendlyName(cols[dimensionIndex]),
+                        key: getFriendlyName(cols[metricIndex]),
                         value: formatMetric(row[metricIndex]),
                     },
                     {
@@ -104,12 +104,16 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         });
 
         // Remove initial setup
-        infos = infos.filter((e, i) => i !== 0);
+        infos = infos.slice(1);
 
         let initial = infos[0];
 
         return (
-            <div className={cx(className, styles.Funnel, funnelSmallSize ? styles.Small : null, 'flex', funnelSmallSize ? 'p1' : 'p2')}>
+            <div className={cx(className, styles.Funnel, 'flex', {
+                [styles.Small]: funnelSmallSize,
+                "p1": funnelSmallSize,
+                "p2": !funnelSmallSize
+            })}>
                 <div className={cx(styles.FunnelStep, styles.Initial, 'flex flex-column')}>
                     <Ellipsified className={styles.Head}>{formatDimension(rows[0][dimensionIndex])}</Ellipsified>
                     <div className={styles.Start}>
@@ -122,17 +126,17 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                         <div className={styles.Subtitle}>&nbsp;</div>
                     </div>
                 </div>
-                {infos.filter((e, i) => i !== 0).map((info, index) =>
+                {infos.slice(1).map((info, index) =>
                     <div key={index} className={cx(styles.FunnelStep, 'flex flex-column')}>
                         <Ellipsified className={styles.Head}>{formatDimension(rows[index + 1][dimensionIndex])}</Ellipsified>
                         <div
                             className={styles.Graph}
-                            onMouseMove={!funnelSmallSize ? null : (event) => onHoverChange({
+                            onMouseMove={(event) => onHoverChange({
                                 index: index,
                                 event: event.nativeEvent,
                                 data: info.tooltip,
                             })}
-                            onMouseLeave={!funnelSmallSize ? null : () => onHoverChange(null)}
+                            onMouseLeave={() => onHoverChange(null)}
                             style={calculateGraphStyle(info, index, infos.length + 1, hovered)}>&nbsp;</div>
                         <div className={styles.Infos}>
                             <div className={styles.Title}>{formatPercent(info.value / initial.value)}</div>

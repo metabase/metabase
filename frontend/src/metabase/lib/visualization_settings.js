@@ -662,7 +662,7 @@ const SETTINGS = {
     },
     "funnel.dimension": {
         section: "Data",
-        title: "Dimension",
+        title: "Step",
         widget: ChartSettingSelect,
         isValid: ([{ card, data }], vizSettings) =>
             columnsAreValid(card.visualization_settings["funnel.dimension"], data, isDimension),

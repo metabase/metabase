@@ -32,19 +32,27 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         return cols.length === 2;
     }
 
-    static checkRenderable(cols, rows, settings) {
-        if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
-        if ((rows.length > 1 || cols.length > 2) && (!settings["funnel.dimension"] || !settings["funnel.metric"])) {
-            throw new ChartSettingsError("Which fields do you want to use for the X and Y axes?", "Data", "Choose fields");
+    static checkRenderable([{ data: { cols, rows} }], settings) {
+        if (rows.length < 1) {
+            throw new MinRowsError(1, rows.length);
+        }
+        if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
+            throw new ChartSettingsError("Which fields do you want to use?", "Data", "Choose fields");
         }
     }
 
     static transformSeries(series) {
         let [{ card, data: { rows, cols }}] = series;
-        if (!card._transformed && series.length === 1 && rows.length > 1) {
-            const settings = getSettings(series);
-            const dimensionIndex = _.findIndex(cols, (col) => col.name === settings["funnel.dimension"]);
-            const metricIndex = _.findIndex(cols, (col) => col.name === settings["funnel.metric"]);
+
+        const settings = getSettings(series);
+
+        const dimensionIndex = _.findIndex(cols, (col) => col.name === settings["funnel.dimension"]);
+        const metricIndex = _.findIndex(cols, (col) => col.name === settings["funnel.metric"]);
+
+        if (!card._transformed &&
+            series.length === 1 && rows.length > 1 &&
+            dimensionIndex >= 0 && metricIndex >= 0
+        ) {
             return rows.map(row => ({
                 card: {
                     ...card,
