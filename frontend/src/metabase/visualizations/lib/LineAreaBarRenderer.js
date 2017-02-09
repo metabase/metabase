@@ -81,10 +81,16 @@ function getDcjsChartType(cardType) {
     }
 }
 
-function applyChartBoundary(chart, element) {
-    return chart
-        .width(getAvailableCanvasWidth(element))
-        .height(getAvailableCanvasHeight(element));
+function initChart(chart, element) {
+    // set the bounds
+    chart.width(getAvailableCanvasWidth(element));
+    chart.height(getAvailableCanvasHeight(element));
+    // disable animations
+    chart.transitionDuration(0);
+    // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
+    if (chart.brushOn) {
+        chart.brushOn(false);
+    }
 }
 
 function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
@@ -870,8 +876,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     }
 
     let parent = dc.compositeChart(element);
-    applyChartBoundary(parent, element);
-    parent.transitionDuration(0);
+    initChart(parent, element);
 
     let charts = groups.map((group, index) => {
         let chart = dc[getDcjsChartType(chartType)](parent);
@@ -963,10 +968,10 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         }
     }
 
-    let chart = parent.compose(charts);
+    parent.compose(charts);
 
     if (groups.length > 1 && !isScalarSeries) {
-        chart.on("renderlet.grouped-bar", function (chart) {
+        parent.on("renderlet.grouped-bar", function (chart) {
             // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
             // https://github.com/dc-js/dc.js/issues/558
             let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
@@ -989,18 +994,18 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
     // HACK: compositeChart + ordinal X axis shenanigans
     if (chartType === "bar") {
-        chart._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
+        parent._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
     } else {
-        chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
+        parent._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
     }
 
     // x-axis settings
     if (isTimeseries) {
-        applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval);
+        applyChartTimeseriesXAxis(parent, settings, series, xValues, xDomain, xInterval);
     } else if (isQuantitative) {
-        applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval);
+        applyChartQuantitativeXAxis(parent, settings, series, xValues, xDomain, xInterval);
     } else {
-        applyChartOrdinalXAxis(chart, settings, series, xValues);
+        applyChartOrdinalXAxis(parent, settings, series, xValues);
     }
 
     // y-axis settings
@@ -1009,14 +1014,14 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         extent: d3.extent([].concat(...indexes.map(index => yExtents[index])))
     }));
     if (left && left.series.length > 0) {
-        applyChartYAxis(chart, settings, left.series, left.extent, "left");
+        applyChartYAxis(parent, settings, left.series, left.extent, "left");
     }
     if (right && right.series.length > 0) {
-        applyChartYAxis(chart, settings, right.series, right.extent, "right");
+        applyChartYAxis(parent, settings, right.series, right.extent, "right");
     }
     const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
-    applyChartTooltips(chart, series, isStacked, (hovered) => {
+    applyChartTooltips(parent, series, isStacked, (hovered) => {
         if (onHoverChange) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {
@@ -1026,16 +1031,11 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         }
     });
 
-    // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
-    if (chart.brushOn) {
-        chart.brushOn(false);
-    }
-
     // render
-    chart.render();
+    parent.render();
 
     // apply any on-rendering functions
-    lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked);
+    lineAndBarOnRender(parent, settings, onGoalHover, isSplitAxis, isStacked);
 
     // only ordinal axis can display "null" values
     if (isOrdinal) {
@@ -1047,5 +1047,120 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         warnings: Object.keys(warnings)
     });
 
-    return chart;
+    return parent;
+}
+
+export const lineRenderer    = (element, props) => lineAreaBar(element, { ...props, chartType: "line" });
+export const areaRenderer    = (element, props) => lineAreaBar(element, { ...props, chartType: "area" });
+export const barRenderer     = (element, props) => lineAreaBar(element, { ...props, chartType: "bar" });
+export const scatterRenderer = (element, props) => lineAreaBar(element, { ...props, chartType: "scatter" });
+
+export function rowRenderer(
+  element,
+  { settings, series, onHoverChange, height }
+) {
+  const chart = dc.rowChart(element);
+
+  const colors = settings["graph.colors"];
+
+  const dataset = crossfilter(series[0].data.rows);
+  const dimension = dataset.dimension(d => d[0]);
+  const group = dimension.group().reduceSum(d => d[1]);
+  const xDomain = d3.extent(series[0].data.rows, d => d[1]);
+
+  initChart(chart, element);
+
+  chart.on("renderlet.tooltips", chart => {
+    chart.selectAll(".row rect").on("mousemove", (d, i) => {
+      const { cols } = series[0].data;
+      onHoverChange && onHoverChange({
+          // for single series bar charts, fade the series and highlght the hovered element with CSS
+          index: -1,
+          event: d3.event,
+          data: [
+            { key: getFriendlyName(cols[0]), value: d.key, col: cols[0] },
+            { key: getFriendlyName(cols[1]), value: d.value, col: cols[1] }
+          ]
+        });
+    }).on("mouseleave", () => {
+      onHoverChange && onHoverChange(null);
+    });
+  });
+
+  chart
+    .ordinalColors([ colors[0] ])
+    .x(d3.scale.linear().domain(xDomain))
+    .elasticX(true)
+    .dimension(dimension)
+    .group(group)
+    .ordering(d => d.index);
+
+  let labelPadHorizontal = 5;
+  let labelPadVertical = 2;
+  let labelsOutside = false;
+
+  chart.on("renderlet.bar-labels", chart => {
+    chart
+      .selectAll("g.row text")
+      .attr("text-anchor", labelsOutside ? "end" : "start")
+      .attr("x", labelsOutside ? -labelPadHorizontal : labelPadHorizontal)
+      .classed(labelsOutside ? "outside" : "inside", true);
+  });
+
+  if (settings["graph.y_axis.labels_enabled"]) {
+    chart.on("renderlet.axis-labels", chart => {
+      chart
+        .svg()
+        .append("text")
+        .attr("class", "x-axis-label")
+        .attr("text-anchor", "middle")
+        .attr("x", chart.width() / 2)
+        .attr("y", chart.height() - 10)
+        .text(settings["graph.y_axis.title_text"]);
+    });
+  }
+
+  // inital render
+  chart.render();
+
+  // bottom label height
+  let axisLabelHeight = 0;
+  if (settings["graph.y_axis.labels_enabled"]) {
+    axisLabelHeight = chart
+      .select(".x-axis-label")
+      .node()
+      .getBoundingClientRect().height;
+    chart.margins().bottom += axisLabelHeight;
+  }
+
+  // cap number of rows to fit
+  let rects = chart.selectAll(".row rect")[0];
+  let containerHeight = rects[rects.length - 1].getBoundingClientRect().bottom -
+    rects[0].getBoundingClientRect().top;
+  let maxTextHeight = Math.max(
+    ...chart.selectAll("g.row text")[0].map(
+      e => e.getBoundingClientRect().height
+    )
+  );
+  let rowHeight = maxTextHeight + chart.gap() + labelPadVertical * 2;
+  let cap = Math.max(1, Math.floor(containerHeight / rowHeight));
+  chart.cap(cap);
+
+  chart.render();
+
+  // check if labels overflow after rendering correct number of rows
+  let maxTextWidth = 0;
+  for (const elem of chart.selectAll("g.row")[0]) {
+    let rect = elem.querySelector("rect").getBoundingClientRect();
+    let text = elem.querySelector("text").getBoundingClientRect();
+    maxTextWidth = Math.max(maxTextWidth, text.width);
+    if (rect.width < text.width + labelPadHorizontal * 2) {
+      labelsOutside = true;
+    }
+  }
+
+  if (labelsOutside) {
+    chart.margins().left += maxTextWidth;
+    chart.render();
+  }
 }

@@ -666,6 +666,7 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     line: ["graph.", "line."],
     area: ["graph.", "line.", "stackable."],
     bar: ["graph.", "stackable."],
+    row: ["graph.dimensions", "graph.metrics", "graph.colors", "graph.y_axis.labels_enabled", "graph.y_axis.title_text"],
     scatter: ["graph.", "scatter."],
     pie: ["pie."],
     scalar: ["scalar."],
