@@ -6,6 +6,7 @@ import { push } from "react-router-redux";
 import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseUtils from "metabase/lib/utils";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings.js";
 
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
@@ -19,12 +20,14 @@ export const LOGIN = "metabase/auth/LOGIN";
 export const login = createThunkAction(LOGIN, function(credentials, redirectUrl) {
     return async function(dispatch, getState) {
 
-        if (!MetabaseUtils.validEmail(credentials.email)) {
+        if (!MetabaseSettings.ldapEnabled() && !MetabaseUtils.validEmail(credentials.email)) {
             return {'data': {'errors': {'email': "Please enter a valid formatted email address."}}};
         }
 
         try {
-            let newSession = await SessionApi.create(credentials);
+            let newSession = MetabaseSettings.ldapEnabled()
+                ? await SessionApi.createWithLdap(credentials)
+                : await SessionApi.create(credentials);
 
             // since we succeeded, lets set the session cookie
             MetabaseCookies.setSessionCookie(newSession.id);

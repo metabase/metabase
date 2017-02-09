@@ -38,6 +38,7 @@
 
 (def ^:private login-throttlers
   {:email      (throttle/make-throttler :email)
+   :username   (throttle/make-throttler :username)
    :ip-address (throttle/make-throttler :email, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by email
 
 (defendpoint POST "/"
@@ -220,8 +221,7 @@
   "The password to bind with.")
 
 (defsetting ldap-base
-  "Search base for users."
-  :default "")
+  "Search base for users.")
 
 (defsetting ldap-user-filter
   "Filter to use for looking up a specific user, the placeholder {login} will be replaced by the user supplied value."
@@ -273,16 +273,15 @@
 
 (defendpoint POST "/ldap_auth"
   "Login with LDAP auth."
-  [:as {{:keys [email password]} :body, remote-address :remote-addr}]
-  {email    su/Email
+  [:as {{:keys [username password]} :body, remote-address :remote-addr}]
+  {username su/NonBlankString
    password su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
-  (throttle/check (login-throttlers :email)      email)
-  (let [user (ldap-auth-user-info email password)]
-    (when (nil? user)
-      (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                 :errors      {:password "did not match stored password"}})))
-    (ldap-auth-fetch-or-create-user! (:first-name user) (:last-name user) (:email user))))
+  (throttle/check (login-throttlers :username)   username)
+  (if-let [{:keys [first-name last-name email]} (ldap-auth-user-info username password)]
+    (ldap-auth-fetch-or-create-user! first-name last-name email)
+    (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                               :errors      {:password "did not match stored password"}}))))
 
 
 (define-routes)

@@ -42,9 +42,11 @@ export default class LoginApp extends Component {
     validateForm() {
         let { credentials } = this.state;
 
-        let valid = true;
+        let valid = Settings.ldapEnabled()
+            ? !!credentials.username
+            : !!credentials.email;
 
-        if (!credentials.email || !credentials.password) {
+        if (!credentials.password) {
             valid = false;
         }
 
@@ -128,11 +130,19 @@ export default class LoginApp extends Component {
 
                             <FormMessage formError={loginError && loginError.data.message ? loginError : null} ></FormMessage>
 
-                            <FormField key="email" fieldName="email" formError={loginError}>
-                                <FormLabel title={"Email address"}  fieldName={"email"} formError={loginError} />
-                                <input className="Form-input Form-offset full py1" name="email" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("email", e.target.value)} autoFocus />
-                                <span className="Form-charm"></span>
-                            </FormField>
+                            { Settings.ldapEnabled() ? (
+                                <FormField key="username" fieldName="username" formError={loginError}>
+                                    <FormLabel title={"Username or Email address"}  fieldName={"username"} formError={loginError} />
+                                    <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("username", e.target.value)} autoFocus />
+                                    <span className="Form-charm"></span>
+                                </FormField>
+                            ) : (
+                                <FormField key="email" fieldName="email" formError={loginError}>
+                                    <FormLabel title={"Email address"}  fieldName={"email"} formError={loginError} />
+                                    <input className="Form-input Form-offset full py1" name="email" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("email", e.target.value)} autoFocus />
+                                    <span className="Form-charm"></span>
+                                </FormField>
+                            )}
 
                             <FormField key="password" fieldName="password" formError={loginError}>
                                 <FormLabel title={"Password"}  fieldName={"password"} formError={loginError} />
@@ -150,7 +160,9 @@ export default class LoginApp extends Component {
                                 <button className={cx("Button Grid-cell", {'Button--primary': this.state.valid})} disabled={!this.state.valid}>
                                     Sign in
                                 </button>
-                                <Link to={"/auth/forgot_password"+(this.state.credentials.email ? "?email="+this.state.credentials.email : "")} className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</Link>
+                                { (!Settings.ldapEnabled()) &&
+                                    <Link to={"/auth/forgot_password"+(this.state.credentials.email ? "?email="+this.state.credentials.email : "")} className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</Link>
+                                }
                             </div>
                         </form>
                     </div>
