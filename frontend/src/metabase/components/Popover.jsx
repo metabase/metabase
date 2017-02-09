@@ -24,7 +24,8 @@ export default class Popover extends Component {
         isOpen: PropTypes.bool,
         hasArrow: PropTypes.bool,
         // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
-        tetherOptions: PropTypes.object
+        tetherOptions: PropTypes.object,
+        sizeToFit: PropTypes.bool,
     };
 
     static defaultProps = {
@@ -33,7 +34,8 @@ export default class Popover extends Component {
         verticalAttachments: ["top", "bottom"],
         horizontalAttachments: ["center", "left", "right"],
         targetOffsetX: 24,
-        targetOffsetY: 5
+        targetOffsetY: 5,
+        sizeToFit: false,
     };
 
     _getPopoverElement() {
@@ -234,6 +236,28 @@ export default class Popover extends Component {
 
                 // finally set the best options
                 this._setTetherOptions(tetherOptions, best);
+            }
+
+            if (this.props.sizeToFit) {
+                const verticalMargin = 5;
+                const body = tetherOptions.element.querySelector(".PopoverBody");
+                if (this._tether.attachment.top === "top") {
+                    let screenBottom = window.innerHeight + window.scrollY;
+                    let overflowY = body.getBoundingClientRect().bottom - screenBottom;
+                    if (overflowY + verticalMargin > 0) {
+                        body.style.maxHeight = (body.getBoundingClientRect().height - overflowY - verticalMargin) + "px";
+                        body.classList.add("scroll-y");
+                        body.classList.add("scroll-show");
+                    }
+                } else {
+                    let screenTop = window.scrollY;
+                    let overflowY = screenTop - body.getBoundingClientRect().top;
+                    if (overflowY + verticalMargin > 0) {
+                        body.style.maxHeight = (body.getBoundingClientRect().height - overflowY - verticalMargin) + "px";
+                        body.classList.add("scroll-y");
+                        body.classList.add("scroll-show");
+                    }
+                }
             }
         } else {
             // if the popover isn't open then actively unmount our popover

@@ -60,6 +60,7 @@ export default class VisualizationSettings extends React.Component {
                     triggerId="VisualizationTrigger"
                     triggerElement={triggerElement}
                     triggerClasses="flex align-center"
+                    sizeToFit
                 >
                     <ul className="pt1 pb1">
                         { Array.from(visualizations).map(([vizType, viz], index) =>

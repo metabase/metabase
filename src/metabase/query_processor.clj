@@ -1,6 +1,7 @@
 (ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
-  (:require [clojure.walk :as walk]
+  (:require (clojure [data :as data]
+                     [walk :as walk])
             [clojure.tools.logging :as log]
             [medley.core :as m]
             (schema [core :as s]
@@ -163,7 +164,7 @@
   (u/prog1 (params/expand-parameters query)
     (when (and (not *disable-qp-logging*)
                (not= <> query))
-      (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str <>))))))
+      (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str (second (data/diff query <>))))))))
 
 (defn- pre-substitute-parameters [qp] (comp qp substitute-parameters))
 
