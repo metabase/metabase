@@ -5,6 +5,8 @@ import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
 
+import { constrainToScreen } from "metabase/lib/dom";
+
 import cx from "classnames";
 
 export default class Popover extends Component {
@@ -239,21 +241,15 @@ export default class Popover extends Component {
             }
 
             if (this.props.sizeToFit) {
-                const verticalMargin = 5;
+                const verticalPadding = 5;
                 const body = tetherOptions.element.querySelector(".PopoverBody");
                 if (this._tether.attachment.top === "top") {
-                    let screenBottom = window.innerHeight + window.scrollY;
-                    let overflowY = body.getBoundingClientRect().bottom - screenBottom;
-                    if (overflowY + verticalMargin > 0) {
-                        body.style.maxHeight = (body.getBoundingClientRect().height - overflowY - verticalMargin) + "px";
+                    if (constrainToScreen(body, "bottom", verticalPadding)) {
                         body.classList.add("scroll-y");
                         body.classList.add("scroll-show");
                     }
-                } else {
-                    let screenTop = window.scrollY;
-                    let overflowY = screenTop - body.getBoundingClientRect().top;
-                    if (overflowY + verticalMargin > 0) {
-                        body.style.maxHeight = (body.getBoundingClientRect().height - overflowY - verticalMargin) + "px";
+                } else if (this._tether.attachment.top === "bottom") {
+                    if (constrainToScreen(body, "top", verticalPadding)) {
                         body.classList.add("scroll-y");
                         body.classList.add("scroll-show");
                     }

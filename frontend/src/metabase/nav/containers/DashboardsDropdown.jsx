@@ -7,6 +7,7 @@ import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper.jsx
 import MetabaseAnalytics from "metabase/lib/analytics";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
 import Modal from "metabase/components/Modal.jsx";
+import ConstrainToScreen from "metabase/components/ConstrainToScreen";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -121,7 +122,8 @@ export default class DashboardsDropdown extends Component {
 
                     { dropdownOpen ?
                         <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
-                            <div className="NavDropdown-content DashboardList NavDropdown-content--dashboards">
+                        <ConstrainToScreen>
+                            <div className="NavDropdown-content DashboardList NavDropdown-content--dashboards scroll-y">
                                 { dashboards.length === 0 ?
                                     <div className="NavDropdown-content-layer text-white text-centered">
                                         <div className="p2"><div style={this.styles.dashIcon} className="ml-auto mr-auto"></div></div>
@@ -153,6 +155,7 @@ export default class DashboardsDropdown extends Component {
                                     </ul>
                                 }
                             </div>
+                        </ConstrainToScreen>
                         </OnClickOutsideWrapper>
                     : null }
                 </div>
