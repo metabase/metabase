@@ -70,7 +70,7 @@ export default class NativeQueryEditor extends Component {
             MAX_AUTO_SIZE_LINES;
 
         this.state = {
-            showEditor: true,//this.props.isOpen,
+            showEditor: !(props.card && props.card.id),
             modeInfo: getModeInfo(props.query, props.databases),
             initialHeight: getEditorLineHeight(lines)
         };
