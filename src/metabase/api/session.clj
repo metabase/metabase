@@ -5,7 +5,6 @@
             [cemerick.friend.credentials :as creds]
             [cheshire.core :as json]
             [clj-http.client :as http]
-            [clj-ldap.client :as ldap]
             [compojure.core :refer [defroutes GET POST DELETE]]
             [schema.core :as s]
             [throttle.core :as throttle]
@@ -15,7 +14,8 @@
             [metabase.events :as events]
             (metabase.models [user :refer [User], :as user]
                              [session :refer [Session]]
-                             [setting :refer [defsetting], :as setting])
+                             [setting :refer [defsetting]])
+            [metabase.integrations.ldap :as ldap]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
             (metabase.util [password :as pass]
@@ -199,89 +199,22 @@
 
 ;;; ------------------------------------------------------------ LDAP AUTH ------------------------------------------------------------
 
-(defsetting ldap-host
-  "Server hostname. If this is set, LDAP auth is considered to be enabled.")
-
-(defsetting ldap-port
-  "Server port."
-  :default "389")
-
-(defsetting ldap-security
-  "Connect over SSL (LDAPS) or TLS"
-  :default "none"
-  :setter  (fn [new-value]
-             (when-not (nil? new-value)
-               (assert (contains? #{"none" "ssl" "tls"} new-value)))
-             (setting/set-string! :ldap-security new-value)))
-
-(defsetting ldap-bind-dn
-  "The DN to bind as.")
-
-(defsetting ldap-password
-  "The password to bind with.")
-
-(defsetting ldap-base
-  "Search base for users.")
-
-(defsetting ldap-user-filter
-  "Filter to use for looking up a specific user, the placeholder {login} will be replaced by the user supplied value."
-  :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
-
-(defsetting ldap-attribute-email
-  "Attribute to use for the user's email."
-  :default "mail")
-
-(defsetting ldap-attribute-firstname
-  "Attribute to use for the user's first name."
-  :default "givenName")
-
-(defsetting ldap-attribute-lastname
-  "Attribute to use for the user's last name."
-  :default "sn")
-
-(defn ldap-configured?
-  "Predicate function which returns `true` if we have an LDAP server configured, `false` otherwise."
-  []
-  (boolean (ldap-host)))
-
-(defn- ldap-connection []
-  (ldap/connect {:host      (str (ldap-host) ":" (ldap-port))
-                 :bind-dn   (ldap-bind-dn)
-                 :password  (ldap-password)
-                 :ssl?      (= (ldap-security) "ssl")
-                 :startTLS? (= (ldap-security) "tls")}))
-
-(defn- ldap-auth-user-info [email password]
-  (let [fname-attr (keyword (ldap-attribute-firstname))
-        lname-attr (keyword (ldap-attribute-lastname))
-        email-attr (keyword (ldap-attribute-email))]
-    ;; first figure out the user info if it even exists
-    (when-let [[result] (ldap/search (ldap-connection) (ldap-base) {:scope      :sub
-                                                                    :filter     (str/replace (ldap-user-filter) "{login}" email)
-                                                                    :attributes [:dn :distinguishedName fname-attr lname-attr email-attr]
-                                                                    :size-limit 1})]
-      ;; then validate the password by binding with it
-      (when (ldap/bind? (ldap-connection) (or (:dn result) (:distinguishedName result)) password)
-        {:first-name (get result fname-attr)
-         :last-name  (get result lname-attr)
-         :email      (get result email-attr)}))))
-
 (defn- ldap-auth-fetch-or-create-user! [first-name last-name email]
  (if-let [user (or (db/select-one [User :id :last_login] :email email)
                    (user/create-new-ldap-auth-user! first-name last-name email))]
    {:id (create-session! user)}))
 
 (defendpoint POST "/ldap_auth"
+  ;; TODO - merge this with the regular POST endpoint
   "Login with LDAP auth."
   [:as {{:keys [username password]} :body, remote-address :remote-addr}]
   {username su/NonBlankString
    password su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :username)   username)
-  (if-let [{:keys [first-name last-name email]} (ldap-auth-user-info username password)]
-    (ldap-auth-fetch-or-create-user! first-name last-name email)
-    (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                               :errors      {:password "did not match stored password"}}))))
+  (if-let [{:keys [first-name last-name email]} (ldap/auth-user username password)]
+    (ldap-auth-fetch-or-create-user! first-name last-name email) ; TODO - we should probably "cache" the password here to do something like Hybrid LDAP in JIRA
+    (throw (ex-info "Invalid username or password." {:status-code 400}))))
 
 
 (define-routes)

@@ -6,6 +6,7 @@
             [metabase.api.session :as session-api]
             [toucan.db :as db]
             [metabase.email.messages :as email]
+            [metabase.integrations.ldap :as ldap]
             [metabase.models.user :as user, :refer [User]]
             [metabase.util :as u]
             [metabase.util.schema :as su]))
@@ -33,7 +34,7 @@
       :google_auth   (boolean (and (:google_auth existing-user)
                                    (session-api/google-auth-client-id))) ; if google-auth-client-id is set it means Google Auth is enabled
       :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                   (session-api/ldap-configured?)))))
+                                   (ldap/ldap-configured?)))))
   ;; now return the existing user whether they were originally active or not
   (User (u/get-id existing-user)))
 
