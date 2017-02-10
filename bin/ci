@@ -23,7 +23,7 @@ node-2() {
     if is_engine_enabled "crate"; then
         run_step install-crate
     fi
-    MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
+    MB_ENCRYPTION_SECRET_KEY='Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=' MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
         run_step lein-test
 }
 node-3() {

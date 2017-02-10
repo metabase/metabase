@@ -1,10 +1,10 @@
 (ns metabase.models.interface
-  (:require [cheshire.core :as json]
+  (:require [clojure.core.memoize :as memoize]
+            [cheshire.core :as json]
             [toucan.models :as models]
-            (metabase [config :as config]
-                      [util :as u])
-            [metabase.models.common :as common]))
-
+            [metabase.config :as config]
+            [metabase.util :as u]
+            [metabase.util.encryption :as encryption]))
 
 ;;; ------------------------------------------------------------ Toucan Extensions ------------------------------------------------------------
 
@@ -28,6 +28,16 @@
 (models/add-type! :clob
   :in  identity
   :out u/jdbc-clob->str)
+
+(def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
+(def ^:private encrypted-json-out (comp json-out encryption/maybe-decrypt))
+
+;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
+(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000))) ; cache decrypted JSON for one hour
+
+(models/add-type! :encrypted-json
+  :in  encrypted-json-in
+  :out cached-encrypted-json-out)
 
 
 (defn- add-created-at-timestamp [obj & _]
