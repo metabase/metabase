@@ -225,22 +225,22 @@ Simply follow the same instructions you would use for making any normal database
 # Storing database connection details more securely
 
 Metabase stores connection information for the various databases you add in the Metabase application database. To prevent bad actors from being able to access these details if they were to gain access to
-the application database, Metabase can automatically encrypt them when they are saved, and decrypt them on-the-fly whenever they are needed. The only thing you need to do is set the environment variable
+the application DB, Metabase can automatically encrypt them when they are saved, and decrypt them on-the-fly whenever they are needed. The only thing you need to do is set the environment variable
 `MB_ENCRYPTION_SECRET_KEY`.
 
 Your secret key must be at least 16 characters (longer is even better!), and we recommend using a secure random key generator to generate it. `openssl` is a good choice:
 
     openssl rand -base64 32
 
-This gives you a cryptographically-secure, randomly-generated 32-character key that will look something like `IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=`. Then set it as an environment variable and
+This gives you a cryptographically-secure, randomly-generated 32-character key that will look something like `IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=`. Set it as an environment variable and
 start Metabase as usual:
 
-    MB_ENCRYPTION_SECRET_KEY='IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=` java -jar metabase.jar
+    MB_ENCRYPTION_SECRET_KEY='IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=' java -jar metabase.jar
 
-Metabase will then securely encrypt and store the connection details for any new Databases you add. (Connection details for existing databases will be encrypted as well if you save them in the admin panel).
+Metabase will securely encrypt and store the connection details for any new Databases you add. (Connection details for existing databases will be encrypted as well if you save them in the admin panel).
 Existing databases with unencrypted details will continue to work normally.
 
-Take care not to lose this key, because you can't decrypt connection details without it. If you lose (or change) it, you'll have to reset all of the databases connection details that have been encrypted with it in the Admin Panel.
+Take care not to lose this key because you can't decrypt connection details without it. If you lose (or change) it, you'll have to reset all of the connection details that have been encrypted with it in the Admin Panel.
 
 
 # Customizing the Metabase Jetty webserver
@@ -311,6 +311,7 @@ To ensure proper reporting it's important that timezones be set consistently in 
 
 
 Common Pitfalls:
+
 1. Your database is using date/time columns without any timezone information.  Typically when this happens your database will assume all the data is from whatever timezone the database is configured in or possible just default to UTC (check your database vendor to be sure).
 2. Your JVM timezone is not the same as your Metabase `Report Timezone` choice.  This is a very common issue and can be corrected by launching java with the `-Duser.timezone=<timezone>` option properly set to match your Metabase report timezone.
 
