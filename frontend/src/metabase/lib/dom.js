@@ -174,3 +174,24 @@ export function addCSSRule(selector, rules, index) {
         STYLE_SHEET.addRule(selector, rules, index);
     }
 }
+
+export function constrainToScreen(element, direction, padding) {
+    if (direction === "bottom") {
+        let screenBottom = window.innerHeight + window.scrollY;
+        let overflowY = element.getBoundingClientRect().bottom - screenBottom;
+        if (overflowY + padding > 0) {
+            element.style.maxHeight = (element.getBoundingClientRect().height - overflowY - padding) + "px";
+            return true;
+        }
+    } else if (direction === "top") {
+        let screenTop = window.scrollY;
+        let overflowY = screenTop - element.getBoundingClientRect().top;
+        if (overflowY + padding > 0) {
+            element.style.maxHeight = (element.getBoundingClientRect().height - overflowY - padding) + "px";
+            return true;
+        }
+    } else {
+        throw new Error("Direction " + direction + " not implemented");
+    }
+    return false;
+}
