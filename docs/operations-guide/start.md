@@ -8,6 +8,7 @@
 *  [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)
 *  [Running database migrations manually](#running-metabase-database-migrations-manually)
 *  [Backing up Metabase Application Data](#backing-up-metabase-application-data)
+*  [Storing database connection details more securely](#storing-database-connection-details-more-securely)
 *  [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)
 *  [Changing password complexity](#changing-metabase-password-complexity)
 *  [Handling Timezones](#handling-timezones-in-metabase)
@@ -219,6 +220,27 @@ Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.
 
 ### Self-managed PostgreSQL or MySQL database
 Simply follow the same instructions you would use for making any normal database backup.  It's a large topic more fit for a DBA to answer, but as long as you have a dump of the Metabase database you'll be good to go.
+
+
+# Storing database connection details more securely
+
+Metabase stores connection information for the various databases you add in the Metabase application database. To prevent bad actors from being able to access these details if they were to gain access to
+the application database, Metabase can automatically encrypt them when they are saved, and decrypt them on-the-fly whenever they are needed. The only thing you need to do is set the environment variable
+`MB_ENCRYPTION_SECRET_KEY`.
+
+Your secret key must be at least 16 characters (longer is even better!), and we recommend using a secure random key generator to generate it. `openssl` is a good choice:
+
+    openssl rand -base64 32
+
+This gives you a cryptographically-secure, randomly-generated 32-character key that will look something like `IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=`. Then set it as an environment variable and
+start Metabase as usual:
+
+    MB_ENCRYPTION_SECRET_KEY='IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=` java -jar metabase.jar
+
+Metabase will then securely encrypt and store the connection details for any new Databases you add. (Connection details for existing databases will be encrypted as well if you save them in the admin panel).
+Existing databases with unencrypted details will continue to work normally.
+
+Take care not to lose this key, because you can't decrypt connection details without it. If you lose (or change) it, you'll have to reset all of the databases connection details that have been encrypted with it in the Admin Panel.
 
 
 # Customizing the Metabase Jetty webserver
