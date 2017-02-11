@@ -33,28 +33,39 @@
       :user_id (:id user))
     (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
+(defn- ldap-fetch-or-create-user! [first-name last-name email password]
+ (if-let [user (or (db/select-one [User :id :last_login] :email email) ; TODO - Update the user's password
+                   (user/create-new-ldap-auth-user! first-name last-name email password))]
+   {:id (create-session! user)}))
 
 ;;; ## API Endpoints
 
 (def ^:private login-throttlers
-  {:email      (throttle/make-throttler :email)
-   :username   (throttle/make-throttler :username)
-   :ip-address (throttle/make-throttler :email, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by email
+  {:username   (throttle/make-throttler :username)
+   :ip-address (throttle/make-throttler :username, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by username
 
 (defendpoint POST "/"
   "Login."
-  [:as {{:keys [email password]} :body, remote-address :remote-addr}]
-  {email    su/Email
+  [:as {{:keys [username password]} :body, remote-address :remote-addr}]
+  {username su/NonBlankString
    password su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
-  (throttle/check (login-throttlers :email)      email)
-  (let [user (db/select-one [User :id :password_salt :password :last_login], :email email, :is_active true)]
+  (throttle/check (login-throttlers :username)   username)
+  (or
+    ;; First try LDAP if it's enabled
+    (when (ldap/ldap-configured?)
+      (when-let [{:keys [first-name last-name email]} (ldap/auth-user username password)]
+        (ldap-fetch-or-create-user! first-name last-name email password)))
+
+    ;; Then try local authentication
+    (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
+      (when (pass/verify-password password (:password_salt user) (:password user))
+        {:id (create-session! user)}))
+
+    ;; If both fail complain about it
     ;; Don't leak whether the account doesn't exist or the password was incorrect
-    (when-not (and user
-                   (pass/verify-password password (:password_salt user) (:password user)))
-      (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                 :errors      {:password "did not match stored password"}})))
-    {:id (create-session! user)}))
+    (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                               :errors      {:password "did not match stored password"}}))))
 
 
 (defendpoint DELETE "/"
@@ -195,26 +206,6 @@
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
     (log/info "Successfully authenicated Google Auth token for:" given_name family_name)
     (google-auth-fetch-or-create-user! given_name family_name email)))
-
-
-;;; ------------------------------------------------------------ LDAP AUTH ------------------------------------------------------------
-
-(defn- ldap-auth-fetch-or-create-user! [first-name last-name email]
- (if-let [user (or (db/select-one [User :id :last_login] :email email)
-                   (user/create-new-ldap-auth-user! first-name last-name email))]
-   {:id (create-session! user)}))
-
-(defendpoint POST "/ldap_auth"
-  ;; TODO - merge this with the regular POST endpoint
-  "Login with LDAP auth."
-  [:as {{:keys [username password]} :body, remote-address :remote-addr}]
-  {username su/NonBlankString
-   password su/NonBlankString}
-  (throttle/check (login-throttlers :ip-address) remote-address)
-  (throttle/check (login-throttlers :username)   username)
-  (if-let [{:keys [first-name last-name email]} (ldap/auth-user username password)]
-    (ldap-auth-fetch-or-create-user! first-name last-name email) ; TODO - we should probably "cache" the password here to do something like Hybrid LDAP in JIRA
-    (throw (ex-info "Invalid username or password." {:status-code 400}))))
 
 
 (define-routes)

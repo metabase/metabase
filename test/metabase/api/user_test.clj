@@ -208,7 +208,7 @@
 ;; Test that a User can change their password (superuser and non-superuser)
 (defn- user-can-reset-password? [superuser?]
   (tt/with-temp User [user {:password "def", :is_superuser (boolean superuser?)}]
-    (let [creds           {:email (:email user), :password "def"}
+    (let [creds           {:username (:email user), :password "def"}
           hashed-password (db/select-one-field :password User, :email (:email user))]
       ;; use API to reset the users password
       (http/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
@@ -246,7 +246,7 @@
                                  :last_name  (random-name)
                                  :email      "def@metabase.com"
                                  :password   "def123"}]
-    (let [creds {:email    "def@metabase.com"
+    (let [creds {:username "def@metabase.com"
                  :password "def123"}]
       [(metabase.http-client/client creds :put 200 (format "user/%d/qbnewb" id))
        (db/select-one-field :is_qbnewb User, :id id)])))

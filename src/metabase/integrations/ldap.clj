@@ -25,7 +25,7 @@
   "The password to bind with.")
 
 (defsetting ldap-base
-  "Search base for users, will be searched recursively.")
+  "Search base for users. (Will be searched recursively)")
 
 (defsetting ldap-user-filter
   "Filter to use for looking up a specific user, the placeholder {login} will be replaced by the user supplied login."
@@ -59,12 +59,12 @@
                  :ssl?      (= (ldap-security) "ssl")
                  :startTLS? (= (ldap-security) "tls")}))
 
-(defn- with-connection [f]
-  (when (ldap-configured?)) ; Step 1 in providing fallback authentication ?
-    (let [conn (ldap-connection)]
-      (try
-        (f conn)
-        (finally (ldap/close conn)))))
+(defn with-connection [f & args]
+  "Applied `f` with a connection pool followed by `args`"
+  (let [conn (ldap-connection)]
+    (try
+      (apply f conn args)
+      (finally (ldap/close conn)))))
 
 (defn escape-value [value]
   "Escapes a value for use in an LDAP filter expression."
@@ -73,7 +73,7 @@
 (defn get-user-info
   "Gets user information for the supplied username."
   ([username]
-    (with-connection #(get-user-info % username)))
+    (with-connection get-user-info username))
   ([conn username]
     (let [fname-attr (keyword (ldap-attribute-firstname))
           lname-attr (keyword (ldap-attribute-lastname))
@@ -90,7 +90,7 @@
 (defn auth-user
   "Authenticates the user with an LDAP bind operation. Returns the user information when successful, nil otherwise."
   ([username password]
-    (with-connection #(auth-user % username password)))
+    (with-connection auth-user username password))
   ([conn username password]
     ;; first figure out the user even exists, we also need the DN to reliably bind with LDAP
     (when-let [{:keys [dn], :as user} (get-user-info conn username)]

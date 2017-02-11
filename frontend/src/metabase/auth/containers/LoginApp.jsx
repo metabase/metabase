@@ -11,7 +11,8 @@ import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
-import Settings from "metabase/lib/settings.js";
+import Settings from "metabase/lib/settings";
+import Utils from "metabase/lib/utils";
 
 
 import * as authActions from "../auth";
@@ -42,11 +43,9 @@ export default class LoginApp extends Component {
     validateForm() {
         let { credentials } = this.state;
 
-        let valid = Settings.ldapEnabled()
-            ? !!credentials.username
-            : !!credentials.email;
+        let valid = true;
 
-        if (!credentials.password) {
+        if (!credentials.username || !credentials.password) {
             valid = false;
         }
 
@@ -130,19 +129,11 @@ export default class LoginApp extends Component {
 
                             <FormMessage formError={loginError && loginError.data.message ? loginError : null} ></FormMessage>
 
-                            { Settings.ldapEnabled() ? (
-                                <FormField key="username" fieldName="username" formError={loginError}>
-                                    <FormLabel title={"Username or Email address"}  fieldName={"username"} formError={loginError} />
-                                    <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("username", e.target.value)} autoFocus />
-                                    <span className="Form-charm"></span>
-                                </FormField>
-                            ) : (
-                                <FormField key="email" fieldName="email" formError={loginError}>
-                                    <FormLabel title={"Email address"}  fieldName={"email"} formError={loginError} />
-                                    <input className="Form-input Form-offset full py1" name="email" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("email", e.target.value)} autoFocus />
-                                    <span className="Form-charm"></span>
-                                </FormField>
-                            )}
+                            <FormField key="username" fieldName="username" formError={loginError}>
+                                <FormLabel title={Settings.ldapEnabled() ? "Username or email address" : "Email address"} fieldName={"username"} formError={loginError} />
+                                <input className="Form-input Form-offset full py1" name="username" placeholder="youlooknicetoday@email.com" type="text" onChange={(e) => this.onChange("username", e.target.value)} autoFocus />
+                                <span className="Form-charm"></span>
+                            </FormField>
 
                             <FormField key="password" fieldName="password" formError={loginError}>
                                 <FormLabel title={"Password"}  fieldName={"password"} formError={loginError} />
@@ -160,9 +151,7 @@ export default class LoginApp extends Component {
                                 <button className={cx("Button Grid-cell", {'Button--primary': this.state.valid})} disabled={!this.state.valid}>
                                     Sign in
                                 </button>
-                                { (!Settings.ldapEnabled()) &&
-                                    <Link to={"/auth/forgot_password"+(this.state.credentials.email ? "?email="+this.state.credentials.email : "")} className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</Link>
-                                }
+                                <Link to={"/auth/forgot_password"+(Utils.validEmail(this.state.credentials.username) ? "?email="+this.state.credentials.username : "")} className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</Link>
                             </div>
                         </form>
                     </div>

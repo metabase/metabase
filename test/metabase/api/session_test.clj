@@ -22,11 +22,11 @@
       (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
 
 ;; Test for required params
-(expect {:errors {:email "value must be a valid email address."}}
+(expect {:errors {:username "value must be a non-blank string."}}
   (client :post 400 "session" {}))
 
 (expect {:errors {:password "value must be a non-blank string."}}
-  (client :post 400 "session" {:email "anything@metabase.com"}))
+  (client :post 400 "session" {:username "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
 ;; Return same error as incorrect password to avoid leaking existence of user
@@ -41,9 +41,9 @@
 ;; Test that people get blocked from attempting to login if they try too many times
 ;; (Check that throttling works at the API level -- more tests in the throttle library itself: https://github.com/metabase/throttle)
 (expect
-    [{:errors {:email "Too many attempts! You must wait 15 seconds before trying again."}}
-     {:errors {:email "Too many attempts! You must wait 15 seconds before trying again."}}]
-  (let [login #(client :post 400 "session" {:email "fakeaccount3000@metabase.com", :password "toucans"})]
+    [{:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}
+     {:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}]
+  (let [login #(client :post 400 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})]
     ;; attempt to log in 10 times
     (dorun (repeatedly 10 login))
     ;; throttling should now be triggered
@@ -72,7 +72,7 @@
     (db/update! User (user->id :rasta), :reset_token nil, :reset_triggered nil)
     (assert (not (reset-fields-set?)))
     ;; issue reset request (token & timestamp should be saved)
-    ((user->client :rasta) :post 200 "session/forgot_password" {:email (:email (user->credentials :rasta))})
+    ((user->client :rasta) :post 200 "session/forgot_password" {:email (:username (user->credentials :rasta))})
     ;; TODO - how can we test email sent here?
     (reset-fields-set?)))
 
@@ -97,9 +97,9 @@
       (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
                     (db/update! User id, :reset_token <>))
             creds {:old {:password (:old password)
-                         :email    email}
+                         :username email}
                    :new {:password (:new password)
-                         :email    email}}]
+                         :username email}}]
         ;; Check that creds work
         (client :post 200 "session" (:old creds))
 
