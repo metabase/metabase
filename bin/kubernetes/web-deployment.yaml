@@ -1,0 +1,57 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: metabase
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: metabase
+        tier: frontend
+    spec:
+      containers:
+      - name: metabase
+        image: metabase/metabase:v0.22.0
+        ports:
+        - containerPort: 80
+        env:
+        - name: GET_HOSTS_FROM
+          value: dns
+          # If your cluster config does not include a dns service, then to
+          # instead access environment variables to find service host
+          # info, comment out the 'value: dns' line above, and uncomment the
+          # line below.
+          # value: env
+        # If you are ready to completely move off the H2 embedded database
+        # for running Metabase and prefer to use Postgres/MySQL we've got
+        # that covered too.
+        # In this scenario all you need to do is make sure you launch
+        # Metabase with the correct environment variables containing
+        # your Postgres database connection details and you're all set.
+        # MySQL
+        # - name: MB_DB_TYPE
+        #   value: mysql
+        # - name: MB_DB_PORT
+        #   value: 3306
+        # - name: MB_DB_DBNAME
+        #   value: metabase
+        # - name: MB_DB_USER
+        #   value: metabase_user
+        # - name: MB_DB_PASS
+        #   value: metabase_user_password
+        # - name: MB_DB_HOST
+        #   value: metbase.database.host
+        # Postgress
+        # - name: MB_DB_TYPE
+        #   value: postgres
+        # - name: MB_DB_PORT
+        #   value: 5432
+        # - name: MB_DB_DBNAME
+        #   value: metabase
+        # - name: MB_DB_USER
+        #   value: metabase_user
+        # - name: MB_DB_PASS
+        #   value: metabase_user_password
+        # - name: MB_DB_HOST
+        #   value: metbase.database.host

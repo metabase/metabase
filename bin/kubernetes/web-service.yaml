@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: metabase
+  labels:
+    app: metabase
+    tier: frontend
+spec:
+  type: LoadBalancer
+  ports:
+    # the port that this service should serve on
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    app: metabase
+    tier: frontend
