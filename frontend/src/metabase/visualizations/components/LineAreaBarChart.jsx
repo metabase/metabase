@@ -15,7 +15,7 @@ import {
 } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 
-import { getSettings } from "metabase/lib/visualization_settings";
+import { getSettings } from "metabase/visualizations/lib/settings";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 

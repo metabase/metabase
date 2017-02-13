@@ -2,10 +2,17 @@
 
 import React, { Component, PropTypes } from "react";
 
-import TableInteractive from "./TableInteractive.jsx";
-import TableSimple from "./TableSimple.jsx";
+import TableInteractive from "../components/TableInteractive.jsx";
+import TableSimple from "../components/TableSimple.jsx";
 
 import * as DataGrid from "metabase/lib/data_grid";
+
+import Query from "metabase/lib/query";
+import { isMetric, isDimension } from "metabase/lib/schema_metadata";
+import { columnsAreValid } from "metabase/visualizations/lib/settings";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
+
 import _ from "underscore";
 import { getIn } from "icepick";
 
@@ -41,6 +48,39 @@ export default class Table extends Component<*, Props, State> {
 
     static checkRenderable(cols, rows) {
         // scalar can always be rendered, nothing needed here
+    }
+
+    static settings = {
+        "table.pivot": {
+            title: "Pivot the table",
+            widget: "toggle",
+            getHidden: ([{ card, data }]) => (
+                data && data.cols.length !== 3
+            ),
+            getDefault: ([{ card, data }]) => (
+                (data && data.cols.length === 3) &&
+                Query.isStructured(card.dataset_query) &&
+                data.cols.filter(isMetric).length === 1 &&
+                data.cols.filter(isDimension).length === 2
+            )
+        },
+        "table.columns": {
+            title: "Fields to include",
+            widget: ChartSettingOrderedFields,
+            getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+            isValid: ([{ card, data }]) =>
+                card.visualization_settings["table.columns"] &&
+                columnsAreValid(card.visualization_settings["table.columns"].map(x => x.name), data),
+            getDefault: ([{ data: { cols }}]) => cols.map(col => ({
+                name: col.name,
+                enabled: col.visibility_type !== "details-only"
+            })),
+            getProps: ([{ data: { cols }}]) => ({
+                columnNames: cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col)}), {})
+            })
+        },
+        "table.column_widths": {
+        },
     }
 
     constructor(props: Props) {

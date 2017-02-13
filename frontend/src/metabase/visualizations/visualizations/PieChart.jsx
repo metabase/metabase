@@ -4,11 +4,12 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 
-import ChartTooltip from "./components/ChartTooltip.jsx";
-import ChartWithLegend from "./components/ChartWithLegend.jsx";
+import ChartTooltip from "../components/ChartTooltip.jsx";
+import ChartWithLegend from "../components/ChartWithLegend.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { metricSetting, dimensionSetting } from "metabase/visualizations/lib/settings";
 
 import { formatValue } from "metabase/lib/formatting";
 
@@ -47,6 +48,35 @@ export default class PieChart extends Component<*, Props, *> {
         if (!settings["pie.dimension"] || !settings["pie.metric"]) {
             throw new ChartSettingsError("Which columns do want to use?", "Data");
         }
+    }
+
+    static settings = {
+        "pie.dimension": {
+            section: "Data",
+            title: "Dimension",
+            ...dimensionSetting("pie.dimension")
+        },
+        "pie.metric": {
+            section: "Data",
+            title: "Measure",
+            ...metricSetting("pie.metric")
+        },
+        "pie.show_legend": {
+            section: "Display",
+            title: "Show legend",
+            widget: "toggle"
+        },
+        "pie.show_legend_perecent": {
+            section: "Display",
+            title: "Show percentages in legend",
+            widget: "toggle",
+            default: true
+        },
+        "pie.slice_threshold": {
+            section: "Display",
+            title: "Minimum slice percentage",
+            widget: "number"
+        },
     }
 
     componentDidUpdate() {
