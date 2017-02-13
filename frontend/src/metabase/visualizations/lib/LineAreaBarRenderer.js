@@ -296,9 +296,16 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange) {
 
                 let data = [];
                 if (Array.isArray(d.key)) { // scatter
-                    data = d.key.map((value, index) => (
-                        { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
-                    ));
+                    if (d.key._origin) {
+                        data = d.key._origin.row.map((value, index) => {
+                            const col = d.key._origin.cols[index];
+                            return { key: getFriendlyName(col), value: value, col };
+                        });
+                    } else {
+                        data = d.key.map((value, index) => (
+                            { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
+                        ));
+                    }
                 } else if (d.data) { // line, area, bar
                     if (!isSingleSeriesBar) {
                         cols = series[seriesIndex].data.cols;
@@ -725,16 +732,21 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     }
 
     let datas = series.map((s, index) =>
-        s.data.rows.map(row => [
-            // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
-            (isDimensionTimeseries && !isQuantitative) ?
-                HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
-            : isDimensionNumeric ?
-                row[0]
-            :
-                String(row[0])
-            , ...row.slice(1)
-        ])
+        s.data.rows.map(row => {
+            let newRow = [
+                // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
+                (isDimensionTimeseries && !isQuantitative) ?
+                    HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
+                : isDimensionNumeric ?
+                    row[0]
+                :
+                    String(row[0])
+                , ...row.slice(1)
+            ]
+            // $FlowFixMe: _origin not typed
+            newRow._origin = row._origin;
+            return newRow;
+        })
     );
 
     // compute the x-values
@@ -796,9 +808,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         let dataset = crossfilter();
         datas.map(data => dataset.add(data));
 
-        dimension = dataset.dimension(d => [d[0], d[1]]);
+        dimension = dataset.dimension(row => row);
         groups = datas.map(data => {
-            let dim = crossfilter(data).dimension(d => d);
+            let dim = crossfilter(data).dimension(row => row);
             return [
                 dim.group().reduceSum((d) => d[2] || 1)
             ]
