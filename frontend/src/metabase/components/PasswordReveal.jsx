@@ -1,5 +1,5 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
-
 
 export default class PasswordReveal extends Component {
 
@@ -16,7 +16,9 @@ export default class PasswordReveal extends Component {
             input: {
                 fontSize: '1.2rem',
                 letterSpacing: '2',
-                color: '#676C72'
+                color: '#676C72',
+                border: "none",
+                outline: "none"
             },
 
             label: {
@@ -46,7 +48,7 @@ export default class PasswordReveal extends Component {
                 </div>
 
                 { visible ?
-                    <span style={this.styles.input} className="text-grey-2 text-normal mr3">{password}</span>
+                    <input ref="input" style={this.styles.input} className="text-grey-2 text-normal mr3" value={password} onClick={({ target }) => target.setSelectionRange(0, target.value.length) }/>
                 :
                     <span style={this.styles.input} className="mr3">&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;&#9679;</span>
                 }

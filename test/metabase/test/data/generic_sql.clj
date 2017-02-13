@@ -129,19 +129,16 @@
             (quot (pk-field-name driver)))))
 
 (defn- default-qualified-name-components
-  ([_ db-name]
-   [db-name])
-  ([_ db-name table-name]
-   [table-name])
-  ([_ db-name table-name field-name]
-   [table-name field-name]))
+  ([_ db-name]                       [db-name])
+  ([_ db-name table-name]            [table-name])
+  ([_ db-name table-name field-name] [table-name field-name]))
 
 (defn- default-quote-name [_ nm]
   (str \" nm \"))
 
 (defn- quote+combine-names [driver names]
-  (apply str (interpose \. (for [n names]
-                             (name (hx/qualify-and-escape-dots (quote-name driver n)))))))
+  (s/join \. (for [n names]
+               (name (hx/qualify-and-escape-dots (quote-name driver n))))))
 
 (defn- default-qualify+quote-name
   ([driver db-name]
@@ -152,8 +149,7 @@
    (quote+combine-names driver (qualified-name-components driver db-name table-name field-name))))
 
 (defn- default-database->spec [driver context dbdef]
-  (let [spec (sql/connection-details->spec driver (i/database->connection-details driver context dbdef))]
-    (assoc spec :make-pool? (not (:short-lived? spec)))))
+  (sql/connection-details->spec driver (i/database->connection-details driver context dbdef)))
 
 
 ;;; Loading Table Data
@@ -307,7 +303,7 @@
     ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
       (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
-                             (create-table-sql driver dbdef tabledef)))
+             (create-table-sql driver dbdef tabledef)))
 
     ;; Add the SQL for adding FK constraints
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
@@ -316,20 +312,16 @@
           (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
 
     ;; exec the combined statement
-    (execute-sql! driver :db dbdef (apply str (interpose ";\n" (map hx/unescape-dots @statements)))))
+    (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
 
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
     (load-data! driver dbdef tabledef)))
 
-(defn- destroy-db! [driver dbdef]
-  (execute-sql! driver :server dbdef (drop-db-if-exists-sql driver dbdef)))
-
 (def IDatasetLoaderMixin
-  "Mixin for `IGenericSQLDatasetLoader` types to implemnt `create-db!` and `destroy-db!` from `IDatasetLoader`."
+  "Mixin for `IGenericSQLDatasetLoader` types to implement `create-db!` from `IDatasetLoader`."
   (merge i/IDatasetLoaderDefaultsMixin
-         {:create-db!  create-db!
-          :destroy-db! destroy-db!}))
+         {:create-db! create-db!}))
 
 
 ;;; ## Various Util Fns

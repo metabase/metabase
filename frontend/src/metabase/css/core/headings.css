@@ -18,3 +18,30 @@ h6, .h6 {
 .h4 { font-size: 1.12em; }
 .h5 { font-size: .83em; }
 .h6 { font-size: .75em; }
+
+@media screen and (--breakpoint-min-sm) {
+  .sm-h1 { font-size: 2em; }
+  .sm-h2 { font-size: 1.5em; }
+  .sm-h3 { font-size: 1.17em; }
+  .sm-h4 { font-size: 1.12em; }
+  .sm-h5 { font-size: .83em; }
+  .sm-h6 { font-size: .75em; }
+}
+
+@media screen and (--breakpoint-min-md) {
+  .md-h1 { font-size: 2em; }
+  .md-h2 { font-size: 1.5em; }
+  .md-h3 { font-size: 1.17em; }
+  .md-h4 { font-size: 1.12em; }
+  .md-h5 { font-size: .83em; }
+  .md-h6 { font-size: .75em; }
+}
+
+@media screen and (--breakpoint-min-lg) {
+  .lg-h1 { font-size: 2em; }
+  .lg-h2 { font-size: 1.5em; }
+  .lg-h3 { font-size: 1.17em; }
+  .lg-h4 { font-size: 1.12em; }
+  .lg-h5 { font-size: .83em; }
+  .lg-h6 { font-size: .75em; }
+}

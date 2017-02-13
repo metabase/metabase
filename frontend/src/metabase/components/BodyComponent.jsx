@@ -26,10 +26,12 @@ export default ComposedComponent => class extends Component {
 
     _render() {
         this._element.className = this.props.className || "";
-        ReactDOM.render(<ComposedComponent {...this.props} className={undefined} />, this._element);
+        ReactDOM.unstable_renderSubtreeIntoContainer(this,
+            <ComposedComponent {...this.props} className={undefined} />
+        , this._element);
     }
 
     render() {
-        return <span />;
+        return null;
     }
 };

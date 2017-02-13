@@ -1,8 +1,10 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import { connect } from "react-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import SettingsHeader from "../components/SettingsHeader.jsx";
+import AdminLayout from "metabase/components/AdminLayout.jsx";
+
 import SettingsSetting from "../components/SettingsSetting.jsx";
 import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
 import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
@@ -16,6 +18,7 @@ import cx from 'classnames';
 
 import {
     getSettings,
+    getSettingValues,
     getSections,
     getActiveSection,
     getNewVersionAvailable
@@ -24,11 +27,11 @@ import * as settingsActions from "../settings";
 
 const mapStateToProps = (state, props) => {
     return {
-        refreshSiteSettings: props.refreshSiteSettings,
-        settings:            getSettings(state),
-        sections:            getSections(state),
-        activeSection:       getActiveSection(state),
-        newVersionAvailable: getNewVersionAvailable(state)
+        settings:            getSettings(state, props),
+        settingValues:       getSettingValues(state, props),
+        sections:            getSections(state, props),
+        activeSection:       getActiveSection(state, props),
+        newVersionAvailable: getNewVersionAvailable(state, props)
     }
 }
 
@@ -40,13 +43,12 @@ const mapDispatchToProps = {
 export default class SettingsEditorApp extends Component {
     constructor(props, context) {
         super(props, context);
-        this.handleChangeEvent = this.handleChangeEvent.bind(this);
         this.updateSetting = this.updateSetting.bind(this);
     }
 
     static propTypes = {
         sections: PropTypes.array.isRequired,
-        activeSection: PropTypes.object.isRequired,
+        activeSection: PropTypes.object,
         updateSetting: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired,
         updateSlackSettings: PropTypes.func.isRequired,
@@ -54,90 +56,86 @@ export default class SettingsEditorApp extends Component {
     };
 
     componentWillMount() {
-        this.props.initializeSettings(this.props.refreshSiteSettings);
+        this.props.initializeSettings();
     }
 
     updateSetting(setting, value) {
-        this.refs.header.refs.status.setSaving();
+        this.refs.layout.setSaving();
         setting.value = value;
         this.props.updateSetting(setting).then(() => {
-            this.refs.header.refs.status.setSaved();
+            this.refs.layout.setSaved();
 
             let val = (setting.key === "report-timezone" || setting.key === "anon-tracking-enabled") ? setting.value : "success";
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, val);
         }, (error) => {
-            this.refs.header.refs.status.setSaveError(error.data);
+            this.refs.layout.setSaveError(error.data);
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         });
     }
 
-    handleChangeEvent(setting, event) {
-        this.updateSetting(setting, event.target.value);
-    }
-
     renderSettingsPane() {
-        if (!this.props.activeSection) return null;
+        const { activeSection, settingValues } = this.props;
 
-        let section = this.props.activeSection; // this.props.sections[this.state.currentSection];
+        if (!activeSection) {
+            return null;
+        }
 
-        if (section.name === "Email") {
+        if (activeSection.name === "Email") {
             return (
-                <div className="px2">
-                    <SettingsEmailForm
-                        ref="emailForm"
-                        elements={section.settings}
-                        updateEmailSettings={this.props.updateEmailSettings}
-                        sendTestEmail={this.props.sendTestEmail}
-                    />
-                </div>
+                <SettingsEmailForm
+                    ref="emailForm"
+                    elements={activeSection.settings}
+                    updateEmailSettings={this.props.updateEmailSettings}
+                    sendTestEmail={this.props.sendTestEmail}
+                />
             );
-        } else if (section.name === "Setup") {
+        } else if (activeSection.name === "Setup") {
             return (
-                <div className="px2">
-                    <SettingsSetupList
-                        ref="settingsForm" />
-                </div>
+                <SettingsSetupList
+                    ref="settingsForm"
+                />
             );
-        } else if (section.name === "Slack") {
+        } else if (activeSection.name === "Slack") {
             return (
-                <div className="px2">
-                    <SettingsSlackForm
-                        ref="slackForm"
-                        elements={section.settings}
-                        updateSlackSettings={this.props.updateSlackSettings}
-                    />
-                </div>
+                <SettingsSlackForm
+                    ref="slackForm"
+                    elements={activeSection.settings}
+                    updateSlackSettings={this.props.updateSlackSettings}
+                />
             );
-        } else if (section.name === "Updates") {
+        } else if (activeSection.name === "Updates") {
             return (
-                <div className="px2">
-                    <SettingsUpdatesForm
-                        ref="updatesForm"
-                        settings={this.props.settings}
-                        elements={section.settings}
-                        updateSetting={this.updateSetting}
-                        handleChangeEvent={this.handleChangeEvent}
-                    />
-                </div>
+                <SettingsUpdatesForm
+                    settings={this.props.settings}
+                    elements={activeSection.settings}
+                    updateSetting={this.updateSetting}
+                />
             );
-        } else if (section.name === "Single Sign On") {
+        } else if (activeSection.name === "Single Sign-On") {
             return (
-                <div className="px2">
-                    <SettingsSingleSignOnForm
-                        elements={section.settings}
-                        updateSetting={this.updateSetting}
-                    />
-                </div>
+                <SettingsSingleSignOnForm
+                    elements={activeSection.settings}
+                    updateSetting={this.updateSetting}
+                />
             );
         } else {
-            let settings = section.settings.map((setting, index) => {
-                return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
-            });
 
             return (
-                <div className="px2">
-                    <ul>{settings}</ul>
-                </div>
+                <ul>
+                    {activeSection.settings
+                    .filter((setting) =>
+                        setting.getHidden ? !setting.getHidden(settingValues) : true
+                    )
+                    .map((setting, index) =>
+                        <SettingsSetting
+                            key={setting.key}
+                            setting={setting}
+                            updateSetting={this.updateSetting.bind(this, setting)}
+                            reloadSettings={this.props.reloadSettings}
+                            autoFocus={index === 0}
+                        />
+                    )}
+                </ul>
             );
         }
     }
@@ -160,10 +158,10 @@ export default class SettingsEditorApp extends Component {
 
             return (
                 <li key={section.name}>
-                    <a href={"/admin/settings/?section=" + section.name} className={classes}>
+                    <Link to={"/admin/settings/" + section.slug}  className={classes}>
                         <span>{section.name}</span>
                         {newVersionIndicator}
-                    </a>
+                    </Link>
                 </li>
             );
         });
@@ -179,13 +177,13 @@ export default class SettingsEditorApp extends Component {
 
     render() {
         return (
-            <div className="MetadataEditor full-height flex flex-column flex-full p4">
-                <SettingsHeader ref="header" />
-                <div className="MetadataEditor-main flex flex-row flex-full mt2">
-                    {this.renderSettingsSections()}
-                    {this.renderSettingsPane()}
-                </div>
-            </div>
-        );
+            <AdminLayout
+                ref="layout"
+                title="Settings"
+                sidebar={this.renderSettingsSections()}
+            >
+                {this.renderSettingsPane()}
+            </AdminLayout>
+        )
     }
 }

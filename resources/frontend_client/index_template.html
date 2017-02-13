@@ -7,6 +7,8 @@
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+        {{{embed_code}}}
+
         <title>Metabase</title>
 
         <script type="text/javascript">
@@ -14,9 +16,9 @@
         </script>
     </head>
 
-    <body ng-controller="Metabase">
-        <div class="Nav" ng-controller="Nav" mb-react-component="Navbar"></div>
-        <main class="relative full-height z1" ng-view></main>
+    <body>
+        <div id="root" />
+        <div style="display: none;" ng-controller="Metabase" ng-view />
     </body>
 
     <script type="text/javascript">
@@ -33,7 +35,6 @@
          loadScript('https://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js', function () {
              WebFont.load({ google: { families: ["Lato:n3,n4,n7"] } });
          });
-         loadScript('https://maps.googleapis.com/maps/api/js');
 
          var googleAuthClientID = window.MetabaseBootstrap.google_auth_client_id;
          if (googleAuthClientID) {

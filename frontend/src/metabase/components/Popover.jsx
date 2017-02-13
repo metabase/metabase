@@ -2,8 +2,10 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
-import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
+import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
+
+import { constrainToScreen } from "metabase/lib/dom";
 
 import cx from "classnames";
 
@@ -20,10 +22,12 @@ export default class Popover extends Component {
     }
 
     static propTypes = {
+        id: PropTypes.string,
         isOpen: PropTypes.bool,
         hasArrow: PropTypes.bool,
         // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
-        tetherOptions: PropTypes.object
+        tetherOptions: PropTypes.object,
+        sizeToFit: PropTypes.bool,
     };
 
     static defaultProps = {
@@ -32,7 +36,8 @@ export default class Popover extends Component {
         verticalAttachments: ["top", "bottom"],
         horizontalAttachments: ["center", "left", "right"],
         targetOffsetX: 24,
-        targetOffsetY: 5
+        targetOffsetY: 5,
+        sizeToFit: false,
     };
 
     _getPopoverElement() {
@@ -85,8 +90,12 @@ export default class Popover extends Component {
 
     _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
-                <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
+            <OnClickOutsideWrapper handleDismissal={this.handleDismissal} dismissOnEscape={this.props.dismissOnEscape} dismissOnClickOutside={this.props.dismissOnClickOutside}>
+                <div
+                    id={this.props.id}
+                    className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}
+                    style={this.props.style}
+                >
                     { typeof this.props.children === "function" ?
                         this.props.children()
                     :
@@ -152,18 +161,17 @@ export default class Popover extends Component {
         if (this.props.isOpen) {
             // popover is open, lets do this!
             const popoverElement = this._getPopoverElement();
-            ReactDOM.render(
-              <ReactCSSTransitionGroup
-                transitionName="Popover"
-                transitionAppear={true}
-                transitionAppearTimeout={250}
-                transitionEnterTimeout={250}
-                transitionLeaveTimeout={250}
-              >
-                {this._popoverComponent()}
-              </ReactCSSTransitionGroup>
-              , popoverElement
-            );
+            ReactDOM.unstable_renderSubtreeIntoContainer(this,
+                <ReactCSSTransitionGroup
+                    transitionName="Popover"
+                    transitionAppear={true}
+                    transitionAppearTimeout={250}
+                    transitionEnterTimeout={250}
+                    transitionLeaveTimeout={250}
+                >
+                    {this._popoverComponent()}
+                </ReactCSSTransitionGroup>
+            , popoverElement);
 
             var tetherOptions = {};
 
@@ -230,6 +238,22 @@ export default class Popover extends Component {
 
                 // finally set the best options
                 this._setTetherOptions(tetherOptions, best);
+            }
+
+            if (this.props.sizeToFit) {
+                const verticalPadding = 5;
+                const body = tetherOptions.element.querySelector(".PopoverBody");
+                if (this._tether.attachment.top === "top") {
+                    if (constrainToScreen(body, "bottom", verticalPadding)) {
+                        body.classList.add("scroll-y");
+                        body.classList.add("scroll-show");
+                    }
+                } else if (this._tether.attachment.top === "bottom") {
+                    if (constrainToScreen(body, "top", verticalPadding)) {
+                        body.classList.add("scroll-y");
+                        body.classList.add("scroll-show");
+                    }
+                }
             }
         } else {
             // if the popover isn't open then actively unmount our popover

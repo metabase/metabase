@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import CardPicker from "./CardPicker.jsx";
@@ -14,7 +15,15 @@ export default class PulseEditCards extends Component {
         this.state = {};
     }
 
-    static propTypes = {};
+    static propTypes = {
+        pulse: PropTypes.object.isRequired,
+        pulseId: PropTypes.number,
+        cardPreviews: PropTypes.object.isRequired,
+        cards: PropTypes.object.isRequired,
+        cardList: PropTypes.array.isRequired,
+        fetchPulseCardPreview: PropTypes.func.isRequired,
+        setPulse: PropTypes.func.isRequired
+    };
     static defaultProps = {};
 
     setCard(index, cardId) {
@@ -103,7 +112,7 @@ export default class PulseEditCards extends Component {
                                             card={card}
                                             cardPreview={cardPreviews[card.id]}
                                             onRemove={this.removeCard.bind(this, index)}
-                                            dispatch={this.props.dispatch}
+                                            fetchPulseCardPreview={this.props.fetchPulseCardPreview}
                                         />
                                     :
                                         <CardPicker

@@ -1,81 +1,118 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
-            (metabase [db :as db]
-                      [events :as events])
-            (metabase.models [dashboard-card :refer [DashboardCard], :as dashboard-card]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]]
+                    [models :as models])
+            [metabase.events :as events]
+            (metabase.models [card :refer [Card], :as card]
+                             [dashboard-card :refer [DashboardCard], :as dashboard-card]
                              [interface :as i]
+                             [permissions :as perms]
                              [revision :as revision])
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
 
-(defn ordered-cards
-  "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
-  {:hydrate :ordered_cards, :arglists '([dashboard])}
-  [{:keys [id]}]
-  (db/select DashboardCard, :dashboard_id id, {:order-by [[:created_at :asc]]}))
+;;; ---------------------------------------- Perms Checking ----------------------------------------
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'Revision :model "Dashboard" :model_id id)
-  (db/cascade-delete! DashboardCard :dashboard_id id))
+(defn- dashcards->cards [dashcards]
+  (when (seq dashcards)
+    (for [dashcard dashcards
+          card     (cons (:card dashcard) (:series dashcard))]
+      card)))
+
+(defn- can-read? [dashboard]
+  ;; if Dashboard is already hydrated no need to do it a second time
+  (let [cards (or (dashcards->cards (:ordered_cards dashboard))
+                  (dashcards->cards (-> (db/select [DashboardCard :id :card_id], :dashboard_id (u/get-id dashboard))
+                                        (hydrate :card :series))))]
+    (or (empty? cards)
+        (some i/can-read? cards))))
+
+
+;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
+
+(defn- pre-delete [dashboard]
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
+  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
 
 (defn- pre-insert [dashboard]
-  (let [defaults {:parameters []}]
+  (let [defaults {:parameters   []}]
     (merge defaults dashboard)))
 
-(i/defentity Dashboard :report_dashboard)
+
+(models/defmodel Dashboard :report_dashboard)
 
 (u/strict-extend (class Dashboard)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped?       (constantly true)
-          :types              (constantly {:description :clob, :parameters :json})
-          :can-read?          i/publicly-readable?
-          :can-write?         i/publicly-writeable?
-          :pre-cascade-delete pre-cascade-delete
-          :pre-insert         pre-insert}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:description :clob, :parameters :json})
+          :pre-delete  pre-delete
+          :pre-insert  pre-insert
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?  can-read?
+          :can-write? can-read?}))
+
+
+;;; ---------------------------------------- Hydration ----------------------------------------
+
+(defn ordered-cards
+  "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
+  {:hydrate :ordered_cards}
+  [dashboard]
+  (db/do-post-select DashboardCard
+    (db/query {:select   [:dashcard.*]
+               :from     [[DashboardCard :dashcard]]
+               :join     [[Card :card] [:= :dashcard.card_id :card.id]]
+               :where    [:and [:= :dashcard.dashboard_id (u/get-id dashboard)]
+                               [:= :card.archived false]]
+               :order-by [[:dashcard.created_at :asc]]})))
 
 
 ;;; ## ---------------------------------------- PERSISTENCE FUNCTIONS ----------------------------------------
 
-
 (defn create-dashboard!
   "Create a `Dashboard`"
-  [{:keys [name description parameters public_perms], :as dashboard} user-id]
+  [{:keys [name description parameters], :as dashboard} user-id]
   {:pre [(map? dashboard)
          (u/maybe? u/sequence-of-maps? parameters)
          (integer? user-id)]}
   (->> (db/insert! Dashboard
-                   :name         name
-                   :description  description
-                   :parameters   (or parameters [])
-                   :public_perms public_perms
-                   :creator_id   user-id)
-       (events/publish-event :dashboard-create)))
+         :name        name
+         :description description
+         :parameters  (or parameters [])
+         :creator_id  user-id)
+       (events/publish-event! :dashboard-create)))
 
 (defn update-dashboard!
   "Update a `Dashboard`"
-  [{:keys [id name description parameters], :as dashboard} user-id]
+  [{:keys [id name description parameters caveats points_of_interest show_in_getting_started], :as dashboard} user-id]
   {:pre [(map? dashboard)
          (integer? id)
          (u/maybe? u/sequence-of-maps? parameters)
          (integer? user-id)]}
   (db/update-non-nil-keys! Dashboard id
-    :description description
-    :name        name
-    :parameters  parameters)
+    :description             description
+    :name                    name
+    :parameters              parameters
+    :caveats                 caveats
+    :points_of_interest      points_of_interest
+    :show_in_getting_started show_in_getting_started)
   (u/prog1 (Dashboard id)
-    (events/publish-event :dashboard-update (assoc <> :actor_id user-id))))
+    (events/publish-event! :dashboard-update (assoc <> :actor_id user-id))))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
-
 
 (defn serialize-dashboard
   "Serialize a `Dashboard` for use in a `Revision`."
   [dashboard]
   (-> dashboard
-      (select-keys [:description :name :public_perms])
+      (select-keys [:description :name])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (select-keys dashboard-card [:sizeX :sizeY :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
@@ -130,10 +167,6 @@
                (nil? (:description dashboard₁)) "added a description"
                (nil? (:description dashboard₂)) "removed the description"
                :else (format "changed the description from \"%s\" to \"%s\"" (:description dashboard₁) (:description dashboard₂))))
-           (when (:public_perms changes)
-             (if (zero? (:public_perms dashboard₂))
-               "made it private"
-               "made it public")) ; TODO - are both 1 and 2 "public" now ?
            (when (or (:cards changes) (:cards removals))
              (let [num-cards₁  (count (:cards dashboard₁))
                    num-cards₂  (count (:cards dashboard₂))]
@@ -144,7 +177,6 @@
           (concat (map-indexed check-series-change (:cards changes)))
           (->> (filter identity)
                build-sentence)))))
-
 
 (u/strict-extend (class Dashboard)
   revision/IRevisioned

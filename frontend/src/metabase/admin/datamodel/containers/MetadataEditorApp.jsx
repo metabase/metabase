@@ -1,14 +1,15 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+
 import _ from "underscore";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import AdminEmptyText from "metabase/components/AdminEmptyText.jsx";
 import MetadataHeader from '../components/database/MetadataHeader.jsx';
 import MetadataTablePicker from '../components/database/MetadataTablePicker.jsx';
 import MetadataTable from '../components/database/MetadataTable.jsx';
 import MetadataSchema from '../components/database/MetadataSchema.jsx';
-
 
 import {
     getDatabases,
@@ -16,23 +17,21 @@ import {
     getEditingDatabaseWithTableMetadataStrengths,
     getEditingTable
 } from "../selectors";
-import * as metadataActions from "../metadata";
-
+import * as metadataActions from "../datamodel";
 
 const mapStateToProps = (state, props) => {
     return {
-        databaseId:           state.router && state.router.params && parseInt(state.router.params.databaseId),
-        tableId:              state.router && state.router.params && parseInt(state.router.params.tableId),
-        onChangeLocation:     props.onChangeLocation,
-        databases:            getDatabases(state),
-        idfields:             getDatabaseIdfields(state),
-        databaseMetadata:     getEditingDatabaseWithTableMetadataStrengths(state),
-        editingTable:         getEditingTable(state)
+        databaseId:           parseInt(props.params.databaseId),
+        tableId:              parseInt(props.params.tableId),
+        databases:            getDatabases(state, props),
+        idfields:             getDatabaseIdfields(state, props),
+        databaseMetadata:     getEditingDatabaseWithTableMetadataStrengths(state, props),
+        editingTable:         getEditingTable(state, props)
     }
 }
 
 const mapDispatchToProps = {
-    ...metadataActions
+    ...metadataActions,
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -64,7 +63,7 @@ export default class MetadataEditor extends Component {
 
     componentWillMount() {
         // if we know what database we are initialized with, include that
-        this.props.initializeMetadata(this.props.databaseId, this.props.tableId, this.props.onChangeLocation);
+        this.props.initializeMetadata(this.props.databaseId, this.props.tableId);
     }
 
     toggleShowSchema() {
@@ -95,7 +94,7 @@ export default class MetadataEditor extends Component {
         } else {
             content = (
                 <div style={{paddingTop: "10rem"}} className="full text-centered">
-                    <h2 className="text-grey-3">Select any table to see its schema and add or edit metadata.</h2>
+                    <AdminEmptyText message="Select any table to see its schema and add or edit metadata." />
                 </div>
             );
         }

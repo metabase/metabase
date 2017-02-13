@@ -1,11 +1,11 @@
 [["tips" [{:field-name "text"
-           :base-type  :CharField}
+           :base-type  :type/Text}
           {:field-name "url"
-           :base-type :UnknownField}
+           :base-type :type/*}
           {:field-name "venue"
-           :base-type :UnknownField}
+           :base-type :type/*}
           {:field-name "source"
-           :base-type :UnknownField}]
+           :base-type :type/*}]
   [["Lucky's Gluten-Free Café is a atmospheric and delicious place to have a drink during winter."
     {:small "http://cloudfront.net/50576ac9-2211-4198-8915-265d32a6ba82/small.jpg",
      :medium "http://cloudfront.net/50576ac9-2211-4198-8915-265d32a6ba82/med.jpg",

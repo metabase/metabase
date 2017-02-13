@@ -59,5 +59,3 @@ const RefreshOption = ({ name, period, selected, onClick }) =>
         <span className={styles.name}>{ name.split(" ")[0] }</span>
         <span className={styles.nameSuffix}> { name.split(" ")[1] }</span>
     </li>
-
-export default RefreshWidget;

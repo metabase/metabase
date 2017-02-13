@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -6,33 +7,38 @@ import Toggle from "metabase/components/Toggle.jsx";
 
 import StepTitle from './StepTitle.jsx';
 import CollapsedStep from "./CollapsedStep.jsx";
-import { setAllowTracking, submitSetup } from "../actions";
 
 
 export default class PreferencesStep extends Component {
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
-        stepNumber: PropTypes.number.isRequired
+        stepNumber: PropTypes.number.isRequired,
+        activeStep: PropTypes.number.isRequired,
+        setActiveStep: PropTypes.func.isRequired,
+
+        allowTracking: PropTypes.bool.isRequired,
+        setAllowTracking: PropTypes.func.isRequired,
+        setupComplete: PropTypes.bool.isRequired,
+        submitSetup: PropTypes.func.isRequired,
     }
 
     toggleTracking() {
         let { allowTracking } = this.props;
 
-        this.props.dispatch(setAllowTracking(!allowTracking));
+        this.props.setAllowTracking(!allowTracking);
     }
 
     async formSubmitted(e) {
         e.preventDefault();
 
         // okay, this is the big one.  we actually submit everything to the api now and complete the process.
-        this.props.dispatch(submitSetup());
+        this.props.submitSetup();
 
         MetabaseAnalytics.trackEvent('Setup', 'Preferences Step', this.props.allowTracking);
     }
 
     render() {
-        let { activeStep, allowTracking, setupComplete, stepNumber } = this.props;
+        let { activeStep, allowTracking, setupComplete, stepNumber, setActiveStep } = this.props;
         const { tag } = MetabaseSettings.get('version');
 
         let stepText = 'Usage data preferences';
@@ -41,7 +47,7 @@ export default class PreferencesStep extends Component {
         }
 
         if (activeStep !== stepNumber || setupComplete) {
-            return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={setupComplete}></CollapsedStep>)
+            return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={setupComplete} setActiveStep={setActiveStep}></CollapsedStep>)
         } else {
             return (
                 <section className="SetupStep rounded full relative SetupStep--active">

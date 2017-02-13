@@ -12,6 +12,8 @@ import Field from "metabase/reference/components/Field.jsx";
 import List from "metabase/components/List.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+
+import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 
 import cx from "classnames";
@@ -24,6 +26,7 @@ import {
     getLoading,
     getUser,
     getIsEditing,
+    getHasRevisionHistory,
 } from "../selectors";
 
 import {
@@ -37,15 +40,16 @@ import * as metadataActions from "metabase/redux/metadata";
 import * as actions from 'metabase/reference/reference';
 
 const mapStateToProps = (state, props) => {
-    const data = getData(state);
+    const data = getData(state, props);
     return {
-        section: getSection(state),
+        section: getSection(state, props),
         entities: data,
-        foreignKeys: getForeignKeys(state),
-        loading: getLoading(state),
-        loadingError: getError(state),
-        user: getUser(state),
-        isEditing: getIsEditing(state),
+        foreignKeys: getForeignKeys(state, props),
+        loading: getLoading(state, props),
+        loadingError: getError(state, props),
+        user: getUser(state, props),
+        isEditing: getIsEditing(state, props),
+        hasRevisionHistory: getHasRevisionHistory(state, props),
         fields: fieldsToFormFields(data)
     };
 }
@@ -70,6 +74,7 @@ export default class ReferenceEntityList extends Component {
         entities: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object.isRequired,
         isEditing: PropTypes.bool,
+        hasRevisionHistory: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
@@ -82,7 +87,8 @@ export default class ReferenceEntityList extends Component {
         section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
-        submitting: PropTypes.bool
+        submitting: PropTypes.bool,
+        resetForm: PropTypes.func
     };
 
     render() {
@@ -96,8 +102,10 @@ export default class ReferenceEntityList extends Component {
             loading,
             user,
             isEditing,
+            hasRevisionHistory,
             startEditing,
             endEditing,
+            resetForm,
             handleSubmit,
             submitting
         } = this.props;
@@ -109,27 +117,12 @@ export default class ReferenceEntityList extends Component {
                 )}
             >
                 { isEditing &&
-                    <div className={cx("EditHeader wrapper py1", R.subheader)}>
-                        <div>
-                            You are editing this page
-                        </div>
-                        <div className={R.subheaderButtons}>
-                            <button
-                                className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
-                                type="submit"
-                                disabled={submitting}
-                            >
-                                SAVE
-                            </button>
-                            <button
-                                type="button"
-                                className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
-                                onClick={endEditing}
-                            >
-                                CANCEL
-                            </button>
-                        </div>
-                    </div>
+                    <EditHeader
+                        hasRevisionHistory={hasRevisionHistory}
+                        reinitializeForm={resetForm}
+                        endEditing={endEditing}
+                        submitting={submitting}
+                    />
                 }
                 <ReferenceHeader section={section} user={user} isEditing={isEditing} startEditing={startEditing} />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
@@ -149,7 +142,7 @@ export default class ReferenceEntityList extends Component {
                             </div>
                         </div>
                         <List>
-                            { Object.values(entities).map(entity => console.log("entity", entity)||
+                            { Object.values(entities).map(entity =>
                                 entity && entity.id && entity.name &&
                                     <li className="relative" key={entity.id}>
                                         <Field

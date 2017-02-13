@@ -6,9 +6,12 @@ import Icon from "metabase/components/Icon.jsx";
 import LegendItem from "./LegendItem.jsx";
 
 import Urls from "metabase/lib/urls";
-import { getCardColors } from "metabase/visualizations/lib/utils";
 
 import cx from "classnames";
+
+import { normal } from "metabase/lib/colors";
+
+const DEFAULT_COLORS = Object.values(normal);
 
 export default class LegendHeader extends Component {
     constructor(props, context) {
@@ -23,11 +26,13 @@ export default class LegendHeader extends Component {
         hovered: PropTypes.object,
         onHoverChange: PropTypes.func,
         onRemoveSeries: PropTypes.func,
-        actionButtons: PropTypes.node
+        actionButtons: PropTypes.node,
+        linkToCard: PropTypes.bool,
     };
 
     static defaultProps = {
-        series: []
+        series: [],
+        settings: {}
     };
 
     componentDidMount() {
@@ -42,19 +47,19 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange } = this.props;
+        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings } = this.props;
         const showDots = series.length > 1;
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
 
-        let colors = getCardColors(series[0].card);
+        let colors = settings["graph.colors"] || DEFAULT_COLORS;
         return (
             <div  className={cx(styles.LegendHeader, "Card-title mx1 flex flex-no-shrink flex-row align-center")}>
                 { series.map((s, index) => [
                     <LegendItem
                         key={index}
                         title={s.card.name}
-                        href={s.card.id && Urls.card(s.card.id)}
+                        href={linkToCard && s.card.id && Urls.card(s.card.id)}
                         color={colors[index % colors.length]}
                         showDot={showDots}
                         showTitle={showTitles}
@@ -71,7 +76,7 @@ export default class LegendHeader extends Component {
                         />
                 ])}
                 { actionButtons &&
-                    <span className="flex-no-shrink flex-align-right">
+                    <span className="flex-no-shrink flex-align-right relative">
                         {actionButtons}
                     </span>
                 }

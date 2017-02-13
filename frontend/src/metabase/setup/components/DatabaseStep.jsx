@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -9,8 +10,6 @@ import FormField from "metabase/components/form/FormField.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { setDatabaseDetails, validateDatabase } from "../actions";
-
 import _ from "underscore";
 
 export default class DatabaseStep extends Component {
@@ -20,8 +19,13 @@ export default class DatabaseStep extends Component {
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
-        stepNumber: PropTypes.number.isRequired
+        stepNumber: PropTypes.number.isRequired,
+        activeStep: PropTypes.number.isRequired,
+        setActiveStep: PropTypes.func.isRequired,
+
+        databaseDetails: PropTypes.object,
+        validateDatabase: PropTypes.func.isRequired,
+        setDatabaseDetails: PropTypes.func.isRequired,
     }
 
     chooseDatabaseEngine() {
@@ -44,7 +48,7 @@ export default class DatabaseStep extends Component {
 
         try {
             // validate the details before we move forward
-            await this.props.dispatch(validateDatabase(details));
+            await this.props.validateDatabase(details);
 
         } catch (error) {
             let formError = error;
@@ -52,7 +56,7 @@ export default class DatabaseStep extends Component {
 
             try {
                 // ssl connection failed, lets try non-ssl
-                await this.props.dispatch(validateDatabase(details));
+                await this.props.validateDatabase(details);
 
                 formError = null;
 
@@ -72,10 +76,10 @@ export default class DatabaseStep extends Component {
         }
 
         // now that they are good, store them
-        this.props.dispatch(setDatabaseDetails({
+        this.props.setDatabaseDetails({
             'nextStep': this.props.stepNumber + 1,
             'details': details
-        }));
+        });
 
         MetabaseAnalytics.trackEvent('Setup', 'Database Step', this.state.engine);
     }
@@ -85,10 +89,10 @@ export default class DatabaseStep extends Component {
             'engine': ""
         });
 
-        this.props.dispatch(setDatabaseDetails({
+        this.props.setDatabaseDetails({
             'nextStep': this.props.stepNumber + 1,
             'details': null
-        }));
+        });
 
         MetabaseAnalytics.trackEvent('Setup', 'Database Step');
     }
@@ -109,7 +113,7 @@ export default class DatabaseStep extends Component {
     }
 
     render() {
-        let { activeStep, databaseDetails, dispatch, stepNumber } = this.props;
+        let { activeStep, databaseDetails, setActiveStep, stepNumber } = this.props;
         let { engine, formError } = this.state;
         let engines = MetabaseSettings.get('engines');
 
@@ -119,7 +123,7 @@ export default class DatabaseStep extends Component {
         }
 
         if (activeStep !== stepNumber) {
-            return (<CollapsedStep dispatch={dispatch} stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber}></CollapsedStep>)
+            return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber} setActiveStep={setActiveStep}></CollapsedStep>)
         } else {
             return (
                 <section className="SetupStep rounded full relative SetupStep--active">

@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -10,7 +11,7 @@ export default class NewUserOnboardingModal extends Component {
     }
 
     static propTypes = {
-        closeFn: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired,
         user: PropTypes.object.isRequired
     }
 
@@ -28,7 +29,7 @@ export default class NewUserOnboardingModal extends Component {
     }
 
     closeModal() {
-        this.props.closeFn();
+        this.props.onClose();
     }
 
     renderStep() {
@@ -83,7 +84,7 @@ export default class NewUserOnboardingModal extends Component {
                             {this.renderStep()}
                             <span className="flex-align-right">
                                 <a className="text-underline-hover cursor-pointer mr3" onClick={() => (this.closeModal())}>skip for now</a>
-                                <a className="Button Button--primary" href="/q?tutorial">Let's do it!</a>
+                                <Link to="/q#?tutorial" className="Button Button--primary">Let's do it!</Link>
                             </span>
                         </div>
                     </div>

@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 41
+      author: camsaul
+      changes:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: field_type
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: active
+            defaultValueBoolean: true
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: preview_display
+            defaultValueBoolean: true
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: position
+            defaultValueNumeric: 0
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: visibility_type
+            defaultValue: "normal"

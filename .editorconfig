@@ -25,3 +25,6 @@ indent_size = 4
 
 [*.js]
 indent_size = 4
+
+[*.jsx]
+indent_size = 4

@@ -1,29 +1,31 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 
 import SetUserPassword from "./SetUserPassword.jsx";
 import UpdateUserDetails from "./UpdateUserDetails.jsx";
 
-import { setTab, updatePassword, updateUser } from "../actions";
-
 
 export default class UserSettings extends Component {
 
     static propTypes = {
         tab: PropTypes.string.isRequired,
-        user: PropTypes.object.isRequired
+        user: PropTypes.object.isRequired,
+        setTab: PropTypes.func.isRequired,
+        updateUser: PropTypes.func.isRequired,
+        updatePassword: PropTypes.func.isRequired,
     };
 
     onSetTab(tab) {
-        this.props.dispatch(setTab(tab));
+        this.props.setTab(tab);
     }
 
     onUpdatePassword(details) {
-        this.props.dispatch(updatePassword(details.user_id, details.password, details.old_password));
+        this.props.updatePassword(details.user_id, details.password, details.old_password);
     }
 
     onUpdateDetails(user) {
-        this.props.dispatch(updateUser(user));
+        this.props.updateUser(user);
     }
 
     render() {

@@ -1,17 +1,17 @@
 (ns metabase.models.session
-  (:require [metabase.db :as db]
-            (metabase.models [interface :as i]
-                             [user :refer [User]])
+  (:require (toucan [db :as db]
+                    [models :as models])
+            [metabase.models.user :refer [User]]
             [metabase.util :as u]))
 
-(i/defentity Session :core_session)
+(models/defmodel Session :core_session)
 
 (defn- pre-insert [session]
   (assoc session :created_at (u/new-sql-timestamp)))
 
 (u/strict-extend (class Session)
-  i/IEntity
-  (merge i/IEntityDefaults
+  models/IModel
+  (merge models/IModelDefaults
          {:pre-insert pre-insert}))
 
 ;; Persistence Functions

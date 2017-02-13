@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import _ from "underscore";
+
 export default class Input extends Component {
     constructor(props, context) {
         super(props, context);
@@ -38,6 +40,7 @@ export default class Input extends Component {
     }
 
     render() {
-        return <input {...this.props} value={this.state.value} onBlur={this.onBlur} onChange={this.onChange} />
+        let props = _.omit(this.props, "onBlurChange", "value", "onBlur", "onChange");
+        return <input {...props} value={this.state.value} onBlur={this.onBlur} onChange={this.onChange} />
     }
 }

@@ -1,13 +1,16 @@
 (ns metabase.api.activity
   (:require [clojure.set :as set]
             [compojure.core :refer [GET]]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]]
+                    [models :as models])
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
-                             [hydrate :refer [hydrate]]
-                             [view-log :refer [ViewLog]])))
+                             [interface :as mi]
+                             [view-log :refer [ViewLog]])
+            [metabase.models.interface :as mi]))
 
 (defn- dashcard-activity? [activity]
   (contains? #{:dashboard-add-cards :dashboard-remove-cards}
@@ -56,12 +59,13 @@
 (defendpoint GET "/"
   "Get recent activity."
   []
-  (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
-      (hydrate :user :table :database)
-      add-model-exists-info))
+  (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
+                               (hydrate :user :table :database)
+                               add-model-exists-info)))
+
 
 (defendpoint GET "/recent_views"
-  "Get the list of 15 things the current user has been viewing most recently."
+  "Get the list of 10 things the current user has been viewing most recently."
   []
   ;; expected output of the query is a single row per unique model viewed by the current user
   ;; including a `:max_ts` which has the most recent view timestamp of the item and `:cnt` which has total views
@@ -72,10 +76,12 @@
                     :order-by [[:max_ts :desc]]
                     :limit    10})
         :let     [model-object (case (:model view-log)
-                                 "card"      (db/select-one [Card :id :name :description :display], :id (:model_id view-log))
-                                 "dashboard" (db/select-one [Dashboard :id :name :description],     :id (:model_id view-log))
+                                 "card"      (db/select-one [Card :id :name :description :display :dataset_query], :id (:model_id view-log))
+                                 "dashboard" (db/select-one [Dashboard :id :name :description],                    :id (:model_id view-log))
                                  nil)]
-        :when    model-object]
-    (assoc view-log :model_object model-object)))
+        :when    (and model-object
+                      (mi/can-read? model-object))]
+    (assoc view-log :model_object (dissoc model-object :dataset_query))))
+
 
 (define-routes)

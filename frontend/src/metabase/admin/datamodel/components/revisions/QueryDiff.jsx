@@ -2,8 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import FilterList from "metabase/query_builder/filters/FilterList.jsx";
-import AggregationWidget from "metabase/query_builder/AggregationWidget.jsx";
+import FilterList from "metabase/query_builder/components/filters/FilterList.jsx";
+import AggregationWidget from "metabase/query_builder/components/AggregationWidget.jsx";
 
 import Query from "metabase/lib/query";
 
@@ -14,8 +14,10 @@ export default class QueryDiff extends Component {
     };
 
     render() {
-        let { diff: { before, after }, tableMetadata} = this.props;
-        let defintion = after || before;
+        const { diff: { before, after }, tableMetadata} = this.props;
+        const defintion = after || before;
+
+        const filters = Query.getFilters(defintion);
 
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
@@ -27,11 +29,13 @@ export default class QueryDiff extends Component {
                             tableMetadata={tableMetadata}
                         />
                     }
-                    <FilterList
-                        filters={Query.getFilters(defintion)}
-                        tableMetadata={tableMetadata}
-                        maxDisplayValues={Infinity}
-                    />
+                    { filters.length > 0 &&
+                        <FilterList
+                            filters={filters}
+                            tableMetadata={tableMetadata}
+                            maxDisplayValues={Infinity}
+                        />
+                    }
                 </div>
             }
             </LoadingAndErrorWrapper>

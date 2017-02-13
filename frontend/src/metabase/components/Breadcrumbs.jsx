@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import S from "./Breadcrumbs.css";
 
@@ -9,6 +10,7 @@ import cx from 'classnames';
 
 export default class Breadcrumbs extends Component {
     static propTypes = {
+        className: PropTypes.string,
         crumbs: PropTypes.array,
         inSidebar: PropTypes.bool,
         placeholder: PropTypes.string
@@ -21,6 +23,7 @@ export default class Breadcrumbs extends Component {
 
     render() {
         const {
+            className,
             crumbs,
             inSidebar,
             placeholder
@@ -30,7 +33,7 @@ export default class Breadcrumbs extends Component {
         const breadcrumbsClass = inSidebar ? S.sidebarBreadcrumbs : S.breadcrumbs;
 
         return (
-            <section className={breadcrumbsClass}>
+            <section className={cx(className, breadcrumbsClass)}>
                 { crumbs.length <= 1 && placeholder ?
                     <span className={cx(breadcrumbClass, S.breadcrumbPage)}>
                         {placeholder}
@@ -51,7 +54,7 @@ export default class Breadcrumbs extends Component {
                                 )}
                             >
                                 { breadcrumb.length > 1 ?
-                                    <a href={breadcrumb[1]}>{breadcrumb[0]}</a> :
+                                    <Link to={breadcrumb[1]}>{breadcrumb[0]}</Link> :
                                     <span>{breadcrumb[0]}</span>
                                 }
                             </Ellipsified>

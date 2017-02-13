@@ -27,8 +27,8 @@ export default class RevisionDiff extends Component {
 
         return (
             <div className="bordered rounded my2" style={{borderWidth: 2, overflow: 'hidden', maxWidth: 860}}>
-                <div className="flex scroll-x scroll-show scroll-show-horizontal">
-                    <div className="m3">
+                <div className="flex align-center scroll-x scroll-show scroll-show-horizontal">
+                    <div className="m3" style={{lineHeight: 0}}>
                         {icon}
                     </div>
                     <div>

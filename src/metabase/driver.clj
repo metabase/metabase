@@ -1,11 +1,9 @@
 (ns metabase.driver
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.math.numeric-tower :as math]
+  (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
-            (metabase [config :as config]
-                      [db :as db])
+            [toucan.db :as db]
+            [metabase.config :as config]
             (metabase.models [database :refer [Database]]
                              field
                              [query-execution :refer [QueryExecution]]
@@ -133,10 +131,12 @@
   *  `:foreign-keys` - Does this database support foreign key relationships?
   *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
   *  `:set-timezone` - Does this driver support setting a timezone for the query?
+  *  `:basic-aggregations` - Does the driver support *basic* aggregations like `:count` and `:sum`? (Currently, everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
   *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
-  *  `:native-parameters` - Does the driver support parameter substitution on native queries?")
+  *  `:native-parameters` - Does the driver support parameter substitution on native queries?
+  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -144,6 +144,12 @@
 
   The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
   For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
+
+  (format-custom-field-name ^String [this, ^String custom-field-name]
+    "*OPTIONAL*. Return the custom name passed via an MBQL `:named` clause so it matches the way it is returned in the results.
+     This is used by the post-processing annotation stage to find the correct metadata to include with fields in the results.
+     The default implementation is `identity`, meaning the resulting field will have exactly the same name as passed to the `:named` clause.
+     Certain drivers like Redshift always lowercase these names, so this method is provided for those situations.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
@@ -236,6 +242,7 @@
    :date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
+   :format-custom-field-name          (u/drop-first-arg identity)
    :humanize-connection-error-message (u/drop-first-arg identity)
    :notify-database-updated           (constantly nil)
    :process-query-in-context          (u/drop-first-arg identity)
@@ -257,7 +264,7 @@
   [^Keyword engine, driver-instance]
   {:pre [(keyword? engine) (map? driver-instance)]}
   (swap! registered-drivers assoc engine driver-instance)
-  (log/debug (format "Registered driver %s 🚚" (u/format-color 'blue engine))))
+  (log/debug (format "Registered driver %s %s" (u/format-color 'blue engine) (u/emoji "🚚"))))
 
 (defn available-drivers
   "Info about available drivers."
@@ -272,7 +279,7 @@
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
-  (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
+  (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
     (require ns-symb)))
 
@@ -290,28 +297,29 @@
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
    This is used to infer the types of results that come back from native queries."
   [klass]
-  (or ({Boolean                         :BooleanField
-        Double                          :FloatField
-        Float                           :FloatField
-        Integer                         :IntegerField
-        Long                            :IntegerField
-        String                          :TextField
-        java.math.BigDecimal            :DecimalField
-        java.math.BigInteger            :BigIntegerField
-        java.sql.Date                   :DateField
-        java.sql.Timestamp              :DateTimeField
-        java.util.Date                  :DateTimeField
-        java.util.UUID                  :TextField
-        clojure.lang.PersistentArrayMap :DictionaryField
-        clojure.lang.PersistentHashMap  :DictionaryField
-        clojure.lang.PersistentVector   :ArrayField
-        org.postgresql.util.PGobject    :UnknownField} klass)
-      (condp isa? klass
-        clojure.lang.IPersistentMap     :DictionaryField
-        clojure.lang.IPersistentVector  :ArrayField
-        nil)
-      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
-          :UnknownField)))
+  (or (some (fn [[mapped-class mapped-type]]
+              (when (isa? klass mapped-class)
+                mapped-type))
+            [[Boolean                        :type/Boolean]
+             [Double                         :type/Float]
+             [Float                          :type/Float]
+             [Integer                        :type/Integer]
+             [Long                           :type/Integer]
+             [java.math.BigDecimal           :type/Decimal]
+             [java.math.BigInteger           :type/BigInteger]
+             [Number                         :type/Number]
+             [String                         :type/Text]
+             [java.sql.Date                  :type/Date]
+             [java.sql.Timestamp             :type/DateTime]
+             [java.util.Date                 :type/DateTime]
+             [org.joda.time.DateTime         :type/DateTime]
+             [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
+             [clojure.lang.IPersistentMap    :type/Dictionary]
+             [clojure.lang.IPersistentVector :type/Array]
+             [org.bson.types.ObjectId        :type/MongoBSONID]
+             [org.postgresql.util.PGobject   :type/*]])
+      (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
+      :type/*))
 
 ;; ## Driver Lookup
 
@@ -356,8 +364,7 @@
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map & [rethrow-exceptions]]
-  {:pre [(keyword? engine)
-         (map? details-map)]}
+  {:pre [(keyword? engine) (map? details-map)]}
   (let [driver (engine->driver engine)]
     (try
       (u/with-timeout can-connect-timeout-ms

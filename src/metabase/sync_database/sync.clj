@@ -2,8 +2,9 @@
   (:require (clojure [set :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [metabase.db :as mdb]
+            [metabase.driver :as driver]
             (metabase.models [field :refer [Field], :as field]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable], :as raw-table]
@@ -14,7 +15,7 @@
 
 (defn- save-fks!
   "Update all of the FK relationships present in DATABASE based on what's captured in the raw schema.
-   This will set :special_type :fk and :fk_target_field_id <field-id> for each found FK relationship.
+   This will set :special_type :type/FK and :fk_target_field_id <field-id> for each found FK relationship.
    NOTE: we currently overwrite any previously defined metadata when doing this."
   [fk-sources]
   {:pre [(coll? fk-sources)
@@ -24,7 +25,7 @@
     (when-let [source-field-id (db/select-one-id Field, :raw_column_id fk-source-id, :visibility_type [:not= "retired"])]
       (when-let [target-field-id (db/select-one-id Field, :raw_column_id fk-target-id, :visibility_type [:not= "retired"])]
         (db/update! Field source-field-id
-          :special_type       :fk
+          :special_type       :type/FK
           :fk_target_field_id target-field-id)))))
 
 
@@ -47,22 +48,24 @@
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     ;; TODO: this does not support schemas in dbs :(
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
-      (try (when-not (if field-name
-                       (when-let [table-id (db/select-one-id Table
-                                             ;; TODO: this needs to support schemas
-                                             ;; TODO: eventually limit this to "core" schema tables
-                                             :db_id  (:id database)
-                                             :name   table-name
-                                             :active true)]
-                         (db/update-where! Field {:name     field-name
-                                                  :table_id table-id}
+      ;; ignore legacy entries that try to set field_type since it's no longer part of Field
+      (when-not (= (keyword k) :field_type)
+        (try (when-not (if field-name
+                         (when-let [table-id (db/select-one-id Table
+                                               ;; TODO: this needs to support schemas
+                                               ;; TODO: eventually limit this to "core" schema tables
+                                               :db_id  (:id database)
+                                               :name   table-name
+                                               :active true)]
+                           (db/update-where! Field {:name     field-name
+                                                    :table_id table-id}
+                             (keyword k) value))
+                         (db/update-where! Table {:name  table-name
+                                                  :db_id (:id database)}
                            (keyword k) value))
-                       (db/update-where! Table {:name  table-name
-                                                :db_id (:id database)}
-                         (keyword k) value))
-             (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
-           (catch Throwable e
-             (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e))))))))
+               (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
+             (catch Throwable e
+               (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e)))))))))
 
 
 (defn- save-table-fields!
@@ -91,9 +94,9 @@
                               :special-type (keyword (:special-type details))))]
         (if-let [existing-field (get raw-column-id->field raw-column-id)]
           ;; field already exists, so we UPDATE it
-          (field/update-field! existing-field column)
+          (field/update-field-from-field-def! existing-field column)
           ;; looks like a new field, so we CREATE it
-          (field/create-field! table-id (assoc column :raw-column-id raw-column-id)))))))
+          (field/create-field-from-field-def! table-id (assoc column :raw-column-id raw-column-id)))))))
 
 
 (defn retire-tables!
@@ -103,7 +106,7 @@
   {:pre [(integer? database-id)]}
   ;; retire tables (and their fields) as needed
   (when-let [table-ids-to-remove (db/select-ids Table
-                                   (db/join [Table :raw_table_id] [RawTable :id])
+                                   (mdb/join [Table :raw_table_id] [RawTable :id])
                                    :db_id database-id
                                    (db/qualify Table :active) true
                                    (db/qualify RawTable :active) false)]
@@ -121,11 +124,11 @@
         (table/retire-tables! #{table-id})
         ;; otherwise update based on the RawTable/RawColumn information
         (do
-          (save-table-fields! (table/update-table! existing-table raw-table))
+          (save-table-fields! (table/update-table-from-tabledef! existing-table raw-table))
 
           ;; handle setting any fk relationships
           (when-let [table-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
-                                 (db/join [RawColumn :raw_table_id] [RawTable :id])
+                                 (mdb/join [RawColumn :raw_table_id] [RawTable :id])
                                  (db/qualify RawTable :database_id) database-id
                                  (db/qualify RawTable :id) raw-table-id
                                  (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
@@ -134,38 +137,61 @@
       (catch Throwable t
         (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
 
-(def ^:private ^:const crufty-table-names
-  "Names of Tables that should automatically given the `visibility-type` of `:cruft`.
+(def ^:private ^:const crufty-table-patterns
+  "Regular expressions that match Tables that should automatically given the `visibility-type` of `:cruft`.
    This means they are automatically hidden to users (but can be unhidden in the admin panel).
    These `Tables` are known to not contain useful data, such as migration or web framework internal tables."
   #{;; Django
-    "auth_group"
-    "auth_group_permissions"
-    "auth_permission"
-    "django_admin_log"
-    "django_content_type"
-    "django_migrations"
-    "django_session"
-    "django_site"
-    "south_migrationhistory"
-    "user_groups"
-    "user_user_permissions"
+    #"^auth_group$"
+    #"^auth_group_permissions$"
+    #"^auth_permission$"
+    #"^django_admin_log$"
+    #"^django_content_type$"
+    #"^django_migrations$"
+    #"^django_session$"
+    #"^django_site$"
+    #"^south_migrationhistory$"
+    #"^user_groups$"
+    #"^user_user_permissions$"
+    ;; Drupal
+    #".*_cache$"
+    #".*_revision$"
+    #"^advagg_.*"
+    #"^apachesolr_.*"
+    #"^authmap$"
+    #"^autoload_registry.*"
+    #"^batch$"
+    #"^blocked_ips$"
+    #"^cache.*"
+    #"^captcha_.*"
+    #"^config$"
+    #"^field_revision_.*"
+    #"^flood$"
+    #"^node_revision.*"
+    #"^queue$"
+    #"^rate_bot_.*"
+    #"^registry.*"
+    #"^router.*"
+    #"^semaphore$"
+    #"^sequences$"
+    #"^sessions$"
+    #"^watchdog$"
     ;; Rails / Active Record
-    "schema_migrations"
+    #"^schema_migrations$"
     ;; PostGIS
-    "spatial_ref_sys"
+    #"^spatial_ref_sys$"
     ;; nginx
-    "nginx_access_log"
+    #"^nginx_access_log$"
     ;; Liquibase
-    "databasechangelog"
-    "databasechangeloglock"
+    #"^databasechangelog$"
+    #"^databasechangeloglock$"
     ;; Lobos
-    "lobos_migrations"})
+    #"^lobos_migrations$"})
 
 (defn- is-crufty-table?
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
   [table]
-  (contains? crufty-table-names (s/lower-case (:name table))))
+  (boolean (some #(re-find % (s/lower-case (:name table))) crufty-table-patterns)))
 
 (defn is-metabase-metadata-table?
   "Is this TABLE the special `_metabase_metadata` table?"
@@ -181,12 +207,12 @@
     (try
       (save-table-fields! (if-let [existing-table (get existing-tables raw-table-id)]
                             ;; table already exists, update it
-                            (table/update-table! existing-table raw-table)
+                            (table/update-table-from-tabledef! existing-table raw-table)
                             ;; must be a new table, insert it
-                            (table/create-table! (:id database) (assoc raw-table
-                                                                      :raw-table-id    raw-table-id
-                                                                      :visibility-type (when (is-crufty-table? raw-table)
-                                                                                         :cruft)))))
+                            (table/create-table-from-tabledef! (:id database) (assoc raw-table
+                                                                                :raw-table-id    raw-table-id
+                                                                                :visibility-type (when (is-crufty-table? raw-table)
+                                                                                                   :cruft)))))
       (catch Throwable e
         (log/error (u/format-color 'red "Unexpected error syncing table") e)))))
 
@@ -194,7 +220,7 @@
   "Handle setting any FK relationships. This must be done after fully syncing the tables/fields because we need all tables/fields in place."
   [database]
   (when-let [db-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
-                      (db/join [RawColumn :raw_table_id] [RawTable :id])
+                      (mdb/join [RawColumn :raw_table_id] [RawTable :id])
                       (db/qualify RawTable :database_id) (:id database)
                       (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
     (save-fks! db-fks)))
@@ -223,4 +249,5 @@
         raw-table-id->table (u/key-by :raw_table_id (db/select Table, :db_id database-id, :active true))]
     (create-and-update-tables! database raw-table-id->table raw-tables)
     (set-fk-relationships! database)
+    ;; HACK! we can't sync the _metabase_metadata table until all the "Raw" Tables/Columns are backed
     (maybe-sync-metabase-metadata-table! database raw-tables)))

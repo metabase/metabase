@@ -1,5 +1,5 @@
 [["urls" [{:field-name "url"
-           :base-type  :TextField}]
+           :base-type  :type/Text}]
   [["http://www.camsaul.com"]
    ["http://camsaul.com"]
    ["https://en.wikipedia.org/wiki/Toucan"]

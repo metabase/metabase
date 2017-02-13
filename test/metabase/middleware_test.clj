@@ -2,13 +2,14 @@
   (:require [cheshire.core :as json]
             [expectations :refer :all]
             [ring.mock.request :as mock]
+            [toucan.db :as db]
             [metabase.api.common :refer [*current-user-id* *current-user*]]
-            (metabase [db :as db]
-                      [middleware :refer :all])
+            [metabase.middleware :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]))
+
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 
@@ -20,7 +21,7 @@
 
 ;; no session-id in the request
 (expect nil
-  (-> (wrapped-handler (mock/request :get "/anyurl") )
+  (-> (wrapped-handler (mock/request :get "/anyurl"))
       :metabase-session-id))
 
 
@@ -61,6 +62,7 @@
 
 (defn- random-session-id []
   (str (java.util.UUID/randomUUID)))
+
 
 ;; valid session ID
 (expect

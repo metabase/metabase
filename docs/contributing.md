@@ -11,7 +11,7 @@ Metabase is all about letting non-technical users get access to the their organi
 It's important to keep in mind these goals of the Metabase project. Many times
 proposals will be marked "Out of Scope" or otherwise deprioritized. This doesn't mean the proposal isn't useful, or that we wouldn't be interested in seeing it done as a side project or as an experimental branch. However, it does mean that we won't point the core team or contributors to it in the near term. Issues that are slightly out of scope will be kept open in case there is community support (and ideally contributions).
 
-To get a sense for the end goals, make sure to read the [Zen of Metabase](../zen)
+To get a sense for the end goals, make sure to read the [Zen of Metabase](../zen.md)
 
 ## Our product process:
 
@@ -66,7 +66,7 @@ Let your friends know about Metabase. Start a user group in your area. [Tweet ab
 
 ### Fix bugs
 
-By our definition, "Bugs" are situations where the program doesn't do what it was expected to according to the design or specification. These are typically scoped to issues where there is a clearly defined correct behaviour. It's usually safe to grab one of these, fix it, and submit a PR (with tests!). These will be merged without too much drama unless the PR touches a lot of code. Don't be offended if we ask you to make small modifications or add more tests. We're a bit OCD on code coverage and coding style.
+By our definition, "Bugs" are situations where the program doesn't do what it was expected to according to the design or specification. These are typically scoped to issues where there is a clearly defined correct behavior. It's usually safe to grab one of these, fix it, and submit a PR (with tests!). These will be merged without too much drama unless the PR touches a lot of code. Don't be offended if we ask you to make small modifications or add more tests. We're a bit OCD on code coverage and coding style.
 
 ### Help with Documentation
 

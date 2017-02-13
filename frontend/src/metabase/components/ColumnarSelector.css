@@ -44,12 +44,13 @@
     align-items: center;
 }
 
-.ColumnarSelector-row:hover {
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover,
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover .Icon {
     background-color: var(--brand-color) !important;
     color: white !important;
 }
 
-.ColumnarSelector-row:hover .ColumnarSelector-description {
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover .ColumnarSelector-description {
     color: rgba(255,255,255,0.50);
 }
 
@@ -60,8 +61,11 @@
     border-bottom: var(--border-size) var(--border-style) var(--border-color);
 }
 
+.ColumnarSelector-row--disabled {
+    color: var(--grey-3);
+}
+
 .ColumnarSelector-row .Icon-check {
-    margin-right: var(--margin-2);
     visibility: hidden;
 }
 
@@ -73,7 +77,8 @@
     z-index: 1;
 }
 
-.ColumnarSelector-column:last-child {
+/* only apply if there's more than one, aka the last is not the first */
+.ColumnarSelector-column:last-child:not(:first-child) {
     background-color: white;
     border-left:  var(--border-size) var(--border-style) var(--border-color);
     position: relative;

@@ -20,6 +20,7 @@ profiles.clj
 /*.trace.db
 /resources/frontend_client/app/dist/
 /resources/frontend_client/index.html
+/resources/frontend_client/public.html
 /node_modules/
 /.babel_cache
 /coverage
@@ -39,5 +40,9 @@ bin/release/aws-eb/metabase-aws-eb.zip
 *.sqlite
 /reset-password-artifacts
 /.env
-/npm-debug.log
-.vscode
+/screenshots
+/plugins
+/build.xml
+/test-report-*
+/crate-*
+/.vscode

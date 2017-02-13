@@ -9,22 +9,20 @@
   (:import metabase.driver.mysql.MySQLDriver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOLEAN" ; Synonym of TINYINT(1)
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "TIMESTAMP"
-   :DecimalField    "DECIMAL"
-   :FloatField      "DOUBLE"
-   :IntegerField    "INTEGER"
-   :TextField       "TEXT"
-   :TimeField       "TIME"})
+  {:type/BigInteger "BIGINT"
+   :type/Boolean    "BOOLEAN" ; Synonym of TINYINT(1)
+   :type/Date       "DATE"
+   :type/DateTime   "TIMESTAMP"
+   :type/Decimal    "DECIMAL"
+   :type/Float      "DOUBLE"
+   :type/Integer    "INTEGER"
+   :type/Text       "TEXT"
+   :type/Time       "TIME"})
 
-(defn- database->connection-details [context {:keys [database-name short-lived?]}]
+(defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host         "localhost"
           :port         3306
           :timezone     :America/Los_Angeles
-          :short-lived? short-lived?
           :user         (if (env :circleci) "ubuntu"
                             "root")}
          (when (= context :db)

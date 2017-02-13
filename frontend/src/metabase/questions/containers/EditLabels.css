@@ -5,7 +5,7 @@
 }
 
 :local(.editor) {
-  composes: full from "style"
+  composes: flex-full from "style"
 }
 
 :local(.list) {

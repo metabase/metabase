@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import moment from "moment";
 
 import visualizations from "metabase/visualizations";
+import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -33,12 +34,12 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
-    section: getSection(state),
-    entities: getData(state),
-    user: getUser(state),
-    hasSingleSchema: getHasSingleSchema(state),
-    loading: getLoading(state),
-    loadingError: getError(state)
+    section: getSection(state, props),
+    entities: getData(state, props),
+    user: getUser(state, props),
+    hasSingleSchema: getHasSingleSchema(state, props),
+    loading: getLoading(state, props),
+    loadingError: getError(state, props)
 });
 
 const mapDispatchToProps = {
@@ -60,7 +61,7 @@ const createListItem = (entity, index, section) =>
                 `/card/${entity.id}`
             }
             icon={section.type === 'questions' ?
-                (visualizations.get(entity.display)||{}).iconName :
+                visualizations.get(entity.display).iconName :
                 section.icon
             }
         />
@@ -106,7 +107,7 @@ export default class ReferenceEntityList extends Component {
                                     createSchemaSeparator,
                                     createListItem
                                 ) :
-                                Object.values(entities).map((entity, index) =>
+                                Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
                                         createListItem(entity, index, section)
                                 )

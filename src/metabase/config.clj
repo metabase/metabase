@@ -28,13 +28,15 @@
    ;:mb-password-length "8"
    :mb-version-info-url "http://static.metabase.com/version-info.json"
    :max-session-age "20160"                     ; session length in minutes (14 days)
-   :mb-colorize-logs "true"})
+   :mb-colorize-logs "true"
+   :mb-emoji-in-logs "true"})
 
 
 (defn config-str
   "Retrieve value for a single configuration key.  Accepts either a keyword or a string.
 
    We resolve properties from these places:
+
    1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
    2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
@@ -44,6 +46,8 @@
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
+;; TODO - These names are bad. They should be something like  `int`, `boolean`, and `keyword`, respectively.
+;; See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names for discussion
 (defn ^Integer config-int  "Fetch a configuration key and parse it as an integer." [k] (some-> k config-str Integer/parseInt))
 (defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
 (defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))
@@ -57,8 +61,12 @@
 ;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
 
 (defn- version-info-from-shell-script []
-  (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
-    {:tag tag, :hash hash, :branch branch, :date date}))
+  (try
+    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
+      {:tag tag, :hash hash, :branch branch, :date date})
+    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't barf
+    (catch Throwable _
+      {:tag "?", :hash "?", :branch "?", :date "?"})))
 
 (defn- version-info-from-properties-file []
   (when-let [props-file (io/resource "version.properties")]

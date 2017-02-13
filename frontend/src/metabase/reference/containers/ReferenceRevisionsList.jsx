@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
-import i from "icepick";
+import { getIn } from "icepick";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -27,14 +27,14 @@ import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 const mapStateToProps = (state, props) => {
     return {
-        section: getSection(state),
-        revisions: getData(state),
-        metric: getMetric(state),
-        segment: getSegment(state),
-        tables: getTables(state),
-        user: getUser(state),
-        loading: getLoading(state),
-        loadingError: getError(state)
+        section: getSection(state, props),
+        revisions: getData(state, props),
+        metric: getMetric(state, props),
+        segment: getSegment(state, props),
+        tables: getTables(state, props),
+        user: getUser(state, props),
+        loading: getLoading(state, props),
+        loadingError: getError(state, props)
     }
 }
 
@@ -79,7 +79,7 @@ export default class RevisionHistoryApp extends Component {
         const userColorAssignments = user && Object.keys(revisions).length > 0 ?
             assignUserColors(
                 Object.values(revisions)
-                    .map(revision => i.getIn(revision, ['user', 'id'])),
+                    .map(revision => getIn(revision, ['user', 'id'])),
                 user.id
             ) : {};
 
@@ -98,7 +98,7 @@ export default class RevisionHistoryApp extends Component {
                                             tableMetadata={tables[entity.table_id] || {}}
                                             objectName={entity.name}
                                             currentUser={user || {}}
-                                            userColor={userColorAssignments[i.getIn(revision, ['user', 'id'])]}
+                                            userColor={userColorAssignments[getIn(revision, ['user', 'id'])]}
                                         /> :
                                         null
                                     )

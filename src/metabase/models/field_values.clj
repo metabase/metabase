@@ -1,19 +1,19 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [metabase.db :as db]
-            [metabase.models.interface :as i]
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.util :as u]))
 
 ;; ## Entity + DB Multimethods
 
-(i/defentity FieldValues :metabase_fieldvalues)
+(models/defmodel FieldValues :metabase_fieldvalues)
 
 (u/strict-extend (class FieldValues)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped? (constantly true)
-          :types        (constantly {:human_readable_values :json, :values :json})
-          :post-select  (u/rpartial update :human_readable_values #(or % {}))}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:human_readable_values :json, :values :json})
+          :post-select (u/rpartial update :human_readable_values #(or % {}))}))
 
 ;; columns:
 ;; *  :id
@@ -33,9 +33,9 @@
          (contains? field :base_type)
          (contains? field :special_type)]}
   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
-       (not (contains? #{:DateField :DateTimeField :TimeField} (keyword base_type)))
-       (or (contains? #{:category :city :state :country :name} (keyword special_type))
-           (= (keyword base_type) :BooleanField))))
+       (not (isa? (keyword base_type) :type/DateTime))
+       (or (isa? (keyword base_type) :type/Boolean)
+           (isa? (keyword special_type) :type/Category))))
 
 (defn- create-field-values!
   "Create `FieldValues` for a `Field`."
@@ -82,4 +82,4 @@
   "Remove the `FieldValues` for FIELD-ID."
   [field-id]
   {:pre [(integer? field-id)]}
-  (db/cascade-delete! FieldValues :field_id field-id))
+  (db/delete! FieldValues :field_id field-id))

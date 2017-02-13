@@ -1,5 +1,5 @@
 (ns metabase.query-processor.parameters
-  "Code for handling parameter substitution in MBQL & native queries."
+  "Code for handling parameter substitution in MBQL queries."
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
             (clj-time [core :as t]
@@ -46,7 +46,7 @@
    :start (t/first-day-of-the-month dt)})
 
 (defn- year-range [^DateTime dt]
-  {:end   (t/last-day-of-the-month (.withMonthOfYear dt DateTimeConstants/DECEMBER))
+  {:end   (t/last-day-of-the-month  (.withMonthOfYear dt DateTimeConstants/DECEMBER))
    :start (t/first-day-of-the-month (.withMonthOfYear dt DateTimeConstants/JANUARY))})
 
 (defn- absolute-date->range

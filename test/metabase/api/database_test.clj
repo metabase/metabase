@@ -1,7 +1,9 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            (toucan [db :as db]
+                    [hydrate :as hydrate])
+            [toucan.util.test :as tt]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
@@ -30,7 +32,7 @@
     (try
       (f db)
       (finally
-        (db/cascade-delete! Database :id (:id db))))))
+        (db/delete! Database :id (:id db))))))
 
 (defmacro ^:private expect-with-temp-db-created-via-api {:style/indent 1} [[binding & [options]] expected actual]
   ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
@@ -57,7 +59,6 @@
       :name               "test-data"
       :is_sample          false
       :is_full_sync       true
-      :organization_id    nil
       :description        nil
       :caveats            nil
       :points_of_interest nil
@@ -89,7 +90,6 @@
      :name               $
      :is_sample          false
      :is_full_sync       false
-     :organization_id    nil
      :description        nil
      :caveats            nil
      :points_of_interest nil
@@ -145,7 +145,7 @@
 (defn- ^:deprecated delete-randomly-created-databases!
   "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
   [& {:keys [skip]}]
-  (db/cascade-delete! Database :id [:not-in (into (set skip)
+  (db/delete! Database :id [:not-in (into (set skip)
                                                   (for [engine datasets/all-valid-engines
                                                         :let   [id (datasets/when-testing-engine engine
                                                                      (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
@@ -165,9 +165,9 @@
                                      :id                 $
                                      :updated_at         $
                                      :name               "test-data"
+                                     :native_permissions "write"
                                      :is_sample          false
                                      :is_full_sync       true
-                                     :organization_id    nil
                                      :description        nil
                                      :caveats            nil
                                      :points_of_interest nil
@@ -178,9 +178,9 @@
                                  :id                 $
                                  :updated_at         $
                                  :name               $
+                                 :native_permissions "write"
                                  :is_sample          false
                                  :is_full_sync       true
-                                 :organization_id    nil
                                  :description        nil
                                  :caveats            nil
                                  :points_of_interest nil
@@ -199,9 +199,9 @@
                 :id                 $
                 :updated_at         $
                 :name               $
+                :native_permissions "write"
                 :is_sample          false
                 :is_full_sync       true
-                :organization_id    nil
                 :description        nil
                 :caveats            nil
                 :points_of_interest nil
@@ -216,9 +216,9 @@
                                        :id                 $
                                        :updated_at         $
                                        :name               "test-data"
+                                       :native_permissions "write"
                                        :is_sample          false
                                        :is_full_sync       true
-                                       :organization_id    nil
                                        :description        nil
                                        :caveats            nil
                                        :points_of_interest nil
@@ -240,7 +240,6 @@
      :name            "test-data"
      :is_sample       false
      :is_full_sync    true
-     :organization_id nil
      :description     nil
      :caveats         nil
      :points_of_interest nil
@@ -254,52 +253,50 @@
                           :schema                  "PUBLIC"
                           :name                    "CATEGORIES"
                           :display_name            "Categories"
-                          :fields                  [(match-$ (Field (id :categories :id))
+                          :fields                  [(match-$ (hydrate/hydrate (Field (id :categories :id)) :values)
                                                       {:description        nil
                                                        :table_id           (id :categories)
                                                        :caveats            nil
                                                        :points_of_interest nil
-                                                       :special_type       "id"
+                                                       :special_type       "type/PK"
                                                        :name               "ID"
                                                        :display_name       "ID"
                                                        :updated_at         $
                                                        :active             true
                                                        :id                 $
                                                        :raw_column_id      $
-                                                       :field_type         "info"
                                                        :position           0
                                                        :target             nil
                                                        :preview_display    true
                                                        :created_at         $
                                                        :last_analyzed      $
-                                                       :base_type          "BigIntegerField"
+                                                       :base_type          "type/BigInteger"
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
-                                                       :values             []})
-                                                    (match-$ (Field (id :categories :name))
+                                                       :values             $})
+                                                    (match-$ (hydrate/hydrate (Field (id :categories :name)) :values)
                                                       {:description        nil
                                                        :table_id           (id :categories)
                                                        :caveats            nil
                                                        :points_of_interest nil
-                                                       :special_type       "name"
+                                                       :special_type       "type/Name"
                                                        :name               "NAME"
                                                        :display_name       "Name"
                                                        :updated_at         $
                                                        :active             true
                                                        :id                 $
                                                        :raw_column_id      $
-                                                       :field_type         "info"
                                                        :position           0
                                                        :target             nil
                                                        :preview_display    true
                                                        :created_at         $
                                                        :last_analyzed      $
-                                                       :base_type          "TextField"
+                                                       :base_type          "type/Text"
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
-                                                       :values             []})]
+                                                       :values             $})]
                           :segments                []
                           :metrics                 []
                           :rows                    75
@@ -315,82 +312,20 @@
     (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
 
-;; # DB TABLES ENDPOINTS
+;;; GET /api/database/:id/autocomplete_suggestions
 
-;; ## GET /api/database/:id/tables
-;; These should come back in alphabetical order
 (expect
-  (let [db-id (id)]
-    [(match-$ (Table (id :categories))
-       {:description             nil
-        :entity_type             nil
-        :caveats                 nil
-        :points_of_interest      nil
-        :visibility_type         nil
-        :schema                  "PUBLIC"
-        :name                    "CATEGORIES"
-        :rows                    75
-        :updated_at              $
-        :entity_name             nil
-        :active                  true
-        :id                      $
-        :db_id                   db-id
-        :show_in_getting_started false
-        :created_at              $
-        :display_name            "Categories"
-        :raw_table_id            $})
-     (match-$ (Table (id :checkins))
-       {:description             nil
-        :entity_type             nil
-        :caveats                 nil
-        :points_of_interest      nil
-        :visibility_type         nil
-        :schema                  "PUBLIC"
-        :name                    "CHECKINS"
-        :rows                    1000
-        :updated_at              $
-        :entity_name             nil
-        :active                  true
-        :id                      $
-        :db_id                   db-id
-        :show_in_getting_started false
-        :created_at              $
-        :display_name            "Checkins"
-        :raw_table_id            $})
-     (match-$ (Table (id :users))
-       {:description             nil
-        :entity_type             nil
-        :caveats                 nil
-        :points_of_interest      nil
-        :visibility_type         nil
-        :schema                  "PUBLIC"
-        :name                    "USERS"
-        :rows                    15
-        :updated_at              $
-        :entity_name             nil
-        :active                  true
-        :id                      $
-        :db_id                   db-id
-        :show_in_getting_started false
-        :created_at              $
-        :display_name            "Users"
-        :raw_table_id            $})
-     (match-$ (Table (id :venues))
-       {:description             nil
-        :entity_type             nil
-        :caveats                 nil
-        :points_of_interest      nil
-        :visibility_type         nil
-        :schema                  "PUBLIC"
-        :name                    "VENUES"
-        :rows                    100
-        :updated_at              $
-        :entity_name             nil
-        :active                  true
-        :id                      $
-        :db_id                   db-id
-        :show_in_getting_started false
-        :created_at              $
-        :display_name            "Venues"
-        :raw_table_id            $})])
-  ((user->client :rasta) :get 200 (format "database/%d/tables" (id))))
+  [["USERS" "Table"]
+   ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "u"))
+
+(expect
+  [["CATEGORIES" "Table"]
+   ["CHECKINS" "Table"]
+   ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "c"))
+
+(expect
+  [["CATEGORIES" "Table"]
+   ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "cat"))

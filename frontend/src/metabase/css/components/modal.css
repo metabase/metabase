@@ -1,3 +1,7 @@
+.ModalContainer {
+    z-index: 4;
+}
+
 .Modal {
   margin: auto;
   width: 640px;
@@ -9,6 +13,20 @@
 .Modal.Modal--small   { width: 480px; } /* TODO - why is this one px? */
 .Modal.Modal--medium  { width: 65%; }
 .Modal.Modal--wide    { width: 85%; }
+
+.Modal.Modal--tall {
+  min-height: 85%;
+}
+
+.Modal--full {
+  background-color: white;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+}
 
 .Modal-backdrop {
     background-color: rgba(255, 255, 255, 0.6);

@@ -36,13 +36,14 @@ We're constantly trying to walk the line between putting more functionality into
 ### Does Metabase support database X?
 
 Metabase currently supports:
+
 * Amazon Redshift
 * BigQuery
-* Crate (version 0.55 or higher)
+* CrateDB (version 0.57 or higher)
 * Druid
 * H2
 * MongoDB (version 3.0 or higher)
-* MySQL (and MariaSQL)
+* MySQL (and MariaDB)
 * PostgreSQL
 * SQL Server
 * SQLite 
