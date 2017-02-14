@@ -51,6 +51,10 @@
                              dbs
                              (add-tables dbs)))))
 
+(defn get-db
+  [id]
+  (read-check Database id))
+
 (defendpoint GET "/"
   "Fetch all `Databases`."
   [include_tables]

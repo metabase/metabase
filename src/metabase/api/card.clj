@@ -7,7 +7,8 @@
                     [hydrate :refer [hydrate]])
             (metabase.api [common :refer :all]
                           [dataset :as dataset-api]
-                          [label :as label-api])
+                          [label :as label-api]
+                          [database :refer [get-db]])
             [metabase.events :as events]
             (metabase.models [card :refer [Card], :as card]
                              [card-favorite :refer [CardFavorite]]
@@ -183,8 +184,11 @@
    display                su/NonBlankString
    visualization_settings su/Map
    collection_id          (s/maybe su/IntGreaterThanZero)}
-  ;; check that we have permissions to run the query that we're trying to save
-  (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set dataset_query :write)))
+  ;; check that we have permissions to run the query that we're trying to save, skip it for googleanalytics
+  (cond
+    (= ((get-db (dataset_query :database)) :engine) :googleanalytics) (println "googleanalytics card")
+    :else  (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set dataset_query :write))))
+  ; (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (when collection_id
     (check-403 (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/collection-readwrite-path collection_id))))
