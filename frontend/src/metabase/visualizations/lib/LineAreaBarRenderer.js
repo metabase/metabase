@@ -60,6 +60,11 @@ const Y_LABEL_PADDING = 22;
 const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
 const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
 
+type CrossfilterGroup = {
+    top: (n: number) => { key: any, value: any },
+    all: () => { key: any, value: any },
+}
+
 function adjustTicksIfNeeded(axis, axisSize: number, minPixelsPerTick: number) {
     const ticks = axis.ticks();
     // d3.js is dumb and sometimes numTicks is a number like 10 and other times it is an Array like [10]
@@ -708,6 +713,35 @@ function moment_fast_toString() {
     return this._i;
 }
 
+function makeIndexMap(values: Array<Value>): Map<Value, number> {
+    let indexMap = new Map()
+    for (const [index, key] of values.entries()) {
+        indexMap.set(key, index);
+    }
+    return indexMap;
+}
+
+// HACK: This ensures each group is sorted by the same order as xValues,
+// otherwise we can end up with line charts with x-axis labels in the correct order
+// but the points in the wrong order. There may be a more efficient way to do this.
+function forceSortedGroup(group: CrossfilterGroup, indexMap: Map<Value, number>): void {
+    // $FlowFixMe
+    const sorted = group.top(Infinity).sort((a, b) => indexMap.get(a.key) - indexMap.get(b.key));
+    for (let i = 0; i < sorted.length; i++) {
+        sorted[i].index = i;
+    }
+    group.all = () => sorted;
+}
+
+function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], indexMap: Map<Value, number>): void {
+    for (const groups of groupsOfGroups) {
+        for (const group of groups) {
+            forceSortedGroup(group, indexMap)
+        }
+    }
+}
+
+
 export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings, maxSeries }) {
     const colors = settings["graph.colors"];
 
@@ -870,21 +904,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         yAxisSplit = [series.map((s,i) => i)];
     }
 
-    // HACK: This ensures each group is sorted by the same order as xValues,
-    // otherwise we can end up with line charts with x-axis labels in the correct order
-    // but the points in the wrong order. There may be a more efficient way to do this.
     // Don't apply to linear or timeseries X-axis since the points are always plotted in order
     if (!isTimeseries && !isQuantitative) {
-        let sortMap = new Map()
-        for (const [index, key] of xValues.entries()) {
-            sortMap.set(key, index);
-        }
-        for (const group of groups) {
-            group.forEach(g => {
-                const sorted = g.top(Infinity).sort((a, b) => sortMap.get(a.key) - sortMap.get(b.key));
-                g.all = () => sorted;
-            });
-        }
+        forceSortedGroupsOfGroups(groups, makeIndexMap(xValues));
     }
 
     let parent = dc.compositeChart(element);
@@ -1079,6 +1101,9 @@ export function rowRenderer(
   const dimension = dataset.dimension(d => d[0]);
   const group = dimension.group().reduceSum(d => d[1]);
   const xDomain = d3.extent(series[0].data.rows, d => d[1]);
+  const yValues = series[0].data.rows.map(d => d[0]);
+
+  forceSortedGroup(group, makeIndexMap(yValues));
 
   initChart(chart, element);
 
