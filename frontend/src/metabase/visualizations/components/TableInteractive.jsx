@@ -282,7 +282,7 @@ export default class TableInteractive extends Component<*, Props, State> {
                     })}
                     onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
                 >
-                    <Ellipsified> <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} /> </Ellipsified>
+                    <Ellipsified><Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} /></Ellipsified>
                     { popover && popover.rowIndex === rowIndex && popover.columnIndex === columnIndex &&
                         <QuickFilterPopover
                             column={cols[popover.columnIndex]}
@@ -321,14 +321,16 @@ export default class TableInteractive extends Component<*, Props, State> {
                     className={cx("cellData", { "cursor-pointer": isSortable })}
                     onClick={isSortable && this.setSort.bind(this, column)}
                 >
-                    <Ellipsified> {columnTitle} </Ellipsified>
-                    {isSortable &&
-                        <Icon
-                            className="Icon ml1"
-                            name={sort && sort[0] && sort[0][1] === "ascending" ? "chevronup" : "chevrondown"}
-                            size={8}
-                        />
-                    }
+                    <Ellipsified><span>
+                        {columnTitle}
+                        {isSortable &&
+                            <Icon
+                                className="Icon ml1"
+                                name={sort && sort[0] && sort[0][1] === "ascending" ? "chevronup" : "chevrondown"}
+                                size={8}
+                            />
+                        }
+                    </span></Ellipsified>
                 </div>
                 <Draggable
                     axis="x"

@@ -26,6 +26,7 @@
 	font-weight: bold;
 	background-color: rgb(76,71,71);
 	border: none;
+    padding: 0.8em;
 	pointer-events: none;
 }
 
