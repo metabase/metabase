@@ -159,6 +159,13 @@ const COMMON_SETTINGS = {
         dashboard: true,
         useRawSeries: true
     },
+    "card.description": {
+        title: "Description",
+        widget: "input",
+        getDefault: (series) => series.length === 1 ? series[0].card.description : null,
+        dashboard: true,
+        useRawSeries: true
+    },
 };
 
 function getSetting(settingDefs, id, vizSettings, series) {
