@@ -20,6 +20,7 @@ import cx from "classnames";
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
+import Ellipsified from "metabase/components/Ellipsified.jsx";
 
 const HEADER_HEIGHT = 50;
 const ROW_HEIGHT = 35;
@@ -281,7 +282,7 @@ export default class TableInteractive extends Component<*, Props, State> {
                     })}
                     onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
                 >
-                    <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
+                    <Ellipsified> <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} /> </Ellipsified>
                     { popover && popover.rowIndex === rowIndex && popover.columnIndex === columnIndex &&
                         <QuickFilterPopover
                             column={cols[popover.columnIndex]}
@@ -320,7 +321,7 @@ export default class TableInteractive extends Component<*, Props, State> {
                     className={cx("cellData", { "cursor-pointer": isSortable })}
                     onClick={isSortable && this.setSort.bind(this, column)}
                 >
-                    {columnTitle}
+                    <Ellipsified> {columnTitle} </Ellipsified>
                     {isSortable &&
                         <Icon
                             className="Icon ml1"
