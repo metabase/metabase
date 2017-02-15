@@ -57,30 +57,30 @@ export default class LegendHeader extends Component {
         return (
             <div  className={cx(styles.LegendHeader, "Card-title mx1 flex flex-no-shrink flex-row align-center")}>
                 { series.map((s, index) => [
-                      <LegendItem
-                          key={index}
-                          title={s.card.name}
-                          description={s.card.description}
-                          href={linkToCard && s.card.id && Urls.card(s.card.id)}
-                          color={colors[index % colors.length]}
-                          showDot={showDots}
-                          showTitle={showTitles}
-                          isMuted={hovered && hovered.index != null && index !== hovered.index}
-                          onMouseEnter={() => onHoverChange && onHoverChange({ index })}
-                          onMouseLeave={() => onHoverChange && onHoverChange(null) }
-                          />,
-                      onRemoveSeries && index > 0 &&
-                      <Icon
-                          name="close"
-                          className="text-grey-2 flex-no-shrink mr1 cursor-pointer"
-                          width={12} height={12}
-                          onClick={() => onRemoveSeries(s.card)}
-                      />
-                  ])}
+                    <LegendItem
+                        key={index}
+                        title={s.card.name}
+                        description={s.card.description}
+                        href={linkToCard && s.card.id && Urls.card(s.card.id)}
+                        color={colors[index % colors.length]}
+                        showDot={showDots}
+                        showTitle={showTitles}
+                        isMuted={hovered && hovered.index != null && index !== hovered.index}
+                        onMouseEnter={() => onHoverChange && onHoverChange({ index })}
+                        onMouseLeave={() => onHoverChange && onHoverChange(null) }
+                        />,
+                    onRemoveSeries && index > 0 &&
+                    <Icon
+                        name="close"
+                        className="text-grey-2 flex-no-shrink mr1 cursor-pointer"
+                        width={12} height={12}
+                        onClick={() => onRemoveSeries(s.card)}
+                    />
+                ])}
                 { actionButtons &&
-                  <span className="flex-no-shrink flex-align-right relative">
-                      {actionButtons}
-                  </span>
+                <span className="flex-no-shrink flex-align-right relative">
+                    {actionButtons}
+                </span>
                 }
             </div>
         );
