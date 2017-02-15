@@ -111,16 +111,6 @@
     opacity: 0.25;
 }
 
-/* Hide info description unless hovering on card */
-.DashCard .Card .LegendItem .Icon-info  {
-    display: none;
-}
-.DashCard .Card:hover .LegendItem .Icon-info  {
-    display: flex;
-}
-
-
-
 .Dash--editing .DashCard .Card {
     pointer-events: none;
     transition: border .3s, background-color .3s;

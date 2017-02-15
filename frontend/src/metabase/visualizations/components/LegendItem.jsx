@@ -48,9 +48,11 @@ export default class LegendItem extends Component {
                   <div className="flex align-center">
                       <span className="mr1"><Ellipsified showTooltip={showTooltip}>{title}</Ellipsified></span>
                       { description &&
-                        <Tooltip tooltip={description} maxWidth={'22em'}>
-                            <Icon name='info' />
-                        </Tooltip>
+                          <div className="hover-child">
+                              <Tooltip tooltip={description} maxWidth={'22em'}>
+                                  <Icon name='info' />
+                              </Tooltip>
+                          </div>
                       }
                   </div>
                 }
