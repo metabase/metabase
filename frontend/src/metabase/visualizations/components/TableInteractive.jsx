@@ -321,16 +321,18 @@ export default class TableInteractive extends Component<*, Props, State> {
                     className={cx("cellData", { "cursor-pointer": isSortable })}
                     onClick={isSortable && this.setSort.bind(this, column)}
                 >
-                    <Ellipsified><span>
-                        {columnTitle}
-                        {isSortable &&
-                            <Icon
-                                className="Icon ml1"
-                                name={sort && sort[0] && sort[0][1] === "ascending" ? "chevronup" : "chevrondown"}
-                                size={8}
-                            />
-                        }
-                    </span></Ellipsified>
+                    <Ellipsified>
+                        <span>
+                            {columnTitle}
+                            {isSortable &&
+                                <Icon
+                                    className="Icon ml1"
+                                    name={sort && sort[0] && sort[0][1] === "ascending" ? "chevronup" : "chevrondown"}
+                                    size={8}
+                                />
+                            }
+                        </span>
+                    </Ellipsified>
                 </div>
                 <Draggable
                     axis="x"
