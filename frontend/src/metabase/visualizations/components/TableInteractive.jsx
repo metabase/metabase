@@ -282,7 +282,11 @@ export default class TableInteractive extends Component<*, Props, State> {
                     })}
                     onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
                 >
-                    <Ellipsified><Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} /></Ellipsified>
+                    <Ellipsified>
+                        <div className="p1">
+                            <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
+                        </div>
+                    </Ellipsified>
                     { popover && popover.rowIndex === rowIndex && popover.columnIndex === columnIndex &&
                         <QuickFilterPopover
                             column={cols[popover.columnIndex]}
@@ -322,7 +326,7 @@ export default class TableInteractive extends Component<*, Props, State> {
                     onClick={isSortable && this.setSort.bind(this, column)}
                 >
                     <Ellipsified>
-                        <span>
+                        <div className="p1">
                             {columnTitle}
                             {isSortable &&
                                 <Icon
@@ -331,7 +335,7 @@ export default class TableInteractive extends Component<*, Props, State> {
                                     size={8}
                                 />
                             }
-                        </span>
+                        </div>
                     </Ellipsified>
                 </div>
                 <Draggable
