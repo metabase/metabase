@@ -213,6 +213,8 @@ if (NODE_ENV === "hot") {
         hot: true,
         inline: true,
         contentBase: "frontend"
+        // if you want to reduce stats noise
+        // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     };
 
     config.plugins.unshift(
