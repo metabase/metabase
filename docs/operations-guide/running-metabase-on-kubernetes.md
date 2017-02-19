@@ -1,12 +1,20 @@
-# Running Metabase on Kubernetes
+# Running Metabase on [Kubernetes](https://kubernetes.io/)
 
 ## Prerequisite
 
 Make sure you are connected to your kubernetes.
 
+For Google Cloud, the commands are:
+
+``` bash
+gcloud container clusters get-credentials <cluster-name> --zone <zone> --project <project-id>
+```
+
 ## Configure (optional)
 
 Update `bin/kubernetes/web-deployment.yaml` file with your configurations, especially database.
+
+A method to secure your deployment secrets is to use secrets service by kubernetes. [Read more.](https://kubernetes.io/docs/user-guide/secrets/)
 
 ## Setup
 
@@ -92,6 +100,7 @@ kubectl rollout undo deployment/metabase --to-revision=2
 ```
 
 ## Scaling
+NOTE: Currently Metabase is not horizontly scalable. See https://github.com/metabase/metabase/issues/1446 and https://github.com/metabase/metabase/issues/2754
 
 - Auto scale
 

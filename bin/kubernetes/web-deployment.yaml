@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: metabase
-        image: metabase/metabase:v0.22.0
+        image: metabase/metabase:v0.22.2
         ports:
         - containerPort: 80
         env:
@@ -35,6 +35,8 @@ spec:
         # MySQL
         # - name: MB_DB_TYPE
         #   value: mysql
+        # - name: MB_DB_HOST
+        #   value: metbase.database.host
         # - name: MB_DB_PORT
         #   value: 3306
         # - name: MB_DB_DBNAME
@@ -43,11 +45,12 @@ spec:
         #   value: metabase_user
         # - name: MB_DB_PASS
         #   value: metabase_user_password
-        # - name: MB_DB_HOST
-        #   value: metbase.database.host
+
         # Postgress
         # - name: MB_DB_TYPE
         #   value: postgres
+        # - name: MB_DB_HOST
+        #   value: metbase.database.host
         # - name: MB_DB_PORT
         #   value: 5432
         # - name: MB_DB_DBNAME
@@ -56,5 +59,3 @@ spec:
         #   value: metabase_user
         # - name: MB_DB_PASS
         #   value: metabase_user_password
-        # - name: MB_DB_HOST
-        #   value: metbase.database.host
