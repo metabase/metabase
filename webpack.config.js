@@ -78,9 +78,20 @@ var config = module.exports = {
     // output a bundle for the app JS and a bundle for styles
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
     entry: {
-        app_main: './app-main.js',
+        app_main:   './app-main.js',
         app_public: './app-public.js',
-        styles: './css/index.css',
+        app_vendor: ['react', 
+                     'react-dom', 
+                     'react-redux', 
+                     'react-router', 
+                     'react-router-redux', 
+                     'moment', 
+                     'tether', 
+                     'underscore',
+                     'crossfilter', 
+                     'dc', 
+                     'humanize'],
+        styles:     './css/index.css'
     },
 
     // output to "dist"
@@ -167,13 +178,13 @@ var config = module.exports = {
         new ExtractTextPlugin('[name].bundle.css?[contenthash]'),
         new HtmlWebpackPlugin({
             filename: '../../index.html',
-            chunks: ["app_main", "styles"],
+            chunks: ["app_vendor", "app_main", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head'
         }),
         new HtmlWebpackPlugin({
             filename: '../../public.html',
-            chunks: ["app_public", "styles"],
+            chunks: ["app_vendor", "app_public", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head'
         }),
@@ -181,7 +192,8 @@ var config = module.exports = {
             'process.env': {
                 NODE_ENV: JSON.stringify(NODE_ENV)
             }
-        })
+        }),
+        new webpack.optimize.CommonsChunkPlugin({ name: ["app_vendor"] ,  minChunks: Infinity })   
     ],
 
     postcss: function (webpack) {
