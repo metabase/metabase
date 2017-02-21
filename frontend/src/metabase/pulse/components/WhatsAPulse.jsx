@@ -10,9 +10,9 @@ export default class WhatsAPulse extends Component {
     render() {
         return (
             <div className="flex flex-column align-center px4">
-                <div className="h2 mb4 text-centered text-brand text-bold">
+                <h2 className="my4 text-centered text-brand text-bold">
                     Help everyone on your team stay in sync with your data.
-                </div>
+                </h2>
                 <div className="mx4">
                     <RetinaImage
                         width={574}
