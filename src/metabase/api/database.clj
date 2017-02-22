@@ -89,10 +89,12 @@
 
 (defn- autocomplete-tables [db-id prefix]
   (db/select [Table :id :db_id :schema :name]
-    :db_id       db-id
-    :active      true
-    :%lower.name [:like (str (str/lower-case prefix) "%")]
-    {:order-by [[:%lower.name :asc]]}))
+    {:where    [:and [:= :db_id db-id]
+                     [:= :active true]
+                     [:like :%lower.name (str (str/lower-case prefix) "%")]
+                     [:or [:= :visibility_type nil]
+                          [:not= :visibility_type "hidden"]]]
+     :order-by [[:%lower.name :asc]]}))
 
 (defn- autocomplete-fields [db-id prefix]
   (db/select [Field :name :base_type :special_type :id :table_id [:table.name :table_name]]
