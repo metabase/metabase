@@ -83,8 +83,39 @@ class CurrentPicker extends Component<*, CurentPickerProps, CurrentPickerState> 
 
 const getIntervals = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && typeof value === "number" ? Math.abs(value) : 30;
 const getUnit      = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && unit ? unit : "day";
-const getDate      = (value) => typeof value === "string" && moment(value).isValid() ? value : moment().format("YYYY-MM-DD");
 
+const getDate = (value) => {
+    if (typeof value !== "string" || !moment(value).isValid()) {
+        value = moment().format("YYYY-MM-DD");
+    }
+    return value;
+}
+
+const hasTime = (value) => /T\d{2}:\d{2}:\d{2}$/.test(value);
+
+const getDateTimeField = (field, bucketing) => {
+    let target = getDateTimeFieldTarget(field);
+    if (bucketing) {
+        return ["datetime-field", target, bucketing];
+    } else {
+        return target;
+    }
+}
+
+const getDateTimeFieldTarget = (field) => {
+    if (Array.isArray(field) && mbqlEq(field[0], "datetime-field")) {
+        return field[1];
+    } else {
+        return field;
+    }
+}
+
+function getDateTimeFieldAndValues(filter) {
+    const values = filter.slice(2).map(getDate);
+    const bucketing = _.any(values, hasTime) ? "minute" : null;
+    const field = getDateTimeField(filter[1], bucketing);
+    return [field, ...values];
+}
 
 export type Operator = {
     name: string,
@@ -96,56 +127,56 @@ export type Operator = {
 const OPERATORS: Operator[] = [
     {
         name: "Previous",
-        init: (filter) => ["time-interval", filter[1], -getIntervals(filter), getUnit(filter)],
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value < 0 || Object.is(value, -0),
         widget: PreviousPicker,
     },
     {
         name: "Next",
-        init: (filter) => ["time-interval", filter[1], getIntervals(filter), getUnit(filter)],
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), getIntervals(filter), getUnit(filter)],
         // $FlowFixMe
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
         widget: NextPicker,
     },
     {
         name: "Current",
-        init: (filter) => ["time-interval", filter[1], "current", getUnit(filter)],
+        init: (filter) => ["time-interval", getDateTimeField(filter[1]), "current", getUnit(filter)],
         test: ([op, field, value]) => mbqlEq(op, "time-interval") && value === "current",
         widget: CurrentPicker,
     },
     {
         name: "Before",
-        init: (filter) => ["<", filter[1], getDate(filter[2])],
+        init: (filter) =>  ["<", ...getDateTimeFieldAndValues(filter)],
         test: ([op]) => op === "<",
         widget: SingleDatePicker,
     },
     {
         name: "After",
-        init: (filter) => [">", filter[1], getDate(filter[2])],
+        init: (filter) => [">", ...getDateTimeFieldAndValues(filter)],
         test: ([op]) => op === ">",
         widget: SingleDatePicker,
     },
     {
         name: "On",
-        init: (filter) => ["=", filter[1], getDate(filter[2])],
+        init: (filter) => ["=", ...getDateTimeFieldAndValues(filter)],
         test: ([op]) => op === "=",
         widget: SingleDatePicker,
     },
     {
         name: "Between",
-        init: (filter) => ["BETWEEN", filter[1], getDate(filter[2]), getDate(filter[3])],
+        init: (filter) => ["BETWEEN", ...getDateTimeFieldAndValues(filter)],
         test: ([op]) => op === "BETWEEN",
         widget: MultiDatePicker,
     },
     {
         name: "Is Empty",
-        init: (filter) => ["IS_NULL", filter[1]],
+        init: (filter) => ["IS_NULL", getDateTimeField(filter[1])],
         test: ([op]) => op === "IS_NULL"
     },
     {
         name: "Not Empty",
-        init: (filter) => ["NOT_NULL", filter[1]],
+        init: (filter) => ["NOT_NULL", getDateTimeField(filter[1])],
         test: ([op]) => op === "NOT_NULL"
     }
 ];
@@ -185,7 +216,11 @@ export default class DatePicker extends Component<*, Props, *> {
                     onOperatorChange={operator => onFilterChange(operator.init(filter))}
                 />
                 { Widget &&
-                    <Widget {...this.props} filter={filter} />
+                    <Widget
+                        {...this.props}
+                        filter={filter}
+                        onFilterChange={filter => onFilterChange(operator.init(filter))}
+                    />
                 }
             </div>
         )
