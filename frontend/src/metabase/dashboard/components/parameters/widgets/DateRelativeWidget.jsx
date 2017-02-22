@@ -4,8 +4,8 @@ import cx from "classnames";
 import _ from "underscore";
 
 const SHORTCUTS = [
-        { name: "Today",        operator: ["=", "<", ">"], values: [["relative_datetime", "current"]]},
-        { name: "Yesterday",    operator: ["=", "<", ">"], values: [["relative_datetime", -1, "day"]]},
+        { name: "Today",        operator: ["=", "<", ">"], values: [["relative-datetime", "current"]]},
+        { name: "Yesterday",    operator: ["=", "<", ">"], values: [["relative-datetime", -1, "day"]]},
         { name: "Past 7 days",  operator: "time-interval", values: [-7, "day"]},
         { name: "Past 30 days", operator: "time-interval", values: [-30, "day"]}
 ];
@@ -104,11 +104,11 @@ class PredefinedRelativeDatePicker extends Component {
 const FILTERS = {
     "today": {
         name: "Today",
-        mapping: ["=", null, ["relative_datetime", "current"]]
+        mapping: ["=", null, ["relative-datetime", "current"]]
     },
     "yesterday": {
         name: "Yesterday",
-        mapping: ["=", null, ["relative_datetime", -1, "day"]]
+        mapping: ["=", null, ["relative-datetime", -1, "day"]]
     },
     "past7days": {
         name: "Past 7 Days",
