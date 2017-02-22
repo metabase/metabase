@@ -201,6 +201,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                     <LegendHeader
                         className="flex-no-shrink"
                         series={titleHeaderSeries}
+                        description={settings["card.description"]}
                         actionButtons={actionButtons}
                         linkToCard={linkToCard}
                     />

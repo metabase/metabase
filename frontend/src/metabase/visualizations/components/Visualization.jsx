@@ -260,6 +260,7 @@ export default class Visualization extends Component<*, Props, State> {
                                     series
                             }
                             actionButtons={extra}
+                            description={settings["card.description"]}
                             settings={settings}
                             linkToCard={linkToCard}
                         />
