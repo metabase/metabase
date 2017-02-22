@@ -9,11 +9,17 @@ import Calendar from "metabase/components/Calendar";
 
 import moment from "moment";
 
+import Query from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
 
 import _ from "underscore";
 
-import type { FieldFilter, TimeIntervalFilter } from "metabase/meta/types/Query";
+import type {
+    FieldFilter, TimeIntervalFilter,
+    DatetimeUnit,
+    ConcreteField,
+    LocalFieldReference, ForeignFieldReference, ExpressionReference
+} from "metabase/meta/types/Query";
 
 const SingleDatePicker = ({ filter: [op, field, value], onFilterChange }) =>
     <SpecificDatePicker value={value} onChange={(value) => onFilterChange([op, field, value])} calendar />
@@ -93,27 +99,31 @@ const getDate = (value) => {
 
 const hasTime = (value) => /T\d{2}:\d{2}:\d{2}$/.test(value);
 
-const getDateTimeField = (field, bucketing) => {
+function getDateTimeField(field: ConcreteField, bucketing: ?DatetimeUnit): ConcreteField {
     let target = getDateTimeFieldTarget(field);
     if (bucketing) {
+        // $FlowFixMe
         return ["datetime-field", target, bucketing];
     } else {
         return target;
     }
 }
 
-const getDateTimeFieldTarget = (field) => {
-    if (Array.isArray(field) && mbqlEq(field[0], "datetime-field")) {
-        return field[1];
+function getDateTimeFieldTarget(field: ConcreteField): LocalFieldReference|ForeignFieldReference|ExpressionReference {
+    if (Query.isDatetimeField(field)) {
+        // $FlowFixMe:
+        return (field[1]: LocalFieldReference|ForeignFieldReference|ExpressionReference);
     } else {
+        // $FlowFixMe
         return field;
     }
 }
 
-function getDateTimeFieldAndValues(filter) {
+function getDateTimeFieldAndValues(filter: FieldFilter): [ConcreteField, any] {
     const values = filter.slice(2).map(getDate);
     const bucketing = _.any(values, hasTime) ? "minute" : null;
     const field = getDateTimeField(filter[1], bucketing);
+    // $FlowFixMe
     return [field, ...values];
 }
 
@@ -219,7 +229,13 @@ export default class DatePicker extends Component<*, Props, *> {
                     <Widget
                         {...this.props}
                         filter={filter}
-                        onFilterChange={filter => onFilterChange(operator.init(filter))}
+                        onFilterChange={filter => {
+                            if (operator && operator.init) {
+                                onFilterChange(operator.init(filter));
+                            } else {
+                                onFilterChange(filter);
+                            }
+                        }}
                     />
                 }
             </div>
