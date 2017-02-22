@@ -16,7 +16,8 @@
 
 ;;; ------------------------------------------------------------ Constants + Entity ------------------------------------------------------------
 
-(def ^:const entity-types
+;; TODO - I don't think this is used for anything anymore
+(def ^:const ^:deprecated entity-types
   "Valid values for `Table.entity_type` (field may also be `nil`)."
   #{:person :event :photo :place})
 
