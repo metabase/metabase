@@ -75,14 +75,14 @@
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr, :as request}]
+  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr}]
   {email su/Email}
   (throttle/check (forgot-password-throttlers :ip-address) remote-address)
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email, :is_active true)]
     (let [reset-token        (set-user-password-reset-token! user-id)
-          password-reset-url (str (public-settings/site-url request) "/auth/reset_password/" reset-token)]
+          password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
       (email/send-password-reset-email! email google-auth? server-name password-reset-url)
       (log/info password-reset-url))))
 

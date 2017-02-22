@@ -9,7 +9,7 @@
             [toucan.db :as db]
             (metabase [config :as config]
                       [email :as email])
-            [metabase.models.setting :as setting]
+            [metabase.public-settings :as public-settings]
             [metabase.pulse.render :as render]
             [metabase.util :as u]
             (metabase.util [quotation :as quotation]
@@ -49,7 +49,7 @@
 (defn send-new-user-email!
   "Send an email to INVITIED letting them know INVITOR has invited them to join Metabase."
   [invited invitor join-url]
-  (let [company      (or (setting/get :site-name) "Unknown")
+  (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
                        (merge {:emailType    "new_user_invite"
                                :invitedName  (:first_name invited)
@@ -70,7 +70,7 @@
   "Return a `:recipients` vector for all Admin users."
   []
   (concat (db/select-field :email 'User, :is_superuser true, :is_active true)
-          (when-let [admin-email (setting/get :admin-email)]
+          (when-let [admin-email (public-settings/admin-email)]
             [admin-email])))
 
 (defn send-user-joined-admin-notification-email!
@@ -96,7 +96,7 @@
                             :joinedUserEmail   (:email new-user)
                             :joinedDate        (u/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
                             :invitorEmail      invitor-email
-                            :joinedUserEditUrl (str (setting/get :-site-url) "/admin/people")}
+                            :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
                            (random-quote-context)))))
 
 

@@ -6,11 +6,10 @@
                     [models :as models])
             [metabase.email.messages :as email]
             (metabase.models [permissions :as perms]
-                             [permissions-group :as perm-group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
-                             [setting :as setting])
-            [metabase.util :as u]
-            [metabase.models.permissions-group :as group])
+                             [permissions-group :as group]
+                             [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership])
+            [metabase.public-settings :as public-settings]
+            [metabase.util :as u])
   (:import java.util.UUID))
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
@@ -44,12 +43,12 @@
       #_(log/info (format "Adding user %d to All Users permissions group..." user-id))
       (db/insert! PermissionsGroupMembership
         :user_id  user-id
-        :group_id (:id (perm-group/all-users))))
+        :group_id (:id (group/all-users))))
     (when superuser?
       #_(log/info (format "Adding user %d to Admin permissions group..." user-id))
       (db/insert! PermissionsGroupMembership
         :user_id  user-id
-        :group_id (:id (perm-group/admin))))))
+        :group_id (:id (group/admin))))))
 
 (defn- pre-update [{:keys [email reset_token is_superuser id] :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
@@ -163,7 +162,7 @@
   "Generate a properly formed password reset url given a password reset token."
   [reset-token]
   {:pre [(string? reset-token)]}
-  (str (setting/get :-site-url) "/auth/reset_password/" reset-token))
+  (str (public-settings/site-url) "/auth/reset_password/" reset-token))
 
 
 ;;; ------------------------------------------------------------ Permissions ------------------------------------------------------------
