@@ -1,14 +1,16 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
-            (metabase [db :as db]
-                      [events :as events])
-            (metabase.models [card :as card]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]]
+                    [models :as models])
+            [metabase.events :as events]
+            (metabase.models [card :refer [Card], :as card]
                              [dashboard-card :refer [DashboardCard], :as dashboard-card]
-                             [hydrate :refer [hydrate]]
                              [interface :as i]
                              [permissions :as perms]
                              [revision :as revision])
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
 
@@ -31,26 +33,29 @@
 
 ;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
 
-(defn- pre-cascade-delete [dashboard]
-  (db/cascade-delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
-  (db/cascade-delete! DashboardCard :dashboard_id (u/get-id dashboard)))
+(defn- pre-delete [dashboard]
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
+  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
 
 (defn- pre-insert [dashboard]
   (let [defaults {:parameters   []}]
     (merge defaults dashboard)))
 
 
-(i/defentity Dashboard :report_dashboard)
+(models/defmodel Dashboard :report_dashboard)
 
 (u/strict-extend (class Dashboard)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped?       (constantly true)
-          :types              (constantly {:description :clob, :parameters :json})
-          :can-read?          can-read?
-          :can-write?         can-read?
-          :pre-cascade-delete pre-cascade-delete
-          :pre-insert         pre-insert}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:description :clob, :parameters :json})
+          :pre-delete  pre-delete
+          :pre-insert  pre-insert
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?  can-read?
+          :can-write? can-read?}))
 
 
 ;;; ---------------------------------------- Hydration ----------------------------------------
@@ -59,7 +64,13 @@
   "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
   {:hydrate :ordered_cards}
   [dashboard]
-  (db/select DashboardCard, :dashboard_id (u/get-id dashboard), {:order-by [[:created_at :asc]]}))
+  (db/do-post-select DashboardCard
+    (db/query {:select   [:dashcard.*]
+               :from     [[DashboardCard :dashcard]]
+               :join     [[Card :card] [:= :dashcard.card_id :card.id]]
+               :where    [:and [:= :dashcard.dashboard_id (u/get-id dashboard)]
+                               [:= :card.archived false]]
+               :order-by [[:dashcard.created_at :asc]]})))
 
 
 ;;; ## ---------------------------------------- PERSISTENCE FUNCTIONS ----------------------------------------

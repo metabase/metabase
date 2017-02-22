@@ -1,5 +1,6 @@
 (ns metabase.query-processor.macros-test
   (:require [expectations :refer :all]
+            [toucan.util.test :as tt]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.segment :refer [Segment]]
@@ -38,7 +39,7 @@
                                   ["OR" ["AND" ["IS_NULL" 7]]
                                         [">" 4 1]]]
               :breakout    [17]}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}     {:db_id database-id}]
                   Segment  [{segment-1-id :id} {:table_id   table-id
                                                 :definition {:filter ["AND" ["=" 5 "abc"]]}}]
@@ -59,7 +60,7 @@
                                   ["AND" ["=" 5 "abc"]]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-1-id :id} {:table_id   table-id
                                                :definition {:aggregation ["count"]
@@ -79,7 +80,7 @@
               :filter      ["AND" ["=" 5 "abc"]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-1-id :id} {:table_id   table-id
                                                :definition {:aggregation ["count"]
@@ -99,7 +100,7 @@
               :filter      ["AND" ["=" 5 "abc"]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-1-id :id} {:table_id   table-id
                                                :definition {:aggregation ["count"]}}]]
@@ -118,7 +119,7 @@
               :filter      ["AND" ["AND" [">" 4 1] ["AND" ["IS_NULL" 7]]] ["AND" ["=" 5 "abc"] ["AND" ["BETWEEN" 9 0 25]]]]
               :breakout    [17]
               :order_by    [[1 "ASC"]]}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}     {:db_id database-id}]
                   Segment  [{segment-1-id :id} {:table_id   table-id
                                                 :definition {:filter ["AND" ["BETWEEN" 9 0 25]]}}]
@@ -139,7 +140,7 @@
   [[2 118]
    [3  39]
    [4  24]]
-  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+  (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [[:sum [:field-id (data/id :venues :price)]]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (format-rows-by [int int]

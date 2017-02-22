@@ -3,7 +3,7 @@
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
-import getGAMetadata from "promise?global!metabase/lib/ga-metadata";
+import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 export const ActivityApi = {
     list:                        GET("/api/activity"),
@@ -24,6 +24,10 @@ export const CardApi = {
     favorite:                   POST("/api/card/:cardId/favorite"),
     unfavorite:               DELETE("/api/card/:cardId/favorite"),
     updateLabels:               POST("/api/card/:cardId/labels"),
+
+    listPublic:                  GET("/api/card/public"),
+    createPublicLink:           POST("/api/card/:id/public_link"),
+    deletePublicLink:         DELETE("/api/card/:id/public_link"),
 };
 
 export const DashboardApi = {
@@ -35,6 +39,10 @@ export const DashboardApi = {
     addcard:                    POST("/api/dashboard/:dashId/cards"),
     removecard:               DELETE("/api/dashboard/:dashId/cards"),
     reposition_cards:            PUT("/api/dashboard/:dashId/cards"),
+
+    listPublic:                  GET("/api/dashboard/public"),
+    createPublicLink:           POST("/api/dashboard/:id/public_link"),
+    deletePublicLink:         DELETE("/api/dashboard/:id/public_link"),
 };
 
 export const CollectionsApi = {
@@ -45,6 +53,13 @@ export const CollectionsApi = {
     delete:                   DELETE("/api/collection/:id"),
     graph:                       GET("/api/collection/graph"),
     updateGraph:                 PUT("/api/collection/graph"),
+};
+
+export const PublicApi = {
+    card:                        GET("/api/public/card/:uuid"),
+    cardQuery:                   GET("/api/public/card/:uuid/query"),
+    dashboard:                   GET("/api/public/dashboard/:uuid"),
+    dashboardCardQuery:          GET("/api/public/dashboard/:uuid/card/:cardId")
 };
 
 export const EmailApi = {

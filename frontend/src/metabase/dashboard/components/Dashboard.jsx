@@ -6,9 +6,7 @@ import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import ParameterWidget from "../containers/ParameterWidget.jsx";
-
-import { createParameter, setParameterName, setParameterDefaultValue } from "metabase/meta/Dashboard";
+import Parameters from "../containers/Parameters.jsx";
 
 import screenfull from "screenfull";
 
@@ -37,11 +35,11 @@ export default class Dashboard extends Component {
             "setRefreshPeriod", "tickRefreshClock",
             "setFullscreen", "setNightMode", "fullScreenChanged",
             "setEditing", "setDashboardAttribute",
-            "addParameter"
         );
     }
 
     static propTypes = {
+        isEditable: PropTypes.bool,
         isEditing: PropTypes.bool.isRequired,
         isEditingParameter: PropTypes.bool.isRequired,
 
@@ -64,6 +62,10 @@ export default class Dashboard extends Component {
         onChangeLocation: PropTypes.func.isRequired,
     };
 
+    static defaultProps = {
+        isEditable: true
+    };
+
     async componentDidMount() {
         this.loadDashboard(this.props.params.dashboardId);
     }
@@ -77,7 +79,7 @@ export default class Dashboard extends Component {
         if (this.props.params.dashboardId !== nextProps.params.dashboardId) {
             this.loadDashboard(nextProps.params.dashboardId);
         } else if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues) || !this.props.dashboard) {
-            this.fetchDashboardCardData(nextProps, { reload: false, clear: true });
+            this.props.fetchDashboardCardData({ reload: false, clear: true });
         }
     }
 
@@ -108,7 +110,7 @@ export default class Dashboard extends Component {
         this.props.initialize();
 
         this.loadParams();
-        const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation, location } = this.props;
+        const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, setErrorPage, location } = this.props;
 
         try {
             await fetchDashboard(dashboardId, location.query);
@@ -119,10 +121,10 @@ export default class Dashboard extends Component {
                 addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
             }
         } catch (error) {
-            console.error(error)
             if (error.status === 404) {
-                onChangeLocation("/404");
+                setErrorPage(error);
             } else {
+                console.error(error);
                 this.setState({ error });
             }
         }
@@ -137,27 +139,6 @@ export default class Dashboard extends Component {
     }
 
     updateParams() {
-        let params = "";
-        let oldParams = "";
-
-        // only perform this check if we've loaded the dashboard
-        if (this.props.dashboard) {
-            let parameters = this.props.dashboard.parameters || [];
-            let queryParams = _.chain(this.props.parameterValues)
-                .map((value, id) => ([_.findWhere(parameters, { id }), value]))
-                .filter(([param, value]) => (param && value))
-                .reduce((params, [param, value]) => ({ ...params,
-                    [param.slug]: value
-                }), {})
-                .value();
-
-            let search = querystring.stringify(queryParams);
-            search = (search ? "?" + search : "");
-
-            params += search;
-            oldParams += window.location.search;
-        }
-
         let hashParams = {};
         if (this.state.refreshPeriod) {
             hashParams.refresh = this.state.refreshPeriod;
@@ -171,12 +152,9 @@ export default class Dashboard extends Component {
         let hash = querystring.stringify(hashParams).replace(/=true\b/g, "");
         hash = (hash ? "#" + hash : "");
 
-        params += hash;
-        oldParams += window.location.hash;
-
         // setting window.location.hash = "" causes the page to reload for some reasonc
-        if (params !== oldParams) {
-            history.replaceState(null, document.title, window.location.pathname + params);
+        if (hash !== window.location.hash) {
+            history.replaceState(null, document.title, window.location.pathname + window.location.search + hash);
         }
     }
 
@@ -230,101 +208,45 @@ export default class Dashboard extends Component {
         });
     }
 
-    // TODO: move to action
-    addParameter(parameterOption) {
-        let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
-
-        let parameter = createParameter(parameterOption, parameters);
-
-        this.setDashboardAttribute("parameters", [...parameters, parameter]);
-        this.props.setEditingParameterId(parameter.id);
-    }
-
-    // TODO: move to action
-    removeParameter(parameter) {
-        let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
-        parameters = _.reject(parameters, (p) => p.id === parameter.id);
-        this.setDashboardAttribute("parameters", parameters);
-        this.props.removeParameter(parameter.id);
-    }
-
-    // TODO: move to action
-    setParameterName(parameter, name) {
-        let parameters = this.props.dashboard.parameters || [];
-        let index = _.findIndex(parameters, (p) => p.id === parameter.id);
-        if (index < 0) {
-            return;
-        }
-        this.setDashboardAttribute("parameters", [
-            ...parameters.slice(0, index),
-            setParameterName(parameter, name),
-            ...parameters.slice(index + 1)
-        ]);
-    }
-
-    // TODO: move to action
-    setParameterDefaultValue(parameter, value) {
-        let parameters = this.props.dashboard.parameters || [];
-        let index = _.findIndex(parameters, (p) => p.id === parameter.id);
-        if (index < 0) {
-            return;
-        }
-        this.setDashboardAttribute("parameters", [
-            ...parameters.slice(0, index),
-            setParameterDefaultValue(parameter, value),
-            ...parameters.slice(index + 1)
-        ]);
-    }
-
-    // we don't call this initially because DashCards initiate their own fetchCardData
-    fetchDashboardCardData(props, options) {
-        if (props.dashboard) {
-            for (const dashcard of props.dashboard.ordered_cards) {
-                const cards = [dashcard.card].concat(dashcard.series || []);
-                for (const card of cards) {
-                    props.fetchCardData(card, dashcard, options);
-                }
-            }
-        }
-    }
-
     async tickRefreshClock() {
         let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
         if (refreshElapsed >= this.state.refreshPeriod) {
             refreshElapsed = 0;
 
             await this.props.fetchDashboard(this.props.params.dashboardId, this.props.location.query);
-            this.fetchDashboardCardData(this.props, { reload: true, clear: false });
+            this.props.fetchDashboardCardData({ reload: true, clear: false });
         }
         this.setState({ refreshElapsed });
     }
 
     render() {
-        let { dashboard, isEditing, editingParameter, parameterValues } = this.props;
+        let { dashboard, isEditing, editingParameter, parameterValues, location } = this.props;
         let { error, isFullscreen, isNightMode } = this.state;
         isNightMode = isNightMode && isFullscreen;
 
-        let parameters = dashboard && dashboard.parameters && dashboard.parameters.map(parameter =>
-            <ParameterWidget
-                key={parameter.id}
-                className="ml1"
-                isEditing={isEditing}
-                isFullscreen={isFullscreen}
-                isNightMode={isNightMode}
-                parameter={parameter}
-                parameters={dashboard.parameters}
-                dashboard={dashboard}
-                parameterValue={parameterValues[parameter.id]}
+        let parameters;
+        if (dashboard && dashboard.parameters && dashboard.parameters.length) {
+            parameters = (
+                <Parameters
+                    className="ml1"
 
-                editingParameter={editingParameter}
-                setEditingParameterId={this.props.setEditingParameterId}
+                    isEditing={isEditing}
+                    isFullscreen={isFullscreen}
+                    isNightMode={isNightMode}
 
-                setName={(name) => this.setParameterName(parameter, name)}
-                setDefaultValue={(value) => this.setParameterDefaultValue(parameter, value)}
-                remove={() => this.removeParameter(parameter)}
-                setValue={(value) => this.props.setParameterValue(parameter.id, value)}
-            />
-        );
+                    parameters={dashboard.parameters.map(p => ({ ...p, value: parameterValues[p.id] }))}
+                    query={location.query}
+
+                    editingParameter={editingParameter}
+                    setEditingParameter={this.props.setEditingParameter}
+
+                    setParameterName={this.props.setParameterName}
+                    setParameterDefaultValue={this.props.setParameterDefaultValue}
+                    removeParameter={this.props.removeParameter}
+                    setParameterValue={this.props.setParameterValue}
+                />
+            );
+        }
 
         return (
             <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard flex-full", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
@@ -342,15 +264,13 @@ export default class Dashboard extends Component {
                             onNightModeChange={this.setNightMode}
                             onEditingChange={this.setEditing}
                             setDashboardAttribute={this.setDashboardAttribute}
-                            addParameter={this.addParameter}
+                            addParameter={this.props.addParameter}
                             parameters={parameters}
                         />
                     </header>
-                    {!isFullscreen && parameters && parameters.length > 0 &&
-                        <div className="wrapper flex flex-column align-start mt1">
-                            <div className="flex flex-row align-end" ref="parameters">
-                                {parameters}
-                            </div>
+                    {!isFullscreen && parameters &&
+                        <div className="wrapper flex flex-column align-start mt1 relative z2">
+                            {parameters}
                         </div>
                     }
                     <div className="wrapper">

@@ -1,7 +1,7 @@
 (ns metabase.public-settings
   (:require [clojure.string :as s]
-            (metabase [config :as config]
-                      [db :as db])
+            [toucan.db :as db]
+            [metabase.config :as config]
             (metabase.models [common :as common]
                              [setting :refer [defsetting], :as setting])
             [metabase.types :as types]
@@ -22,8 +22,12 @@
   "The name used for this instance of Metabase."
   :default "Metabase")
 
-(defsetting -site-url
-  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
+(defsetting site-url
+  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".
+   This is *guaranteed* never to have a tailing slash."
+  :setter (fn [new-value]
+            (setting/set-string! :site-url (when new-value
+                                             (s/replace new-value #"/$" "")))))
 
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")
@@ -37,21 +41,19 @@
   "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
   :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
-(defn site-url
-  "Fetch the site base URL that should be used for password reset emails, etc.
-   This strips off any trailing slashes that may have been added.
+(defsetting enable-public-sharing
+  "Enable admins to create publically viewable links for Cards and Dashboards?"
+  :type    :boolean
+  :default false)
 
-   The first time this function is called, we'll set the value of the setting `-site-url` with the value of
-   the ORIGIN header (falling back to HOST if needed, i.e. for unit tests) of some API request.
-   Subsequently, the site URL can only be changed via the admin page."
-  {:arglists '([request])}
-  [{{:strs [origin host]} :headers}]
-  {:pre  [(or origin host)]
-   :post [(string? %)]}
-  (or (some-> (-site-url)
-              (s/replace #"/$" "")) ; strip off trailing slash if one was included
-      (-site-url (or origin host))))
-
+(defn remove-public-uuid-if-public-sharing-is-disabled
+  "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it won't work).
+   Intended for use as part of a `post-select` implementation for Cards and Dashboards."
+  [object]
+  (if (and (:public_uuid object)
+           (not (enable-public-sharing)))
+    (assoc object :public_uuid nil)
+    object))
 
 
 (defn- short-timezone-name*
@@ -68,20 +70,21 @@
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end application."
   []
-  {:ga_code               "UA-60817802-1"
-   :password_complexity   password/active-password-complexity
-   :timezones             common/timezones
-   :version               config/mb-version-info
-   :engines               ((resolve 'metabase.driver/available-drivers))
-   :setup_token           ((resolve 'metabase.setup/token-value))
+  {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
-   :site_name             (site-name)
-   :email_configured      ((resolve 'metabase.email/email-configured?))
-   :admin_email           (admin-email)
-   :report_timezone       (setting/get :report-timezone)
-   :timezone_short        (short-timezone-name (setting/get :report-timezone))
-   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
-   :google_auth_client_id (setting/get :google-auth-client-id)
-   :map_tile_server_url   (map-tile-server-url)
    :custom_geojson        (setting/get :custom-geojson)
-   :types                 (types/types->parents)})
+   :email_configured      ((resolve 'metabase.email/email-configured?))
+   :engines               ((resolve 'metabase.driver/available-drivers))
+   :ga_code               "UA-60817802-1"
+   :google_auth_client_id (setting/get :google-auth-client-id)
+   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
+   :map_tile_server_url   (map-tile-server-url)
+   :password_complexity   password/active-password-complexity
+   :public_sharing        (enable-public-sharing)
+   :report_timezone       (setting/get :report-timezone)
+   :setup_token           ((resolve 'metabase.setup/token-value))
+   :site_name             (site-name)
+   :timezone_short        (short-timezone-name (setting/get :report-timezone))
+   :timezones             common/timezones
+   :types                 (types/types->parents)
+   :version               config/mb-version-info})

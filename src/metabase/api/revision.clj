@@ -1,8 +1,9 @@
 (ns metabase.api.revision
   (:require [compojure.core :refer [GET POST]]
             [schema.core :as s]
-            [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (metabase.api [card :as card-api]
+                          [common :refer :all])
+            [toucan.db :as db]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [revision :as revision, :refer [Revision]])))
@@ -27,11 +28,12 @@
   "Revert an object to a prior revision."
   [:as {{:keys [entity id revision_id]} :body}]
   {entity Entity, id s/Int, revision_id s/Int}
-  (let [entity (name->entity entity)]
-    (check-404 (db/exists? Revision
-                 :model    (:name entity)
-                 :model_id id
-                 :id       revision_id))
+  (let [entity   (name->entity entity)
+        revision (check-404 (Revision :model (:name entity), :model_id id, :id revision_id))]
+    ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
+    (when (= entity Card)
+      (card-api/check-data-permissions-for-query (get-in revision [:object :dataset_query])))
+    ;; ok, we're g2g
     (revision/revert!
       :entity      entity
       :id          id

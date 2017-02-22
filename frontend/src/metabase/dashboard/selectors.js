@@ -109,7 +109,7 @@ export const getMappingsByParameter = createSelector(
             const cards: Array<Card> = [dashcard.card].concat(dashcard.series);
             for (let mapping: ParameterMapping of (dashcard.parameter_mappings || [])) {
                 let card = _.findWhere(cards, { id: mapping.card_id });
-                let field = card && Dashboard.getParameterMappingTargetField(metadata, card, mapping.target);
+                let field = card && card.dataset_query && Dashboard.getParameterMappingTargetField(metadata, card, mapping.target);
                 let values = field && field.values() || [];
                 for (const value of values) {
                     countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)

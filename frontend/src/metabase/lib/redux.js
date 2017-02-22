@@ -1,13 +1,13 @@
 import moment from "moment";
 import _ from "underscore";
-import i from "icepick";
+import { getIn } from "icepick";
 
 import { createStore as originalCreateStore, applyMiddleware, compose } from "redux";
 import promise from 'redux-promise';
 import thunk from "redux-thunk";
 import createLogger from "redux-logger";
 
-import { createHistory } from 'history';
+import createHistory from "history/createBrowserHistory";
 
 import { reduxReactRouter } from 'redux-router';
 
@@ -79,10 +79,10 @@ export const fetchData = async ({
     getData,
     reload
 }) => {
-    const existingData = i.getIn(getState(), existingStatePath);
+    const existingData = getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['fetch']);
     try {
-        const requestState = i.getIn(getState(), ["requests", ...statePath]);
+        const requestState = getIn(getState(), ["requests", ...statePath]);
         if (!requestState || requestState.error || reload) {
             dispatch(setRequestState({ statePath, state: "LOADING" }));
             const data = await getData();
@@ -109,7 +109,7 @@ export const updateData = async ({
     dependentRequestStatePaths,
     putData
 }) => {
-    const existingData = i.getIn(getState(), existingStatePath);
+    const existingData = getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['update']);
     try {
         dispatch(setRequestState({ statePath, state: "LOADING" }));

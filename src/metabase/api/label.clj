@@ -3,8 +3,8 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST DELETE PUT]]
             [schema.core :as s]
-            [metabase.api.common :refer [defendpoint define-routes write-check]]
-            [metabase.db :as db]
+            [metabase.api.common :refer [defendpoint define-routes write-check], :as api]
+            [toucan.db :as db]
             [metabase.models.label :refer [Label]]
             [metabase.util :as u]
             [metabase.util.schema :as su]))
@@ -43,7 +43,8 @@
   [id]
   (warn-about-labels-being-deprecated)
   (write-check Label id)
-  (db/cascade-delete! Label :id id))
+  (db/delete! Label :id id)
+  api/generic-204-no-content)
 
 
 (define-routes)

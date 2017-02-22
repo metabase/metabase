@@ -1,11 +1,12 @@
 (ns metabase.models.dashboard-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
+            [toucan.util.test :as tt]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer :all]
                              [dashboard-card :refer [DashboardCard], :as dashboard-card]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [hydrate :refer :all])
+                             [dashboard-card-series :refer [DashboardCardSeries]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]))
@@ -23,7 +24,7 @@
                    :id      true
                    :card_id true
                    :series  true}]}
-  (tu/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
+  (tt/with-temp* [Dashboard           [{dashboard-id :id :as dashboard} {:name "Test Dashboard"}]
                   Card                [{card-id :id}]
                   Card                [{series-id-1 :id}]
                   Card                [{series-id-2 :id}]
@@ -127,7 +128,7 @@
                     :id      false
                     :card_id true
                     :series  true}]}]
-  (tu/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
+  (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
                   Card                [{card-id :id}]
                   Card                [{series-id-1 :id}]
                   Card                [{series-id-2 :id}]
@@ -153,3 +154,17 @@
         [(update serialized-dashboard :cards check-ids)
          serialized-dashboard2
          (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids)]))))
+
+
+;; test that a Dashboard's :public_uuid comes back if public sharing is enabled...
+(expect
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (boolean (:public_uuid dashboard)))))
+
+;; ...but if public sharing is *disabled* it should come back as `nil`
+(expect
+  nil
+  (tu/with-temporary-setting-values [enable-public-sharing false]
+    (tt/with-temp Dashboard [dashboard {:public_uuid (str (java.util.UUID/randomUUID))}]
+      (:public_uuid dashboard))))

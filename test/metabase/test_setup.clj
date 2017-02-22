@@ -6,7 +6,7 @@
             [clojure.tools.logging :as log]
             [expectations :refer :all]
             (metabase [core :as core]
-                      [db :as db]
+                      [db :as mdb]
                       [driver :as driver])
             (metabase.models [setting :as setting]
                              [table :refer [Table]])
@@ -76,8 +76,8 @@
   (let [start-jetty! (future (core/start-jetty!))]
 
     (try
-      (log/info (format "Setting up %s test DB and running migrations..." (name (db/db-type))))
-      (db/setup-db! :auto-migrate true)
+      (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
+      (mdb/setup-db! :auto-migrate true)
       (setting/set! :site-name "Metabase Test")
       (core/initialization-complete!)
 

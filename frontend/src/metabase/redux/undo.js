@@ -1,3 +1,4 @@
+/* @flow weak */
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
 

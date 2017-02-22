@@ -1,6 +1,18 @@
 
 .NativeQueryEditor .ace_editor {
-    height: 200px;
+    height: 100%;
+}
+
+.NativeQueryEditor .react-resizable {
+  position: relative;
+}
+
+.NativeQueryEditor .react-resizable-handle {
+  position: absolute;
+  width: 100%;
+  height: 10px;
+  bottom: -5px;
+  cursor: ns-resize;
 }
 
 .NativeQueryEditor .ace_editor.read-only .ace_cursor {

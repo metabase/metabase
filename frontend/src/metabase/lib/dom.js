@@ -1,4 +1,13 @@
 
+// denotes whether the current page is loaded in an iframe or not
+export const IFRAMED = (function() {
+    try {
+        return window.self !== window.top;
+    } catch (e) {
+        return true;
+    }
+})();
+
 export function isObscured(element, offset) {
     // default to the center of the element
     offset = offset || {
@@ -136,4 +145,48 @@ function getTextNodeAtPosition(root, index) {
         node: c ? c : root,
         position: c ? index :  0
     };
+}
+
+// https://davidwalsh.name/add-rules-stylesheets
+var STYLE_SHEET = (function() {
+    // Create the <style> tag
+    var style = document.createElement("style");
+
+    // WebKit hack :(
+    style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
+
+    // Add the <style> element to the page
+    document.head.appendChild(style);
+
+    return style.sheet;
+})();
+
+export function addCSSRule(selector, rules, index) {
+    if("insertRule" in STYLE_SHEET) {
+        STYLE_SHEET.insertRule(selector + "{" + rules + "}", index);
+    }
+    else if("addRule" in STYLE_SHEET) {
+        STYLE_SHEET.addRule(selector, rules, index);
+    }
+}
+
+export function constrainToScreen(element, direction, padding) {
+    if (direction === "bottom") {
+        let screenBottom = window.innerHeight + window.scrollY;
+        let overflowY = element.getBoundingClientRect().bottom - screenBottom;
+        if (overflowY + padding > 0) {
+            element.style.maxHeight = (element.getBoundingClientRect().height - overflowY - padding) + "px";
+            return true;
+        }
+    } else if (direction === "top") {
+        let screenTop = window.scrollY;
+        let overflowY = screenTop - element.getBoundingClientRect().top;
+        if (overflowY + padding > 0) {
+            element.style.maxHeight = (element.getBoundingClientRect().height - overflowY - padding) + "px";
+            return true;
+        }
+    } else {
+        throw new Error("Direction " + direction + " not implemented");
+    }
+    return false;
 }

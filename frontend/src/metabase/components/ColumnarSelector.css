@@ -66,8 +66,8 @@
 }
 
 .ColumnarSelector-row .Icon-check {
-    margin-right: var(--margin-2);
     visibility: hidden;
+    padding-right: 0.5rem;
 }
 
 .ColumnarSelector-row.ColumnarSelector-row--selected .Icon-check {

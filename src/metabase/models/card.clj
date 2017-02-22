@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*], :as api]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
             (metabase.models [card-label :refer [CardLabel]]
                              [collection :refer [Collection], :as collection]
                              [dependency :as dependency]
@@ -12,13 +13,14 @@
                              [permissions :as perms]
                              [revision :as revision]
                              [user :as user])
+            [metabase.public-settings :as public-settings]
             [metabase.query :as q]
             [metabase.query-processor :as qp]
             [metabase.query-processor.permissions :as qp-perms]
             [metabase.util :as u]))
 
 
-(i/defentity Card :report_card)
+(models/defmodel Card :report_card)
 
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
@@ -27,7 +29,7 @@
   "Return the number of Dashboards this Card is in."
   {:hydrate :dashboard_count}
   [{:keys [id]}]
-  (db/select-one-count 'DashboardCard, :card_id id))
+  (db/count 'DashboardCard, :card_id id))
 
 (defn labels
   "Return `Labels` for CARD."
@@ -97,10 +99,12 @@
 
 (defn serialize-instance
   "Serialize a `Card` for use in a `Revision`."
-  [_ _ instance]
-  (->> (dissoc instance :created_at :updated_at)
-       (into {})                                 ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
-       (m/filter-vals (complement delay?))))
+  ([instance]
+   (serialize-instance nil nil instance))
+  ([_ _ instance]
+   (->> (dissoc instance :created_at :updated_at)
+        (into {})                                  ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
+        (m/filter-vals (complement delay?)))))     ; probably not needed anymore
 
 
 
@@ -118,7 +122,6 @@
       (merge defaults card)
       card)))
 
-
 (defn- pre-insert [{:keys [dataset_query], :as card}]
   ;; TODO - make sure if `collection_id` is specified that we have write permissions for tha tcollection
   (u/prog1 card
@@ -129,27 +132,37 @@
       (let [database (db/select-one ['Database :id :name], :id (:database dataset_query))]
         (qp-perms/throw-if-cannot-run-new-native-query-referencing-db database)))))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'PulseCard :card_id id)
-  (db/cascade-delete! 'Revision :model "Card", :model_id id)
-  (db/cascade-delete! 'DashboardCardSeries :card_id id)
-  (db/cascade-delete! 'DashboardCard :card_id id)
-  (db/cascade-delete! 'CardFavorite :card_id id)
-  (db/cascade-delete! 'CardLabel :card_id id))
+(defn- pre-update [{archived? :archived, :as card}]
+  (u/prog1 card
+    ;; if the Card is archived, then remove it from any Dashboards
+    (when archived?
+      (db/delete! 'DashboardCard :card_id (u/get-id card)))))
+
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! 'PulseCard :card_id id)
+  (db/delete! 'Revision :model "Card", :model_id id)
+  (db/delete! 'DashboardCardSeries :card_id id)
+  (db/delete! 'DashboardCard :card_id id)
+  (db/delete! 'CardFavorite :card_id id)
+  (db/delete! 'CardLabel :card_id id))
 
 
 (u/strict-extend (class Card)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:hydration-keys     (constantly [:card])
-          :types              (constantly {:display :keyword, :query_type :keyword, :dataset_query :json, :visualization_settings :json, :description :clob})
-          :timestamped?       (constantly true)
-          :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :pre-update         populate-query-fields
-          :pre-insert         (comp populate-query-fields pre-insert)
-          :pre-cascade-delete pre-cascade-delete
-          :perms-objects-set  perms-objects-set})
+  models/IModel
+  (merge models/IModelDefaults
+         {:hydration-keys (constantly [:card])
+          :types          (constantly {:display :keyword, :query_type :keyword, :dataset_query :json, :visualization_settings :json, :description :clob})
+          :properties     (constantly {:timestamped? true})
+          :pre-update     (comp populate-query-fields pre-update)
+          :pre-insert     (comp populate-query-fields pre-insert)
+          :pre-delete     pre-delete
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)
+          :perms-objects-set perms-objects-set})
 
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults

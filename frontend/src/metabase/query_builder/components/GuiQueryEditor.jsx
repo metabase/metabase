@@ -276,7 +276,7 @@ export default class GuiQueryEditor extends Component {
                 const breakout = breakouts[i];
 
                 if (breakout == null) {
-                    breakoutList.push(<span className="ml1" />);
+                    breakoutList.push(<span key="nullBreakout" className="ml1" />);
                 }
 
                 breakoutList.push(
@@ -373,12 +373,17 @@ export default class GuiQueryEditor extends Component {
     }
 
     componentDidUpdate() {
+        const guiBuilder = ReactDOM.findDOMNode(this.refs.guiBuilder);
+        if (!guiBuilder) {
+            return;
+        }
+
         // HACK: magic number "5" accounts for the borders between the sections?
         let contentWidth = ["data", "filter", "view", "groupedBy","sortLimit"].reduce((acc, ref) => {
             let node = ReactDOM.findDOMNode(this.refs[`${ref}Section`]);
             return acc + (node ? node.offsetWidth : 0);
         }, 0) + 5;
-        let guiBuilderWidth = ReactDOM.findDOMNode(this.refs.guiBuilder).offsetWidth;
+        let guiBuilderWidth = guiBuilder.offsetWidth;
 
         let expanded = (contentWidth < guiBuilderWidth);
         if (this.state.expanded !== expanded) {
@@ -387,8 +392,14 @@ export default class GuiQueryEditor extends Component {
     }
 
     render() {
+        const { query, databases } = this.props;
+        const readOnly = query.database != null && !_.findWhere(databases, { id: query.database });
+        if (readOnly) {
+            return <div className="border-bottom border-med" />
+        }
+
         return (
-            <div className={cx("GuiBuilder rounded shadowed", { "GuiBuilder--expand": this.state.expanded })} ref="guiBuilder">
+            <div className={cx("GuiBuilder rounded shadowed", { "GuiBuilder--expand": this.state.expanded, disabled: readOnly })} ref="guiBuilder">
                 <div className="GuiBuilder-row flex">
                     {this.renderDataSection()}
                     {this.renderFilterSection()}

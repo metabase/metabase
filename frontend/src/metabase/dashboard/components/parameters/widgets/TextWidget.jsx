@@ -37,7 +37,7 @@ export default class TextWidget extends Component {
             <input
                 className={className}
                 type="text"
-                value={this.state.value}
+                value={this.state.value || ""}
                 onChange={(e) => {
                     this.setState({ value: e.target.value })
                     if (this.props.commitImmediately) {

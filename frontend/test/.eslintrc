@@ -1,7 +1,8 @@
 {
     "rules": {
         "jasmine/no-focused-tests": 2,
-        "jasmine/no-suite-dupes": [2, "branch"]
+        "jasmine/no-suite-dupes": [2, "branch"],
+        "import/no-commonjs": 0
     },
     "env": {
         "jasmine": true,

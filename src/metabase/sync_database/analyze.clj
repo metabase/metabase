@@ -5,7 +5,7 @@
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [schema.core :as schema]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.db.metadata-queries :as queries]
             [metabase.driver :as driver]
             (metabase.models [field :as field]
@@ -21,7 +21,7 @@
 
 (def ^:private ^:const low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`."
-  40)
+  300)
 
 (def ^:private ^:const field-values-entry-max-length
   "The maximum character length for a stored `FieldValues` entry."

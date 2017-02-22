@@ -134,7 +134,7 @@ export default class FieldList extends Component {
     renderItemIcon(item) {
         let name;
         if (item.segment) {
-            name = "star-outline";
+            name = "staroutline";
         } else if (item.field) {
             name = getIconForField(item.field);
         } else if (item.customField) {
@@ -184,10 +184,10 @@ export default class FieldList extends Component {
         if (item.segment) {
             this.props.onFilterChange(item.value);
         } else if (this.itemIsSelected(item)) {
-            // ensure if we select the same item we don't reset datetime_field's unit
+            // ensure if we select the same item we don't reset datetime-field's unit
             this.props.onFieldChange(this.props.field);
         }  else if (this.props.enableTimeGrouping && isDate(item.field)) {
-            this.props.onFieldChange(["datetime_field", item.value, "as", "day"]);
+            this.props.onFieldChange(["datetime-field", item.value, "as", "day"]);
         } else {
             this.props.onFieldChange(item.value);
         }

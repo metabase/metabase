@@ -1,5 +1,12 @@
 {
-  "plugins": ["transform-flow-strip-types", "add-react-displayname", "transform-decorators-legacy"],
+  "plugins": [
+    "transform-flow-strip-types",
+    "add-react-displayname",
+    "transform-decorators-legacy",
+    ["babel-plugin-transform-builtin-extend", {
+        "globals": ["Error", "Array"]
+    }]
+  ],
   "presets": ["es2015", "stage-0", "react"],
   "env": {
     "development": {

@@ -1,7 +1,6 @@
 import _ from "underscore";
-import Query from "metabase/lib/query";
+import Query, { createQuery } from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
-import { createQuery } from "metabase/lib/query";
 
 import { CardApi } from "metabase/services";
 

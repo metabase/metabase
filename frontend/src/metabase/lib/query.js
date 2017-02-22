@@ -154,7 +154,7 @@ var Query = {
                     }
                     let targetMatches = query.breakout.filter(b => Query.isSameField(b, field, false));
                     if (targetMatches.length > 0) {
-                        // query processor expect the order_by clause to match the breakout's datetime_field unit or fk-> target,
+                        // query processor expect the order_by clause to match the breakout's datetime-field unit or fk-> target,
                         // so just replace it with the one that matches the target field
                         // NOTE: if we have more than one breakout for the same target field this could match the wrong one
                         if (targetMatches.length > 1) {
@@ -352,7 +352,7 @@ var Query = {
         }
     },
 
-    // gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime_field cast.
+    // gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime-field cast.
     getFieldTargetId: function(field) {
         if (Query.isRegularField(field)) {
             return field;
@@ -366,7 +366,7 @@ var Query = {
         console.warn("Unknown field type: ", field);
     },
 
-    // gets the table and field definitions from from a raw, fk->, or datetime_field field
+    // gets the table and field definitions from from a raw, fk->, or datetime-field field
     getFieldTarget: function(field, tableDef, path = []) {
         if (Query.isRegularField(field)) {
             return { table: tableDef, field: Table.getField(tableDef, field), path };
@@ -487,11 +487,15 @@ var Query = {
 
     getAggregationDescription(tableMetadata, query, options) {
         return conjunctList(Query.getAggregations(query).map(aggregation => {
+            if (NamedClause.isNamed(aggregation)) {
+                return [NamedClause.getName(aggregation)];
+            }
+            if (AggregationClause.isMetric(aggregation)) {
+                let metric = _.findWhere(tableMetadata.metrics, { id: AggregationClause.getMetric(aggregation) });
+                let name = metric ? metric.name : "[Unknown Metric]";
+                return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
+            }
             switch (aggregation[0]) {
-                case "METRIC":
-                    let metric = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
-                    let name = metric ? metric.name : "[Unknown Metric]";
-                    return [options.jsx ? <span className="text-green text-bold">{name}</span> : name];
                 case "rows":      return           ["Raw data"];
                 case "count":     return              ["Count"];
                 case "cum_count": return   ["Cumulative count"];
@@ -621,6 +625,7 @@ var Query = {
 }
 
 for (const prop in Q) {
+    // eslint-disable-next-line import/namespace
     Query[prop] = Q[prop];
 }
 

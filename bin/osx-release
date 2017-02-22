@@ -171,7 +171,7 @@ sub edit_release_notes {
     remove_tree($release_notes);
 
     copy(get_file_or_die('bin/templates/release-notes.html.template'), $release_notes) or die $!;
-    system('emacs', '-nw', get_file_or_die($release_notes)) == 0 or die $!;
+    system('nano', get_file_or_die($release_notes)) == 0 or die $!;
 }
 
 
@@ -247,6 +247,9 @@ sub finalize_dmg {
     system('sync');
     system('sync');
 
+    # wait a few seconds for the sync to complete so DMG isn't "busy" when we try to unmount it
+    system('sleep', '5');
+
     # unmount the temp DMG
     announce "Unmounting $device...";
     system('hdiutil', 'detach', $device) == 0 or die $!;
@@ -297,7 +300,7 @@ sub announce_on_slack {
     Readonly my $slack_url => config('slackWebhookURL') or return;
     Readonly my $version   => version();
     Readonly my $awsURL    => 'https://s3.amazonaws.com/' . config('awsBucket') . '/' . upload_subdir() . '/Metabase.dmg';
-    my $text = "Metabase OS X $version 'Tumultuous Toucan' Is Now Available!\n\n" .
+    my $text = "Metabase OS X $version 'Complexity-Embracing Toucan' Is Now Available!\n\n" .
                "Get it here: $awsURL\n\n";
 
     open(my $file, get_file_or_die($release_notes)) or die $!;

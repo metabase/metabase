@@ -2,8 +2,8 @@
   "Functions which summarize the usage of an instance"
   (:require [clojure.tools.logging :as log]
             [clj-http.client :as client]
-            (metabase [config :as config]
-                      [db :as db])
+            [toucan.db :as db]
+            [metabase.config :as config]
             (metabase.models [field :as field]
                              [humanization :as humanization]
                              [table :as table]

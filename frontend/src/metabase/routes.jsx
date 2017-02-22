@@ -1,10 +1,12 @@
+/* @flow weak */
+
 import React, { Component, PropTypes } from "react";
 
 import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
-import { refreshCurrentUser } from "metabase/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
@@ -61,6 +63,9 @@ import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
 import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx";
 
+import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
+import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
+
 const MetabaseIsSetup = UserAuthWrapper({
     predicate: authData => !authData.hasSetupToken,
     failureRedirectPath: "/setup",
@@ -107,6 +112,12 @@ export const getRoutes = (store) =>
                 replace("/");
             }
         }} />
+
+        {/* PUBLICLY SHARED LINKS */}
+        <Route path="public">
+            <Route path="question/:uuid" component={PublicQuestion} />
+            <Route path="dashboard/:uuid" component={PublicDashboard} />
+        </Route>
 
         {/* APP */}
         <Route onEnter={async (nextState, replace, done) => {
@@ -227,6 +238,19 @@ export const getRoutes = (store) =>
                 <Route path="settings/:section" component={SettingsEditorApp} />
 
                 {getAdminPermissionsRoutes(store)}
+            </Route>
+
+            {/* INTERNAL */}
+            <Route
+                path="/_internal"
+                getChildRoutes={(partialNextState, callback) =>
+                    // $FlowFixMe: flow doesn't know about require.ensure
+                    require.ensure([], (require) => {
+                        callback(null, [require('./routes-internal').default])
+                    })
+                }
+            >
+                <IndexRedirect to="/_internal/list" />
             </Route>
 
             {/* MISC */}

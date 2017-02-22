@@ -6,7 +6,7 @@
             (honeysql [core :as hsql]
                       [helpers :as h])
             [metabase.config :as config]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
@@ -85,11 +85,6 @@
                                  2)
                            3)
     :year            (hsql/call :extract :year v)))
-
-(defn- date-string->literal [^String date-string]
-  (hsql/call :to_timestamp
-    (hx/literal (u/format-date "yyyy-MM-dd" (u/->Date date-string)))
-    (hx/literal "YYYY-MM-DD")))
 
 (def ^:private ^:const now             (hsql/raw "SYSDATE"))
 (def ^:private ^:const date-1970-01-01 (hsql/call :to_timestamp (hx/literal :1970-01-01) (hx/literal :YYYY-MM-DD)))
@@ -223,7 +218,6 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :current-datetime-fn       (constantly now)
           :date                      (u/drop-first-arg date)
-          :date-string->literal      (u/drop-first-arg date-string->literal)
           :excluded-schemas          (fn [& _]
                                        (set/union
                                         #{"ANONYMOUS"

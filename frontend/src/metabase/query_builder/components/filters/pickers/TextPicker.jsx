@@ -1,15 +1,27 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
 
-export default class TextPicker extends Component {
+type Props = {
+    values: Array<string|null>,
+    onValuesChange: (values: Array<string|null>) => void,
+    validations: bool[],
+    placeholder?: string,
+    multi?: bool,
+    onCommit: () => void,
+};
+
+export default class TextPicker extends Component<*, Props, *> {
     static propTypes = {
         values: PropTypes.array.isRequired,
         onValuesChange: PropTypes.func.isRequired,
         placeholder: PropTypes.string,
         validations: PropTypes.array,
-        multi: PropTypes.bool
+        multi: PropTypes.bool,
+        onCommit: PropTypes.func,
     };
 
     static defaultProps = {
@@ -23,31 +35,39 @@ export default class TextPicker extends Component {
         this.props.onValuesChange(values);
     }
 
-    removeValue(index) {
+    removeValue(index: number) {
         let values = this.props.values.slice();
         values.splice(index, 1);
         this.props.onValuesChange(values);
     }
 
-    setValue(index, value) {
+    setValue(index: number, value: string|null) {
         let values = this.props.values.slice();
         values[index] = value;
         this.props.onValuesChange(values);
     }
 
     render() {
-        let { values, validations, multi } = this.props;
+        let { values, validations, multi, onCommit } = this.props;
 
         return (
             <div>
                 <ul>
                     {values.map((value, index) =>
-                        <li className="FilterInput px1 pt1 relative">
+                        <li
+                            className="FilterInput px1 pt1 relative"
+                            key={index}
+                        >
                             <input
                                 className={cx("input block full border-purple", { "border-error": validations[index] === false })}
                                 type="text"
                                 value={value}
                                 onChange={(e) => this.setValue(index, e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === "Enter" && onCommit) {
+                                        onCommit();
+                                    }
+                                }}
                                 placeholder={this.props.placeholder}
                                 autoFocus={true}
                             />

@@ -1,10 +1,10 @@
 (ns metabase.models.permissions-group-membership
-  (:require [metabase.db :as db]
-            (metabase.models [interface :as i]
-                             [permissions-group :as group])
+  (:require (toucan [db :as db]
+                    [models :as models])
+            [metabase.models.permissions-group :as group]
             [metabase.util :as u]))
 
-(i/defentity PermissionsGroupMembership :permissions_group_membership)
+(models/defmodel PermissionsGroupMembership :permissions_group_membership)
 
 (defn- check-not-metabot-group
   "Throw an Exception if we're trying to add or remove a user to the MetaBot group."
@@ -27,13 +27,13 @@
                {:status-code 400})))))
 
 (defn- check-not-last-admin []
-  (when (<= (db/select-one-count PermissionsGroupMembership
+  (when (<= (db/count PermissionsGroupMembership
               :group_id (:id (group/admin)))
             1)
     (throw (ex-info "You cannot remove the last member of the 'Admin' group!"
              {:status-code 400}))))
 
-(defn- pre-cascade-delete [{:keys [group_id user_id]}]
+(defn- pre-delete [{:keys [group_id user_id]}]
   (check-not-metabot-group group_id)
   (check-not-all-users-group group_id)
   ;; Otherwise if this is the Admin group...
@@ -57,8 +57,8 @@
         :is_superuser true))))
 
 (u/strict-extend (class PermissionsGroupMembership)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:pre-cascade-delete pre-cascade-delete
-          :pre-insert         pre-insert
-          :post-insert        post-insert}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:pre-delete  pre-delete
+          :pre-insert  pre-insert
+          :post-insert post-insert}))

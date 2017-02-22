@@ -40,7 +40,7 @@ export default class VisualizationSettings extends React.Component {
                     name={CardVisualization.iconName}
                     size={12}
                 />
-                {CardVisualization.displayName}
+                {CardVisualization.uiName}
                 <Icon className="ml1" name="chevrondown" size={8} />
             </span>
         );
@@ -60,6 +60,7 @@ export default class VisualizationSettings extends React.Component {
                     triggerId="VisualizationTrigger"
                     triggerElement={triggerElement}
                     triggerClasses="flex align-center"
+                    sizeToFit
                 >
                     <ul className="pt1 pb1">
                         { Array.from(visualizations).map(([vizType, viz], index) =>
@@ -73,7 +74,7 @@ export default class VisualizationSettings extends React.Component {
                                 onClick={this.setDisplay.bind(null, vizType)}
                             >
                                 <Icon name={viz.iconName} size={12} />
-                                <span className="ml1">{viz.displayName}</span>
+                                <span className="ml1">{viz.uiName}</span>
                             </li>
                         )}
                     </ul>

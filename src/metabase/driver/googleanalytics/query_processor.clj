@@ -86,7 +86,7 @@
     :day            "ga:date"
     :day-of-week    "ga:dayOfWeek"
     :day-of-month   "ga:day"
-    :week           "ga:yearWeek"
+    :week           "ga:isoYearIsoWeek"
     :week-of-year   "ga:week"
     :month          "ga:yearMonth"
     :month-of-year  "ga:month"
@@ -208,17 +208,17 @@
   (edn/read-string (s/replace s #"^0+(.+)$" "$1")))
 
 (def ^:private ga-dimension->date-format-fn
-  {"ga:minute"    parse-number
-   "ga:dateHour"  (partial u/parse-date "yyyyMMddHH")
-   "ga:hour"      parse-number
-   "ga:date"      (partial u/parse-date "yyyyMMdd")
-   "ga:dayOfWeek" (comp inc parse-number)
-   "ga:day"       parse-number
-   "ga:yearWeek"  (partial u/parse-date "YYYYww")
-   "ga:week"      parse-number
-   "ga:yearMonth" (partial u/parse-date "yyyyMM")
-   "ga:month"     parse-number
-   "ga:year"      parse-number})
+  {"ga:minute"         parse-number
+   "ga:dateHour"       (partial u/parse-date "yyyyMMddHH")
+   "ga:hour"           parse-number
+   "ga:date"           (partial u/parse-date "yyyyMMdd")
+   "ga:dayOfWeek"      (comp inc parse-number)
+   "ga:day"            parse-number
+   "ga:isoYearIsoWeek" (partial u/parse-date "YYYYww")
+   "ga:week"           parse-number
+   "ga:yearMonth"      (partial u/parse-date "yyyyMM")
+   "ga:month"          parse-number
+   "ga:year"           parse-number})
 
 (defn- header->column [^GaData$ColumnHeaders header]
   (let [date-parser (ga-dimension->date-format-fn (.getName header))]

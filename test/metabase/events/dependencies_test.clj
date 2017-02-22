@@ -1,6 +1,7 @@
 (ns metabase.events.dependencies-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             [metabase.events.dependencies :refer :all]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
@@ -20,7 +21,7 @@
      :dependent_on_id    2}
     {:dependent_on_model "Segment"
      :dependent_on_id    3}}
-  (tu/with-temp Card [card {:dataset_query {:database (id)
+  (tt/with-temp Card [card {:dataset_query {:database (id)
                                             :type     :query
                                             :query    {:source_table (id :categories)
                                                        :filter       ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}}]
@@ -32,7 +33,7 @@
 ;; `:card-update` event
 (expect
   []
-  (tu/with-temp Card [card {:dataset_query {:database (id)
+  (tt/with-temp Card [card {:dataset_query {:database (id)
                                             :type     :query
                                             :query    {:source_table (id :categories)}}}]
     (process-dependencies-event {:topic :card-create
@@ -45,7 +46,7 @@
      :dependent_on_id    18}
     {:dependent_on_model "Segment"
      :dependent_on_id    35}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
                                             :definition {:aggregation ["count"]
@@ -61,7 +62,7 @@
      :dependent_on_id    18}
     {:dependent_on_model "Segment"
      :dependent_on_id    35}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
                                             :definition {:aggregation ["count"]

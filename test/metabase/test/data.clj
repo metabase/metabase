@@ -4,8 +4,8 @@
                      [walk :as walk])
             [clojure.tools.logging :as log]
             [schema.core :as s]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])

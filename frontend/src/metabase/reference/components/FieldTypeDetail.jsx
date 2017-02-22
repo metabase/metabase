@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
-import i from "icepick";
+import { getIn } from "icepick";
 import pure from "recompose/pure";
 
 import * as MetabaseCore from "metabase/lib/core";
@@ -48,7 +48,7 @@ const FieldTypeDetail = ({
                             onChange={(type) => fieldTypeFormField.onChange(type.id)}
                         /> :
                         <span>
-                            { i.getIn(
+                            { getIn(
                                     MetabaseCore.field_special_types_map,
                                     [field.special_type, 'name']
                                 ) || 'No field type'
@@ -74,7 +74,7 @@ const FieldTypeDetail = ({
                         /> :
                         isFK(field.special_type) &&
                         <span>
-                            {i.getIn(foreignKeys, [field.fk_target_field_id, "name"])}
+                            {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                         </span>
                     }
                 </span>
