@@ -27,15 +27,13 @@
 (defendpoint POST "/"
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
-  [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body, :as request}]
+  [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body}]
   {token      SetupToken
    site_name  su/NonBlankString
    first_name su/NonBlankString
    last_name  su/NonBlankString
    email      su/Email
    password   su/ComplexPassword}
-  ;; Call (public-settings/site-url request) to set the Site URL setting if it's not already set
-  (public-settings/site-url request)
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User

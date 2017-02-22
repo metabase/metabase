@@ -164,7 +164,8 @@
   (u/prog1 (params/expand-parameters query)
     (when (and (not *disable-qp-logging*)
                (not= <> query))
-      (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str (second (data/diff query <>))))))))
+      (when-let [diff (second (data/diff query <>))]
+        (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str diff)))))))
 
 (defn- pre-substitute-parameters [qp] (comp qp substitute-parameters))
 

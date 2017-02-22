@@ -9,10 +9,10 @@
 
      (oembed-url \"/x\") -> \"http://localhost:3000/api/public/oembed?url=x&format=json\""
   ^String [^String relative-url]
-  (str (public-settings/-site-url)
+  (str (public-settings/site-url)
        "/api/public/oembed"
        ;; NOTE: some oEmbed consumers require `url` be the first param???
-       "?url=" (codec/url-encode (str (public-settings/-site-url) relative-url))
+       "?url=" (codec/url-encode (str (public-settings/site-url) relative-url))
        "&format=json"))
 
 (defn- oembed-link
