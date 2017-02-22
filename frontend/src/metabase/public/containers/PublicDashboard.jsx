@@ -37,14 +37,14 @@ const mapDispatchToProps = {
 }
 
 type Props = {
-    params:                 { uuid: string },
+    params:                 { uuid?: string, token?: string },
     location:               { query: { [key:string]: string }},
 
     dashboard?:             Dashboard,
     parameterValues:        {[key:string]: string},
 
     initialize:             () => void,
-    fetchDashboard:         (uuid: string, query: { [key:string]: string }) => Promise<void>,
+    fetchDashboard:         (dashId: string, query: { [key:string]: string }) => Promise<void>,
     fetchDashboardCardData: (options: { reload: bool, clear: bool }) => Promise<void>,
     setParameterValue:      (id: string, value: string) => void,
     setErrorPage:           (error: { status: number }) => void,
@@ -54,10 +54,11 @@ type Props = {
 export default class PublicDashboard extends Component<*, Props, *> {
     // $FlowFixMe
     async componentWillMount() {
-        const { initialize, fetchDashboard, fetchDashboardCardData, setErrorPage, location, params: { uuid }}  = this.props;
+        const { initialize, fetchDashboard, fetchDashboardCardData, setErrorPage, location, params: { uuid, token }}  = this.props;
         initialize();
         try {
-            await fetchDashboard(uuid, location.query);
+            // $FlowFixMe
+            await fetchDashboard(uuid || token, location.query);
             await fetchDashboardCardData({ reload: false, clear: true });
         } catch (error) {
             setErrorPage(error);

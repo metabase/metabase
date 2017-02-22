@@ -151,7 +151,12 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:card])
-          :types          (constantly {:display :keyword, :query_type :keyword, :dataset_query :json, :visualization_settings :json, :description :clob})
+          :types          (constantly {:dataset_query          :json
+                                       :description            :clob
+                                       :display                :keyword
+                                       :embedding_params       :json
+                                       :query_type             :keyword
+                                       :visualization_settings :json})
           :properties     (constantly {:timestamped? true})
           :pre-update     (comp populate-query-fields pre-update)
           :pre-insert     (comp populate-query-fields pre-insert)

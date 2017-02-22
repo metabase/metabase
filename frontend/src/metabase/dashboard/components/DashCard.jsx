@@ -126,7 +126,8 @@ export default class DashCard extends Component {
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
                     series={series}
-                    isDashboard={true}
+                    showTitle
+                    isDashboard
                     isEditing={isEditing}
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing && !isEditingParameter ?

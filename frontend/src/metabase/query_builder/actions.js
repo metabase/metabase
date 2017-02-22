@@ -48,6 +48,16 @@ export const createPublicLink = createAction(CREATE_PUBLIC_LINK, ({ id }) => Car
 export const DELETE_PUBLIC_LINK = "metabase/card/DELETE_PUBLIC_LINK";
 export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, ({ id }) => CardApi.deletePublicLink({ id }));
 
+export const UPDATE_ENABLE_EMBEDDING = "metabase/card/UPDATE_ENABLE_EMBEDDING";
+export const updateEnableEmbedding = createAction(UPDATE_ENABLE_EMBEDDING, ({ id }, enable_embedding) =>
+    CardApi.update({ id, enable_embedding })
+);
+
+export const UPDATE_EMBEDDING_PARAMS = "metabase/card/UPDATE_EMBEDDING_PARAMS";
+export const updateEmbeddingParams = createAction(UPDATE_EMBEDDING_PARAMS, ({ id }, embedding_params) =>
+    CardApi.update({ id, embedding_params })
+);
+
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(UPDATE_URL, (card, { dirty = false, replaceState = false, preserveParameters = true }) =>
     (dispatch, getState) => {

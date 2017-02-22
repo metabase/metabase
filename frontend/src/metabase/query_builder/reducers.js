@@ -38,7 +38,9 @@ import {
     SET_CURRENT_STATE,
 
     CREATE_PUBLIC_LINK,
-    DELETE_PUBLIC_LINK
+    DELETE_PUBLIC_LINK,
+    UPDATE_ENABLE_EMBEDDING,
+    UPDATE_EMBEDDING_PARAMS
 } from "./actions";
 
 // various ui state options
@@ -97,7 +99,9 @@ export const card = handleActions({
     [QUERY_COMPLETED]: { next: (state, { payload }) => ({ ...state, display: payload.cardDisplay }) },
 
     [CREATE_PUBLIC_LINK]: { next: (state, { payload }) => ({ ...state, public_uuid: payload.uuid })},
-    [DELETE_PUBLIC_LINK]: { next: (state, { payload }) => ({ ...state, public_uuid: null })}
+    [DELETE_PUBLIC_LINK]: { next: (state, { payload }) => ({ ...state, public_uuid: null })},
+    [UPDATE_ENABLE_EMBEDDING]: { next: (state, { payload }) => ({ ...state, enable_embedding: payload.enable_embedding })},
+    [UPDATE_EMBEDDING_PARAMS]: { next: (state, { payload }) => ({ ...state, embedding_params: payload.embedding_params })},
 }, null);
 
 // a copy of the card being worked on at it's last known saved state.  if the card is NEW then this should be null.

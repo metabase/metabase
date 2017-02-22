@@ -1,0 +1,40 @@
+.EmbedFrame {
+  background-color: white;
+}
+
+.EmbedFrame-header,
+.EmbedFrame-footer {
+  color: var(--dark-color);
+  background-color: white;
+}
+
+.Theme--night.EmbedFrame {
+  background-color: rgb(54, 58, 61);
+  border: 1px solid rgb(46, 49, 52);
+}
+
+.Theme--night .EmbedFrame-header,
+.Theme--night .EmbedFrame-footer {
+  color: var(--night-mode-color);
+  background-color: rgb(54, 58, 61);
+  border-color: rgb(46, 49, 52);
+}
+
+.Theme--night.EmbedFrame .fullscreen-night-text {
+  color: var(--night-mode-color);
+  transition: color 1s linear;
+}
+
+.Theme--night.EmbedFrame svg text {
+  fill: var(--night-mode-color) !important;
+}
+
+.Theme--night.EmbedFrame .DashCard .Card {
+  background-color: rgb(54, 58, 61);
+  border: 1px solid rgb(46, 49, 52);
+}
+
+.Theme--night.EmbedFrame .enable-dots-onhover .dc-tooltip circle.dot:hover,
+.Theme--night.EmbedFrame .enable-dots .dc-tooltip circle.dot {
+  fill: currentColor;
+}

@@ -536,7 +536,7 @@
     right: 0;
     width: 300px;
     height: 100%;
-    background-color: #F9FBFC;
+    background-color: var(--slate-extra-light-color);
     overflow: hidden;
 }
 

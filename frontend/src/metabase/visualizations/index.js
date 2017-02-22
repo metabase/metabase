@@ -41,6 +41,7 @@ export type VisualizationProps = {
         height: number
     },
 
+    showTitle: boolean,
     isDashboard: boolean,
     isEditing: boolean,
     actionButtons: Node,

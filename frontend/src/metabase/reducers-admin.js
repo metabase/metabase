@@ -2,7 +2,6 @@
 
 // Reducers needed for admin section (only used in "main" app)
 
-import settings from "metabase/admin/settings/settings";
 import people from "metabase/admin/people/people";
 import databases from "metabase/admin/databases/database";
 import datamodel from "metabase/admin/datamodel/datamodel";
@@ -12,6 +11,5 @@ export default {
     databases,
     datamodel: datamodel,
     people,
-    settings,
     permissions,
 };

@@ -101,6 +101,9 @@ export class WindowModal extends Component {
     }
 }
 
+import routeless from "metabase/hoc/Routeless";
+
+@routeless
 export class FullPageModal extends Component {
     static childContextTypes = MODAL_CHILD_CONTEXT_TYPES;
 
@@ -155,7 +158,7 @@ export class FullPageModal extends Component {
                 { opacity: spring(0), top: spring(20) }
             }>
                 { motionStyle =>
-                    <div className="full-height relative" style={motionStyle}>
+                    <div className="full-height relative scroll-y" style={motionStyle}>
                     { getModalContent(this.props) }
                     </div>
                 }

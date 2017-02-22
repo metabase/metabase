@@ -6,7 +6,7 @@ import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
-import { refreshCurrentUser } from "metabase/redux/user";
+import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
@@ -121,7 +121,7 @@ export const getRoutes = (store) =>
 
         {/* APP */}
         <Route onEnter={async (nextState, replace, done) => {
-            await store.dispatch(refreshCurrentUser());
+            await store.dispatch(loadCurrentUser());
             done();
         }}>
             {/* AUTH */}

@@ -78,6 +78,7 @@ export default class ShareWidget extends Component<*, Props, State> {
                             <Button onClick={() => this.setState({ confirmDisable: false })}>Cancel</Button>
                             <Button className="ml1" warning onClick={() => {
                                 onDisable();
+                                this.setState({ confirmDisable: false })
                                 if (this._popover) {
                                     this._popover.close();
                                 }

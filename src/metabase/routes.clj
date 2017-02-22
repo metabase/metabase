@@ -29,6 +29,11 @@
   (GET ["/question/:uuid.json" :uuid u/uuid-regex] [uuid] (resp/redirect (format "/api/public/card/%s/query/json" uuid)))
   (GET "*" [] public))
 
+(defroutes ^:private embed-routes
+  (GET "/question/:token.csv"  [token] (resp/redirect (format "/api/embed/card/%s/query/csv"  token)))
+  (GET "/question/:token.json" [token] (resp/redirect (format "/api/embed/card/%s/query/json" token)))
+  (GET "*" [] public))
+
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
   ;; ^/$ -> index.html
@@ -40,9 +45,10 @@
   (context "/app" []
     (route/resources "/" {:root "frontend_client/app"})
     ;; return 404 for anything else starting with ^/app/ that doesn't exist
-    (route/not-found {:status 404
-                      :body "Not found."}))
+    (route/not-found {:status 404, :body "Not found."}))
   ;; ^/public/ -> Public frontend and download routes
   (context "/public" [] public-routes)
+  ;; ^/emebed/ -> Embed frontend and download routes
+  (context "/embed" [] embed-routes)
   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
   (GET "*" [] index))
