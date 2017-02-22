@@ -2,10 +2,10 @@
   (:require [compojure.core :refer [GET POST]]
             [medley.core :as m]
             [schema.core :as s]
+            [toucan.db :as db]
             (metabase.api [common :refer :all]
                           [database :refer [DBEngine]])
-            (metabase [db :as db]
-                      [driver :as driver]
+            (metabase [driver :as driver]
                       [email :as email]
                       [events :as events])
             [metabase.integrations.slack :as slack]
@@ -101,13 +101,13 @@
   (let [has-dbs?           (db/exists? Database, :is_sample false)
         has-dashboards?    (db/exists? 'Dashboard)
         has-pulses?        (db/exists? 'Pulse)
-        has-labels?        (db/exists? 'Label)
+        has-collections?   (db/exists? 'Collection)
         has-hidden-tables? (db/exists? 'Table, :visibility_type [:not= nil])
         has-metrics?       (db/exists? 'Metric)
         has-segments?      (db/exists? 'Segment)
-        num-tables         (db/select-one-count 'Table)
-        num-cards          (db/select-one-count 'Card)
-        num-users          (db/select-one-count 'User)]
+        num-tables         (db/count 'Table)
+        num-cards          (db/count 'Card)
+        num-users          (db/count 'User)]
     [{:title       "Add a database"
       :group       "Get connected"
       :description "Connect to your data so your whole team can start to explore."
@@ -142,9 +142,9 @@
       :triggered   (>= num-tables 20)}
      {:title       "Organize questions"
       :group       "Curate your data"
-      :description "Have a lot of saved questions in Metabase? Create labels to help manage them and add context."
-      :link        "/questions/all"
-      :completed   has-labels?
+      :description "Have a lot of saved questions in Metabase? Create collections to help manage them and add context."
+      :link        "/questions/"
+      :completed   has-collections?
       :triggered   (>= num-cards 30)}
      {:title       "Create metrics"
       :group       "Curate your data"

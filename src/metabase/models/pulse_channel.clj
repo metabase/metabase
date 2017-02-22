@@ -2,7 +2,8 @@
   (:require [clojure.set :as set]
             [cheshire.generate :refer [add-encoder encode-map]]
             [medley.core :as m]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
             (metabase.models [pulse-channel-recipient :refer [PulseChannelRecipient]]
                              [interface :as i]
                              [user :refer [User]])
@@ -107,7 +108,7 @@
 
 ;; ## Entity
 
-(i/defentity PulseChannel :pulse_channel)
+(models/defmodel PulseChannel :pulse_channel)
 
 (defn ^:hydrate recipients
   "Return the `PulseChannelRecipients` associated with this PULSE-CHANNEL."
@@ -118,17 +119,20 @@
                     :from   [PulseChannelRecipient]
                     :where  [:= :pulse_channel_id id]}])))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! PulseChannelRecipient :pulse_channel_id id))
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! PulseChannelRecipient :pulse_channel_id id))
 
 (u/strict-extend (class PulseChannel)
-  i/IEntity (merge i/IEntityDefaults
-                   {:hydration-keys     (constantly [:pulse_channel])
-                    :types              (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
-                    :timestamped?       (constantly true)
-                    :can-read?          (constantly true)
-                    :can-write?         i/superuser?
-                    :pre-cascade-delete pre-cascade-delete}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:hydration-keys (constantly [:pulse_channel])
+          :types          (constantly {:details :json, :channel_type :keyword, :schedule_type :keyword, :schedule_frame :keyword})
+          :properties     (constantly {:timestamped? true})
+          :pre-delete     pre-delete})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?  (constantly true)
+          :can-write? i/superuser?}))
 
 
 ;; ## Persistence Functions
@@ -191,7 +195,7 @@
       (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
         (db/insert-many! PulseChannelRecipient vs)))
     (when (seq recipients-)
-      (db/delete! PulseChannelRecipient
+      (db/simple-delete! PulseChannelRecipient
         :pulse_channel_id id
         :user_id          [:in recipients-]))))
 

@@ -3,12 +3,14 @@
 import type { StructuredQuery, NativeQuery, TemplateTag } from "./types/Query";
 import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "./types/Card";
 import type { Parameter, ParameterId, ParameterMapping } from "metabase/meta/types/Dashboard";
+import { getTemplateTagParameters } from "metabase/meta/Parameter";
 
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
 }
 
 import Query from "metabase/lib/query";
+import Utils from "metabase/lib/utils";
 import _ from "underscore";
 
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
@@ -65,13 +67,18 @@ export function getTemplateTags(card: ?Card): Array<TemplateTag> {
         [];
 }
 
+export function getParameters(card: ?Card): Parameter[] {
+    const tags: TemplateTag[] = getTemplateTags(card);
+    return getTemplateTagParameters(tags);
+}
+
 export function applyParameters(
     card: Card,
-    parameters: Array<Parameter>,
+    parameters: Parameter[],
     parameterValues: { [key: ParameterId]: string } = {},
-    parameterMappings: Array<ParameterMapping> = []
+    parameterMappings: ParameterMapping[] = []
 ): DatasetQuery {
-    const datasetQuery = JSON.parse(JSON.stringify(card.dataset_query));
+    const datasetQuery = Utils.copy(card.dataset_query);
     // clean the query
     if (datasetQuery.type === "query") {
         datasetQuery.query = Query.cleanQuery(datasetQuery.query);

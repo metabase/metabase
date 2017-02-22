@@ -8,7 +8,7 @@
             [schema.core :as s]
             [throttle.core :as throttle]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.email.messages :as email]
             [metabase.events :as events]
             (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!], :as user]
@@ -59,7 +59,8 @@
   [session_id]
   {session_id su/NonBlankString}
   (check-exists? Session session_id)
-  (db/cascade-delete! Session, :id session_id))
+  (db/delete! Session :id session_id)
+  generic-204-no-content)
 
 ;; Reset tokens:
 ;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
@@ -82,7 +83,7 @@
   (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email, :is_active true)]
     (let [reset-token        (set-user-password-reset-token! user-id)
           password-reset-url (str (public-settings/site-url request) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email email google-auth? server-name password-reset-url)
+      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
       (log/info password-reset-url))))
 
 

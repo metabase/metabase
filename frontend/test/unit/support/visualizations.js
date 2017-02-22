@@ -85,3 +85,9 @@ function deepExtend(target, ...sources) {
     }
     return target;
 }
+
+export function dispatchUIEvent(element, eventName) {
+    let e = document.createEvent("UIEvents");
+    e.initUIEvent(eventName, true, true, window, 1);
+    element.dispatchEvent(e);
+}

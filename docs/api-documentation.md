@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.22.0-snapshot
+# API Documentation for Metabase v0.23.0-snapshot
 
 ## `GET /api/activity/`
 
@@ -13,6 +13,17 @@ Get the list of 10 things the current user has been viewing most recently.
 ## `DELETE /api/card/:card-id/favorite`
 
 Unfavorite a Card.
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+
+## `DELETE /api/card/:card-id/public_link`
+
+Delete the publically-accessible link to this Card.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -34,7 +45,13 @@ Get all the `Cards`. Option filter param `f` can be used to change the set of Ca
    but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
    functions above for the specific behavior of each filter option. :card_index:
 
-   Optionally filter cards by LABEL slug.
+   Optionally filter cards by LABEL or COLLECTION slug. (COLLECTION can be a blank string, to signify cards with *no collection* should be returned.)
+
+   NOTES:
+
+   *  Filtering by LABEL is considered *deprecated*, as `Labels` will be removed from an upcoming version of Metabase in favor of `Collections`.
+   *  LABEL and COLLECTION params are mutually exclusive; if both are specified, LABEL will be ignored and Cards will only be filtered by their `Collection`.
+   *  If no `Collection` exists with the slug COLLECTION, this endpoint will return a 404.
 
 ##### PARAMS:
 
@@ -43,6 +60,8 @@ Get all the `Cards`. Option filter param `f` can be used to change the set of Ca
 *  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`label`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`collection`** value may be nil, or if non-nil, value must be a string.
 
 
 ## `GET /api/card/:id`
@@ -62,13 +81,15 @@ Create a new `Card`.
 
 *  **`dataset_query`** 
 
-*  **`description`** 
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`display`** value must be a non-blank string.
 
 *  **`name`** value must be a non-blank string.
 
 *  **`visualization_settings`** value must be a map.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `POST /api/card/:card-id/favorite`
@@ -83,12 +104,26 @@ Favorite a Card.
 ## `POST /api/card/:card-id/labels`
 
 Update the set of `Labels` that apply to a `Card`.
+   (This endpoint is considered DEPRECATED as Labels will be removed in a future version of Metabase.)
 
 ##### PARAMS:
 
 *  **`card-id`** 
 
 *  **`label_ids`** value must be an array. Each value must be an integer greater than zero.
+
+
+## `POST /api/card/:card-id/public_link`
+
+Generate publically-accessible links for this Card. Returns UUID to be used in public links.
+   (If this Card has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`card-id`** 
 
 
 ## `POST /api/card/:card-id/query`
@@ -124,6 +159,18 @@ Run the query associated with a Card, and return its results as JSON. Note that 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 
+## `POST /api/card/collections`
+
+Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with COLLECTION_ID,
+   or remove them from any Collections by passing a `null` COLLECTION_ID.
+
+##### PARAMS:
+
+*  **`card_ids`** value must be an array. Each value must be an integer greater than zero.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+
 ## `PUT /api/card/:id`
 
 Update a `Card`.
@@ -134,7 +181,7 @@ Update a `Card`.
 
 *  **`dataset_query`** 
 
-*  **`description`** 
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -143,6 +190,85 @@ Update a `Card`.
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+
+## `GET /api/collection/`
+
+Fetch a list of all Collections that the current user has read permissions for.
+   This includes `:can_write`, which means whether the current user is allowed to add or remove Cards to this Collection; keep in mind
+   that regardless of this status you must be a superuser to modify properties of Collections themselves.
+
+   By default, this returns non-archived Collections, but instead you can show archived ones by passing `?archived=true`.
+
+##### PARAMS:
+
+*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean (true or false).
+
+
+## `GET /api/collection/:id`
+
+Fetch a specific (non-archived) Collection, including cards that belong to it.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `GET /api/collection/graph`
+
+Fetch a graph of all Collection Permissions.
+
+
+## `POST /api/collection/`
+
+Create a new Collection.
+
+##### PARAMS:
+
+*  **`name`** value must be a non-blank string.
+
+*  **`color`** value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+
+
+## `PUT /api/collection/:id`
+
+Modify an existing Collection, including archiving or unarchiving it.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`name`** value must be a non-blank string.
+
+*  **`color`** value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+
+## `PUT /api/collection/graph`
+
+Do a batch update of Collections Permissions by passing in a modified graph.
+
+##### PARAMS:
+
+*  **`body`** value must be a map.
+
+
+## `DELETE /api/dashboard/:dashboard-id/public_link`
+
+Delete the publically-accessible link to this Dashboard.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
 
 
 ## `DELETE /api/dashboard/:id`
@@ -206,6 +332,19 @@ Create a new `Dashboard`.
 *  **`parameters`** value must be an array. Each value must be a map.
 
 *  **`dashboard`** 
+
+
+## `POST /api/dashboard/:dashboard-id/public_link`
+
+Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links.
+   (If this Dashboard has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
 
 
 ## `POST /api/dashboard/:id/cards`
@@ -542,7 +681,7 @@ Fetch basic info for the Getting Started guide.
 
 ## `DELETE /api/label/:id`
 
-Delete a `Label`. :label:
+[DEPRECATED] Delete a `Label`. :label:
 
 ##### PARAMS:
 
@@ -551,12 +690,12 @@ Delete a `Label`. :label:
 
 ## `GET /api/label/`
 
-List all `Labels`. :label:
+[DEPRECATED] List all `Labels`. :label:
 
 
 ## `POST /api/label/`
 
-Create a new `Label`. :label: 
+[DEPRECATED] Create a new `Label`. :label:
 
 ##### PARAMS:
 
@@ -567,7 +706,7 @@ Create a new `Label`. :label:
 
 ## `PUT /api/label/:id`
 
-Update a `Label`. :label:
+[DEPRECATED] Update a `Label`. :label:
 
 ##### PARAMS:
 
@@ -818,6 +957,61 @@ You must be a superuser to do this.
 *  **`group-id`** 
 
 *  **`name`** value must be a non-blank string.
+
+
+## `GET /api/public/card/:uuid`
+
+Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/card/:uuid/csv`
+
+Fetch a publically-accessible Card and return query results as CSV. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/card/:uuid/json`
+
+Fetch a publically-accessible Card and return query results as JSON. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/dashboard/:uuid`
+
+Fetch a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+
+## `GET /api/public/dashboard/:uuid/card/:card-id`
+
+Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 
 ## `DELETE /api/pulse/:id`

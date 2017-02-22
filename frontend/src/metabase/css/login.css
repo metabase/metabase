@@ -7,7 +7,6 @@
 /* the login content should always sit on top of the illustration */
 .Login-content {
     position: relative;
-    z-index: 1000;
 }
 
 .Login-header {
@@ -15,7 +14,6 @@
 }
 
 .brand-scene {
-    z-index: 4;
     overflow: hidden;
     height: 180px;
 }

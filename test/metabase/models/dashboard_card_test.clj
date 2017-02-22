@@ -1,11 +1,11 @@
 (ns metabase.models.dashboard-card-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer :all]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.hydrate :refer :all]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]))
@@ -35,7 +35,7 @@
    :parameter_mappings     [{:foo "bar"}]
    :visualization_settings {}
    :series                 []}
-  (tu/with-temp* [Dashboard     [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
                   DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]]
     (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))))
@@ -59,7 +59,7 @@
                              :display                :table
                              :dataset_query          {}
                              :visualization_settings {}}]}
-  (tu/with-temp* [Dashboard           [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard           [{dashboard-id :id}]
                   Card                [{card-id :id}]
                   Card                [{series-id-1 :id} {:name "Additional Series Card 1"}]
                   Card                [{series-id-2 :id} {:name "Additional Series Card 2"}]
@@ -76,7 +76,7 @@
    #{"card2"}
    #{"card2" "card1"}
    #{"card1" "card3"}]
-  (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name       "Test Dashboard"
+  (tt/with-temp* [Dashboard     [{dashboard-id :id} {:name       "Test Dashboard"
                                                      :creator_id (user->id :rasta)}]
                   Card          [{card-id :id}]
                   DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
@@ -119,7 +119,7 @@
                               :display                :table
                               :dataset_query          {}
                               :visualization_settings {}}]}]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id} {:name "Test Card"}]]
     (let [dashboard-card (create-dashboard-card! {:creator_id             (user->id :rasta)
                                                   :dashboard_id           dashboard-id
@@ -181,7 +181,7 @@
                               :display                :table
                               :dataset_query          {}
                               :visualization_settings {}}]}]
-  (tu/with-temp* [Dashboard     [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
                   DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]
                   Card          [{card-id-1 :id}   {:name "Test Card 1"}]

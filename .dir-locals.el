@@ -1,10 +1,11 @@
 ((clojure-mode . ((eval . (progn
                             ;; Specify which arg is the docstring for certain macros
                             ;; (Add more as needed)
-                            (put 'defannotation 'clojure-doc-string-elt 2)
                             (put 'defendpoint 'clojure-doc-string-elt 3)
+                            (put 'api/defendpoint 'clojure-doc-string-elt 3)
                             (put 'defsetting 'clojure-doc-string-elt 2)
                             (put 'setting/defsetting 'clojure-doc-string-elt 2)
+                            (put 's/defn 'clojure-doc-string-elt 2)
 
                             ;; Define custom indentation for functions inside metabase.
                             ;; This list isn't complete; add more forms as we come across them.
@@ -22,7 +23,6 @@
                               (execute-query 1)
                               (execute-sql! 2)
                               (expect 0)
-                              (expect-when-testing-engine 1)
                               (expect-with-all-engines 0)
                               (expect-with-engine 1)
                               (expect-with-engines 1)
@@ -33,7 +33,7 @@
                               (match-$ 1)
                               (merge-with 1)
                               (post-select 1)
-                              (pre-cascade-delete 1)
+                              (pre-delete 1)
                               (pre-insert 1)
                               (pre-update 1)
                               (project 1)

@@ -3,7 +3,7 @@
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
-import getGAMetadata from "promise?global!metabase/lib/ga-metadata";
+import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
 
 export const ActivityApi = {
     list:                        GET("/api/activity"),
@@ -11,7 +11,10 @@ export const ActivityApi = {
 };
 
 export const CardApi = {
-    list:                        GET("/api/card"),
+    list:                        GET("/api/card", (cards, { data }) =>
+                                    // support for the "q" query param until backend implements it
+                                    cards.filter(card => !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0)
+                                 ),
     create:                     POST("/api/card"),
     get:                         GET("/api/card/:cardId"),
     update:                      PUT("/api/card/:id"),
@@ -21,6 +24,10 @@ export const CardApi = {
     favorite:                   POST("/api/card/:cardId/favorite"),
     unfavorite:               DELETE("/api/card/:cardId/favorite"),
     updateLabels:               POST("/api/card/:cardId/labels"),
+
+    listPublic:                  GET("/api/card/public"),
+    createPublicLink:           POST("/api/card/:id/public_link"),
+    deletePublicLink:         DELETE("/api/card/:id/public_link"),
 };
 
 export const DashboardApi = {
@@ -32,6 +39,27 @@ export const DashboardApi = {
     addcard:                    POST("/api/dashboard/:dashId/cards"),
     removecard:               DELETE("/api/dashboard/:dashId/cards"),
     reposition_cards:            PUT("/api/dashboard/:dashId/cards"),
+
+    listPublic:                  GET("/api/dashboard/public"),
+    createPublicLink:           POST("/api/dashboard/:id/public_link"),
+    deletePublicLink:         DELETE("/api/dashboard/:id/public_link"),
+};
+
+export const CollectionsApi = {
+    list:                        GET("/api/collection"),//  () => []),
+    create:                     POST("/api/collection"),
+    get:                         GET("/api/collection/:id"),
+    update:                      PUT("/api/collection/:id"),
+    delete:                   DELETE("/api/collection/:id"),
+    graph:                       GET("/api/collection/graph"),
+    updateGraph:                 PUT("/api/collection/graph"),
+};
+
+export const PublicApi = {
+    card:                        GET("/api/public/card/:uuid"),
+    cardQuery:                   GET("/api/public/card/:uuid/query"),
+    dashboard:                   GET("/api/public/dashboard/:uuid"),
+    dashboardCardQuery:          GET("/api/public/dashboard/:uuid/card/:cardId")
 };
 
 export const EmailApi = {
@@ -181,3 +209,5 @@ export const UserApi = {
 export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
 };
+
+global.services = exports;

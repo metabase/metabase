@@ -337,12 +337,13 @@
 ;; that actually reflects the units the results are in.
 ;; eg when we breakout by one unit and filter by another, make sure the results and the col info
 ;; use the unit used by breakout
-(defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by]}]
+(defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by with-interval]
+                                        :or   {with-interval :current}}]
   (let [results (data/with-temp-db [_ (checkins:1-per-day)]
                   (data/run-query checkins
                     (ql/aggregation (ql/count))
                     (ql/breakout (ql/datetime-field $timestamp breakout-by))
-                    (ql/filter (ql/time-interval $timestamp :current filter-by))))]
+                    (ql/filter (ql/time-interval $timestamp with-interval filter-by))))]
     {:rows (or (-> results :row_count)
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
@@ -366,3 +367,12 @@
 (expect-with-non-timeseries-dbs-except #{:bigquery}
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
+
+;; make sure if you use a relative date bucket in the past (e.g. "past 2 months") you get the correct amount of rows (#3910)
+(expect-with-non-timeseries-dbs-except #{:bigquery}
+  {:rows 2, :unit :day}
+  (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval -2))
+
+(expect-with-non-timeseries-dbs-except #{:bigquery}
+  {:rows 2, :unit :day}
+  (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day", :with-interval 2))

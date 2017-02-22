@@ -1,6 +1,7 @@
 (ns metabase.driver.mysql-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             (metabase.driver [generic-sql :as sql]
                              mysql)
             [metabase.models.database :refer [Database]]
@@ -63,7 +64,7 @@
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
   (data/with-temp-db [db tiny-int-ones]
-    (tu/with-temp Database [db {:engine "mysql"
+    (tt/with-temp Database [db {:engine "mysql"
                                 :details (assoc (:details db)
                                            :additional-options "tinyInt1isBit=false")}]
       (sync-db/sync-database! db)

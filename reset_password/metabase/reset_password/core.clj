@@ -1,6 +1,7 @@
 (ns metabase.reset-password.core
   (:gen-class)
-  (:require [metabase.db :as db]
+  (:require [toucan.db :as db]
+            [metabase.db :as mdb]
             [metabase.models.user :as user]))
 
 (defn- set-reset-token!
@@ -12,7 +13,7 @@
 
 (defn -main
   [email-address]
-  (db/setup-db!)
+  (mdb/setup-db!)
   (println (format "Resetting password for %s..." email-address))
   (try
     (println (format "OK [[[%s]]]" (set-reset-token! email-address)))

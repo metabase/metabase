@@ -16,7 +16,7 @@ const ConfirmContent = ({
 }) =>
     <ModalContent
         title={title}
-        closeFn={() => { onCancel(); onClose(); }}
+        onClose={() => { onCancel(); onClose(); }}
     >
         <div className="mx4">{content}</div>
 

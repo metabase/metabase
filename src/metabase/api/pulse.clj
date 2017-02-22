@@ -3,13 +3,13 @@
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [hiccup.core :refer [html]]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.email :as email]
             [metabase.events :as events]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
-                             [interface :as models]
+                             [interface :as mi]
                              [pulse :refer [Pulse retrieve-pulse] :as pulse]
                              [pulse-channel :refer [channel-types]])
             [metabase.query-processor :as qp]
@@ -23,8 +23,8 @@
   "Fetch all `Pulses`"
   []
   (for [pulse (pulse/retrieve-pulses)
-        :let  [can-read?  (models/can-read? pulse)
-               can-write? (models/can-write? pulse)]
+        :let  [can-read?  (mi/can-read? pulse)
+               can-write? (mi/can-write? pulse)]
         :when (or can-read?
                   can-write?)]
     (assoc pulse :read_only (not can-write?))))
@@ -71,8 +71,9 @@
   "Delete a `Pulse`."
   [id]
   (let-404 [pulse (Pulse id)]
-    (u/prog1 (db/cascade-delete! Pulse :id id)
-      (events/publish-event! :pulse-delete (assoc pulse :actor_id *current-user-id*)))))
+    (db/delete! Pulse :id id)
+    (events/publish-event! :pulse-delete (assoc pulse :actor_id *current-user-id*)))
+  generic-204-no-content)
 
 
 (defendpoint GET "/form_input"

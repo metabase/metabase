@@ -10,7 +10,7 @@
 ;; (#2332) check that if field values are long we skip over them
 (expect
   {:values nil}
-  (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [(str/join (repeat 5000 "A"))])}
+  (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])}
     #(test:cardinality-and-extract-field-values {} {})))
 
 (expect

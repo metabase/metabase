@@ -4,11 +4,12 @@
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
             monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
-            (metabase [config :as config]
-                      [db :as db])
-            (metabase.models [interface :as models]
-                             [session :refer [Session]]
+            [metabase.config :as config]
+            [metabase.db :as mdb]
+            (metabase.models [session :refer [Session]]
                              [setting :refer [defsetting]]
                              [user :refer [User], :as user])
             [metabase.util :as u])
@@ -28,8 +29,13 @@
   (or (zero? (count uri))
       (not (or (re-matches #"^/app/.*$" uri)
                (re-matches #"^/api/.*$" uri)
+               (re-matches #"^/public/.*$" uri)
                (re-matches #"^/favicon.ico$" uri)))))
 
+(defn- public?
+  "Is this ring request one that will serve `public.html`?"
+  [{:keys [uri]}]
+  (re-matches #"^/public/.*$" uri))
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
@@ -53,27 +59,44 @@
                     (assoc request :metabase-session-id session-id)
                     request))))
 
+(defn- session-with-id
+  "Fetch a session with SESSION-ID, and include the User ID and superuser status associated with it."
+  [session-id]
+  (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
+    (mdb/join [Session :user_id] [User :id])
+    (db/qualify User :is_active) true
+    (db/qualify Session :id) session-id))
 
-(defn- add-current-user-id [{:keys [metabase-session-id] :as request}]
-  (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-        (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-                             (db/join [Session :user_id] [User :id])
-                             (db/qualify User :is_active) true
-                             (db/qualify Session :id) metabase-session-id)]
-          (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
-                                                                   (.getTime created-at))
-                                                                 0))]
-            ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-            (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-              (assoc request
-                :metabase-user-id (:user_id session)
-                :is-superuser?    (:is_superuser session))))))
-      request))
+(defn- session-age-ms [session]
+  (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                      (.getTime created-at))
+                                    0)))
+
+(defn- session-age-minutes [session]
+  (quot (session-age-ms session) 60000))
+
+(defn- session-expired? [session]
+  (> (session-age-minutes session)
+     (config/config-int :max-session-age)))
+
+(defn- current-user-info-for-session
+  "Return User ID and superuser status for Session with SESSION-ID if it is valid and not expired."
+  [session-id]
+  (when (and session-id ((resolve 'metabase.core/initialized?)))
+    (when-let [session (session-with-id session-id)]
+      (when-not (session-expired? session)
+        {:metabase-user-id (:user_id session)
+         :is-superuser?    (:is_superuser session)}))))
+
+(defn- add-current-user-info [{:keys [metabase-session-id], :as request}]
+  (when-not ((resolve 'metabase.core/initialized?))
+    (println "Metabase is not initialized yet!")) ; DEBUG
+  (merge request (current-user-info-for-session metabase-session-id)))
 
 (defn wrap-current-user-id
   "Add `:metabase-user-id` to the request if a valid session token was passed."
   [handler]
-  (comp handler add-current-user-id))
+  (comp handler add-current-user-info))
 
 
 (defn enforce-authentication
@@ -160,7 +183,8 @@
                                                                     "*.intercom.io"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
-                                                      :frame-src   ["https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
+                                                      :frame-src   ["'self'"
+                                                                    "https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
@@ -192,13 +216,14 @@
          strict-transport-security-header
          #_(public-key-pins-header)))
 
-(defn- index-page-security-headers []
+(defn- html-page-security-headers [& {:keys [allow-iframes?] }]
   (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
          #_(public-key-pins-header)
-         {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
-          "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
+         (when-not allow-iframes?
+           {"X-Frame-Options"                 "DENY"})        ; Tell browsers not to render our site as an iframe (prevent clickjacking)
+         {"X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
           "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.
           "X-Content-Type-Options"            "nosniff"}))    ; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
 
@@ -209,7 +234,8 @@
     (let [response (handler request)]
       (update response :headers merge (cond
                                         (api-call? request) (api-security-headers)
-                                        (index? request)    (index-page-security-headers))))))
+                                        (public? request)   (html-page-security-headers, :allow-iframes? true)
+                                        (index? request)    (html-page-security-headers))))))
 
 
 ;;; # ------------------------------------------------------------ JSON SERIALIZATION CONFIG ------------------------------------------------------------

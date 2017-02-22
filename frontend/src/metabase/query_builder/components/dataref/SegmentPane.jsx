@@ -6,9 +6,8 @@ import QueryButton from "metabase/components/QueryButton.jsx";
 import UseForButton from "./UseForButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
 
-import Query from "metabase/lib/query";
 import { createCard } from "metabase/lib/card";
-import { createQuery } from "metabase/lib/query";
+import Query, { createQuery } from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -50,10 +49,9 @@ export default class SegmentPane extends Component {
         let query = this.props.query;
         // Add an aggregation so both aggregation and filter popovers aren't visible
         if (!Query.hasValidAggregation(query.query)) {
-            Query.updateAggregation(query.query, ["rows"]);
+            Query.clearAggregations(query.query);
         }
-        Query.addFilter(query.query);
-        Query.updateFilter(query.query, Query.getFilters(query.query).length - 1, ["SEGMENT", this.props.segment.id]);
+        Query.addFilter(query.query, ["SEGMENT", this.props.segment.id]);
         this.props.setQueryFn(query);
         this.props.runQueryFn();
     }

@@ -1,21 +1,20 @@
 (ns metabase.models.session-test
   (:require [expectations :refer :all]
-            metabase.db
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             (metabase.models [session :refer :all]
                              [user :refer [User]])
-            [metabase.test.util :refer :all]
             [metabase.test.data.users :refer :all]
+            [metabase.test.util :as tu]
             [metabase.util :as u]))
-
-(resolve-private-vars metabase.db simple-insert-many!)
 ;; first-session-for-user
 (expect
   "the-greatest-day-ever"
-  (with-temp User [{user-id :id} {:first_name (random-name)
-                                  :last_name  (random-name)
-                                  :email      (str (random-name) "@metabase.com")
-                                  :password   "nada"}]
-    (simple-insert-many! Session
+  (tt/with-temp User [{user-id :id} {:first_name (tu/random-name)
+                                     :last_name  (tu/random-name)
+                                     :email      (str (tu/random-name) "@metabase.com")
+                                     :password   "nada"}]
+    (db/simple-insert-many! Session
       [{:id         "the-greatest-day-ever"
         :user_id    user-id
         :created_at (u/->Timestamp "1980-10-19T05:05:05.000Z")}

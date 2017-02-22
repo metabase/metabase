@@ -11,10 +11,10 @@
                       [stream :as s])
             [throttle.core :as throttle]
             [metabase.api.common :refer [*current-user-permissions-set* read-check]]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
-                             [interface :as models]
+                             [interface :as mi]
                              [permissions :refer [Permissions]]
                              [permissions-group :as perms-group]
                              [setting :refer [defsetting], :as setting])
@@ -100,7 +100,7 @@
   "Implementation of the `metabot list cards` command."
   [& _]
   (let [cards (with-metabot-permissions
-                (filterv models/can-read? (db/select [Card :id :name :dataset_query], {:order-by [[:id :desc]], :limit 20})))]
+                (filterv mi/can-read? (db/select [Card :id :name :dataset_query], {:order-by [[:id :desc]], :limit 20})))]
     (str "Here's your " (count cards) " most recent cards:\n" (format-cards cards))))
 
 (defn- card-with-name [card-name]
@@ -317,3 +317,12 @@
   (log/info "Stopping MetaBot...  🤖")
   (reset! websocket-monitor-thread-id nil)
   (disconnect-websocket!))
+
+(defn restart-metabot!
+  "Restart the Metabot listening process.
+   Used on settings changed"
+  []
+  (when @websocket-monitor-thread-id
+    (log/info "Metabot already running. Killing the previous WebSocket listener first.")
+    (stop-metabot!))
+  (start-metabot!))

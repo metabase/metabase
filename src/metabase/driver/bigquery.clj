@@ -6,11 +6,12 @@
             (honeysql [core :as hsql]
                       [helpers :as h])
             [metabase.config :as config]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.google :as google]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
@@ -87,15 +88,17 @@
    {:pre [client (seq project-id) (seq dataset-id) (seq table-id)]}
    (google/execute (.get (.tables client) project-id dataset-id table-id))))
 
-(def ^:private ^:const  bigquery-type->base-type
-  {"BOOLEAN"   :type/Boolean
-   "FLOAT"     :type/Float
-   "INTEGER"   :type/Integer
-   "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
-   "STRING"    :type/Text
-   "DATE"      :type/Date
-   "DATETIME"  :type/DateTime
-   "TIMESTAMP" :type/DateTime})
+(defn- bigquery-type->base-type [field-type]
+  (case field-type
+    "BOOLEAN"   :type/Boolean
+    "FLOAT"     :type/Float
+    "INTEGER"   :type/Integer
+    "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
+    "STRING"    :type/Text
+    "DATE"      :type/Date
+    "DATETIME"  :type/DateTime
+    "TIMESTAMP" :type/DateTime
+    :type/*))
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]
@@ -240,9 +243,6 @@
     :quarter-of-year (hx/quarter expr)
     :year            (hx/year expr)))
 
-(defn- date-string->literal [^String date-string]
-  (hx/->timestamp (hx/literal (u/format-date "yyyy-MM-dd 00:00" (u/->Date date-string)))))
-
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :sec_to_timestamp  expr)
@@ -295,8 +295,10 @@
        :table-name table-name
        :mbql?      true})))
 
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native, :as outer-query}]
-  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" sql)
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
+  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" (if (seq params)
+                                                                 (unprepare/unprepare (cons sql params))
+                                                                 sql))
         results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
@@ -394,7 +396,6 @@
           :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
-          :date-string->literal      (u/drop-first-arg date-string->literal)
           :field->alias              (u/drop-first-arg field->alias)
           :field->identifier         (u/drop-first-arg field->identifier)
           :prepare-value             (u/drop-first-arg prepare-value)

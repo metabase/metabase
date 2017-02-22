@@ -1,12 +1,12 @@
 (ns metabase.events.activity-feed
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.events :as events]
             (metabase.models [activity :refer [Activity], :as activity]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
-                             [interface :as models]
+                             [interface :as mi]
                              [session :refer [Session first-session-for-user]]
                              [table :as table])))
 

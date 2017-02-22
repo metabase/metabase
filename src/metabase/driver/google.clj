@@ -2,7 +2,7 @@
   "Shared logic for various Google drivers, including BigQuery and Google Analytics."
   (:require [clojure.tools.logging :as log]
             [metabase.config :as config]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.database :refer [Database]]
             [metabase.util :as u])
   (:import java.util.Collections

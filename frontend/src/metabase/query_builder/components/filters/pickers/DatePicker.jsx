@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
 import SpecificDatePicker from "./SpecificDatePicker";
@@ -7,7 +9,11 @@ import Calendar from "metabase/components/Calendar";
 
 import moment from "moment";
 
+import { mbqlEq } from "metabase/lib/query/util";
+
 import _ from "underscore";
+
+import type { FieldFilter, TimeIntervalFilter } from "metabase/meta/types/Query";
 
 const SingleDatePicker = ({ filter: [op, field, value], onFilterChange }) =>
     <SpecificDatePicker value={value} onChange={(value) => onFilterChange([op, field, value])} calendar />
@@ -36,9 +42,22 @@ const PreviousPicker =  (props) =>
 const NextPicker = (props) =>
     <RelativeDatePicker {...props} />
 
-class CurrentPicker extends Component {
-    constructor() {
-        super();
+
+type CurentPickerProps = {
+    filter: TimeIntervalFilter,
+    onFilterChange: (filter: TimeIntervalFilter) => void
+};
+
+type CurrentPickerState = {
+    showUnits: boolean
+};
+
+class CurrentPicker extends Component<*, CurentPickerProps, CurrentPickerState> {
+    props: CurentPickerProps;
+    state: CurrentPickerState;
+
+    constructor(props) {
+        super(props);
         this.state = { showUnits: false };
     }
 
@@ -62,27 +81,37 @@ class CurrentPicker extends Component {
 }
 
 
-const getIntervals = ([op, field, value, unit]) => op === "TIME_INTERVAL" && typeof value === "number" ? Math.abs(value) : 30;
-const getUnit      = ([op, field, value, unit]) => op === "TIME_INTERVAL" && unit ? unit : "day";
+const getIntervals = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && typeof value === "number" ? Math.abs(value) : 30;
+const getUnit      = ([op, field, value, unit]) => mbqlEq(op, "time-interval") && unit ? unit : "day";
 const getDate      = (value) => typeof value === "string" && moment(value).isValid() ? value : moment().format("YYYY-MM-DD");
 
-const OPERATORS = [
+
+export type Operator = {
+    name: string,
+    widget?: any,
+    init: (filter: FieldFilter) => any,
+    test: (filter: FieldFilter) => boolean
+}
+
+const OPERATORS: Operator[] = [
     {
         name: "Previous",
-        init: (filter) => ["TIME_INTERVAL", filter[1], -getIntervals(filter), getUnit(filter)],
-        test: ([op, field, value]) => op === "TIME_INTERVAL" && value < 0 || Object.is(value, -0),
+        init: (filter) => ["time-interval", filter[1], -getIntervals(filter), getUnit(filter)],
+        // $FlowFixMe
+        test: ([op, field, value]) => mbqlEq(op, "time-interval") && value < 0 || Object.is(value, -0),
         widget: PreviousPicker,
     },
     {
         name: "Next",
-        init: (filter) => ["TIME_INTERVAL", filter[1], getIntervals(filter), getUnit(filter)],
-        test: ([op, field, value]) => op === "TIME_INTERVAL" && value >= 0,
+        init: (filter) => ["time-interval", filter[1], getIntervals(filter), getUnit(filter)],
+        // $FlowFixMe
+        test: ([op, field, value]) => mbqlEq(op, "time-interval") && value >= 0,
         widget: NextPicker,
     },
     {
         name: "Current",
-        init: (filter) => ["TIME_INTERVAL", filter[1], "current", getUnit(filter)],
-        test: ([op, field, value]) => op === "TIME_INTERVAL" && value === "current",
+        init: (filter) => ["time-interval", filter[1], "current", getUnit(filter)],
+        test: ([op, field, value]) => mbqlEq(op, "time-interval") && value === "current",
         widget: CurrentPicker,
     },
     {
@@ -121,7 +150,13 @@ const OPERATORS = [
     }
 ];
 
-export default class DatePicker extends Component {
+type Props = {
+    filter: FieldFilter,
+    onFilterChange: (filter: FieldFilter) => void,
+    tableMetadata: any
+}
+
+export default class DatePicker extends Component<*, Props, *> {
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,

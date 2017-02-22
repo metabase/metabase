@@ -32,12 +32,14 @@ import {
     tableForeignKeys,
     tableForeignKeyReferences,
     uiControls,
-    getParameters,
+    getParametersWithValues,
     getDatabaseFields,
     getSampleDatasetId,
     getNativeDatabases,
     getIsRunnable,
 } from "../selectors";
+
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
 import { push } from "react-router-redux";
@@ -66,9 +68,8 @@ function autocompleteResults(card, prefix) {
 
 const mapStateToProps = (state, props) => {
     return {
-        user:                      state.currentUser,
+        isAdmin:                   getUserIsAdmin(state, props),
         fromUrl:                   props.location.query.from,
-        location:                  props.location,
 
         card:                      card(state),
         originalCard:              originalCard(state),
@@ -85,7 +86,7 @@ const mapStateToProps = (state, props) => {
         isNew:                     isNew(state),
         isObjectDetail:            isObjectDetail(state),
         uiControls:                uiControls(state),
-        parameters:                getParameters(state),
+        parameters:                getParametersWithValues(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
 
@@ -210,18 +211,20 @@ export default class QueryBuilder extends Component {
                         { card && card.dataset_query && card.dataset_query.type === "native" ?
                             <NativeQueryEditor {...this.props} isOpen={!card.dataset_query.native.query || isDirty} />
                         :
-                            <div className="wrapper"><GuiQueryEditor {...this.props}/></div>
+                            <div className="wrapper">
+                                <GuiQueryEditor {...this.props}/>
+                            </div>
                         }
                     </div>
 
                     <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        <QueryVisualization {...this.props}/>
+                        <QueryVisualization {...this.props} />
                     </div>
                 </div>
 
                 <div className={cx("SideDrawer", { "SideDrawer--show": showDrawer })}>
                     { uiControls.isShowingDataReference &&
-                        <DataReference {...this.props} closeFn={() => this.props.toggleDataReference()} />
+                        <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
 
                     { uiControls.isShowingTemplateTagsEditor &&

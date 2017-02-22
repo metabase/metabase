@@ -10,10 +10,12 @@ import VisualizationError from "./VisualizationError.jsx";
 import VisualizationResult from "./VisualizationResult.jsx";
 
 import Warnings from "./Warnings.jsx";
-import DownloadWidget from "./DownloadWidget.jsx";
+import QueryDownloadWidget from "./QueryDownloadWidget.jsx";
+import QuestionShareWidget from "../containers/QuestionShareWidget";
 
 import { formatNumber, inflect } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
+import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -52,8 +54,8 @@ export default class QueryVisualization extends Component {
 
     _getStateFromProps(props) {
         return {
-            lastRunDatasetQuery: JSON.parse(JSON.stringify(props.card.dataset_query)),
-            lastRunParameterValues: JSON.parse(JSON.stringify(props.parameterValues))
+            lastRunDatasetQuery: Utils.copy(props.card.dataset_query),
+            lastRunParameterValues: Utils.copy(props.parameterValues)
         };
     }
 
@@ -81,7 +83,10 @@ export default class QueryVisualization extends Component {
     }
 
     renderHeader() {
-        const { isObjectDetail, isRunning, card, result } = this.props;
+        const { isObjectDetail, isRunning, isAdmin, card, result } = this.props;
+        const isDirty = this.queryIsDirty();
+        const isSaved = card.id != null;
+        const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
                 <span className="relative z4">
@@ -90,23 +95,29 @@ export default class QueryVisualization extends Component {
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
                         canRun={this.props.isRunnable}
-                        isDirty={this.queryIsDirty()}
+                        isDirty={isDirty}
                         isRunning={isRunning}
                         runFn={this.runQuery}
                         cancelFn={this.props.cancelQueryFn}
                     />
                 </div>
                 <div className="absolute right z4 flex align-center" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
-                    { !this.queryIsDirty() && this.renderCount() }
+                    { !isDirty && this.renderCount() }
                     { !isObjectDetail &&
                         <Warnings warnings={this.state.warnings} className="mx2" size={18} />
                     }
-                    { !this.queryIsDirty() && result && !result.error ?
-                        <DownloadWidget
+                    { !isDirty && result && !result.error ?
+                        <QueryDownloadWidget
                             className="mx1"
                             card={card}
-                            datasetQuery={result.json_query}
-                            isLarge={result.data.rows_truncated != null}
+                            result={result}
+                        />
+                    : null }
+                    { isSaved && isPublicLinksEnabled && (isAdmin || card.public_uuid) ?
+                        <QuestionShareWidget
+                            className="mx1"
+                            card={card}
+                            isAdmin={isAdmin}
                         />
                     : null }
                 </div>
@@ -181,5 +192,5 @@ export default class QueryVisualization extends Component {
 const VisualizationEmptyState = ({showTutorialLink}) =>
     <div className="flex full layout-centered text-grey-1 flex-column">
         <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-        { showTutorialLink && <Link to="/q?tutorial" className="link cursor-pointer my2">How do I use this thing?</Link> }
+        { showTutorialLink && <Link to="/q#?tutorial" className="link cursor-pointer my2">How do I use this thing?</Link> }
     </div>

@@ -18,6 +18,7 @@ import cx from 'classnames';
 
 import {
     getSettings,
+    getSettingValues,
     getSections,
     getActiveSection,
     getNewVersionAvailable
@@ -27,6 +28,7 @@ import * as settingsActions from "../settings";
 const mapStateToProps = (state, props) => {
     return {
         settings:            getSettings(state, props),
+        settingValues:       getSettingValues(state, props),
         sections:            getSections(state, props),
         activeSection:       getActiveSection(state, props),
         newVersionAvailable: getNewVersionAvailable(state, props)
@@ -72,52 +74,59 @@ export default class SettingsEditorApp extends Component {
     }
 
     renderSettingsPane() {
-        if (!this.props.activeSection) return null;
+        const { activeSection, settingValues } = this.props;
 
-        let section = this.props.activeSection; // this.props.sections[this.state.currentSection];
+        if (!activeSection) {
+            return null;
+        }
 
-        if (section.name === "Email") {
+        if (activeSection.name === "Email") {
             return (
                 <SettingsEmailForm
                     ref="emailForm"
-                    elements={section.settings}
+                    elements={activeSection.settings}
                     updateEmailSettings={this.props.updateEmailSettings}
                     sendTestEmail={this.props.sendTestEmail}
                 />
             );
-        } else if (section.name === "Setup") {
+        } else if (activeSection.name === "Setup") {
             return (
                 <SettingsSetupList
                     ref="settingsForm"
                 />
             );
-        } else if (section.name === "Slack") {
+        } else if (activeSection.name === "Slack") {
             return (
                 <SettingsSlackForm
                     ref="slackForm"
-                    elements={section.settings}
+                    elements={activeSection.settings}
                     updateSlackSettings={this.props.updateSlackSettings}
                 />
             );
-        } else if (section.name === "Updates") {
+        } else if (activeSection.name === "Updates") {
             return (
                 <SettingsUpdatesForm
                     settings={this.props.settings}
-                    elements={section.settings}
+                    elements={activeSection.settings}
                     updateSetting={this.updateSetting}
                 />
             );
-        } else if (section.name === "Single Sign-On") {
+        } else if (activeSection.name === "Single Sign-On") {
             return (
                 <SettingsSingleSignOnForm
-                    elements={section.settings}
+                    elements={activeSection.settings}
                     updateSetting={this.updateSetting}
                 />
             );
         } else {
+
             return (
                 <ul>
-                    {section.settings.map((setting, index) =>
+                    {activeSection.settings
+                    .filter((setting) =>
+                        setting.getHidden ? !setting.getHidden(settingValues) : true
+                    )
+                    .map((setting, index) =>
                         <SettingsSetting
                             key={setting.key}
                             setting={setting}

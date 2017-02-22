@@ -5,6 +5,9 @@ import RetinaImage from "react-retina-image";
 
 import { loadIcon } from 'metabase/icon_paths';
 
+import Tooltipify from "metabase/hoc/Tooltipify";
+
+@Tooltipify
 export default class Icon extends Component {
     static propTypes = {
       name: PropTypes.string.isRequired,

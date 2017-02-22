@@ -2,19 +2,20 @@
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cemerick.friend.credentials :as creds]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.email.messages :as email]
-            (metabase.models [interface :as i]
-                             [permissions :as perms]
+            (metabase.models [permissions :as perms]
                              [permissions-group :as perm-group]
                              [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
                              [setting :as setting])
             [metabase.util :as u]
-            [metabase.models.permissions-group :as group]))
+            [metabase.models.permissions-group :as group])
+  (:import java.util.UUID))
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 
-(i/defentity User :core_user)
+(models/defmodel User :core_user)
 
 (defn- pre-insert [{:keys [email password reset_token] :as user}]
   (assert (u/is-email? email)
@@ -23,7 +24,7 @@
                (not (s/blank? password))))
   (assert (not (:password_salt user))
     "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
-  (let [salt     (str (java.util.UUID/randomUUID))
+  (let [salt     (str (UUID/randomUUID))
         defaults {:date_joined  (u/new-sql-timestamp)
                   :last_login   nil
                   :is_active    true
@@ -62,7 +63,7 @@
                                          :group_id (:id (group/admin))
                                          :user_id  id)
         (and (not is_superuser)
-             membership-exists?)       (db/delete! PermissionsGroupMembership ; don't use cascade-delete! here because that does the opposite and tries to update this user
+             membership-exists?)       (db/simple-delete! PermissionsGroupMembership ; don't use cascade-delete! here because that does the opposite and tries to update this user
                                          :group_id (:id (group/admin))         ; which leads to a stack overflow of calls between the two
                                          :user_id  id))))                      ; TODO - we could fix this issue by having a `post-cascade-delete!` method
   (when email
@@ -74,11 +75,13 @@
   (cond-> user
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
-(defn- pre-cascade-delete [{:keys [id]}]
+(defn- pre-delete [{:keys [id]}]
   (binding [perm-membership/*allow-changing-all-users-group-members* true]
     (doseq [[model k] [['Activity                   :user_id]
                        ['Card                       :creator_id]
+                       ['Card                       :made_public_by_id]
                        ['Dashboard                  :creator_id]
+                       ['Dashboard                  :made_public_by_id]
                        ['Metric                     :creator_id]
                        ['Pulse                      :creator_id]
                        ['QueryExecution             :executor_id]
@@ -88,18 +91,18 @@
                        [PermissionsGroupMembership :user_id]
                        ['PermissionsRevision        :user_id]
                        ['ViewLog                    :user_id]]]
-      (db/cascade-delete! model k id))))
+      (db/delete! model k id))))
 
 (u/strict-extend (class User)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:default-fields     (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
-          :hydration-keys     (constantly [:author :creator :user])
-          :pre-insert         pre-insert
-          :post-insert        post-insert
-          :pre-update         pre-update
-          :post-select        post-select
-          :pre-cascade-delete pre-cascade-delete}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:default-fields (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
+          :hydration-keys (constantly [:author :creator :user])
+          :pre-insert     pre-insert
+          :post-insert    post-insert
+          :pre-update     pre-update
+          :post-select    post-select
+          :pre-delete     pre-delete}))
 
 
 ;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
@@ -112,28 +115,31 @@
   "Convenience function for creating a new `User` and sending out the welcome email."
   [first-name last-name email-address & {:keys [send-welcome invitor password google-auth?]
                                          :or   {send-welcome false
-                                                google-auth?  false}}]
-  {:pre [(string? first-name) (string? last-name) (string? email-address)]}
+                                                google-auth? false}}]
+  {:pre [(string? first-name) (string? last-name) (string? email-address) (u/maybe? map? invitor) (u/maybe? (u/rpartial contains? :is_active) invitor)]}
   (u/prog1 (db/insert! User
              :email       email-address
              :first_name  first-name
              :last_name   last-name
              :password    (if-not (nil? password)
                             password
-                            (str (java.util.UUID/randomUUID)))
+                            (str (UUID/randomUUID)))
              :google_auth google-auth?)
     (when send-welcome
       (let [reset-token (set-user-password-reset-token! (:id <>))
             ;; the new user join url is just a password reset with an indicator that this is a first time user
             join-url    (str (form-password-reset-url reset-token) "#new")]
-        (email/send-new-user-email <> invitor join-url)))
+        (email/send-new-user-email! <> invitor join-url)))
     ;; notifiy the admin of this MB instance that a new user has joined (TODO - are there cases where we *don't* want to do this)
-    (email/send-user-joined-admin-notification-email <> invitor google-auth?)))
+    (when (or (:is_active invitor)
+              google-auth?)
+      (email/send-user-joined-admin-notification-email! <> invitor google-auth?))))
 
+;; TODO - rename to `set-password!`
 (defn set-user-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
-  (let [salt     (str (java.util.UUID/randomUUID))
+  (let [salt     (str (UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
     ;; NOTE: any password change expires the password reset token
     (db/update! User user-id
@@ -142,11 +148,12 @@
       :reset_token     nil
       :reset_triggered nil)))
 
+;; TODO - rename to `set-password-reset-token!`
 (defn set-user-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (u/prog1 (str user-id \_ (java.util.UUID/randomUUID))
+  (u/prog1 (str user-id \_ (UUID/randomUUID))
     (db/update! User user-id
       :reset_token     <>
       :reset_triggered (System/currentTimeMillis))))

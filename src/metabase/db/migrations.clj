@@ -1,24 +1,28 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them.
    These migrations are all ran once when Metabase is first launched, except when transferring data from an existing H2 database.
-   When data is transferred from an H2 database, migrations will already have been ran against that data; thus, all of these migrations
+   When data is transferred from an H2 database, migrations will already have been run against that data; thus, all of these migrations
    need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [schema.core :as s]
+            (toucan [db :as db]
+                    [models :as models])
             (metabase [config :as config]
-                      [db :as db]
                       [driver :as driver]
                       types)
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
+                             [card-label :refer [CardLabel]]
+                             [collection :refer [Collection], :as collection]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
-                             [interface :refer [defentity]]
+                             [label :refer [Label]]
                              [permissions :refer [Permissions], :as perms]
                              [permissions-group :as perm-group]
                              [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
@@ -27,15 +31,16 @@
                              [table :refer [Table] :as table]
                              [setting :as setting]
                              [user :refer [User]])
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
 ;;; # Migration Helpers
 
-(defentity DataMigrations :data_migrations)
+(models/defmodel DataMigrations :data_migrations)
 
 (defn- run-migration-if-needed!
   "Run migration defined by MIGRATION-VAR if needed.
-   RAN-MIGRATIONS is a set of migrations names that have already been ran.
+   RAN-MIGRATIONS is a set of migrations names that have already been run.
 
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
   [ran-migrations migration-var]
@@ -55,8 +60,7 @@
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
-;; TODO - shouldn't this be called `run-all!`?
-(defn run-all
+(defn run-all!
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
@@ -76,7 +80,7 @@
 ;; the values for `:database_id`, `:table_id`, and `:query_type` if possible.
 (defmigration ^{:author "agilliland", :added "0.12.0"} set-card-database-and-table-ids
   ;; only execute when `:database_id` column on all cards is `nil`
-  (when (zero? (db/select-one-count Card
+  (when (zero? (db/count Card
                  :database_id [:not= nil]))
     (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
       (when type
@@ -115,7 +119,7 @@
 ;; Remove old `database-sync` activity feed entries
 (defmigration ^{:author "agilliland", :added "0.13.0"} remove-database-sync-activity-entries
   (when-not (contains? activity-feed-topics :database-sync-begin)
-    (db/delete! Activity :topic "database-sync")))
+    (db/simple-delete! Activity :topic "database-sync")))
 
 
 ;; Migrate dashboards to the new grid
@@ -131,7 +135,7 @@
 
 ;; migrate data to new visibility_type column on field
 (defmigration ^{:author "agilliland",:added "0.16.0"} migrate-field-visibility-type
-  (when-not (zero? (db/select-one-count Field :visibility_type "unset"))
+  (when-not (zero? (db/count Field :visibility_type "unset"))
     ;; start by marking all inactive fields as :retired
     (db/update-where! Field {:visibility_type "unset"
                              :active          false}
@@ -151,7 +155,7 @@
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
 ;; TODO - this function is way to big and hard to read -- See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#break-up-larger-functions
 (defmigration ^{:author "agilliland",:added "0.17.0"} create-raw-tables
-  (when (zero? (db/select-one-count RawTable))
+  (when (zero? (db/count RawTable))
     (binding [db/*disable-db-logging* true]
       (db/transaction
        (doseq [{database-id :id, :keys [name engine]} (db/select Database)]
@@ -297,14 +301,14 @@
 (defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:%lower.special_type (s/lower-case old-type)}
+    (db/update-where! 'Field {:%lower.special_type (str/lower-case old-type)}
       :special_type new-type)
     ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
     (db/update-where! 'Field {:special_type (name (keyword new-type))}
       :special_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
     ;; migrate things like :DateTimeField -> :type/DateTime
-    (db/update-where! 'Field {:%lower.base_type (s/lower-case old-type)}
+    (db/update-where! 'Field {:%lower.base_type (str/lower-case old-type)}
       :base_type new-type)
     ;; migrate things like :DateTime -> :type/DateTime
     (db/update-where! 'Field {:base_type (name (keyword new-type))}
@@ -316,3 +320,10 @@
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
     :special_type nil))
+
+;; make sure there are no trailing slashes on the `-site-url` setting. This could be the case in some situtations if the setting was set
+;; by some other method besides the `site-url` helper function before the magic setter was in place
+(defmigration ^{:atuhor "camsaul", :added "0.23.0"} remove-trailing-slashes-from-site-url-setting
+  ;; just fetching the setting and setting it again via the magic setter will remove the trailing slash
+  (when-let [site-url (public-settings/-site-url)]
+    (public-settings/-site-url site-url)))

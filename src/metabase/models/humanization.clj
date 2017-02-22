@@ -8,7 +8,7 @@
    The actual algorithm for advanced humanization is in `metabase.util.infer-spaces`."
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.setting :refer [defsetting], :as setting]
             [metabase.util.infer-spaces :refer [infer-spaces]]))
 

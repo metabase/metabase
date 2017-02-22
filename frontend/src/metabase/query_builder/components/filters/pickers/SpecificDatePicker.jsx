@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from 'react';
 
 import Calendar from "metabase/components/Calendar";
@@ -13,15 +15,26 @@ import cx from "classnames";
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
-export default class SpecificDatePicker extends Component {
-    constructor() {
-        super();
+type Props = {
+    value: ?string,
+    onChange: (value: ?string) => void,
+    calendar?: bool
+}
+
+type State = {
+    showCalendar: bool
+}
+
+export default class SpecificDatePicker extends Component<*, Props, State> {
+    props: Props;
+    state: State;
+
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
             showCalendar: true
         }
-
-        this.onChange = this.onChange.bind(this);
     }
 
     static propTypes = {
@@ -29,7 +42,7 @@ export default class SpecificDatePicker extends Component {
         onChange: PropTypes.func.isRequired,
     };
 
-    onChange(date, hours, minutes) {
+    onChange = (date: ?string, hours: ?number, minutes: ?number) => {
         let m = moment(date);
         if (!m.isValid()) {
             this.props.onChange(null);

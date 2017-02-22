@@ -26,7 +26,8 @@ export default class LegendHeader extends Component {
         hovered: PropTypes.object,
         onHoverChange: PropTypes.func,
         onRemoveSeries: PropTypes.func,
-        actionButtons: PropTypes.node
+        actionButtons: PropTypes.node,
+        linkToCard: PropTypes.bool,
     };
 
     static defaultProps = {
@@ -46,7 +47,7 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, settings } = this.props;
+        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings } = this.props;
         const showDots = series.length > 1;
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
@@ -58,7 +59,7 @@ export default class LegendHeader extends Component {
                     <LegendItem
                         key={index}
                         title={s.card.name}
-                        href={s.card.id && Urls.card(s.card.id)}
+                        href={linkToCard && s.card.id && Urls.card(s.card.id)}
                         color={colors[index % colors.length]}
                         showDot={showDots}
                         showTitle={showTitles}

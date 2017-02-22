@@ -3,7 +3,8 @@
             [schema.core :as s]
             [metabase.api.geojson :refer [custom-geojson]]
             [metabase.test.data.users :refer [user->client]]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 (tu/resolve-private-vars metabase.api.geojson
   valid-json-url?
@@ -56,10 +57,12 @@
 ;;; test that we can set the value of custom-geojson via the normal routes
 (expect
   (merge @builtin-geojson test-custom-geojson)
-  ;; bind a temporary value so it will get set back to its old value here after the API calls are done stomping all over it
-  (tu/with-temporary-setting-values [custom-geojson nil]
-    ((user->client :crowberto) :put 200 "setting/custom-geojson" {:value test-custom-geojson})
-    ((user->client :crowberto) :get 200 "setting/custom-geojson")))
+  ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
+  (u/auto-retry 3
+    ;; bind a temporary value so it will get set back to its old value here after the API calls are done stomping all over it
+    (tu/with-temporary-setting-values [custom-geojson nil]
+      ((user->client :crowberto) :put 200 "setting/custom-geojson" {:value test-custom-geojson})
+      ((user->client :crowberto) :get 200 "setting/custom-geojson"))))
 
 
 ;;; test the endpoint that acts as a proxy for JSON files

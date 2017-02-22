@@ -37,66 +37,11 @@ const CELL_WIDTH = 246;
 const HEADER_HEIGHT = 65;
 const HEADER_WIDTH = 240;
 
-const PERMISSIONS_UI = {
-    "native": {
-        header: "SQL Queries"
-    },
-    "schemas": {
-        header: "Data Access"
-    },
-    "tables": {
-        header: "Data Access"
-    },
-    "fields": {
-        header: "Data Access",
-    }
+const DEFAULT_OPTION = {
+    icon: "unknown",
+    iconColor: "#9BA5B1",
+    bgColor: "#DFE8EA"
 };
-
-const OPTIONS_UI = {
-    "write": {
-        title: "Write raw queries",
-        tooltip: "Can write raw queries",
-        icon: "sql",
-        iconColor: "#9CC177",
-        bgColor: "#F6F9F2"
-    },
-    "read": {
-        title: "View raw queries",
-        tooltip: "Can view raw queries",
-        icon: "eye",
-        iconColor: "#F9D45C",
-        bgColor: "#FEFAEE"
-    },
-    "all": {
-        title: "Grant unrestricted access",
-        tooltip: "Unrestricted access",
-        icon: "check",
-        iconColor: "#9CC177",
-        bgColor: "#F6F9F2"
-    },
-    "controlled": {
-        title: "Limit access",
-        tooltip: "Limited access",
-        icon: "permissionsLimited",
-        iconColor: "#F9D45C",
-        bgColor: "#FEFAEE"
-    },
-    "none": {
-        title: "Revoke access",
-        tooltip: "No access",
-        icon: "close",
-        iconColor: "#EEA5A5",
-        bgColor: "#FDF3F3"
-    },
-    "unknown": {
-        icon: "unknown",
-        iconColor: "#9BA5B1",
-        bgColor: "#DFE8EA"
-    }
-}
-
-const getOptionUi = (option) =>
-    OPTIONS_UI[option] || { ...OPTIONS_UI.unknown, title: option };
 
 const GroupColumnHeader = ({ group, permissions, isLastColumn, isFirstColumn }) =>
     <div className="absolute bottom left right">
@@ -110,16 +55,18 @@ const GroupColumnHeader = ({ group, permissions, isLastColumn, isFirstColumn }) 
         </h4>
         <div className="flex" style={getBorderStyles({ isLastColumn, isFirstColumn, isFirstRow: true, isLastRow: false })}>
             { permissions.map((permission, index) =>
-                <div key={permission.id} className="flex-full py1 border-column-divider" style={{
+                <div key={permission.id} className="flex-full border-column-divider" style={{
                     borderColor: LIGHT_BORDER,
                 }}>
-                    <h5 className="text-centered text-grey-3 text-uppercase text-light">{permission.header}</h5>
+                    { permission.header &&
+                        <h5 className="my1 text-centered text-grey-3 text-uppercase text-light">{permission.header}</h5>
+                    }
                 </div>
             )}
         </div>
     </div>
 
-const PermissionsCell = ({ group, permissions, entity, onUpdatePermission, isLastRow, isLastColumn, isFirstColumn }) =>
+const PermissionsCell = ({ group, permissions, entity, onUpdatePermission, isLastRow, isLastColumn, isFirstColumn, isFaded }) =>
     <div className="flex" style={getBorderStyles({ isLastRow, isLastColumn, isFirstColumn, isFirstRow: false })}>
         { permissions.map(permission =>
             <GroupPermissionCell
@@ -129,6 +76,7 @@ const PermissionsCell = ({ group, permissions, entity, onUpdatePermission, isLas
                 entity={entity}
                 onUpdatePermission={onUpdatePermission}
                 isEditable={group.editable}
+                isFaded={isFaded}
             />
         )}
     </div>
@@ -157,14 +105,15 @@ class GroupPermissionCell extends Component {
         return false
     }
     render() {
-        const { permission, group, entity, onUpdatePermission } = this.props;
+        const { permission, group, entity, onUpdatePermission, isFaded } = this.props;
         const { confirmations } = this.state;
 
         const value = permission.getter(group.id, entity.id);
         const options = permission.options(group.id, entity.id);
         const warning = permission.warning && permission.warning(group.id, entity.id);
 
-        let isEditable = this.props.isEditable && options.filter(option => option !== value).length > 0;
+        let isEditable = this.props.isEditable && options.filter(option => option.value !== value).length > 0;
+        const option = _.findWhere(options, { value }) || DEFAULT_OPTION;
 
         return (
                 <PopoverWithTrigger
@@ -172,24 +121,24 @@ class GroupPermissionCell extends Component {
                     disabled={!isEditable}
                     triggerClasses="cursor-pointer flex flex-full layout-centered border-column-divider"
                     triggerElement={
-                        <Tooltip tooltip={getOptionUi(value).tooltip}>
+                        <Tooltip tooltip={option.tooltip}>
                             <div
-                                className={cx(
-                                    'flex-full flex layout-centered relative',
-                                    { 'cursor-pointer' : isEditable }
-                                )}
+                                className={cx('flex-full flex layout-centered relative', {
+                                    'cursor-pointer' : isEditable,
+                                    faded: isFaded
+                                })}
                                 style={{
                                     borderColor: LIGHT_BORDER,
                                     height: CELL_HEIGHT - 1,
-                                    backgroundColor: this.state.hovered ? getOptionUi(value).iconColor : getOptionUi(value).bgColor,
+                                    backgroundColor: this.state.hovered ? option.iconColor : option.bgColor,
                                 }}
                                 onMouseEnter={() => this.hoverEnter()}
                                 onMouseLeave={() => this.hoverExit()}
                             >
                                 <Icon
-                                    name={getOptionUi(value).icon}
+                                    name={option.icon}
                                     size={28}
-                                    style={{ color: this.state.hovered ? '#fff' : getOptionUi(value).iconColor }}
+                                    style={{ color: this.state.hovered ? '#fff' : option.iconColor }}
                                 />
                                 { confirmations && confirmations.length > 0 &&
                                     <Modal>
@@ -250,18 +199,18 @@ const AccessOption = ({ value, option, onChange }) =>
         className={cx("flex py2 px2 align-center bg-brand-hover text-white-hover cursor-pointer", {
             "bg-brand text-white": value === option
         })}
-        onClick={() => onChange(option)}
+        onClick={() => onChange(option.value)}
     >
-        <Icon name={getOptionUi(option).icon} className="mr1" style={{ color: getOptionUi(option).iconColor }} size={18} />
-        {getOptionUi(option).title}
+        <Icon name={option.icon} className="mr1" style={{ color: option.iconColor }} size={18} />
+        {option.title}
     </div>
 
 const AccessOptionList = ({ value, options, onChange }) =>
     <ul className="py1">
         { options.map(option => {
-            if( value !== option ) {
+            if( value !== option.value ) {
                 return (
-                    <li key={option}>
+                    <li key={option.value}>
                         <AccessOption value={value} option={option} onChange={onChange} />
                     </li>
                )
@@ -296,9 +245,11 @@ const CornerHeader = ({ grid }) =>
         </div>
     </div>
 
-const PermissionsGrid = ({ className, grid, onUpdatePermission }) => {
+import _ from "underscore";
+
+const PermissionsGrid = ({ className, grid, onUpdatePermission, entityId, groupId }) => {
     const permissions = Object.entries(grid.permissions).map(([id, permission]) =>
-        ({ id: id, ...PERMISSIONS_UI[id], ...permission })
+        ({ id: id, ...permission })
     );
     return (
         <div className={className}>
@@ -325,6 +276,10 @@ const PermissionsGrid = ({ className, grid, onUpdatePermission }) => {
                                 isLastRow={rowIndex === grid.entities.length - 1}
                                 isFirstColumn={columnIndex === 0}
                                 isLastColumn={columnIndex === grid.groups.length - 1}
+                                isFaded={
+                                    (groupId != null && grid.groups[columnIndex].id !== groupId) ||
+                                    (entityId != null && !_.isEqual(entityId, grid.entities[rowIndex].id))
+                                }
                             />
                         }
                         renderColumnHeader={({ columnIndex }) =>

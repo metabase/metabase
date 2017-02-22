@@ -134,3 +134,79 @@
    2 {:id 2, :name "Lucky"}}
   (key-by :id [{:id 1, :name "Rasta"}
                {:id 2, :name "Lucky"}]))
+
+
+;; Tests for remove-diacritical marks
+(expect "uuuu" (remove-diacritical-marks "üuuü"))
+(expect "aeiu" (remove-diacritical-marks "åéîü"))
+(expect "acnx" (remove-diacritical-marks "åçñx"))
+(expect nil    (remove-diacritical-marks ""))
+(expect nil    (remove-diacritical-marks nil))
+
+;;; Tests for slugify
+(expect "toucanfest_2017"               (slugify "ToucanFest 2017"))
+(expect "cam_s_awesome_toucan_emporium" (slugify "Cam's awesome toucan emporium"))
+(expect "frequently_used_cards"         (slugify "Frequently-Used Cards"))
+;; check that diactrics get removed
+(expect "cam_saul_s_toucannery"         (slugify "Cam Saül's Toucannery"))
+(expect "toucans_dislike_pinatas___"    (slugify "toucans dislike piñatas :("))
+;; check that non-ASCII characters get URL-encoded (so we can support non-Latin alphabet languages; see #3818)
+(expect "%E5%8B%87%E5%A3%AB"            (slugify "勇士")) ; go dubs
+
+
+;;; select-nested-keys
+(expect
+  {:a 100, :b {:d 300}}
+  (select-nested-keys {:a 100, :b {:c 200, :d 300}} [:a [:b :d] :c]))
+
+(expect
+  {:b {:c 200, :d 300}}
+  (select-nested-keys {:a 100, :b {:c 200, :d 300}} [:b]))
+
+(expect
+  {:b {:c 200, :d 300}}
+  (select-nested-keys {:a 100, :b {:c 200, :d 300}} [[:b :c :d]]))
+
+(expect
+  {:b {:d {:e 300}}}
+  (select-nested-keys {:a 100, :b {:c 200, :d {:e 300}}} [[:b [:d :e]]]))
+
+(expect
+  {:b {:d {:e 300}}}
+  (select-nested-keys {:a 100, :b {:c 200, :d {:e 300}}} [[:b :d]]))
+
+(expect
+  {:a {:b 100}, :d {:e 300}}
+  (select-nested-keys {:a {:b 100, :c 200}, :d {:e 300, :f 400}} [[:a :b] [:d :e]]))
+
+(expect
+  {:a 100}
+  (select-nested-keys {:a 100, :b {:c 200, :d 300}} [[:a]]))
+
+(expect
+  {}
+  (select-nested-keys {:a 100, :b {:c 200, :d 300}} [:c]))
+
+(expect
+  {}
+  (select-nested-keys nil [:c]))
+
+(expect
+  {}
+  (select-nested-keys {} nil))
+
+(expect
+  {}
+  (select-nested-keys {:a 100, :b {:c 200, :d 300}} []))
+
+(expect
+  {}
+  (select-nested-keys {} [:c]))
+
+
+;; tests for base-64-string?
+(expect (base-64-string? "ABc"))
+(expect (base-64-string? "ABc/+asdasd=="))
+(expect false (base-64-string? 100))
+(expect false (base-64-string? "<<>>"))
+(expect false (base-64-string? "{\"a\": 10}"))

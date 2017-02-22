@@ -2,8 +2,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [expectations :refer :all]
             [honeysql.core :as hsql]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]])
@@ -164,7 +165,7 @@
                      ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
-      (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
+      (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
         (driver/describe-database pg-driver database)))))
 
 ;; Check that we properly fetch foreign tables.
@@ -185,7 +186,7 @@
                             CREATE FOREIGN TABLE foreign_table (data text)
                                 SERVER foreign_server
                                 OPTIONS (schema_name 'public', table_name 'local_table');")])
-      (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
+      (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
         (driver/describe-database pg-driver database)))))
 
 ;; timezone tests

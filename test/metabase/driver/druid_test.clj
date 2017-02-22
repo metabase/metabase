@@ -1,13 +1,13 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
             [expectations :refer :all]
+            [toucan.util.test :as tt]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :refer [rows rows+column-names]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets, :refer [expect-with-engine]]
-            [metabase.test.util :as tu]
             [metabase.timeseries-query-processor-test :as timeseries-qp-test]
             [metabase.util :as u]))
 
@@ -239,7 +239,7 @@
    ["3"  346.0]
    ["4" 197.0]]
   (timeseries-qp-test/with-flattened-dbdef
-    (tu/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
+    (tt/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
                                                :filter      [:> [:field-id (data/id :checkins :venue_price)] 1]}}]
       (rows (qp/process-query
               {:database (data/id)

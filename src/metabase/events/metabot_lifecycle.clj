@@ -1,7 +1,7 @@
 (ns metabase.events.metabot-lifecycle
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.events :as events]
             [metabase.metabot :as metabot]
@@ -27,12 +27,12 @@
   (when-let [{topic :topic object :item} metabot-lifecycle-event]
     (try
       ;; if someone updated our slack-token, or metabot was enabled/disabled then react accordingly
-      (let [{:keys [slack-token metabot-enabled]} object]
-        (cond
-          (and (contains? object :metabot-enabled)
-               (not= "true" metabot-enabled))      (metabot/stop-metabot!)
-          (and (contains? object :slack-token)
-               (seq slack-token))                  (metabot/start-metabot!)))
+      (when (and (contains? object :metabot-enabled) (contains? object :slack-token))
+        (let [{:keys [slack-token metabot-enabled]} object]
+          (cond
+            (nil? slack-token)    (metabot/stop-metabot!)
+            (not metabot-enabled) (metabot/stop-metabot!)
+            :else                 (metabot/restart-metabot!))))
       (catch Throwable e
         (log/warn (format "Failed to process driver notifications event. %s" topic) e)))))
 
