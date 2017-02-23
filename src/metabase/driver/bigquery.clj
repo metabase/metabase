@@ -125,6 +125,8 @@
          request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
                    (.setDefaultDataset dataset)
+                   ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
+                   (.setUseLegacySql (not (s/includes? query-string "#standardSQL")))
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) billing-project-id request)))))
 
