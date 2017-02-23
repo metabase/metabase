@@ -419,7 +419,7 @@
 (defn- checkins-identifier []
   ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery we will just hackily return the correct identifier here
   (if (= datasets/*engine* :bigquery)
-    "[test_data.checkins]"
+    "[checkins]"
     (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
       (str (when (seq schema)
              (str (quote-name schema) \.))
