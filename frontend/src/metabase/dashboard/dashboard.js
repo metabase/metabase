@@ -238,9 +238,6 @@ export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function
     };
 });
 
-const SET_DASHBOARD_ID = "metabase/dashboard/SET_DASHBOARD_ID";
-export const setDashboardId = createAction(SET_DASHBOARD_ID);
-
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId, queryParams, enableDefaultParameters = true) {
     let result;
     return async function(dispatch, getState) {
@@ -259,14 +256,13 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId
             result = await DashboardApi.get({ dashId: dashId });
         }
 
-        dispatch(setDashboardId(dashId));
-
+        const parameterValues = {};
         if (result.parameters) {
             for (const parameter of result.parameters) {
                 if (queryParams && queryParams[parameter.slug] != null) {
-                    dispatch(setParameterValue(parameter.id, queryParams[parameter.slug]));
+                    parameterValues[parameter.id] = queryParams[parameter.slug];
                 } else if (enableDefaultParameters && parameter.default != null) {
-                    dispatch(setParameterValue(parameter.id, parameter.default));
+                    parameterValues[parameter.id] = parameter.default;
                 }
             }
         }
@@ -282,7 +278,11 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId
                 .each((dbId) => dispatch(fetchDatabaseMetadata(dbId)));
         }
 
-        return normalize(result, dashboard);
+        return {
+            ...normalize(result, dashboard), // includes `result` and `entities`
+            dashboardId: dashId,
+            parameterValues: parameterValues
+        };
     };
 });
 
@@ -510,7 +510,7 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
 
 const dashboardId = handleActions({
     [INITIALIZE]: { next: (state) => null },
-    [SET_DASHBOARD_ID]: { next: (state, { payload }) => payload }
+    [FETCH_DASHBOARD]: { next: (state, { payload: { dashboardId } }) => dashboardId }
 }, null);
 
 const isEditing = handleActions({
@@ -616,7 +616,8 @@ const cardDurations = handleActions({
 const parameterValues = handleActions({
     [INITIALIZE]: { next: () => ({}) }, // reset values
     [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => assoc(state, id, value) },
-    [REMOVE_PARAMETER]: { next: (state, { payload: { id }}) => dissoc(state, id) }
+    [REMOVE_PARAMETER]: { next: (state, { payload: { id }}) => dissoc(state, id) },
+    [FETCH_DASHBOARD]: { next: (state, { payload: { parameterValues }}) => parameterValues },
 }, {});
 
 const dashboardListing = handleActions({
