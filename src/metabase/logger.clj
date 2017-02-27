@@ -10,15 +10,16 @@
 
 (def ^:private ^:const max-log-entries 2500)
 
-(def ^:private messages (atom (ring-buffer max-log-entries)))
+(defonce ^:private messages (atom (ring-buffer max-log-entries)))
 
+;; TODO - rename to `messages`
 (defn get-messages
-  "Get the list of currently buffered log entries"
+  "Get the list of currently buffered log entries, from most-recent to oldest."
   []
   (reverse (seq @messages)))
 
 
-(def ^:private formatter (time/formatter "MMM dd HH:mm:ss" (t/default-time-zone)))
+(defonce ^:private formatter (time/formatter "MMM dd HH:mm:ss" (t/default-time-zone)))
 
 (defn -append
   "Append a new EVENT to the `messages` atom.

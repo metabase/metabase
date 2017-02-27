@@ -8,14 +8,14 @@ describe('query_time', () => {
             expect(
                 expandTimeIntervalFilter(["time-interval", 100, "current", "month"])
             ).toEqual(
-                ["=", ["datetime_field", 100, "as", "month"], ["relative_datetime", "current"]]
+                ["=", ["datetime-field", 100, "as", "month"], ["relative-datetime", "current"]]
             );
         });
         it('translate [-30, "day"] correctly', () => {
             expect(
                 expandTimeIntervalFilter(["time-interval", 100, -30, "day"])
             ).toEqual(
-                ["BETWEEN", ["datetime_field", 100, "as", "day"], ["relative_datetime", -31, "day"], ["relative_datetime", -1, "day"]]
+                ["BETWEEN", ["datetime-field", 100, "as", "day"], ["relative-datetime", -31, "day"], ["relative-datetime", -1, "day"]]
             );
         });
     });
@@ -29,17 +29,17 @@ describe('query_time', () => {
             );
         });
 
-        it ('should convert relative_datetime "current"', () => {
+        it ('should convert relative-datetime "current"', () => {
             expect(
-                absolute(["relative_datetime", "current"]).format("YYYY-MM-DD HH")
+                absolute(["relative-datetime", "current"]).format("YYYY-MM-DD HH")
             ).toBe(
                 moment().format("YYYY-MM-DD HH")
             );
         });
 
-        it ('should convert relative_datetime -1 "month"', () => {
+        it ('should convert relative-datetime -1 "month"', () => {
             expect(
-                absolute(["relative_datetime", -1, "month"]).format("YYYY-MM-DD HH")
+                absolute(["relative-datetime", -1, "month"]).format("YYYY-MM-DD HH")
             ).toBe(
                 moment().subtract(1, "month").format("YYYY-MM-DD HH")
             );
@@ -95,22 +95,22 @@ describe('query_time', () => {
 
         describe('relative dates', () => {
             it ('should handle "="', () => {
-                let [start, end] = computeFilterTimeRange(["=", 1, ["relative_datetime", "current"]]);
+                let [start, end] = computeFilterTimeRange(["=", 1, ["relative-datetime", "current"]]);
                 expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().format("YYYY-MM-DD 00:00:00"));
                 expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().format("YYYY-MM-DD 23:59:59"));
             });
             it ('should handle "<"', () => {
-                let [start, end] = computeFilterTimeRange(["<", 1, ["relative_datetime", "current"]]);
+                let [start, end] = computeFilterTimeRange(["<", 1, ["relative-datetime", "current"]]);
                 expect(start.year()).toBeLessThan(-10000);
                 expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().format("YYYY-MM-DD 00:00:00"));
             });
             it ('should handle ">"', () => {
-                let [start, end] = computeFilterTimeRange([">", 1, ["relative_datetime", "current"]]);
+                let [start, end] = computeFilterTimeRange([">", 1, ["relative-datetime", "current"]]);
                 expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().format("YYYY-MM-DD 23:59:59"));
                 expect(end.year()).toBeGreaterThan(10000);
             });
             it ('should handle "BETWEEN"', () => {
-                let [start, end] = computeFilterTimeRange(["BETWEEN", 1, ["relative_datetime", -1, "day"], ["relative_datetime", 1, "day"]]);
+                let [start, end] = computeFilterTimeRange(["BETWEEN", 1, ["relative-datetime", -1, "day"], ["relative-datetime", 1, "day"]]);
                 expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "day").format("YYYY-MM-DD 00:00:00"));
                 expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().add(1, "day").format("YYYY-MM-DD 23:59:59"));
             });

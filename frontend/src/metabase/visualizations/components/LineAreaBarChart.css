@@ -3,6 +3,7 @@
   margin-left: -0.5em;
   margin-right: -0.5em;
   margin-bottom: -0.5em;
+  overflow: hidden;
 }
 
 /* TODO (@kdoh) remove this if dc-js/dc.js#1260 is merged */
@@ -25,6 +26,13 @@
 
 .LineAreaBarChart .dc-chart .axis .tick text {
   fill: #C5C6C8;
+}
+
+.LineAreaBarChart .dc-chart g.row text.outside {
+  fill: #C5C6C8;
+}
+.LineAreaBarChart .dc-chart g.row text.inside {
+  fill: white;
 }
 
 /* turn off ticks and domain lines */
@@ -54,8 +62,14 @@
 .LineAreaBarChart .dc-chart rect.bar:hover {
   fill-opacity: 1;
 }
-/* highlight single series bar */
-.LineAreaBarChart.mute-0 .dc-chart rect.bar:hover {
+
+.LineAreaBarChart .dc-chart g.row rect {
+  fill-opacity: 1;
+}
+
+/* highlight single series bar and row charts */
+.LineAreaBarChart.mute-0 .dc-chart rect.bar:hover,
+.LineAreaBarChart.mute-0 .dc-chart g.row:hover {
   opacity: 1 !important;
 }
 
@@ -92,8 +106,10 @@
 .LineAreaBarChart .dc-chart .area,
 .LineAreaBarChart .dc-chart .bar,
 .LineAreaBarChart .dc-chart .line,
-.LineAreaBarChart .dc-chart .dot {
-  transition: opacity 0.1s linear;
+.LineAreaBarChart .dc-chart .dot,
+.LineAreaBarChart .dc-chart .row,
+.LineAreaBarChart .dc-chart .bubble {
+  transition: opacity 0.15s linear;
 }
 
 .LineAreaBarChart .dc-chart .axis.y,

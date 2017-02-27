@@ -4,8 +4,7 @@
     "add-react-displayname",
     "transform-decorators-legacy",
     ["transform-builtin-extend", {
-      "globals": ["Error"],
-      "approximate": true
+        "globals": ["Error", "Array"]
     }]
   ],
   "presets": ["es2015", "stage-0", "react"],

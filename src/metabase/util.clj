@@ -305,7 +305,7 @@
 
 (defprotocol ^:private IClobToStr
   (jdbc-clob->str ^String [this]
-   "Convert a Postgres/H2/SQLServer JDBC Clob to a string."))
+   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)"))
 
 (extend-protocol IClobToStr
   nil     (jdbc-clob->str [_]    nil)
@@ -811,3 +811,9 @@
              {k (if-not (seq nested-keys)
                   v
                   (select-nested-keys v nested-keys))})))
+
+(defn base-64-string?
+  "Is S a Base-64 encoded string?"
+  ^Boolean [s]
+  (boolean (when (string? s)
+             (re-find #"^[0-9A-Za-z/+]+=*$" s))))

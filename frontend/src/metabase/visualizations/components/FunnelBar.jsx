@@ -3,9 +3,9 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import BarChart from "metabase/visualizations/BarChart.jsx";
+import BarChart from "metabase/visualizations/visualizations/BarChart.jsx";
 
-import { getSettings } from "metabase/lib/visualization_settings";
+import { getSettings } from "metabase/visualizations/lib/settings";
 import { assocIn } from "icepick";
 
 import type { VisualizationProps } from "metabase/visualizations";

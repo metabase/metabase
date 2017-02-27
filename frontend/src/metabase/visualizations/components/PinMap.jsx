@@ -5,8 +5,8 @@ import React, { Component, PropTypes } from "react";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
-import LeafletMarkerPinMap from "./components/LeafletMarkerPinMap.jsx";
-import LeafletTilePinMap from "./components/LeafletTilePinMap.jsx";
+import LeafletMarkerPinMap from "./LeafletMarkerPinMap.jsx";
+import LeafletTilePinMap from "./LeafletTilePinMap.jsx";
 
 import _ from "underscore";
 import cx from "classnames";

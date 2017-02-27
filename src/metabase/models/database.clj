@@ -42,7 +42,7 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:database :db])
-          :types          (constantly {:details :json, :engine :keyword})
+          :types          (constantly {:details :encrypted-json, :engine :keyword})
           :properties     (constantly {:timestamped? true})
           :post-insert    post-insert
           :post-select    post-select

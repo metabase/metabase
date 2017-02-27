@@ -28,6 +28,7 @@ export default class LegendHeader extends Component {
         onRemoveSeries: PropTypes.func,
         actionButtons: PropTypes.node,
         linkToCard: PropTypes.bool,
+        description: PropTypes.string
     };
 
     static defaultProps = {
@@ -47,7 +48,7 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings } = this.props;
+        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings, description } = this.props;
         const showDots = series.length > 1;
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
@@ -59,6 +60,7 @@ export default class LegendHeader extends Component {
                     <LegendItem
                         key={index}
                         title={s.card.name}
+                        description={description}
                         href={linkToCard && s.card.id && Urls.card(s.card.id)}
                         color={colors[index % colors.length]}
                         showDot={showDots}
@@ -66,19 +68,19 @@ export default class LegendHeader extends Component {
                         isMuted={hovered && hovered.index != null && index !== hovered.index}
                         onMouseEnter={() => onHoverChange && onHoverChange({ index })}
                         onMouseLeave={() => onHoverChange && onHoverChange(null) }
-                    />,
+                        />,
                     onRemoveSeries && index > 0 &&
-                        <Icon
-                            name="close"
-                            className="text-grey-2 flex-no-shrink mr1 cursor-pointer"
-                            width={12} height={12}
-                            onClick={() => onRemoveSeries(s.card)}
-                        />
+                      <Icon
+                          name="close"
+                          className="text-grey-2 flex-no-shrink mr1 cursor-pointer"
+                          width={12} height={12}
+                          onClick={() => onRemoveSeries(s.card)}
+                      />
                 ])}
                 { actionButtons &&
-                    <span className="flex-no-shrink flex-align-right relative">
-                        {actionButtons}
-                    </span>
+                  <span className="flex-no-shrink flex-align-right relative">
+                      {actionButtons}
+                  </span>
                 }
             </div>
         );

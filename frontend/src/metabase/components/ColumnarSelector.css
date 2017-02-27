@@ -67,6 +67,7 @@
 
 .ColumnarSelector-row .Icon-check {
     visibility: hidden;
+    padding-right: 0.5rem;
 }
 
 .ColumnarSelector-row.ColumnarSelector-row--selected .Icon-check {

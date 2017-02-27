@@ -2,16 +2,17 @@
 
 import { Component } from "react";
 
-import Scalar     from "./Scalar.jsx";
-import Progress   from "./Progress.jsx";
-import Table      from "./Table.jsx";
-import LineChart  from "./LineChart.jsx";
-import BarChart   from "./BarChart.jsx";
-import PieChart   from "./PieChart.jsx";
-import AreaChart  from "./AreaChart.jsx";
-import MapViz     from "./Map.jsx";
-import Funnel     from "./Funnel.jsx";
-import ScatterPlot from "./ScatterPlot.jsx";
+import Scalar      from "./visualizations/Scalar.jsx";
+import Progress    from "./visualizations/Progress.jsx";
+import Table       from "./visualizations/Table.jsx";
+import LineChart   from "./visualizations/LineChart.jsx";
+import BarChart    from "./visualizations/BarChart.jsx";
+import RowChart    from "./visualizations/RowChart.jsx";
+import PieChart    from "./visualizations/PieChart.jsx";
+import AreaChart   from "./visualizations/AreaChart.jsx";
+import MapViz      from "./visualizations/Map.jsx";
+import ScatterPlot from "./visualizations/ScatterPlot.jsx";
+import Funnel      from "./visualizations/Funnel.jsx";
 
 import _ from "underscore";
 
@@ -113,8 +114,9 @@ registerVisualization(Scalar);
 registerVisualization(Progress);
 registerVisualization(Table);
 registerVisualization(LineChart);
-registerVisualization(BarChart);
 registerVisualization(AreaChart);
+registerVisualization(BarChart);
+registerVisualization(RowChart);
 registerVisualization(ScatterPlot);
 registerVisualization(PieChart);
 registerVisualization(MapViz);

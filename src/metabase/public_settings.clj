@@ -22,12 +22,12 @@
   "The name used for this instance of Metabase."
   :default "Metabase")
 
-(defsetting -site-url
+(defsetting site-url
   "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".
    This is *guaranteed* never to have a tailing slash."
   :setter (fn [new-value]
-            (setting/set-string! :-site-url (when new-value
-                                              (s/replace new-value #"/$" "")))))
+            (setting/set-string! :site-url (when new-value
+                                             (s/replace new-value #"/$" "")))))
 
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")
@@ -40,20 +40,6 @@
 (defsetting map-tile-server-url
   "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
   :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-
-(defn site-url
-  "Fetch the site base URL that should be used for password reset emails, etc.
-   This strips off any trailing slashes that may have been added.
-
-   The first time this function is called, we'll set the value of the setting `-site-url` with the value of
-   the ORIGIN header (falling back to HOST if needed, i.e. for unit tests) of some API request.
-   Subsequently, the site URL can only be changed via the admin page."
-  {:arglists '([request])}
-  [{{:strs [origin host]} :headers}]
-  {:pre  [(or origin host)]
-   :post [(string? %)]}
-  (or (-site-url)
-      (-site-url (or origin host))))
 
 (defsetting enable-public-sharing
   "Enable admins to create publically viewable links for Cards and Dashboards?"

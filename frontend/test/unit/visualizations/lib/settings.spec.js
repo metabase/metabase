@@ -1,6 +1,10 @@
-import { getSettings } from 'metabase/lib/visualization_settings';
 
-import { DateTimeColumn, NumberColumn } from "../support/visualizations";
+// NOTE: need to load visualizations first for getSettings to work
+import "metabase/visualizations";
+
+import { getSettings } from 'metabase/visualizations/lib/settings';
+
+import { DateTimeColumn, NumberColumn } from "../../support/visualizations";
 
 describe('visualization_settings', () => {
     describe('getSettings', () => {

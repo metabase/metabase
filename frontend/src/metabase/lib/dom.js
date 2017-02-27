@@ -151,11 +151,6 @@ function getTextNodeAtPosition(root, index) {
 var STYLE_SHEET = (function() {
     // Create the <style> tag
     var style = document.createElement("style");
-    style.dataset.x = "x"
-
-    // Add a media (and/or media query) here if you'd like!
-    // style.setAttribute("media", "screen")
-    // style.setAttribute("media", "only screen and (max-width : 1024px)")
 
     // WebKit hack :(
     style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
@@ -173,4 +168,25 @@ export function addCSSRule(selector, rules, index) {
     else if("addRule" in STYLE_SHEET) {
         STYLE_SHEET.addRule(selector, rules, index);
     }
+}
+
+export function constrainToScreen(element, direction, padding) {
+    if (direction === "bottom") {
+        let screenBottom = window.innerHeight + window.scrollY;
+        let overflowY = element.getBoundingClientRect().bottom - screenBottom;
+        if (overflowY + padding > 0) {
+            element.style.maxHeight = (element.getBoundingClientRect().height - overflowY - padding) + "px";
+            return true;
+        }
+    } else if (direction === "top") {
+        let screenTop = window.scrollY;
+        let overflowY = screenTop - element.getBoundingClientRect().top;
+        if (overflowY + padding > 0) {
+            element.style.maxHeight = (element.getBoundingClientRect().height - overflowY - padding) + "px";
+            return true;
+        }
+    } else {
+        throw new Error("Direction " + direction + " not implemented");
+    }
+    return false;
 }

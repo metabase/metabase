@@ -7,6 +7,7 @@ import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
+import { setErrorPage } from "metabase/redux/app";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
@@ -110,7 +111,11 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         const { currentUser } = getState();
 
-        let card, databases, originalCard, uiControls = { isEditing: false };
+        let card, databases, originalCard;
+        let uiControls = {
+            isEditing: false,
+            isShowingTemplateTagsEditor: false
+        };
 
         // always start the QB by loading up the databases for the application
         try {
@@ -119,11 +124,9 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             console.log("error fetching dbs", error);
 
             // if we can't actually get the databases list then bail now
-            return {
-                uiControls: {
-                    is500: true
-                }
-            }
+            dispatch(setErrorPage(error));
+
+            return { uiControls };
         }
 
         // load up or initialize the card we'll be working on
@@ -172,12 +175,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             } catch(error) {
                 console.warn(error)
                 card = null;
-
-                if (error.status === 404) {
-                    uiControls.is404 = true;
-                } else {
-                    uiControls.is500 = true;
-                }
+                dispatch(setErrorPage(error));
             }
 
         } else if (options.tutorial !== undefined && sampleDataset) {

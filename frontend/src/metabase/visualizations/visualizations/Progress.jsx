@@ -7,6 +7,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
+import { normal } from "metabase/lib/colors";
 
 import Color from "color";
 import cx from "classnames";
@@ -31,6 +32,21 @@ export default class Progress extends Component<*, VisualizationProps, *> {
         if (!isNumeric(cols[0])) {
             throw new Error("Progress visualization requires a number.");
         }
+    }
+
+    static settings = {
+        "progress.goal": {
+            section: "Display",
+            title: "Goal",
+            widget: "number",
+            default: 0
+        },
+        "progress.color": {
+            section: "Display",
+            title: "Color",
+            widget: "color",
+            default: normal.green
+        },
     }
 
     componentDidMount() {

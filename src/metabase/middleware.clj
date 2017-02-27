@@ -12,6 +12,7 @@
             (metabase.models [session :refer [Session]]
                              [setting :refer [defsetting]]
                              [user :refer [User], :as user])
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
@@ -236,6 +237,23 @@
                                         (api-call? request) (api-security-headers)
                                         (public? request)   (html-page-security-headers, :allow-iframes? true)
                                         (index? request)    (html-page-security-headers))))))
+
+
+;;; # ------------------------------------------------------------ SETTING SITE-URL ------------------------------------------------------------
+
+;; It's important for us to know what the site URL is for things like returning links, etc.
+;; this is stored in the `site-url` Setting; we can set it automatically by looking at the `Origin` or `Host` headers sent with a request.
+;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting the (initial) value of `site-url`
+
+(defn maybe-set-site-url
+  "Middleware to set the `site-url` Setting if it's unset the first time a request is made."
+  [handler]
+  (fn [{{:strs [origin host] :as headers} :headers, :as request}]
+    (when-not (public-settings/site-url)
+      (when-let [site-url (or origin host)]
+        (log/info "Setting Metabase site URL to" site-url)
+        (public-settings/site-url site-url)))
+    (handler request)))
 
 
 ;;; # ------------------------------------------------------------ JSON SERIALIZATION CONFIG ------------------------------------------------------------

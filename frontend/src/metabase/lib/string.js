@@ -10,3 +10,5 @@ export function createMultiwordSearchRegex(input) {
             "i");
     }
 }
+
+export const countLines = (str) => str.split(/\n/g).length

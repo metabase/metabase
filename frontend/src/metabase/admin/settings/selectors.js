@@ -21,7 +21,7 @@ const SECTIONS = [
                 type: "string"
             },
             {
-                key: "-site-url",
+                key: "site-url",
                 display_name: "Site URL",
                 type: "string"
             },

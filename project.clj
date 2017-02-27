@@ -26,6 +26,7 @@
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.1"]                                      ; Async HTTP library; WebSockets
+                 [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.4.1"                                    ; HTTP client
                   :exclusions [commons-codec

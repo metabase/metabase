@@ -5,16 +5,17 @@ import React, { Component, PropTypes } from "react";
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import { formatValue } from "metabase/lib/formatting";
-import { getSettings } from "metabase/lib/visualization_settings";
 
-import FunnelNormal from "./components/FunnelNormal";
-import FunnelBar from "./components/FunnelBar";
-import LegendHeader from "./components/LegendHeader";
+import { getSettings, metricSetting, dimensionSetting } from "metabase/visualizations/lib/settings";
+
+import FunnelNormal from "../components/FunnelNormal";
+import FunnelBar from "../components/FunnelBar";
+import LegendHeader from "../components/LegendHeader";
 
 import _ from "underscore";
 import cx from "classnames";
 
-import type { VisualizationProps } from ".";
+import type { VisualizationProps } from "..";
 
 export default class Funnel extends Component<*, VisualizationProps, *> {
     static uiName = "Funnel";
@@ -39,6 +40,34 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
             throw new ChartSettingsError("Which fields do you want to use?", "Data", "Choose fields");
         }
+    }
+
+    static settings = {
+        "funnel.dimension": {
+            section: "Data",
+            title: "Step",
+            ...dimensionSetting("pie.dimension"),
+            dashboard: false,
+            useRawSeries: true,
+        },
+        "funnel.metric": {
+            section: "Data",
+            title: "Measure",
+            ...metricSetting("pie.metric"),
+            dashboard: false,
+            useRawSeries: true,
+        },
+        "funnel.type": {
+            title: "Funnel type",
+            section: "Display",
+            widget: "select",
+            props: {
+                options: [{ name: "Funnel", value: "funnel"}, { name: "Bar chart", value: "bar"}]
+            },
+            // legacy "bar" funnel was only previously available via multiseries
+            getDefault: (series) => series.length > 1 ? "bar" : "funnel",
+            useRawSeries: true
+        },
     }
 
     static transformSeries(series) {
