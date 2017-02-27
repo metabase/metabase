@@ -67,8 +67,6 @@ export const uiControls = handleActions({
     isShowingNewbModal: false,
     isEditing: false,
     isRunning: false,
-    is404: false,
-    is500: false
 });
 
 
