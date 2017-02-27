@@ -173,7 +173,7 @@ export default class QueryBuilder extends Component {
 
     handleKeyDown = (e) => {
         const ENTER_KEY = 13;
-        if (e.keyCode === ENTER_KEY && e.metaKey && this.props.isRunnable) {
+        if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && this.props.isRunnable) {
             this.props.runQueryFn();
         }
     }
