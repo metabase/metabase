@@ -427,8 +427,8 @@
 ;; this namespace ever even sees the query. But since the GA driver's queries consist of custom `metric` and `segment` clauses we need to at least
 ;; accept them without barfing so we can expand a query in order to check what permissions it requires.
 ;; TODO - in the future, we should just make these functions expand Metric and Segment macros for consistency with the rest of the MBQL clauses
-(defn- ^:ql metric  [& _])
-(defn- ^:ql segment [& _])
+(defn ^:ql metric  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in `metabase.query-processor.macros`.)"   [& _])
+(defn ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
 
 
 ;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
