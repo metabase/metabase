@@ -21,7 +21,7 @@
       subclause                                subclause
       form                                     (throw (java.lang.Exception. (format "segment-parse-filter-subclause failed: invalid clause: %s" form))))))
 
-(defn segment-parse-filter [form]
+(defn- segment-parse-filter [form]
   (when (non-empty-clause? form)
     (match form
       ["AND" & subclauses] (into ["AND"] (mapv segment-parse-filter subclauses))
