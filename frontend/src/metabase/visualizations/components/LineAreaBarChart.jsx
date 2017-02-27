@@ -56,7 +56,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
         return getChartTypeFromData(cols, rows, false) != null;
     }
 
-    static checkRenderable(cols, rows, settings) {
+    static checkRenderable([{ data: { cols, rows} }], settings) {
         if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
         const dimensions = (settings["graph.dimensions"] || []).filter(name => name);
         const metrics = (settings["graph.metrics"] || []).filter(name => name);

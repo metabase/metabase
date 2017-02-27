@@ -2,6 +2,8 @@
 
 import { inflect } from "metabase/lib/formatting";
 
+// NOTE: extending Error with Babel requires babel-plugin-transform-builtin-extend
+
 export class MinColumnsError extends Error {
     constructor(minColumns: number, actualColumns: number) {
         super(`Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least ${actualColumns} ${inflect("column", actualColumns)} of data.`);

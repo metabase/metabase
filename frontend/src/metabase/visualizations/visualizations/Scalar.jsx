@@ -33,7 +33,7 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
         return rows.length === 1 && cols.length === 1;
     }
 
-    static checkRenderable(cols, rows) {
+    static checkRenderable([{ data: { cols, rows} }]) {
         // scalar can always be rendered, nothing needed here
     }
 

@@ -197,8 +197,7 @@ export default class Visualization extends Component<*, Props, State> {
             } else {
                 try {
                     if (CardVisualization.checkRenderable) {
-                        // $FlowFixMe
-                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows, settings);
+                        CardVisualization.checkRenderable(series, settings);
                     }
                 } catch (e) {
                     error = e.message || "Could not display this chart with this data.";
