@@ -87,10 +87,12 @@
   {password su/ComplexPassword}
   (check-self-or-superuser id)
   (let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
-    (when (and (not (:is_superuser @*current-user*))
-               (= id *current-user-id*))
+    ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of `old_password` for them
+    ;; regular users have to know their password, however
+    (when-not (:is_superuser @*current-user*)
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
   (user/set-user-password! id password)
+  ;; return the updated User
   (User id))
 
 
