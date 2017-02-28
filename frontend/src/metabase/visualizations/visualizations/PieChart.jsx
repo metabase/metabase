@@ -44,7 +44,7 @@ export default class PieChart extends Component<*, Props, *> {
         return cols.length === 2;
     }
 
-    static checkRenderable(cols, rows, settings) {
+    static checkRenderable([{ data: { cols, rows} }], settings) {
         if (!settings["pie.dimension"] || !settings["pie.metric"]) {
             throw new ChartSettingsError("Which columns do want to use?", "Data");
         }
@@ -119,16 +119,20 @@ export default class PieChart extends Component<*, Props, *> {
             .partition((d) => d.percentage > sliceThreshold)
             .value();
 
-        let otherTotal = others.reduce((acc, o) => acc + o.value, 0);
         let otherSlice;
-        if (otherTotal > 0) {
-            otherSlice = {
-                key: "Other",
-                value: otherTotal,
-                percentage: otherTotal / total,
-                color: "gray"
-            };
-            slices.push(otherSlice);
+        if (others.length > 1) {
+            let otherTotal = others.reduce((acc, o) => acc + o.value, 0);
+            if (otherTotal > 0) {
+                otherSlice = {
+                    key: "Other",
+                    value: otherTotal,
+                    percentage: otherTotal / total,
+                    color: "gray"
+                };
+                slices.push(otherSlice);
+            }
+        } else {
+            slices.push(...others);
         }
 
         // increase "other" slice so it's barely visible

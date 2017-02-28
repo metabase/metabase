@@ -112,7 +112,7 @@ export default class Map extends Component<*, VisualizationProps, *> {
         }
     }
 
-    static checkRenderable(cols, rows, settings) {
+    static checkRenderable([{ data: { cols, rows} }], settings) {
         if (settings["map.type"] === "pin") {
             if (!settings["map.longitude_column"] || !settings["map.latitude_column"]) {
                 throw new ChartSettingsError("Please select longitude and latitude columns in the chart settings.", "Data");

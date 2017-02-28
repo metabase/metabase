@@ -16,12 +16,15 @@ import Funnel      from "./visualizations/Funnel.jsx";
 
 import _ from "underscore";
 
-import type { DatasetData } from "metabase/meta/types/Dataset";
+import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+
+export type HoverData = Array<{ key: string, value: any, col?: Column }>;
 
 export type HoverObject = {
     index?: number,
-    axisIndex?: number
+    axisIndex?: number,
+    data?: HoverData
 }
 
 // type Visualization = Component<*, VisualizationProps, *>;

@@ -22,7 +22,7 @@
   (assert (and (string? password)
                (not (s/blank? password))))
   (assert (not (:password_salt user))
-    "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
+    "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
   (let [salt     (str (UUID/randomUUID))
         defaults {:date_joined  (u/new-sql-timestamp)
                   :last_login   nil
@@ -33,6 +33,7 @@
     (merge defaults user
            {:password_salt salt
             :password      (creds/hash-bcrypt (str salt password))}
+           ;; if there's a reset token encrypt that as well
            (when reset_token
              {:reset_token (creds/hash-bcrypt reset_token)}))))
 
@@ -62,11 +63,12 @@
                                          :group_id (:id (group/admin))
                                          :user_id  id)
         (and (not is_superuser)
-             membership-exists?)       (db/simple-delete! PermissionsGroupMembership ; don't use cascade-delete! here because that does the opposite and tries to update this user
-                                         :group_id (:id (group/admin))         ; which leads to a stack overflow of calls between the two
-                                         :user_id  id))))                      ; TODO - we could fix this issue by having a `post-cascade-delete!` method
+             membership-exists?)       (db/simple-delete! PermissionsGroupMembership ; don't use `delete!` here because that does the opposite and tries to update this user
+                                         :group_id (:id (group/admin))               ; which leads to a stack overflow of calls between the two
+                                         :user_id  id))))                            ; TODO - could we fix this issue by using `post-delete!`?
   (when email
     (assert (u/is-email? email)))
+  ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
 
@@ -106,36 +108,42 @@
 
 ;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
 
-(declare form-password-reset-url
-         set-user-password-reset-token!)
+(declare form-password-reset-url set-password-reset-token!)
 
-;; TODO - `:send-welcome?` instead of `:send-welcome`
-(defn create-user!
-  "Convenience function for creating a new `User` and sending out the welcome email."
-  [first-name last-name email-address & {:keys [send-welcome invitor password google-auth?]
-                                         :or   {send-welcome false
-                                                google-auth? false}}]
-  {:pre [(string? first-name) (string? last-name) (string? email-address) (u/maybe? map? invitor) (u/maybe? (u/rpartial contains? :is_active) invitor)]}
+(defn- send-welcome-email! [new-user invitor]
+  (let [reset-token (set-password-reset-token! (u/get-id new-user))
+        ;; the new user join url is just a password reset with an indicator that this is a first time user
+        join-url    (str (form-password-reset-url reset-token) "#new")]
+    (email/send-new-user-email! new-user invitor join-url)))
+
+(defn invite-user!
+  "Convenience function for inviting a new `User` and sending out the welcome email."
+  [first-name last-name email-address password invitor]
+  {:pre [(string? first-name) (string? last-name) (u/is-email? email-address) (u/maybe? string? password) (map? invitor)]}
+  ;; create the new user
   (u/prog1 (db/insert! User
              :email       email-address
              :first_name  first-name
              :last_name   last-name
-             :password    (if-not (nil? password)
-                            password
-                            (str (UUID/randomUUID)))
-             :google_auth google-auth?)
-    (when send-welcome
-      (let [reset-token (set-user-password-reset-token! (:id <>))
-            ;; the new user join url is just a password reset with an indicator that this is a first time user
-            join-url    (str (form-password-reset-url reset-token) "#new")]
-        (email/send-new-user-email! <> invitor join-url)))
-    ;; notifiy the admin of this MB instance that a new user has joined (TODO - are there cases where we *don't* want to do this)
-    (when (or (:is_active invitor)
-              google-auth?)
-      (email/send-user-joined-admin-notification-email! <> invitor google-auth?))))
+             :password    (or password (str (UUID/randomUUID))))
+    (send-welcome-email! <> invitor)))
 
-;; TODO - rename to `set-password!`
-(defn set-user-password!
+(defn create-new-google-auth-user!
+  "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active admins will recieve an email right away."
+  [first-name last-name email-address]
+  {:pre [(string? first-name) (string? last-name) (u/is-email? email-address)]}
+  (u/prog1 (db/insert! User
+             :email       email-address
+             :first_name  first-name
+             :last_name   last-name
+             :password    (str (UUID/randomUUID))
+             :google_auth true)
+    ;; send an email to everyone including the site admin if that's set
+    (email/send-user-joined-admin-notification-email! <>, :google-auth? true)))
+
+
+
+(defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
   (let [salt     (str (UUID/randomUUID))
@@ -147,8 +155,7 @@
       :reset_token     nil
       :reset_triggered nil)))
 
-;; TODO - rename to `set-password-reset-token!`
-(defn set-user-password-reset-token!
+(defn set-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
@@ -157,7 +164,6 @@
       :reset_token     <>
       :reset_triggered (System/currentTimeMillis))))
 
-;; TODO - not sure this belongs in this namespace...
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."
   [reset-token]

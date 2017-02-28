@@ -38,8 +38,8 @@
 .ColumnarSelector-row {
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
-    padding-left: var(--padding-3);
-    padding-right: var(--padding-3);
+    padding-left: var(--padding-2);
+    padding-right: var(--padding-2);
     display: flex;
     align-items: center;
 }
