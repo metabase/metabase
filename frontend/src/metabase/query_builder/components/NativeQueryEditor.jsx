@@ -151,7 +151,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     componentWillUnmount() {
-        document.addEventListener("keydown", this.handleKeyDown);
+        document.removeEventListener("keydown", this.handleKeyDown);
     }
 
     handleKeyDown = (e) => {
@@ -159,9 +159,12 @@ export default class NativeQueryEditor extends Component {
         if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && this.props.isRunnable) {
             const { card } = this.props;
             if (e.altKey) {
-                // run just the selected text
-                const temporaryCard = assocIn(card, ["dataset_query", "native", "query"], this._editor.getSelectedText());
-                this.props.runQueryFn(temporaryCard, false, null, true);
+                // run just the selected text, if any
+                const selectedText = this._editor.getSelectedText();
+                if (selectedText) {
+                    const temporaryCard = assocIn(card, ["dataset_query", "native", "query"], selectedText);
+                    this.props.runQueryFn(temporaryCard, false, null, true);
+                }
             } else {
                 this.props.runQueryFn();
             }
