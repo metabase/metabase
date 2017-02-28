@@ -202,19 +202,21 @@ const SECTIONS = [
         settings: [
             {
                 key: "enable-embedding",
+                description: null,
+                widget: EmbeddingLegalese,
+                getHidden: (settings) => settings["enable-embedding"]
+            },
+            {
+                key: "enable-embedding",
                 display_name: "Enable Embedding Metabase in other Applications",
                 type: "boolean",
                 onChanged: async (oldValue, newValue, settingsValues, onChange) => {
-                    console.log(oldValue, newValue, settingsValues["embedding-secret-key"])
                     if (!oldValue && newValue && !settingsValues["embedding-secret-key"]) {
                         let result = await UtilApi.random_token();
                         await onChange("embedding-secret-key", result.token);
                     }
-                }
-            },
-            {
-                widget: EmbeddingLegalese,
-                getHidden: (settings) => settings["enable-embedding"]
+                },
+                getHidden: (settings) => !settings["enable-embedding"]
             },
             {
                 key: "embedding-secret-key",

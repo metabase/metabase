@@ -12,9 +12,9 @@ import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
 
 export const getRoutes = (store) =>
     <Route>
-        <Route path="public" component={PublicApp}>
-            <Route path="question/:uuid" component={PublicQuestion} />
-            <Route path="dashboard/:uuid" component={PublicDashboard} />
+        <Route path="embed" component={PublicApp}>
+            <Route path="question/:token" component={PublicQuestion} />
+            <Route path="dashboard/:token" component={PublicDashboard} />
             <Route path="*" component={PublicNotFound} />
         </Route>
         <Route path="*" component={PublicNotFound} />
