@@ -37,6 +37,10 @@ const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
 
+// max number of points to "fill"
+// TODO: base on pixel width of chart?
+const MAX_FILL_COUNT = 10000;
+
 const DOT_OVERLAP_COUNT_LIMIT = 8;
 const DOT_OVERLAP_RATIO = 0.10;
 const DOT_OVERLAP_DISTANCE = 8;
@@ -802,23 +806,29 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         if (isTimeseries) {
             // $FlowFixMe
             const { interval, count } = xInterval;
-            // replace xValues with
-            xValues = d3.time[interval]
-                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
-                .map(d => moment(d));
-            datas = fillMissingValues(
-                datas,
-                xValues,
-                settings["line.missing"] === "zero" ? 0 : null,
-                (m) => d3.round(m.toDate().getTime(), -1) // sometimes rounds up 1ms?
-            );
+            if (count <= MAX_FILL_COUNT) {
+                // replace xValues with
+                xValues = d3.time[interval]
+                    .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
+                    .map(d => moment(d));
+                datas = fillMissingValues(
+                    datas,
+                    xValues,
+                    settings["line.missing"] === "zero" ? 0 : null,
+                    (m) => d3.round(m.toDate().getTime(), -1) // sometimes rounds up 1ms?
+                );
+            }
         } if (isQuantitative) {
-            xValues = d3.range(xDomain[0], xDomain[1] + xInterval, xInterval);
-            datas = fillMissingValues(
-                datas,
-                xValues,
-                settings["line.missing"] === "zero" ? 0 : null,
-            );
+            // $FlowFixMe
+            const count = Math.abs((xDomain[1] - xDomain[0]) / xInterval);
+            if (count <= MAX_FILL_COUNT) {
+                xValues = d3.range(xDomain[0], xDomain[1] + xInterval, xInterval);
+                datas = fillMissingValues(
+                    datas,
+                    xValues,
+                    settings["line.missing"] === "zero" ? 0 : null,
+                );
+            }
         } else {
             datas = fillMissingValues(
                 datas,
