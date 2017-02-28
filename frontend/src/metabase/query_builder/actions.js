@@ -781,7 +781,7 @@ export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
 
 // runQuery
 export const RUN_QUERY = "RUN_QUERY";
-export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = true, parameterValues) => {
+export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = true, parameterValues, dirty) => {
     return async (dispatch, getState) => {
         const state = getState();
         const parameters = getParameters(state);
@@ -814,7 +814,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
         }
 
         // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        if (card && card.id && !isDirty(state)) {
+        if (card && card.id && !isDirty(state) && dirty !== true) {
             CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
             MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
