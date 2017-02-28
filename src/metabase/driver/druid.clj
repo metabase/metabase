@@ -347,7 +347,8 @@ q1))
 (u/strict-extend DruidDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table         (fn [driver table new-table-ids]
+         {:can-connect?          (u/drop-first-arg can-connect?)
+          :analyze-table         (fn [driver table new-table-ids]
                                    ((make-analyze-table-druid
                                      driver
                                      :field-avg-length-fn (constantly 0)  ; TODO
@@ -356,7 +357,6 @@ q1))
                                     driver
                                     table
                                     new-table-ids))
-          :can-connect?          (u/drop-first-arg can-connect?)
           :describe-database     (u/drop-first-arg describe-database)
           :describe-table        (u/drop-first-arg describe-table)
           :details-fields        (constantly [{:name         "host"
