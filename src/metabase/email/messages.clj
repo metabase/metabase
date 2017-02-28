@@ -67,37 +67,35 @@
       :message      message-body)))
 
 (defn- all-admin-recipients
-  "Return a `:recipients` vector for all Admin users."
+  "Return a sequence of email addresses for all Admin users.
+   The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in `mailto` links
+   (e.g., for the new user to email with any questions)."
   []
-  (concat (db/select-field :email 'User, :is_superuser true, :is_active true)
-          (when-let [admin-email (public-settings/admin-email)]
-            [admin-email])))
+  (concat (when-let [admin-email (public-settings/admin-email)]
+            [admin-email])
+          (db/select-field :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the INVITOR (the Admin who invited NEW-USER) letting them know NEW-USER has joined."
-  [new-user {invitor-email :email} google-auth?]
-  {:pre [(map? new-user)
-         (m/boolean? google-auth?)
-         (or google-auth?
-             (u/is-email? invitor-email))]}
-  (email/send-message!
-    :subject      (format (if google-auth?
-                            "%s created a Metabase account"
-                            "%s accepted your Metabase invite")
-                          (:common_name new-user))
-    :recipients   (if google-auth?
-                    (all-admin-recipients)
-                    [invitor-email])
-    :message-type :html
-    :message      (stencil/render-file "metabase/email/user_joined_notification"
-                    (merge {:logoHeader        true
-                            :joinedUserName    (:first_name new-user)
-                            :joinedViaSSO      google-auth?
-                            :joinedUserEmail   (:email new-user)
-                            :joinedDate        (u/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
-                            :invitorEmail      invitor-email
-                            :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
-                           (random-quote-context)))))
+  [new-user & {:keys [google-auth?]}]
+  {:pre [(map? new-user)]}
+  (let [recipients (all-admin-recipients)]
+    (email/send-message!
+      :subject      (format (if google-auth?
+                              "%s created a Metabase account"
+                              "%s accepted their Metabase invite")
+                            (:common_name new-user))
+      :recipients   recipients
+      :message-type :html
+      :message      (stencil/render-file "metabase/email/user_joined_notification"
+                      (merge {:logoHeader        true
+                              :joinedUserName    (:first_name new-user)
+                              :joinedViaSSO      google-auth?
+                              :joinedUserEmail   (:email new-user)
+                              :joinedDate        (u/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                              :adminEmail        (first recipients)
+                              :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
+                             (random-quote-context))))))
 
 
 (defn send-password-reset-email!
