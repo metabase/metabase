@@ -1,4 +1,8 @@
 
+// IE doesn't support scrollX/scrollY:
+export const getScrollX = () => typeof window.scrollX === "undefined" ? window.pageXOffset : window.scrollX;
+export const getScrollY = () => typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
+
 // denotes whether the current page is loaded in an iframe or not
 export const IFRAMED = (function() {
     try {
@@ -172,14 +176,14 @@ export function addCSSRule(selector, rules, index) {
 
 export function constrainToScreen(element, direction, padding) {
     if (direction === "bottom") {
-        let screenBottom = window.innerHeight + window.scrollY;
+        let screenBottom = window.innerHeight + getScrollY();
         let overflowY = element.getBoundingClientRect().bottom - screenBottom;
         if (overflowY + padding > 0) {
             element.style.maxHeight = (element.getBoundingClientRect().height - overflowY - padding) + "px";
             return true;
         }
     } else if (direction === "top") {
-        let screenTop = window.scrollY;
+        let screenTop = getScrollY();
         let overflowY = screenTop - element.getBoundingClientRect().top;
         if (overflowY + padding > 0) {
             element.style.maxHeight = (element.getBoundingClientRect().height - overflowY - padding) + "px";
