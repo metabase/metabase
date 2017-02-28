@@ -8,6 +8,7 @@ import AdminLayout from "metabase/components/AdminLayout.jsx";
 import SettingsSetting from "../components/SettingsSetting.jsx";
 import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
 import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
+import SettingsTelegramForm from "../components/SettingsTelegramForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
@@ -52,6 +53,7 @@ export default class SettingsEditorApp extends Component {
         updateSetting: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired,
         updateSlackSettings: PropTypes.func.isRequired,
+        updateTelegramSettings: PropTypes.func.isRequired,
         sendTestEmail: PropTypes.func.isRequired
     };
 
@@ -101,6 +103,14 @@ export default class SettingsEditorApp extends Component {
                     ref="slackForm"
                     elements={activeSection.settings}
                     updateSlackSettings={this.props.updateSlackSettings}
+                />
+            );
+        } else if (activeSection.name === "Telegram") {
+            return (
+                <SettingsTelegramForm
+                    ref="telegramForm"
+                    elements={activeSection.settings}
+                    updateTelegramSettings={this.props.updateTelegramSettings}
                 />
             );
         } else if (activeSection.name === "Updates") {

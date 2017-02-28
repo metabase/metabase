@@ -71,6 +71,10 @@ export const SlackApi = {
     updateSettings:              PUT("/api/slack/settings"),
 };
 
+export const TelegramApi = {
+    updateSettings:              PUT("/api/telegram/settings"),
+};
+
 export const MetabaseApi = {
     db_list:                     GET("/api/database"),
     db_list_with_tables:         GET("/api/database?include_tables=true"),

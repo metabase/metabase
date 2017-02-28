@@ -6,6 +6,7 @@
             [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
+            [metabase.integrations.telegram :as telegram]
             [metabase.models.card :refer [Card]]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
@@ -53,6 +54,15 @@
                 :image_url  slack-file-url
                 :fallback   card-name})))))
 
+(defn create-and-upload-telegram-photos!
+  "Post a photo for a given Card by rendering its result into an image and uploading it."
+  [pulse card-results channel-id]
+  (doall (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
+     (let [image-byte-array (render/render-pulse-card-to-png card result)
+           telegram-message (telegram/post-photo! image-byte-array
+                                                  (str (:name pulse) " " card-name " " (urls/card-url card-id))
+                                                  channel-id)]))))
+
 (defn- send-slack-pulse!
   "Post a `Pulse` to a slack channel given a list of card results to render and details about the slack destination."
   [pulse results channel-id]
@@ -62,6 +72,13 @@
     (slack/post-chat-message! channel-id
                               (str "Pulse: " (:name pulse))
                               attachments)))
+
+(defn- send-telegram-pulse!
+  "Post a `Pulse` to a Telegram channel given a list of card results to render and details about the slack destination."
+  [pulse results channel-id]
+  {:pre [(string? channel-id)]}
+  (log/debug (u/format-color 'cyan "Sending Pulse (%d: %s) via Telegram" (:id pulse) (:name pulse)))
+  (create-and-upload-telegram-photos! pulse results channel-id))
 
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
@@ -80,4 +97,6 @@
                                                             (:channels pulse))]
         (condp = (keyword channel_type)
           :email (send-email-pulse! pulse results recipients)
-          :slack (send-slack-pulse! pulse results (:channel details)))))))
+          :slack (send-slack-pulse! pulse results (:channel details))
+          :telegram (send-telegram-pulse! pulse results (:channel details)))))))
+

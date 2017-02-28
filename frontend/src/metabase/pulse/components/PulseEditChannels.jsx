@@ -9,6 +9,7 @@ import SchedulePicker from "./SchedulePicker.jsx";
 import SetupMessage from "./SetupMessage.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
+import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -21,7 +22,8 @@ import cx from "classnames";
 
 const CHANNEL_ICONS = {
     email: "mail",
-    slack: "slack"
+    slack: "slack",
+    telegram: "telegram"
 };
 
 export default class PulseEditChannels extends Component {
@@ -147,9 +149,18 @@ export default class PulseEditChannels extends Component {
                                 options={field.options}
                                 optionNameFn={o => o}
                                 optionValueFn={o => o}
-                                onChange={(o) => this.onChannelPropertyChange(index, "details", { ...channel.details, [field.name]: o })}
+                                onChange={({ target: { value } }) => this.onChannelPropertyChange(index, "details", { ...channel.details, [field.name]: value })}
                             />
-                        : null }
+                            : field.type === "string" ?
+                            <Input
+                                className="input text-bold"
+                                value={channel.details[field.name]}
+                                options={field.options}
+                                optionNameFn={o => o}
+                                optionValueFn={o => o}
+                                onChange={({ target: { value } }) => this.onChannelPropertyChange(index, "details", { ...channel.details, [field.name]: value })}
+                            />
+                            : null }
                     </div>
                 )}
             </div>
@@ -228,7 +239,8 @@ export default class PulseEditChannels extends Component {
         // Default to show the default channels until full formInput is loaded
         let channels = formInput.channels || {
             email: { name: "Email", type: "email" },
-            slack: { name: "Slack", type: "slack" }
+            slack: { name: "Slack", type: "slack" },
+            telegram: { name: "Telegram", type: "telegram" }
         };
         return (
             <div className="py1 mb4">

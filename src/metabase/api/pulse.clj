@@ -7,6 +7,7 @@
             [metabase.email :as email]
             [metabase.events :as events]
             [metabase.integrations.slack :as slack]
+            [metabase.integrations.telegram :as telegram]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
                              [interface :as mi]
@@ -81,6 +82,7 @@
   []
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
+                       (assoc-in [:telegram :configured] (telegram/telegram-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]
     {:channels (if-not (get-in chan-types [:slack :configured])
                  ;; no Slack integration, so we are g2g

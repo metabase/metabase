@@ -93,7 +93,15 @@
                                 :type "select"
                                 :displayName "Post to"
                                 :options ["#general"]
-                                :required true}]}})
+                                :required true}]}
+   :telegram {:type              "telegram"
+              :name              "Telegram"
+              :allows_recipients false
+              :schedules         [:hourly :daily :weekly :monthly]
+              :fields            [{:name "channel"
+                                   :type "string"
+                                   :displayName "Post to"
+                                   :required true}]}})
 
 (defn channel-type?
   "Is CHANNEL-TYPE a valid value as a channel type? :tv:"

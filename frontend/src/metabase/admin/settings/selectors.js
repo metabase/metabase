@@ -138,6 +138,20 @@ const SECTIONS = [
         ]
     },
     {
+        name: "Telegram",
+        settings: [
+            {
+                key: "telegram-token",
+                display_name: "Telegram API Token",
+                description: "",
+                placeholder: "Enter the token you received from Telegram",
+                type: "string",
+                required: false,
+                autoFocus: true
+            },
+        ]
+    },
+    {
         name: "Single Sign-On",
         settings: [
             {

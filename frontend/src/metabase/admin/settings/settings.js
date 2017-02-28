@@ -1,7 +1,7 @@
 
 import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 
-import { SettingsApi, EmailApi, SlackApi } from "metabase/services";
+import { SettingsApi, EmailApi, SlackApi, TelegramApi } from "metabase/services";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
@@ -79,6 +79,20 @@ export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", fu
             return await loadSettings();
         } catch(error) {
             console.log("error updating slack settings", settings, error);
+            throw error;
+        }
+    };
+});
+
+// updateTelegramSettings
+export const updateTelegramSettings = createThunkAction("UPDATE_TELEGRAM_SETTINGS", function(settings) {
+    return async function(dispatch, getState) {
+        try {
+            await TelegramApi.updateSettings(settings);
+            await dispatch(refreshSiteSettings());
+            return await loadSettings();
+        } catch(error) {
+            console.log("error updating telegram settings", settings, error);
             throw error;
         }
     };
