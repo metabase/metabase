@@ -71,7 +71,7 @@ export default class HomepageApp extends Component {
                     <Modal>
                         <NewUserOnboardingModal
                             user={user}
-                            closeFn={() => (this.completeOnboarding())}
+                            onClose={() => (this.completeOnboarding())}
                         />
                     </Modal>
                 : null }
@@ -81,7 +81,7 @@ export default class HomepageApp extends Component {
                         <div className="Layout-mainColumn">
                             <header style={this.styles.headerGreeting} className="flex align-center pb4 pt1">
                                 <Smile />
-                                <div className="ml2">{this.state.greeting}</div>
+                                <div id="Greeting" className="ml2">{this.state.greeting}</div>
                             </header>
                         </div>
                     </div>

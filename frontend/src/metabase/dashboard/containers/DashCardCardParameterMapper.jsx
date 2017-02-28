@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
@@ -17,9 +19,11 @@ import _ from "underscore";
 import cx from "classnames";
 import { getIn } from "icepick";
 
-import type { CardObject } from "metabase/meta/types/Card";
-import type { DashCardObject, ParameterId, ParameterObject, ParameterMappingOption, ParameterMappingTarget } from "metabase/meta/types/Dashboard";
-import type { DatabaseId } from "metabase/meta/types/base";
+import type { Card } from "metabase/meta/types/Card";
+import type { DashCard, Parameter, ParameterId, ParameterMappingUIOption, ParameterMappingTarget } from "metabase/meta/types/Dashboard";
+import type { DatabaseId } from "metabase/meta/types/Database";
+
+import type { MappingsByParameter } from "../selectors";
 
 const makeMapStateToProps = () => {
     const getParameterMappingOptions = makeGetParameterMappingOptions()
@@ -38,16 +42,19 @@ const mapDispatchToProps = {
     fetchDatabaseMetadata
 };
 
+
 @connect(makeMapStateToProps, mapDispatchToProps)
 export default class DashCardCardParameterMapper extends Component {
     props: {
-        card: CardObject,
-        dashcard: DashCardObject,
-        parameter: ParameterObject,
+        card: Card,
+        dashcard: DashCard,
+        parameter: Parameter,
         target: ParameterMappingTarget,
-        mappingOptions: Array<ParameterMappingOption>,
+        mappingOptions: Array<ParameterMappingUIOption>,
+        mappingOptionSections: Array<Array<ParameterMappingUIOption>>,
+        mappingsByParameter: MappingsByParameter,
         fetchDatabaseMetadata: (id: ?DatabaseId) => void,
-        setParameterMapping: (parameter_id: ParameterId, dashcard_id: number, card_id: number, target: ParameterMappingTarget) => void,
+        setParameterMapping: (parameter_id: ParameterId, dashcard_id: number, card_id: number, target: ?ParameterMappingTarget) => void,
     };
 
     static propTypes = {
@@ -61,26 +68,26 @@ export default class DashCardCardParameterMapper extends Component {
         this.props.fetchDatabaseMetadata(card.dataset_query.database);
     }
 
-    onChange = (item) => {
+    onChange = (option: ?ParameterMappingUIOption) => {
         const { setParameterMapping, parameter, dashcard, card } = this.props;
-        setParameterMapping(parameter.id, dashcard.id, card.id, item && item.target);
+        setParameterMapping(parameter.id, dashcard.id, card.id, option ? option.target : null);
         this.refs.popover.close()
     }
 
     render() {
         const { mappingOptions, mappingOptionSections, target, mappingsByParameter, parameter, dashcard, card } = this.props;
 
+        // TODO: move some of these to selectors?
         const disabled = mappingOptions.length === 0;
         const selected = _.find(mappingOptions, (o) => _.isEqual(o.target, target));
 
         const mapping = getIn(mappingsByParameter, [parameter.id, dashcard.id, card.id]);
         const noOverlap = !!(mapping && mapping.mappingsWithValues > 1 && mapping.overlapMax === 1);
 
-        const hasFkOption = _.any(mappingOptions, (o) => o.isFk);
+        const hasFkOption = _.any(mappingOptions, (o) => !!o.isFk);
 
         const sections = _.map(mappingOptionSections, (options) => ({
             name: options[0].sectionName,
-            icon: options[0].sectionIcon,
             items: options
         }));
 
@@ -101,14 +108,18 @@ export default class DashCardCardParameterMapper extends Component {
                     triggerClasses={cx({ "disabled": disabled })}
                     triggerElement={
                         <Tooltip tooltip={tooltipText} verticalAttachments={["bottom", "top"]}>
-                            <button
+                            {/* using div instead of button due to
+                                https://bugzilla.mozilla.org/show_bug.cgi?id=984869
+                                and click event on close button not propagating in FF
+                            */}
+                            <div
                                 className={cx(S.button, {
                                     [S.mapped]: !!selected,
                                     [S.warn]: noOverlap,
                                     [S.disabled]: disabled
                                 })}
                             >
-                                <span className="mr1">
+                                <span className="text-centered mr1">
                                 { disabled ?
                                     "No valid fields"
                                 : selected ?
@@ -122,7 +133,7 @@ export default class DashCardCardParameterMapper extends Component {
                                 : !disabled ?
                                     <Icon className="flex-align-right" name="chevrondown" size={16} />
                                 : null }
-                            </button>
+                            </div>
                         </Tooltip>
                     }
                 >

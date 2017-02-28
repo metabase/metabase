@@ -6,10 +6,12 @@
             (honeysql [core :as hsql]
                       [helpers :as h])
             [metabase.config :as config]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
+            [metabase.driver.google :as google]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
@@ -30,77 +32,21 @@
            (com.google.api.services.bigquery.model Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema QueryRequest QueryResponse)
            (metabase.query_processor.interface DateTimeValue Value)))
 
-(def ^:private ^HttpTransport http-transport (GoogleNetHttpTransport/newTrustedTransport))
-(def ^:private ^JsonFactory   json-factory   (JacksonFactory/getDefaultInstance))
 
-(def ^:private ^:const ^String redirect-uri "urn:ietf:wg:oauth:2.0:oob")
-
-(defn- execute-no-auto-retry
-  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
-  throws, converting them to `ExceptionInfo` and rethrowing them."
-  [^AbstractGoogleClientRequest request]
-  (try (.execute request)
-       (catch GoogleJsonResponseException e
-         (let [^GoogleJsonError error (.getDetails e)]
-           (throw (ex-info (or (.getMessage error)
-                               (.getStatusMessage e))
-                           (into {} error)))))))
-
-(defn- execute
-  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is
-  throws, converting them to `ExceptionInfo` and rethrowing them.
-
-  This automatically retries any failed requests up to 2 times."
-  [^AbstractGoogleClientRequest request]
-  (u/auto-retry 2
-    (execute-no-auto-retry request)))
-
-;; This specific format was request by Google themselves -- see #2627
-(def ^:private ^:const ^String application-name
-  (let [{:keys [tag hash branch]} config/mb-version-info]
-    (format "Metabase/%s (GPN:Metabse; %s %s)" tag hash branch)))
+;;; ------------------------------------------------------------ Client ------------------------------------------------------------
 
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
-  (.build (doto (Bigquery$Builder. http-transport json-factory credential)
-            (.setApplicationName application-name))))
+  (.build (doto (Bigquery$Builder. google/http-transport google/json-factory credential)
+            (.setApplicationName google/application-name))))
 
-(defn- fetch-access-and-refresh-tokens* [^String client-id, ^String client-secret, ^String auth-code]
-  {:pre  [(seq client-id) (seq client-secret) (seq auth-code)]
-   :post [(seq (:access-token %)) (seq (:refresh-token %))]}
-  (log/info (u/format-color 'magenta "Fetching BigQuery access/refresh tokens with auth-code '%s'..." auth-code))
-  (let [^GoogleAuthorizationCodeFlow flow (.build (doto (GoogleAuthorizationCodeFlow$Builder. http-transport json-factory client-id client-secret (Collections/singleton BigqueryScopes/BIGQUERY))
-                                                    (.setAccessType "offline")))
-        ^GoogleTokenResponse response     (.execute (doto (.newTokenRequest flow auth-code) ; don't use `execute` here because this is a *different* type of Google request
-                                                      (.setRedirectUri redirect-uri)))]
-    {:access-token (.getAccessToken response), :refresh-token (.getRefreshToken response)}))
+(def ^:private ^{:arglists '([database])} ^GoogleCredential database->credential
+  (partial google/database->credential (Collections/singleton BigqueryScopes/BIGQUERY)))
 
-;; Memoize this function because you're only allowed to redeem an auth-code once. This way we can redeem it the first time when `can-connect?` checks to see if the DB details are
-;; viable; then the second time we go to redeem it we can save the access token and refresh token with the newly created `Database` <3
-(def ^:private ^{:arglists '([client-id client-secret auth-code])} fetch-access-and-refresh-tokens (memoize fetch-access-and-refresh-tokens*))
+(def ^:private ^{:arglists '([database])} ^Bigquery database->client
+  (comp credential->client database->credential))
 
-(defn- database->credential
-  "Get a `GoogleCredential` for a `DatabaseInstance`."
-  {:arglists '([database])}
-  ^GoogleCredential [{{:keys [^String client-id, ^String client-secret, ^String auth-code, ^String access-token, ^String refresh-token], :as details} :details, id :id, :as db}]
-  {:pre [(seq client-id) (seq client-secret) (or (seq auth-code)
-                                                 (and (seq access-token) (seq refresh-token)))]}
-  (if-not (and (seq access-token)
-               (seq refresh-token))
-    ;; If Database doesn't have access/refresh tokens fetch them and try again
-    (let [details (-> (merge details (fetch-access-and-refresh-tokens client-id client-secret auth-code))
-                      (dissoc :auth-code))]
-      (when id
-        (db/update! Database id, :details details))
-      (recur (assoc db :details details)))
-    ;; Otherwise return credential as normal
-    (doto (.build (doto (GoogleCredential$Builder.)
-                    (.setClientSecrets client-id client-secret)
-                    (.setJsonFactory json-factory)
-                    (.setTransport http-transport)))
-      (.setAccessToken  access-token)
-      (.setRefreshToken refresh-token))))
 
-(def ^:private ^{:arglists '([database])} ^Bigquery database->client (comp credential->client database->credential))
+;;; ------------------------------------------------------------ Etc. ------------------------------------------------------------
 
 (defn- ^TableList list-tables
   "Fetch a page of Tables. By default, fetches the first page; page size is 50. For cases when more than 50 Tables are present, you may
@@ -113,8 +59,8 @@
 
   ([^Bigquery client, ^String project-id, ^String dataset-id, ^String page-token-or-nil]
    {:pre [client (seq project-id) (seq dataset-id)]}
-   (execute (u/prog1 (.list (.tables client) project-id dataset-id)
-              (.setPageToken <> page-token-or-nil)))))
+   (google/execute (u/prog1 (.list (.tables client) project-id dataset-id)
+                     (.setPageToken <> page-token-or-nil)))))
 
 (defn- describe-database [database]
   {:pre [(map? database)]}
@@ -140,15 +86,19 @@
 
   ([^Bigquery client, ^String project-id, ^String dataset-id, ^String table-id]
    {:pre [client (seq project-id) (seq dataset-id) (seq table-id)]}
-   (execute (.get (.tables client) project-id dataset-id table-id))))
+   (google/execute (.get (.tables client) project-id dataset-id table-id))))
 
-(def ^:private ^:const  bigquery-type->base-type
-  {"BOOLEAN"   :BooleanField
-   "FLOAT"     :FloatField
-   "INTEGER"   :IntegerField
-   "RECORD"    :DictionaryField ; RECORD -> field has a nested schema
-   "STRING"    :TextField
-   "TIMESTAMP" :DateTimeField})
+(defn- bigquery-type->base-type [field-type]
+  (case field-type
+    "BOOLEAN"   :type/Boolean
+    "FLOAT"     :type/Float
+    "INTEGER"   :type/Integer
+    "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
+    "STRING"    :type/Text
+    "DATE"      :type/Date
+    "DATETIME"  :type/DateTime
+    "TIMESTAMP" :type/DateTime
+    :type/*))
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]
@@ -161,7 +111,7 @@
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
-(def ^:private ^:const query-timeout-seconds 60)
+(def ^:private ^:const ^Integer query-timeout-seconds 60)
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
@@ -171,9 +121,10 @@
    {:pre [client (seq project-id) (seq query-string)]}
    (let [request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
-                   #_(.setUseLegacySql false)   ; use standards-compliant non-legacy dialect -- see https://cloud.google.com/bigquery/sql-reference/enabling-standard-sql
+                   ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
+                   (.setUseLegacySql (not (s/includes? query-string "#standardSQL")))
                    (.setQuery query-string))]
-     (execute (.query (.jobs client) project-id request)))))
+     (google/execute (.query (.jobs client) project-id request)))))
 
 (def ^:private ^java.util.TimeZone default-timezone
   (java.util.TimeZone/getDefault))
@@ -195,9 +146,11 @@
   "Functions that should be used to coerce string values in responses to the appropriate type for their column."
   {"BOOLEAN"   #(Boolean/parseBoolean %)
    "FLOAT"     #(Double/parseDouble %)
-   "INTEGER"   #(Integer/parseInt %)
+   "INTEGER"   #(Long/parseLong %)
    "RECORD"    identity
    "STRING"    identity
+   "DATE"      parse-timestamp-str
+   "DATETIME"  parse-timestamp-str
    "TIMESTAMP" parse-timestamp-str})
 
 (defn- post-process-native
@@ -344,8 +297,10 @@
        :table-name table-name
        :mbql?      true})))
 
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native, :as outer-query}]
-  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" sql)
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
+  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" (if (seq params)
+                                                                 (unprepare/unprepare (cons sql params))
+                                                                 sql))
         results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
@@ -374,11 +329,19 @@
                          (and (seq schema-name) (seq field-name) (seq table-name))
                          (log/error "Don't know how to alias: " this))]}
   (cond
-    field (recur field) ; DateTimeField
-    index (name (let [{{{ag-type :aggregation-type} :aggregation} :query} sqlqp/*query*]
-                  (if (= ag-type :distinct) :count
-                      ag-type)))
+    field (recur field) ; type/DateTime
+    index (name (let [{{aggregations :aggregation} :query} sqlqp/*query*
+                      {ag-type :aggregation-type}          (nth aggregations index)]
+                  (if (= ag-type :distinct)
+                    :count
+                    ag-type)))
     :else (str schema-name \. table-name \. field-name)))
+
+;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
+(defn- field->identifier [{table-id :table_id, :as field}]
+  (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
+        dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
+    (hsql/raw (apply format "[%s.%s.%s]" dataset (field/qualified-name-components field)))))
 
 ;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
 ;; BAD:
@@ -436,8 +399,9 @@
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
           :field->alias              (u/drop-first-arg field->alias)
+          :field->identifier         (u/drop-first-arg field->identifier)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this]
+          :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this] initially (we have to convert them to [like.this] before executing)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)})
 
@@ -473,9 +437,15 @@
           ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
           ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
           ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
-          :features              (constantly (when-not config/is-test?
-                                               ;; during unit tests don't treat bigquery as having FK support
-                                               #{:foreign-keys}))
+          :features              (constantly (set/union #{:basic-aggregations
+                                                          :standard-deviation-aggregations
+                                                          :native-parameters
+                                                          ;; Expression aggregations *would* work, but BigQuery doesn't support the auto-generated column names. BQ column names
+                                                          ;; can only be alphanumeric or underscores. If we slugified the auto-generated column names, we could enable this feature.
+                                                          #_:expression-aggregations}
+                                                        (when-not config/is-test?
+                                                          ;; during unit tests don't treat bigquery as having FK support
+                                                          #{:foreign-keys})))
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg mbql->native)}))
 

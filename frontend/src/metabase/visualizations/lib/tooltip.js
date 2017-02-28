@@ -1,25 +1,29 @@
+/* @flow weak */
+
 function getElementIndex(e) {
-    return [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
+    return e && [...e.classList].map(c => c.match(/^_(\d+)$/)).filter(c => c).map(c => parseInt(c[1], 10))[0];
+}
+
+function getParentWithClass(element, className) {
+    while (element) {
+        if (element.classList && element.classList.contains(className)) {
+            return element;
+        }
+        element = element.parentNode
+    }
+    return null;
 }
 
 // HACK: This determines the index of the series the provided element belongs to since DC doesn't seem to provide another way
-export function determineSeriesIndexFromElement(element) {
-    // composed charts:
-    let e = element;
-    while (e && e.classList && !e.classList.contains("sub")) {
-        e = e.parentNode;
+export function determineSeriesIndexFromElement(element, isStacked) {
+    if (isStacked) {
+        if (element.classList.contains("dot")) {
+            // .dots are children of dc-tooltip
+            return getElementIndex(getParentWithClass(element, "dc-tooltip"))
+        } else {
+            return getElementIndex(getParentWithClass(element, "stack"))
+        }
+    } else {
+        return getElementIndex(getParentWithClass(element, "sub"))
     }
-    if (e && e.classList) {
-        return getElementIndex(e);
-    }
-    // stacked charts:
-    e = element;
-    while (e && e.classList && !e.classList.contains("dc-tooltip") && !e.classList.contains("stack")) {
-        e = e.parentNode;
-    }
-    if (e && e.classList) {
-        return getElementIndex(e);
-    }
-    // none?
-    return null;
 }

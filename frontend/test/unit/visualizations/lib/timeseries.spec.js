@@ -3,6 +3,8 @@ import {
     computeTimeseriesDataInverval
 } from 'metabase/visualizations/lib/timeseries';
 
+import { TYPE } from "metabase/lib/types";
+
 describe('visualization.lib.timeseries', () => {
     describe('dimensionIsTimeseries', () => {
         // examples from https://en.wikipedia.org/wiki/ISO_8601
@@ -22,23 +24,23 @@ describe('visualization.lib.timeseries', () => {
             "scanner 005"
         ];
 
-        it("should detect DateField column as timeseries", () => {
-            expect(dimensionIsTimeseries({ cols: [{ base_type: "DateField" }]})).toBe(true);
+        it("should detect Date column as timeseries", () => {
+            expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.Date }]})).toBe(true);
         });
-        it("should detect TimeField column as timeseries", () => {
-            expect(dimensionIsTimeseries({ cols: [{ base_type: "TimeField" }]})).toBe(true);
+        it("should detect Time column as timeseries", () => {
+            expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.Time }]})).toBe(true);
         });
-        it("should detect DateTimeField column as timeseries", () => {
-            expect(dimensionIsTimeseries({ cols: [{ base_type: "DateTimeField" }]})).toBe(true);
+        it("should detect DateTime column as timeseries", () => {
+            expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.DateTime }]})).toBe(true);
         });
         ISO_8601_DATES.forEach(isoDate => {
             it("should detect values with ISO 8601 formatted string '" + isoDate + "' as timeseries", () => {
-                expect(dimensionIsTimeseries({ cols: [{ base_type: "TextField" }], rows: [[isoDate]]})).toBe(true);
+                expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.Text }], rows: [[isoDate]]})).toBe(true);
             })
         });
         NOT_DATES.forEach(notDate => {
             it("should not detect value '" + notDate + "' as timeseries", () => {
-                expect(dimensionIsTimeseries({ cols: [{ base_type: "TextField" }], rows: [[notDate]]})).toBe(false);
+                expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.Text }], rows: [[notDate]]})).toBe(false);
             });
         });
     });

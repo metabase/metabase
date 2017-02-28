@@ -3,7 +3,7 @@ import cx from "classnames";
 import pure from "recompose/pure";
 
 import S from "./UsefulQuestions.css";
-import D from "metabase/components/Detail.css";
+import D from "metabase/reference/components/Detail.css";
 import L from "metabase/components/List.css";
 
 import {
@@ -13,7 +13,8 @@ import {
 import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy.jsx";
 
 const FieldsToGroupBy = ({
-    table,
+    fields,
+    databaseId,
     metric,
     title,
     onChangeLocation
@@ -24,8 +25,7 @@ const FieldsToGroupBy = ({
                 <span className={D.detailName}>{title}</span>
             </div>
             <div className={S.usefulQuestions}>
-                { table && table.fields_lookup &&
-                    Object.values(table.fields_lookup)
+                { fields && Object.values(fields)
                         .map((field, index, fields) =>
                             <FieldToGroupBy
                                 key={field.id}
@@ -34,14 +34,14 @@ const FieldsToGroupBy = ({
                                 field={field}
                                 metric={metric}
                                 onClick={() => onChangeLocation(getQuestionUrl({
-                                        dbId: table.db_id,
-                                        tableId: table.id,
+                                        dbId: databaseId,
+                                        tableId: field.table_id,
                                         fieldId: field.id,
                                         metricId: metric.id
                                     }))}
                                 secondaryOnClick={(event) => {
                                     event.stopPropagation();
-                                    onChangeLocation(`/reference/databases/${table.db_id}/tables/${table.id}/fields/${field.id}`);
+                                    onChangeLocation(`/reference/databases/${databaseId}/tables/${field.table_id}/fields/${field.id}`);
                                 }}
                             />
                         )
@@ -50,7 +50,8 @@ const FieldsToGroupBy = ({
         </div>
     </div>;
 FieldsToGroupBy.propTypes = {
-    table: PropTypes.object.isRequired,
+    fields: PropTypes.object.isRequired,
+    databaseId: PropTypes.number.isRequired,
     metric: PropTypes.object.isRequired,
     title: PropTypes.string.isRequired,
     onChangeLocation: PropTypes.func.isRequired

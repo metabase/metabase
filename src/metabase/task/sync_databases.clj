@@ -1,11 +1,11 @@
 (ns metabase.task.sync-databases
   (:require [clj-time.core :as t]
             [clojure.tools.logging :as log]
-            (clojurewerkz.quartzite [jobs :as jobs]
-                                    [triggers :as triggers])
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            (metabase [db :as db]
-                      [task :as task])
+            [clojurewerkz.quartzite.triggers :as triggers]
+            [toucan.db :as db]
+            [metabase.task :as task]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.sync-database :as sync-database]))

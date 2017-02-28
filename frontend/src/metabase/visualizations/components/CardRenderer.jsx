@@ -8,14 +8,13 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import dc from "dc";
-import cx from "classnames";
 
 @ExplicitSize
 export default class CardRenderer extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
-        width: PropTypes.number.isRequired,
-        height: PropTypes.number.isRequired,
+        width: PropTypes.number,
+        height: PropTypes.number,
         renderer: PropTypes.func.isRequired,
         onRenderError: PropTypes.func.isRequired,
         className: PropTypes.string
@@ -49,6 +48,10 @@ export default class CardRenderer extends Component {
     }
 
     renderChart() {
+        if (this.props.width == null || this.props.height == null) {
+            return;
+        }
+
         let parent = ReactDOM.findDOMNode(this);
 
         // deregister previous chart:
@@ -74,7 +77,7 @@ export default class CardRenderer extends Component {
 
     render() {
         return (
-            <div className={cx(this.props.className, "Card-outer")}></div>
+            <div className={this.props.className}></div>
         );
     }
 }

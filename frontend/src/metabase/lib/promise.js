@@ -28,3 +28,12 @@ export function timeout(promise, duration, error) {
 export function delay(duration) {
     return new Promise((resolve, reject) => setTimeout(resolve, duration));
 }
+
+export function defer() {
+    let deferrred = {}
+    deferrred.promise = new Promise((resolve, reject) => {
+        deferrred.resolve = resolve;
+        deferrred.reject = reject;
+    });
+    return deferrred;
+}

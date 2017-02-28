@@ -1,5 +1,5 @@
 [["users" [{:field-name "name"
-            :base-type  :CharField}]
+            :base-type  :type/Text}]
   [["Rasta Toucan"]
    ["Lucky Pigeon"]
    ["Peter Pelican"]
@@ -9,13 +9,13 @@
    ["Brenda Blackbird"]
    ["Annie Albatross"]]]
  ["messages" [{:field-name "sender_id"
-               :base-type  :IntegerField
+               :base-type  :type/Integer
                :fk         :users}
               {:field-name "reciever_id"
-               :base-type  :IntegerField
+               :base-type  :type/Integer
                :fk         :users}
               {:field-name "text"
-               :base-type  :CharField}]
+               :base-type  :type/Text}]
   [[8 7 "Coo"]
    [8 3 "Bip bip bip bip"]
    [3 2 "Coo"]

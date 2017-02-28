@@ -1,7 +1,6 @@
 (ns metabase.query-processor.parameters-test
   "Tests for *MBQL* parameter substitution."
-  (:require [clojure.set :as set]
-            (clj-time [core :as t]
+  (:require (clj-time [core :as t]
                       [format :as tf])
             [expectations :refer :all]
             [metabase.driver :as driver]
@@ -18,7 +17,7 @@
                                 [users :refer :all])
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-fns metabase.query-processor.parameters
+(tu/resolve-private-vars metabase.query-processor.parameters
   absolute-date->range relative-date->range)
 
 (expect {:end "2016-03-31", :start "2016-01-01"} (absolute-date->range "Q1-2016"))
@@ -134,7 +133,7 @@
 ;;; +-------------------------------------------------------------------------------------------------------+
 
 ;; for some reason param substitution tests fail on Redshift & (occasionally) Crate so just don't run those for now
-(def ^:private ^:const params-test-engines (set/difference non-timeseries-engines #{:redshift :crate}))
+(def ^:private ^:const params-test-engines (disj non-timeseries-engines :redshift :crate))
 
 ;; check that date ranges work correctly
 (datasets/expect-with-engines params-test-engines

@@ -51,7 +51,7 @@ export default class DeleteDatabaseModal extends Component {
         return (
             <ModalContent
                 title="Delete Database"
-                closeFn={this.props.onClose}
+                onClose={this.props.onClose}
             >
                 <div className="Form-inputs mb4">
                     { database.is_sample &&

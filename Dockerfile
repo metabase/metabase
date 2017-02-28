@@ -9,7 +9,7 @@ ENV LC_CTYPE en_US.UTF-8
 
 # install core build tools
 RUN apk add --update nodejs git wget bash python make g++ java-cacerts ttf-dejavu fontconfig && \
-    npm install -g npm@2 && \
+    npm install -g yarn && \
     ln -sf "${JAVA_HOME}/bin/"* "/usr/bin/"
 
 # fix broken cacerts
@@ -29,7 +29,7 @@ RUN bin/build
 
 # remove unnecessary packages & tidy up
 RUN apk del nodejs git wget python make g++
-RUN rm -rf /root/.lein /root/.m2 /root/.node-gyp /root/.npm /tmp/* /var/cache/apk/* /app/source/node_modules
+RUN rm -rf /root/.lein /root/.m2 /root/.node-gyp /root/.npm /root/.yarn /root/.yarn-cache /tmp/* /var/cache/apk/* /app/source/node_modules
 
 # expose our default runtime port
 EXPOSE 3000

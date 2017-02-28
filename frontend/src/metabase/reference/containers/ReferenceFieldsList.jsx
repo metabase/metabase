@@ -87,7 +87,8 @@ export default class ReferenceEntityList extends Component {
         section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
-        submitting: PropTypes.bool
+        submitting: PropTypes.bool,
+        resetForm: PropTypes.func
     };
 
     render() {
@@ -104,6 +105,7 @@ export default class ReferenceEntityList extends Component {
             hasRevisionHistory,
             startEditing,
             endEditing,
+            resetForm,
             handleSubmit,
             submitting
         } = this.props;
@@ -117,6 +119,7 @@ export default class ReferenceEntityList extends Component {
                 { isEditing &&
                     <EditHeader
                         hasRevisionHistory={hasRevisionHistory}
+                        reinitializeForm={resetForm}
                         endEditing={endEditing}
                         submitting={submitting}
                     />

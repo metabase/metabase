@@ -1,7 +1,7 @@
 (ns metabase.events.sync-database
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.events :as events]
             [metabase.models.database :refer [Database]]
             [metabase.sync-database :as sync-database]))
@@ -43,4 +43,4 @@
 (defn events-init
   "Automatically called during startup; start event listener for database sync events."
   []
-  (events/start-event-listener sync-database-topics sync-database-channel process-sync-database-event))
+  (events/start-event-listener! sync-database-topics sync-database-channel process-sync-database-event))

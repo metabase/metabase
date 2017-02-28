@@ -1,12 +1,12 @@
 (ns metabase.driver.h2-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [metabase.db :as mdb]
             [metabase.driver :as driver]
             [metabase.driver.h2 :refer :all]
-            [metabase.test.util :refer [resolve-private-fns]])
+            [metabase.test.util :refer [resolve-private-vars]])
   (:import metabase.driver.h2.H2Driver))
 
-(resolve-private-fns metabase.driver.h2 connection-string->file+options file+options->connection-string connection-string-set-safe-options)
+(resolve-private-vars metabase.driver.h2 connection-string->file+options file+options->connection-string connection-string-set-safe-options)
 
 ;; Check that the functions for exploding a connection string's options work as expected
 (expect
@@ -35,5 +35,5 @@
 
 ;; Check that we can connect to a non-existent Database when we enable potentailly unsafe connections (e.g. to the Metabase database)
 (expect true
-  (binding [db/*allow-potentailly-unsafe-connections* true]
+  (binding [mdb/*allow-potentailly-unsafe-connections* true]
     (driver/can-connect? (H2Driver.) {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))

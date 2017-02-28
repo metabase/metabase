@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import RevisionHistory from "../components/revisions/RevisionHistory.jsx";
 
 import { revisionHistorySelectors } from "../selectors";
-import * as actions from "../metadata";
+import * as actions from "../datamodel";
 
 const mapStateToProps = (state, props) => {
     return {

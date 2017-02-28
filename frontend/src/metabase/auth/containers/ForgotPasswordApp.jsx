@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import { AngularResourceProxy } from "metabase/lib/redux";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -15,7 +14,7 @@ import Icon from "metabase/components/Icon.jsx";
 import MetabaseSettings from "metabase/lib/settings";
 
 
-const SessionApi = new AngularResourceProxy("Session", ["forgot_password"]);
+import { SessionApi } from "metabase/services";
 
 
 export default class ForgotPasswordApp extends Component {
@@ -23,7 +22,7 @@ export default class ForgotPasswordApp extends Component {
         super(props, context);
 
         this.state = {
-            email: null,
+            email: props.location.query.email || null,
             sentNotification: false,
             error: null
         };
@@ -71,7 +70,7 @@ export default class ForgotPasswordApp extends Component {
 
                                   <FormField key="email" fieldName="email" formError={error}>
                                       <FormLabel title={"Email address"}  fieldName={"email"} formError={error} />
-                                      <input className="Form-input Form-offset full" name="email" placeholder="The email you use for your Metabase account" type="text" onChange={(e) => this.setState({"email": e.target.value})} autoFocus />
+                                      <input className="Form-input Form-offset full" name="email" placeholder="The email you use for your Metabase account" type="text" onChange={(e) => this.setState({"email": e.target.value})} defaultValue={this.state.email} autoFocus />
                                       <span className="Form-charm"></span>
                                   </FormField>
 

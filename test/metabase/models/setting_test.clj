@@ -1,7 +1,7 @@
 (ns metabase.models.setting-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.setting :refer [defsetting Setting], :as setting]
             (metabase.test [data :refer :all]
                            [util :refer :all])))
@@ -114,7 +114,7 @@
 
 ;;; ------------------------------------------------------------ all & user-facing-info ------------------------------------------------------------
 
-(resolve-private-fns metabase.models.setting resolve-setting user-facing-info)
+(resolve-private-vars metabase.models.setting resolve-setting user-facing-info)
 
 ;; these tests are to check that settings get returned with the correct information; these functions are what feed into the API
 

@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import FormLabel from "../components/FormLabel.jsx";
 import FormInput from "../components/FormInput.jsx";
 import FormTextArea from "../components/FormTextArea.jsx";
-import FieldSet from "../components/FieldSet.jsx";
+import FieldSet from "metabase/components/FieldSet.jsx";
 import PartialQueryBuilder from "../components/PartialQueryBuilder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -13,11 +13,13 @@ import { formatValue } from "metabase/lib/formatting";
 import { metricFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
 
+import Query from "metabase/lib/query";
+
 import cx from "classnames";
 
 @reduxForm({
     form: "metric",
-    fields: ["id", "name", "description", "table_id", "definition", "revision_message"],
+    fields: ["id", "name", "description", "table_id", "definition", "revision_message", "show_in_getting_started"],
     validate: (values) => {
         const errors = {};
         if (!values.name) {
@@ -31,8 +33,9 @@ import cx from "classnames";
                 errors.revision_message = "Revision message is required";
             }
         }
-        if (!values.definition || !values.definition.filter || !values.definition.aggregation || values.definition.aggregation[0] == null) {
-            errors.definition = "Aggreagtion is required";
+        let aggregations = values.definition && Query.getAggregations(values.definition);
+        if (!aggregations || aggregations.length === 0) {
+            errors.definition = "Aggregation is required";
         }
         return errors;
     }

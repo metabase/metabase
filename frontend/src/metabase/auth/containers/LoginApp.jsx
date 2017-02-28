@@ -57,7 +57,7 @@ export default class LoginApp extends Component {
 
         this.validateForm();
 
-        const { loginGoogle } = this.props;
+        const { loginGoogle, location } = this.props;
 
         let ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
 
@@ -74,7 +74,7 @@ export default class LoginApp extends Component {
                       cookiepolicy: 'single_host_origin',
                   });
                   auth2.attachClickHandler(ssoLoginButton, {},
-                      (googleUser) => loginGoogle(googleUser),
+                      (googleUser) => loginGoogle(googleUser, location.query.redirect),
                       (error) => console.error('There was an error logging in', error)
                   );
                 })
@@ -96,10 +96,10 @@ export default class LoginApp extends Component {
     formSubmitted(e) {
         e.preventDefault();
 
-        let { login } = this.props;
+        let { login, location } = this.props;
         let { credentials } = this.state;
 
-        login(credentials);
+        login(credentials, location.query.redirect);
     }
 
     render() {
@@ -150,7 +150,7 @@ export default class LoginApp extends Component {
                                 <button className={cx("Button Grid-cell", {'Button--primary': this.state.valid})} disabled={!this.state.valid}>
                                     Sign in
                                 </button>
-                                <Link to="/auth/forgot_password" className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</Link>
+                                <Link to={"/auth/forgot_password"+(this.state.credentials.email ? "?email="+this.state.credentials.email : "")} className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</Link>
                             </div>
                         </form>
                     </div>

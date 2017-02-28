@@ -10,6 +10,7 @@ import cx from 'classnames';
 
 export default class Breadcrumbs extends Component {
     static propTypes = {
+        className: PropTypes.string,
         crumbs: PropTypes.array,
         inSidebar: PropTypes.bool,
         placeholder: PropTypes.string
@@ -22,6 +23,7 @@ export default class Breadcrumbs extends Component {
 
     render() {
         const {
+            className,
             crumbs,
             inSidebar,
             placeholder
@@ -31,7 +33,7 @@ export default class Breadcrumbs extends Component {
         const breadcrumbsClass = inSidebar ? S.sidebarBreadcrumbs : S.breadcrumbs;
 
         return (
-            <section className={breadcrumbsClass}>
+            <section className={cx(className, breadcrumbsClass)}>
                 { crumbs.length <= 1 && placeholder ?
                     <span className={cx(breadcrumbClass, S.breadcrumbPage)}>
                         {placeholder}

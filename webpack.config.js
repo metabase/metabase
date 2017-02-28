@@ -1,18 +1,22 @@
-"use strict";
-/*eslint-env node */
+/* eslint-env node */
+/* eslint-disable import/no-commonjs */
+
+require("babel-register");
+require("babel-polyfill");
 
 var webpack = require('webpack');
 var webpackPostcssTools = require('webpack-postcss-tools');
 
-var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
-var FlowStatusWebpackPlugin = require('flow-status-webpack-plugin');
 
 var _ = require('underscore');
 var glob = require('glob');
 var fs = require('fs');
+
+var chevrotain = require("chevrotain");
+var allTokens = require("./frontend/src/metabase/lib/expressions/tokens").allTokens;
 
 function hasArg(arg) {
     var regex = new RegExp("^" + ((arg.length === 2) ? ("-\\w*"+arg[1]+"\\w*") : (arg)) + "$");
@@ -30,9 +34,9 @@ if (isWatching) {
     console.warn("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries");
 }
 
-// default NODE_ENV to production unless -d or --debug is specified
-var NODE_ENV = process.env["NODE_ENV"] || (hasArg("-d") || (hasArg("--debug")) ? "development": "production");
-console.log("webpack env:", NODE_ENV)
+// default NODE_ENV to development
+var NODE_ENV = process.env["NODE_ENV"] || "development";
+process.stderr.write("webpack env: " + NODE_ENV + "\n");
 
 // Babel:
 var BABEL_CONFIG = {
@@ -74,8 +78,8 @@ var config = module.exports = {
     // output a bundle for the app JS and a bundle for styles
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
     entry: {
-        vendor: './vendor.js',
-        app: './app.js',
+        app_main: './app-main.js',
+        app_public: './app-public.js',
         styles: './css/index.css',
     },
 
@@ -101,7 +105,7 @@ var config = module.exports = {
                 loader: 'eslint'
             },
             {
-                test: /\.(eot|woff2?|ttf|svg)$/,
+                test: /\.(eot|woff2?|ttf|svg|png)$/,
                 loader: "file-loader"
             },
             {
@@ -114,7 +118,7 @@ var config = module.exports = {
             }
         ],
         noParse: [
-            /node_modules\/(angular|ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -124,14 +128,6 @@ var config = module.exports = {
             'metabase':             SRC_PATH,
             'style':                SRC_PATH + '/css/core/index.css',
 
-            // angular
-            'angular':              __dirname + '/node_modules/angular/angular.min.js',
-            'angular-cookies':      __dirname + '/node_modules/angular-cookies/angular-cookies.min.js',
-            'angular-resource':     __dirname + '/node_modules/angular-resource/angular-resource.min.js',
-            'angular-route':        __dirname + '/node_modules/angular-route/angular-route.min.js',
-            // angular 3rd-party
-            'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
-            'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
             // ace
             'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
             'ace/ext-language_tools':__dirname+ '/node_modules/ace-builds/src-min-noconflict/ext-language_tools.js',
@@ -147,8 +143,6 @@ var config = module.exports = {
             'ace/snippets/pgsql':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/pgsql.js',
             'ace/snippets/sqlserver':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sqlserver.js',
             'ace/snippets/json':    __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/json.js',
-            // react
-            'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
             'tether':               __dirname + '/node_modules/tether/dist/js/tether.min.js',
@@ -164,21 +158,23 @@ var config = module.exports = {
         new UnusedFilesWebpackPlugin({
             globOptions: {
                 ignore: [
-                    "**/types/*.js"
+                    "**/types/*.js",
+                    "**/*.spec.*"
                 ]
             }
-        }),
-        // Separates out modules common to multiple entry points into a single common file that should be loaded first.
-        // Not currently useful but necessary for code-splitting
-        new CommonsChunkPlugin({
-            name: 'vendor',
-            minChunks: Infinity // (with more entries, this ensures that no other module goes into the vendor chunk)
         }),
         // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
         // NOTE: the filename on disk won't include "?[chunkhash]" but the URL in index.html generated by HtmlWebpackPlugin will:
         new ExtractTextPlugin('[name].bundle.css?[contenthash]'),
         new HtmlWebpackPlugin({
             filename: '../../index.html',
+            chunks: ["app_main", "styles"],
+            template: __dirname + '/resources/frontend_client/index_template.html',
+            inject: 'head'
+        }),
+        new HtmlWebpackPlugin({
+            filename: '../../public.html',
+            chunks: ["app_public", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
             inject: 'head'
         }),
@@ -191,7 +187,7 @@ var config = module.exports = {
 
     postcss: function (webpack) {
         return [
-            require("postcss-import")({ addDependencyTo: webpack }),
+            require("postcss-import")(),
             require("postcss-url")(),
             require("postcss-cssnext")(CSSNEXT_CONFIG)
         ]
@@ -199,13 +195,7 @@ var config = module.exports = {
 };
 
 if (NODE_ENV === "hot") {
-    config.entry.app = [
-        'webpack-dev-server/client?http://localhost:8080',
-        'webpack/hot/only-dev-server',
-        config.entry.app
-    ];
-
-    // suffixing with ".hot" allows us to run both `npm run build-hot` and `npm run test` or `npm run test-watch` simultaneously
+    // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
     config.output.filename = "[name].hot.bundle.js?[hash]";
 
     // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
@@ -220,13 +210,21 @@ if (NODE_ENV === "hot") {
     // disable ExtractTextPlugin
     config.module.loaders[config.module.loaders.length - 1].loader = "style-loader!css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader"
 
+    config.devServer = {
+        hot: true,
+        inline: true,
+        contentBase: "frontend"
+        // if you want to reduce stats noise
+        // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
+    };
+
     config.plugins.unshift(
-        new webpack.NoErrorsPlugin()
+        new webpack.NoErrorsPlugin(),
+        new webpack.HotModuleReplacementPlugin()
     );
 }
 
-// development environment:
-if (NODE_ENV === "development" || NODE_ENV === "hot") {
+if (NODE_ENV !== "production") {
     // replace minified files with un-minified versions
     for (var name in config.resolve.alias) {
         var minified = config.resolve.alias[name];
@@ -235,15 +233,26 @@ if (NODE_ENV === "development" || NODE_ENV === "hot") {
             config.resolve.alias[name] = unminified;
         }
     }
-}
 
-if (process.env.ENABLE_FLOW) {
-    config.plugins.push(new FlowStatusWebpackPlugin());
-}
-
-if (NODE_ENV === "hot" || isWatching) {
     // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
-    config.devtool = "eval-cheap-module-source-map";
-} else if (NODE_ENV === "production") {
+    config.devtool = "cheap-module-source-map";
+
+    // works with breakpoints
+    // config.devtool = "inline-source-map"
+
+    // helps with source maps
+    config.output.devtoolModuleFilenameTemplate = '[absolute-resource-path]';
+    config.output.pathinfo = true;
+} else {
+    // this is required to ensure we don't minify Chevrotain token identifiers
+    // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
+    config.plugins.push(new webpack.optimize.UglifyJsPlugin({
+        mangle: {
+            except: allTokens.map(function(currTok) {
+                return chevrotain.tokenName(currTok);
+            })
+        }
+    }))
+
     config.devtool = "source-map";
 }

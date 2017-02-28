@@ -1,7 +1,7 @@
 (ns metabase.events.driver-notifications
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.events :as events]
             [metabase.models.database :refer [Database]]))
@@ -38,4 +38,4 @@
 (defn events-init
   "Automatically called during startup; start event listener for database sync events."
   []
-  (events/start-event-listener driver-notifications-topics driver-notifications-channel process-driver-notifications-event))
+  (events/start-event-listener! driver-notifications-topics driver-notifications-channel process-driver-notifications-event))

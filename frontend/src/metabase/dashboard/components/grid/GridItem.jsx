@@ -16,15 +16,15 @@ export default class GridItem extends Component {
     }
 
     onDragHandler(handlerName) {
-        return (e, {element, position}) => {
+        return (e, { node, x, y }) => {
             // react-draggle seems to return undefined/NaN occasionally, which breaks things
-            if (isNaN(position.clientX) || isNaN(position.clientY)) {
+            if (isNaN(x) || isNaN(y)) {
                 return;
             }
 
             let { dragStartPosition, dragStartScrollTop } = this.state;
             if (handlerName === "onDragStart") {
-                dragStartPosition = position;
+                dragStartPosition = { x, y };
                 dragStartScrollTop = document.body.scrollTop
                 this.setState({ dragStartPosition, dragStartScrollTop });
             }
@@ -33,8 +33,8 @@ export default class GridItem extends Component {
             let scrollTopDelta = document.body.scrollTop - dragStartScrollTop;
             // compute new position
             let pos = {
-                x: position.clientX - dragStartPosition.clientX,
-                y: position.clientY - dragStartPosition.clientY + scrollTopDelta,
+                x: x - dragStartPosition.x,
+                y: y - dragStartPosition.y + scrollTopDelta,
             };
 
             if (handlerName === "onDragStop") {
@@ -43,7 +43,7 @@ export default class GridItem extends Component {
                 this.setState({ dragging: pos });
             }
 
-            this.props[handlerName](this.props.i, {e, element, position: pos });
+            this.props[handlerName](this.props.i, {e, node, position: pos });
         };
     }
 

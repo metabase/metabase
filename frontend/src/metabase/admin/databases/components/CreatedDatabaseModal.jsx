@@ -15,14 +15,14 @@ export default class CreatedDatabaseModal extends Component {
         return (
             <ModalContent
                 title="Your database has been added!"
-                closeFn={onClose}
+                onClose={onClose}
             >
                 <div className="Form-inputs mb4">
                     <p>
                         We're analyzing its schema now to make some educated guesses about its
                         metadata. <Link to={"/admin/datamodel/database/"+databaseId}>View this
                         database</Link> in the Data Model section to see what we've found and to
-                        make edits, or <Link to={"/q?db="+databaseId}>ask a question</Link> about
+                        make edits, or <Link to={"/q#?db="+databaseId}>ask a question</Link> about
                         this database.
                     </p>
                 </div>

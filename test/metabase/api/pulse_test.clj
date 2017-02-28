@@ -1,11 +1,11 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [http-client :as http]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [card :refer [Card]]
-                             [common :as common]
                              [database :refer [Database]]
                              [pulse :refer [Pulse], :as pulse])
             [metabase.test.data :refer :all]
@@ -29,7 +29,6 @@
   (tu/match-$ pulse
     {:id           $
      :name         $
-     :public_perms $
      :created_at   $
      :updated_at   $
      :creator_id   $
@@ -54,30 +53,30 @@
 
 ;; ## POST /api/pulse
 
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :rasta) :post 400 "pulse" {}))
 
-(expect {:errors {:cards "field is a required param."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"}))
 
-(expect {:errors {:cards "Invalid value 'foobar' for 'cards': value must be an array."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards "foobar"}))
 
-(expect {:errors {:cards "Invalid value 'abc' for 'cards': array value must be a map."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards ["abc"]}))
 
-(expect {:errors {:channels "field is a required param."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"
                                             :cards [{:id 100} {:id 200}]}))
 
-(expect {:errors {:channels "Invalid value 'foobar' for 'channels': value must be an array."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name    "abc"
                                             :cards   [{:id 100} {:id 200}]
                                             :channels "foobar"}))
 
-(expect {:errors {:channels "Invalid value 'abc' for 'channels': array value must be a map."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name     "abc"
                                             :cards    [{:id 100} {:id 200}]
                                             :channels ["abc"]}))
@@ -86,10 +85,9 @@
   (for [channel channels]
     (dissoc channel :id :pulse_id :created_at :updated_at)))
 
-(tu/expect-with-temp [Card [card1]
+(tt/expect-with-temp [Card [card1]
                       Card [card2]]
   {:name         "A Pulse"
-   :public_perms common/perms-readwrite
    :creator_id   (user->id :rasta)
    :creator      (user-details (fetch-user :rasta))
    :created_at   true
@@ -115,38 +113,37 @@
 
 ;; ## PUT /api/pulse
 
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :rasta) :put 400 "pulse/1" {}))
 
-(expect {:errors {:cards "field is a required param."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name "abc"}))
 
-(expect {:errors {:cards "Invalid value 'foobar' for 'cards': value must be an array."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
                                              :cards "foobar"}))
 
-(expect {:errors {:cards "Invalid value 'abc' for 'cards': array value must be a map."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
                                              :cards ["abc"]}))
 
-(expect {:errors {:channels "field is a required param."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name "abc"
                                              :cards [{:id 100} {:id 200}]}))
 
-(expect {:errors {:channels "Invalid value 'foobar' for 'channels': value must be an array."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name    "abc"
                                              :cards   [{:id 100} {:id 200}]
                                              :channels "foobar"}))
 
-(expect {:errors {:channels "Invalid value 'abc' for 'channels': array value must be a map."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name     "abc"
                                              :cards    [{:id 100} {:id 200}]
                                              :channels ["abc"]}))
 
-(tu/expect-with-temp [Pulse [pulse]
+(tt/expect-with-temp [Pulse [pulse]
                       Card  [card]]
   {:name         "Updated Pulse"
-   :public_perms common/perms-readwrite
    :creator_id   (user->id :rasta)
    :creator      (user-details (fetch-user :rasta))
    :created_at   true
@@ -173,7 +170,7 @@
 
 
 ;; ## DELETE /api/pulse/:id
-(tu/expect-with-temp [Pulse [pulse]]
+(tt/expect-with-temp [Pulse [pulse]]
   nil
   (do
     ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
@@ -181,16 +178,16 @@
 
 
 ;; ## GET /api/pulse -- should come back in alphabetical order
-(tu/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
+(tt/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
                       Pulse [pulse2 {:name "GHIJKL"}]]
-  [(pulse-details pulse1)
-   (pulse-details pulse2)]
-  (do (db/cascade-delete! Pulse :id [:not-in #{(:id pulse1)
+  [(assoc (pulse-details pulse1) :read_only false)
+   (assoc (pulse-details pulse2) :read_only false)]
+  (do (db/delete! Pulse :id [:not-in #{(:id pulse1)
                                                (:id pulse2)}]) ; delete anything else in DB just to be sure; this step may not be neccesary any more
       ((user->client :rasta) :get 200 "pulse")))
 
 
 ;; ## GET /api/pulse/:id
-(tu/expect-with-temp [Pulse [pulse]]
+(tt/expect-with-temp [Pulse [pulse]]
   (pulse-details pulse)
   ((user->client :rasta) :get 200 (str "pulse/" (:id pulse))))

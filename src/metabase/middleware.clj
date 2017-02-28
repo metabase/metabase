@@ -3,13 +3,16 @@
   (:require [clojure.tools.logging :as log]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
-            [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?*]]
-            (metabase [config :as config]
-                      [db :as db])
-            (metabase.models [interface :as models]
-                             [session :refer [Session]]
+            monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
+            (toucan [db :as db]
+                    [models :as models])
+            [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
+            [metabase.config :as config]
+            [metabase.db :as mdb]
+            (metabase.models [session :refer [Session]]
                              [setting :refer [defsetting]]
-                             [user :refer [User]])
+                             [user :refer [User], :as user])
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
@@ -27,14 +30,19 @@
   (or (zero? (count uri))
       (not (or (re-matches #"^/app/.*$" uri)
                (re-matches #"^/api/.*$" uri)
+               (re-matches #"^/public/.*$" uri)
                (re-matches #"^/favicon.ico$" uri)))))
 
+(defn- public?
+  "Is this ring request one that will serve `public.html`?"
+  [{:keys [uri]}]
+  (re-matches #"^/public/.*$" uri))
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
-(def ^:private ^:const metabase-session-cookie "metabase.SESSION_ID")
-(def ^:private ^:const metabase-session-header "x-metabase-session")
-(def ^:private ^:const metabase-api-key-header "x-metabase-apikey")
+(def ^:private ^:const ^String metabase-session-cookie "metabase.SESSION_ID")
+(def ^:private ^:const ^String metabase-session-header "x-metabase-session")
+(def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
 (def ^:const response-unauthentic "Generic `401 (Unauthenticated)` Ring response map." {:status 401, :body "Unauthenticated"})
 (def ^:const response-forbidden   "Generic `403 (Forbidden)` Ring response map."       {:status 403, :body "Forbidden"})
@@ -46,33 +54,50 @@
    We first check the request :cookies for `metabase.SESSION_ID`, then if no cookie is found we look in the
    http headers for `X-METABASE-SESSION`.  If neither is found then then no keyword is bound to the request."
   [handler]
-  (fn [{:keys [cookies headers] :as request}]
-    (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
-                            (headers metabase-session-header))]
-      ;; alternatively we could always associate the keyword and just let it be nil if there is no value
-      (handler (assoc request :metabase-session-id session-id))
-      (handler request))))
+  (comp handler (fn [{:keys [cookies headers] :as request}]
+                  (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
+                                          (headers metabase-session-header))]
+                    (assoc request :metabase-session-id session-id)
+                    request))))
 
+(defn- session-with-id
+  "Fetch a session with SESSION-ID, and include the User ID and superuser status associated with it."
+  [session-id]
+  (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
+    (mdb/join [Session :user_id] [User :id])
+    (db/qualify User :is_active) true
+    (db/qualify Session :id) session-id))
+
+(defn- session-age-ms [session]
+  (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                      (.getTime created-at))
+                                    0)))
+
+(defn- session-age-minutes [session]
+  (quot (session-age-ms session) 60000))
+
+(defn- session-expired? [session]
+  (> (session-age-minutes session)
+     (config/config-int :max-session-age)))
+
+(defn- current-user-info-for-session
+  "Return User ID and superuser status for Session with SESSION-ID if it is valid and not expired."
+  [session-id]
+  (when (and session-id ((resolve 'metabase.core/initialized?)))
+    (when-let [session (session-with-id session-id)]
+      (when-not (session-expired? session)
+        {:metabase-user-id (:user_id session)
+         :is-superuser?    (:is_superuser session)}))))
+
+(defn- add-current-user-info [{:keys [metabase-session-id], :as request}]
+  (when-not ((resolve 'metabase.core/initialized?))
+    (println "Metabase is not initialized yet!")) ; DEBUG
+  (merge request (current-user-info-for-session metabase-session-id)))
 
 (defn wrap-current-user-id
   "Add `:metabase-user-id` to the request if a valid session token was passed."
   [handler]
-  (fn [{:keys [metabase-session-id] :as request}]
-    ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
-    (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-                   (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-                                        (db/join [Session :user_id] [User :id])
-                                        (db/qualify User :is_active) true
-                                        (db/qualify Session :id) metabase-session-id)]
-                     (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
-                                                                              (.getTime created-at))
-                                                                            0))]
-                       ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-                       (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-                         (assoc request
-                           :metabase-user-id (:user_id session)
-                           :is-superuser?    (:is_superuser session))))))
-                 request))))
+  (comp handler add-current-user-info))
 
 
 (defn enforce-authentication
@@ -84,19 +109,22 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :is_staff :google_auth] (models/default-fields User))))
+  (vec (concat [User :is_active :google_auth] (models/default-fields User))))
 
 (defn bind-current-user
-  "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`
+  "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and `*current-user-permissions-set*`.
 
-   *  `*current-user-id*` int ID or nil of user associated with request
-   *  `*current-user*`    delay that returns current user (or nil) from DB"
+   *  `*current-user-id*`             int ID or nil of user associated with request
+   *  `*current-user*`                delay that returns current user (or nil) from DB
+   *  `*is-superuser?*`               Boolean stating whether current user is a superuser.
+   *  `current-user-permissions-set*` delay that returns the set of permissions granted to the current user from DB"
   [handler]
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
-      (binding [*current-user-id* current-user-id
-                *is-superuser?*   (:is-superuser? request)
-                *current-user*    (delay (db/select-one current-user-fields, :id current-user-id))]
+      (binding [*current-user-id*              current-user-id
+                *is-superuser?*                (:is-superuser? request)
+                *current-user*                 (delay (db/select-one current-user-fields, :id current-user-id))
+                *current-user-permissions-set* (delay (user/permissions-set current-user-id))]
         (handler request))
       (handler request))))
 
@@ -105,10 +133,10 @@
   "Middleware that sets the `:metabase-api-key` keyword on the request if a valid API Key can be found.
    We check the request headers for `X-METABASE-APIKEY` and if it's not found then then no keyword is bound to the request."
   [handler]
-  (fn [{:keys [headers] :as request}]
-    (handler (if-let [api-key (headers metabase-api-key-header)]
-               (assoc request :metabase-api-key api-key)
-               request))))
+  (comp handler (fn [{:keys [headers] :as request}]
+                  (if-let [api-key (headers metabase-api-key-header)]
+                    (assoc request :metabase-api-key api-key)
+                    request))))
 
 
 (defn enforce-api-key
@@ -156,7 +184,8 @@
                                                                     "*.intercom.io"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
-                                                      :frame-src   ["https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
+                                                      :frame-src   ["'self'"
+                                                                    "https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
@@ -179,23 +208,23 @@
   "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
    See http://mzl.la/1EnfqBf for more information.") ; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
-;(defn- public-key-pins-header []
-;  (when-let [k (ssl-certificate-public-key)]
-;    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
+#_(defn- public-key-pins-header []
+  (when-let [k (ssl-certificate-public-key)]
+    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
 
 (defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
   (merge (cache-prevention-headers)
          strict-transport-security-header
-         ;(public-key-pins-header)
-         ))
+         #_(public-key-pins-header)))
 
-(defn- index-page-security-headers []
+(defn- html-page-security-headers [& {:keys [allow-iframes?] }]
   (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
-         ;(public-key-pins-header)
-         {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
-          "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
+         #_(public-key-pins-header)
+         (when-not allow-iframes?
+           {"X-Frame-Options"                 "DENY"})        ; Tell browsers not to render our site as an iframe (prevent clickjacking)
+         {"X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
           "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.
           "X-Content-Type-Options"            "nosniff"}))    ; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
 
@@ -206,7 +235,25 @@
     (let [response (handler request)]
       (update response :headers merge (cond
                                         (api-call? request) (api-security-headers)
-                                        (index? request)    (index-page-security-headers))))))
+                                        (public? request)   (html-page-security-headers, :allow-iframes? true)
+                                        (index? request)    (html-page-security-headers))))))
+
+
+;;; # ------------------------------------------------------------ SETTING SITE-URL ------------------------------------------------------------
+
+;; It's important for us to know what the site URL is for things like returning links, etc.
+;; this is stored in the `site-url` Setting; we can set it automatically by looking at the `Origin` or `Host` headers sent with a request.
+;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting the (initial) value of `site-url`
+
+(defn maybe-set-site-url
+  "Middleware to set the `site-url` Setting if it's unset the first time a request is made."
+  [handler]
+  (fn [{{:strs [origin host] :as headers} :headers, :as request}]
+    (when-not (public-settings/site-url)
+      (when-let [site-url (or origin host)]
+        (log/info "Setting Metabase site URL to" site-url)
+        (public-settings/site-url site-url)))
+    (handler request)))
 
 
 ;;; # ------------------------------------------------------------ JSON SERIALIZATION CONFIG ------------------------------------------------------------

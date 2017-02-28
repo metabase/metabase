@@ -5,7 +5,8 @@
                      [walk :as walk])
             [medley.core :as m]
             [schema.core :as s]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [metabase.db :as mdb]
             (metabase.models [field :as field]
                              [table :refer [Table]])
             [metabase.query-processor.interface :refer :all]
@@ -39,12 +40,15 @@
 (defprotocol ^:private IResolve
   (^:private unresolved-field-id ^Integer [this]
    "Return the unresolved Field ID associated with this object, if any.")
+
   (^:private fk-field-id ^Integer [this]
    "Return a the FK Field ID (for joining) associated with this object, if any.")
+
   (^:private resolve-field [this, ^clojure.lang.IPersistentMap field-id->field]
    "This method is called when walking the Query after fetching `Fields`.
     Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
-    return their expanded form. Other objects should just return themselves.a")
+    return their expanded form. Other objects should just return themselves.")
+
   (resolve-table [this, ^clojure.lang.IPersistentMap fk-id+table-id->tables]
    "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
     Objects like `Fields` can add relevant information like the name of their `Table`."))
@@ -104,8 +108,8 @@
                                                                map->Field
                                                                (assoc :fk-field-id fk-field-id))]
     ;; try to resolve the Field with the ones available in field-id->field
-    (let [datetime-field? (or (contains? #{:DateField :DateTimeField} base-type)
-                              (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type))]
+    (let [datetime-field? (or (isa? base-type :type/DateTime)
+                              (isa? special-type :type/DateTime))]
       (if-not datetime-field?
         field
         (map->DateTimeField {:field field
@@ -194,6 +198,7 @@
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
         (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+                                          :visibility_type [:not= "sensitive"]
                                           :id [:in field-ids]))
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
@@ -203,7 +208,7 @@
            ;; Those will be used for Table resolution in the next step.
            (update expanded-query-dict :table-ids set/union (set (map :table-id (vals fields))))
            ;; Walk the query and resolve all fields
-           (walk/postwalk #(resolve-field % fields))
+           (walk/postwalk (u/rpartial resolve-field fields))
            ;; Recurse in case any new (nested) unresolved fields were found.
            (recur (dec max-iterations))))))))
 
@@ -216,14 +221,12 @@
                            [:target-table.id     :target-table-id]
                            [:target-table.name   :target-table-name]
                            [:target-table.schema :target-table-schema]]
-               :from      [[(db/entity->table-name field/Field) :source-fk]]
-               :left-join [[(db/entity->table-name field/Field) :target-pk]
-                           [:= :source-fk.fk_target_field_id :target-pk.id]
-                           [(db/entity->table-name Table) :target-table]
-                           [:= :target-pk.table_id :target-table.id]]
+               :from      [[field/Field :source-fk]]
+               :left-join [[field/Field :target-pk] [:= :source-fk.fk_target_field_id :target-pk.id]
+                           [Table :target-table]    [:= :target-pk.table_id :target-table.id]]
                :where     [:and [:in :source-fk.id      (set fk-field-ids)]
                                 [:=  :source-fk.table_id     source-table-id]
-                                [:=  :source-fk.special_type "fk"]]})))
+                                (mdb/isa :source-fk.special_type :type/FK)]})))
 
 (defn- fk-field-ids->joined-tables
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."

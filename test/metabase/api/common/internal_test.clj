@@ -1,7 +1,8 @@
 (ns metabase.api.common.internal-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            (metabase.api.common [internal :refer :all])))
+            (metabase.api.common [internal :refer :all])
+            [metabase.util :as u]))
 
 ;;; TESTS FOR ROUTE-FN-NAME
 
@@ -110,7 +111,7 @@
   (no-regex (typify-route ["/:id/:crazy-id" :crazy-id "#[0-9]+"])))
 
 ;; Check :uuid args
-(expect ["/:uuid/toucans" :uuid "#[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"]
+(expect ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]
   (no-regex (typify-route "/:uuid/toucans")))
 
 

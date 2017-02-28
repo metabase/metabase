@@ -1,20 +1,9 @@
 
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 
-import MetabaseSettings from 'metabase/lib/settings';
+import { SettingsApi, EmailApi, SlackApi } from "metabase/services";
 
-import _ from "underscore";
-
-// resource wrappers
-const SettingsApi = new AngularResourceProxy("Settings", ["list", "put"]);
-const EmailApi = new AngularResourceProxy("Email", ["updateSettings", "sendTest"]);
-const SlackApi = new AngularResourceProxy("Slack", ["updateSettings"]);
-const SessionApi = new AngularResourceProxy("Session", ["properties"]);
-
-async function refreshSiteSettings() {
-    const settings = await SessionApi.properties();
-    MetabaseSettings.setAll(_.omit(settings, (value, key) => key.indexOf('$') === 0));
-}
+import { refreshSiteSettings } from "metabase/redux/settings";
 
 async function loadSettings() {
     try {
@@ -45,8 +34,8 @@ export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", funct
 export const updateSetting = createThunkAction("UPDATE_SETTING", function(setting) {
     return async function(dispatch, getState) {
         try {
-            await SettingsApi.put({ key: setting.key }, setting);
-            refreshSiteSettings();
+            await SettingsApi.put(setting);
+            await dispatch(refreshSiteSettings());
             return await loadSettings();
         } catch(error) {
             console.log("error updating setting", setting, error);
@@ -60,7 +49,7 @@ export const updateEmailSettings = createThunkAction("UPDATE_EMAIL_SETTINGS", fu
     return async function(dispatch, getState) {
         try {
             await EmailApi.updateSettings(settings);
-            refreshSiteSettings();
+            await dispatch(refreshSiteSettings());
             return await loadSettings();
         } catch(error) {
             console.log("error updating email settings", settings, error);
@@ -86,7 +75,7 @@ export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", fu
     return async function(dispatch, getState) {
         try {
             await SlackApi.updateSettings(settings);
-            refreshSiteSettings();
+            await dispatch(refreshSiteSettings());
             return await loadSettings();
         } catch(error) {
             console.log("error updating slack settings", settings, error);
@@ -95,13 +84,21 @@ export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", fu
     };
 });
 
+export const reloadSettings = createThunkAction("RELOAD_SETTINGS", function() {
+    return async function(dispatch, getState) {
+        await dispatch(refreshSiteSettings());
+        return await loadSettings();
+    }
+});
+
 // reducers
 
 const settings = handleActions({
     ["INITIALIZE_SETTINGS"]: { next: (state, { payload }) => payload },
     ["UPDATE_SETTING"]: { next: (state, { payload }) => payload },
     ["UPDATE_EMAIL_SETTINGS"]: { next: (state, { payload }) => payload },
-    ["UPDATE_SLACK_SETTINGS"]: { next: (state, { payload }) => payload }
+    ["UPDATE_SLACK_SETTINGS"]: { next: (state, { payload }) => payload },
+    ["RELOAD_SETTINGS"]: { next: (state, { payload }) => payload }
 }, []);
 
 export default combineReducers({

@@ -1,21 +1,21 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
 
-import { AngularResourceProxy } from "metabase/lib/redux";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
+import { isPK, isFK } from "metabase/lib/types";
 
-import NotFound from "metabase/components/NotFound.jsx";
-import QueryHeader from "../QueryHeader.jsx";
-import GuiQueryEditor from "../GuiQueryEditor.jsx";
-import NativeQueryEditor from "../NativeQueryEditor.jsx";
-import QueryVisualization from "../QueryVisualization.jsx";
-import DataReference from "../dataref/DataReference.jsx";
-import TagEditorSidebar from "../template_tags/TagEditorSidebar.jsx";
-import QueryBuilderTutorial from "../../tutorial/QueryBuilderTutorial.jsx";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal.jsx";
+import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
+import QueryHeader from "../components/QueryHeader.jsx";
+import GuiQueryEditor from "../components/GuiQueryEditor.jsx";
+import NativeQueryEditor from "../components/NativeQueryEditor.jsx";
+import QueryVisualization from "../components/QueryVisualization.jsx";
+import DataReference from "../components/dataref/DataReference.jsx";
+import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
+import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 
 import {
     card,
@@ -31,19 +31,19 @@ import {
     tableForeignKeys,
     tableForeignKeyReferences,
     uiControls,
-    getParameters,
+    getParametersWithValues,
     getDatabaseFields,
     getSampleDatasetId,
-    getFullDatasetQuery,
+    getNativeDatabases,
+    getIsRunnable,
 } from "../selectors";
+
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
 import { push } from "react-router-redux";
 
-const cardApi = new AngularResourceProxy("Card", ["create", "update", "delete"]);
-const dashboardApi = new AngularResourceProxy("Dashboard", ["list", "create"]);
-const revisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
-const Metabase = new AngularResourceProxy("Metabase", ["db_autocomplete_suggestions"]);
+import { MetabaseApi } from "metabase/services";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -53,16 +53,12 @@ function cellIsClickable(queryResult, rowIndex, columnIndex) {
 
     if (!coldef || !coldef.special_type) return false;
 
-    if (coldef.table_id != null && coldef.special_type === 'id' || (coldef.special_type === 'fk' && coldef.target)) {
-        return true;
-    } else {
-        return false;
-    }
+    return (coldef.table_id != null && (isPK(coldef.special_type) || (isFK(coldef.special_type) && coldef.target)));
 }
 
 function autocompleteResults(card, prefix) {
     let databaseId = card && card.dataset_query && card.dataset_query.database;
-    let apiCall = Metabase.db_autocomplete_suggestions({
+    let apiCall = MetabaseApi.db_autocomplete_suggestions({
        dbId: databaseId,
        prefix: prefix
     });
@@ -71,15 +67,15 @@ function autocompleteResults(card, prefix) {
 
 const mapStateToProps = (state, props) => {
     return {
-        user:                      state.currentUser,
+        isAdmin:                   getUserIsAdmin(state, props),
         fromUrl:                   props.location.query.from,
-        location:                  props.location,
 
         card:                      card(state),
         originalCard:              originalCard(state),
         query:                     state.qb.card && state.qb.card.dataset_query,  // TODO: EOL, redundant
         parameterValues:           parameterValues(state),
         databases:                 databases(state),
+        nativeDatabases:           getNativeDatabases(state),
         tables:                    tables(state),
         tableMetadata:             tableMetadata(state),
         tableForeignKeys:          tableForeignKeys(state),
@@ -89,18 +85,16 @@ const mapStateToProps = (state, props) => {
         isNew:                     isNew(state),
         isObjectDetail:            isObjectDetail(state),
         uiControls:                uiControls(state),
-        parameters:                getParameters(state),
+        parameters:                getParametersWithValues(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
-        fullDatasetQuery:          getFullDatasetQuery(state),
 
         isShowingDataReference:    state.qb.uiControls.isShowingDataReference,
         isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
         isEditing:                 state.qb.uiControls.isEditing,
         isRunning:                 state.qb.uiControls.isRunning,
-        cardApi:                   cardApi,
-        dashboardApi:              dashboardApi,
-        revisionApi:               revisionApi,
+        isRunnable:                getIsRunnable(state),
+
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
         cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
@@ -122,8 +116,6 @@ export default class QueryBuilder extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, "handleResize");
-
         // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
     }
@@ -133,7 +125,8 @@ export default class QueryBuilder extends Component {
     }
 
     componentDidMount() {
-        window.addEventListener('resize', this.handleResize);
+        window.addEventListener("resize", this.handleResize);
+        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -153,28 +146,40 @@ export default class QueryBuilder extends Component {
         }
     }
 
+    componentDidUpdate() {
+        let viz = ReactDOM.findDOMNode(this.refs.viz);
+        if (viz) {
+            viz.style.opacity = 1.0;
+        }
+    }
+
     componentWillUnmount() {
-        window.removeEventListener('resize', this.handleResize);
+        // cancel the query if one is running
+        this.props.cancelQuery();
+
+        window.removeEventListener("resize", this.handleResize);
+        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     // When the window is resized we need to re-render, mainly so that our visualization pane updates
     // Debounce the function to improve resizing performance.
-    handleResize(e) {
+    handleResize = (e) => {
         this.forceUpdateDebounced();
+        let viz = ReactDOM.findDOMNode(this.refs.viz);
+        if (viz) {
+            viz.style.opacity = 0.2;
+        }
+    }
+
+    handleKeyDown = (e) => {
+        const ENTER_KEY = 13;
+        if (e.keyCode === ENTER_KEY && e.metaKey && this.props.isRunnable) {
+            this.props.runQueryFn();
+        }
     }
 
     render() {
         const { card, isDirty, databases, uiControls } = this.props;
-
-        // if we can't load the card that was intended then we end up with a 404
-        // TODO: we should do something more unique for is500
-        if (uiControls.is404 || uiControls.is500) {
-            return (
-                <div className="flex flex-column flex-full layout-centered">
-                    <NotFound />
-                </div>
-            );
-        }
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -195,18 +200,20 @@ export default class QueryBuilder extends Component {
                         { card && card.dataset_query && card.dataset_query.type === "native" ?
                             <NativeQueryEditor {...this.props} isOpen={!card.dataset_query.native.query || isDirty} />
                         :
-                            <div className="wrapper"><GuiQueryEditor {...this.props}/></div>
+                            <div className="wrapper">
+                                <GuiQueryEditor {...this.props}/>
+                            </div>
                         }
                     </div>
 
-                    <div id="react_qb_viz" className="flex z1">
-                        <QueryVisualization {...this.props}/>
+                    <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
+                        <QueryVisualization {...this.props} />
                     </div>
                 </div>
 
                 <div className={cx("SideDrawer", { "SideDrawer--show": showDrawer })}>
                     { uiControls.isShowingDataReference &&
-                        <DataReference {...this.props} closeFn={() => this.props.toggleDataReference()} />
+                        <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
 
                     { uiControls.isShowingTemplateTagsEditor &&

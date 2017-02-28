@@ -7,6 +7,7 @@ import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper.jsx
 import MetabaseAnalytics from "metabase/lib/analytics";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
 import Modal from "metabase/components/Modal.jsx";
+import ConstrainToScreen from "metabase/components/ConstrainToScreen";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -102,7 +103,7 @@ export default class DashboardsDropdown extends Component {
             <Modal>
                 <CreateDashboardModal
                     createDashboardFn={this.onCreateDashboard.bind(this)}
-                    closeFn={this.closeModal} />
+                    onClose={this.closeModal} />
             </Modal>
         );
     }
@@ -114,15 +115,15 @@ export default class DashboardsDropdown extends Component {
         return (
             <div>
                 { modalOpen ? this.renderCreateDashboardModal() : null }
+                <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
+                    <span onClick={this.toggleDropdown}>
+                        {children}
+                    </span>
 
-                <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
-                    <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
-                        <span onClick={this.toggleDropdown}>
-                            {children}
-                        </span>
-
-                        { dropdownOpen ?
-                            <div className="NavDropdown-content DashboardList NavDropdown-content--dashboards">
+                    { dropdownOpen ?
+                        <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
+                        <ConstrainToScreen>
+                            <div className="NavDropdown-content DashboardList NavDropdown-content--dashboards scroll-y">
                                 { dashboards.length === 0 ?
                                     <div className="NavDropdown-content-layer text-white text-centered">
                                         <div className="p2"><div style={this.styles.dashIcon} className="ml-auto mr-auto"></div></div>
@@ -154,9 +155,10 @@ export default class DashboardsDropdown extends Component {
                                     </ul>
                                 }
                             </div>
-                        : null }
-                    </div>
-                </OnClickOutsideWrapper>
+                        </ConstrainToScreen>
+                        </OnClickOutsideWrapper>
+                    : null }
+                </div>
             </div>
         );
     }

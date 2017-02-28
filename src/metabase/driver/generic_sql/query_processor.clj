@@ -6,16 +6,19 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat]
-                      [helpers :as h])
+                      [helpers :as h]
+                      types)
             (metabase [config :as config]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.query-processor :as qp]
-            metabase.query-processor.interface
+            (metabase.query-processor [annotate :as annotate]
+                                      interface)
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Timestamp
            java.util.Date
+           clojure.lang.Keyword
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
@@ -54,14 +57,17 @@
   (or (get-in *query* [:query :expressions (keyword expression-name)]) (:expressions (:query *query*))
       (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
 
+;; TODO - maybe this fn should be called `->honeysql` instead.
 (defprotocol ^:private IGenericSQLFormattable
   (formatted [this]
     "Return an appropriate HoneySQL form for an object."))
 
 (extend-protocol IGenericSQLFormattable
-  nil    (formatted [_] nil)
-  Number (formatted [this] this)
-  String (formatted [this] this)
+  nil                    (formatted [_] nil)
+  Number                 (formatted [this] this)
+  String                 (formatted [this] this)
+  Keyword                (formatted [this] this) ; HoneySQL fn calls and keywords (e.g. `:%count.*`) are
+  honeysql.types.SqlCall (formatted [this] this) ; already converted to HoneySQL so just return them as-is
 
   Expression
   (formatted [{:keys [operator args]}]
@@ -76,10 +82,10 @@
   Field
   (formatted [{:keys [schema-name table-name special-type field-name]}]
     (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
-      (case special-type
-        :timestamp_seconds      (sql/unix-timestamp->timestamp (driver) field :seconds)
-        :timestamp_milliseconds (sql/unix-timestamp->timestamp (driver) field :milliseconds)
-        field)))
+      (cond
+        (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp (driver) field :seconds)
+        (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp (driver) field :milliseconds)
+        :else                                               field)))
 
   DateTimeField
   (formatted [{unit :unit, field :field}]
@@ -87,8 +93,8 @@
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef
-  (formatted [_]
-    (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+  (formatted [{index :index}]
+    (let [{:keys [aggregation-type]} (nth (:aggregation (:query *query*)) index)]
       ;; For some arcane reason we name the results of a distinct aggregation "count",
       ;; everything else is named the same as the aggregation
       (if (= aggregation-type :distinct)
@@ -113,29 +119,55 @@
 
 ;;; ## Clause Handlers
 
-(defn apply-aggregation
-  "Apply an `aggregation` clause to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
-  ([driver honeysql-form {{:keys [aggregation-type field]} :aggregation}]
-   (apply-aggregation driver honeysql-form aggregation-type (formatted field)))
+(defn- aggregation->honeysql
+  "Generate the HoneySQL form for an aggregation."
+  [driver aggregation-type field]
+  {:pre [(keyword? aggregation-type)]}
+  (if-not field
+    ;; aggregation clauses w/o a field
+    (do (assert (= aggregation-type :count)
+          (format "Aggregations of type '%s' must specify a field." aggregation-type))
+        :%count.*)
+    ;; aggregation clauses w/ a Field
+    (hsql/call (case aggregation-type
+                 :avg      :avg
+                 :count    :count
+                 :distinct :distinct-count
+                 :stddev   (sql/stddev-fn driver)
+                 :sum      :sum
+                 :min      :min
+                 :max      :max)
+      (formatted field))))
 
-  ([driver honeysql-form aggregation-type field]
-   (h/merge-select honeysql-form [(if-not field
-                                    ;; aggregation clauses w/o a field
-                                    (do (assert (= aggregation-type :count))
-                                        :%count.*)
-                                    ;; aggregation clauses w/ a Field
-                                    (hsql/call (case  aggregation-type
-                                                 :avg      :avg
-                                                 :count    :count
-                                                 :distinct :distinct-count
-                                                 :stddev   (sql/stddev-fn driver)
-                                                 :sum      :sum
-                                                 :min      :min
-                                                 :max      :max)
-                                               field))
-                                  (if (= aggregation-type :distinct)
-                                    :count
-                                    aggregation-type)])))
+(defn- expression-aggregation->honeysql
+  "Generate the HoneySQL form for an expression aggregation."
+  [driver expression]
+  (formatted (update expression :args (fn [args]
+                                        (for [arg args]
+                                          (cond
+                                            (number? arg)           arg
+                                            (:aggregation-type arg) (aggregation->honeysql driver (:aggregation-type arg) (:field arg))
+                                            (:operator arg)         (expression-aggregation->honeysql driver arg)))))))
+
+(defn- apply-expression-aggregation [driver honeysql-form expression]
+  (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)
+                                 (hx/escape-dots (annotate/aggregation-name expression))]))
+
+(defn- apply-single-aggregation [driver honeysql-form {:keys [aggregation-type field], :as aggregation}]
+  (h/merge-select honeysql-form [(aggregation->honeysql driver aggregation-type field)
+                                 (hx/escape-dots (annotate/aggregation-name aggregation))]))
+
+(defn apply-aggregation
+  "Apply a `aggregation` clauses to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
+  [driver honeysql-form {aggregations :aggregation}]
+  (loop [form honeysql-form, [ag & more] aggregations]
+    (let [form (if (instance? Expression ag)
+                 (apply-expression-aggregation driver form ag)
+                 (apply-single-aggregation driver form ag))]
+      (if-not (seq more)
+        form
+        (recur form more)))))
+
 
 (defn apply-breakout
   "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."
@@ -221,42 +253,29 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
-;; TODO - not sure "pprint" is an appropriate name for this since this function doesn't print anything
-(defn pprint-sql
-  "Add newlines to the SQL to make it more readable."
-  [sql]
-  (when sql
-    (-> sql
-        (s/replace #"\sFROM" "\nFROM")
-        (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-        (s/replace #"\sWHERE" "\nWHERE")
-        (s/replace #"\sGROUP BY" "\nGROUP BY")
-        (s/replace #"\sORDER BY" "\nORDER BY")
-        (s/replace #"\sLIMIT" "\nLIMIT")
-        (s/replace #"\sAND\s" "\n   AND ")
-        (s/replace #"\sOR\s" "\n    OR "))))
-
-
-;; TODO - make this a protocol method ?
 (defn- apply-source-table [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
   {:pre [table-name]}
   (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
 
 (def ^:private clause-handlers
-  {:aggregation  #'sql/apply-aggregation ; use the vars rather than the functions themselves because them implementation
-   :breakout     #'sql/apply-breakout    ; will get swapped around and  we'll be left with old version of the function that nobody implements
+  ;; 1) Use the vars rather than the functions themselves because them implementation
+  ;;    will get swapped around and  we'll be left with old version of the function that nobody implements
+  ;; 2) This is a vector rather than a map because the order the clauses get handled is important for some drivers.
+  ;;    For example, Oracle needs to wrap the entire query in order to apply its version of limit (`WHERE ROWNUM`).
+  [:source-table apply-source-table
+   :aggregation  #'sql/apply-aggregation
+   :breakout     #'sql/apply-breakout
    :fields       #'sql/apply-fields
    :filter       #'sql/apply-filter
    :join-tables  #'sql/apply-join-tables
-   :limit        #'sql/apply-limit
    :order-by     #'sql/apply-order-by
    :page         #'sql/apply-page
-   :source-table apply-source-table})
+   :limit        #'sql/apply-limit])
 
 (defn- apply-clauses
   "Loop through all the `clause->handler` entries; if the query contains a given clause, apply the handler fn."
   [driver honeysql-form query]
-  (loop [honeysql-form honeysql-form, [[clause f] & more] (seq clause-handlers)]
+  (loop [honeysql-form honeysql-form, [clause f & more] (seq clause-handlers)]
     (let [honeysql-form (if (clause query)
                           (f driver honeysql-form query)
                           honeysql-form)]
@@ -304,13 +323,15 @@
          (throw (Exception. (exception->nice-error-message e))))))
 
 (defn- do-with-auto-commit-disabled
-  "Disable auto-commit for this transaction, that way shady queries are unable to modify the database; execute F in a try-finally block.
-   In the `finally`, rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us."
+  "Disable auto-commit for this transaction, and make the transaction `rollback-only`, which means when the transaction finishes `.rollback` will be called instead of `.commit`.
+   Furthermore, execute F in a try-finally block; in the `finally`, manually call `.rollback` just to be extra-double-sure JDBC any changes made by the transaction aren't committed."
   {:style/indent 1}
-  [{^java.sql.Connection connection :connection}, f]
-  (.setAutoCommit connection false)
+  [conn f]
+  (jdbc/db-set-rollback-only! conn)
+  (.setAutoCommit (jdbc/get-connection conn) false)
+  ;; TODO - it would be nice if we could also `.setReadOnly` on the transaction as well, but that breaks setting the timezone. Is there some way we can have our cake and eat it too?
   (try (f)
-       (finally (.rollback connection))))
+       (finally (.rollback (jdbc/get-connection conn)))))
 
 (defn- do-in-transaction [connection f]
   (jdbc/with-db-transaction [transaction-connection connection]

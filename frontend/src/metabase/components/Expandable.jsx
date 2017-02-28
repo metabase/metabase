@@ -1,6 +1,5 @@
 import React, { Component, PropTypes } from "react";
 
-
 const Expandable = (ComposedComponent) => class extends Component {
     static displayName = "Expandable["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
 

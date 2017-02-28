@@ -1,7 +1,9 @@
+import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
-import i from "icepick";
+import { assoc } from "icepick";
 
 import {
+    RESET_QB,
     INITIALIZE_QB,
     TOGGLE_DATA_REFERENCE,
     TOGGLE_TEMPLATE_TAGS_EDITOR,
@@ -10,7 +12,6 @@ import {
     BEGIN_EDITING,
     CANCEL_EDITING,
 
-    LOAD_DATABASE,
     LOAD_TABLE_METADATA,
     LOAD_DATABASE_FIELDS,
     RELOAD_CARD,
@@ -19,8 +20,8 @@ import {
     SET_CARD_AND_RUN,
     SET_CARD_ATTRIBUTE,
     SET_CARD_VISUALIZATION,
-    SET_CARD_VISUALIZATION_SETTING,
-    SET_CARD_VISUALIZATION_SETTINGS,
+    UPDATE_CARD_VISUALIZATION_SETTINGS,
+    REPLACE_ALL_CARD_VISUALIZATION_SETTINGS,
     UPDATE_TEMPLATE_TAG,
     SET_PARAMETER_VALUE,
 
@@ -34,15 +35,11 @@ import {
     QUERY_ERRORED,
     LOAD_OBJECT_DETAIL_FK_REFERENCES,
 
-    SET_CURRENT_STATE
+    SET_CURRENT_STATE,
+
+    CREATE_PUBLIC_LINK,
+    DELETE_PUBLIC_LINK
 } from "./actions";
-
-
-// TODO: once we are using the global redux store we can get this from there
-export const user = handleActions({
-    [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({...state, is_qbnewb: false}) }
-}, null);
-
 
 // various ui state options
 export const uiControls = handleActions({
@@ -70,13 +67,12 @@ export const uiControls = handleActions({
     isShowingNewbModal: false,
     isEditing: false,
     isRunning: false,
-    is404: false,
-    is500: false
 });
 
 
 // the card that is actively being worked on
 export const card = handleActions({
+    [RESET_QB]: { next: (state, { payload }) => null },
     [INITIALIZE_QB]: { next: (state, { payload }) => payload ? payload.card : null },
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
     [CANCEL_EDITING]: { next: (state, { payload }) => payload },
@@ -86,8 +82,8 @@ export const card = handleActions({
 
     [SET_CARD_ATTRIBUTE]: { next: (state, { payload }) => ({...state, [payload.attr]: payload.value }) },
     [SET_CARD_VISUALIZATION]: { next: (state, { payload }) => payload },
-    [SET_CARD_VISUALIZATION_SETTING]: { next: (state, { payload }) => payload },
-    [SET_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
+    [UPDATE_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
+    [REPLACE_ALL_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
 
     [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
@@ -96,7 +92,10 @@ export const card = handleActions({
     [SET_QUERY_SOURCE_TABLE]: { next: (state, { payload }) => payload },
     [SET_QUERY]: { next: (state, { payload }) => payload.card },
 
-    [QUERY_COMPLETED]: { next: (state, { payload }) => ({ ...state, display: payload.cardDisplay }) }
+    [QUERY_COMPLETED]: { next: (state, { payload }) => ({ ...state, display: payload.cardDisplay }) },
+
+    [CREATE_PUBLIC_LINK]: { next: (state, { payload }) => ({ ...state, public_uuid: payload.uuid })},
+    [DELETE_PUBLIC_LINK]: { next: (state, { payload }) => ({ ...state, public_uuid: null })}
 }, null);
 
 // a copy of the card being worked on at it's last known saved state.  if the card is NEW then this should be null.
@@ -104,12 +103,12 @@ export const card = handleActions({
 //       because we can't have any links between the active card being modified and the "originalCard" for testing dirtiness
 // ALSO: we consistently check for payload.id because an unsaved card has no "originalCard"
 export const originalCard = handleActions({
-    [INITIALIZE_QB]: { next: (state, { payload }) => payload.originalCard ? JSON.parse(JSON.stringify(payload.originalCard)) : null },
-    [RELOAD_CARD]: { next: (state, { payload }) => payload.id ? JSON.parse(JSON.stringify(payload)) : null },
-    [CANCEL_EDITING]: { next: (state, { payload }) => payload.id ? JSON.parse(JSON.stringify(payload)) : null },
-    [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.id ? JSON.parse(JSON.stringify(payload)) : null },
-    [NOTIFY_CARD_CREATED]: { next: (state, { payload }) => JSON.parse(JSON.stringify(payload)) },
-    [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => JSON.parse(JSON.stringify(payload)) },
+    [INITIALIZE_QB]: { next: (state, { payload }) => payload.originalCard ? Utils.copy(payload.originalCard) : null },
+    [RELOAD_CARD]: { next: (state, { payload }) => payload.id ? Utils.copy(payload) : null },
+    [CANCEL_EDITING]: { next: (state, { payload }) => payload.id ? Utils.copy(payload) : null },
+    [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.id ? Utils.copy(payload) : null },
+    [NOTIFY_CARD_CREATED]: { next: (state, { payload }) => Utils.copy(payload) },
+    [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => Utils.copy(payload) },
 }, null);
 
 
@@ -120,12 +119,12 @@ export const databases = handleActions({
 
 // the table actively being queried against.  this is only used for MBQL queries.
 export const tableMetadata = handleActions({
-    [LOAD_DATABASE]: { next: (state, { payload }) => null},
+    [RESET_QB]: { next: (state, { payload }) => null },
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.table ? payload.table : state }
 }, null);
 
 export const tableForeignKeys = handleActions({
-    [LOAD_DATABASE]: { next: (state, { payload }) => null},
+    [RESET_QB]: { next: (state, { payload }) => null },
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.foreignKeys ? payload.foreignKeys : state }
 }, null);
 
@@ -141,9 +140,9 @@ export const tableForeignKeyReferences = handleActions({
 
 // the result of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResult = handleActions({
+    [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResult },
-    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state },
-    [INITIALIZE_QB]: { next: (state, { payload }) => null }
+    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state }
 }, null);
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.
@@ -155,7 +154,7 @@ export const queryExecutionPromise = handleActions({
 }, null);
 
 export const parameterValues = handleActions({
-    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) }
+    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => assoc(state, id, value) }
 }, {});
 
 export const currentState = handleActions({

@@ -8,7 +8,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import { MODAL_EDIT_DETAILS,
          MODAL_INVITE_RESENT,
          MODAL_REMOVE_USER,
-         MODAL_RESET_PASSWORD } from "./AdminPeople.jsx";
+         MODAL_RESET_PASSWORD } from "../containers/PeopleListingApp.jsx";
 
 export default class UserActionsSelect extends Component {
 

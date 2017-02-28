@@ -1,14 +1,15 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
-import i from "icepick";
+import { getIn } from "icepick";
 import pure from "recompose/pure";
 
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
+import { isFK } from "metabase/lib/types";
 
 import Select from "metabase/components/Select.jsx";
 
-import D from "metabase/components/Detail.css";
+import D from "metabase/reference/components/Detail.css";
 
 const FieldTypeDetail = ({
     field,
@@ -47,7 +48,7 @@ const FieldTypeDetail = ({
                             onChange={(type) => fieldTypeFormField.onChange(type.id)}
                         /> :
                         <span>
-                            { i.getIn(
+                            { getIn(
                                     MetabaseCore.field_special_types_map,
                                     [field.special_type, 'name']
                                 ) || 'No field type'
@@ -57,8 +58,8 @@ const FieldTypeDetail = ({
                 </span>
                 <span className="ml4">
                     { isEditing ?
-                        (fieldTypeFormField.value === 'fk' ||
-                        (field.special_type === 'fk' && fieldTypeFormField.value === undefined)) &&
+                        (isFK(fieldTypeFormField.value) ||
+                        (isFK(field.special_type) && fieldTypeFormField.value === undefined)) &&
                         <Select
                             triggerClasses="rounded bordered p1 inline-block"
                             placeholder="Select a field type"
@@ -71,9 +72,9 @@ const FieldTypeDetail = ({
                             onChange={(foreignKey) => foreignKeyFormField.onChange(foreignKey.id)}
                             optionNameFn={(foreignKey) => foreignKey.name}
                         /> :
-                        field.special_type === 'fk' &&
+                        isFK(field.special_type) &&
                         <span>
-                            {i.getIn(foreignKeys, [field.fk_target_field_id, "name"])}
+                            {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                         </span>
                     }
                 </span>
