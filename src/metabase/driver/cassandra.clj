@@ -35,16 +35,6 @@
 ; Metadata metadata = cluster.getMetadata();
 ; System.out.println(String.format("Connected to cluster '%s' on %s.", metadata.getClusterName(), metadata.getAllHosts()));
 
-; --- mongo example
-; (:import com.mongodb.DB)
-; (defn- can-connect? [details]
-;   (with-mongo-connection [^DB conn, details]
-;     (= (-> (cmd/db-stats conn)
-;            (conv/from-db-object :keywordize)
-;            :ok)
-;        1.0)))
-
-
 (defn- describe-database [database]
   {:schema nil
    :name   "xxx"

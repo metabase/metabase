@@ -2,7 +2,7 @@
   (:require (monger [collection :as mc]
                     [core :as mg])
             metabase.driver.mongo
-            [metabase.driver.mongo.util :refer [with-mongo-connection]]
+            [metabase.driver.cassandra.util :refer [with-cassandra-connection]]
             [metabase.test.data.interface :as i]
             [metabase.util :as u])
   (:import metabase.driver.cassandra.CassandraDriver))

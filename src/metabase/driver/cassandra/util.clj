@@ -16,35 +16,8 @@
   "Run F with a new connection (bound to `*cassandra-connection*`) to DATABASE.
    Don't use this directly; use `with-cassandra-connection`."
   [f database]
-  (println "Try Cassandra connect")
   (let [{:keys [dbname host port user pass ssl authdb]
-         :or   {port 9042, pass "", ssl false}} (cond
-                                                   (string? database)            {:dbname database}
-                                                   (:dbname (:details database)) (:details database) ; entire Database obj
-                                                   (:dbname database)            database            ; connection details map only
-                                                   :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
-        ; user             (when (seq user) ; ignore empty :user and :pass strings
-        ;                    user)
-        ; pass             (when (seq pass)
-        ;                    pass)
-        ; authdb           (if (seq authdb)
-        ;                    authdb
-        ;                    dbname)
-        ; server-address   (mg/server-address host port)
-        ; credentials      (when user
-        ;                    (mcred/create user authdb pass))
-        ; connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
-        
-        ; HOW TO
-        ; (cc/connect ["127.0.0.1"])
-        ; (cc/connect ["127.0.0.1"] {:keyspace "system"})
-
-        ; conn             (if credentials
-        ;                    (connect credentials)
-        ;                    (connect))
-
-        ; mongo-connection (mg/get-db conn dbname)
-
+         :or   {port 9042, pass "", ssl false}} database 
         conn (if dbname
                  (cc/connect [host] {:port port :keyspace dbname})
                  (cc/connect [host] {:port port}))
