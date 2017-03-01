@@ -126,7 +126,6 @@ export default class QueryBuilder extends Component {
 
     componentDidMount() {
         window.addEventListener("resize", this.handleResize);
-        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -158,7 +157,6 @@ export default class QueryBuilder extends Component {
         this.props.cancelQuery();
 
         window.removeEventListener("resize", this.handleResize);
-        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     // When the window is resized we need to re-render, mainly so that our visualization pane updates
@@ -168,13 +166,6 @@ export default class QueryBuilder extends Component {
         let viz = ReactDOM.findDOMNode(this.refs.viz);
         if (viz) {
             viz.style.opacity = 0.2;
-        }
-    }
-
-    handleKeyDown = (e) => {
-        const ENTER_KEY = 13;
-        if (e.keyCode === ENTER_KEY && e.metaKey && this.props.isRunnable) {
-            this.props.runQueryFn();
         }
     }
 
