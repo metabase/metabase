@@ -16,7 +16,7 @@
             [metabase.util :as u]))
 
 
-;; Analyze routines begin
+;;; ### Analyze routines begin
 
 
 (defn- qp-query [db-id query]
@@ -148,7 +148,7 @@
        (test:json-special-type  driver field)))
 
 
-(defn test:cardinality-and-extract-field-values-druid
+(defn test:cardinality-and-extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
   [field field-stats]
   (println "testing for cardinality" (select-keys field [:special_type :name]))
@@ -167,7 +167,6 @@
            (pos? (count distinct-values))) (assoc :special-type :category))))
 
 
-;; Analyze routines end
 ;;; ### Request helper fns
 
 (defn- details->url
@@ -304,38 +303,21 @@
   (getName [_] "Druid"))
 
 
-(defn make-analyze-table-druid
-  "Make a generic implementation of `analyze-table`."
-  {:style/indent 1}
-  [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
-             :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
-                    field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
-  (fn [driver table new-field-ids]
-    (let [driver (assoc driver :field-avg-length field-avg-length-fn, :field-percent-urls field-percent-urls-fn)]
-      {;:row_count 0 (u/try-apply analyze/table-row-count table)
-       :fields    (for [{:keys [id] :as field} (table/fields table)]
-                    (let [new-field? (contains? new-field-ids id)]
-                      (cond->> {:id id}
-                               (analyze/test-for-cardinality? field new-field?)
-                               (test:cardinality-and-extract-field-values-druid field)
-                               new-field?
-                               (test:new-field driver field))))})))
-
-
-
-
 (u/strict-extend DruidDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:can-connect?          (u/drop-first-arg can-connect?)
-          :analyze-table         (fn [driver table new-table-ids]
-                                   ((make-analyze-table-druid
-                                     driver
-                                     :field-avg-length-fn (constantly 0)  ; TODO
-                                     :field-percent-urls-fn (constantly 0))  ; TODO
-                                    driver
-                                    table
-                                    new-table-ids))
+          :analyze-table         (let [field-avg-length-fn (constantly 0)  ; TODO
+                                       field-percent-urls-fn (constantly 0)]  ; TODO
+                                   (fn [driver table new-field-ids]
+                                     (let [driver (assoc driver :field-avg-length field-avg-length-fn, :field-percent-urls field-percent-urls-fn)]
+                                       {:fields    (for [{:keys [id] :as field} (table/fields table)]
+                                                     (let [new-field? (contains? new-field-ids id)]
+                                                       (cond->> {:id id}
+                                                               (analyze/test-for-cardinality? field new-field?)
+                                                               (test:cardinality-and-extract-field-values field)
+                                                               new-field?
+                                                               (test:new-field driver field))))})))
           :describe-database     (u/drop-first-arg describe-database)
           :describe-table        (u/drop-first-arg describe-table)
           :details-fields        (constantly [{:name         "host"
