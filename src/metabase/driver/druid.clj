@@ -5,12 +5,12 @@
             [clojure.string :as s]
             [clj-http.client :as http]
             [cheshire.core :as json]
+            [metabase.db.metadata-queries :as queries]
             [metabase.driver :as driver]
             [metabase.driver.druid.query-processor :as qp]
             (metabase.models [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
-            [metabase.db.metadata-queries :as queries]
             [metabase.query-processor :as metabase-qp]
             [metabase.query-processor.expand :as ql]
             [metabase.util :as u]))
