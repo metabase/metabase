@@ -16,8 +16,8 @@
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
-            [metabase.query-processor :as qp]
             metabase.query-processor.interface
+            [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import (java.util Collections Date)
@@ -298,9 +298,9 @@
        :mbql?      true})))
 
 (defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
-  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" (if (seq params)
-                                                                 (unprepare/unprepare (cons sql params))
-                                                                 sql))
+  (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
+                                                                     (unprepare/unprepare (cons sql params))
+                                                                     sql))
         results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
