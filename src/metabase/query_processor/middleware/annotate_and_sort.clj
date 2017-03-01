@@ -35,7 +35,8 @@
   [qp]
   (fn [query]
     (let [results (qp query)]
-      (if-not (or (qputil/mbql-query? query)
-                  (:annotate? results))
-        (infer-column-types results)
-        (annotate/annotate-and-sort query results)))))
+      (-> (if-not (or (qputil/mbql-query? query)
+                      (:annotate? results))
+            (infer-column-types results)
+            (annotate/annotate-and-sort query results))
+          (dissoc :annotate?)))))
