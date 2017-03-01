@@ -9,19 +9,41 @@
             [clojurewerkz.cassaforte.cql    :as cql]
             [clojurewerkz.cassaforte.query :refer :all]  
             [metabase.driver :as driver]
+            [metabase.driver.cassandra.util :refer [*cassandra-connection* with-cassandra-connection]]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import com.datastax.driver.core.SessionManager))
 
 (defn- analyze-table [table new-field-ids]
   ;; We only care about 1) table counts and 2) field values
   {:row_count 1
    :fields    ["field_1" "field_2"]})
 
+; {:host "localhost", :port 3000}
 (defn- can-connect? [details]
-  false)
+  (clojure.pprint/pprint details)
+  (with-cassandra-connection [^SessionManager conn, details]
+    (some? conn)))
+
+; Session session = cluster.connect();
+; ResultSet rs = session.execute("select release_version from system.local");
+
+; Session session = cluster.connect();
+; Metadata metadata = cluster.getMetadata();
+; System.out.println(String.format("Connected to cluster '%s' on %s.", metadata.getClusterName(), metadata.getAllHosts()));
+
+; --- mongo example
+; (:import com.mongodb.DB)
+; (defn- can-connect? [details]
+;   (with-mongo-connection [^DB conn, details]
+;     (= (-> (cmd/db-stats conn)
+;            (conv/from-db-object :keywordize)
+;            :ok)
+;        1.0)))
+
 
 (defn- describe-database [database]
   {:schema nil
