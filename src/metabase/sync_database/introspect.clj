@@ -50,7 +50,7 @@
           (db/update! RawColumn column-id, :active false)))
 
       ;; insert or update the remaining columns
-      (doseq [{column-name :name, :keys [base-type pk? special-type details]} (sort-by :name columns)]
+      (doseq [{column-name :name, :keys [base-type pk? special-type details position]} (sort-by (or :position :name) columns)]
         (let [details (merge (or details {})
                              {:base-type base-type}
                              (when special-type {:special-type special-type}))
@@ -61,14 +61,16 @@
               :name    column-name
               :is_pk   is_pk
               :details details
-              :active  true)
+              :active  true
+              :ordinal_position position)
             ;; must be a new column, insert it
             (db/insert! RawColumn
               :raw_table_id id
               :name         column-name
               :is_pk        is_pk
               :details      details
-              :active       true)))))))
+              :active       true
+              :ordinal_position position)))))))
 
 (defn- create-raw-table!
   "Create a new `RawTable`, includes saving all specified `:columns`."

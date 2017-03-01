@@ -86,7 +86,7 @@
                            :set   {:visibility_type "retired"}})))
 
     ;; create/update the active columns
-    (doseq [{raw-column-id :id, :keys [details], :as column} active-raw-columns]
+    (doseq [{raw-column-id :id, :keys [details ordinal_position], :as column} (sort-by :ordinal_position active-raw-columns)]
       ;; do a little bit of key renaming to match what's expected for a call to update/create-field
       (let [column (-> (set/rename-keys column {:id    :raw-column-id
                                                 :is_pk :pk?})

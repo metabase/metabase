@@ -345,7 +345,10 @@
   (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
         schemas     (set/difference all-schemas (excluded-schemas driver))]
     (set (for [schema     schemas
-               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema "%" (into-array String ["TABLE", "VIEW", "FOREIGN TABLE"]))))] ; tablePattern "%" = match all tables
+               table-name (mapv :table_name
+                                (jdbc/result-set-seq
+                                  (.getTables metadata nil schema "%"  ; tablePattern "%" = match all tables
+                                              (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))))]
            {:name   table-name
             :schema schema}))))
 
@@ -354,15 +357,18 @@
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (jdbc/result-set-seq (.getTables metadata nil nil "%" (into-array String ["TABLE", "VIEW", "FOREIGN TABLE"]))))] ; tablePattern "%" = match all tables
+                             (jdbc/result-set-seq
+                               (.getTables metadata nil nil "%"  ; tablePattern "%" = match all tables
+                                           (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))))]
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
 (defn- describe-table-fields
   [^DatabaseMetaData metadata, driver, {:keys [schema name]}]
-  (set (for [{:keys [column_name type_name]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))
+  (set (for [{:keys [column_name type_name ordinal_position]} (jdbc/result-set-seq (.getColumns metadata nil schema name nil))
              :let [calculated-special-type (column->special-type driver column_name (keyword type_name))]]
          (merge {:name      column_name
+                 :position  ordinal_position
                  :custom    {:column-type type_name}
                  :base-type (or (column->base-type driver (keyword type_name))
                                 (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
@@ -384,11 +390,32 @@
                                      field
                                      (assoc field :pk? true))))))))
 
+(defn check-queryable
+  "Check if the table can be queried; it's not useful otherwise."
+  [database table]
+  (try
+    (jdbc/query (db->jdbc-connection-spec database)
+      [(format "SELECT count(*) FROM %s;"
+         (if (nil? (:schema table))
+           (format "%s" (:name table))
+           (format "%s.%s" (:schema table) (:name table))))])
+    (catch Throwable e
+      (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s"
+        (if (nil? (:schema table))
+          (format "%s" (:name table))
+          (format "%s.%s" (:schema table) (:name table)))
+        (.getMessage e)
+        (u/pprint-to-str (u/filtered-stacktrace e)))))))
+
 (defn describe-database
   "Default implementation of `describe-database` for JDBC-based drivers."
   [driver database]
   (with-metadata [metadata driver database]
-    {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
+    {:tables (set (for [table (active-tables driver ^DatabaseMetaData metadata)
+                        :let [can-query (check-queryable database table)]
+                        :when (not (nil? can-query))]
+                        table))
+     }))
 
 (defn- describe-table [driver database table]
   (with-metadata [metadata driver database]

@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 50
+      author: lstevens
+      changes:
+        - addColumn:
+            tableName: raw_column
+            columns:
+              - column:
+                  name: ordinal_position
+                  type: int
+                  remarks: 'Column position within a table, as reported by JDBC driver.'

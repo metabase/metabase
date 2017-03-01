@@ -213,7 +213,7 @@
 (defn update-field-from-field-def!
   "Update an EXISTING-FIELD from the given FIELD-DEF."
   {:arglists '([existing-field field-def])}
-  [{:keys [id], :as existing-field} {field-name :name, :keys [base-type special-type pk? parent-id]}]
+  [{:keys [id], :as existing-field} {field-name :name, :keys [base-type special-type pk? parent-id ordinal_position]}]
   (u/prog1 (assoc existing-field
              :base_type    base-type
              :display_name (or (:display_name existing-field)
@@ -223,20 +223,21 @@
                                (when pk?
                                  :type/PK)
                                (infer-field-special-type field-name base-type))
-
-             :parent_id    parent-id)
+             :parent_id    parent-id
+             :position     (or ordinal_position 0))
     ;; if we have a different base-type or special-type, then update
     (when (first (d/diff <> existing-field))
       (db/update! Field id
         :display_name (:display_name <>)
         :base_type    base-type
         :special_type (:special_type <>)
-        :parent_id    parent-id))))
+        :parent_id    parent-id
+        :position     (:position <>)))))
 
 (defn create-field-from-field-def!
   "Create a new `Field` from the given FIELD-DEF."
   {:arglists '([table-id field-def])}
-  [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id]}]
+  [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id ordinal_position]}]
   {:pre [(integer? table-id) (string? field-name) (isa? base-type :type/*)]}
   (let [special-type (or special-type
                        (when pk? :type/PK)
@@ -248,4 +249,5 @@
       :display_name  (humanization/name->human-readable-name field-name)
       :base_type     base-type
       :special_type  special-type
-      :parent_id     parent-id)))
+      :parent_id     parent-id
+      :position      (or ordinal_position 0))))

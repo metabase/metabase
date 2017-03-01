@@ -25,6 +25,7 @@
    (s/optional-key :special-type)  su/FieldType
    (s/optional-key :pk?)           s/Bool
    (s/optional-key :nested-fields) #{(s/recursive #'DescribeTableField)}
+   (s/optional-key :position)      s/Int
    (s/optional-key :custom)        {s/Any s/Any}})
 
 (def DescribeTable
