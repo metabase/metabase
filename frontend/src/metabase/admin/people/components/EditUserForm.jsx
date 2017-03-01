@@ -122,6 +122,7 @@ export default class EditUserForm extends Component {
                         <FormField>
                             <FormLabel title="Permission Groups" offset={false}></FormLabel>
                             <PopoverWithTrigger
+                                sizeToFit
                                 triggerElement={
                                     <SelectButton>
                                         <GroupSummary groups={groups} selectedGroups={selectedGroups}/>
