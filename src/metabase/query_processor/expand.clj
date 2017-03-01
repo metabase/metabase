@@ -8,7 +8,7 @@
             [schema.core :as s]
             [toucan.db :as db]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.interface :refer [*driver*], :as i]
+            [metabase.query-processor.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su])
   (:import (metabase.query_processor.interface AgFieldRef

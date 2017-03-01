@@ -127,8 +127,8 @@
   (result-set-read-column [x _ _] (PersistentVector/adopt x)))
 
 
-(def ^:dynamic ^:private connection-pools
-  "A map of our currently open connection pools, keyed by DATABASE `:id`."
+(def ^:dynamic ^:private database-id->connection-pool
+  "A map of our currently open connection pools, keyed by Database `:id`."
   (atom {}))
 
 (defn- create-connection-pool
@@ -147,10 +147,10 @@
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
    the assumption that the connection details have changed."
   [_ {:keys [id]}]
-  (when-let [pool (get @connection-pools id)]
+  (when-let [pool (get @database-id->connection-pool id)]
     (log/debug (u/format-color 'red "Closing connection pool for database %d ..." id))
     ;; remove the cached reference to the pool so we don't try to use it anymore
-    (swap! connection-pools dissoc id)
+    (swap! database-id->connection-pool dissoc id)
     ;; now actively shut down the pool so that any open connections are closed
     (.close ^ComboPooledDataSource (:datasource pool))))
 
@@ -158,12 +158,12 @@
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
    Theses connection pools are cached so we don't create multiple ones to the same DB."
   [{:keys [id], :as database}]
-  (if (contains? @connection-pools id)
+  (if (contains? @database-id->connection-pool id)
     ;; we have an existing pool for this database, so use it
-    (get @connection-pools id)
+    (get @database-id->connection-pool id)
     ;; create a new pool and add it to our cache, then return it
     (u/prog1 (create-connection-pool database)
-      (swap! connection-pools assoc id <>))))
+      (swap! database-id->connection-pool assoc id <>))))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
@@ -216,10 +216,8 @@
     (into [(hx/unescape-dots sql)] args)))
 
 (defn- qualify+escape ^clojure.lang.Keyword
-  ([table]
-   (hx/qualify-and-escape-dots (:schema table) (:name table)))
-  ([table field]
-   (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
+  ([table]       (hx/qualify-and-escape-dots (:schema table) (:name table)))
+  ([table field] (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
 
 
 (defn- query
@@ -329,6 +327,7 @@
 
 ;;; ## Database introspection methods used by sync process
 
+;; TODO - clojure.java.jdbc now ships with a `metadata-query` function we could use here. See #2918
 (defmacro with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
   [[binding _ database] & body]
@@ -422,7 +421,7 @@
   (require 'metabase.driver.generic-sql.query-processor)
   {:active-tables        fast-active-tables
    :apply-aggregation    (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
-   :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
+   :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)    ; underlying impl changes we won't have to reload all the drivers
    :apply-fields         (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
    :apply-filter         (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
    :apply-join-tables    (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)

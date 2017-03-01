@@ -10,9 +10,8 @@
                     [operators :refer :all])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
             (metabase.query-processor [annotate :as annotate]
-                                      [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
+                                      [interface :as i])
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
@@ -35,7 +34,7 @@
 (def ^:dynamic ^:private *query* nil)
 
 (defn- log-monger-form [form]
-  (when-not qp/*disable-qp-logging*
+  (when-not i/*disable-qp-logging*
     (log/debug (u/format-color 'green "\nMONGO AGGREGATION PIPELINE:\n%s\n"
                  (->> form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
@@ -68,7 +67,7 @@
 (defn- field->name
   "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
   ^String [^Field field, ^String separator]
-  (s/join separator (rest (qualified-name-components field))))
+  (s/join separator (rest (i/qualified-name-components field))))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -196,8 +195,8 @@
 
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field]}]
-    (->rvalue (map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
-                                   :field field}))))
+    (->rvalue (i/map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
+                                     :field field}))))
 
 
 ;;; ## CLAUSE APPLICATION
