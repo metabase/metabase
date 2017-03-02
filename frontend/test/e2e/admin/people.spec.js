@@ -1,13 +1,10 @@
-
-import { By, until } from "selenium-webdriver";
-
 import {
     waitForElement,
     waitForElementText,
-    waitForElementRemoved,
     findElement,
     waitForElementAndClick,
     waitForElementAndSendKeys,
+    waitForElementRemoved,
     waitForUrl,
     screenshot,
     loginMetabase,
@@ -35,7 +32,7 @@ describeE2E("admin/people", () => {
             await waitForElementAndClick(driver, ".Button.Button--primary");
 
             // fill in user info form
-            const addButton = findElement(driver, ".Modal .Button[disabled]");
+            const addButton = findElement(driver, ".ModalContent .Button[disabled]");
             await waitForElementAndSendKeys(driver, "[name=firstName]", firstName);
             await waitForElementAndSendKeys(driver, "[name=lastName]", lastName);
             await waitForElementAndSendKeys(driver, "[name=email]", email);
@@ -60,7 +57,7 @@ describeE2E("admin/people", () => {
             await waitForElementAndClick(driver, ".ContentTable tr:first-child td:last-child a");
             await waitForElementAndClick(driver, ".UserActionsSelect li:first-child");
 
-            const saveButton = findElement(driver, ".Modal .Button[disabled]");
+            const saveButton = findElement(driver, ".ModalContent .Button[disabled]");
             await waitForElementAndSendKeys(driver, "[name=firstName]", `${firstName}x`);
             await waitForElementAndSendKeys(driver, "[name=lastName]", `${lastName}x`);
             await waitForElementAndSendKeys(driver, "[name=email]", `${email}x`);
@@ -71,6 +68,7 @@ describeE2E("admin/people", () => {
             await waitForElementText(driver, ".ContentTable tr:first-child td:nth-child(3)", `${email}x`);
 
             // reset user password
+            await waitForElementRemoved(driver, ".Modal");
             await waitForElementAndClick(driver, ".ContentTable tr:first-child td:last-child a");
             await waitForElementAndClick(driver, ".UserActionsSelect li:nth-child(2)");
 

@@ -1,11 +1,16 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [clojure.walk :as walk]
+  (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [cheshire.core :as json]
             [expectations :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
+            [toucan.util.test :as test]
             (metabase.models [card :refer [Card]]
+                             [collection :refer [Collection]]
                              [dashboard :refer [Dashboard]]
+                             [dashboard-card-series :refer [DashboardCardSeries]]
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [metric :refer [Metric]]
@@ -69,6 +74,10 @@
     []
     (apply str (repeatedly 20 random-uppercase-letter))))
 
+(defn random-email
+  "Generate a random email address."
+  []
+  (str (random-name) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys with 'id' or '_at' to booleans."
@@ -88,172 +97,114 @@
                  [k (f v)])))))
 
 
-(defprotocol ^:private WithTempDefaults
-  (^:private with-temp-defaults [this]))
-
-(u/strict-extend Object
-  WithTempDefaults
-  {:with-temp-defaults (constantly {})})
-
-(defn- rasta-id []
+(defn- user-id [username]
   (require 'metabase.test.data.users)
-  ((resolve 'metabase.test.data.users/user->id) :rasta))
+  ((resolve 'metabase.test.data.users/user->id) username))
+
+(defn- rasta-id     [] (user-id :rasta))
+
 
 (u/strict-extend (class Card)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
                                 :dataset_query          {}
                                 :display                :table
                                 :name                   (random-name)
                                 :visualization_settings {}})})
 
+(u/strict-extend (class Collection)
+  test/WithTempDefaults
+  {:with-temp-defaults (fn [_] {:name  (random-name)
+                                :color "#ABCDEF"})})
+
 (u/strict-extend (class Dashboard)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
                                 :name         (random-name)})})
 
+(u/strict-extend (class DashboardCardSeries)
+  test/WithTempDefaults
+  {:with-temp-defaults (constantly {:position 0})})
+
 (u/strict-extend (class Database)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
                                 :engine    :yeehaw
                                 :is_sample false
                                 :name      (random-name)})})
 
 (u/strict-extend (class Field)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:base_type :type/Text
                                 :name      (random-name)
                                 :position  1
-                                :table_id  (data/id :venues)})})
+                                :table_id  (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
-                                :table_id    (data/id :venues)})})
+                                :table_id    (data/id :checkins)})})
 
 (u/strict-extend (class PermissionsGroup)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name (random-name)})})
 
 (u/strict-extend (class Pulse)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :name       (random-name)})})
 
 (u/strict-extend (class PulseChannel)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (constantly {:channel_type  :email
                                     :details       {}
                                     :schedule_type :daily
                                     :schedule_hour 15})})
 
 (u/strict-extend (class RawColumn)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class RawTable)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class Revision)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
                                 :is_creation  false
                                 :is_reversion false})})
 
 (u/strict-extend (class Segment)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
-                                :table_id    (data/id :venues)})})
+                                :table_id    (data/id :checkins)})})
 
 ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
 (u/strict-extend (class Table)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class User)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:first_name (random-name)
                                 :last_name  (random-name)
-                                :email      (str (random-name) "@metabase.com")
+                                :email      (random-email)
                                 :password   (random-name)})})
 
 
-(defn do-with-temp
-  "Internal implementation of `with-temp` (don't call this directly)."
-  [entity attributes f]
-  (let [temp-object (db/insert! entity (merge (with-temp-defaults entity)
-                                              attributes))]
-    (try
-      (f temp-object)
-      (finally
-        (db/cascade-delete! entity :id (:id temp-object))))))
-
-
-;;; # with-temp
-(defmacro with-temp
-  "Create a temporary instance of ENTITY bound to BINDING-FORM, execute BODY,
-   then delete it via `cascade-delete`.
-
-   Our unit tests rely a heavily on the test data and make some assumptions about the
-   DB staying in the same *clean* state. This allows us to write very concise tests.
-   Generally this means tests should \"clean up after themselves\" and leave things the
-   way they found them.
-
-   `with-temp` should be preferrable going forward over creating random objects *without*
-   deleting them afterward.
-
-    (with-temp EmailReport [report {:creator_id (user->id :rasta)
-                                    :name       (random-name)}]
-      ...)"
-  [entity [binding-form & [options-map]] & body]
-  `(do-with-temp ~entity ~options-map (fn [~binding-form]
-                                        ~@body)))
-
-(defmacro with-temp*
-  "Like `with-temp` but establishes multiple temporary objects at the same time.
-
-     (with-temp* [Database [{database-id :id}]
-                  Table    [table {:db_id database-id}]]
-       ...)"
-  [entity-bindings & body]
-  (loop [[pair & more] (reverse (partition 2 entity-bindings)), body `(do ~@body)]
-    (let [body `(with-temp ~@pair
-                  ~body)]
-      (if (seq more)
-        (recur more body)
-        body))))
-
-(defmacro expect-with-temp
-  "Combines `expect` with a `with-temp*` form. The temporary objects established by `with-temp*` are available to both EXPECTED and ACTUAL.
-
-     (expect-with-temp [Database [{database-id :id}]]
-        database-id
-        (get-most-recent-database-id))"
-  {:style/indent 1}
-  ;; TODO - maybe it makes more sense to have the signature be [with-temp*-form expected & actual] and wrap `actual` in a `do` since it seems like a pretty common use-case.
-  ;; I'm not sure about the readability implications however :scream_cat:
-  [with-temp*-form expected actual]
-  ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
-  ;; to generate function names it will treat every usage of `expect-with-temp` as the same test and only a single one will end up being ran
-  (let [with-temp-form (gensym "with-temp-")]
-    `(let [~with-temp-form (delay (with-temp* ~with-temp*-form
-                                    [~expected ~actual]))]
-       (expect
-         (u/ignore-exceptions
-           (first @~with-temp-form))   ; if dereferencing with-temp-form throws an exception then expect Exception <-> Exception will pass; we don't want that, so make sure the expected
-         (second @~with-temp-form))))) ; case is nil if we encounter an exception so the two don't match and the test doesn't succeed
+;;; ------------------------------------------------------------ Other Util Fns ------------------------------------------------------------
 
 
 (defn- namespace-or-symbol? [x]
@@ -332,3 +283,20 @@
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
+
+(defn do-with-log-messages [f]
+  (let [messages (atom [])]
+    (with-redefs [log/log* (fn [_ & message]
+                             (swap! messages conj (vec message)))]
+      (f))
+    @messages))
+
+(defmacro with-log-messages
+  "Execute BODY, and return a vector of all messages logged using the `log/` family of functions.
+   Messages are of the format `[:level throwable message]`, and are returned in chronological order
+   from oldest to newest.
+
+     (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"
+  {:style/indent 0}
+  [& body]
+  `(do-with-log-messages (fn [] ~@body)))

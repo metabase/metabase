@@ -1,6 +1,15 @@
 (ns metabase.models.permissions-test
   (:require [expectations :refer :all]
-            [metabase.models.permissions :as perms]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            (metabase.models [database :refer [Database]]
+                             [permissions :as perms]
+                             [permissions-group :refer [PermissionsGroup]]
+                             [permissions-group-membership :refer [PermissionsGroupMembership]]
+                             [table :refer [Table]])
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 
 ;;; ------------------------------------------------------------ valid-object-path? ------------------------------------------------------------
@@ -140,12 +149,6 @@
 (expect AssertionError (perms/object-path 1 "public"{}))
 (expect AssertionError (perms/object-path 1 "public"[]))
 
-
-;;; ------------------------------------------------------------ TODO - native-readwrite-path ------------------------------------------------------------
-
-;;; ------------------------------------------------------------ TODO - native-read-path ------------------------------------------------------------
-
-;;; ------------------------------------------------------------ TODO - all-schemas-path ------------------------------------------------------------
 
 ;;; ------------------------------------------------------------ is-permissions-for-object? ------------------------------------------------------------
 
@@ -506,5 +509,34 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                                 TODO - Permissions Graph Tests                                                                 |
+;;; |                                                                    Permissions Graph Tests                                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+(defn- test-data-graph [group]
+  (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"]))
+
+;; Test that setting partial permissions for a table retains permissions for other tables -- #3888
+(expect
+  [{(data/id :categories) :none, (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}
+   {(data/id :categories) :all,  (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}]
+  (tt/with-temp PermissionsGroup [group]
+    ;; first, graph permissions only for VENUES
+    (perms/grant-permissions! group (perms/object-path (data/id) "PUBLIC" (data/id :venues)))
+    [(test-data-graph group)
+     ;; next, grant permissions via `update-graph!` for CATEGORIES as well. Make sure permissions for VENUES are retained (#3888)
+     (do
+       (perms/update-graph! [(u/get-id group) (data/id) :schemas "PUBLIC" (data/id :categories)] :all)
+       (test-data-graph group))]))
+
+;;; Make sure that the graph functions work correctly for DBs with no schemas
+;; See https://github.com/metabase/metabase/issues/4000
+(tt/expect-with-temp [PermissionsGroup [group]
+                      Database         [database]
+                      Table            [table    {:db_id (u/get-id database)}]]
+  {"" {(u/get-id table) :all}}
+  (do
+    ;; try to grant idential permissions to the table twice
+    (perms/update-graph! [(u/get-id group) (u/get-id database) :schemas] {"" {(u/get-id table) :all}})
+    (perms/update-graph! [(u/get-id group) (u/get-id database) :schemas] {"" {(u/get-id table) :all}})
+    ;; now fetch the perms that have been granted
+    (get-in (perms/graph) [:groups (u/get-id group) (u/get-id database) :schemas])))

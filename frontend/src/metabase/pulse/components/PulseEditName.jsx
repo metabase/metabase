@@ -36,7 +36,7 @@ export default class PulseEditName extends Component {
                 <div className="my3">
                     <input
                         ref="name"
-                        className={cx("input h4 text-bold text-default", { "border-error": !this.state.valid })}
+                        className={cx("input text-bold", { "border-error": !this.state.valid })}
                         style={{"width":"400px"}}
                         value={pulse.name || ""}
                         onChange={this.setName}

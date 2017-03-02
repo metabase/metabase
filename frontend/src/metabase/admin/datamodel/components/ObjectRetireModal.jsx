@@ -32,7 +32,7 @@ export default class ObjectRetireModal extends Component {
         return (
             <ModalContent
                 title={"Retire This " + capitalize(objectType)}
-                closeFn={this.props.onClose}
+                onClose={this.props.onClose}
             >
                 <form className="flex flex-column flex-full">
                     <div className="Form-inputs pb4">
@@ -40,7 +40,7 @@ export default class ObjectRetireModal extends Component {
                         <p>If you're sure you want to retire this {objectType}, please write a quick explanation of why it's being retired:</p>
                         <textarea
                             ref="revision_message"
-                            className="input full text-default h4"
+                            className="input full"
                             placeholder={"This will show up in the activity feed and in an email that will be sent to anyone on your team who created something that uses this " + objectType + "."}
                             onChange={(e) => this.setState({ valid: !!e.target.value })}
                         />

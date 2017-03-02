@@ -1,10 +1,7 @@
 
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 
-// resource wrappers
-const SettingsApi = new AngularResourceProxy("Settings", ["list", "put"]);
-const EmailApi = new AngularResourceProxy("Email", ["updateSettings", "sendTest"]);
-const SlackApi = new AngularResourceProxy("Slack", ["updateSettings"]);
+import { SettingsApi, EmailApi, SlackApi } from "metabase/services";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
@@ -37,7 +34,7 @@ export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", funct
 export const updateSetting = createThunkAction("UPDATE_SETTING", function(setting) {
     return async function(dispatch, getState) {
         try {
-            await SettingsApi.put({ key: setting.key }, setting);
+            await SettingsApi.put(setting);
             await dispatch(refreshSiteSettings());
             return await loadSettings();
         } catch(error) {

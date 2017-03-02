@@ -1,23 +1,27 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
+            [schema.core :as s]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard], :as dashboard]
                              [dashboard-card :refer [DashboardCard create-dashboard-card! update-dashboard-card! delete-dashboard-card!]]
-                             [interface :as models]
-                             [hydrate :refer [hydrate]])
-            [metabase.models.revision :as revision]
-            [metabase.util :as u]))
+                             [interface :as mi]
+                             [revision :as revision])
+            [metabase.util :as u]
+            [metabase.util.schema :as su])
+  (:import java.util.UUID))
 
 
 (defn- dashboards-list [filter-option]
-  (filter models/can-read? (-> (db/select Dashboard {:where (case (or filter-option :all)
-                                                              :all  true
-                                                              :mine [:= :creator_id *current-user-id*])})
+  (filter mi/can-read? (-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
+                                                                 :all  true
+                                                                 :mine [:= :creator_id *current-user-id*])
+                                                     :order-by [:%lower.name]})
                                (hydrate :creator))))
 
 (defendpoint GET "/"
@@ -26,21 +30,21 @@
   *  `all` - Return all `Dashboards`.
   *  `mine` - Return `Dashboards` created by the current user."
   [f]
-  {f FilterOptionAllOrMine}
+  {f (s/maybe (s/enum "all" "mine"))}
   (dashboards-list f))
 
 
 (defendpoint POST "/"
   "Create a new `Dashboard`."
   [:as {{:keys [name parameters], :as dashboard} :body}]
-  {name       [Required NonEmptyString]
-   parameters [ArrayOfMaps]}
+  {name       su/NonBlankString
+   parameters [su/Map]}
   (dashboard/create-dashboard! dashboard *current-user-id*))
 
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
-  (if (models/can-read? card)
+  (if (mi/can-read? card)
     card
     (select-keys card [:id])))
 
@@ -59,14 +63,14 @@
                (hydrate :creator [:ordered_cards [:card :creator] :series])
                read-check
                hide-unreadable-cards)
-    (events/publish-event :dashboard-read (assoc <> :actor_id *current-user-id*))))
+    (events/publish-event! :dashboard-read (assoc <> :actor_id *current-user-id*))))
 
 
 (defendpoint PUT "/:id"
   "Update a `Dashboard`."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started], :as dashboard} :body}]
-  {name       [Required NonEmptyString]
-   parameters [ArrayOfMaps]}
+  {name       su/NonBlankString
+   parameters [su/Map]}
   (write-check Dashboard id)
   (check-500 (-> (assoc dashboard :id id)
                  (dashboard/update-dashboard! *current-user-id*))))
@@ -76,15 +80,16 @@
   "Delete a `Dashboard`."
   [id]
   (let [dashboard (write-check Dashboard id)]
-    (u/prog1 (db/cascade-delete! Dashboard :id id)
-      (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))))
+    (db/delete! Dashboard :id id)
+    (events/publish-event! :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))
+  generic-204-no-content)
 
 
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
   [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
-  {cardId             [Required Integer]
-   parameter_mappings [ArrayOfMaps]}
+  {cardId             su/IntGreaterThanZero
+   parameter_mappings [su/Map]}
   (write-check Dashboard id)
   (read-check Card cardId)
   (let [defaults       {:dashboard_id           id
@@ -94,9 +99,8 @@
                         :series                 (or series [])}
         dashboard-card (-> (merge dashboard-card defaults)
                            (update :series #(filter identity (map :id %))))]
-    (let-500 [result (create-dashboard-card! dashboard-card)]
-      (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
-      result)))
+    (u/prog1 (check-500 (create-dashboard-card! dashboard-card))
+      (events/publish-event! :dashboard-add-cards {:id id, :actor_id *current-user-id*, :dashcards [<>]}))))
 
 
 (defendpoint PUT "/:id/cards"
@@ -116,18 +120,18 @@
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)
         (update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %)))))))
-  (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :dashcards cards})
+  (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id *current-user-id*, :dashcards cards})
   {:status :ok})
 
 
 (defendpoint DELETE "/:id/cards"
   "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
-  {dashcardId [Required String->Integer]}
+  {dashcardId su/IntStringGreaterThanZero}
   (write-check Dashboard id)
-  (when-let [dashboard-card (DashboardCard dashcardId)]
+  (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (check-500 (delete-dashboard-card! dashboard-card *current-user-id*))
-    {:success true}))
+    {:success true})) ; TODO - why doesn't this return a 204 'No Content' response?
 
 
 (defendpoint GET "/:id/revisions"
@@ -140,13 +144,48 @@
 (defendpoint POST "/:id/revert"
   "Revert a `Dashboard` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id [Required Integer]}
+  {revision_id su/IntGreaterThanZero}
   (write-check Dashboard id)
   (revision/revert!
     :entity      Dashboard
     :id          id
     :user-id     *current-user-id*
     :revision-id revision_id))
+
+
+;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
+
+(defendpoint POST "/:dashboard-id/public_link"
+  "Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links.
+   (If this Dashboard has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled."
+  [dashboard-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (read-check Dashboard dashboard-id)
+  {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
+             (u/prog1 (str (UUID/randomUUID))
+               (db/update! Dashboard dashboard-id
+                 :public_uuid       <>
+                 :made_public_by_id *current-user-id*)))})
+
+(defendpoint DELETE "/:dashboard-id/public_link"
+  "Delete the publically-accessible link to this Dashboard."
+  [dashboard-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil])
+  (db/update! Dashboard dashboard-id
+    :public_uuid       nil
+    :made_public_by_id nil)
+  {:status 204, :body nil})
+
+(defendpoint GET "/public"
+  "Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is enabled."
+  []
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil]))
 
 
 (define-routes)

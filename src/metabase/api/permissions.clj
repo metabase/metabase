@@ -2,15 +2,16 @@
   "/api/permissions endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             [metabase.metabot :as metabot]
             (metabase.models [database :as database]
-                             [hydrate :refer [hydrate]]
                              [permissions :refer [Permissions], :as perms]
                              [permissions-group :refer [PermissionsGroup], :as group]
                              [permissions-group-membership :refer [PermissionsGroupMembership]]
                              [table :refer [Table]])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.schema :as su]))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                             PERMISSIONS GRAPH ENDPOINTS                                                              |
@@ -66,7 +67,7 @@
    you revisions, the endpoint will instead make no changes andr eturn a 409 (Conflict) response. In this case, you should fetch the updated graph
    and make desired changes to that."
   [:as {body :body}]
-  {body [Required Dict]}
+  {body su/Map}
   (check-superuser)
   (perms/update-graph! (dejsonify-graph body))
   (perms/graph))
@@ -76,19 +77,34 @@
 ;;; |                                                             PERMISSIONS GROUP ENDPOINTS                                                              |
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
 
+(defn- group-id->num-members
+  "Return a map of `PermissionsGroup` ID -> number of members in the group.
+  (This doesn't include entries for empty groups.)"
+  []
+  (into {} (for [{:keys [group_id members]} (db/query {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
+                                                       :from      [[:permissions_group_membership :pgm]]
+                                                       :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                                                       :where     [:= :user.is_active true]
+                                                       :group-by  [:pgm.group_id]})]
+             {group_id members})))
+
+(defn- ordered-groups
+  "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
+  []
+  (db/select PermissionsGroup
+    {:where    (if (metabot/metabot-enabled)
+                 true
+                 [:not= :id (u/get-id (group/metabot))])
+     :order-by [:%lower.name]}))
+
 (defendpoint GET "/group"
-  "Fetch all `PermissionsGroups`."
+  "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   []
   (check-superuser)
-  (db/query {:select    [:pg.id :pg.name [:%count.pgm.id :members]]
-             :from      [[:permissions_group :pg]]
-             :left-join [[:permissions_group_membership :pgm]
-                         [:= :pg.id :pgm.group_id]]
-             :where     (if (metabot/metabot-enabled)
-                          true
-                          [:not= :pg.id (:id (group/metabot))])
-             :group-by  [:pg.id :pg.name]
-             :order-by  [:%lower.pg.name]}))
+  (let [group-id->members (group-id->num-members)]
+    (for [group (ordered-groups)]
+      (assoc group :members (or (group-id->members (u/get-id group))
+                                0)))))
 
 (defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."
@@ -100,7 +116,7 @@
 (defendpoint POST "/group"
   "Create a new `PermissionsGroup`."
   [:as {{:keys [name]} :body}]
-  {name [Required NonEmptyString]}
+  {name su/NonBlankString}
   (check-superuser)
   (db/insert! PermissionsGroup
     :name name))
@@ -108,7 +124,7 @@
 (defendpoint PUT "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
-  {name [Required NonEmptyString]}
+  {name su/NonBlankString}
   (check-superuser)
   (check-404 (db/exists? PermissionsGroup :id group-id))
   (db/update! PermissionsGroup group-id
@@ -120,7 +136,8 @@
   "Delete a specific `PermissionsGroup`."
   [group-id]
   (check-superuser)
-  (db/cascade-delete! PermissionsGroup :id group-id))
+  (db/delete! PermissionsGroup :id group-id)
+  generic-204-no-content)
 
 
 ;;; ---------------------------------------- Group Membership Endpoints ----------------------------------------
@@ -138,8 +155,8 @@
 (defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id]} :body}]
-  {group_id [Required Integer]
-   user_id  [Required Integer]}
+  {group_id su/IntGreaterThanZero
+   user_id  su/IntGreaterThanZero}
   (check-superuser)
   (db/insert! PermissionsGroupMembership
     :group_id group_id
@@ -152,8 +169,8 @@
   [id]
   (check-superuser)
   (check-404 (db/exists? PermissionsGroupMembership :id id))
-  (db/cascade-delete! PermissionsGroupMembership
-    :id id))
+  (db/delete! PermissionsGroupMembership :id id)
+  generic-204-no-content)
 
 
 (define-routes)

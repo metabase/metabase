@@ -6,9 +6,9 @@
                      [string :as str])
             [clojure.tools.logging :as log]
             [schema.core :as s]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.interface :refer [*driver*], :as i]
+            [metabase.query-processor.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su])
   (:import (metabase.query_processor.interface AgFieldRef
@@ -16,9 +16,9 @@
                                                ComparisonFilter
                                                CompoundFilter
                                                EqualityFilter
+                                               Expression
                                                ExpressionRef
                                                FieldPlaceholder
-                                               Expression
                                                NotFilter
                                                RelativeDatetime
                                                StringFilter
@@ -27,7 +27,7 @@
 
 ;;; # ------------------------------------------------------------ Token dispatch ------------------------------------------------------------
 
-(s/defn ^:private ^:always-validate normalize-token :- s/Keyword
+(s/defn ^:always-validate normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased keyword."
   [token :- su/KeywordOrString]
   (-> (name token)
@@ -51,13 +51,20 @@
   [id :- su/IntGreaterThanZero]
   (i/map->FieldPlaceholder {:field-id id}))
 
-(s/defn ^:private ^:always-validate field :- i/AnyField
+(s/defn ^:private ^:always-validate field :- i/AnyFieldOrExpression
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
   (if (integer? f)
     (do (log/warn (u/format-color 'yellow "Referring to fields by their bare ID (%d) is deprecated in MBQL '98. Please use [:field-id %d] instead." f f))
         (field-id f))
     f))
+
+(s/defn ^:ql ^:always-validate named :- i/Aggregation
+  "Specify a CUSTOM-NAME to use for a top-level AGGREGATION-OR-EXPRESSION in the results.
+   (This will probably be extended to support Fields in the future, but for now, only the `:aggregation` clause is supported.)"
+  {:added "0.22.0"}
+  [aggregation-or-expression :- i/Aggregation, custom-name :- su/NonBlankString]
+  (assoc aggregation-or-expression :custom-name custom-name))
 
 (s/defn ^:ql ^:always-validate datetime-field :- FieldPlaceholder
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."
@@ -114,8 +121,19 @@
 
 ;;; ## aggregation
 
+(defn- field-or-expression [f]
+  (if (instance? Expression f)
+    ;; recursively call field-or-expression on all the args inside the expression unless they're numbers
+    ;; plain numbers are always assumed to be numeric literals here; you must use MBQL '98 `:field-id` syntax to refer to Fields inside an expression <3
+    (update f :args #(for [arg %]
+                       (if (number? arg)
+                         arg
+                         (field-or-expression arg))))
+    ;; otherwise if it's not an Expression it's a Field
+    (field f)))
+
 (s/defn ^:private ^:always-validate ag-with-field :- i/Aggregation [ag-type f]
-  (i/strict-map->AggregationWithField {:aggregation-type ag-type, :field (field f)}))
+  (i/map->AggregationWithField {:aggregation-type ag-type, :field (field-or-expression f)}))
 
 (def ^:ql ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
 (def ^:ql ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
@@ -133,13 +151,13 @@
 
 (s/defn ^:ql ^:always-validate count :- i/Aggregation
   "Aggregation clause. Return total row count (e.g., `COUNT(*)`). If F is specified, only count rows where F is non-null (e.g. `COUNT(f)`)."
-  ([]  (i/strict-map->AggregationWithoutField {:aggregation-type :count}))
+  ([]  (i/map->AggregationWithoutField {:aggregation-type :count}))
   ([f] (ag-with-field :count f)))
 
 (s/defn ^:ql ^:always-validate cum-count :- i/Aggregation
   "Aggregation clause. Return the cumulative row count (presumably broken out in some way)."
   []
-  (i/strict-map->AggregationWithoutField {:aggregation-type :cumulative-count}))
+  (i/map->AggregationWithoutField {:aggregation-type :cumulative-count}))
 
 (defn ^:ql ^:deprecated rows
   "Bare rows aggregation. This is the default behavior, so specifying it is deprecated."
@@ -156,15 +174,22 @@
    (log/warn "The syntax for aggregate fields has changed in MBQL '98. Instead of `[:aggregation 0]`, please use `[:aggregate-field 0]` instead.")
    (aggregate-field index))
 
-  ;; Handle :aggregation top-level clauses
-  ([query ag :- (s/maybe (s/pred map?))]
-   (if-not ag
-     query
-     (let [ag ((if (:field ag)
-                  i/map->AggregationWithField
-                  i/map->AggregationWithoutField) (update ag :aggregation-type normalize-token))]
-       (s/validate i/Aggregation ag)
-       (assoc query :aggregation ag)))))
+  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps (multiple aggregations)
+  ([query ag-or-ags :- (s/maybe (s/cond-pre su/Map [su/Map]))]
+   (cond
+     (map? ag-or-ags)  (recur query [ag-or-ags])
+     (empty? ag-or-ags) query
+     :else              (assoc query :aggregation (vec (for [ag ag-or-ags]
+                                                         ;; make sure the ag map is still typed correctly
+                                                         (u/prog1 (cond
+                                                                    (:operator ag) (i/map->Expression ag)
+                                                                    (:field ag)    (i/map->AggregationWithField    (update ag :aggregation-type normalize-token))
+                                                                    :else          (i/map->AggregationWithoutField (update ag :aggregation-type normalize-token)))
+                                                           (s/validate i/Aggregation <>)))))))
+
+  ;; also handle varargs for convenience
+  ([query ag & more]
+   (aggregation query (cons ag more))))
 
 
 ;;; ## breakout & fields
@@ -276,20 +301,19 @@
     (filter {} (time-interval (field-id 100) :current :day)) "
   [f n unit]
   (if-not (integer? n)
-    (let [n (normalize-token n)]
-      (case n
-        :current (recur f  0 unit)
-        :last    (recur f -1 unit)
-        :next    (recur f  1 unit)))
+    (case (normalize-token n)
+      :current (recur f  0 unit)
+      :last    (recur f -1 unit)
+      :next    (recur f  1 unit))
     (let [f (datetime-field f unit)]
       (cond
         (core/= n  0) (= f (value f (relative-datetime :current)))
         (core/= n -1) (= f (value f (relative-datetime -1 unit)))
         (core/= n  1) (= f (value f (relative-datetime  1 unit)))
-        (core/< n -1) (between f (value f (relative-datetime (dec n) unit))
-                                 (value f (relative-datetime      -1 unit)))
-        (core/> n  1) (between f (value f (relative-datetime       1 unit))
-                               (value f (relative-datetime (inc n) unit)))))))
+        (core/< n -1) (between f (value f (relative-datetime  n unit))
+                                 (value f (relative-datetime -1 unit)))
+        (core/> n  1) (between f (value f (relative-datetime  1 unit))
+                                 (value f (relative-datetime  n unit)))))))
 
 (s/defn ^:ql ^:always-validate filter
   "Filter the results returned by the query.
@@ -387,17 +411,25 @@
 
 (s/defn ^:private ^:always-validate expression-fn :- Expression
   [k :- s/Keyword, & args]
-  (i/strict-map->Expression {:operator k, :args (vec (for [arg args]
-                                                       (if (number? arg)
-                                                         (float arg) ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
-                                                         arg)))}))
+  (i/map->Expression {:operator k, :args (vec (for [arg args]
+                                                (if (number? arg)
+                                                  (float arg) ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
+                                                  arg)))}))
 
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} + "Arithmetic addition function."       (partial expression-fn :+))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} - "Arithmetic subtraction function."    (partial expression-fn :-))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
 
-;;; EXPRESSION PARSING
+;;; Metric & Segment handlers
+
+;; These *do not* expand the normal Metric and Segment macros used in normal queries; that's handled in `metabase.query-processor.macros` before
+;; this namespace ever even sees the query. But since the GA driver's queries consist of custom `metric` and `segment` clauses we need to at least
+;; accept them without barfing so we can expand a query in order to check what permissions it requires.
+;; TODO - in the future, we should just make these functions expand Metric and Segment macros for consistency with the rest of the MBQL clauses
+(defn ^:ql metric  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in `metabase.query-processor.macros`.)"   [& _])
+(defn ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
+
 
 ;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
 
@@ -477,3 +509,14 @@
   `(-> {}
        ~@body
        expand-inner))
+
+
+;;; ------------------------------------------------------------ Other Helper Fns ------------------------------------------------------------
+
+(defn is-clause?
+  "Check to see whether CLAUSE is an instance of the clause named by normalized CLAUSE-KEYWORD.
+
+     (is-clause? :field-id [\"FIELD-ID\" 2000]) ; -> true"
+  [clause-keyword clause]
+  (core/and (sequential? clause)
+            (core/= (normalize-token (first clause)) clause-keyword)))

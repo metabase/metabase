@@ -2,7 +2,7 @@
   "/api/notify/* endpoints which receive inbound etl server notifications."
   (:require [compojure.core :refer [POST]]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [table :refer [Table]])

@@ -2,7 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.database :refer [Database]]
             [metabase.sync-database :as sync-database]
             [metabase.util :as u]))

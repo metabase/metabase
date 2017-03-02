@@ -1,5 +1,5 @@
 
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 
 import { push } from "react-router-redux";
 
@@ -9,10 +9,9 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
-import { refreshCurrentUser } from "metabase/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 
-// resource wrappers
-const SessionApi = new AngularResourceProxy("Session", ["create", "createWithGoogleAuth", "delete", "reset_password"]);
+import { SessionApi } from "metabase/services";
 
 
 // login

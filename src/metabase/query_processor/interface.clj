@@ -9,6 +9,24 @@
   (:import clojure.lang.Keyword
            java.sql.Timestamp))
 
+
+;;; # ------------------------------------------------------------ CONSTANTS ------------------------------------------------------------
+
+(def ^:const absolute-max-results
+  "Maximum number of rows the QP should ever return.
+
+   This is coming directly from the max rows allowed by Excel for now ...
+   https://support.office.com/en-nz/article/Excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3"
+  1048576)
+
+
+;;; # ------------------------------------------------------------ DYNAMIC VARS ------------------------------------------------------------
+
+(def ^:dynamic ^Boolean *disable-qp-logging*
+  "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
+  false)
+
+
 (def ^:dynamic *driver*
   "The driver that will be used to run the query we are currently parsing.
    Used by `assert-driver-supports` and other places.
@@ -159,9 +177,7 @@
                                                                         "foreign-keys is not supported by this driver."))
                                datetime-unit :- (s/maybe (apply s/enum datetime-field-units))])
 
-(s/defrecord AgFieldRef [index :- (s/constrained s/Int
-                                                 zero?
-                                                 "Ag field index should be 0 -- MBQL currently only supports a single aggregation")])
+(s/defrecord AgFieldRef [index :- s/Int])
 
 ;; TODO - add a method to get matching expression from the query?
 
@@ -179,17 +195,19 @@
                                unit   :- DatetimeValueUnit])
 
 
-(declare RValue)
+(declare RValue Aggregation)
 
 (def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
 
-(s/defrecord Expression [operator        :- ExpressionOperator
-                         args            :- [(s/recursive #'RValue)]])
+(s/defrecord Expression [operator   :- ExpressionOperator
+                         args       :- [(s/cond-pre (s/recursive #'RValue)
+                                                    (s/recursive #'Aggregation))]
+                         custom-name :- (s/maybe su/NonBlankString)])
 
-(def AnyField
+(def AnyFieldOrExpression
   "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
   (s/named (s/cond-pre ExpressionRef Expression FieldPlaceholderOrAgRef)
-           "Valid field, ag field reference, or expression reference."))
+           "Valid field, ag field reference, expression, or expression reference."))
 
 
 (def LiteralDatetimeString
@@ -242,20 +260,25 @@
 ;;; # ------------------------------------------------------------ CLAUSE SCHEMAS ------------------------------------------------------------
 
 (s/defrecord AggregationWithoutField [aggregation-type :- (s/named (s/enum :count :cumulative-count)
-                                                                   "Valid aggregation type")])
+                                                                   "Valid aggregation type")
+                                      custom-name      :- (s/maybe su/NonBlankString)])
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
                                                                 "Valid aggregation type")
-                                   field            :- FieldPlaceholderOrExpressionRef])
+                                   field            :- (s/cond-pre FieldPlaceholderOrExpressionRef
+                                                                   Expression)
+                                   custom-name      :- (s/maybe su/NonBlankString)])
+
+(defn- valid-aggregation-for-driver? [{:keys [aggregation-type]}]
+  (when (= aggregation-type :stddev)
+    (assert-driver-supports :standard-deviation-aggregations))
+  true)
 
 (def Aggregation
-  "Schema for a top-level `aggregation` clause in an MBQL query."
+  "Schema for an `aggregation` subclause in an MBQL query."
   (s/constrained
-   (s/cond-pre AggregationWithField AggregationWithoutField)
-   (fn [{:keys [aggregation-type]}]
-     (when (= aggregation-type :stddev)
-       (assert-driver-supports :standard-deviation-aggregations))
-     true)
+   (s/cond-pre AggregationWithField AggregationWithoutField Expression)
+   valid-aggregation-for-driver?
    "standard-deviation-aggregations is not supported by this driver."))
 
 
@@ -300,7 +323,7 @@
 
 (def OrderBy
   "Schema for top-level `order-by` clause in an MBQL query."
-  (s/named {:field     AnyField
+  (s/named {:field     AnyFieldOrExpression
             :direction OrderByDirection}
            "Valid order-by subclause"))
 
@@ -313,9 +336,9 @@
 
 (def Query
   "Schema for an MBQL query."
-  {(s/optional-key :aggregation) Aggregation
+  {(s/optional-key :aggregation) [Aggregation]
    (s/optional-key :breakout)    [FieldPlaceholderOrExpressionRef]
-   (s/optional-key :fields)      [AnyField]
+   (s/optional-key :fields)      [AnyFieldOrExpression]
    (s/optional-key :filter)      Filter
    (s/optional-key :limit)       su/IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]

@@ -1,12 +1,12 @@
 (ns metabase.events.activity-feed
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.events :as events]
             (metabase.models [activity :refer [Activity], :as activity]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
-                             [interface :as models]
+                             [interface :as mi]
                              [session :refer [Session first-session-for-user]]
                              [table :as table])))
 
@@ -120,8 +120,7 @@
    "segment"   process-segment-activity!
    "user"      process-user-activity!})
 
-;; TODO - this should be renamed to `process-activity-event!`
-(defn process-activity-event
+(defn process-activity-event!
   "Handle processing for a single event notification received on the activity-feed-channel"
   [activity-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
@@ -134,11 +133,10 @@
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))
 
 
-
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
 (defn events-init
   "Automatically called during startup; start the events listener for the activity feed."
   []
-  (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event))
+  (events/start-event-listener! activity-feed-topics activity-feed-channel process-activity-event!))

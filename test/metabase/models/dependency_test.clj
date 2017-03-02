@@ -1,6 +1,8 @@
 (ns metabase.models.dependency-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
+            [toucan.util.test :as tt]
             (metabase.models [dependency :refer :all]
                              [interface :as i])
             [metabase.test.data :refer :all]
@@ -8,7 +10,7 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
-(i/defentity Mock :mock)
+(models/defmodel Mock :mock)
 
 (extend (class Mock)
   IDependent
@@ -45,7 +47,7 @@
      :model_id           4
      :dependent_on_model "foobar"
      :dependent_on_id    13}}
-  (tu/with-temp* [Dependency [_ {:model              "Mock"
+  (tt/with-temp* [Dependency [_ {:model              "Mock"
                                  :model_id           4
                                  :dependent_on_model "test"
                                  :dependent_on_id    1

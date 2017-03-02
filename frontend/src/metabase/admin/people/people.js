@@ -1,25 +1,16 @@
 
-import { AngularResourceProxy, createAction, createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
-import { normalize, Schema, arrayOf } from "normalizr";
+import { createAction, createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
+import { normalize, schema } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+
+import { SessionApi, UserApi, PermissionsApi } from "metabase/services";
 
 import moment from "moment";
 import _ from "underscore";
 import { assoc, dissoc } from "icepick";
 
-const user = new Schema('user');
-
-// resource wrappers
-const SessionApi = new AngularResourceProxy("Session", [
-    "forgot_password"
-]);
-const UserApi = new AngularResourceProxy("User", [
-    "list", "update", "create", "delete", "update_password", "send_invite"
-]);
-const PermissionsApi = new AngularResourceProxy("Permissions", [
-    "groups", "groupDetails", "memberships", "createMembership", "deleteMembership"
-]);
+const user = new schema.Entity('user');
 
 // action constants
 export const CREATE_USER = 'metabase/admin/people/CREATE_USER';
@@ -114,7 +105,7 @@ export const fetchUsers = createThunkAction(FETCH_USERS, function() {
             u.last_login = (u.last_login) ? moment(u.last_login) : null;
         }
 
-        return normalize(users, arrayOf(user));
+        return normalize(users, [user]);
     };
 });
 

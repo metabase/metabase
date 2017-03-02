@@ -21,6 +21,11 @@ const mapDispatchToProps = {
 @withRouter
 @connect(mapStateToProps, mapDispatchToProps)
 export default class PermissionsApp extends Component {
+    static propTypes = {
+        load: PropTypes.func.isRequired,
+        save: PropTypes.func.isRequired
+    };
+
     constructor(props, context) {
         super(props, context);
         this.state = {
@@ -29,7 +34,7 @@ export default class PermissionsApp extends Component {
         }
     }
     componentWillMount() {
-        this.props.initialize();
+        this.props.initialize(this.props.load, this.props.save);
         this.props.router.setRouteLeaveHook(
             this.props.route,
             this.routerWillLeave

@@ -2,7 +2,8 @@
   (:require (clojure [data :as d]
                      [string :as s])
             [metabase.config :as config]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
             metabase.types
             (metabase.models [field-values :refer [FieldValues]]
                              [humanization :as humanization]
@@ -25,7 +26,7 @@
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 
-(i/defentity Field :metabase_field)
+(models/defmodel Field :metabase_field)
 
 (defn- check-valid-types [{base-type :base_type, special-type :special_type}]
   (when base-type
@@ -44,10 +45,10 @@
   (u/prog1 field
     (check-valid-types field)))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! Field :parent_id id)
-  (db/cascade-delete! 'FieldValues :field_id id)
-  (db/cascade-delete! 'MetricImportantField :field_id id))
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! Field :parent_id id)
+  (db/delete! 'FieldValues :field_id id)
+  (db/delete! 'MetricImportantField :field_id id))
 
 ;; For the time being permissions to access a field are the same as permissions to access its parent table
 ;; TODO - this can be memoized because a Table's `:db_id` and `:schema` are guaranteed to never change, as is a Field's `:table_id`
@@ -57,19 +58,22 @@
     #{(perms/object-path database-id schema table-id)}))
 
 (u/strict-extend (class Field)
-  i/IEntity (merge i/IEntityDefaults
-                   {:hydration-keys     (constantly [:destination :field :origin])
-                    :types              (constantly {:base_type       :keyword
-                                                     :special_type    :keyword
-                                                     :visibility_type :keyword
-                                                     :description     :clob})
-                    :timestamped?       (constantly true)
-                    :perms-objects-set  perms-objects-set
-                    :can-read?          (partial i/current-user-has-full-permissions? :read)
-                    :can-write?         i/superuser?
-                    :pre-insert         pre-insert
-                    :pre-update         pre-update
-                    :pre-cascade-delete pre-cascade-delete}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:hydration-keys (constantly [:destination :field :origin])
+          :types          (constantly {:base_type       :keyword
+                                       :special_type    :keyword
+                                       :visibility_type :keyword
+                                       :description     :clob})
+          :properties     (constantly {:timestamped? true})
+          :pre-insert     pre-insert
+          :pre-update     pre-update
+          :pre-delete     pre-delete})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:perms-objects-set  perms-objects-set
+          :can-read?          (partial i/current-user-has-full-permissions? :read)
+          :can-write?         i/superuser?}))
 
 
 ;;; ------------------------------------------------------------ Hydration / Util Fns ------------------------------------------------------------
@@ -106,7 +110,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (u/key-by :id (when (seq target-field-ids)
-                                         (db/select Field :id [:in target-field-ids])))]
+                                         (filter i/can-read? (db/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -206,9 +210,9 @@
 
 ;;; ------------------------------------------------------------ Sync Util CRUD Fns ------------------------------------------------------------
 
-;; TODO - rename to `update-field-from-field-def!`
-(defn update-field!
-  "Update an existing `Field` from the given FIELD-DEF."
+(defn update-field-from-field-def!
+  "Update an EXISTING-FIELD from the given FIELD-DEF."
+  {:arglists '([existing-field field-def])}
   [{:keys [id], :as existing-field} {field-name :name, :keys [base-type special-type pk? parent-id]}]
   (u/prog1 (assoc existing-field
              :base_type    base-type
@@ -216,7 +220,8 @@
                                (humanization/name->human-readable-name field-name))
              :special_type (or (:special_type existing-field)
                                special-type
-                               (when pk? :type/PK)
+                               (when pk?
+                                 :type/PK)
                                (infer-field-special-type field-name base-type))
 
              :parent_id    parent-id)
@@ -228,13 +233,11 @@
         :special_type (:special_type <>)
         :parent_id    parent-id))))
 
-;; TODO - rename to `create-field-from-field-def!`
-(defn create-field!
+(defn create-field-from-field-def!
   "Create a new `Field` from the given FIELD-DEF."
+  {:arglists '([table-id field-def])}
   [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id]}]
-  {:pre [(integer? table-id)
-         (string? field-name)
-         (isa? base-type :type/*)]}
+  {:pre [(integer? table-id) (string? field-name) (isa? base-type :type/*)]}
   (let [special-type (or special-type
                        (when pk? :type/PK)
                        (infer-field-special-type field-name base-type))]

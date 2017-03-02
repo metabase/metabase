@@ -1,14 +1,15 @@
 (ns metabase.models.segment
   (:require [medley.core :as m]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]]
+                    [models :as models])
             [metabase.events :as events]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [interface :as i]
+            (metabase.models [interface :as i]
                              [revision :as revision])
             [metabase.util :as u]))
 
 
-(i/defentity Segment :segment)
+(models/defmodel Segment :segment)
 
 (defn- perms-objects-set [segment read-or-write]
   (let [table (or (:table segment)
@@ -16,12 +17,14 @@
     (i/perms-objects-set table read-or-write)))
 
 (u/strict-extend (class Segment)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:types             (constantly {:definition :json, :description :clob})
-          :timestamped?      (constantly true)
-          :hydration-keys    (constantly [:segment])
-          :perms-objects-set perms-objects-set
+  models/IModel
+  (merge models/IModelDefaults
+         {:types          (constantly {:definition :json, :description :clob})
+          :properties     (constantly {:timestamped? true})
+          :hydration-keys (constantly [:segment])})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:perms-objects-set perms-objects-set
           :can-read?         (partial i/current-user-has-full-permissions? :read)
           :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
@@ -73,7 +76,7 @@
                   :description description
                   :is_active   true
                   :definition  definition)]
-    (-> (events/publish-event :segment-create segment)
+    (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 
 (defn exists?
@@ -123,7 +126,7 @@
      (when (not (nil? show_in_getting_started))
        {:show_in_getting_started show_in_getting_started})))
   (u/prog1 (retrieve-segment id)
-    (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
+    (events/publish-event! :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
 (defn delete-segment!
   "Delete a `Segment`.
@@ -140,4 +143,4 @@
   (db/update! Segment id, :is_active false)
   ;; retrieve the updated segment (now retired)
   (u/prog1 (retrieve-segment id)
-    (events/publish-event :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))
+    (events/publish-event! :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

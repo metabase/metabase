@@ -1,19 +1,20 @@
 (ns metabase.models.metric
   (:require [medley.core :as m]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]]
+                    [models :as models])
             [metabase.events :as events]
             (metabase.models [dependency :as dependency]
-                             [hydrate :refer :all]
                              [interface :as i]
                              [revision :as revision])
             [metabase.query :as q]
             [metabase.util :as u]))
 
 
-(i/defentity Metric :metric)
+(models/defmodel Metric :metric)
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'MetricImportantField :metric_id id))
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! 'MetricImportantField :metric_id id))
 
 (defn- perms-objects-set [metric read-or-write]
   (let [table (or (:table metric)
@@ -21,14 +22,16 @@
     (i/perms-objects-set table read-or-write)))
 
 (u/strict-extend (class Metric)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:types              (constantly {:definition :json, :description :clob})
-          :timestamped?       (constantly true)
-          :perms-objects-set  perms-objects-set
-          :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :pre-cascade-delete pre-cascade-delete}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:types      (constantly {:definition :json, :description :clob})
+          :properties (constantly {:timestamped? true})
+          :pre-delete pre-delete})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:perms-objects-set perms-objects-set
+          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -91,7 +94,7 @@
                  :description description
                  :is_active   true
                  :definition  definition)]
-    (-> (events/publish-event :metric-create metric)
+    (-> (events/publish-event! :metric-create metric)
         (hydrate :creator))))
 
 (defn exists?
@@ -139,8 +142,9 @@
     :show_in_getting_started show_in_getting_started
     :definition              definition)
   (u/prog1 (retrieve-metric id)
-    (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
+    (events/publish-event! :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
+;; TODO - rename to `delete!`
 (defn delete-metric!
   "Delete a `Metric`.
 
@@ -156,4 +160,4 @@
   (db/update! Metric id, :is_active false)
   ;; retrieve the updated metric (now retired)
   (u/prog1 (retrieve-metric id)
-    (events/publish-event :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))
+    (events/publish-event! :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

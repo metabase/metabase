@@ -1,6 +1,6 @@
 (ns metabase.driver.generic-sql.native-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.test.data :refer :all]))
@@ -51,4 +51,4 @@
     (try (:error (qp/process-query {:database (:id db)
                                     :type     :native
                                     :native   {:query "SELECT 1;"}}))
-         (finally (db/cascade-delete! Database :name "Fake-H2-DB")))))
+         (finally (db/delete! Database :name "Fake-H2-DB")))))

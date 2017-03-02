@@ -6,18 +6,19 @@
             [clojure.walk :as walk]
             [cheshire.core :as json]
             (monger [collection :as mc]
+                    joda-time                ; apparently if this is loaded Monger can handle JodaTime dates (?)
                     [operators :refer :all])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
             (metabase.query-processor [annotate :as annotate]
-                                      [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
+                                      [interface :as i])
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
-           (com.mongodb CommandResult DB)
            clojure.lang.PersistentArrayMap
+           (com.mongodb CommandResult DB)
            org.bson.types.ObjectId
+           org.joda.time.DateTime
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
@@ -33,7 +34,7 @@
 (def ^:dynamic ^:private *query* nil)
 
 (defn- log-monger-form [form]
-  (when-not qp/*disable-qp-logging*
+  (when-not i/*disable-qp-logging*
     (log/debug (u/format-color 'green "\nMONGO AGGREGATION PIPELINE:\n%s\n"
                  (->> form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
@@ -66,7 +67,7 @@
 (defn- field->name
   "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
   ^String [^Field field, ^String separator]
-  (s/join separator (rest (qualified-name-components field))))
+  (s/join separator (rest (i/qualified-name-components field))))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -91,8 +92,8 @@
     (str \$ (field->name this ".")))
 
   AgFieldRef
-  (->lvalue [_]
-    (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+  (->lvalue [{:keys [index]}]
+    (let [{:keys [aggregation-type]} (nth (:aggregation (:query *query*)) index)]
       (ag-type->field-name aggregation-type)))
 
   DateTimeField
@@ -194,8 +195,8 @@
 
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field]}]
-    (->rvalue (map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
-                                   :field field}))))
+    (->rvalue (i/map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
+                                     :field field}))))
 
 
 ;;; ## CLAUSE APPLICATION
@@ -245,6 +246,7 @@
 ;;; ### aggregation
 
 (defn- aggregation->rvalue [{:keys [aggregation-type field]}]
+  {:pre [(keyword? aggregation-type)]}
   (if-not field
     (case aggregation-type
       :count {$sum 1})
@@ -258,35 +260,34 @@
       :min      {$min (->rvalue field)}
       :max      {$max (->rvalue field)})))
 
-(defn- handle-breakout+aggregation [{breakout-fields :breakout, {ag-type :aggregation-type, ag-field :field, :as aggregation} :aggregation} pipeline]
-  (let [aggregation? ag-type
-        breakout?    (seq breakout-fields)]
-    (when (or aggregation? breakout?)
-      (let [ag-field-name (ag-type->field-name ag-type)]
-        (filter identity
-                [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
-                 (when breakout?
-                   {$project (merge
-                              {"_id"      "$_id"
-                               "___group" (into {} (for [field breakout-fields]
-                                                     {(->lvalue field) (->rvalue field)}))}
-                              (when ag-field
-                                {(->lvalue ag-field) (->rvalue ag-field)}))})
-                 ;; Now project onto the __group and the aggregation rvalue
-                 {$group (merge {"_id" (when breakout?
-                                         "$___group")}
-                                (when aggregation
-                                  {ag-field-name (aggregation->rvalue aggregation)}))}
-                 ;; Sort by _id (___group)
-                 {$sort {"_id" 1}}
-                 ;; now project back to the fields we expect
-                 {$project (merge {"_id" false}
-                                  (when aggregation?
-                                    {ag-field-name (if (= ag-type :distinct)
-                                                     {$size "$count"} ; HACK
-                                                     true)})
-                                  (into {} (for [field breakout-fields]
-                                             {(->lvalue field) (format "$_id.%s" (->lvalue field))})))}])))))
+(defn- handle-breakout+aggregation [{breakout-fields :breakout, aggregations :aggregation} pipeline]
+  (let [aggregations? (seq aggregations)
+        breakout?     (seq breakout-fields)]
+    (when (or aggregations? breakout?)
+      (filter identity
+              [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
+               (when breakout?
+                 {$project (merge {"_id"      "$_id"
+                                   "___group" (into {} (for [field breakout-fields]
+                                                         {(->lvalue field) (->rvalue field)}))}
+                                  (into {} (for [{ag-field :field} aggregations
+                                                 :when             ag-field]
+                                             {(->lvalue ag-field) (->rvalue ag-field)})))})
+               ;; Now project onto the __group and the aggregation rvalue
+               {$group (merge {"_id" (when breakout?
+                                       "$___group")}
+                              (into {} (for [{ag-type :aggregation-type, :as aggregation} aggregations]
+                                         {(ag-type->field-name ag-type) (aggregation->rvalue aggregation)})))}
+               ;; Sort by _id (___group)
+               {$sort {"_id" 1}}
+               ;; now project back to the fields we expect
+               {$project (merge {"_id" false}
+                                (into {} (for [{ag-type :aggregation-type} aggregations]
+                                           {(ag-type->field-name ag-type) (if (= ag-type :distinct)
+                                                                            {$size "$count"} ; HACK
+                                                                            true)}))
+                                (into {} (for [field breakout-fields]
+                                           {(->lvalue field) (format "$_id.%s" (->lvalue field))})))}]))))
 
 
 ;;; ### order-by
@@ -378,6 +379,35 @@
                     v)}))))
 
 
+;;; ------------------------------------------------------------ Handling ISODate(...) forms ------------------------------------------------------------
+;; In Mongo it's fairly common use ISODate(...) forms in queries, which unfortunately are not valid JSON,
+;; and thus cannot be parsed by Cheshire. But we are clever so we will:
+;;
+;; 1) Convert forms like ISODate(...) to valid JSON forms like ["___ISODate", ...]
+;; 2) Parse Normally
+;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates
+
+(defn- encoded-iso-date? [form]
+  (and (vector? form)
+       (= (first form) "___ISODate")))
+
+(defn- maybe-decode-iso-date-fncall [form]
+  (if (encoded-iso-date? form)
+    (DateTime. (second form))
+    form))
+
+(defn- decode-iso-date-fncalls [query]
+  (walk/postwalk maybe-decode-iso-date-fncall query))
+
+(defn- encode-iso-date-fncalls
+  "Replace occurances of `ISODate(...)` function calls (invalid JSON, but legal in Mongo)
+   with legal JSON forms like `[:___ISODate ...]` that we can decode later."
+  [query-string]
+  (s/replace query-string #"ISODate\(([^)]+)\)" "[\"___ISODate\", $1]"))
+
+
+;;; ------------------------------------------------------------ Query Execution ------------------------------------------------------------
+
 (defn mbql->native
   "Process and run an MBQL query."
   [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
@@ -397,7 +427,7 @@
          (string? collection)
          (map? database)]}
   (let [query   (if (string? query)
-                  (json/parse-string query keyword)
+                  (decode-iso-date-fncalls (json/parse-string (encode-iso-date-fncalls query) keyword))
                   query)
         results (mc/aggregate *mongo-connection* collection query
                               :allow-disk-use true)

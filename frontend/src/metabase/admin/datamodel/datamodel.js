@@ -1,22 +1,13 @@
 import _ from "underscore";
 
-import { handleActions, combineReducers, AngularResourceProxy, createAction, createThunkAction, momentifyTimestamps } from "metabase/lib/redux";
+import { handleActions, combineReducers, createAction, createThunkAction, momentifyTimestamps } from "metabase/lib/redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isFK } from "metabase/lib/types";
 
-
-// resource wrappers
-const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_metadata", "db_idfields", "table_update", "field_update"]);
-const SegmentApi = new AngularResourceProxy("Segment", ["delete"]);
-const MetricApi = new AngularResourceProxy("Metric", ["delete"]);
-const Segment = new AngularResourceProxy("Segment", ["get", "create", "update", "delete"]);
-const Metric = new AngularResourceProxy("Metric", ["get", "create", "update", "delete"]);
-const Metabase = new AngularResourceProxy("Metabase", ["dataset"]);
-const Revisions = new AngularResourceProxy("Revisions", ["get"]);
-
+import { MetabaseApi, SegmentApi, MetricApi, RevisionsApi } from "metabase/services";
 
 function loadDatabaseMetadata(databaseId) {
     return MetabaseApi.db_metadata({ 'dbId': databaseId });
@@ -127,9 +118,8 @@ export const updateField = createThunkAction("UPDATE_FIELD", function(field) {
             let slimField = { ...field };
             slimField = _.omit(slimField, "operators_lookup", "valid_operators", "values");
 
-            // update the field and strip out angular junk
+            // update the field
             let updatedField = await MetabaseApi.field_update(slimField);
-            _.each(updatedField, (value, key) => { if (key.charAt(0) !== "$") { updatedField[key] = value } });
 
             // refresh idfields
             let table = _.findWhere(editingDatabase.tables, {id: updatedField.table_id});
@@ -208,10 +198,10 @@ export const CREATE_SEGMENT = "CREATE_SEGMENT";
 export const UPDATE_SEGMENT = "UPDATE_SEGMENT";
 export const DELETE_SEGMENT = "DELETE_SEGMENT";
 
-export const getSegment    = createAction(GET_SEGMENT, Segment.get);
-export const createSegment = createAction(CREATE_SEGMENT, Segment.create);
-export const updateSegment = createAction(UPDATE_SEGMENT, Segment.update);
-export const deleteSegment = createAction(DELETE_SEGMENT, Segment.delete);
+export const getSegment    = createAction(GET_SEGMENT, SegmentApi.get);
+export const createSegment = createAction(CREATE_SEGMENT, SegmentApi.create);
+export const updateSegment = createAction(UPDATE_SEGMENT, SegmentApi.update);
+export const deleteSegment = createAction(DELETE_SEGMENT, SegmentApi.delete);
 
 // METRICS
 
@@ -220,10 +210,10 @@ export const CREATE_METRIC = "CREATE_METRIC";
 export const UPDATE_METRIC = "UPDATE_METRIC";
 export const DELETE_METRIC = "DELETE_METRIC";
 
-export const getMetric    = createAction(GET_METRIC, Metric.get);
-export const createMetric = createAction(CREATE_METRIC, Metric.create);
-export const updateMetric = createAction(UPDATE_METRIC, Metric.update);
-export const deleteMetric = createAction(DELETE_METRIC, Metric.delete);
+export const getMetric    = createAction(GET_METRIC, MetricApi.get);
+export const createMetric = createAction(CREATE_METRIC, MetricApi.create);
+export const updateMetric = createAction(UPDATE_METRIC, MetricApi.update);
+export const deleteMetric = createAction(DELETE_METRIC, MetricApi.delete);
 
 // SEGMENT DETAIL
 
@@ -232,7 +222,7 @@ export const UPDATE_PREVIEW_SUMMARY = "UPDATE_PREVIEW_SUMMARY";
 
 export const loadTableMetadata = createAction(LOAD_TABLE_METADATA, loadTableAndForeignKeys);
 export const updatePreviewSummary = createAction(UPDATE_PREVIEW_SUMMARY, async (query) => {
-    let result = await Metabase.dataset(query);
+    let result = await MetabaseApi.dataset(query);
     return result.data.rows[0][0];
 });
 
@@ -249,7 +239,7 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, ({ entity, id }
         }
         let [object, revisions] = await Promise.all([
             dispatch(action),
-            Revisions.get({ entity, id })
+            RevisionsApi.get({ entity, id })
         ]);
         await dispatch(loadTableMetadata(object.payload.definition.source_table));
         return { object: object.payload, revisions };

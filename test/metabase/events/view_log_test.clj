@@ -1,6 +1,7 @@
 (ns metabase.events.view-log-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             [metabase.events.view-log :refer :all]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
@@ -12,7 +13,7 @@
 
 
 ;; `:card-create` event
-(tu/expect-with-temp [User [user]
+(tt/expect-with-temp [User [user]
                       Card [card {:creator_id (:id user)}]]
   {:user_id  (:id user)
    :model    "card"
@@ -23,7 +24,7 @@
     (db/select-one [ViewLog :user_id :model :model_id], :user_id (:id user))))
 
 ;; `:card-read` event
-(tu/expect-with-temp [User [user]
+(tt/expect-with-temp [User [user]
                       Card [card {:creator_id (:id user)}]]
   {:user_id     (:id user)
    :model       "card"
@@ -34,7 +35,7 @@
     (db/select-one [ViewLog :user_id :model :model_id], :user_id (:id user))))
 
 ;; `:dashboard-read` event
-(tu/expect-with-temp [User      [user]
+(tt/expect-with-temp [User      [user]
                       Dashboard [dashboard {:creator_id (:id user)}]]
   {:user_id     (:id user)
    :model       "dashboard"

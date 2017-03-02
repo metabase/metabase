@@ -1,7 +1,7 @@
 (ns metabase.models.setting-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.setting :refer [defsetting Setting], :as setting]
             (metabase.test [data :refer :all]
                            [util :refer :all])))

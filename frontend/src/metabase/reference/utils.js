@@ -1,4 +1,4 @@
-import i from "icepick";
+import { assoc, assocIn, chain } from "icepick";
 import _ from "underscore";
 
 import { titleize, humanize } from "metabase/lib/formatting";
@@ -8,13 +8,13 @@ import { isPK } from "metabase/lib/types";
 export const idsToObjectMap = (ids, objects) => ids
     .map(id => objects[id])
     .reduce((map, object) => ({ ...map, [object.id]: object }), {});
-    // recursive freezing done by i.assoc here is too expensive
+    // recursive freezing done by assoc here is too expensive
     // hangs browser for large databases
-    // .reduce((map, object) => i.assoc(map, object.id, object), {});
+    // .reduce((map, object) => assoc(map, object.id, object), {});
 
 const filterUntouchedFields = (fields, entity = {}) => Object.keys(fields)
-    .filter(key => 
-        fields[key] !== undefined && 
+    .filter(key =>
+        fields[key] !== undefined &&
         entity[key] !== fields[key]
     )
     .reduce((map, key) => ({ ...map, [key]: fields[key] }), {});
@@ -165,7 +165,7 @@ export const tryUpdateGuide = async (formFields, props) => {
             }
 
             const editedEntity = filterUntouchedFields(
-                i.assoc(formField, 'show_in_getting_started', true), 
+                assoc(formField, 'show_in_getting_started', true),
                 entities[formField.id]
             );
 
@@ -194,7 +194,7 @@ export const tryUpdateGuide = async (formFields, props) => {
             .map(oldEntityId => {
                 const oldEntity = entities[oldEntityId];
 
-                const updatedOldEntity = i.assoc(
+                const updatedOldEntity = assoc(
                     oldEntity,
                     'show_in_getting_started',
                     false
@@ -206,7 +206,7 @@ export const tryUpdateGuide = async (formFields, props) => {
             });
         //FIXME: necessary because revision_message is a mandatory field
         // even though we don't actually keep track of changes to caveats/points_of_interest yet
-        const updateWithRevisionMessage = updateEntity => entity => updateEntity(i.assoc(
+        const updateWithRevisionMessage = updateEntity => entity => updateEntity(assoc(
             entity,
             'revision_message', 
             'Updated in Getting Started guide.'
@@ -355,13 +355,10 @@ export const buildBreadcrumbs = (section) => getParentSections(section)
 export const databaseToForeignKeys = (database) => database && database.tables_lookup ?
     Object.values(database.tables_lookup)
         // ignore tables without primary key
-        .filter(table => table && table.fields_lookup &&
-            Object.values(table.fields_lookup)
-                .find(field => isPK(field.special_type))
-        )
+        .filter(table => table && table.fields.find(field => isPK(field.special_type)))
         .map(table => ({
             table: table,
-            field: table && table.fields_lookup && Object.values(table.fields_lookup)
+            field: table && table.fields
                 .find(field => isPK(field.special_type))
         }))
         .map(({ table, field }) => ({
@@ -371,7 +368,7 @@ export const databaseToForeignKeys = (database) => database && database.tables_l
                 `${table.display_name} → ${field.display_name}`,
             description: field.description
         }))
-        .reduce((map, foreignKey) => i.assoc(map, foreignKey.id, foreignKey), {}) :
+        .reduce((map, foreignKey) => assoc(map, foreignKey.id, foreignKey), {}) :
     {};
 
 export const fieldsToFormFields = (fields) => Object.keys(fields)
@@ -411,7 +408,7 @@ export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCou
 
     // consider taking a look at Ramda as a possible underscore alternative?
     // http://ramdajs.com/0.21.0/index.html
-    const question = i.chain(newQuestion)
+    const question = chain(newQuestion)
         .updateIn(
             ['dataset_query', 'query', 'aggregation'],
             aggregation => getCount ? ['count'] : aggregation
@@ -424,11 +421,11 @@ export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCou
         .value();
 
     if (metricId) {
-        return i.assocIn(question, ['dataset_query', 'query', 'aggregation'], ['METRIC', metricId]);
+        return assocIn(question, ['dataset_query', 'query', 'aggregation'], ['METRIC', metricId]);
     }
 
     if (segmentId) {
-        return i.assocIn(question, ['dataset_query', 'query', 'filter'], ['AND', ['SEGMENT', segmentId]]);
+        return assocIn(question, ['dataset_query', 'query', 'filter'], ['AND', ['SEGMENT', segmentId]]);
     }
 
     return question;

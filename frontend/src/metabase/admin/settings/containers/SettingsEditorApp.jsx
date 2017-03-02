@@ -11,7 +11,6 @@ import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
-import SettingsCustomMaps from "../components/SettingsCustomMaps.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -19,6 +18,7 @@ import cx from 'classnames';
 
 import {
     getSettings,
+    getSettingValues,
     getSections,
     getActiveSection,
     getNewVersionAvailable
@@ -28,6 +28,7 @@ import * as settingsActions from "../settings";
 const mapStateToProps = (state, props) => {
     return {
         settings:            getSettings(state, props),
+        settingValues:       getSettingValues(state, props),
         sections:            getSections(state, props),
         activeSection:       getActiveSection(state, props),
         newVersionAvailable: getNewVersionAvailable(state, props)
@@ -42,13 +43,12 @@ const mapDispatchToProps = {
 export default class SettingsEditorApp extends Component {
     constructor(props, context) {
         super(props, context);
-        this.handleChangeEvent = this.handleChangeEvent.bind(this);
         this.updateSetting = this.updateSetting.bind(this);
     }
 
     static propTypes = {
         sections: PropTypes.array.isRequired,
-        activeSection: PropTypes.object.isRequired,
+        activeSection: PropTypes.object,
         updateSetting: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired,
         updateSlackSettings: PropTypes.func.isRequired,
@@ -73,68 +73,69 @@ export default class SettingsEditorApp extends Component {
         });
     }
 
-    handleChangeEvent(setting, event) {
-        this.updateSetting(setting, event.target.value);
-    }
-
     renderSettingsPane() {
-        if (!this.props.activeSection) return null;
+        const { activeSection, settingValues } = this.props;
 
-        let section = this.props.activeSection; // this.props.sections[this.state.currentSection];
+        if (!activeSection) {
+            return null;
+        }
 
-        if (section.name === "Email") {
+        if (activeSection.name === "Email") {
             return (
                 <SettingsEmailForm
                     ref="emailForm"
-                    elements={section.settings}
+                    elements={activeSection.settings}
                     updateEmailSettings={this.props.updateEmailSettings}
                     sendTestEmail={this.props.sendTestEmail}
                 />
             );
-        } else if (section.name === "Setup") {
+        } else if (activeSection.name === "Setup") {
             return (
                 <SettingsSetupList
                     ref="settingsForm"
                 />
             );
-        } else if (section.name === "Slack") {
+        } else if (activeSection.name === "Slack") {
             return (
                 <SettingsSlackForm
                     ref="slackForm"
-                    elements={section.settings}
+                    elements={activeSection.settings}
                     updateSlackSettings={this.props.updateSlackSettings}
                 />
             );
-        } else if (section.name === "Updates") {
+        } else if (activeSection.name === "Updates") {
             return (
                 <SettingsUpdatesForm
                     settings={this.props.settings}
-                    elements={section.settings}
+                    elements={activeSection.settings}
                     updateSetting={this.updateSetting}
-                    handleChangeEvent={this.handleChangeEvent}
                 />
             );
-        } else if (section.name === "Single Sign-On") {
+        } else if (activeSection.name === "Single Sign-On") {
             return (
                 <SettingsSingleSignOnForm
-                    elements={section.settings}
+                    elements={activeSection.settings}
                     updateSetting={this.updateSetting}
-                />
-            );
-        } else if (section.name === "Custom Maps") {
-            return (
-                <SettingsCustomMaps
-                    elements={section.settings}
-                    reloadSettings={this.props.reloadSettings}
                 />
             );
         } else {
-            let settings = section.settings.map((setting, index) => {
-                return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
-            });
 
             return (
-                <ul>{settings}</ul>
+                <ul>
+                    {activeSection.settings
+                    .filter((setting) =>
+                        setting.getHidden ? !setting.getHidden(settingValues) : true
+                    )
+                    .map((setting, index) =>
+                        <SettingsSetting
+                            key={setting.key}
+                            setting={setting}
+                            updateSetting={this.updateSetting.bind(this, setting)}
+                            reloadSettings={this.props.reloadSettings}
+                            autoFocus={index === 0}
+                        />
+                    )}
+                </ul>
             );
         }
     }

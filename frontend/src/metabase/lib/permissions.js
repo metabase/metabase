@@ -28,8 +28,10 @@ export function getPermission(
         } else {
             return value;
         }
-    } else {
+    } else if (value) {
         return value;
+    } else {
+        return "none"
     }
 }
 
@@ -38,7 +40,7 @@ export function updatePermission(
     groupId: GroupId,
     path: Array<string|number>,
     value: string,
-    entityIds: ?Array<string|number>
+    entityIds: ?(Array<string>|Array<number>)
 ): GroupsPermissions {
     const fullPath = [groupId].concat(path);
     let current = getIn(permissions, fullPath);
@@ -100,7 +102,7 @@ export function updateFieldsPermission(permissions: GroupsPermissions, groupId: 
 
 export function updateTablesPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName }: SchemaEntityId, value: string, metadata: Metadata): GroupsPermissions {
     const database = metadata && metadata.database(databaseId);
-    const tableIds = database && database.tables().map(t => t.id);
+    const tableIds: ?number[] = database && database.tables().map(t => t.id);
 
     permissions = updateSchemasPermission(permissions, groupId, { databaseId }, "controlled", metadata);
     permissions = updatePermission(permissions, groupId, [databaseId, "schemas", schemaName], value, tableIds);

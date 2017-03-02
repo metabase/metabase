@@ -1,0 +1,140 @@
+.LineAreaBarChart .renderer {
+  margin-top: -5px;
+  margin-left: -0.5em;
+  margin-right: -0.5em;
+  margin-bottom: -0.5em;
+  overflow: hidden;
+}
+
+/* TODO (@kdoh) remove this if dc-js/dc.js#1260 is merged */
+.LineAreaBarChart .dc-chart .axis text {
+  font-family: sans-serif;
+}
+
+.LineAreaBarChart .dc-chart .grid-line.horizontal {
+  stroke: rgba(151, 151, 151, 0.2);
+  stroke-dasharray: 5,5;
+}
+
+.LineAreaBarChart .dc-chart .axis {
+  z-index: -1;
+}
+.LineAreaBarChart .dc-chart .axis .domain,
+.LineAreaBarChart .dc-chart .axis .tick line {
+  stroke: #EDEDED;
+}
+
+.LineAreaBarChart .dc-chart .axis .tick text {
+  fill: #C5C6C8;
+}
+
+.LineAreaBarChart .dc-chart g.row text.outside {
+  fill: #C5C6C8;
+}
+.LineAreaBarChart .dc-chart g.row text.inside {
+  fill: white;
+}
+
+/* turn off ticks and domain lines */
+.LineAreaBarChart .dc-chart .axis.y .domain,
+.LineAreaBarChart .dc-chart .axis.yr .domain,
+.LineAreaBarChart .dc-chart .axis.y .tick line,
+.LineAreaBarChart .dc-chart .axis.yr .tick line {
+  display: none;
+}
+
+.LineAreaBarChart .dc-chart .x-axis-label,
+.LineAreaBarChart .dc-chart .y-axis-label {
+  /*fill: #C5C6C8;*/
+  fill: #A2A2A2;
+}
+
+.LineAreaBarChart .dc-chart .tick line {
+  display: none;
+}
+
+/* gridline at 0 overlaps with X axis */
+.LineAreaBarChart .dc-chart .grid-line.horizontal line:first-child {
+  display: none;
+}
+
+/* disable dc default behavior */
+.LineAreaBarChart .dc-chart rect.bar:hover {
+  fill-opacity: 1;
+}
+
+.LineAreaBarChart .dc-chart g.row rect {
+  fill-opacity: 1;
+}
+
+/* highlight single series bar and row charts */
+.LineAreaBarChart.mute-0 .dc-chart rect.bar:hover,
+.LineAreaBarChart.mute-0 .dc-chart g.row:hover {
+  opacity: 1 !important;
+}
+
+.LineAreaBarChart .enable-dots .dc-tooltip circle.dot {
+  r: 3px !important;
+  fill: white;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill-opacity: 1 !important;
+  stroke-opacity: 1 !important;
+}
+
+.LineAreaBarChart .dc-chart circle.bubble {
+    fill-opacity: 0.80;
+    stroke-width: 1;
+    stroke: white;
+}
+
+.LineAreaBarChart .enable-dots .dc-tooltip circle.dot:hover,
+.LineAreaBarChart .enable-dots .dc-tooltip circle.dot.hover {
+  fill: currentColor;
+}
+
+.LineAreaBarChart .enable-dots-onhover .dc-tooltip circle.dot:hover,
+.LineAreaBarChart .enable-dots-onhover .dc-tooltip circle.dot.hover {
+  r: 3px !important;
+  fill: white;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill-opacity: 1 !important;
+  stroke-opacity: 1 !important;
+}
+
+.LineAreaBarChart .dc-chart .area,
+.LineAreaBarChart .dc-chart .bar,
+.LineAreaBarChart .dc-chart .line,
+.LineAreaBarChart .dc-chart .dot,
+.LineAreaBarChart .dc-chart .row,
+.LineAreaBarChart .dc-chart .bubble {
+  transition: opacity 0.15s linear;
+}
+
+.LineAreaBarChart .dc-chart .axis.y,
+.LineAreaBarChart .dc-chart .y-axis-label,
+.LineAreaBarChart .dc-chart .axis.yr,
+.LineAreaBarChart .dc-chart .yr-axis-label {
+  transition: opacity 0.25s linear;
+}
+
+/* .mute-* selectors dynamically generated in LineAreaBarChart.js*/
+
+.LineAreaBarChart.mute-yl .dc-chart .axis.y,
+.LineAreaBarChart.mute-yl .dc-chart .y-axis-label.y-label {
+  opacity: 0;
+}
+
+.LineAreaBarChart.mute-yr .dc-chart .axis.yr,
+.LineAreaBarChart.mute-yr .dc-chart .y-axis-label.yr-label {
+  opacity: 0;
+}
+
+.LineAreaBarChart .voronoi {
+  fill: transparent;
+}
+
+/*.voronoi path {
+  fill: rgba(255,0,0,0.05);
+}*/

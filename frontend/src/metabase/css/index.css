@@ -1,3 +1,5 @@
+@import './vendor.css';
+
 @import './core/index.css';
 
 @import './components/buttons.css';
@@ -5,7 +7,7 @@
 @import './components/form.css';
 @import './components/header.css';
 @import './components/icons.css';
-@import './components/mb_data_table.css';
+@import './components/list.css';
 @import './components/modal.css';
 @import './components/popover.css';
 @import './components/select.css';
@@ -21,4 +23,3 @@
 @import './setup.css';
 @import './tutorial.css';
 
-@import './vendor.css';

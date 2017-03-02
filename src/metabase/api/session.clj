@@ -5,17 +5,19 @@
             [cheshire.core :as json]
             [clj-http.client :as http]
             [compojure.core :refer [defroutes GET POST DELETE]]
+            [schema.core :as s]
             [throttle.core :as throttle]
+            [toucan.db :as db]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
             [metabase.email.messages :as email]
             [metabase.events :as events]
-            (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!], :as user]
+            (metabase.models [user :refer [User], :as user]
                              [session :refer [Session]]
                              [setting :refer [defsetting]])
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
-            [metabase.util.password :as pass]))
+            (metabase.util [password :as pass]
+                           [schema :as su])))
 
 
 (defn- create-session!
@@ -27,7 +29,7 @@
     (db/insert! Session
       :id      <>
       :user_id (:id user))
-    (events/publish-event :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
+    (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
 
 ;;; ## API Endpoints
@@ -39,8 +41,8 @@
 (defendpoint POST "/"
   "Login."
   [:as {{:keys [email password]} :body, remote-address :remote-addr}]
-  {email    [Required Email]
-   password [Required NonEmptyString]}
+  {email    su/Email
+   password su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :email)      email)
   (let [user (db/select-one [User :id :password_salt :password :last_login], :email email, :is_active true)]
@@ -55,9 +57,10 @@
 (defendpoint DELETE "/"
   "Logout."
   [session_id]
-  {session_id [Required NonEmptyString]}
+  {session_id su/NonBlankString}
   (check-exists? Session session_id)
-  (db/cascade-delete! Session, :id session_id))
+  (db/delete! Session :id session_id)
+  generic-204-no-content)
 
 ;; Reset tokens:
 ;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
@@ -72,15 +75,15 @@
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr, :as request}]
-  {email [Required Email]}
+  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr}]
+  {email su/Email}
   (throttle/check (forgot-password-throttlers :ip-address) remote-address)
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email, :is_active true)]
-    (let [reset-token        (set-user-password-reset-token! user-id)
-          password-reset-url (str (public-settings/site-url request) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email email google-auth? server-name password-reset-url)
+    (let [reset-token        (user/set-password-reset-token! user-id)
+          password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
       (log/info password-reset-url))))
 
 
@@ -105,10 +108,14 @@
 (defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body}]
-  {token    [Required NonEmptyString]
-   password [Required ComplexPassword]}
+  {token    su/NonBlankString
+   password su/ComplexPassword}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
-        (set-user-password! user-id password)
+        (user/set-password! user-id password)
+        ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
+        ;; Send all the active admins an email :D
+        (when-not (:last_login user)
+          (email/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
         {:success    true
          :session_id (create-session! user)})
@@ -118,7 +125,7 @@
 (defendpoint GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
   [token]
-  {token Required}
+  {token s/Str}
   {:valid (boolean (valid-reset-token->user token))})
 
 
@@ -169,7 +176,7 @@
   (check-autocreate-user-allowed-for-email email)
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
   ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
-  (user/create-user! first-name last-name email, :send-welcome false, :google-auth? true))
+  (user/create-new-google-auth-user! first-name last-name email))
 
 (defn- google-auth-fetch-or-create-user! [first-name last-name email]
   (if-let [user (or (db/select-one [User :id :last_login] :email email)
@@ -179,8 +186,8 @@
 (defendpoint POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, remote-address :remote-addr}]
-  {token [Required NonEmptyString]}
-  (throttle/check (login-throttlers :ip-address) remote-address) ; TODO - Should we throttle this? It might keep us from being slammed with calls that have to make outbound HTTP requests, etc.
+  {token su/NonBlankString}
+  (throttle/check (login-throttlers :ip-address) remote-address)
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
     (log/info "Successfully authenicated Google Auth token for:" given_name family_name)

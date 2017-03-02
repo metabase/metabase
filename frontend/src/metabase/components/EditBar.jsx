@@ -3,7 +3,7 @@ import cx from "classnames";
 
 class EditBar extends Component {
     static propTypes = {
-        title: PropTypes.string.isRequires,
+        title: PropTypes.string.isRequired,
         subtitle: PropTypes.string,
         buttons: PropTypes.oneOfType([
             PropTypes.element,

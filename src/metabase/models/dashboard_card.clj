@@ -1,14 +1,16 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            (metabase [db :as db]
-                      [events :as events])
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]]
+                    [models :as models])
+            [metabase.db :as mdb]
+            [metabase.events :as events]
             (metabase.models  [card :refer [Card]]
                               [dashboard-card-series :refer [DashboardCardSeries]]
-                              [hydrate :refer :all]
                               [interface :as i])
             [metabase.util :as u]))
 
-(i/defentity DashboardCard :report_dashboardcard)
+(models/defmodel DashboardCard :report_dashboardcard)
 
 (declare series)
 
@@ -30,20 +32,22 @@
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'DashboardCardSeries :dashboardcard_id id))
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! 'DashboardCardSeries :dashboardcard_id id))
 
 (u/strict-extend (class DashboardCard)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped?       (constantly true)
-          :types              (constantly {:parameter_mappings :json, :visualization_settings :json})
-          :perms-objects-set  perms-objects-set
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:parameter_mappings :json, :visualization_settings :json})
+          :pre-insert  pre-insert
+          :pre-delete  pre-delete
+          :post-select (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:perms-objects-set  perms-objects-set
           :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :pre-insert         pre-insert
-          :pre-cascade-delete pre-cascade-delete
-          :post-select        (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})}))
+          :can-write?         (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ## ---------------------------------------- HYDRATION ----------------------------------------
@@ -60,7 +64,7 @@
   "Return the `Cards` associated as additional series on this `DashboardCard`."
   [{:keys [id]}]
   (db/select [Card :id :name :description :display :dataset_query :visualization_settings]
-    (db/join [Card :id] [DashboardCardSeries :card_id])
+    (mdb/join [Card :id] [DashboardCardSeries :card_id])
     (db/qualify DashboardCardSeries :dashboardcard_id) id
     {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
 
@@ -88,7 +92,7 @@
          (sequential? card-ids)
          (every? integer? card-ids)]}
   ;; first off, just delete all series on the dashboard card (we add them again below)
-  (db/cascade-delete! DashboardCardSeries :dashboardcard_id id)
+  (db/delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
   (when (seq card-ids)
     (let [cards (map-indexed (fn [i card-id]
@@ -114,7 +118,7 @@
         (update-dashboard-card-series! dashboard-card series))
       ;; fetch the fully updated dashboard card then return it (and fire off an event)
       (->> (retrieve-dashboard-card id)
-           (events/publish-event :dashboard-card-update)))))
+           (events/publish-event! :dashboard-card-update)))))
 
 (defn create-dashboard-card!
   "Create a new `DashboardCard` by inserting it into the database along with all associated pieces of data such as `DashboardCardSeries`.
@@ -133,8 +137,8 @@
                                               :card_id                card_id
                                               :sizeX                  sizeX
                                               :sizeY                  sizeY
-                                              :row                    row
-                                              :col                    col
+                                              :row                    (or row 0)
+                                              :col                    (or col 0)
                                               :parameter_mappings     (or parameter_mappings [])
                                               :visualization_settings (or visualization_settings {}))]
         ;; add series to the DashboardCard
@@ -142,7 +146,7 @@
         ;; return the full DashboardCard (and record our create event)
         (-> (retrieve-dashboard-card id)
             (assoc :actor_id creator_id)
-            (->> (events/publish-event :dashboard-card-create))
+            (->> (events/publish-event! :dashboard-card-create))
             (dissoc :actor_id))))))
 
 (defn delete-dashboard-card!
@@ -151,5 +155,5 @@
   {:pre [(map? dashboard-card)
          (integer? user-id)]}
   (let [{:keys [id]} (dashboard dashboard-card)]
-    (db/cascade-delete! DashboardCard :id (:id dashboard-card))
-    (events/publish-event :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
+    (db/delete! DashboardCard :id (:id dashboard-card))
+    (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))

@@ -1,5 +1,6 @@
 import {
-    getXValues
+    getXValues,
+    getColumnCardinality
 } from 'metabase/visualizations/lib/utils';
 
 describe('visualization.lib.utils', () => {
@@ -49,4 +50,18 @@ describe('visualization.lib.utils', () => {
             ])).toEqual([12,11,2,1]);
         });
     });
+
+    describe("getColumnCardinality", () => {
+        it("should get column cardinality", () => {
+            const cols = [{}];
+            const rows = [[1],[2],[3],[3]];
+            expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
+        });
+        it("should get column cardinality for frozen column", () => {
+            const cols = [{}];
+            const rows = [[1],[2],[3],[3]];
+            Object.freeze(cols[0]);
+            expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
+        });
+    })
 });

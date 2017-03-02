@@ -1,10 +1,12 @@
+/* @flow weak */
+
 import React, { Component, PropTypes } from "react";
 
 import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
-import { refreshCurrentUser } from "metabase/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
@@ -12,16 +14,23 @@ import App from "metabase/App.jsx";
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
-import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
+import LogoutApp from "metabase/auth/containers/LogoutApp.jsx"; import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
-import EntityBrowser from "metabase/questions/containers/EntityBrowser.jsx";
-import EntityList from "metabase/questions/containers/EntityList.jsx";
+
+import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
+import Archive from "metabase/questions/containers/Archive.jsx";
+import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
+import CollectionEdit from "metabase/questions/containers/CollectionEdit.jsx";
+import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
+import SearchResults from "metabase/questions/containers/SearchResults.jsx";
 import EditLabels from "metabase/questions/containers/EditLabels.jsx";
+import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
+import EntityList from "metabase/questions/containers/EntityList.jsx";
+
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
@@ -54,6 +63,9 @@ import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
 import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx";
 
+import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
+import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
+
 const MetabaseIsSetup = UserAuthWrapper({
     predicate: authData => !authData.hasSetupToken,
     failureRedirectPath: "/setup",
@@ -67,7 +79,16 @@ const UserIsAuthenticated = UserAuthWrapper({
     failureRedirectPath: '/auth/login',
     authSelector: state => state.currentUser,
     wrapperDisplayName: 'UserIsAuthenticated',
-    redirectAction: routerActions.replace,
+    redirectAction: (location) =>
+        // HACK: workaround for redux-auth-wrapper not including hash
+        // https://github.com/mjrussell/redux-auth-wrapper/issues/121
+        routerActions.replace({
+            ...location,
+            query: {
+                ...location.query,
+                redirect: location.query.redirect + (window.location.hash || "")
+            }
+        })
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -101,6 +122,12 @@ export const getRoutes = (store) =>
             }
         }} />
 
+        {/* PUBLICLY SHARED LINKS */}
+        <Route path="public">
+            <Route path="question/:uuid" component={PublicQuestion} />
+            <Route path="dashboard/:uuid" component={PublicDashboard} />
+        </Route>
+
         {/* APP */}
         <Route onEnter={async (nextState, replace, done) => {
             await store.dispatch(refreshCurrentUser());
@@ -131,10 +158,27 @@ export const getRoutes = (store) =>
                 <Route path="/q" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
-                <Route path="/questions" component={EntityBrowser}>
-                    <Route path="edit/labels" component={EditLabels} />
-                    <Route path=":section" component={EntityList} />
-                    <Route path=":section/:slug" component={EntityList} />
+                <Route path="/questions">
+                    <IndexRoute component={QuestionIndex} />
+                    <Route path="search" component={SearchResults} />
+                    <Route path="archive" component={Archive} />
+                    <Route path="collections/:collectionSlug" component={CollectionPage} />
+                </Route>
+
+                <Route path="/entities/:entityType" component={({ location, params }) =>
+                    <div className="p4">
+                        <EntityList entityType={params.entityType} entityQuery={location.query} />
+                    </div>
+                }/>
+
+                <Route path="/collections">
+                    <Route path="create" component={CollectionCreate} />
+                    <Route path="permissions" component={CollectionPermissions} />
+                    <Route path=":collectionId" component={CollectionEdit} />
+                </Route>
+
+                <Route path="/labels">
+                    <IndexRoute component={EditLabels} />
                 </Route>
 
                 {/* REFERENCE */}
@@ -203,6 +247,19 @@ export const getRoutes = (store) =>
                 <Route path="settings/:section" component={SettingsEditorApp} />
 
                 {getAdminPermissionsRoutes(store)}
+            </Route>
+
+            {/* INTERNAL */}
+            <Route
+                path="/_internal"
+                getChildRoutes={(partialNextState, callback) =>
+                    // $FlowFixMe: flow doesn't know about require.ensure
+                    require.ensure([], (require) => {
+                        callback(null, [require('./routes-internal').default])
+                    })
+                }
+            >
+                <IndexRedirect to="/_internal/list" />
             </Route>
 
             {/* MISC */}

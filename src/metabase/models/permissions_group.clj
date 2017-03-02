@@ -1,11 +1,11 @@
 (ns metabase.models.permissions-group
   (:require [clojure.tools.logging :as log]
             [clojure.string :as s]
-            [metabase.db :as db]
-            [metabase.models.interface :as i]
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.util :as u]))
 
-(i/defentity PermissionsGroup :permissions_group)
+(models/defmodel PermissionsGroup :permissions_group)
 
 
 ;;; ------------------------------------------------------------ Magic Groups Getter Fns ------------------------------------------------------------
@@ -66,10 +66,10 @@
   (u/prog1 group
     (check-name-not-already-taken group-name)))
 
-(defn- pre-cascade-delete [{id :id, :as group}]
+(defn- pre-delete [{id :id, :as group}]
   (check-not-magic-group group)
-  (db/cascade-delete! 'Permissions                :group_id id)
-  (db/cascade-delete! 'PermissionsGroupMembership :group_id id))
+  (db/delete! 'Permissions                :group_id id)
+  (db/delete! 'PermissionsGroupMembership :group_id id))
 
 (defn- pre-update [{group-name :name, :as group}]
   (u/prog1 group
@@ -78,8 +78,8 @@
       (check-name-not-already-taken group-name))))
 
 (u/strict-extend (class PermissionsGroup)
-  i/IEntity (merge i/IEntityDefaults
-                   {:pre-cascade-delete pre-cascade-delete
+  models/IModel (merge models/IModelDefaults
+                   {:pre-delete pre-delete
                     :pre-insert         pre-insert
                     :pre-update         pre-update}))
 
@@ -90,13 +90,14 @@
 (defn ^:hydrate members
   "Return `Users` that belong to GROUP-OR-ID, ordered by their name (case-insensitive)."
   [group-or-id]
-  (db/query {:select    [:core_user.first_name
-                         :core_user.last_name
-                         :core_user.email
-                         [:core_user.id :user_id]
-                         [:permissions_group_membership.id :membership_id]]
-             :from      [:core_user]
-             :left-join [:permissions_group_membership [:= :core_user.id :permissions_group_membership.user_id]]
-             :where     [:= :permissions_group_membership.group_id (u/get-id group-or-id)]
-             :order-by  [[:%lower.core_user.first_name :asc]
-                         [:%lower.core_user.last_name :asc]]}))
+  (db/query {:select    [:user.first_name
+                         :user.last_name
+                         :user.email
+                         [:user.id :user_id]
+                         [:pgm.id :membership_id]]
+             :from      [[:core_user :user]]
+             :left-join [[:permissions_group_membership :pgm] [:= :user.id :pgm.user_id]]
+             :where     [:and [:= :user.is_active true]
+                              [:= :pgm.group_id (u/get-id group-or-id)]]
+             :order-by  [[:%lower.user.first_name :asc]
+                         [:%lower.user.last_name :asc]]}))

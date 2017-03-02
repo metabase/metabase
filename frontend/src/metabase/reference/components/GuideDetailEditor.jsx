@@ -7,7 +7,7 @@ import S from "./GuideDetailEditor.css";
 
 import Select from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import DataSelector from "metabase/query_builder/DataSelector.jsx";
+import DataSelector from "metabase/query_builder/components/DataSelector.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { typeToBgClass } from "../utils.js";

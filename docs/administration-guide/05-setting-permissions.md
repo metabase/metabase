@@ -6,7 +6,7 @@ There are always going to be sensitive bits of information in your databases and
 
 Metabase uses a group-based approach to set permissions and restrictions on your databases and tables. At a high level, to set up permissions in your Metabase instance you’ll need to create one or more groups, add members to those groups, and then choose what level of database and SQL access those groups should have.
 
-A user can be a member of multiple groups, and if one of the groups they’re in has access to a particular database, but another group they’re a member of does not, then they **will** have access to that database.
+A user can be a member of multiple groups, and if one of the groups they’re in has access to a particular database or table, but another group they’re a member of does not, then they **will** have access to that database.
 
 ### Groups
 
@@ -20,7 +20,7 @@ You’ll notice that you already have two default groups: Administrators and All
 
 You’ll also see that you’re a member of the **Administrators** group — that’s why you were able to go to the Admin Panel in the first place. So, to make someone an admin of Metabase you just need to add them to this group. Metabase admins can log into the Admin Panel and make changes there, and they always have unrestricted access to all data that you have in your Metabase instance. So be careful who you add to the Administrator group!
 
-The **All Users** group is another special one. Every Metabase user is always a  member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](09-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
+The **All Users** group is another special one. Every Metabase user is always a  member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](09-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group. (**Important note:** as we mentioned above, a user is given the *most permissive* setting she has for a given database/schema/table across *all* groups she is in. Because of that, it is important that your All Users group should never have *greater* access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out.)
 
 If you’ve set up the [Slack integration](08-setting-up-slack.md) and enabled [Metabot](../users-guide/10-metabot.md), you’ll also see a special **Metabot** group, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
 
@@ -77,4 +77,4 @@ Pulses act a bit differently with regard to permissions. When a user creates a n
 ---
 
 ## Next: custom segments and metrics
-Learn how to define custom segments and commonly referenced metrics in the [next section](06-segments-and-metrics.md).
+Learn how to create collections of questions to organize things and decide who gets to see what in the [next section](06-collections.md).

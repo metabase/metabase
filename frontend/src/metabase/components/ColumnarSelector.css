@@ -38,13 +38,14 @@
 .ColumnarSelector-row {
     padding-top: 0.75rem;
     padding-bottom: 0.75rem;
-    padding-left: var(--padding-3);
-    padding-right: var(--padding-3);
+    padding-left: var(--padding-2);
+    padding-right: var(--padding-2);
     display: flex;
     align-items: center;
 }
 
-.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover {
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover,
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover .Icon {
     background-color: var(--brand-color) !important;
     color: white !important;
 }
@@ -65,8 +66,8 @@
 }
 
 .ColumnarSelector-row .Icon-check {
-    margin-right: var(--margin-2);
     visibility: hidden;
+    padding-right: 0.5rem;
 }
 
 .ColumnarSelector-row.ColumnarSelector-row--selected .Icon-check {
@@ -77,7 +78,8 @@
     z-index: 1;
 }
 
-.ColumnarSelector-column:last-child {
+/* only apply if there's more than one, aka the last is not the first */
+.ColumnarSelector-column:last-child:not(:first-child) {
     background-color: white;
     border-left:  var(--border-size) var(--border-style) var(--border-color);
     position: relative;

@@ -108,6 +108,8 @@ export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = (col) => (col && col.source !== "aggregation");
 export const isMetric    = (col) => (col && col.source !== "breakout") && isSummable(col);
 
+export const isAny = (col) => true;
+
 export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.Number);
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
@@ -237,7 +239,7 @@ const OPERATORS = {
     },
     "INSIDE": {
         validArgumentsFilters: [longitudeFieldSelectArgument, numberArgument, numberArgument, numberArgument, numberArgument],
-        placeholders: ["Select longitude field", "Enter upper latitude", "Enter left longitude", "Enter lower latitude", "Enter right latitude"]
+        placeholders: ["Select longitude field", "Enter upper latitude", "Enter left longitude", "Enter lower latitude", "Enter right longitude"]
     },
     "BETWEEN": {
         validArgumentsFilters: [comparableArgument, comparableArgument]
@@ -357,86 +359,95 @@ function dimensionFields(fields) {
 }
 
 var Aggregators = [{
-    "name": "Raw data",
-    "short": "rows",
-    "description": "Just a table with the rows in the answer, no additional operations.",
-    "validFieldsFilters": [],
-    "requiresField": false
+    name: "Raw data",
+    short: "rows",
+    description: "Just a table with the rows in the answer, no additional operations.",
+    validFieldsFilters: [],
+    requiresField: false,
+    requiredDriverFeature: "basic-aggregations"
 }, {
-    "name": "Count of rows",
-    "short": "count",
-    "description": "Total number of rows in the answer.",
-    "validFieldsFilters": [],
-    "requiresField": false
+    name: "Count of rows",
+    short: "count",
+    description: "Total number of rows in the answer.",
+    validFieldsFilters: [],
+    requiresField: false,
+    requiredDriverFeature: "basic-aggregations"
 }, {
-    "name": "Sum of ...",
-    "short": "sum",
-    "description": "Sum of all the values of a column.",
-    "validFieldsFilters": [summableFields],
-    "requiresField": true
+    name: "Sum of ...",
+    short: "sum",
+    description: "Sum of all the values of a column.",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+    requiredDriverFeature: "basic-aggregations"
 }, {
-    "name": "Average of ...",
-    "short": "avg",
-    "description": "Average of all the values of a column",
-    "validFieldsFilters": [summableFields],
-    "requiresField": true
+    name: "Average of ...",
+    short: "avg",
+    description: "Average of all the values of a column",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+    requiredDriverFeature: "basic-aggregations"
 }, {
-    "name": "Number of distinct values of ...",
-    "short": "distinct",
-    "description":  "Number of unique values of a column among all the rows in the answer.",
-    "validFieldsFilters": [allFields],
-    "requiresField": true
+    name: "Number of distinct values of ...",
+    short: "distinct",
+    description:  "Number of unique values of a column among all the rows in the answer.",
+    validFieldsFilters: [allFields],
+    requiresField: true,
+    requiredDriverFeature: "basic-aggregations"
 }, {
-    "name": "Cumulative sum of ...",
-    "short": "cum_sum",
-    "description": "Additive sum of all the values of a column.\ne.x. total revenue over time.",
-    "validFieldsFilters": [summableFields],
-    "requiresField": true
+    name: "Cumulative sum of ...",
+    short: "cum_sum",
+    description: "Additive sum of all the values of a column.\ne.x. total revenue over time.",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+    requiredDriverFeature: "basic-aggregations"
 }, {
-    "name": "Cumulative count of rows",
-    "short": "cum_count",
-    "description": "Additive count of the number of rows.\ne.x. total number of sales over time.",
-    "validFieldsFilters": [],
-    "requiresField": false
+    name: "Cumulative count of rows",
+    short: "cum_count",
+    description: "Additive count of the number of rows.\ne.x. total number of sales over time.",
+    validFieldsFilters: [],
+    requiresField: false,
+    requiredDriverFeature: "basic-aggregations"
 }, {
-    "name": "Standard deviation of ...",
-    "short": "stddev",
-    "description": "Number which expresses how much the values of a column vary among all rows in the answer.",
-    "validFieldsFilters": [summableFields],
-    "requiresField": true,
-    "requiredDriverFeature": "standard-deviation-aggregations"
+    name: "Standard deviation of ...",
+    short: "stddev",
+    description: "Number which expresses how much the values of a column vary among all rows in the answer.",
+    validFieldsFilters: [summableFields],
+    requiresField: true,
+    requiredDriverFeature: "standard-deviation-aggregations"
 }, {
     name: "Minimum of ...",
     short: "min",
     description: "Minimum value of a column",
     validFieldsFilters: [summableFields],
     requiresField: true,
+    requiredDriverFeature: "basic-aggregations"
 }, {
     name: "Maximum of ...",
     short: "max",
     description: "Maximum value of a column",
     validFieldsFilters: [summableFields],
     requiresField: true,
+    requiredDriverFeature: "basic-aggregations"
 }];
 
 var BreakoutAggregator = {
-    "name": "Break out by dimension",
-    "short": "breakout",
-    "validFieldsFilters": [dimensionFields]
+    name: "Break out by dimension",
+    short: "breakout",
+    validFieldsFilters: [dimensionFields]
 };
 
 function populateFields(aggregator, fields) {
     return {
-        'name': aggregator.name,
-        'short': aggregator.short,
-        'description': aggregator.description || '',
-        'advanced': aggregator.advanced || false,
-        'fields': _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
+        name: aggregator.name,
+        short: aggregator.short,
+        description: aggregator.description || '',
+        advanced: aggregator.advanced || false,
+        fields: _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
             return validFieldsFilterFn(fields);
         }),
-        'validFieldsFilters': aggregator.validFieldsFilters,
-        "requiresField": aggregator.requiresField,
-        "requiredDriverFeature": aggregator.requiredDriverFeature
+        validFieldsFilters: aggregator.validFieldsFilters,
+        requiresField: aggregator.requiresField,
+        requiredDriverFeature: aggregator.requiredDriverFeature
     };
 }
 

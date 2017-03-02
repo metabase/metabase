@@ -30,7 +30,7 @@ export default class RevisionMessageModal extends Component {
             <ModalWithTrigger ref="modal" triggerElement={children}>
                 <ModalContent
                     title="Reason for changes"
-                    closeFn={onClose}
+                    onClose={onClose}
                 >
                     <div className={S.modalBody}>
                         <textarea

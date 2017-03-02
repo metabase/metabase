@@ -8,7 +8,7 @@ import S from "./Formula.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import QueryDefinition from "metabase/query_builder/dataref/QueryDefinition.jsx";
+import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition.jsx";
 
 const Formula = ({
     type,

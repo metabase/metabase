@@ -17,7 +17,8 @@ export default class Tooltip extends Component {
         tooltip: PropTypes.node.isRequired,
         children: PropTypes.element.isRequired,
         isEnabled: PropTypes.bool,
-        verticalAttachments: PropTypes.array
+        verticalAttachments: PropTypes.array,
+        isOpen: PropTypes.bool
     };
 
     static defaultProps = {
@@ -44,7 +45,7 @@ export default class Tooltip extends Component {
 
     componentDidUpdate() {
         const { isEnabled, tooltip } = this.props;
-        const { isOpen } = this.state;
+        const isOpen = this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
         if (tooltip && isEnabled && isOpen) {
             ReactDOM.render(
                 <TooltipPopover isOpen={true} target={this} {...this.props} children={this.props.tooltip} />,

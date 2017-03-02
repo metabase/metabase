@@ -2,14 +2,14 @@
   (:require [cheshire.core :as json]
             [expectations :refer :all]
             [ring.mock.request :as mock]
+            [toucan.db :as db]
             [metabase.api.common :refer [*current-user-id* *current-user*]]
-            (metabase [db :as db]
-                      [middleware :refer :all])
+            [metabase.middleware :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
             [metabase.util :as u]))
+
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 
@@ -21,7 +21,7 @@
 
 ;; no session-id in the request
 (expect nil
-  (-> (wrapped-handler (mock/request :get "/anyurl") )
+  (-> (wrapped-handler (mock/request :get "/anyurl"))
       :metabase-session-id))
 
 
@@ -64,13 +64,11 @@
   (str (java.util.UUID/randomUUID)))
 
 
-(tu/resolve-private-vars metabase.db simple-insert!)
-
 ;; valid session ID
 (expect
   (user->id :rasta)
   (let [session-id (random-session-id)]
-    (simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (u/new-sql-timestamp))
+    (db/simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (u/new-sql-timestamp))
     (-> (auth-enforced-handler (request-with-session-id session-id))
         :metabase-user-id)))
 
@@ -81,7 +79,7 @@
 (expect
   response-unauthentic
   (let [session-id (random-session-id)]
-    (simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (java.sql.Timestamp. 0))
+    (db/simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (java.sql.Timestamp. 0))
     (auth-enforced-handler (request-with-session-id session-id))))
 
 
@@ -91,7 +89,7 @@
 ;; NOTE that :trashbird is our INACTIVE test user
 (expect response-unauthentic
   (let [session-id (random-session-id)]
-    (simple-insert! Session, :id session-id, :user_id (user->id :trashbird), :created_at (u/new-sql-timestamp))
+    (db/simple-insert! Session, :id session-id, :user_id (user->id :trashbird), :created_at (u/new-sql-timestamp))
     (auth-enforced-handler (request-with-session-id session-id))))
 
 

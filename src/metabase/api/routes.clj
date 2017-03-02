@@ -3,6 +3,7 @@
             [compojure.route :as route]
             (metabase.api [activity :as activity]
                           [card :as card]
+                          [collection :as collection]
                           [dashboard :as dashboard]
                           [database :as database]
                           [dataset :as dataset]
@@ -14,6 +15,7 @@
                           [metric :as metric]
                           [notify :as notify]
                           [permissions :as permissions]
+                          [public :as public]
                           [pulse :as pulse]
                           [revision :as revision]
                           [segment :as segment]
@@ -38,6 +40,7 @@
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   (context "/activity"        [] (+auth activity/routes))
   (context "/card"            [] (+auth card/routes))
+  (context "/collection"      [] (+auth collection/routes))
   (context "/dashboard"       [] (+auth dashboard/routes))
   (context "/database"        [] (+auth database/routes))
   (context "/dataset"         [] (+auth dataset/routes))
@@ -52,6 +55,7 @@
   (context "/metric"          [] (+auth metric/routes))
   (context "/notify"          [] (+apikey notify/routes))
   (context "/permissions"     [] (+auth permissions/routes))
+  (context "/public"          [] public/routes)
   (context "/pulse"           [] (+auth pulse/routes))
   (context "/revision"        [] (+auth revision/routes))
   (context "/segment"         [] (+auth segment/routes))

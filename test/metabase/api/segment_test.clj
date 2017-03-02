@@ -1,10 +1,11 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
   (:require [expectations :refer :all]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
-                             [hydrate :refer [hydrate]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment], :as segment]
                              [table :refer [Table]])
@@ -52,21 +53,21 @@
                                               :definition {}}))
 
 ;; test validations
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :crowberto) :post 400 "segment" {}))
 
-(expect {:errors {:table_id "field is a required param."}}
+(expect {:errors {:table_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "segment" {:name "abc"}))
 
-(expect {:errors {:table_id "Invalid value 'foobar' for 'table_id': value must be an integer."}}
+(expect {:errors {:table_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "segment" {:name     "abc"
                                                   :table_id "foobar"}))
 
-(expect {:errors {:definition "field is a required param."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :post 400 "segment" {:name     "abc"
                                                   :table_id 123}))
 
-(expect {:errors {:definition "Invalid value 'foobar' for 'definition': value must be a dictionary."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :post 400 "segment" {:name       "abc"
                                                   :table_id   123
                                                   :definition "foobar"}))
@@ -84,7 +85,7 @@
    :is_active               true
    :definition              {:database 21
                              :query    {:filter ["abc"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]]
     (segment-response ((user->client :crowberto) :post 200 "segment" {:name                    "A Segment"
                                                                       :description             "I did it!"
@@ -105,21 +106,21 @@
                                                :revision_message "something different"}))
 
 ;; test validations
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "segment/1" {}))
 
-(expect {:errors {:revision_message "field is a required param."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "segment/1" {:name "abc"}))
 
-(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
                                                    :revision_message ""}))
 
-(expect {:errors {:definition "field is a required param."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
                                                    :revision_message "123"}))
 
-(expect {:errors {:definition "Invalid value 'foobar' for 'definition': value must be a dictionary."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :put 400 "segment/1" {:name             "abc"
                                                    :revision_message "123"
                                                    :definition       "foobar"}))
@@ -137,7 +138,7 @@
    :is_active               true
    :definition              {:database 2
                              :query    {:filter ["not" "the toucans you're looking for"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]}   {:table_id table-id}]]
     (segment-response ((user->client :crowberto) :put 200 (format "segment/%d" id) {:id                      id
@@ -160,10 +161,10 @@
 
 
 ;; test validations
-(expect {:errors {:revision_message "field is a required param."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :delete 400 "segment/1" {:name "abc"}))
 
-(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :delete 400 "segment/1" :revision_message ""))
 
 (expect
@@ -179,7 +180,7 @@
     :updated_at              true
     :is_active               false
     :definition              {}}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id table-id}]]
     [((user->client :crowberto) :delete 200 (format "segment/%d" id) :revision_message "carryon")
@@ -206,7 +207,7 @@
    :is_active               true
    :definition              {:database 123
                              :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]}   {:creator_id (user->id :crowberto)
                                             :table_id   table-id
@@ -238,7 +239,7 @@
     :diff         {:name       {:after "b"}
                    :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [{:keys [id]} {:creator_id (user->id :crowberto)
                                           :table_id   table-id
@@ -266,10 +267,10 @@
   ((user->client :rasta) :post 403 "segment/1/revert" {:revision_id 56}))
 
 
-(expect {:errors {:revision_id "field is a required param."}}
+(expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "segment/1/revert" {}))
 
-(expect {:errors {:revision_id "Invalid value 'foobar' for 'revision_id': value must be an integer."}}
+(expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "segment/1/revert" {:revision_id "foobar"}))
 
 
@@ -310,7 +311,7 @@
                     :definition  {:after {:database 123
                                           :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
      :description  nil}]]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Segment  [{:keys [id]}      {:creator_id              (user->id :crowberto)
                                                :table_id                table-id
@@ -359,7 +360,7 @@
 
 
 ;;; GET /api/segement/
-(tu/expect-with-temp [Segment [segment-1]
+(tt/expect-with-temp [Segment [segment-1]
                       Segment [segment-2]
                       Segment [_          {:is_active false}]] ; inactive segments shouldn't show up
   (tu/mappify (hydrate [segment-1
@@ -368,7 +369,7 @@
 
 
 ;;; PUT /api/segment/id. Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?
-(tu/expect-with-temp [Segment [segment]]
+(tt/expect-with-temp [Segment [segment]]
   :ok
   (do ((user->client :crowberto) :put 200 (str "segment/" (u/get-id segment))
        {:name             "Cool name"
