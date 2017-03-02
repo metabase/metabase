@@ -50,7 +50,7 @@
   "Return the distinct values of FIELD.
    This is used to create a `FieldValues` object for `:category` Fields."
   ([field]
-    (druid-field-distinct-values field @(resolve low-cardinality-threshold)))
+    (druid-field-distinct-values field low-cardinality-threshold))
   ([{field-id :id :as field} max-results]
    {:pre [(integer? max-results)]}
    (mapv first (field-query field (-> {}
