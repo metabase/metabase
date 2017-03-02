@@ -36,5 +36,30 @@
                                                 ; :dbname "metabase-test"
                                                 }))
 
+; 1
+; com.datastax.driver.core.exceptions.SyntaxError: line 1:12 
+; missing EOF at '-' (USE metabase[-]test)
+
+; 2
+; ERROR metabase.driver :: Failed to connect to database: 
+; com.datastax.driver.core.exceptions.InvalidQueryException: Keyspace 'metabase_test' does not exist
+
+;; should use default port 9042 if not specified
+(datasets/expect-with-engine :cassandra
+  true
+  (driver/can-connect-with-details? :cassandra {:host "localhost"
+                                                :dbname "metabase_test"}))
+
+(datasets/expect-with-engine :cassandra
+  false
+  (driver/can-connect-with-details? :cassandra {:host "123.4.5.6"
+                                                :dbname "bad_db_name"}))
+
+(datasets/expect-with-engine :cassandra
+  false
+  (driver/can-connect-with-details? :cassandra {:host "localhost"
+                                                :port 3000
+                                                :dbname "bad_db_name"}))
+
 
 
