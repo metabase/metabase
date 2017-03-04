@@ -80,6 +80,58 @@
                                    {:schema nil, :name (.getName tm)})))]
           {:tables (set tables)})))
 
+; {:schema nil, 
+;  :name size_estimates, 
+;  :fields #{{:name range_start,         :base-type text} 
+;            {:name mean_partition_size, :base-type bigint} 
+;            {:name partitions_count,    :base-type bigint} 
+;            {:name table_name,          :base-type text} 
+;            {:name range_end,           :base-type text} 
+;            {:name keyspace_name,       :base-type text}}}
+
+;---- from metabase
+; [[Boolean                        :type/Boolean]
+;  [Double                         :type/Float]
+;  [Float                          :type/Float]
+;  [Integer                        :type/Integer]
+;  [Long                           :type/Integer]
+;  [java.math.BigDecimal           :type/Decimal]
+;  [java.math.BigInteger           :type/BigInteger]
+;  [Number                         :type/Number]
+;  [String                         :type/Text]
+;  [java.sql.Date                  :type/Date]
+;  [java.sql.Timestamp             :type/DateTime]
+;  [java.util.Date                 :type/DateTime]
+;  [org.joda.time.DateTime         :type/DateTime]
+;  [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
+;  [clojure.lang.IPersistentMap    :type/Dictionary]
+;  [clojure.lang.IPersistentVector :type/Array]
+;  [org.bson.types.ObjectId        :type/MongoBSONID]
+;  [org.postgresql.util.PGobject   :type/*]])
+
+; --- from datastax driver
+; DataType (CQL)  Java Class
+; ASCII           String
+; BIGINT          Long
+; BLOB            ByteBuffer
+; BOOLEAN         Boolean
+; COUNTER         Long
+; CUSTOM          ByteBuffer
+; DECIMAL         BigDecimal
+; DOUBLE          Double
+; FLOAT           Float
+; INET            InetAddress
+; INT             Integer
+; LIST            List
+; MAP             Map
+; SET             Set
+; TEXT            String
+; TIMESTAMP       Date
+; UUID            UUID
+; VARCHAR         String
+; VARINT          BigInteger
+; TIMEUUID        UUID
+
 (defn- describe-table [database table]
   (with-cassandra-connection [^SessionManager conn database]
     (let [tbl (-> table :name)
@@ -89,13 +141,18 @@
                            (.getKeyspace "system")
                            (.getTable tbl)
                            .getColumns)
-          fields-meta (->> columns-meta
-                            (map (fn [column] 
-                                     {:name      (.. column getName)
-                                      :base-type (.. column getType getName toString)})))]
-          {:schema nil 
-           :name   tbl
-           :fields fields-meta})))
+          fields-meta  (->> columns-meta
+                            (map (fn [column]
+                                     (let [name      (.. column getName)
+                                           jklass    (.. column getType getName asJavaClass)
+                                           base-type (driver/class->base-type jklass)] 
+                                           {:name      name     
+                                            :base-type base-type}))))
+          res {:schema nil 
+               :name   tbl
+               :fields (set fields-meta)}
+          _ (println res)]
+          res)))
           
 
 (defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
