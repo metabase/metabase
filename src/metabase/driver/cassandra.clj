@@ -35,13 +35,68 @@
 ; Metadata metadata = cluster.getMetadata();
 ; System.out.println(String.format("Connected to cluster '%s' on %s.", metadata.getClusterName(), metadata.getAllHosts()));
 
+; system.schema_keyspaces
+; system.schema_columns
+
+; (defn- meta->tables [conn keyspace]
+;   (-> conn
+;       .getCluster
+;       .getMetadata
+;       (.getKeyspace keyspace)
+;       .getTables)
+;   )
+
+; {:tables #{
+;   {:schema nil, :name size_estimates} 
+;   {:schema nil, :name schema_triggers} 
+;   {:schema nil, :name schema_keyspaces} 
+;   {:schema nil, :name compactions_in_progress} 
+;   {:schema nil, :name sstable_activity} 
+;   {:schema nil, :name IndexInfo} 
+;   {:schema nil, :name schema_functions} 
+;   {:schema nil, :name schema_columns} 
+;   {:schema nil, :name schema_aggregates} 
+;   {:schema nil, :name local} 
+;   {:schema nil, :name schema_columnfamilies} 
+;   {:schema nil, :name schema_usertypes} 
+;   {:schema nil, :name peers} 
+;   {:schema nil, :name available_ranges} 
+;   {:schema nil, :name paxos} 
+;   {:schema nil, :name hints} 
+;   {:schema nil, :name peer_events} 
+;   {:schema nil, :name compaction_history} 
+;   {:schema nil, :name range_xfers} 
+;   {:schema nil, :name batchlog}}}
+
 (defn- describe-database [database]
-  {:schema nil
-   :name   "xxx"
-   :fields (set ["field_1" "field_2"])})
+  (with-cassandra-connection [^SessionManager conn database]
+    (let [tables-meta (-> conn
+                          .getCluster
+                          .getMetadata
+                          (.getKeyspace "system")
+                          .getTables)
+          tables      (->> tables-meta
+                          (map (fn [tm] 
+                                   {:schema nil, :name (.getName tm)})))]
+          {:tables (set tables)})))
 
 (defn- describe-table [database table]
-  (throw (ex-info "MJ - Need describe-table ....." {})))
+  (with-cassandra-connection [^SessionManager conn database]
+    (let [tbl (-> table :name)
+          columns-meta (-> conn
+                           .getCluster
+                           .getMetadata
+                           (.getKeyspace "system")
+                           (.getTable tbl)
+                           .getColumns)
+          fields-meta (->> columns-meta
+                            (map (fn [column] 
+                                     {:name      (.. column getName)
+                                      :base-type (.. column getType getName toString)})))]
+          {:schema nil 
+           :name   tbl
+           :fields fields-meta})))
+          
 
 (defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
   (throw (ex-info "MJ - Need field-values-lazy-seq ....." {})))  

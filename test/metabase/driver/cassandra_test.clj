@@ -50,16 +50,23 @@
   (driver/can-connect-with-details? :cassandra {:host "localhost"
                                                 :dbname "metabase_test"}))
 
+; uknown IP
 (datasets/expect-with-engine :cassandra
   false
   (driver/can-connect-with-details? :cassandra {:host "123.4.5.6"
                                                 :dbname "bad_db_name"}))
 
+; wrong port
 (datasets/expect-with-engine :cassandra
   false
   (driver/can-connect-with-details? :cassandra {:host "localhost"
                                                 :port 3000
                                                 :dbname "bad_db_name"}))
+
+
+(datasets/expect-with-engine :cassandra
+  {}
+  (driver/describe-database (CassandraDriver.) (data/db)))
 
 
 

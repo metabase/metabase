@@ -1,7 +1,8 @@
 (ns metabase.test.data.cassandra
-  (:require (monger [collection :as mc]
-                    [core :as mg])
-            metabase.driver.mongo
+  (:require [clojurewerkz.cassaforte.client :as cc]
+            [clojurewerkz.cassaforte.cql    :as cql]
+            [clojurewerkz.cassaforte.query :refer :all]
+            [metabase.driver.cassandra]
             [metabase.driver.cassandra.util :refer [with-cassandra-connection]]
             [metabase.test.data.interface :as i]
             [metabase.util :as u])
@@ -9,22 +10,35 @@
 
 (defn- database->connection-details
   ([dbdef]
-   (throw (ex-info "MJ - Need database->connection-details 1a....." {})))
+   (assert (some? dbdef) "Please provide database definition")
+   {:dbname (i/escaped-name dbdef)
+    :host   "localhost"
+    ; TODO get port?
+    })
   ([_ _ dbdef]
-   (throw (ex-info "MJ - Need database->connection-details 1b ....." {}))))
+   (database->connection-details dbdef)))
 
 (defn- destroy-db! [dbdef]
-  (throw (ex-info "MJ - Need destroy-db! 1a....." {})))
+  (let [{:keys [host dbname]} (database->connection-details dbdef)]
+       (with-open [cassandra-connection (cc/connect [host] {:port 9042})]
+          (println "-- try destroy db")
+          (println host)
+          (println dbname)
+          (println cassandra-connection)
+          (try (cql/drop-keyspace cassandra-connection dbname)
+               (catch Exception _ nil)))))
 
 (defn- create-db! [{:keys [table-definitions], :as dbdef}]
-  (throw (ex-info "MJ - Need create-db! 1a....." {})))
+  (println "---xx -- try create db")
+  (destroy-db! dbdef)
+  )
 
 (u/strict-extend CassandraDriver
   i/IDatasetLoader
   (merge i/IDatasetLoaderDefaultsMixin
-         {:create-db!                   (u/drop-first-arg create-db!)
+         {:engine                       (constantly :cassandra)
+          :create-db!                   (u/drop-first-arg create-db!)
           :database->connection-details database->connection-details
-          :engine                       (constantly :cassandra)
           :format-name                  (fn [_ table-or-field-name]
                                           (if (= table-or-field-name "id")
                                             "_id"
