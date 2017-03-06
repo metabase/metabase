@@ -1,6 +1,7 @@
 (ns metabase.events.revision-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             [metabase.events.revision :refer [process-revision-event]]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
@@ -38,7 +39,9 @@
    :display                "table"
    :visualization_settings {}
    :collection_id          nil
-   :archived               false})
+   :archived               false
+   :public_uuid            nil
+   :made_public_by_id      nil})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil
@@ -46,7 +49,7 @@
 
 
 ;; :card-create
-(tu/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
+(tt/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
   {:model        "Card"
    :model_id     card-id
    :user_id      (user->id :crowberto)
@@ -62,7 +65,7 @@
 
 
 ;; :card-update
-(tu/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
+(tt/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
   {:model        "Card"
    :model_id     card-id
    :user_id      (user->id :crowberto)
@@ -78,7 +81,7 @@
 
 
 ;; :dashboard-create
-(tu/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
+(tt/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :rasta)
@@ -94,7 +97,7 @@
 
 
 ;; :dashboard-update
-(tu/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
+(tt/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :rasta)
@@ -110,7 +113,7 @@
 
 
 ;; :dashboard-add-cards
-(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+(tt/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
                       Card          [{card-id :id}                     (card-properties)]
                       DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
@@ -130,7 +133,7 @@
 
 
 ;; :dashboard-remove-cards
-(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+(tt/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
                       Card          [{card-id :id}                     (card-properties)]
                       DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
@@ -140,7 +143,7 @@
    :is_reversion false
    :is_creation  false}
   (do
-    (db/delete! DashboardCard, :id (:id dashcard))
+    (db/simple-delete! DashboardCard, :id (:id dashcard))
     (process-revision-event {:topic :dashboard-remove-cards
                              :item  {:id       dashboard-id
                                      :actor_id (user->id :rasta)
@@ -151,7 +154,7 @@
 
 
 ;; :dashboard-reposition-cards
-(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+(tt/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
                       Card          [{card-id :id}                     (card-properties)]
                       DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
@@ -193,7 +196,7 @@
    :is_reversion false
    :is_creation  true
    :message      nil}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Metric   [metric       {:table_id id, :definition {:a "b"}}]]
     (process-revision-event {:topic :metric-create
@@ -219,7 +222,7 @@
    :is_reversion false
    :is_creation  false
    :message      "updated"}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Metric   [metric       {:table_id id, :definition {:a "b"}}]]
     (process-revision-event {:topic :metric-update
@@ -246,7 +249,7 @@
    :is_reversion false
    :is_creation  false
    :message      nil}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Metric   [metric       {:table_id id, :definition {:a "b"}, :is_active false}]]
     (process-revision-event {:topic :metric-delete
@@ -270,7 +273,7 @@
    :is_reversion false
    :is_creation  true
    :message      nil}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [segment      {:table_id   id
                                           :definition {:a "b"}}]]
@@ -295,7 +298,7 @@
    :is_reversion false
    :is_creation  false
    :message      "updated"}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table [{:keys [id]} {:db_id database-id}]
                   Segment [segment {:table_id   id
                                     :definition {:a "b"}}]]
@@ -321,7 +324,7 @@
    :is_reversion false
    :is_creation  false
    :message      nil}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [segment      {:table_id   id
                                           :definition {:a "b"}

@@ -69,6 +69,7 @@ export default class UserGroupSelect extends Component {
                     </div>
                 }
                 triggerClasses="AdminSelectBorderless py1"
+                sizeToFit
             >
                 <GroupSelect
                     groups={groups}

@@ -8,7 +8,7 @@ declare module "underscore" {
   declare function clone<T>(obj: T): T;
 
   declare function isEqual(a: any, b: any): boolean;
-  declare function range(a: number, b: number): Array<number>;
+  declare function range(a: number, b?: number): Array<number>;
   declare function extend<S, T>(o1: S, o2: T): S & T;
 
   declare function zip<S, T>(a1: S[], a2: T[]): Array<[S, T]>;
@@ -44,12 +44,19 @@ declare module "underscore" {
   declare function min<T>(a: Array<T>|{[key:any]: T}): T;
   declare function max<T>(a: Array<T>|{[key:any]: T}): T;
 
-  declare function uniq<T>(a: T[], isSorted?: boolean, iteratee?: (val: T) => boolean): T[];
+  declare function uniq<T>(a: T[], iteratee?: (val: T) => boolean): T[];
+  declare function uniq<T>(a: T[], isSorted: boolean, iteratee?: (val: T) => boolean): T[];
 
   declare function values<T>(o: {[key: any]: T}): T[];
-  declare function omit<T>(o: {[key: any]: T}, ...properties: string[]): T;
+  declare function omit(o: {[key: any]: any}, ...properties: string[]): {[key: any]: any};
+  declare function omit(o: {[key: any]: any}, predicate: (val: any, key: any, object: {[key: any]: any})=>boolean): {[key: any]: any};
+  declare function pick(o: {[key: any]: any}, ...properties: string[]): {[key: any]: any};
+  declare function pick(o: {[key: any]: any}, predicate: (val: any, key: any, object: {[key: any]: any})=>boolean): {[key: any]: any};
+  declare function pluck(o: Array<{[key: any]: any}>, propertyNames: string): Array<any>;
 
   declare function flatten(a: Array<any>): Array<any>;
+
+  declare function debounce<T: (any) => any>(func: T): T;
 
   // TODO: improve this
   declare function chain<S>(obj: S): any;

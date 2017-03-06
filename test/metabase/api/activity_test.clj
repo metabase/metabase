@@ -1,14 +1,15 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-vars], :as tu]
+            [metabase.test.util :refer [match-$ resolve-private-vars], :as tu]
             [metabase.util :as u]))
 
 ;; GET /
@@ -18,7 +19,7 @@
 ;;  2. :user and :model_exists are hydrated
 
 ;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(tu/expect-with-temp [Activity [activity1 {:topic     "install"
+(tt/expect-with-temp [Activity [activity1 {:topic     "install"
                                            :details   {}
                                            :timestamp (u/->Timestamp "2015-09-09T12:13:14.888Z")}]
                       Activity [activity2 {:topic     "dashboard-create"
@@ -94,7 +95,7 @@
       :custom_id    nil
       :details      $})]
   ;; clear any other activities from the DB just in case; not sure this step is needed any more
-  (do (db/cascade-delete! Activity :id [:not-in #{(:id activity1)
+  (do (db/delete! Activity :id [:not-in #{(:id activity1)
                                                   (:id activity2)
                                                   (:id activity3)}])
       (for [activity ((user->client :crowberto) :get 200 "activity")]
@@ -120,19 +121,19 @@
   ;; otherwise our records are out of order and this test fails :(
   (Thread/sleep 1000))
 
-(expect-with-temp [Card      [card1 {:name                   "rand-name"
-                                     :creator_id             (user->id :crowberto)
-                                     :display                "table"
-                                     :dataset_query          {}
-                                     :visualization_settings {}}]
-                   Dashboard [dash1 {:name         "rand-name"
-                                     :description  "rand-name"
-                                     :creator_id   (user->id :crowberto)}]
-                   Card      [card2 {:name                   "rand-name"
-                                     :creator_id             (user->id :crowberto)
-                                     :display                "table"
-                                     :dataset_query          {}
-                                     :visualization_settings {}}]]
+(tt/expect-with-temp [Card      [card1 {:name                   "rand-name"
+                                        :creator_id             (user->id :crowberto)
+                                        :display                "table"
+                                        :dataset_query          {}
+                                        :visualization_settings {}}]
+                      Dashboard [dash1 {:name         "rand-name"
+                                        :description  "rand-name"
+                                        :creator_id   (user->id :crowberto)}]
+                      Card      [card2 {:name                   "rand-name"
+                                        :creator_id             (user->id :crowberto)
+                                        :display                "table"
+                                        :dataset_query          {}
+                                        :visualization_settings {}}]]
   [{:cnt          1
     :user_id      (user->id :crowberto)
     :model        "card"
@@ -192,14 +193,14 @@
   (activities->referenced-objects fake-activities))
 
 
-(expect-with-temp [Dashboard [{dashboard-id :id}]]
+(tt/expect-with-temp [Dashboard [{dashboard-id :id}]]
   {"dashboard" #{dashboard-id}, "card" nil}
   (referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
                                          "card"      #{0}}))
 
 
-(expect-with-temp [Dashboard [{dashboard-id :id}]
-                   Card      [{card-id :id}]]
+(tt/expect-with-temp [Dashboard [{dashboard-id :id}]
+                      Card      [{card-id :id}]]
   [{:model "dashboard", :model_id dashboard-id, :model_exists true}
    {:model "card",      :model_id 0,            :model_exists false}
    {:model "dashboard", :model_id 0,            :model_exists false, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id, :exists true}

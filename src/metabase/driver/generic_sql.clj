@@ -59,11 +59,6 @@
   (date [this, ^Keyword unit, field-or-value]
     "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
-  (date-string->literal [this, ^String date-string]
-    "*OPTIONAL*. Return an appropriate HoneySQL form to represent a DATE-STRING literal.
-     The default implementation is just `hx/literal`; in other words, it just single-quotes DATE-STRING. Some drivers like BigQuery or Oracle need to do something more advanced.
-     (This is used for the implementation of SQL parameters).")
-
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
@@ -83,6 +78,17 @@
      returns the *unqualified* name of `Field`.
 
      Return `nil` to prevent FIELD from being aliased.")
+
+  (prepare-sql-param [this obj]
+    "*OPTIONAL*. Do any neccesary type conversions, etc. to an object being passed as a prepared statment argument in a parameterized raw SQL query.
+     For example, a raw SQL query with a date param, `x`, e.g. `WHERE date > {{x}}`, is converted to SQL like `WHERE date > ?`, and the value of
+     `x` is passed as a `java.sql.Timestamp`. Some databases, notably SQLite, don't work with `Timestamps`, and dates must be passed as string literals
+     instead; the SQLite driver overrides this method to convert dates as needed.
+
+  The default implementation is `identity`.
+
+  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because other functions like `prepare-value` are
+  used for similar purposes; at some point in the future, we might be able to combine them into a single method used in both places.")
 
   (prepare-value [this, ^Value value]
     "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a HoneySQL form. By default, this returns VALUE's `:value` as-is, which
@@ -121,8 +127,8 @@
   (result-set-read-column [x _ _] (PersistentVector/adopt x)))
 
 
-(def ^:dynamic ^:private connection-pools
-  "A map of our currently open connection pools, keyed by DATABASE `:id`."
+(def ^:dynamic ^:private database-id->connection-pool
+  "A map of our currently open connection pools, keyed by Database `:id`."
   (atom {}))
 
 (defn- create-connection-pool
@@ -141,10 +147,10 @@
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
    the assumption that the connection details have changed."
   [_ {:keys [id]}]
-  (when-let [pool (get @connection-pools id)]
+  (when-let [pool (get @database-id->connection-pool id)]
     (log/debug (u/format-color 'red "Closing connection pool for database %d ..." id))
     ;; remove the cached reference to the pool so we don't try to use it anymore
-    (swap! connection-pools dissoc id)
+    (swap! database-id->connection-pool dissoc id)
     ;; now actively shut down the pool so that any open connections are closed
     (.close ^ComboPooledDataSource (:datasource pool))))
 
@@ -152,12 +158,12 @@
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
    Theses connection pools are cached so we don't create multiple ones to the same DB."
   [{:keys [id], :as database}]
-  (if (contains? @connection-pools id)
+  (if (contains? @database-id->connection-pool id)
     ;; we have an existing pool for this database, so use it
-    (get @connection-pools id)
+    (get @database-id->connection-pool id)
     ;; create a new pool and add it to our cache, then return it
     (u/prog1 (create-connection-pool database)
-      (swap! connection-pools assoc id <>))))
+      (swap! database-id->connection-pool assoc id <>))))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
@@ -210,10 +216,8 @@
     (into [(hx/unescape-dots sql)] args)))
 
 (defn- qualify+escape ^clojure.lang.Keyword
-  ([table]
-   (hx/qualify-and-escape-dots (:schema table) (:name table)))
-  ([table field]
-   (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
+  ([table]       (hx/qualify-and-escape-dots (:schema table) (:name table)))
+  ([table field] (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
 
 
 (defn- query
@@ -323,6 +327,7 @@
 
 ;;; ## Database introspection methods used by sync process
 
+;; TODO - clojure.java.jdbc now ships with a `metadata-query` function we could use here. See #2918
 (defmacro with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
   [[binding _ database] & body]
@@ -416,7 +421,7 @@
   (require 'metabase.driver.generic-sql.query-processor)
   {:active-tables        fast-active-tables
    :apply-aggregation    (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
-   :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
+   :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)    ; underlying impl changes we won't have to reload all the drivers
    :apply-fields         (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
    :apply-filter         (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
    :apply-join-tables    (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
@@ -425,11 +430,11 @@
    :apply-page           (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :column->special-type (constantly nil)
    :current-datetime-fn  (constantly :%now)
-   :date-string->literal (u/drop-first-arg hx/literal)
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
    :field-percent-urls   fast-field-percent-urls
+   :prepare-sql-param    (u/drop-first-arg identity)
    :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
    :set-timezone-sql     (constantly nil)

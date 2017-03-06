@@ -1,24 +1,41 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 import { findDOMNode } from 'react-dom';
 
 import FilterWidget from './FilterWidget.jsx';
 
-export default class FilterList extends Component {
-    constructor(props, context) {
-        super(props, context);
+import type { Filter } from "metabase/meta/types/Query";
+import type { Table } from "metabase/meta/types/Table";
+
+type Props = {
+    filters: Array<Filter>,
+    tableMetadata: Table,
+    removeFilter: (index: number) => void,
+    updateFilter: (index: number, filter: Filter) => void,
+    maxDisplayValues?: bool
+};
+
+type State = {
+    shouldScroll: bool
+};
+
+export default class FilterList extends Component<*, Props, State> {
+    props: Props;
+    state: State;
+
+    constructor(props: Props) {
+        super(props);
         this.state = {
           shouldScroll: false
         };
     }
 
-    static propTypes = {};
-    static defaultProps = {};
-
     componentDidUpdate () {
       this.state.shouldScroll ? (findDOMNode(this).scrollLeft = findDOMNode(this).scrollWidth) : null;
     }
 
-    componentWillReceiveProps (nextProps) {
+    componentWillReceiveProps (nextProps: Props) {
       // only scroll when a filter is added
       if(nextProps.filters.length > this.props.filters.length) {
         this.setState({ shouldScroll: true })

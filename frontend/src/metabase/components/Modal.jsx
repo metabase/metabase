@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import cx from "classnames";
 
+import { getScrollX, getScrollY } from "metabase/lib/dom";
+
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 import { Motion, spring } from "react-motion";
 
@@ -117,8 +119,8 @@ export class FullPageModal extends Component {
         document.querySelector('body').appendChild(this._modalElement);
 
         // save the scroll position, scroll to the top left, and disable scrolling
-        this._scrollX = window.scrollX;
-        this._scrollY = window.scrollY;
+        this._scrollX = getScrollX();
+        this._scrollY = getScrollY();
         window.scrollTo(0,0);
         document.body.style.overflow = "hidden";
 

@@ -1,8 +1,15 @@
+/* @flow */
+
 import React from "react";
 
 import Input from "metabase/components/Input.jsx";
 
-const NumericInput = ({ value, onChange, ...props }) =>
+type Props = {
+    value: ?(number|string);
+    onChange: (value: ?number) => void
+}
+
+const NumericInput = ({ value, onChange, ...props }: Props) =>
     <Input
         value={value == null ? "" : String(value)}
         onBlurChange={({ target: { value }}) => {

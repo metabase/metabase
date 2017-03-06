@@ -1,9 +1,10 @@
 (ns metabase.models.pulse-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
+            [toucan.util.test :as tt]
             (metabase.models [card :refer [Card]]
-                             [hydrate :refer :all]
                              [pulse :refer :all]
                              [pulse-card :refer :all]
                              [pulse-channel :refer :all]
@@ -58,7 +59,7 @@
                     :recipients     [{:email "foo@bar.com"}
                                      (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}]
    :skip_if_empty false}
-  (tu/with-temp* [Pulse        [{pulse-id :id}               {:name "Lodi Dodi"}]
+  (tt/with-temp* [Pulse        [{pulse-id :id}               {:name "Lodi Dodi"}]
                   PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id
                                                               :details  {:other  "stuff"
                                                                          :emails ["foo@bar.com"]}}]
@@ -81,7 +82,7 @@
    #{"card2"}
    #{"card2" "card1"}
    #{"card1" "card3"}]
-  (tu/with-temp* [Pulse [{pulse-id :id}]
+  (tt/with-temp* [Pulse [{pulse-id :id}]
                   Card  [{card-id-1 :id} {:name "card1"}]
                   Card  [{card-id-2 :id} {:name "card2"}]
                   Card  [{card-id-3 :id} {:name "card3"}]]
@@ -105,7 +106,7 @@
    :schedule_frame nil
    :recipients    [{:email "foo@bar.com"}
                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}
-  (tu/with-temp Pulse [{:keys [id]}]
+  (tt/with-temp Pulse [{:keys [id]}]
     (update-pulse-channels! {:id id} [{:enabled       true
                                        :channel_type  :email
                                        :schedule_type :daily
@@ -132,7 +133,7 @@
                     :description nil
                     :display     :table}]
    :skip_if_empty false}
-  (tu/with-temp Card [{:keys [id]} {:name "Test Card"}]
+  (tt/with-temp Card [{:keys [id]} {:name "Test Card"}]
     (create-pulse-then-select! "Booyah!"
                                (user->id :rasta)
                                [id]
@@ -168,7 +169,7 @@
                     :recipients     [{:email "foo@bar.com"}
                                      (dissoc (user-details :crowberto) :is_superuser :is_qbnewb)]}]
    :skip_if_empty false}
-  (tu/with-temp* [Pulse [{pulse-id :id}]
+  (tt/with-temp* [Pulse [{pulse-id :id}]
                   Card  [{card-id-1 :id} {:name "Test Card"}]
                   Card  [{card-id-2 :id} {:name "Bar Card", :display :bar}]]
     (update-pulse-then-select! {:id            pulse-id

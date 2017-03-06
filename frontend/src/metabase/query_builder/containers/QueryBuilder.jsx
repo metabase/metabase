@@ -7,7 +7,6 @@ import _ from "underscore";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 
-import NotFound from "metabase/components/NotFound.jsx";
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
 import QueryHeader from "../components/QueryHeader.jsx";
@@ -32,12 +31,14 @@ import {
     tableForeignKeys,
     tableForeignKeyReferences,
     uiControls,
-    getParameters,
+    getParametersWithValues,
     getDatabaseFields,
     getSampleDatasetId,
     getNativeDatabases,
     getIsRunnable,
 } from "../selectors";
+
+import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
 import { push } from "react-router-redux";
@@ -66,9 +67,8 @@ function autocompleteResults(card, prefix) {
 
 const mapStateToProps = (state, props) => {
     return {
-        user:                      state.currentUser,
+        isAdmin:                   getUserIsAdmin(state, props),
         fromUrl:                   props.location.query.from,
-        location:                  props.location,
 
         card:                      card(state),
         originalCard:              originalCard(state),
@@ -85,7 +85,7 @@ const mapStateToProps = (state, props) => {
         isNew:                     isNew(state),
         isObjectDetail:            isObjectDetail(state),
         uiControls:                uiControls(state),
-        parameters:                getParameters(state),
+        parameters:                getParametersWithValues(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
 
@@ -126,7 +126,6 @@ export default class QueryBuilder extends Component {
 
     componentDidMount() {
         window.addEventListener("resize", this.handleResize);
-        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -158,7 +157,6 @@ export default class QueryBuilder extends Component {
         this.props.cancelQuery();
 
         window.removeEventListener("resize", this.handleResize);
-        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     // When the window is resized we need to re-render, mainly so that our visualization pane updates
@@ -171,25 +169,8 @@ export default class QueryBuilder extends Component {
         }
     }
 
-    handleKeyDown = (e) => {
-        const ENTER_KEY = 13;
-        if (e.keyCode === ENTER_KEY && e.metaKey && this.props.isRunnable) {
-            this.props.runQueryFn();
-        }
-    }
-
     render() {
         const { card, isDirty, databases, uiControls } = this.props;
-
-        // if we can't load the card that was intended then we end up with a 404
-        // TODO: we should do something more unique for is500
-        if (uiControls.is404 || uiControls.is500) {
-            return (
-                <div className="flex flex-column flex-full layout-centered">
-                    <NotFound />
-                </div>
-            );
-        }
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -210,12 +191,14 @@ export default class QueryBuilder extends Component {
                         { card && card.dataset_query && card.dataset_query.type === "native" ?
                             <NativeQueryEditor {...this.props} isOpen={!card.dataset_query.native.query || isDirty} />
                         :
-                            <div className="wrapper"><GuiQueryEditor {...this.props}/></div>
+                            <div className="wrapper">
+                                <GuiQueryEditor {...this.props}/>
+                            </div>
                         }
                     </div>
 
                     <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        <QueryVisualization {...this.props}/>
+                        <QueryVisualization {...this.props} />
                     </div>
                 </div>
 

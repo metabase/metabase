@@ -76,7 +76,7 @@ export default class QuestionIndex extends Component {
                     <div>
                         { collections.length > 0 ?
                             <CollectionButtons collections={collections} isAdmin={isAdmin} push={push} />
-                        :
+                            :
                             <CollectionEmptyState />
                         }
                     </div>
@@ -118,7 +118,9 @@ const CollectionEmptyState = () =>
             <div className="mt1">
                 Collections help you organize your questions and allow you to decide who gets to see what.
                 {" "}
-                <Link to="http://metabase.com/FIXME">Learn more</Link>
+                <a href="http://www.metabase.com/docs/latest/administration-guide/06-collections.html" target="_blank">
+                    Learn more
+                </a>
             </div>
         </div>
         <Link to="/collections/create">

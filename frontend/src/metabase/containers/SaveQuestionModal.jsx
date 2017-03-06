@@ -26,7 +26,7 @@ export default class SaveQuestionModal extends Component {
             valid: false,
             details: {
                 name: props.card.name || isStructured ? Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query) : "",
-                description: props.card.description || null,
+                description: props.card.description || '',
                 collection_id: props.card.collection_id || null,
                 saveType: props.originalCard ? "overwrite" : "create"
             }
@@ -227,7 +227,7 @@ export default class SaveQuestionModal extends Component {
                                                 <Option
                                                     key={index}
                                                     value={collection.id}
-                                                    icon={collection.id != null && "collection"}
+                                                    icon={collection.id != null ? "collection" : null}
                                                     iconColor={collection.color}
                                                     iconSize={18}
                                                 >

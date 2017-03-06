@@ -2,8 +2,9 @@
   "Code related to creating / managing fake `Users` for testing purposes."
   ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
-            (metabase [db :as db]
-                      [http-client :as http])
+            [toucan.db :as db]
+            [metabase.core :as core]
+            [metabase.http-client :as http]
             (metabase.models [permissions-group :as perms-group]
                              [user :refer [User]])
             [metabase.util :as u]
@@ -51,6 +52,9 @@
       :or {superuser false
            active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
+  (when-not (core/initialized?)
+    (println "Metabase is not yet initialized, waiting 5 seconds...")
+    (Thread/sleep 5000))
   (or (User :email email)
       (db/insert! User
         :email        email
@@ -63,15 +67,24 @@
 
 
 (defn fetch-user
-  "Fetch the User object associated with USERNAME.
+  "Fetch the User object associated with USERNAME. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
   [username]
   {:pre [(contains? usernames username)]}
   (m/mapply fetch-or-create-user! (user->info username)))
 
-(def user->id
-  "Memoized fn that returns the ID of User associated with USERNAME.
+(defn create-users-if-needed!
+  "Force creation of the test users if they don't already exist."
+  ([]
+   (apply create-users-if-needed! usernames))
+  ([& usernames]
+   (doseq [username usernames]
+     ;; fetch-user will force creation of users
+     (fetch-user username))))
+
+(def ^{:arglists '([username])} user->id
+  "Memoized fn that returns the ID of User associated with USERNAME. Creates user if needed.
 
     (user->id :rasta) -> 4"
   (memoize
@@ -87,7 +100,7 @@
   {:pre [(contains? usernames username)]}
   (select-keys (user->info username) [:email :password]))
 
-(def id->user
+(def ^{:arglists '([id])} id->user
   "Reverse of `user->id`.
 
     (id->user 4) -> :rasta"
@@ -103,6 +116,17 @@
         (swap! tokens assoc username <>))
       (throw (Exception. (format "Authentication failed for %s with credentials %s" username (user->credentials username))))))
 
+(defn- client-fn [username & args]
+  (try
+    (apply http/client (username->token username) args)
+    (catch Throwable e
+      (let [{:keys [status-code]} (ex-data e)]
+        (when-not (= status-code 401)
+          (throw e))
+        ;; If we got a 401 unauthenticated clear the tokens cache + recur
+        (reset! tokens {})
+        (apply client-fn username args)))))
+
 ;; TODO - does it make sense just to make this a non-higher-order function? Or a group of functions, e.g.
 ;; (GET :rasta 200 "field/10/values")
 ;; vs.
@@ -113,22 +137,12 @@
 
      ((user->client) :get 200 \"meta/table\")"
   [username]
-  ;; Force lazy creation of User if need be
-  (user->id username)
-  (fn client-fn [& args]
-    (try
-      (apply http/client (username->token username) args)
-      (catch Throwable e
-        (let [{:keys [status-code]} (ex-data e)]
-          (when-not (= status-code 401)
-            (throw e))
-          ;; If we got a 401 unauthenticated clear the tokens cache + recur
-          (reset! tokens {})
-          (apply client-fn args))))))
+  (create-users-if-needed! username)
+  (partial client-fn username))
 
 
-(defn delete-temp-users!
+(defn ^:deprecated delete-temp-users!
   "Delete all users besides the 4 persistent test users.
    This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to remove this. (TODO)"
   []
-  (db/cascade-delete! 'User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))
+  (db/delete! 'User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))

@@ -1,7 +1,7 @@
 (ns metabase.models.dependency
   (:require [clojure.set :as set]
-            [metabase.db :as db]
-            [metabase.models.interface :as i]
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.util :as u]))
 
 (defprotocol IDependent
@@ -18,7 +18,7 @@
 
 ;;; # Dependency Entity
 
-(i/defentity Dependency :dependency)
+(models/defmodel Dependency :dependency)
 
 
 ;;; ## Persistence Functions
@@ -27,14 +27,14 @@
 (defn retrieve-dependencies
   "Get the list of dependencies for a given object."
   [entity id]
-  {:pre [(i/metabase-entity? entity)
+  {:pre [(models/model? entity)
          (integer? id)]}
   (db/select Dependency, :model (:name entity), :model_id id))
 
 (defn update-dependencies!
   "Update the set of `Dependency` objects for a given entity."
   [entity id deps]
-  {:pre [(i/metabase-entity? entity)
+  {:pre [(models/model? entity)
          (integer? id)
          (map? deps)]}
   (let [entity-name      (:name entity)
@@ -56,7 +56,7 @@
     (when (seq dependencies-)
       (doseq [{:keys [dependent_on_model dependent_on_id]} dependencies-]
         ;; batch delete would be nice here, but it's tougher with multiple conditions
-        (db/delete! Dependency
+        (db/simple-delete! Dependency
           :model              entity-name
           :model_id           id
           :dependent_on_model dependent_on_model

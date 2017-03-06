@@ -4,20 +4,21 @@
             [schema.core :as s]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard], :as dashboard]
                              [dashboard-card :refer [DashboardCard create-dashboard-card! update-dashboard-card! delete-dashboard-card!]]
-                             [interface :as models]
-                             [hydrate :refer [hydrate]])
-            [metabase.models.revision :as revision]
+                             [interface :as mi]
+                             [revision :as revision])
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su])
+  (:import java.util.UUID))
 
 
 (defn- dashboards-list [filter-option]
-  (filter models/can-read? (-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
+  (filter mi/can-read? (-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
                                                                  :all  true
                                                                  :mine [:= :creator_id *current-user-id*])
                                                      :order-by [:%lower.name]})
@@ -43,7 +44,7 @@
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
-  (if (models/can-read? card)
+  (if (mi/can-read? card)
     card
     (select-keys card [:id])))
 
@@ -79,8 +80,9 @@
   "Delete a `Dashboard`."
   [id]
   (let [dashboard (write-check Dashboard id)]
-    (u/prog1 (db/cascade-delete! Dashboard :id id)
-      (events/publish-event! :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))))
+    (db/delete! Dashboard :id id)
+    (events/publish-event! :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))
+  generic-204-no-content)
 
 
 (defendpoint POST "/:id/cards"
@@ -129,7 +131,7 @@
   (write-check Dashboard id)
   (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (check-500 (delete-dashboard-card! dashboard-card *current-user-id*))
-    {:success true}))
+    {:success true})) ; TODO - why doesn't this return a 204 'No Content' response?
 
 
 (defendpoint GET "/:id/revisions"
@@ -149,6 +151,41 @@
     :id          id
     :user-id     *current-user-id*
     :revision-id revision_id))
+
+
+;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
+
+(defendpoint POST "/:dashboard-id/public_link"
+  "Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links.
+   (If this Dashboard has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled."
+  [dashboard-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (read-check Dashboard dashboard-id)
+  {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
+             (u/prog1 (str (UUID/randomUUID))
+               (db/update! Dashboard dashboard-id
+                 :public_uuid       <>
+                 :made_public_by_id *current-user-id*)))})
+
+(defendpoint DELETE "/:dashboard-id/public_link"
+  "Delete the publically-accessible link to this Dashboard."
+  [dashboard-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil])
+  (db/update! Dashboard dashboard-id
+    :public_uuid       nil
+    :made_public_by_id nil)
+  {:status 204, :body nil})
+
+(defendpoint GET "/public"
+  "Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is enabled."
+  []
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil]))
 
 
 (define-routes)

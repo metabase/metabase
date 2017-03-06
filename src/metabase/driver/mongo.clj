@@ -8,7 +8,7 @@
                     [conversion :as conv]
                     [db :as mdb]
                     [query :as mq])
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])

@@ -3,26 +3,27 @@
             [cheshire.core :as json]
             [compojure.core :refer [GET POST DELETE PUT]]
             [schema.core :as s]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             (metabase.api [common :refer :all]
                           [dataset :as dataset-api]
                           [label :as label-api])
-            (metabase [db :as db]
-                      [events :as events])
-            (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer [Card], :as card]
+            [metabase.events :as events]
+            (metabase.models [card :refer [Card], :as card]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
                              [collection :refer [Collection]]
                              [common :as common]
                              [database :refer [Database]]
-                             [interface :as models]
+                             [interface :as mi]
                              [label :refer [Label]]
                              [permissions :as perms]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
             (metabase [query-processor :as qp]
                       [util :as u])
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su])
+  (:import java.util.UUID))
 
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
@@ -171,7 +172,7 @@
         :database (read-check Database model_id)
         :table    (read-check Database (db/select-one-field :db_id Table, :id model_id))))
     (->> (cards-for-filter-option f model_id label collection)
-         (filterv models/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
+         (filterv mi/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
 
 
 (defendpoint POST "/"
@@ -213,10 +214,17 @@
   [collection-id]
   (check-403 (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/collection-readwrite-path collection-id))))
 
+(defn check-data-permissions-for-query
+  "Check that we have *data* permissions to run the QUERY in question."
+  [query]
+  {:pre [(map? query)]}
+  (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set query :read))))
+
 (defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id], :as body} :body}]
   {name                   (s/maybe su/NonBlankString)
+   dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
    description            (s/maybe su/NonBlankString)
    visualization_settings (s/maybe su/Map)
@@ -226,9 +234,17 @@
     ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
     (when (and (not (nil? collection_id)) (not= (:collection_id card) collection_id))
       (check-permissions-for-collection collection_id))
+    ;; if the query is being modified, check that we have data permissions to run the query
+    (when (and dataset_query
+               (not= dataset_query (:dataset_query card)))
+      (check-data-permissions-for-query dataset_query))
+    ;; the same applies to unarchiving a Card: make sure we have data permissions for the Card query before doing so
+    (when (and (false? archived)
+               (:archived card))
+      (check-data-permissions-for-query (:dataset_query card)))
     ;; ok, now save the Card
     (db/update! Card id
-      (merge {:collection_id collection_id}
+      (merge (when (contains? body :collection_id)   {:collection_id          collection_id})
              (when-not (nil? dataset_query)          {:dataset_query          dataset_query})
              (when-not (nil? description)            {:description            description})
              (when-not (nil? display)                {:display                display})
@@ -242,16 +258,20 @@
                   ;; card was unarchived
                   (and (false? archived)
                        (:archived card))       :card-unarchive
-                  :else                        :card-update)]
-      (events/publish-event! event (assoc (Card id) :actor_id *current-user-id*)))))
+                  :else                        :card-update)
+          card   (assoc (Card id) :actor_id *current-user-id*)]
+      (events/publish-event! event card)
+      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with returned one -- See #4142
+      (hydrate card :creator :dashboard_count :labels :can_write :collection))))
 
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
   [id]
   (let [card (write-check Card id)]
-    (u/prog1 (db/cascade-delete! Card :id id)
-      (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))))
+    (db/delete! Card :id id)
+    (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))
+  generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
@@ -268,7 +288,8 @@
   [card-id]
   (read-check Card card-id)
   (let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
-    (db/cascade-delete! CardFavorite, :id id)))
+    (db/delete! CardFavorite, :id id))
+  generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ Editing Card Labels ------------------------------------------------------------
@@ -284,7 +305,7 @@
   (let [[labels-to-remove labels-to-add] (data/diff (set (db/select-field :label_id CardLabel :card_id card-id))
                                                     (set label_ids))]
     (when (seq labels-to-remove)
-      (db/cascade-delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
+      (db/delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
     (doseq [label-id labels-to-add]
       (db/insert! CardLabel :label_id label-id, :card_id card-id)))
   {:status :ok})
@@ -354,6 +375,41 @@
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
   (dataset-api/as-json (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+
+
+;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
+
+(defendpoint POST "/:card-id/public_link"
+  "Generate publically-accessible links for this Card. Returns UUID to be used in public links.
+   (If this Card has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled."
+  [card-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (check-not-archived (read-check Card card-id))
+  {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
+             (u/prog1 (str (UUID/randomUUID))
+               (db/update! Card card-id
+                 :public_uuid       <>
+                 :made_public_by_id *current-user-id*)))})
+
+(defendpoint DELETE "/:card-id/public_link"
+  "Delete the publically-accessible link to this Card."
+  [card-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (check-exists? Card :id card-id, :public_uuid [:not= nil])
+  (db/update! Card card-id
+    :public_uuid       nil
+    :made_public_by_id nil)
+  {:status 204, :body nil})
+
+(defendpoint GET "/public"
+  "Fetch a list of Cards with public UUIDs. These cards are publically-accessible *if* public sharing is enabled."
+  []
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 
 (define-routes)

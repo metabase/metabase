@@ -66,7 +66,7 @@ export default class ChoroplethMap extends Component {
         return cols.length > 1 && isString(cols[0]);
     }
 
-    static checkRenderable(cols, rows) {
+    static checkRenderable([{ data: { cols, rows} }]) {
         if (cols.length < 2) { throw new MinColumnsError(2, cols.length); }
     }
 
@@ -166,7 +166,7 @@ export default class ChoroplethMap extends Component {
             valuesMap[getRowKey(row)] = (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
         }
 
-        var colorScale = d3.scale.quantize().domain(d3.extent(rows, d => d[1])).range(HEAT_MAP_COLORS);
+        var colorScale = d3.scale.quantize().domain(d3.extent(rows, getRowValue)).range(HEAT_MAP_COLORS);
 
         let legendColors = HEAT_MAP_COLORS.slice();
         let legendTitles = HEAT_MAP_COLORS.map((color, index) => {

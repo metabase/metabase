@@ -4,9 +4,9 @@
             [schema.core :as s]
             [metabase.api.common :refer :all]
             [metabase.api.session :as session-api]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.email.messages :as email]
-            [metabase.models.user :refer [User create-user! set-user-password! set-user-password-reset-token! form-password-reset-url]]
+            [metabase.models.user :as user, :refer [User]]
             [metabase.util :as u]
             [metabase.util.schema :as su]))
 
@@ -47,7 +47,7 @@
     ;; this user already exists but is inactive, so simply reactivate the account
     (reactivate-user! existing-user first_name last_name)
     ;; new user account, so create it
-    (create-user! first_name last_name email, :password password, :send-welcome true, :invitor @*current-user*)))
+    (user/invite-user! first_name last_name email password @*current-user*)))
 
 
 (defendpoint GET "/current"
@@ -87,15 +87,18 @@
   {password su/ComplexPassword}
   (check-self-or-superuser id)
   (let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
-    (when (and (not (:is_superuser @*current-user*))
-               (= id *current-user-id*))
+    ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of `old_password` for them
+    ;; regular users have to know their password, however
+    (when-not (:is_superuser @*current-user*)
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
-  (set-user-password! id password)
+  (user/set-password! id password)
+  ;; return the updated User
   (User id))
 
 
+;; TODO - This could be handled by PUT /api/user/:id, we don't need a separate endpoint
 (defendpoint PUT "/:id/qbnewb"
-  "Indicate that a user has been informed about the vast intricacies of 'the' QueryBuilder."
+  "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [id]
   (check-self-or-superuser id)
   (check-500 (db/update! User id, :is_qbnewb false))
@@ -107,18 +110,17 @@
   [id]
   (check-superuser)
   (when-let [user (User :id id, :is_active true)]
-    (let [reset-token (set-user-password-reset-token! id)
+    (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
-          join-url    (str (form-password-reset-url reset-token) "#new")]
-      (email/send-new-user-email user @*current-user* join-url))))
+          join-url    (str (user/form-password-reset-url reset-token) "#new")]
+      (email/send-new-user-email! user @*current-user* join-url))))
 
 
 (defendpoint DELETE "/:id"
-  "Disable a `User`.  This does not remove the `User` from the db and instead disables their account."
+  "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
   [id]
   (check-superuser)
-  (check-500 (db/update! User id
-               :is_active false))
+  (check-500 (db/update! User id, :is_active false))
   {:success true})
 
 

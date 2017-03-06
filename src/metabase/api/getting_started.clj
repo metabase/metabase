@@ -2,8 +2,8 @@
   (:require [compojure.core :refer [GET]]
             [medley.core :as m]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
-            (metabase.models [interface :as models]
+            [toucan.db :as db]
+            (metabase.models [interface :as mi]
                              [setting :refer [defsetting]])))
 
 (defsetting getting-started-things-to-know
@@ -19,14 +19,14 @@
 (defendpoint GET "/"
   "Fetch basic info for the Getting Started guide."
   []
-  (let [metric-ids  (map :id (filter models/can-read? (db/select ['Metric :table_id :id]     :show_in_getting_started true, {:order-by [:%lower.name]})))
-        table-ids   (map :id (filter models/can-read? (db/select ['Table :db_id :schema :id] :show_in_getting_started true, {:order-by [:%lower.name]})))
-        segment-ids (map :id (filter models/can-read? (db/select ['Segment :table_id :id]    :show_in_getting_started true, {:order-by [:%lower.name]})))]
+  (let [metric-ids  (map :id (filter mi/can-read? (db/select ['Metric :table_id :id]     :show_in_getting_started true, {:order-by [:%lower.name]})))
+        table-ids   (map :id (filter mi/can-read? (db/select ['Table :db_id :schema :id] :show_in_getting_started true, {:order-by [:%lower.name]})))
+        segment-ids (map :id (filter mi/can-read? (db/select ['Segment :table_id :id]    :show_in_getting_started true, {:order-by [:%lower.name]})))]
     {:things_to_know           (getting-started-things-to-know)
      :contact                  {:name  (getting-started-contact-name)
                                 :email (getting-started-contact-email)}
      :most_important_dashboard (when-let [dashboard (db/select-one ['Dashboard :id] :show_in_getting_started true)]
-                                 (when (models/can-read? dashboard)
+                                 (when (mi/can-read? dashboard)
                                    (:id dashboard)))
      :important_metrics        metric-ids
      :important_tables         table-ids

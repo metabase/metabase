@@ -2,8 +2,8 @@
 
 import type { TableId } from "./Table";
 import type { FieldId } from "./Field";
+import type { SegmentId } from "./Segment";
 
-export type SegmentId = number;
 export type MetricId = number;
 
 export type ExpressionName = string;
@@ -19,11 +19,15 @@ export type RelativeDatetimePeriod = "current" | "last" | "next" | number;
 export type RelativeDatetimeUnit = "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
 export type DatetimeUnit = "default" | "minute" | "minute-of-hour" | "hour" | "hour-of-day" | "day" | "day-of-week" | "day-of-month" | "day-of-year" | "week" | "week-of-year" | "month" | "month-of-year" | "quarter" | "quarter-of-year" | "year";
 
+export type TemplateTagId = string;
+
 export type TemplateTag = {
-    name: string,
+    id:           TemplateTagId,
+    name:         string,
     display_name: string,
-    type: string,
-    dimension?: ["field-id", number]
+    type:         string,
+    dimension?:   ["field-id", number],
+    default?:     string,
 };
 
 export type NativeQuery = {
@@ -76,47 +80,38 @@ export type Breakout =
     ConcreteField;
 
 export type FilterClause = Filter;
-export type Filter =
+export type Filter = FieldFilter | CompoundFilter | NotFilter | SegmentFilter;
+
+export type CompoundFilter =
     AndFilter          |
-    OrFilter           |
-    NotFilter          |
-    EqualFilter        |
-    NEFilter           |
-    LTFilter           |
-    LTEFilter          |
-    GTFilter           |
-    GTEFilter          |
+    OrFilter;
+
+export type FieldFilter =
+    EqualityFilter     |
+    ComparisonFilter   |
+    BetweenFilter      |
+    StringFilter       |
     NullFilter         |
     NotNullFilter      |
-    NotNullFilter      |
-    BetweenFilter      |
     InsideFilter       |
-    StartsWithFilter   |
-    ContainsFilter     |
-    NotContainsFilter  |
-    EndsWithFilter     |
-    TimeIntervalFilter |
-    SegmentFilter;
+    TimeIntervalFilter;
 
-type AndFilter          = ["and", Filter, Filter];
-type OrFilter           = ["or", Filter, Filter];
-type NotFilter          = ["not", Filter];
-type EqualFilter        = ["=", ConcreteField, Value];
-type NEFilter           = ["!=", ConcreteField, Value];
-type LTFilter           = ["<", ConcreteField, OrderableValue];
-type LTEFilter          = ["<=", ConcreteField, OrderableValue];
-type GTFilter           = [">", ConcreteField, OrderableValue];
-type GTEFilter          = [">=", ConcreteField, OrderableValue];
-type NullFilter         = ["is-null", ConcreteField];
-type NotNullFilter      = ["not-null", ConcreteField];
-type BetweenFilter      = ["between", ConcreteField, OrderableValue, OrderableValue];
-type InsideFilter       = ["inside", ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral];
-type StartsWithFilter   = ["starts-with", ConcreteField, StringLiteral];
-type ContainsFilter     = ["contains", ConcreteField, StringLiteral];
-type NotContainsFilter  = ["does-not-contain", ConcreteField, StringLiteral];
-type EndsWithFilter     = ["ends-with", ConcreteField, StringLiteral];
-type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit];
-type SegmentFilter      = ["segment", SegmentId];
+export type AndFilter          = ["and", Filter, Filter];
+export type OrFilter           = ["or", Filter, Filter];
+
+export type NotFilter          = ["not", Filter];
+
+export type EqualityFilter     = ["="|"!=", ConcreteField, Value];
+export type ComparisonFilter   = ["<"|"<="|">="|">", ConcreteField, OrderableValue];
+export type BetweenFilter      = ["between", ConcreteField, OrderableValue, OrderableValue];
+export type StringFilter       = ["starts-with"|"contains"|"does-not-contain"|"ends-with", ConcreteField, StringLiteral];
+
+export type NullFilter         = ["is-null", ConcreteField];
+export type NotNullFilter      = ["not-null", ConcreteField];
+export type InsideFilter       = ["inside", ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral];
+export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit];
+
+export type SegmentFilter      = ["segment", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc"|"desc", Field];

@@ -1,10 +1,11 @@
 (ns metabase.models.field-values-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :refer :all]
-            [metabase.models.table :refer [Table]]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
+                             [field-values :refer :all]
+                             [table :refer [Table]])
             [metabase.test.util :as tu]))
 
 ;; ## TESTS FOR FIELD-SHOULD-HAVE-FIELD-VALUES?
@@ -39,13 +40,13 @@
 
 
 (expect
-  [[1,2,3]
-   {:status 204, :body nil}
+  [[1 2 3]
    nil]
-  (tu/with-temp* [Database    [{database-id :id}]
+  (tt/with-temp* [Database    [{database-id :id}]
                   Table       [{table-id :id} {:db_id database-id}]
                   Field       [{field-id :id} {:table_id table-id}]
                   FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
     [(db/select-one-field :values FieldValues, :field_id field-id)
-     (clear-field-values! field-id)
-     (db/select-one-field :values FieldValues, :field_id field-id)]))
+     (do
+       (clear-field-values! field-id)
+       (db/select-one-field :values FieldValues, :field_id field-id))]))

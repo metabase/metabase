@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
   (:require [expectations :refer :all]
+            [toucan.util.test :as tt]
             [metabase.driver :as driver]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor :as qp]
@@ -192,7 +193,7 @@
   [[2 119]
    [3  40]
    [4  25]]
-  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+  (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (format-rows-by [int int]
@@ -210,7 +211,7 @@
              [4  24]]
    :columns [(data/format-name "price")
              (driver/format-custom-field-name *driver* "My Cool Metric")]}
-  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+  (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (format-rows-by [int int]
@@ -228,7 +229,7 @@
              [4  24]]
    :columns [(data/format-name "price")
              (driver/format-custom-field-name *driver* "My Cool Metric")]}
-  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+  (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [[:sum [:field-id (data/id :venues :price)]]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (format-rows-by [int int]

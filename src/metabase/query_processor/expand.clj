@@ -6,9 +6,9 @@
                      [string :as str])
             [clojure.tools.logging :as log]
             [schema.core :as s]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.interface :refer [*driver*], :as i]
+            [metabase.query-processor.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su])
   (:import (metabase.query_processor.interface AgFieldRef
@@ -421,7 +421,15 @@
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
 
-;;; EXPRESSION PARSING
+;;; Metric & Segment handlers
+
+;; These *do not* expand the normal Metric and Segment macros used in normal queries; that's handled in `metabase.query-processor.macros` before
+;; this namespace ever even sees the query. But since the GA driver's queries consist of custom `metric` and `segment` clauses we need to at least
+;; accept them without barfing so we can expand a query in order to check what permissions it requires.
+;; TODO - in the future, we should just make these functions expand Metric and Segment macros for consistency with the rest of the MBQL clauses
+(defn ^:ql metric  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in `metabase.query-processor.macros`.)"   [& _])
+(defn ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
+
 
 ;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
 
@@ -501,3 +509,14 @@
   `(-> {}
        ~@body
        expand-inner))
+
+
+;;; ------------------------------------------------------------ Other Helper Fns ------------------------------------------------------------
+
+(defn is-clause?
+  "Check to see whether CLAUSE is an instance of the clause named by normalized CLAUSE-KEYWORD.
+
+     (is-clause? :field-id [\"FIELD-ID\" 2000]) ; -> true"
+  [clause-keyword clause]
+  (core/and (sequential? clause)
+            (core/= (normalize-token (first clause)) clause-keyword)))

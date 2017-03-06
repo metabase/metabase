@@ -2,9 +2,8 @@
 import _ from "underscore";
 import { mbqlEq } from "../query/util";
 
-import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
-
-export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
+import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
+export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
 
 const AGG_NAMES_MAP = new Map(Array.from(VALID_AGGREGATIONS).map(([short, displayName]) =>
     // case-insensitive

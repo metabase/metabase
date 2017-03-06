@@ -1,9 +1,11 @@
 import moment from "moment";
 import inflection from "inflection";
 
+import { mbqlEq } from "metabase/lib/query/util";
+
 export function computeFilterTimeRange(filter) {
     let expandedFilter;
-    if (filter[0] === "TIME_INTERVAL") {
+    if (mbqlEq(filter[0], "time-interval")) {
         expandedFilter = expandTimeIntervalFilter(filter);
     } else {
         expandedFilter = filter;
@@ -34,8 +36,8 @@ export function computeFilterTimeRange(filter) {
 export function expandTimeIntervalFilter(filter) {
     let [operator, field, n, unit] = filter;
 
-    if (operator !== "TIME_INTERVAL") {
-        throw new Error("translateTimeInterval expects operator TIME_INTERVAL");
+    if (!mbqlEq(operator, "time-interval")) {
+        throw new Error("translateTimeInterval expects operator 'time-interval'");
     }
 
     if (n === "current") {
@@ -46,16 +48,16 @@ export function expandTimeIntervalFilter(filter) {
         n = 1;
     }
 
-    field = ["datetime_field", field, "as", unit];
+    field = ["datetime-field", field, "as", unit];
 
     if (n < -1) {
-        return ["BETWEEN", field, ["relative_datetime", n-1, unit], ["relative_datetime", -1, unit]];
+        return ["BETWEEN", field, ["relative-datetime", n-1, unit], ["relative-datetime", -1, unit]];
     } else if (n > 1) {
-        return ["BETWEEN", field, ["relative_datetime", 1, unit], ["relative_datetime", n, unit]];
+        return ["BETWEEN", field, ["relative-datetime", 1, unit], ["relative-datetime", n, unit]];
     } else if (n === 0) {
-        return ["=", field, ["relative_datetime", "current"]];
+        return ["=", field, ["relative-datetime", "current"]];
     } else {
-        return ["=", field, ["relative_datetime", n, unit]];
+        return ["=", field, ["relative-datetime", n, unit]];
     }
 }
 
@@ -63,7 +65,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
     let [operator, field, ...values] = filter;
     let bucketing = parseFieldBucketing(field);
 
-    if (operator === "TIME_INTERVAL") {
+    if (mbqlEq(operator, "time-interval")) {
         let [n, unit] = values;
         return generateTimeIntervalDescription(n, unit);
     } else {
@@ -113,7 +115,7 @@ export function generateTimeValueDescription(value, bucketing) {
         } else {
             return m.format("MMMM D, YYYY");
         }
-    } else if (Array.isArray(value) && value[0] === "relative_datetime") {
+    } else if (Array.isArray(value) && mbqlEq(value[0], "relative-datetime")) {
         let n = value[1];
         let unit = value[2];
 
@@ -147,7 +149,7 @@ export function formatBucketing(bucketing) {
 export function absolute(date) {
     if (typeof date === "string") {
         return moment(date);
-    } else if (Array.isArray(date) && date[0] === "relative_datetime") {
+    } else if (Array.isArray(date) && mbqlEq(date[0], "relative-datetime")) {
         return moment().add(date[1], date[2]);
     } else {
         console.warn("Unknown datetime format", date);
@@ -156,9 +158,9 @@ export function absolute(date) {
 
 export function parseFieldBucketing(field, defaultUnit = null) {
     if (Array.isArray(field)) {
-        if (field[0] === "datetime_field") {
+        if (mbqlEq(field[0], "datetime-field")) {
             return field[3];
-        } if (field[0] === "fk->" || field[0] === "field-id") {
+        } if (mbqlEq(field[0], "fk->") || mbqlEq(field[0], "field-id")) {
             return defaultUnit;
         } else {
             console.warn("Unknown field format", field);
@@ -171,9 +173,9 @@ export function parseFieldTarget(field) {
     if (Number.isInteger(field)) return field;
 
     if (Array.isArray(field)) {
-        if (field[0] === "field-id")       return field[1];
-        if (field[0] === "fk->")           return field[1];
-        if (field[0] === "datetime_field") return parseFieldTarget(field[1]);
+        if (mbqlEq(field[0], "field-id"))       return field[1];
+        if (mbqlEq(field[0], "fk->"))           return field[1];
+        if (mbqlEq(field[0], "datetime-field")) return parseFieldTarget(field[1]);
     }
 
     console.warn("Unknown field format", field);

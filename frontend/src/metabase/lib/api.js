@@ -20,8 +20,8 @@ function makeMethod(method: string, hasBody: boolean = false) {
             params = {};
         }
         return function(
-            data: { [key:string]: any },
-            options: { [key:string]: any } = {}
+            data?: { [key:string]: any },
+            options?: { [key:string]: any } = {}
         ): Promise<any> {
             let url = urlTemplate;
             data = { ...data };

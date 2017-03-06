@@ -1,11 +1,12 @@
 (ns metabase.sync-database-test
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
+            [toucan.util.test :as tt]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
-                             [hydrate :refer :all]
                              [raw-table :refer [RawTable]]
                              [table :refer [Table]])
             [metabase.sync-database :refer :all]
@@ -133,7 +134,7 @@
                                   :name         "studio"
                                   :display_name "Studio"
                                   :base_type    :type/Text})]})]
-  (tu/with-temp Database [db {:engine :sync-test}]
+  (tt/with-temp Database [db {:engine :sync-test}]
     (sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
     ;; on resync of a database, such as adding tables that already exist or duplicating fields
@@ -163,7 +164,7 @@
                                  :name         "title"
                                  :display_name "Title"
                                  :base_type    :type/Text})]})
-  (tu/with-temp* [Database [db        {:engine :sync-test}]
+  (tt/with-temp* [Database [db        {:engine :sync-test}]
                   RawTable [raw-table {:database_id (u/get-id db), :name "movie", :schema "default"}]
                   Table    [table     {:raw_table_id (u/get-id raw-table)
                                        :name         "movie"
@@ -197,7 +198,7 @@
 ;; only one sync should be going on at a time
 (expect
   1
-  (tu/with-temp* [Database [db {:engine :concurrent-sync-test}]]
+  (tt/with-temp* [Database [db {:engine :concurrent-sync-test}]]
     (reset! sync-count 0)
     ;; start a sync processes in the background. It should take 1000 ms to finish
     (future (sync-database! db))
@@ -215,12 +216,12 @@
 (expect
   [[1 2 3]
    [1 2 3]]
-  (tu/with-temp* [Database [db    {:engine :sync-test}]
+  (tt/with-temp* [Database [db    {:engine :sync-test}]
                   RawTable [table {:database_id (u/get-id db), :name "movie", :schema "default"}]]
     (sync-database! db)
     (let [table-id (db/select-one-id Table, :raw_table_id (:id table))
           field-id (db/select-one-id Field, :table_id table-id, :name "title")]
-      (tu/with-temp FieldValues [_ {:field_id field-id
+      (tt/with-temp FieldValues [_ {:field_id field-id
                                     :values   "[1,2,3]"}]
         (let [initial-field-values (db/select-one-field  :values FieldValues, :field_id field-id)]
           (sync-database! db)
@@ -297,7 +298,7 @@
     [ ;; 1. Check that we have expected field values to start with
      (get-field-values)
      ;; 2. Delete the Field values, make sure they're gone
-     (do (db/cascade-delete! FieldValues :id (get-field-values-id))
+     (do (db/delete! FieldValues :id (get-field-values-id))
          (get-field-values))
      ;; 3. Now re-sync the table and make sure they're back
      (do (sync-table! @venues-table)

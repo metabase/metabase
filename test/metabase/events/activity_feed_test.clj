@@ -1,6 +1,7 @@
 (ns metabase.events.activity-feed-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             [metabase.events.activity-feed :refer :all]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
@@ -19,9 +20,9 @@
             [metabase.test-setup :refer :all]))
 
 (defn- do-with-temp-activities [f]
-  (db/cascade-delete! Activity)                  ; Not 100% sure this is neccessary anymore
+  (db/delete! Activity)                  ; Not 100% sure this is neccessary anymore
   (try (f)
-       (finally (db/cascade-delete! Activity))))
+       (finally (db/delete! Activity))))
 
 (defmacro with-temp-activities
   "Clear all activies, execute BODY; clear all activies again, then return the results of BODY."
@@ -30,7 +31,7 @@
 
 
 ;; `:card-create` event
-(tu/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
   {:topic       :card-create
    :user_id     (user->id :rasta)
    :model       "card"
@@ -46,7 +47,7 @@
 
 
 ;; `:card-update` event
-(tu/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
   {:topic       :card-update
    :user_id     (user->id :rasta)
    :model       "card"
@@ -62,7 +63,7 @@
 
 
 ;; `:card-delete` event
-(tu/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
   {:topic       :card-delete
    :user_id     (user->id :rasta)
    :model       "card"
@@ -78,7 +79,7 @@
 
 
 ;; `:dashboard-create` event
-(tu/expect-with-temp [Dashboard [dashboard {:name "My Cool Dashboard"}]]
+(tt/expect-with-temp [Dashboard [dashboard {:name "My Cool Dashboard"}]]
   {:topic       :dashboard-create
    :user_id     (user->id :rasta)
    :model       "dashboard"
@@ -94,7 +95,7 @@
 
 
 ;; `:dashboard-delete` event
-(tu/expect-with-temp [Dashboard [dashboard {:name "My Cool Dashboard"}]]
+(tt/expect-with-temp [Dashboard [dashboard {:name "My Cool Dashboard"}]]
   {:topic       :dashboard-delete
    :user_id     (user->id :rasta)
    :model       "dashboard"
@@ -110,7 +111,7 @@
 
 
 ;; `:dashboard-add-cards` event
-(tu/expect-with-temp [Dashboard     [dashboard {:name "My Cool Dashboard"}]
+(tt/expect-with-temp [Dashboard     [dashboard {:name "My Cool Dashboard"}]
                       Card          [card]
                       DashboardCard [dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]]
   {:topic       :dashboard-add-cards
@@ -136,7 +137,7 @@
 
 
 ;; `:dashboard-remove-cards` event
-(tu/expect-with-temp [Dashboard     [dashboard {:name "My Cool Dashboard"}]
+(tt/expect-with-temp [Dashboard     [dashboard {:name "My Cool Dashboard"}]
                       Card          [card]
                       DashboardCard [dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]]
   {:topic       :dashboard-remove-cards
@@ -174,7 +175,7 @@
 
 
 ;; `:metric-create`
-(tu/expect-with-temp [Metric [metric {:table_id (id :venues)}]]
+(tt/expect-with-temp [Metric [metric {:table_id (id :venues)}]]
   {:topic       :metric-create
    :user_id     (user->id :rasta)
    :model       "metric"
@@ -191,7 +192,7 @@
 
 
 ;; `:metric-update`
-(tu/expect-with-temp [Metric [metric {:table_id (id :venues)}]]
+(tt/expect-with-temp [Metric [metric {:table_id (id :venues)}]]
   {:topic       :metric-update
    :user_id     (user->id :rasta)
    :model       "metric"
@@ -213,7 +214,7 @@
 
 
 ;; `:metric-delete`
-(tu/expect-with-temp [Metric [metric {:table_id (id :venues)}]]
+(tt/expect-with-temp [Metric [metric {:table_id (id :venues)}]]
   {:topic       :metric-delete
    :user_id     (user->id :rasta)
    :model       "metric"
@@ -233,7 +234,7 @@
 
 
 ;; `:pulse-create` event
-(tu/expect-with-temp [Pulse [pulse]]
+(tt/expect-with-temp [Pulse [pulse]]
   {:topic       :pulse-create
    :user_id     (user->id :rasta)
    :model       "pulse"
@@ -249,7 +250,7 @@
 
 
 ;; `:pulse-delete` event
-(tu/expect-with-temp [Pulse [pulse]]
+(tt/expect-with-temp [Pulse [pulse]]
   {:topic       :pulse-delete
    :user_id     (user->id :rasta)
    :model       "pulse"
@@ -265,7 +266,7 @@
 
 
 ;; `:segment-create`
-(tu/expect-with-temp [Segment [segment]]
+(tt/expect-with-temp [Segment [segment]]
   {:topic       :segment-create
    :user_id     (user->id :rasta)
    :model       "segment"
@@ -282,7 +283,7 @@
 
 
 ;; `:segment-update`
-(tu/expect-with-temp [Segment [segment]]
+(tt/expect-with-temp [Segment [segment]]
   {:topic       :segment-update
    :user_id     (user->id :rasta)
    :model       "segment"
@@ -304,7 +305,7 @@
 
 
 ;; `:segment-delete`
-(tu/expect-with-temp [Segment [segment]]
+(tt/expect-with-temp [Segment [segment]]
   {:topic       :segment-delete
    :user_id     (user->id :rasta)
    :model       "segment"

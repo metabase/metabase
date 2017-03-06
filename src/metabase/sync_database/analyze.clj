@@ -5,7 +5,7 @@
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [schema.core :as schema]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.db.metadata-queries :as queries]
             [metabase.driver :as driver]
             (metabase.models [field :as field]
@@ -21,7 +21,7 @@
 
 (def ^:private ^:const low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`."
-  40)
+  300)
 
 (def ^:private ^:const field-values-entry-max-length
   "The maximum character length for a stored `FieldValues` entry."
@@ -175,6 +175,9 @@
        (test:json-special-type  driver field)
        (test:email-special-type driver field)))
 
+;; TODO - It's weird that this one function requires other functions as args when the whole rest of the Metabase driver system
+;;        is built around protocols and record types. These functions should be put back in the `IDriver` protocol (where they
+;;        were originally) or in a special `IAnalyzeTable` protocol).
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
   {:style/indent 1}
