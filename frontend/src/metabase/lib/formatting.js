@@ -109,7 +109,7 @@ export function formatEmail(value, { jsx } = {}) {
     if (jsx && EMAIL_WHITELIST_REGEX.test(value)) {
         return <ExternalLink href={"mailto:" + value}>{value}</ExternalLink>;
     } else {
-        value;
+        return value;
     }
 }
 
@@ -122,6 +122,15 @@ export function formatUrl(value, { jsx } = {}) {
     } else {
         return value;
     }
+}
+
+// fallback for formatting a string without a column special_type
+function formatStringFallback(value, options = {}) {
+    value = formatUrl(value, options);
+    if (typeof value === 'string') {
+        value = formatEmail(value, options);
+    }
+    return value;
 }
 
 export function formatValue(value, options = {}) {
@@ -142,7 +151,7 @@ export function formatValue(value, options = {}) {
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
         return parseTimestamp(value, column && column.unit).format("LLLL");
     } else if (typeof value === "string") {
-        return value;
+        return formatStringFallback(value, options);
     } else if (typeof value === "number") {
         if (isCoordinate(column)) {
             return DECIMAL_DEGREES_FORMATTER(value);
