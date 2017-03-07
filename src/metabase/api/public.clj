@@ -53,11 +53,14 @@
 (defn run-query-for-card-with-id
   "Run the query belonging to Card with CARD-ID with PARAMETERS and other query options (e.g. `:constraints`)."
   [card-id parameters & options]
-  (-> (let [parameters (if (string? parameters) (json/parse-string parameters keyword) parameters)]
-        (binding [api/*current-user-permissions-set*     (atom #{"/"})
-                  qp/*allow-queries-with-no-executor-id* true]
-          (apply card-api/run-query-for-card card-id, :parameters parameters, options)))
-      (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status])))
+  (u/prog1 (-> (let [parameters (if (string? parameters) (json/parse-string parameters keyword) parameters)]
+                 (binding [api/*current-user-permissions-set*     (atom #{"/"})
+                           qp/*allow-queries-with-no-executor-id* true]
+                   (apply card-api/run-query-for-card card-id, :parameters parameters, options)))
+               (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status]))
+    ;; if the query failed instead of returning anything about the query just return a generic error message
+    (when (= (:status <>) :failed)
+      (throw (ex-info "An error occurred while running the query." {:status-code 400})))))
 
 (defn- run-query-for-card-with-public-uuid
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception."

@@ -343,3 +343,15 @@
            (handler request))
          (catch Throwable _
            {:status 400, :body "An error occurred."}))))
+
+(defn message-only-exceptions
+  "Catch any exceptions thrown in the request handler body and rethrow a 400 exception that only has
+   the message from the original instead (i.e., don't rethrow the original stacktrace).
+   This reduces the information available to bad actors but still provides some information that will
+   prove useful in debugging errors."
+  [handler]
+  (fn [request]
+    (try (binding [*automatically-catch-api-exceptions* false]
+           (handler request))
+         (catch Throwable e
+           {:status 400, :body (.getMessage e)}))))

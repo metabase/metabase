@@ -35,6 +35,11 @@
   "Wrap ROUTES so any Exception thrown is just returned as a generic 400, to prevent details from leaking in public endpoints."
   middleware/genericize-exceptions)
 
+(def ^:private +message-only-exceptions
+  "Wrap ROUTES so any Exception thrown is just returned as a 400 with only the message from the original Exception (i.e., remove
+   the original stacktrace), to prevent details from leaking in public endpoints."
+  middleware/message-only-exceptions)
+
 (def ^:private +apikey
   "Wrap ROUTES so they may only be accessed with proper apikey credentials."
   middleware/enforce-api-key)
@@ -51,7 +56,7 @@
   (context "/database"        [] (+auth database/routes))
   (context "/dataset"         [] (+auth dataset/routes))
   (context "/email"           [] (+auth email/routes))
-  (context "/embed"           [] (+generic-exceptions embed/routes))
+  (context "/embed"           [] (+message-only-exceptions embed/routes))
   (context "/field"           [] (+auth field/routes))
   (context "/getting_started" [] (+auth getting-started/routes))
   (context "/geojson"         [] (+auth geojson/routes))
