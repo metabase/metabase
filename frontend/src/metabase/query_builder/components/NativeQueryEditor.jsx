@@ -90,12 +90,14 @@ export default class NativeQueryEditor extends Component {
         nativeDatabases: PropTypes.array.isRequired,
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
+        runQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
         isOpen: PropTypes.bool,
         parameters: PropTypes.array.isRequired,
         setParameterValue: PropTypes.func,
         location: PropTypes.object.isRequired,
+        isRunnable: PropTypes.bool.isRequired,
     };
 
     static defaultProps = {
@@ -104,6 +106,7 @@ export default class NativeQueryEditor extends Component {
 
     componentDidMount() {
         this.loadAceEditor();
+        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -143,6 +146,27 @@ export default class NativeQueryEditor extends Component {
                 if (this.state.modeInfo.mode.indexOf("sql") >= 0) {
                     this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
                 }
+            }
+        }
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener("keydown", this.handleKeyDown);
+    }
+
+    handleKeyDown = (e) => {
+        const ENTER_KEY = 13;
+        if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && this.props.isRunnable) {
+            const { card } = this.props;
+            if (e.altKey) {
+                // run just the selected text, if any
+                const selectedText = this._editor.getSelectedText();
+                if (selectedText) {
+                    const temporaryCard = assocIn(card, ["dataset_query", "native", "query"], selectedText);
+                    this.props.runQueryFn(temporaryCard, false, null, true);
+                }
+            } else {
+                this.props.runQueryFn();
             }
         }
     }

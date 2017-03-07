@@ -153,12 +153,10 @@
 
 ;;; ------------------------------------------------------------ Persistence Functions ------------------------------------------------------------
 
-
-
 (defn retire-tables!
   "Retire all `Tables` in the list of TABLE-IDs along with all of each tables `Fields`."
   [table-ids]
-  {:pre [(set? table-ids) (every? integer? table-ids)]}
+  {:pre [(u/maybe? set? table-ids) (every? integer? table-ids)]}
   (when (seq table-ids)
     ;; retire the tables
     (db/update-where! Table {:id [:in table-ids]}
@@ -183,11 +181,16 @@
 (defn create-table-from-tabledef!
   "Create `Table` with the data from TABLE-DEF."
   [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]
-  (db/insert! Table
-    :db_id           database-id
-    :raw_table_id    raw-table-id
-    :schema          schema-name
-    :name            table-name
-    :visibility_type visibility-type
-    :display_name    (humanization/name->human-readable-name table-name)
-    :active          true))
+  (if-let [existing-id (db/select-one-id Table :db_id database-id, :raw_table_id raw-table-id, :schema schema-name, :name table-name, :active false)]
+    ;; if the table already exists but is marked *inactive*, mark it as *active*
+    (db/update! Table existing-id
+      :active true)
+    ;; otherwise create a new Table
+    (db/insert! Table
+      :db_id           database-id
+      :raw_table_id    raw-table-id
+      :schema          schema-name
+      :name            table-name
+      :visibility_type visibility-type
+      :display_name    (humanization/name->human-readable-name table-name)
+      :active          true)))

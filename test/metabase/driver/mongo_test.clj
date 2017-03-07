@@ -74,7 +74,6 @@
   {:status    :completed
    :row_count 1
    :data      {:rows        [[1]]
-               :annotate?   nil
                :columns     ["count"]
                :cols        [{:name "count", :base_type :type/Integer}]
                :native_form {:collection "venues"

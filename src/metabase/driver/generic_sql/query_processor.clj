@@ -11,9 +11,9 @@
             (metabase [config :as config]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
-            [metabase.query-processor :as qp]
             (metabase.query-processor [annotate :as annotate]
-                                      interface)
+                                      [interface :as i]
+                                      [util :as qputil])
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Timestamp
@@ -289,7 +289,7 @@
   [driverr {inner-query :query}]
   {:pre [(map? inner-query)]}
   (u/prog1 (apply-clauses driverr {} inner-query)
-    (when-not qp/*disable-qp-logging*
+    (when-not i/*disable-qp-logging*
       (log/debug "HoneySQL Form: 🍯\n" (u/pprint-to-str 'cyan <>)))))
 
 (defn mbql->native
@@ -361,7 +361,7 @@
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native, :as outer-query}]
-  (let [query (assoc query :remark (qp/query->remark outer-query))]
+  (let [query (assoc query :remark (qputil/query->remark outer-query))]
     (do-with-try-catch
       (fn []
         (let [db-connection (sql/db->jdbc-connection-spec database)]

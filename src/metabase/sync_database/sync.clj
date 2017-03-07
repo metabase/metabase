@@ -13,6 +13,8 @@
   (:import metabase.models.raw_table.RawTableInstance))
 
 
+;;; ------------------------------------------------------------ FKs ------------------------------------------------------------
+
 (defn- save-fks!
   "Update all of the FK relationships present in DATABASE based on what's captured in the raw schema.
    This will set :special_type :type/FK and :fk_target_field_id <field-id> for each found FK relationship.
@@ -28,6 +30,29 @@
           :special_type       :type/FK
           :fk_target_field_id target-field-id)))))
 
+(defn- set-fk-relationships!
+  "Handle setting any FK relationships for a DATABASE. This must be done after fully syncing the tables/fields because we need all tables/fields in place."
+  [database]
+  (when-let [db-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
+                      (mdb/join [RawColumn :raw_table_id] [RawTable :id])
+                      (db/qualify RawTable :database_id) (:id database)
+                      (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
+    (save-fks! db-fks)))
+
+(defn- set-table-fk-relationships!
+  "Handle setting FK relationships for a specific TABLE."
+  [database-id raw-table-id]
+  (when-let [table-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
+                         (mdb/join [RawColumn :raw_table_id] [RawTable :id])
+                         (db/qualify RawTable :database_id) database-id
+                         (db/qualify RawTable :id) raw-table-id
+                         (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
+    (save-fks! table-fks)))
+
+
+;;; ------------------------------------------------------------ _metabase_metadata table ------------------------------------------------------------
+
+;; the _metabase_metadata table is a special table that can include Metabase metadata about the rest of the DB. This is used by the sample dataset
 
 (defn sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other metadata about the `Tables` and `Fields`
@@ -68,6 +93,22 @@
                (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e)))))))))
 
 
+(defn is-metabase-metadata-table?
+  "Is this TABLE the special `_metabase_metadata` table?"
+  [table]
+  (= "_metabase_metadata" (s/lower-case (:name table))))
+
+
+(defn- maybe-sync-metabase-metadata-table!
+  "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
+   If per chance there were multiple `_metabase_metadata` tables in different schemas, just sync the first one we find."
+  [database raw-tables]
+  (when-let [metadata-table (first (filter is-metabase-metadata-table? raw-tables))]
+    (sync-metabase-metadata-table! (driver/engine->driver (:engine database)) database metadata-table)))
+
+
+;;; ------------------------------------------------------------ Fields ------------------------------------------------------------
+
 (defn- save-table-fields!
   "Refresh all `Fields` in a given `Table` based on what's available in the associated `RawColumns`.
 
@@ -99,43 +140,9 @@
           (field/create-field-from-field-def! table-id (assoc column :raw-column-id raw-column-id)))))))
 
 
-(defn retire-tables!
-  "Retire any `Table` who's `RawTable` has been deactivated.
-  This occurs when a database introspection reveals the table is no longer available."
-  [{database-id :id}]
-  {:pre [(integer? database-id)]}
-  ;; retire tables (and their fields) as needed
-  (when-let [table-ids-to-remove (db/select-ids Table
-                                   (mdb/join [Table :raw_table_id] [RawTable :id])
-                                   :db_id database-id
-                                   (db/qualify Table :active) true
-                                   (db/qualify RawTable :active) false)]
-    (table/retire-tables! table-ids-to-remove)))
+;;; ------------------------------------------------------------  "Crufty" Tables ------------------------------------------------------------
 
-
-(defn update-data-models-for-table!
-  "Update the working `Table` and `Field` metadata for a given `Table` based on the latest raw schema information.
-   This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
-  [{raw-table-id :raw_table_id, table-id :id, :as existing-table}]
-  (when-let [{database-id :database_id, :as raw-table} (RawTable raw-table-id)]
-    (try
-      (if-not (:active raw-table)
-        ;; looks like the table has been deactivated, so lets retire this Table and its fields
-        (table/retire-tables! #{table-id})
-        ;; otherwise update based on the RawTable/RawColumn information
-        (do
-          (save-table-fields! (table/update-table-from-tabledef! existing-table raw-table))
-
-          ;; handle setting any fk relationships
-          (when-let [table-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
-                                 (mdb/join [RawColumn :raw_table_id] [RawTable :id])
-                                 (db/qualify RawTable :database_id) database-id
-                                 (db/qualify RawTable :id) raw-table-id
-                                 (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
-            (save-fks! table-fks))))
-
-      (catch Throwable t
-        (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
+;; Crufty tables are ones we know are from frameworks like Rails or Django and thus automatically mark as `:cruft`
 
 (def ^:private ^:const crufty-table-patterns
   "Regular expressions that match Tables that should automatically given the `visibility-type` of `:cruft`.
@@ -193,17 +200,49 @@
   [table]
   (boolean (some #(re-find % (s/lower-case (:name table))) crufty-table-patterns)))
 
-(defn is-metabase-metadata-table?
-  "Is this TABLE the special `_metabase_metadata` table?"
-  [table]
-  (= "_metabase_metadata" (s/lower-case (:name table))))
+
+;;; ------------------------------------------------------------ Table Syncing + Saving ------------------------------------------------------------
+
+(defn- table-ids-to-remove
+  "Return a set of active `Table` IDs for Database with DATABASE-ID whose backing RawTable is now inactive."
+  [database-id]
+  (db/select-ids Table
+    (mdb/join [Table :raw_table_id] [RawTable :id])
+    :db_id database-id
+    (db/qualify Table :active) true
+    (db/qualify RawTable :active) false))
+
+(defn retire-tables!
+  "Retire any `Table` who's `RawTable` has been deactivated.
+  This occurs when a database introspection reveals the table is no longer available."
+  [{database-id :id}]
+  {:pre [(integer? database-id)]}
+  ;; retire tables (and their fields) as needed
+  (table/retire-tables! (table-ids-to-remove database-id)))
+
+
+(defn update-data-models-for-table!
+  "Update the working `Table` and `Field` metadata for a given `Table` based on the latest raw schema information.
+   This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
+  [{raw-table-id :raw_table_id, table-id :id, :as existing-table}]
+  (when-let [{database-id :database_id, :as raw-table} (RawTable raw-table-id)]
+    (try
+      (if-not (:active raw-table)
+        ;; looks like the table has been deactivated, so lets retire this Table and its fields
+        (table/retire-tables! #{table-id})
+        ;; otherwise update based on the RawTable/RawColumn information
+        (do
+          (save-table-fields! (table/update-table-from-tabledef! existing-table raw-table))
+          (set-table-fk-relationships! database-id raw-table-id)))
+      (catch Throwable t
+        (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
+
 
 (defn- create-and-update-tables!
   "Create/update tables (and their fields)."
   [database existing-tables raw-tables]
-  (doseq [{raw-table-id :id, :as raw-table} (for [table raw-tables
-                                                  :when (not (is-metabase-metadata-table? table))]
-                                              table)]
+  (doseq [{raw-table-id :id, :as raw-table} raw-tables
+          :when                             (not (is-metabase-metadata-table? raw-table))]
     (try
       (save-table-fields! (if-let [existing-table (get existing-tables raw-table-id)]
                             ;; table already exists, update it
@@ -216,35 +255,18 @@
       (catch Throwable e
         (log/error (u/format-color 'red "Unexpected error syncing table") e)))))
 
-(defn- set-fk-relationships!
-  "Handle setting any FK relationships. This must be done after fully syncing the tables/fields because we need all tables/fields in place."
-  [database]
-  (when-let [db-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
-                      (mdb/join [RawColumn :raw_table_id] [RawTable :id])
-                      (db/qualify RawTable :database_id) (:id database)
-                      (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
-    (save-fks! db-fks)))
-
-(defn- maybe-sync-metabase-metadata-table!
-  "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
-   If per chance there were multiple `_metabase_metadata` tables in different schemas, just sync the first one we find."
-  [database raw-tables]
-  (when-let [metadata-table (first (filter is-metabase-metadata-table? raw-tables))]
-    (sync-metabase-metadata-table! (driver/engine->driver (:engine database)) database metadata-table)))
 
 (defn update-data-models-from-raw-tables!
   "Update the working `Table` and `Field` metadata for *all* tables in a `Database` based on the latest raw schema information.
    This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
   [{database-id :id, :as database}]
   {:pre [(integer? database-id)]}
-
   ;; quick sanity check that this is indeed a :dynamic-schema database
   (when (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema)
     (throw (IllegalStateException. "This function cannot be called on databases which are :dynamic-schema")))
-
   ;; retire any tables which were disabled
   (retire-tables! database)
-
+  ;; ok, now create new tables as needed and set FK relationships
   (let [raw-tables          (raw-table/active-tables database-id)
         raw-table-id->table (u/key-by :raw_table_id (db/select Table, :db_id database-id, :active true))]
     (create-and-update-tables! database raw-table-id->table raw-tables)
