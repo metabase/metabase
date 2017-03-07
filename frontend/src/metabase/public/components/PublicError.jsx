@@ -2,7 +2,14 @@
 
 import React, { Component, PropTypes } from "react";
 
+import { connect } from "react-redux";
+import { getErrorMessage } from "metabase/selectors/app";
+
 import EmbedFrame from "./EmbedFrame";
+
+const mapStateToProps = (state, props) => ({
+    message: getErrorMessage(state, props)
+})
 
 type Props = {
     message?: string
@@ -18,4 +25,4 @@ const PublicError = ({ message = "An error occurred" }: Props) =>
         </div>
     </EmbedFrame>;
 
-export default PublicError;
+export default connect(mapStateToProps)(PublicError);
