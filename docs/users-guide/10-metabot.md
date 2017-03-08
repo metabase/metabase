@@ -21,7 +21,7 @@ If you ever need help remembering what MetaBot can do, just type ```metabot help
 ### Showing questions
 
 To see a question from Metabase in Slack type
-'''MetaBot show "<question-name>"''' where question name is the title of one of saved questions. If you have several similarly named questions Metabot will ask you to differentiate between the two by typing the number next to the name.
+'''metabot show "<question-name>"''' where question name is the title of one of saved questions. If you have several similarly named questions Metabot will ask you to differentiate between the two by typing the number next to the name.
 
 ![MetaBot similar](images/metabot/MetabotSimilarItems.png)
 
@@ -38,10 +38,10 @@ If you don’t have a sense of which questions you want to view in  Slack, you c
 ## To review
 
 - [Connect to Slack](09-pulses.md) to start using MetaBot.
-- Show data from Metabase in Slack using ```MetaBot show <question-id>```
-- Search for questions by typing ```MetaBot show <search-term>```
-- Get a list of questions by typing ```MetaBot list```
-- ```MetaBot help``` lets you see everything Metabot can do if you forget or need more information
+- Show data from Metabase in Slack using ```metabot show <question-id>```
+- Search for questions by typing ```metabot show <search-term>```
+- Get a list of questions by typing ```metabot list```
+- ```metabot help``` lets you see everything MetaBot can do if you forget or need more information
 
 
 ---
