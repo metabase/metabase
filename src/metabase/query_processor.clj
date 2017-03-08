@@ -10,6 +10,7 @@
                                                  [add-settings :as add-settings]
                                                  [annotate-and-sort :as annotate-and-sort]
                                                  [catch-exceptions :as catch-exceptions]
+                                                 [cache :as cache]
                                                  [cumulative-aggregations :as cumulative-ags]
                                                  [dev :as dev]
                                                  [driver-specific :as driver-specific]
@@ -77,8 +78,9 @@
        driver-specific/process-query-in-context      ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
        add-settings/add-settings
        resolve-driver/resolve-driver                 ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
-       catch-exceptions/catch-exceptions
-       log-query/log-initial-query)
+       log-query/log-initial-query
+       cache/maybe-return-cached-results
+       catch-exceptions/catch-exceptions)
    query))
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are (eventually) passed to `expand-resolve`
 
@@ -98,14 +100,9 @@
 ;;; +----------------------------------------------------------------------------------------------------+
 
 (defn- save-query-execution!
-  "Save (or update) a `QueryExecution`."
-  [{:keys [id], :as query-execution}]
-  (if id
-    ;; execution has already been saved, so update it
-    (u/prog1 query-execution
-      (db/update! QueryExecution id query-execution))
-    ;; first time saving execution, so insert it
-    (db/insert! QueryExecution query-execution)))
+  "Save a `QueryExecution`."
+  [query-execution]
+  (db/insert! QueryExecution query-execution))
 
 (defn- save-and-return-failed-query!
   "Save QueryExecution state and construct a failed query response"
@@ -130,18 +127,22 @@
 (defn- save-and-return-successful-query!
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
-  ;; record our query execution and format response
-  (-> (assoc query-execution
-        :status       :completed
-        :finished_at  (u/new-sql-timestamp)
-        :running_time (- (System/currentTimeMillis)
-                         (:start_time_millis query-execution))
-        :result_rows  (get query-result :row_count 0))
-      (dissoc :start_time_millis)
-      save-query-execution!
-      ;; at this point we've saved and we just need to massage things into our final response format
-      (dissoc :error :raw_query :result_rows :version)
-      (merge query-result)))
+  (let [query-execution (-> (assoc query-execution
+                              :status       :completed
+                              :finished_at  (if (:cached? query-result)
+                                              (:updated-at query-result)
+                                              (u/new-sql-timestamp))
+                              :running_time (- (System/currentTimeMillis)
+                                               (:start_time_millis query-execution))
+                              :result_rows  (get query-result :row_count 0))
+                            (dissoc :start_time_millis))]
+    ;; only insert a new record into QueryExecution if the results *were not* cached (i.e., only if a Query was actually ran)
+    (-> (if (:cached? query-result)
+          query-execution
+          (save-query-execution! query-execution))
+        ;; ok, now return the results in the normal response format
+        (dissoc :error :raw_query :result_rows :version)
+        (merge query-result))))
 
 
 (defn- assert-query-status-successful
@@ -211,10 +212,9 @@
              *allow-queries-with-no-executor-id*)
          (u/maybe? integer? card-id)]}
   (let [query-uuid (str (java.util.UUID/randomUUID))
-        query-hash (hash query)
         query      (assoc query :info {:executed-by executed-by
                                        :card-id     card-id
                                        :uuid        query-uuid
-                                       :query-hash  query-hash
+                                       :query-hash  (qputil/query-hash query)
                                        :query-type  (if (qputil/mbql-query? query) "MBQL" "native")})]
     (run-and-save-query! query)))

@@ -41,7 +41,8 @@
    :collection_id          nil
    :archived               false
    :public_uuid            nil
-   :made_public_by_id      nil})
+   :made_public_by_id      nil
+   :cache_ttl              nil})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil

@@ -36,7 +36,8 @@
    :display           "scalar"
    :made_public_by_id nil
    :public_uuid       nil
-   :query_type        "query"})
+   :query_type        "query"
+   :cache_ttl         nil})
 
 ;; ## GET /api/card
 ;; Filter cards by database
@@ -154,7 +155,7 @@
 ;; Test that we can make a card
 (let [card-name (random-name)]
   (tt/expect-with-temp [Database [{database-id :id}]
-                     Table    [{table-id :id}  {:db_id database-id}]]
+                        Table    [{table-id :id}  {:db_id database-id}]]
     (merge card-defaults
            {:name                   card-name
             :creator_id             (user->id :rasta)
