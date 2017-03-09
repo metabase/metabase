@@ -103,7 +103,8 @@ function formatTimeWithUnit(value, unit, options = {}) {
     }
 }
 
-const EMAIL_WHITELIST_REGEX = /.+@.+/;
+// https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L27
+const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
 export function formatEmail(value, { jsx } = {}) {
     if (jsx && EMAIL_WHITELIST_REGEX.test(value)) {
@@ -113,8 +114,8 @@ export function formatEmail(value, { jsx } = {}) {
     }
 }
 
-// prevent `javascript:` etc URLs
-const URL_WHITELIST_REGEX = /^(https?|mailto):/;
+// based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
+const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
 
 export function formatUrl(value, { jsx } = {}) {
     if (jsx && URL_WHITELIST_REGEX.test(value)) {
