@@ -12,6 +12,7 @@ import {
     EmbeddedDashboardListing
 } from "./components/widgets/PublicLinksListing.jsx";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
+import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 
 import { UtilApi } from "metabase/services";
 
@@ -210,6 +211,10 @@ const SECTIONS = [
                         await onChange("embedding-secret-key", result.token);
                     }
                 }
+            },
+            {
+                widget: EmbeddingLegalese,
+                getHidden: (settings) => settings["enable-embedding"]
             },
             {
                 key: "embedding-secret-key",
