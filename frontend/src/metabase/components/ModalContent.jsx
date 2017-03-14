@@ -58,7 +58,7 @@ const FORM_WIDTH = 500 + 32 * 2; // includes padding
 
 export const ModalHeader = ({ children }, { fullPageModal, formModal }) =>
     <div className={cx("ModalHeader flex-no-shrink px4 py4 full")}>
-        <h2 className={cx("text-bold", { "text-centered": fullPageModal })}>{children}</h2>
+        <h2 className={cx("text-bold", { "text-centered": fullPageModal }, { "mr4": !fullPageModal})}>{children}</h2>
     </div>
 
 ModalHeader.contextTypes = MODAL_CHILD_CONTEXT_TYPES;
