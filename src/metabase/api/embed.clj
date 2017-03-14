@@ -104,12 +104,15 @@
     param))
 
 (s/defn ^:private ^:always-validate remove-locked-and-disabled-params
-  "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the EMBEDDING-PARAMS whitelist.
-   This is done so the frontend doesn't display widgets for params the user can't set."
+  "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the EMBEDDING-PARAMS whitelist,
+   or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user can't set."
   [dashboard-or-card, embedding-params :- su/EmbeddingParams]
-  (let [params-to-remove (into #{} (for [[param status] embedding-params
-                                         :when          (not= status "enabled")]
-                                     param))]
+  (let [params-to-remove (into #{} (concat (for [[param status] embedding-params
+                                                 :when          (not= status "enabled")]
+                                             param)
+                                           (for [{param :slug} (:parameters dashboard-or-card)
+                                                 :when         (not (contains? embedding-params param))]
+                                             param)))]
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
 (defn- remove-token-parameters
@@ -131,12 +134,10 @@
      :slug    (:name tag)
      :default (:default tag)}))
 
-
 (defn- add-implicit-card-parameters
   "Add template tag parameter information to CARD's `:parameters`."
   [card]
   (update card :parameters concat (template-tag-parameters card)))
-
 
 (defn- apply-parameter-values
   "Adds `value` to parameters with `slug` matching a key in `parameter-values` and removes parameters without a `value`"
@@ -147,14 +148,12 @@
     (assoc (select-keys param [:type :target])
       :value value)))
 
-
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]
   (-> (db/select-one [Card :dataset_query], :id (u/get-id card-or-id))
       add-implicit-card-parameters
       :parameters))
-
 
 (defn- resolve-dashboard-parameters
   "Returns parameters for a card on a dashboard with `:target` resolved via `:parameter_mappings`."
