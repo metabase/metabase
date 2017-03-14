@@ -110,8 +110,9 @@
   (let [params-to-remove (into #{} (concat (for [[param status] embedding-params
                                                  :when          (not= status "enabled")]
                                              param)
-                                           (for [{param :slug} (:parameters dashboard-or-card)
-                                                 :when         (not (contains? embedding-params param))]
+                                           (for [{slug :slug} (:parameters dashboard-or-card)
+                                                 :let         [param (keyword slug)]
+                                                 :when        (not (contains? embedding-params param))]
                                              param)))]
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
