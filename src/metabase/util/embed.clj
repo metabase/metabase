@@ -1,7 +1,10 @@
 (ns metabase.util.embed
   "Utility functions for public links and embedding."
-  (:require (buddy.sign [jwt :as jwt]
+  (:require [clojure.string :as str]
+            [buddy.core.codecs :as codecs]
+            (buddy.sign [jwt :as jwt]
                         [util :as buddy-util])
+            [cheshire.core :as json]
             [ring.util.codec :as codec]
             [hiccup.core :refer [html]]
             [metabase.models.setting :as setting]
@@ -33,7 +36,7 @@
   (html [:meta {:name "generator", :content "Metabase"}]))
 
 (defn head
-  "Returns the <meta>/<link> tags for an embeddable public page"
+  "Returns the `<meta>`/`<link>` tags for an embeddable public page."
   ^String [^String url]
   (str embedly-meta (oembed-link url)))
 
@@ -56,6 +59,22 @@
                 "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."))
             (setting/set-string! :embedding-secret-key new-value)))
 
+(defn- jwt-header
+  "Parse a JWT MESSAGE and return the header portion."
+  [^String message]
+  (let [[header] (str/split message #"\.")]
+    (json/parse-string (codecs/bytes->str (codec/base64-decode header)) keyword)))
+
+(defn- check-valid-alg
+  "Check that the JWT `alg` isn't `none`. `none` is valid per the standard, but for obvious reasons we want to make sure our keys are signed.
+   Unfortunately, I don't think there's an easy way to do this with the JWT library we use, so manually parse the token and check the alg."
+  [^String message]
+  (let [{:keys [alg]} (jwt-header message)]
+    (when-not alg
+      (throw (Exception. "JWT is missing `alg`.")))
+    (when (= alg "none")
+      (throw (Exception. "JWT `alg` cannot be `none`.")))))
+
 (defn unsign
   "Parse a \"signed\" (base-64 encoded) JWT and return a Clojure representation.
    Check that the signature is valid (i.e., check that it was signed with `embedding-secret-key`)
@@ -63,6 +82,7 @@
   [^String message]
   (when (seq message)
     (try
+      (check-valid-alg message)
       (jwt/unsign message
                   (or (embedding-secret-key)
                       (throw (ex-info "The embedding secret key has not been set." {:status-code 400})))
