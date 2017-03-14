@@ -23,7 +23,7 @@
             [metabase.util.urls :as urls]))
 
 (defsetting metabot-enabled
-  "Enable Metabot, which lets you search for and view your saved questions directly via Slack."
+  "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
   :type    :boolean
   :default false)
 
@@ -319,10 +319,10 @@
   (disconnect-websocket!))
 
 (defn restart-metabot!
-  "Restart the Metabot listening process.
+  "Restart the MetaBot listening process.
    Used on settings changed"
   []
   (when @websocket-monitor-thread-id
-    (log/info "Metabot already running. Killing the previous WebSocket listener first.")
+    (log/info "MetaBot already running. Killing the previous WebSocket listener first.")
     (stop-metabot!))
   (start-metabot!))

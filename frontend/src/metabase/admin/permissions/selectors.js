@@ -47,7 +47,7 @@ function getTooltipForGroup(group) {
     } else if (isDefaultGroup(group)) {
         return "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access.";
     } else if (isMetaBotGroup(group)) {
-        return "Metabot is Metabase's Slack bot. You can choose what it has access to here.";
+        return "MetaBot is Metabase's Slack bot. You can choose what it has access to here.";
     }
     return null;
 }
