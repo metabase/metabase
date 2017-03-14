@@ -231,7 +231,7 @@
         ;; sync one last time
         (sync!)
         ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
-        (db/select [Table :name :active] :db_id (u/get-id database), :name "angry_birds")))))
+        (map (partial into {}) (db/select [Table :name :active] :db_id (u/get-id database), :name "angry_birds"))))))
 
 
 ;;; timezone tests
