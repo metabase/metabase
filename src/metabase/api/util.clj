@@ -27,10 +27,10 @@
   (stats/anonymous-usage-stats))
 
 (defendpoint GET "/random_token"
-  "Return a cryptographically secure random 32-byte token, encoded as a base-64 string.
+  "Return a cryptographically secure random 32-byte token, encoded as a hexidecimal string.
    Intended for use when creating a value for `embedding-secret-key`."
   []
-  {:token (crypto-random/base64 32)})
+  {:token (crypto-random/hex 32)})
 
 
 (define-routes)

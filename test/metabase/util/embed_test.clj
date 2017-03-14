@@ -1,8 +1,20 @@
 (ns metabase.util.embed-test
-  (:require [expectations :refer :all]
+  (:require [buddy.sign.jwt :as jwt]
+            [crypto.random :as crypto-random]
+            [expectations :refer :all]
+            [metabase.test.util :as tu]
             [metabase.util.embed :as embed]))
+
+(def ^:private ^String token-with-alg-none
+  "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhZG1pbiI6dHJ1ZX0.3Dbtd6Z0yuSfw62fOzBGHyiL0BJp3pod_PZE-BBdR-I")
+
+;; check that are token is in fact valid
+(expect
+  {:admin true}
+  (jwt/unsign token-with-alg-none ""))
 
 ;; check that we disallow tokens signed with alg = none
 (expect
   clojure.lang.ExceptionInfo
-  (embed/unsign "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhZG1pbiI6dHJ1ZX0.hGR6ufA7hbxH4RVyh26Z8Lz96LkarlYh3nLe2fqAOe0")) ; token with alg = none
+  (tu/with-temporary-setting-values [embedding-secret-key (crypto-random/hex 32)]
+    (embed/unsign token-with-alg-none)))
