@@ -17,7 +17,8 @@
                               :iterations 100000}) ; 100,000 iterations takes about ~160ms on my laptop
                  64))
 
-(defonce ^:private ^bytes default-secret-key
+;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick) so you have to do `^{:tag 'bytes}` instead
+(defonce ^:private ^{:tag 'bytes} default-secret-key
   (when-let [secret-key (env/env :mb-encryption-secret-key)]
     (when (seq secret-key)
       (assert (>= (count secret-key) 16)
