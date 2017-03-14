@@ -25,7 +25,14 @@ const DisplayOptionsPane = ({ className, displayOptions, onChangeDisplayOptions 
                 checked={displayOptions.bordered}
                 onChange={(e) => onChangeDisplayOptions({ ...displayOptions, bordered: e.target.checked })}
             />
-            <span className="ml1">Bordered</span>
+            <span className="ml1">Border</span>
+        </div>
+        <div className="flex align-center my1">
+            <CheckBox
+                checked={displayOptions.titled}
+                onChange={(e) => onChangeDisplayOptions({ ...displayOptions, titled: e.target.checked })}
+            />
+            <span className="ml1">Title</span>
         </div>
         <EmbedSelect
             value={displayOptions.theme}

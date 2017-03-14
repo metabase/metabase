@@ -13,7 +13,8 @@ import cx from "classnames";
 import "./EmbedFrame.css";
 
 const DEFAULT_OPTIONS = {
-    bordered: IFRAMED
+    bordered: IFRAMED,
+    titled: true
 }
 
 import type { Parameter } from "metabase/meta/types/Dashboard";
@@ -43,10 +44,12 @@ export default class EmbedFrame extends Component<*, Props, *> {
     }
 
     render() {
-        const { className, children, actionButtons, name, location, parameters, parameterValues, setParameterValue } = this.props;
+        const { className, children, actionButtons, location, parameters, parameterValues, setParameterValue } = this.props;
         const footer = true;
 
-        const { bordered, theme } = this._getOptions()
+        const { bordered, titled, theme } = this._getOptions();
+
+        const name = titled ? this.props.name : null;
 
         return (
             <div className={cx("EmbedFrame flex flex-column", className, {

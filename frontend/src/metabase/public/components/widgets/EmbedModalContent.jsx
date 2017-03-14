@@ -77,7 +77,8 @@ export default class EmbedModalContent extends Component<*, Props, State> {
             embeddingParams: props.resource.embedding_params || {},
             displayOptions: {
                 theme: null,
-                bordered: true
+                bordered: true,
+                titled: true
             },
 
             parameterValues: {},
