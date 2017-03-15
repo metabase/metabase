@@ -1,9 +1,8 @@
 databaseChangeLog:
   - changeSet:
-      id: 49
+      id: 51
       author: tlrobinson
       changes:
-        ######################################## add skip_if_empty column to pulse ########################################
         - addColumn:
             tableName: pulse
             columns:
