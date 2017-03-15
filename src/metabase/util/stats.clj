@@ -2,6 +2,7 @@
   "Functions which summarize the usage of an instance"
   (:require [clojure.tools.logging :as log]
             [clj-http.client :as client]
+            [medley.core :as m]
             [toucan.db :as db]
             [metabase.api.session :as session-api]
             [metabase.config :as config]
@@ -30,15 +31,18 @@
             [metabase.util :as u])
   (:import java.util.Date))
 
-(defn- one-if
-  "Return `1` if CONDITION is truthy, otherwise return `0`."
-  ([k m]
-   (one-if (get m k)))
-  ([condition]
-   (if condition 1 0)))
-
-(defn- merge-count-maps [ms]
-  (reduce (partial merge-with +) ms))
+(defn- merge-count-maps
+  "Merge sequence of maps MS by summing counts inside them.
+   Non-integer values are allowed; truthy values are considered to add a count of `1`, while non-truthy
+   values do not affect the result count."
+  [ms]
+  (reduce (partial merge-with +)
+          (for [m ms]
+            (m/map-vals #(cond
+                           (number? %) %
+                           %           1
+                           :else       0)
+                        m))))
 
 (def ^:private ^:const ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 
@@ -146,10 +150,10 @@
   []
   {:users (merge-count-maps (for [user (db/select [User :is_active :is_superuser :last_login :google_auth])]
                               {:total     1
-                               :active    (one-if :is_active    user)
-                               :admin     (one-if :is_superuser user)
-                               :logged_in (one-if :last_login   user)
-                               :sso       (one-if :google_auth  user)}))})
+                               :active    (:is_active    user)
+                               :admin     (:is_superuser user)
+                               :logged_in (:last_login   user)
+                               :sso       (:google_auth  user)}))})
 
 (defn- group-metrics
   "Get metrics based on groups:
@@ -164,8 +168,8 @@
   {:questions (merge-count-maps (for [{query-type :query_type} (db/select [Card :query_type])]
                                   (let [native? (= (keyword query-type) :native)]
                                     {:total  1
-                                     :native (one-if native?)
-                                     :gui    (one-if (not native?))})))})
+                                     :native native?
+                                     :gui    (not native?)})))})
 
 (defn- dashboard-metrics
   "Get metrics based on dashboards
@@ -218,7 +222,7 @@
   []
   {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} (db/select [Database :is_full_sync])]
                                   {:total    1
-                                   :analyzed (one-if is-full-sync?)}))})
+                                   :analyzed is-full-sync?}))})
 
 
 (defn- table-metrics
