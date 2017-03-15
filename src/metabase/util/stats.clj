@@ -161,26 +161,56 @@
   []
   {:groups (db/count PermissionsGroup)})
 
+(defn- card-has-params? [card]
+  (boolean (get-in card [:dataset_query :native :template_tags])))
+
 (defn- question-metrics
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  {:questions (merge-count-maps (for [{query-type :query_type} (db/select [Card :query_type])]
-                                  (let [native? (= (keyword query-type) :native)]
-                                    {:total  1
-                                     :native native?
-                                     :gui    (not native?)})))})
+  (let [cards (db/select [Card :query_type :public_uuid :enable_embedding :embedding_params :dataset_query])]
+    {:questions (merge-count-maps (for [card cards]
+                                    (let [native? (= (keyword (:query_type card)) :native)]
+                                      {:total       1
+                                       :native      native?
+                                       :gui         (not native?)
+                                       :with_params (card-has-params? card)})))
+     :public    (merge-count-maps (for [card  cards
+                                        :when (:public_uuid card)]
+                                    {:total       1
+                                     :with_params (card-has-params? card)}))
+     :embedded  (merge-count-maps (for [card  cards
+                                        :when (:enable_embedding card)]
+                                    (let [embedding-params-vals (set (vals (:embedding_params card)))]
+                                      {:total                1
+                                       :with_params          (card-has-params? card)
+                                       :with_enabled_params  (contains? embedding-params-vals "enabled")
+                                       :with_locked_params   (contains? embedding-params-vals "locked")
+                                       :with_disabled_params (contains? embedding-params-vals "disabled")})))}))
 
 (defn- dashboard-metrics
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (db/select [Dashboard :creator_id])
+  (let [dashboards (db/select [Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params])
         dashcards  (db/select [DashboardCard :card_id :dashboard_id])]
     {:dashboards         (count dashboards)
+     :with_params        (count (filter (comp seq :parameters) dashboards))
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
      :num_cards_per_dash (medium-histogram dashcards :dashboard_id)
-     :num_dashs_per_card (medium-histogram dashcards :card_id)}))
+     :num_dashs_per_card (medium-histogram dashcards :card_id)
+     :public             (merge-count-maps (for [dash  dashboards
+                                                 :when (:public_uuid dash)]
+                                             {:total       1
+                                              :with_params (seq (:parameters dash))}))
+     :embedded           (merge-count-maps (for [dash  dashboards
+                                                 :when (:enable_embedding dash)]
+                                             (let [embedding-params-vals (set (vals (:embedding_params dash)))]
+                                               {:total                1
+                                                :with_params          (seq (:parameters dash))
+                                                :with_enabled_params  (contains? embedding-params-vals "enabled")
+                                                :with_locked_params   (contains? embedding-params-vals "locked")
+                                                :with_disabled_params (contains? embedding-params-vals "disabled")})))}))
 
 (defn- pulse-metrics
   "Get mes based on pulses
