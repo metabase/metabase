@@ -108,6 +108,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     static propTypes = {
         series: PropTypes.array.isRequired,
         actionButtons: PropTypes.node,
+        showTitle: PropTypes.bool,
         isDashboard: PropTypes.bool
     };
 
@@ -175,7 +176,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     }
 
     render() {
-        const { series, hovered, isDashboard, actionButtons, linkToCard } = this.props;
+        const { series, hovered, showTitle, actionButtons, linkToCard } = this.props;
 
         const settings = this.getSettings();
 
@@ -184,7 +185,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
         let originalSeries = series._raw || series;
         let cardIds = _.uniq(originalSeries.map(s => s.card.id))
 
-        if (isDashboard && settings["card.title"]) {
+        if (showTitle && settings["card.title"]) {
             titleHeaderSeries = [{ card: {
                 name: settings["card.title"],
                 id: cardIds.length === 1 ? cardIds[0] : null

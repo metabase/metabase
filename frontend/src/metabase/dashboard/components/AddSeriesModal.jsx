@@ -212,8 +212,9 @@ export default class AddSeriesModal extends Component {
                         <Visualization
                             className="spread"
                             series={series}
-                            isDashboard={true}
-                            isMultiseries={true}
+                            showTitle
+                            isDashboard
+                            isMultiseries
                             onRemoveSeries={this.onRemoveSeries}
                         />
                         { this.state.state &&

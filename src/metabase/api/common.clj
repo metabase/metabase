@@ -307,6 +307,12 @@
   (check (public-settings/enable-public-sharing)
     [400 "Public sharing is not enabled."]))
 
+(defn check-embedding-enabled
+  "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
+  []
+  (check (public-settings/enable-embedding)
+    [400 "Embedding is not enabled."]))
+
 (defn check-not-archived
   "Check that the OBJECT is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
   [object]

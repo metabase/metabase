@@ -11,7 +11,7 @@ import VisualizationResult from "./VisualizationResult.jsx";
 
 import Warnings from "./Warnings.jsx";
 import QueryDownloadWidget from "./QueryDownloadWidget.jsx";
-import QuestionShareWidget from "../containers/QuestionShareWidget";
+import QuestionEmbedWidget from "../containers/QuestionEmbedWidget";
 
 import { formatNumber, inflect } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
@@ -87,6 +87,7 @@ export default class QueryVisualization extends Component {
         const isDirty = this.queryIsDirty();
         const isSaved = card.id != null;
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
+        const isEmbeddingEnabled = MetabaseSettings.get("embedding");
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
                 <span className="relative z4">
@@ -113,11 +114,13 @@ export default class QueryVisualization extends Component {
                             result={result}
                         />
                     : null }
-                    { isSaved && isPublicLinksEnabled && (isAdmin || card.public_uuid) ?
-                        <QuestionShareWidget
+                    { isSaved && (
+                        (isPublicLinksEnabled && (isAdmin || card.public_uuid)) ||
+                        (isEmbeddingEnabled && isAdmin)
+                    ) ?
+                        <QuestionEmbedWidget
                             className="mx1"
                             card={card}
-                            isAdmin={isAdmin}
                         />
                     : null }
                 </div>

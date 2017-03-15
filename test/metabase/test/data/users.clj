@@ -3,7 +3,8 @@
   ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
             [toucan.db :as db]
-            [metabase.core :as core]
+            (metabase [config :as config]
+                      [core :as core])
             [metabase.http-client :as http]
             (metabase.models [permissions-group :as perms-group]
                              [user :refer [User]])
@@ -46,15 +47,29 @@
 
 ;;; ------------------------------------------------------------ Test User Fns ------------------------------------------------------------
 
+(defn- wait-for-initiailization
+  "Wait up to MAX-WAIT-SECONDS (default: 30) for Metabase to finish initializing.
+   (Sometimes it can take Metabase a while to reload during live development with `lein ring server`.)"
+  ([]
+   (wait-for-initiailization 30))
+  ([max-wait-seconds]
+   ;; only need to wait when running unit tests. When doing REPL dev and using the test users we're probably
+   ;; the server is probably a separate process (`lein ring server`)
+   (when config/is-test?
+     (when-not (core/initialized?)
+       (when (<= max-wait-seconds 0)
+         (throw (Exception. "Metabase still hasn't finished initializing.")))
+       (println (format "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)..." max-wait-seconds))
+       (Thread/sleep 1000)
+       (recur (dec max-wait-seconds))))))
+
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
   [& {:keys [email first last password superuser active]
       :or {superuser false
            active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
-  (when-not (core/initialized?)
-    (println "Metabase is not yet initialized, waiting 5 seconds...")
-    (Thread/sleep 5000))
+  (wait-for-initiailization)
   (or (User :email email)
       (db/insert! User
         :email        email

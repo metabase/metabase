@@ -68,6 +68,10 @@ export function getTemplateTags(card: ?Card): Array<TemplateTag> {
 }
 
 export function getParameters(card: ?Card): Parameter[] {
+    if (card && card.parameters) {
+        return card.parameters;
+    }
+
     const tags: TemplateTag[] = getTemplateTags(card);
     return getTemplateTagParameters(tags);
 }

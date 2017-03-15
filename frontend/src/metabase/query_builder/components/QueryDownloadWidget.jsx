@@ -13,7 +13,7 @@ import Urls from "metabase/lib/urls";
 import _ from "underscore";
 import cx from "classnames";
 
-const QueryDownloadWidget = ({ className, card, result, uuid }) =>
+const QueryDownloadWidget = ({ className, card, result, uuid, token }) =>
     <PopoverWithTrigger
         triggerElement={
             <Tooltip tooltip="Download">
@@ -34,10 +34,14 @@ const QueryDownloadWidget = ({ className, card, result, uuid }) =>
                 {["csv", "json"].map(type =>
                     uuid ?
                         <PublicQueryButton type={type} uuid={uuid} className="mr1 text-uppercase text-default" />
-                    : card.id ?
+                    : token ?
+                        <EmbedQueryButton type={type} token={token} className="mr1 text-uppercase text-default" />
+                    : card && card.id ?
                         <SavedQueryButton type={type} card={card} result={result} className="mr1 text-uppercase text-default" />
-                    :
+                    : card && !card.id ?
                         <UnsavedQueryButton type={type} card={card} result={result} className="mr1 text-uppercase text-default" />
+                    :
+                      null
                 )}
             </div>
         </div>
@@ -68,6 +72,16 @@ const PublicQueryButton = ({ className, type, uuid }) =>
         className={className}
         method="GET"
         url={Urls.publicCard(uuid, type)}
+        extensions={[type]}
+    >
+        {type}
+    </DownloadButton>
+
+const EmbedQueryButton = ({ className, type, token }) =>
+    <DownloadButton
+        className={className}
+        method="GET"
+        url={Urls.embedCard(token, type)}
         extensions={[type]}
     >
         {type}

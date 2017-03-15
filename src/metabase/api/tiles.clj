@@ -92,7 +92,7 @@
         (.dispose graphics)))
     tile))
 
-(defn- tile->byte-array [^BufferedImage tile]
+(defn- tile->byte-array ^bytes [^BufferedImage tile]
   (let [output-stream (ByteArrayOutputStream.)]
     (try
       (when-not (ImageIO/write tile "png" output-stream) ; returns `true` if successful -- see JavaDoc

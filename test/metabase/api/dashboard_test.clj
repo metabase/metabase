@@ -87,15 +87,17 @@
                                                     :parameters "abc"}))
 
 (def ^:private ^:const dashboard-defaults
-  {:description             nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :parameters              []
-   :updated_at              true
+  {:caveats                 nil
    :created_at              true ; assuming you call dashboard-response on the results
+   :description             nil
+   :embedding_params        nil
+   :enable_embedding        false
+   :made_public_by_id       nil
+   :parameters              []
+   :points_of_interest      nil
    :public_uuid             nil
-   :made_public_by_id       nil})
+   :show_in_getting_started false
+   :updated_at              true})
 
 (expect
   (merge dashboard-defaults
@@ -512,3 +514,11 @@
     (tt/with-temp Dashboard [dashboard (shared-dashboard)]
       (for [dash ((user->client :crowberto) :get 200 "dashboard/public")]
         (m/map-vals boolean (select-keys dash [:name :id :public_uuid]))))))
+
+;; Test that we can fetch a list of embeddable-accessible dashboards
+(expect
+  [{:name true, :id true}]
+  (tu/with-temporary-setting-values [enable-embedding true]
+    (tt/with-temp Dashboard [dashboard {:enable_embedding true}]
+      (for [dash ((user->client :crowberto) :get 200 "dashboard/embeddable")]
+        (m/map-vals boolean (select-keys dash [:name :id]))))))

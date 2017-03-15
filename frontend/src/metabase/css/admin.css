@@ -231,6 +231,16 @@
     margin-bottom: 3px;
 }
 
+.AdminSelect--borderless {
+  border: none !important;
+}
+.AdminSelect--borderless .AdminSelect-content {
+  margin-left: auto;
+}
+.AdminSelect--borderless .AdminSelect-chevron {
+  margin-left: 0;
+}
+
 
 .MetadataTable-title {
     background-color: #FCFCFC;

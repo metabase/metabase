@@ -229,6 +229,7 @@ export default class Dashboard extends Component {
             parameters = (
                 <Parameters
                     className="ml1"
+                    syncQueryString
 
                     isEditing={isEditing}
                     isFullscreen={isFullscreen}

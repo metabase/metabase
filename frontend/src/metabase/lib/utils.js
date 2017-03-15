@@ -59,6 +59,14 @@ var MetabaseUtils = {
         return typeof uuid === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(uuid);
     },
 
+    isBase64(string) {
+        return typeof string === "string" && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(string);
+    },
+
+    isJWT(string) {
+        return typeof string === "string" && /^[A-Za-z0-9]+\.[A-Za-z0-9]+\.[A-Za-z0-9_-]+$/.test(string);
+    },
+
     validEmail: function(email) {
         var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
         return re.test(email);
