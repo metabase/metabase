@@ -25,7 +25,8 @@ export type EmbeddingParams = {
 
 export type DisplayOptions = {
     theme: ?string,
-    bordered: boolean
+    bordered: boolean,
+    titled: boolean,
 }
 
 export type EmbeddableResource = {
