@@ -32,8 +32,10 @@
 
 (defn- one-if
   "Return `1` if CONDITION is truthy, otherwise return `0`."
-  [condition]
-  (if condition 1 0))
+  ([k m]
+   (one-if (get m k)))
+  ([condition]
+   (if condition 1 0)))
 
 (defn- merge-count-maps [ms]
   (reduce (partial merge-with +) ms))
@@ -144,10 +146,10 @@
   []
   {:users (merge-count-maps (for [user (db/select [User :is_active :is_superuser :last_login :google_auth])]
                               {:total     1
-                               :active    (one-if (:is_active user))
-                               :admin     (one-if (:is_superuser user))
-                               :logged_in (one-if (:last_login user))
-                               :sso       (one-if (:google_auth user))}))})
+                               :active    (one-if :is_active    user)
+                               :admin     (one-if :is_superuser user)
+                               :logged_in (one-if :last_login   user)
+                               :sso       (one-if :google_auth  user)}))})
 
 (defn- group-metrics
   "Get metrics based on groups:
@@ -206,8 +208,8 @@
   (let [collections (db/select Collection)
         cards       (db/select [Card :collection_id])]
     {:collections              (count collections)
-     :cards_in_collections     (count (filter (comp nil?) (map :collection_id cards)))
-     :cards_not_in_collections (count (filter nil? (map :collection_id cards)))
+     :cards_in_collections     (count (filter :collection_id cards))
+     :cards_not_in_collections (count (remove :collection_id cards))
      :num_cards_per_collection (medium-histogram cards :collection_id)}))
 
 ;; Metadata Metrics
