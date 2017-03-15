@@ -54,7 +54,7 @@
     2 "2"
     "3+"))
 
-(defn- bin-small-number
+#_(defn- bin-small-number
   "Return small bin number. Assumes positive inputs."
   [x]
   (cond
@@ -104,22 +104,14 @@
   "Return a histogram for micro numbers."
   (partial histogram bin-micro-number))
 
-(def ^:private small-histogram
-  "Return a histogram for small numbers."
-  (partial histogram bin-small-number))
-
 (def ^:private medium-histogram
   "Return a histogram for medium numbers."
   (partial histogram bin-medium-number))
 
-(def ^:private large-histogram
-  "Return a histogram for large numbers."
-  (partial histogram bin-large-number))
-
 (defn- instance-start-date
-  "Pull up the first user account and use that date"
+  "Return the data at which the very first User account was created."
   []
-  (db/select-one-field :date_joined User {:order-by [[:date_joined :desc]]}))
+  (:min (db/select-one [User [:%min.date_joined :min]])))
 
 (defn- environment-type
   "Figure out what we're running under"
