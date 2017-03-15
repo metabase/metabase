@@ -21,13 +21,13 @@ export default class EmbedWidget extends Component<*, Props, *> {
     _modal: ?ModalWithTrigger
 
     render() {
-        const { className, resourceType } = this.props;
+        const { className } = this.props;
         return (
             <ModalWithTrigger
                 ref={m => this._modal = m}
                 full
                 triggerElement={
-                    <Tooltip tooltip={`Share this ${resourceType}`}>
+                    <Tooltip tooltip={`Sharing and Embedding`}>
                         <Icon name="share" />
                     </Tooltip>
                 }

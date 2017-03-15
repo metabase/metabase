@@ -395,3 +395,14 @@
   (with-embedding-enabled-and-new-secret-key
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "enabled"}}}]
       (http/client :get 200 (str (dashcard-url dashcard) "?abc=200")))))
+
+
+;;; ------------------------------------------------------------ Other Tests ------------------------------------------------------------
+
+(tu/resolve-private-vars metabase.api.embed
+  remove-locked-and-disabled-params)
+
+;; parameters that are not in the `embedding-params` map at all should get removed by `remove-locked-and-disabled-params`
+(expect
+  {:parameters []}
+  (remove-locked-and-disabled-params {:parameters {:slug "foo"}} {}))

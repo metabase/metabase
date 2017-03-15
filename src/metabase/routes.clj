@@ -23,6 +23,7 @@
 
 (def ^:private index  (partial entrypoint "index"  (not :embeddable)))
 (def ^:private public (partial entrypoint "public" :embeddable))
+(def ^:private embed  (partial entrypoint "embed"  :embeddable))
 
 (defroutes ^:private public-routes
   (GET ["/question/:uuid.csv"  :uuid u/uuid-regex] [uuid] (resp/redirect (format "/api/public/card/%s/query/csv"  uuid)))
@@ -32,7 +33,7 @@
 (defroutes ^:private embed-routes
   (GET "/question/:token.csv"  [token] (resp/redirect (format "/api/embed/card/%s/query/csv"  token)))
   (GET "/question/:token.json" [token] (resp/redirect (format "/api/embed/card/%s/query/json" token)))
-  (GET "*" [] public))
+  (GET "*" [] embed))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
