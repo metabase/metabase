@@ -817,3 +817,8 @@
   ^Boolean [s]
   (boolean (when (string? s)
              (re-find #"^[0-9A-Za-z/+]+=*$" s))))
+
+(defn safe-inc
+  "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
+  [n]
+  (if n (inc n) 1))
