@@ -27,7 +27,16 @@
                              [table :refer [Table]]
                              [user :refer [User]])
             [metabase.public-settings :as public-settings]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import java.util.Date))
+
+(defn- one-if
+  "Return `1` if CONDITION is truthy, otherwise return `0`."
+  [condition]
+  (if condition 1 0))
+
+(defn- merge-count-maps [ms]
+  (reduce (partial merge-with +) ms))
 
 (def ^:private ^:const ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 
@@ -35,12 +44,6 @@
   "Generate an anonymous id. Don't worry too much about hash collisions or localhost cases, etc.
    The goal is to be able to get a rough sense for how many different hosts are throwing a specific error/event."
   (hash (str (java.net.InetAddress/getLocalHost))))
-
-(defn- one-if
-  "Return `1` if CONDITION is truthy, otherwise return `0`."
-  [condition]
-  (if condition 1 0))
-
 
 (defn- bin-micro-number
   "Return really small bin number. Assumes positive inputs."
@@ -50,7 +53,6 @@
     1 "1"
     2 "2"
     "3+"))
-
 
 (defn- bin-small-number
   "Return small bin number. Assumes positive inputs."
@@ -74,7 +76,6 @@
     (<= 51 x 100)  "51-100"
     (<= 101 x 250) "101-250"
     (> x 250)      "250+"))
-
 
 (defn- bin-large-number
   "Return large bin number. Assumes positive inputs."
@@ -145,29 +146,16 @@
    :instance_started     (instance-start-date)
    :has_sample_data      (db/exists? Database, :is_sample true)})
 
-;; util function
-(def ^:private add-summaries
-  "add up some dictionaries"
-  (partial merge-with +))
-
-;; User metrics
-(defn- user-dims
-  "Characterize a USER record."
-  [user]
-  {:total     1
-   :active    (one-if (:is_active user)) ;; HOW DO I GET THE LIST OF ALL USERS INCLUDING INACTIVES?
-   :admin     (one-if (:is_superuser user))
-   :logged_in (one-if (:last_login user))
-   :sso       (one-if (:google_auth user))})
-
-
 (defn- user-metrics
   "Get metrics based on user records.
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  (let [users (db/select [User :is_active :is_superuser :last_login :google_auth])]
-    {:users (apply add-summaries (map user-dims users))}))
-
+  {:users (merge-count-maps (for [user (db/select [User :is_active :is_superuser :last_login :google_auth])]
+                              {:total     1
+                               :active    (one-if (:is_active user))
+                               :admin     (one-if (:is_superuser user))
+                               :logged_in (one-if (:last_login user))
+                               :sso       (one-if (:google_auth user))}))})
 
 (defn- group-metrics
   "Get metrics based on groups:
@@ -175,28 +163,22 @@
   []
   {:groups (db/count PermissionsGroup)})
 
-;; Artifact Metrics
-(defn- question-dims
-  "Characterize a saved QUESTION.
-  TODO: characterize by whether it has params, # of revisions, created by an admin"
-  [{query-type :query_type}]
-    {:total  1
-     :native (one-if (= query-type "native"))
-     :gui    (one-if (not= query-type "native"))})
-
 (defn- question-metrics
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
-  (let [questions (db/select [Card :id :query_type])]
-    {:questions (apply add-summaries (map question-dims questions))}))
+  {:questions (merge-count-maps (for [{query-type :query_type} (db/select [Card :query_type])]
+                                  (let [native? (= (keyword query-type) :native)]
+                                    {:total  1
+                                     :native (one-if native?)
+                                     :gui    (one-if (not native?))})))})
 
 (defn- dashboard-metrics
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (db/select [Dashboard :id :creator_id])
-        dashcards  (db/select [DashboardCard :id :card_id :dashboard_id])]
+  (let [dashboards (db/select [Dashboard :creator_id])
+        dashcards  (db/select [DashboardCard :card_id :dashboard_id])]
     {:dashboards         (count dashboards)
      :num_dashs_per_user (medium-histogram dashboards :creator_id)
      :num_cards_per_dash (medium-histogram dashcards :dashboard_id)
@@ -206,8 +188,8 @@
   "Get mes based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
-  (let [pulses         (db/select [Pulse :id :creator_id])
-        pulse-cards    (db/select [PulseCard :id :card_id :pulse_id])
+  (let [pulses         (db/select [Pulse :creator_id])
+        pulse-cards    (db/select [PulseCard :card_id :pulse_id])
         pulse-channels (db/select [PulseChannel :channel_type :schedule_type])]
     {:pulses               (count pulses)
      :pulse_types          (frequencies (map :channel_type pulse-channels))
@@ -218,7 +200,7 @@
 
 
 (defn- label-metrics
-  "Get metrics based on labels"
+  "Get metrics based on Labels."
   []
   (let [card-labels (db/select [CardLabel :card_id :label_id])]
     {:labels              (db/count Label)
@@ -227,7 +209,7 @@
 
 
 (defn- collection-metrics
-  "Get metrics on collection usage"
+  "Get metrics on Collection usage."
   []
   (let [collections (db/select Collection)
         cards       (db/select [Card :collection_id])]
@@ -237,73 +219,97 @@
      :num_cards_per_collection (medium-histogram cards :collection_id)}))
 
 ;; Metadata Metrics
-(defn- database-dims
-  "characterize a database record"
-  [database]
-  {:total    1
-   :analyzed (one-if (:is_full_sync database))})
-
 (defn- database-metrics
-  "Get metrics based on databases"
+  "Get metrics based on Databases."
   []
-  (let [databases (db/select [Database :id :is_full_sync])]
-    {:databases (apply add-summaries (map database-dims databases))}))
+  {:databases (merge-count-maps (for [{is-full-sync? :is_full_sync} (db/select [Database :is_full_sync])]
+                                  {:total    1
+                                   :analyzed (one-if is-full-sync?)}))})
 
 
 (defn- table-metrics
-  "Get metrics based on tables"
+  "Get metrics based on Tables."
   []
-  (let [tables (db/select [Table :id :db_id :schema])]
+  (let [tables (db/select [Table :db_id :schema])]
     {:tables           (count tables)
      :num_per_database (medium-histogram tables :db_id)
      :num_per_schema   (medium-histogram tables :schema)}))
 
 
 (defn- field-metrics
-  "Get metrics based on fields"
+  "Get metrics based on Fields."
   []
   (let [fields (db/select [Field :table_id])]
     {:fields        (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
 (defn- segment-metrics
-  "Get metrics based on segments."
+  "Get metrics based on Segments."
   []
   {:segments (db/count Segment)})
 
-
 (defn- metric-metrics
-  "Get metrics based on metrics"
+  "Get metrics based on Metrics."
   []
   {:metrics (db/count Metric)})
 
 
-(defn- bin-latencies
-  "Bin latencies, which are in milliseconds"
-  [query-executions]
-  (let [latency-vals (map #(/ % 1000) (map :running_time query-executions))]
-    (frequencies (map bin-large-number latency-vals))))
+;;; Execution Metrics
 
+;; Because the QueryExecution table can number in the millions of rows, it isn't safe to pull the entire thing into memory;
+;; instead, we'll fetch rows of QueryExecutions in chunks, building the summary as we go
 
-;; Execution Metrics
+(def ^:private ^:const executions-chunk-size
+  "Number of QueryExecutions to fetch per chunk. This should be a good tradeoff between not being too large (which could
+   cause us to run out of memory) and not being too small (which would make calculating this summary excessively slow)."
+  5000)
+
+;; fetch chunks by ID, e.g. 1-5000, 5001-10000, etc.
+
+(defn- executions-chunk
+  "Fetch the chunk of QueryExecutions whose ID is greater than STARTING-ID."
+  [starting-id]
+  (db/select [QueryExecution :id :executor_id :running_time :status]
+    :id [:> starting-id]
+    {:order-by [:id], :limit executions-chunk-size}))
+
+(defn- executions-lazy-seq
+  "Return a lazy seq of all QueryExecutions."
+  ([]
+   (executions-lazy-seq 0))
+  ([starting-id]
+   (when-let [chunk (seq (executions-chunk starting-id))]
+     (lazy-cat chunk (executions-lazy-seq (:id (last chunk)))))))
+
+(defn summarize-executions
+  "Summarize EXECUTIONS, by incrementing approriate counts in a summary map."
+  ([executions]
+   (reduce summarize-executions {:executions 0, :by_status {}, :num_per_user {}, :num_by_latency {}} executions))
+  ([summary execution]
+   (-> summary
+       (update :executions u/safe-inc)
+       (update-in [:by_status (:status execution)] u/safe-inc)
+       (update-in [:num_per_user (:executor_id execution)] u/safe-inc)
+       (update-in [:num_by_latency (bin-large-number (/ (:running_time execution) 1000))] u/safe-inc))))
+
+(defn- summarize-executions-per-user
+  "Convert a map of USER-ID->NUM-EXECUTIONS to the histogram output format we expect."
+  [user-id->num-executions]
+  (frequencies (map bin-large-number (vals user-id->num-executions))))
+
 (defn- execution-metrics
-  "Get metrics based on executions.
-  This should be done in a single pass, as there might
-  be a LOT of query executions in a normal instance."
-  ;; TODO - This looks dangerous, pulling the entire set of QueryExecutions into memory at once to calculate these metrics (!)
+  "Get metrics based on QueryExecutions."
   []
-  (let [executions (db/select [QueryExecution :executor_id :running_time :status])]
-    {:executions     (count executions)
-     :by_status      (frequencies (map :status executions))
-     :num_per_user   (large-histogram executions :executor_id)
-     :num_by_latency (bin-latencies executions)}))
+  (-> (executions-lazy-seq)
+      summarize-executions
+      (update :num_per_user summarize-executions-per-user)))
 
 
 (defn anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
-         {:uuid anonymous-id, :timestamp (java.util.Date.)}
+         {:uuid anonymous-id, :timestamp (Date.)}
          {:stats {:user       (user-metrics)
                   :question   (question-metrics)
                   :dashboard  (dashboard-metrics)

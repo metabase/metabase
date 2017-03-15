@@ -1,5 +1,7 @@
 (ns metabase.util.stats-test
   (:require [expectations :refer :all]
+            [toucan.db :as db]
+            [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.util.stats :refer :all]
             [metabase.test.util :as tu]))
 
@@ -65,3 +67,19 @@
 (expect false ((anonymous-usage-stats) :slack_configured))
 (expect false ((anonymous-usage-stats) :sso_configured))
 (expect false ((anonymous-usage-stats) :has_sample_data))
+
+;;; check that the new lazy-seq version of the executions metrics works the same way the old one did
+(tu/resolve-private-vars metabase.util.stats
+  execution-metrics large-histogram)
+
+(defn- old-execution-metrics []
+  (let [executions (db/select [QueryExecution :executor_id :running_time :status])]
+    {:executions     (count executions)
+     :by_status      (frequencies (map :status executions))
+     :num_per_user   (large-histogram executions :executor_id)
+     :num_by_latency (frequencies (for [{latency :running_time} executions]
+                                    (bin-large-number (/ latency 1000))))}))
+
+(expect
+  (old-execution-metrics)
+  (execution-metrics))
