@@ -92,7 +92,7 @@
   (let [results     (for [card cards]
                       (execute-card (:id card)))
         channel-ids (or channel-ids (mapv :id (:channels pulse)))]
-    (if-not (and skip_if_empty (are-all-cards-empty? results))
+    (when-not (and skip_if_empty (are-all-cards-empty? results))
       (doseq [channel-id channel-ids]
         (let [{:keys [channel_type details recipients]} (some #(when (= channel-id (:id %)) %)
                                                               (:channels pulse))]
