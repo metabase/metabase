@@ -5,7 +5,7 @@ databaseChangeLog:
       changes:
         - addColumn:
             tableName: pulse
-            remarks: 'Whether or not the pulse will be skipped if none of its cards have any results'
+            remarks: 'Skip a scheduled Pulse if none of its questions have any results'
             columns:
               - column:
                   name: skip_if_empty
