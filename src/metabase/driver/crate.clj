@@ -6,7 +6,7 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
             [clojure.tools.logging :as log])
-  (:import (java.sql DatabaseMetaData)))
+  (:import (java.sql.DatabaseMetaData)))
 
 (def ^:private ^:const column->base-type
   "Map of Crate column types -> Field base types
@@ -59,17 +59,16 @@
 
 (defn- describe-table-fields
   [database, driver, {:keys [schema name]}]
-  (set (doseq [{column_name :column_name, type_name :type_name}
-             (jdbc/query
-                 (sql/db->jdbc-connection-spec database)
-                 [(format "select column_name, data_type as type_name
-                  from information_schema.columns
-                  where table_name like '%s' and table_schema like '%s'" name schema)])]
-          (merge {:name      column_name
-                 :custom    {:column-type type_name}
-                 :base-type (or (column->base-type driver (keyword type_name))
-                                (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
-                                    :type/*))}))))
+  (let [columns (jdbc/query
+                  (sql/db->jdbc-connection-spec database)
+                    [(format "select column_name, data_type as type_name from information_schema.columns
+                              where table_name like '%s' and table_schema like '%s'" name schema)])]
+    (set (for [{:keys [column_name type_name]} columns]
+      (merge {:name      column_name
+              :custom    {:column-type type_name}
+              :base-type (or (column->base-type (keyword type_name))
+                           (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
+                             :type/*))})))))
 
 (defn- add-table-pks
   [^DatabaseMetaData metadata, table]
@@ -85,9 +84,9 @@
 
 (defn- describe-table [driver database table]
   (sql/with-metadata [metadata driver database]
-                 (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields database driver table))
-                      ;; find PKs and mark them
-                      (add-table-pks metadata))))
+    (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields database driver table))
+      ;; find PKs and mark them
+      (add-table-pks metadata))))
 
 (defn- field->alias [field]
   (str \" (name field) \"))
