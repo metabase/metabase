@@ -106,6 +106,10 @@
     text-overflow: ellipsis;
 }
 
+.text-nowrap {
+    white-space: nowrap;
+}
+
 .text-code {
     font-family: monospace;
     color: #8691AC;

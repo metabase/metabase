@@ -28,6 +28,7 @@ export default class ParameterValueWidget extends Component {
 
     static propTypes = {
         parameter: PropTypes.object.isRequired,
+        name: PropTypes.string,
         value: PropTypes.any,
         setValue: PropTypes.func.isRequired,
         placeholder: PropTypes.string,
@@ -64,7 +65,7 @@ export default class ParameterValueWidget extends Component {
         if (Widget.noPopover) {
             return (
                 <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
-                    <Widget value={value} values={values} setValue={setValue} isEditing={isEditing} commitImmediately={commitImmediately} />
+                    <Widget placeholder={placeholder} value={value} values={values} setValue={setValue} isEditing={isEditing} commitImmediately={commitImmediately} />
                     { hasValue && !noReset &&
                         <Icon name="close" className="flex-align-right cursor-pointer" size={12} onClick={(e) => {
                             if (hasValue) {
@@ -77,14 +78,14 @@ export default class ParameterValueWidget extends Component {
             );
         }
 
-        let placeholderText = placeholder || (isEditing ? "Select a default value…" : "Select…");
+        let placeholderText =isEditing ? "Select a default value…" : (placeholder || "Select…");
 
         return (
             <PopoverWithTrigger
                 ref="valuePopover"
                 triggerElement={
                     <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
-                        <div className="mr1">{ hasValue ? Widget.format(value) : placeholderText }</div>
+                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value) : placeholderText }</div>
                         { hasValue && !noReset ?
                             <Icon name="close" className="flex-align-right" size={12} onClick={(e) => {
                                 e.stopPropagation();

@@ -1,6 +1,17 @@
 :local(.container) {
-    composes: flex align-center mr3 from "style";
+    composes: flex align-center from "style";
     transition: opacity 500ms linear;
+    background-color: white;
+    border: 2px solid var(--border-color);
+    margin: 0 0.85em 0 0;
+    padding: 0em 1em 0.25em 1em;
+}
+
+:local(.container) legend {
+    color: var(--grey-4);
+    text-transform: none;
+    white-space: nowrap;
+    height: 12px;
 }
 
 :local(.container.deemphasized) {
@@ -11,16 +22,23 @@
 }
 
 :local(.parameter) {
+    font-weight: 600;
+    min-height: 30px;
+    min-width: 150px;
+    display: flex;
+    align-items: center;
+    color: var(--grey-4);
+}
+
+:local(.nameInput) {
     font-size: 16px;
-    border: 2px solid var(--border-color);
-    border-radius: 4px;
     min-height: 36px;
     min-width: 200px;
     background-color: white;
     display: flex;
     align-items: center;
-    padding: 0.25em 0.5em 0.25em 0.5em;
     color: var(--grey-4);
+    border: none;
 }
 
 :local(.fullscreen) {
@@ -44,13 +62,9 @@
     border-color: var(--brand-color);
 }
 
-:local(.parameter.noPopover) {
-    padding: 0 0.5em 0 0.5em;
-}
-
 :local(.parameter.noPopover) input {
-    font-size: 16px;
-    color: var(--default-font-color);
+    font-size: 1em;
+    font-weight: 600;
     border: none;
 }
 :local(.parameter.noPopover.selected) input {
@@ -67,9 +81,6 @@
 }
 
 :local(.input) {
-    composes: parameter;
-    composes: mb1 from "style";
-    color: var(--grey-4);
 }
 
 :local(.nameInput:focus),
@@ -84,13 +95,6 @@
     color: var(--grey-4);
 }
 
-:local(.nameInput) {
-    composes: parameter;
-    composes: mr1 from "style";
-    font-size: 16px;
-    font-weight: bold;
-    color: var(--grey-4);
-}
 
 :local(.parameterButtons) {
     display: flex;

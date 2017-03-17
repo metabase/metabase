@@ -228,7 +228,7 @@ export default class Dashboard extends Component {
         if (dashboard && dashboard.parameters && dashboard.parameters.length) {
             parameters = (
                 <Parameters
-                    className="ml1"
+                    className=""
                     syncQueryString
 
                     isEditing={isEditing}
@@ -270,7 +270,7 @@ export default class Dashboard extends Component {
                         />
                     </header>
                     {!isFullscreen && parameters &&
-                        <div className="wrapper flex flex-column align-start mt1 relative z2">
+                        <div className="wrapper flex flex-column align-start mt2 relative z2">
                             {parameters}
                         </div>
                     }

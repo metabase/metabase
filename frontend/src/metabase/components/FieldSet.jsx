@@ -1,20 +1,25 @@
-import React, { Component, PropTypes } from "react";
+import React, {Component, PropTypes} from "react";
 
 import cx from "classnames";
 
-export default class FieldSet extends Component {
-    static propTypes = {};
-    static defaultProps = {
-        className: "border-brand"
-    };
+type Props = {
+    className: string,
+    legend: string,
+    noPadding?: boolean,
+    children: ReactElement
+}
 
-    render() {
-        const { className, children, legend } = this.props;
-        return (
-            <fieldset className={cx(className, "px2 pb2 bordered rounded")}>
-                {legend && <legend className="h5 text-bold text-uppercase px1" style={{ marginLeft: "-0.5rem" }}>{legend}</legend>}
+export default function FieldSet({className = "border-brand", legend, noPadding, children}: Props) {
+    const fieldSetClassName = cx("bordered rounded", {"px2": !noPadding}, {"pb2": !noPadding});
+    const missingLegendMargin = legend ? {} : {marginTop: "0.415em"};
+
+    return (
+        <fieldset className={cx(className, fieldSetClassName)} style={missingLegendMargin}>
+            {legend &&
+            <legend className="h5 text-bold text-uppercase px1" style={{ marginLeft: "-0.5rem" }}>{legend}</legend>}
+            <div style={missingLegendMargin}>
                 {children}
-            </fieldset>
-        );
-    }
+            </div>
+        </fieldset>
+    );
 }
