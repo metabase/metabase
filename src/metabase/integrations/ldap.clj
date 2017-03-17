@@ -59,21 +59,21 @@
                  :ssl?      (= (ldap-security) "ssl")
                  :startTLS? (= (ldap-security) "tls")}))
 
-(defn with-connection [f & args]
-  "Applied `f` with a connection pool followed by `args`"
+(defn- with-connection [f & args]
+  "Applies `f` with a connection pool followed by `args`"
   (let [conn (ldap-connection)]
     (try
       (apply f conn args)
       (finally (ldap/close conn)))))
 
-(defn escape-value [value]
+(defn- escape-value [value]
   "Escapes a value for use in an LDAP filter expression."
   (s/replace value #"[\*\(\)\\\\0]" (comp (partial format "\\%02X") int first)))
 
-(defn get-user-info
+(defn find-user
   "Gets user information for the supplied username."
   ([username]
-    (with-connection get-user-info username))
+    (with-connection find-user username))
   ([conn username]
     (let [fname-attr (keyword (ldap-attribute-firstname))
           lname-attr (keyword (ldap-attribute-lastname))
@@ -93,7 +93,14 @@
     (with-connection auth-user username password))
   ([conn username password]
     ;; first figure out the user even exists, we also need the DN to reliably bind with LDAP
-    (when-let [{:keys [dn], :as user} (get-user-info conn username)]
+    (when-let [{:keys [dn], :as user} (find-user conn username)]
       ;; then try a bind with the DN we got and the supplied password
       (when (ldap/bind? conn dn password)
         user))))
+
+(defn verify-password
+  "Verifies if the password supplied is correct. `user-info` is what `find-user` returns (alternarively only the :dn needs to be filled in)"
+  ([user-info password]
+    (with-connection verify-password user-info password))
+  ([conn {:keys [dn]} password]
+    (ldap/bind? conn dn password)))

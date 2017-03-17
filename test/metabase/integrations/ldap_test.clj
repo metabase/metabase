@@ -3,7 +3,8 @@
             [metabase.integrations.ldap :as ldap]
             [metabase.test.util :refer [resolve-private-vars]]))
 
+(resolve-private-vars metabase.integrations.ldap escape-value)
 
 (expect
   "\\2AJohn \\28Dude\\29 Doe\\5C"
-  (ldap/escape-value "*John (Dude) Doe\\"))
+  (escape-value "*John (Dude) Doe\\"))
