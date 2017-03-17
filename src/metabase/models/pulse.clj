@@ -168,7 +168,7 @@
   `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 
    Returns the newly created `Pulse` or throws an Exception."
-  [pulse-name creator-id card-ids channels skip_if_empty]
+  [pulse-name creator-id card-ids channels skip-if-empty?]
   {:pre [(string? pulse-name)
          (integer? creator-id)
          (sequential? card-ids)
@@ -180,7 +180,7 @@
     (let [{:keys [id] :as pulse} (db/insert! Pulse
                                    :creator_id creator-id
                                    :name pulse-name
-                                   :skip_if_empty skip_if_empty)]
+                                   :skip_if_empty skip-if-empty?)]
       ;; add card-ids to the Pulse
       (update-pulse-cards! pulse card-ids)
       ;; add channels to the Pulse
