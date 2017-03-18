@@ -31,13 +31,14 @@
 }
 
 :local(.nameInput) {
-    font-size: 16px;
-    min-height: 36px;
-    min-width: 200px;
-    background-color: white;
+    min-height: 30px;
+    min-width: 150px;
     display: flex;
     align-items: center;
     color: var(--grey-4);
+    border: none;
+    font-size: 1em;
+    font-weight: 600;
     border: none;
 }
 
