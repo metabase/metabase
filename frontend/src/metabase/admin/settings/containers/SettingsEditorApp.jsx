@@ -79,7 +79,7 @@ export default class SettingsEditorApp extends Component {
 
             this.refs.layout.setSaved();
             let val = (setting.key === "report-timezone" || setting.type === "boolean") ? setting.value : "success";
-            MetabaseAnalytics.trackEvent("General Settings", setting.display_name || setting.key,, val);
+            MetabaseAnalytics.trackEvent("General Settings", setting.display_name || setting.key, val);
         } catch (error) {
             let message = error && (error.message || (error.data && error.data.message));
             this.refs.layout.setSaveError(message);

@@ -216,7 +216,10 @@ const SECTIONS = [
                 key: "enable-embedding",
                 display_name: "Enable Embedding Metabase in other Applications",
                 type: "boolean",
-                getHidden: (settings) => !settings["enable-embedding"]
+                getHidden: (settings) => !settings["enable-embedding"],
+                onChanged: (oldValue, newValue) => {
+                    console.log(oldValue, newValue)
+                }
             },
             {
                 key: "embedding-secret-key",
