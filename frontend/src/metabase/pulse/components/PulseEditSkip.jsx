@@ -19,7 +19,7 @@ export default class PulseEditSkip extends Component {
         return (
             <div className="py1">
                 <h2>Skip if no results</h2>
-                <p className="mt1 h4 text-bold text-grey-3">Skip pulse if none of the cards have any results.</p>
+                <p className="mt1 h4 text-bold text-grey-3">Skip a scheduled Pulse if none of its questions have any results.</p>
                 <div className="my3">
                     <Toggle value={pulse.skip_if_empty || false} onChange={this.toggle} />
                 </div>
