@@ -27,8 +27,11 @@ export default class ParameterWidget extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            isEditingName: false
+            isEditingName: false,
+            isFocused: false
         };
+
+        this.focusChanged = this.focusChanged.bind(this)
     }
 
     static propTypes = {
@@ -64,8 +67,13 @@ export default class ParameterWidget extends Component {
                 setValue={setValue}
                 isEditing={isEditingParameter}
                 placeholder={placeholder}
+                focusChanged={this.focusChanged}
             />
         );
+    }
+
+    focusChanged(isFocused) {
+        this.setState({isFocused})
     }
 
     render() {
@@ -78,11 +86,11 @@ export default class ParameterWidget extends Component {
         const self = this;
 
         function renderFieldInNormalMode() {
-            const fieldHasValue = parameter.value != null;
-            const legend = fieldHasValue ? parameter.name : "";
+            const fieldHasValueOrFocus = parameter.value != null || self.state.isFocused;
+            const legend = fieldHasValueOrFocus ? parameter.name : "";
 
             return (
-                <FieldSet legend={legend} noPadding={true} className={cx(className, containerClassName, {"border-brand": fieldHasValue})}>
+                <FieldSet legend={legend} noPadding={true} className={cx(className, containerClassName, {"border-brand": fieldHasValueOrFocus})}>
                     {self.renderPopover(parameter.value, (value) => setValue(value), parameter.name)}
                 </FieldSet>
             );

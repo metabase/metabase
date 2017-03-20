@@ -36,6 +36,7 @@ export default class ParameterValueWidget extends Component {
         isEditing: PropTypes.bool,
         noReset: PropTypes.bool,
         commitImmediately: PropTypes.bool,
+        focusChanged: PropTypes.func
     };
 
     static defautProps = {
@@ -61,7 +62,8 @@ export default class ParameterValueWidget extends Component {
     }
 
     render() {
-        const {parameter, value, values, setValue, isEditing, placeholder, noReset, commitImmediately} = this.props;
+        const {parameter, value, values, setValue, isEditing, placeholder,
+               noReset, commitImmediately, focusChanged: parentFocusChanged} = this.props;
 
         let hasValue = value != null;
 
@@ -69,6 +71,7 @@ export default class ParameterValueWidget extends Component {
         const self = this;
 
         function focusChanged(isFocused) {
+            if (parentFocusChanged) parentFocusChanged(isFocused);
             self.setState({isFocused})
         }
 
