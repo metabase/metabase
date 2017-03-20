@@ -6,7 +6,7 @@
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
             [clojure.tools.logging :as log])
-  (:import (java.sql.DatabaseMetaData)))
+  (:import java.sql.DatabaseMetaData))
 
 (def ^:private ^:const column->base-type
   "Map of Crate column types -> Field base types
@@ -88,9 +88,6 @@
       ;; find PKs and mark them
       (add-table-pks metadata))))
 
-(defn- field->alias [field]
-  (str \" (name field) \"))
-
 (defrecord CrateDriver []
   clojure.lang.Named
   (getName [_] "Crate"))
@@ -111,8 +108,8 @@
           :column->base-type         (u/drop-first-arg column->base-type)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :date                      crate-util/date
-          :quote-style               :ansi
-          :field->alias              (u/drop-first-arg field->alias)
+          :quote-style               (constantly :crate)
+          :field->alias              (constantly nil)
           :unix-timestamp->timestamp crate-util/unix-timestamp->timestamp
           :current-datetime-fn       (constantly now)}))
 
