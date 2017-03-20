@@ -16,7 +16,7 @@ export default function FieldSet({className = "border-brand", legend, noPadding,
     return (
         <fieldset className={cx(className, fieldSetClassName)} style={missingLegendMargin}>
             {legend &&
-            <legend className="h5 text-bold text-uppercase px1" style={{ marginLeft: "-0.5rem" }}>{legend}</legend>}
+            <legend className="h5 text-bold text-uppercase px1 text-nowrap text-grey-4" style={{ marginLeft: "-0.5rem" }}>{legend}</legend>}
             <div style={missingLegendMargin}>
                 {children}
             </div>

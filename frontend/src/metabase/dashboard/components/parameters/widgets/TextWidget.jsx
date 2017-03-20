@@ -15,6 +15,7 @@ export default class TextWidget extends Component {
         className: PropTypes.string,
         isEditing: PropTypes.bool,
         commitImmediately: PropTypes.bool,
+        placeholder: PropTypes.string
     };
 
     static defaultProps = {

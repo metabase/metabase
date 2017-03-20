@@ -8,9 +8,7 @@
 }
 
 :local(.container) legend {
-    color: var(--grey-4);
     text-transform: none;
-    white-space: nowrap;
     height: 12px;
 }
 
@@ -22,19 +20,17 @@
 }
 
 :local(.parameter) {
+    composes: flex align-center from "style";
     font-weight: 600;
     min-height: 30px;
     min-width: 150px;
-    display: flex;
-    align-items: center;
     color: var(--grey-4);
 }
 
 :local(.nameInput) {
+    composes: flex align-center from "style";
     min-height: 30px;
     min-width: 150px;
-    display: flex;
-    align-items: center;
     color: var(--grey-4);
     border: none;
     font-size: 1em;
