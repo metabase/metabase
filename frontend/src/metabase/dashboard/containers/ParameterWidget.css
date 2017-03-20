@@ -42,7 +42,6 @@
     margin-right: 0;
     margin-left: 0;
 }
-
 :local(.fullscreen .name) {
     font-size: 14px;
 }
@@ -60,6 +59,7 @@
 }
 
 :local(.parameter.noPopover) input {
+    width: 100%;
     font-size: 1em;
     font-weight: 600;
     border: none;
