@@ -3,7 +3,7 @@
     font-size: 16px;
     border: 2px solid var(--brand-color);
     border-radius: 4px;
-    min-height: 36px;
+    min-height: 30px;
     min-width: 100px;
     padding: 0.25em 0.5em 0.25em 0.5em;
     color: var(--default-font-color);

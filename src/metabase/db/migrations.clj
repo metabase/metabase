@@ -361,10 +361,11 @@
 (defmigration ^{:author "camsaul", :added "0.23.0"} migrate-query-executions
   ;; migrate the most recent 100,000 entries
   ;; make sure the DB doesn't get snippy by trying to insert too many records at once. Divide the INSERT statements into chunks of 1,000
-  (doseq [chunk (partition-all 1000 (db/select LegacyQueryExecution {:limit 100000, :order-by [[:id :desc]]}))]
-    (db/insert-many! QueryExecution
-      (for [query-execution chunk]
-        (LegacyQueryExecution->QueryExecution query-execution)))))
+  (binding [query-execution/*validate-context* false]
+    (doseq [chunk (partition-all 1000 (db/select LegacyQueryExecution {:limit 100000, :order-by [[:id :desc]]}))]
+      (db/insert-many! QueryExecution
+        (for [query-execution chunk]
+          (LegacyQueryExecution->QueryExecution query-execution))))))
 
 ;; drop the legacy QueryExecution table now that we don't need it anymore
 (defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
