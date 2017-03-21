@@ -122,7 +122,7 @@
    (let [request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
                    ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
-                   (.setUseLegacySql (not (s/includes? query-string "#standardSQL")))
+                   (.setUseLegacySql (not (s/includes? (s/lower-case query-string) "#standardsql")))
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 

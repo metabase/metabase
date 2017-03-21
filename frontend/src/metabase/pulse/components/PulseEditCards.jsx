@@ -76,7 +76,7 @@ export default class PulseEditCards extends Component {
         let warnings = this.getWarnings(cardPreview, index === SOFT_LIMIT);
         if (warnings.length > 0) {
             return (
-                <div className="absolute" style={{ width: 400 }}>
+                <div className="absolute" style={{ width: 400, marginLeft: 420 }}>
                     {warnings.map(warning =>
                         <div className="text-gold border-gold border-left mt1 mb2 ml3 pl3" style={{ borderWidth: 3 }}>
                             <h3 className="mb1">{warning.head}</h3>

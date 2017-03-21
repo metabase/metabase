@@ -40,85 +40,85 @@
 (defn format-response [m]
   (into {} (for [[k v] m]
              (cond
-               (contains? #{:id :uuid :started_at :finished_at :running_time} k) [k (boolean v)]
+               (contains? #{:id :started_at :running_time :hash} k) [k (boolean v)]
                (= :data k) [k (if-not (contains? v :native_form)
                                 v
                                 (update v :native_form boolean))]
                :else [k v]))))
 
+(defn- most-recent-query-execution [] (db/select-one QueryExecution {:order-by [[:id :desc]]}))
+
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect
-  ;; the first result is directly from the api call
-  ;; the second result is checking our QueryExection log to ensure it captured the right details
-  [{:data         {:rows    [[1000]]
+  [;; API call response
+   {:data         {:rows    [[1000]]
                    :columns ["count"]
                    :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
                               :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                    :native_form true}
     :row_count    1
     :status       "completed"
-    :id           true
-    :uuid         true
+    :context      "ad-hoc"
     :json_query   (-> (wrap-inner-query
                         (query checkins
-                               (ql/aggregation (ql/count))))
+                          (ql/aggregation (ql/count))))
                       (assoc :type "query")
                       (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
                       (assoc :constraints default-query-constraints))
     :started_at   true
-    :finished_at  true
     :running_time true}
-   {:row_count    1
+   ;; QueryExecution record in the DB
+   {:hash         true
+    :row_count    1
     :result_rows  1
-    :status       :completed
-    :error        ""
+    :context      :ad-hoc
+    :executor_id  (user->id :rasta)
+    :native       false
+    :pulse_id     nil
+    :card_id      nil
+    :dashboard_id nil
+    :error        nil
     :id           true
-    :uuid         true
-    :raw_query    ""
-    :json_query   (-> (wrap-inner-query
-                        (query checkins
-                               (ql/aggregation (ql/count))))
-                      (assoc :type "query")
-                      (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
-                      (assoc :constraints default-query-constraints))
     :started_at   true
-    :finished_at  true
-    :running_time true
-    :version      0}]
+    :running_time true}]
   (let [result ((user->client :rasta) :post 200 "dataset" (wrap-inner-query
                                                             (query checkins
-                                                                   (ql/aggregation (ql/count)))))]
+                                                              (ql/aggregation (ql/count)))))]
     [(format-response result)
-     (format-response (QueryExecution :uuid (:uuid result)))]))
+     (format-response (most-recent-query-execution))]))
 
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
-  ;; the first result is directly from the api call
-  ;; the second result is checking our QueryExection log to ensure it captured the right details
-  (let [output {:data         {:rows    []
-                               :columns []
-                               :cols    []}
-                :row_count    0
-                :status       "failed"
-                :error        true
-                :id           true
-                :uuid         true
-                :json_query   {:database    (id)
-                               :type        "native"
-                               :native      {:query "foobar"}
-                               :constraints default-query-constraints}
-                :started_at   true
-                :finished_at  true
-                :running_time true}]
-    [output
-     (-> output
-         (dissoc :data)
-         (assoc :status      :failed
-                :version     0
-                :raw_query   ""
-                :result_rows 0))])
+  [;; API call response
+   {:data         {:rows    []
+                   :columns []
+                   :cols    []}
+    :row_count    0
+    :status       "failed"
+    :context      "ad-hoc"
+    :error        true
+    :json_query   {:database    (id)
+                   :type        "native"
+                   :native      {:query "foobar"}
+                   :constraints default-query-constraints}
+    :started_at   true
+    :running_time true}
+   ;; QueryExecution entry in the DB
+   {:hash         true
+    :id           true
+    :result_rows  0
+    :row_count    0
+    :context      :ad-hoc
+    :error        true
+    :started_at   true
+    :running_time true
+    :executor_id  (user->id :rasta)
+    :native       true
+    :pulse_id     nil
+    :card_id      nil
+    :dashboard_id nil}]
   ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check that it exists and contains the substring "Syntax error in SQL statement"
   (let [check-error-message (fn [output]
                               (update output :error (fn [error-message]
@@ -127,4 +127,4 @@
                                                                         :type     "native"
                                                                         :native   {:query "foobar"}})]
     [(check-error-message (format-response result))
-     (check-error-message (format-response (QueryExecution :uuid (:uuid result))))]))
+     (check-error-message (format-response (most-recent-query-execution)))]))
