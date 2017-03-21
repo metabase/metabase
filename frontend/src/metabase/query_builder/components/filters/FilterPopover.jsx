@@ -55,6 +55,20 @@ export default class FilterPopover extends Component<*, Props, State> {
         tableMetadata: PropTypes.object.isRequired
     };
 
+    componentWillMount() {
+        window.addEventListener('keydown', this.commitOnEnter);
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('keydown', this.commitOnEnter);
+    }
+
+    commitOnEnter(event: Object) {
+        if(this.isValid() && event.keyCode === 13) {
+            this.commitFilter(this.state.filter);
+        }
+    }
+
     commitFilter = (filter: FieldFilter) => {
         this.props.onCommitFilter(filter);
         this.props.onClose();
