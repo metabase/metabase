@@ -7,9 +7,15 @@
     padding: 0em 1em 0.25em 1em;
 }
 
+@-webkit-keyframes legend-fade-in {
+    0% {opacity: 0.65; transform: translateY(4px);}
+    100% {opacity: 1; transform: translateY(0);}
+}
+
 :local(.container) legend {
     text-transform: none;
     height: 12px;
+    animation: legend-fade-in 0.15s ease-in-out 1;
 }
 
 :local(.container.deemphasized) {
@@ -59,12 +65,14 @@
 }
 
 :local(.parameter.noPopover) input {
-    width: 100%;
+    /* NOTE: Fixed with to circumvent issues with flexbox with container having a min-width */
+    width: 115px;
     font-size: 1em;
     font-weight: 600;
     border: none;
 }
 :local(.parameter.noPopover.selected) input {
+    width: 127px;
     font-weight: bold;
     color: var(--brand-color);
 }
@@ -72,6 +80,7 @@
 :local(.parameter.noPopover) input:focus {
     outline: none;
     color: var(--default-font-color);
+    width: 127px;
 }
 :local(.parameter.noPopover) input::-webkit-input-placeholder {
     color: var(--grey-4);

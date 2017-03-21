@@ -56,6 +56,13 @@ export default class ParameterValueWidget extends Component {
         }
     }
 
+    static getParameterIconName(parameterType) {
+        if (parameterType.search(/date/) !== -1) return "calendar";
+        if (parameterType.search(/location/) !== -1) return "location";
+        if (parameterType.search(/id/) !== -1) return "label";
+        return "clipboard";
+    }
+
     constructor(props) {
         super(props);
         this.state = {isFocused: false}
@@ -75,30 +82,38 @@ export default class ParameterValueWidget extends Component {
             self.setState({isFocused})
         }
 
-        function getWidgetIcon() {
+        function getParameterTypeIcon() {
+            if (!hasValue && !self.state.isFocused) {
+                return <Icon name={ParameterValueWidget.getParameterIconName(parameter.type)} className="flex-align-left mr1 flex-no-shrink" size={14} />
+            } else {
+                return null;
+            }
+        }
+
+        function getWidgetStatusIcon() {
             if (hasValue && !noReset) {
-                return <Icon name="close" className="flex-align-right cursor-pointer" size={12} onClick={(e) => {
+                return <Icon name="close" className="flex-align-right cursor-pointer flex-no-shrink" size={12} onClick={(e) => {
                             if (hasValue) {
                                 e.stopPropagation();
                                 setValue(null);
                             }
                         }}/>
             } else if (Widget.noPopover && self.state.isFocused) {
-                return <Icon name="enterorreturn" className="flex-align-right" size={12}/>
+                return <Icon name="enterorreturn" className="flex-align-right flex-no-shrink" size={12}/>
             } else if (Widget.noPopover) {
-                // TODO: Check if this empty space could be implemented with pure CSS
-                return <Icon name="empty" className="flex-align-right cursor-pointer" size={12}/>
+                return <Icon name="empty" className="flex-align-right cursor-pointer flex-no-shrink" size={12}/>
             } else if (!Widget.noPopover) {
-                return <Icon name="chevrondown" className="flex-align-right" size={12}/>
+                return <Icon name="chevrondown" className="flex-align-right flex-no-shrink" size={12}/>
             }
         }
 
         if (Widget.noPopover) {
             return (
                 <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
+                    { getParameterTypeIcon() }
                     <Widget placeholder={placeholder} value={value} values={values} setValue={setValue}
                             isEditing={isEditing} commitImmediately={commitImmediately} focusChanged={focusChanged}/>
-                    { getWidgetIcon() }
+                    { getWidgetStatusIcon() }
                 </div>
             );
         } else {
@@ -109,8 +124,9 @@ export default class ParameterValueWidget extends Component {
                     ref="valuePopover"
                     triggerElement={
                     <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
+                        { getParameterTypeIcon() }
                         <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value) : placeholderText }</div>
-                        { getWidgetIcon() }
+                        { getWidgetStatusIcon() }
                     </div>
                 }
                     target={() => this.refs.trigger} // not sure why this is necessary
