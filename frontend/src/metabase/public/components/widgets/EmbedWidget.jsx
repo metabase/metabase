@@ -6,6 +6,8 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import EmbedModalContent from "./EmbedModalContent";
 
 import cx from "classnames";
@@ -21,14 +23,14 @@ export default class EmbedWidget extends Component<*, Props, *> {
     _modal: ?ModalWithTrigger
 
     render() {
-        const { className } = this.props;
+        const { className, resourceType } = this.props;
         return (
             <ModalWithTrigger
                 ref={m => this._modal = m}
                 full
                 triggerElement={
                     <Tooltip tooltip={`Sharing and Embedding`}>
-                        <Icon name="share" />
+                        <Icon name="share" onClick={() => MetabaseAnalytics.trackEvent("Sharing / Embedding", resourceType, "Sharing Link Clicked") } />
                     </Tooltip>
                 }
                 triggerClasses={cx(className, "text-brand-hover")}

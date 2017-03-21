@@ -13,6 +13,8 @@ import cx from "classnames";
 
 import type { EmbedType, EmbeddableResource } from "./EmbedModalContent";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 type Props = {
     resourceType: string,
     resource: EmbeddableResource,
@@ -67,8 +69,10 @@ export default class SharingPane extends Component<*, Props, State> {
                         <div className="ml-auto">
                             <Toggle value={!!resource.public_uuid} onChange={(value) => {
                                 if (value) {
+                                    MetabaseAnalytics.trackEvent("Sharing Modal", "Public Link Enabled", resourceType);
                                     onCreatePublicLink();
                                 } else {
+                                    MetabaseAnalytics.trackEvent("Sharing Modal", "Public Link Disabled", resourceType);
                                     onDisablePublicLink();
                                 }
                             }}/>
