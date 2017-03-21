@@ -20,8 +20,8 @@
 
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
-  [name creator cards channels skip_if_empty]
-  (let [{:keys [cards channels] :as pulse} (create-pulse! name creator cards channels skip_if_empty)]
+  [name creator cards channels skip-if-empty?]
+  (let [{:keys [cards channels] :as pulse} (create-pulse! name creator cards channels skip-if-empty?)]
     (-> pulse
         (dissoc :id :creator :created_at :updated_at)
         (assoc :cards (mapv #(dissoc % :id) cards))
