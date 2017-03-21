@@ -16,6 +16,8 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import type { Parameter, ParameterId } from "metabase/meta/types/Dashboard";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 export type Pane = "preview"|"code";
 export type EmbedType = null|"simple"|"application";
 
@@ -163,7 +165,10 @@ export default class EmbedModalContent extends Component<*, Props, State> {
                         className="text-grey-2 text-grey-4-hover cursor-pointer p2 ml-auto"
                         name="close"
                         size={24}
-                        onClick={onClose}
+                        onClick={() => {
+                            MetabaseAnalytics.trackEvent("Sharing Modal", "Modal Closed")
+                            onClose()
+                        }}
                     />
                 </div>
                 <div className="flex flex-full">
