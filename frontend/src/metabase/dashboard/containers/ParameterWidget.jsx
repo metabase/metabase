@@ -82,7 +82,7 @@ export default class ParameterWidget extends Component {
         const isEditingDashboard = isEditing;
         const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
 
-        const containerClassName = isQB ? "pl2 GuiBuilder-section flex align-center" : S.container;
+        const containerClassName = cx(S.container);
         const self = this;
 
         function renderFieldInNormalMode() {
@@ -90,7 +90,8 @@ export default class ParameterWidget extends Component {
             const legend = fieldHasValueOrFocus ? parameter.name : "";
 
             return (
-                <FieldSet legend={legend} noPadding={true} className={cx(className, containerClassName, {"border-brand": fieldHasValueOrFocus})}>
+                <FieldSet legend={legend} noPadding={true}
+                          className={cx(className, containerClassName, {"border-brand": fieldHasValueOrFocus})}>
                     {self.renderPopover(parameter.value, (value) => setValue(value), parameter.name)}
                 </FieldSet>
             );
@@ -117,9 +118,12 @@ export default class ParameterWidget extends Component {
         }
 
         function renderSetDefaultFieldValueUI() {
-            const editNameButton =
-                <Icon name="pencil" size={12} className="ml1 text-brand cursor-pointer"
+            const editNameButton = (
+                <span className={S.editNameIconContainer}>
+                <Icon name="pencil" size={12} className="text-brand cursor-pointer"
                       onClick={() => self.setState({ isEditingName: true })}/>
+                </span>
+            )
 
             const legend = <span>{parameter.name} {editNameButton}</span>
 

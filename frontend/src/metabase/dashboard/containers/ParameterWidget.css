@@ -3,8 +3,8 @@
     transition: opacity 500ms linear;
     background-color: white;
     border: 2px solid var(--border-color);
-    margin: 0 0.85em 0 0;
-    padding: 0em 1em 0.25em 1em;
+    margin-right: 0.85em;
+    padding: 0.25em 1em 0.25em 1em;
 }
 
 @-webkit-keyframes legend-fade-in {
@@ -85,6 +85,15 @@
 :local(.parameter.noPopover) input::-webkit-input-placeholder {
     color: var(--grey-4);
 }
+:local(.parameter.noPopover) input:-moz-placeholder {
+    color: var(--grey-4);
+}
+:local(.parameter.noPopover) input::-moz-placeholder {
+    color: var(--grey-4);
+}
+:local(.parameter.noPopover) input:-ms-input-placeholder {
+    color: var(--grey-4);
+}
 
 :local(.input) {
 }
@@ -119,4 +128,16 @@
 
 :local(.removeButton:hover) {
     color: var(--warning-color);
+}
+
+:local(.editNameIconContainer) {
+    display: inline-block;
+    height: 0;
+    margin-left: 0.25em;
+    width: 10px;
+}
+
+:local(.editNameIconContainer) > svg {
+    position: absolute;
+    top: -6px;
 }
