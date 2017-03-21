@@ -343,7 +343,7 @@
   models/IModel
   (merge models/IModelDefaults
          {:default-fields (constantly [:executor_id :result_rows :started_at :json_query :error :running_time])
-          :types          (constantly {:json_query :json})}))
+          :types          (constantly {:json_query :json, :error :clob})}))
 
 (defn- LegacyQueryExecution->QueryExecution
   "Convert a LegacyQueryExecution to a format suitable for insertion as a new-format QueryExecution."
