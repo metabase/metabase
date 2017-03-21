@@ -25,43 +25,47 @@
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
 
-(defmacro ^:private with-generic-exceptions
-  "Catch any exceptions thrown in BODY and rethrow a generic 400 exception instead.
-   This minimizes information available to bad actors when exceptions occur on the public endpoints."
-  {:style/indent 0}
-  [& body]
-  `(try
-     ~@body
-     (catch Throwable ~'_
-       (throw (ex-info "An error occurred." {:status-code 400})))))
-
 
 ;;; ------------------------------------------------------------ Public Cards ------------------------------------------------------------
 
-(defn- remove-card-non-public-fields [card]
+(defn- remove-card-non-public-fields
+  "Remove everyting from public CARD that shouldn't be visible to the general public."
+  [card]
   (u/select-nested-keys card [:id :name :description :display :visualization_settings [:dataset_query :type [:native :template_tags]]]))
 
-(defn- card-with-uuid [uuid]
-  (-> (api/check-404 (db/select-one [Card :id :dataset_query :description :display :name :visualization_settings] :public_uuid uuid, :archived false))
+(defn public-card
+  "Return a public Card matching key-value CONDITIONS, removing all fields that should not be visible to the general public.
+   Throws a 404 if the Card doesn't exist."
+  [& conditions]
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings], :archived false, conditions))
       remove-card-non-public-fields))
+
+(defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
 (api/defendpoint GET "/card/:uuid"
   "Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
-  (with-generic-exceptions
-    (api/check-public-sharing-enabled)
-    (card-with-uuid uuid)))
-
-
-(defn- run-query-for-card-with-id [card-id parameters & options]
   (api/check-public-sharing-enabled)
-  (-> (let [parameters (json/parse-string parameters keyword)]
-        (binding [api/*current-user-permissions-set*     (atom #{"/"})
-                  qp/*allow-queries-with-no-executor-id* true]
-          (apply card-api/run-query-for-card card-id, :parameters parameters, options)))
-      (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status])))
+  (card-with-uuid uuid))
 
-(defn- run-query-for-card-with-public-uuid [uuid parameters & options]
+
+
+(defn run-query-for-card-with-id
+  "Run the query belonging to Card with CARD-ID with PARAMETERS and other query options (e.g. `:constraints`)."
+  [card-id parameters & options]
+  (u/prog1 (-> (let [parameters (if (string? parameters) (json/parse-string parameters keyword) parameters)]
+                 (binding [api/*current-user-permissions-set*     (atom #{"/"})
+                           qp/*allow-queries-with-no-executor-id* true]
+                   (apply card-api/run-query-for-card card-id, :parameters parameters, options)))
+               (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status]))
+    ;; if the query failed instead of returning anything about the query just return a generic error message
+    (when (= (:status <>) :failed)
+      (throw (ex-info "An error occurred while running the query." {:status-code 400})))))
+
+(defn- run-query-for-card-with-public-uuid
+  "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception."
+  [uuid parameters & options]
+  (api/check-public-sharing-enabled)
   (apply run-query-for-card-with-id (api/check-404 (db/select-one-id Card :public_uuid uuid, :archived false)) parameters options))
 
 
@@ -69,22 +73,19 @@
   "Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
-  (with-generic-exceptions
-    (run-query-for-card-with-public-uuid uuid parameters)))
+  (run-query-for-card-with-public-uuid uuid parameters))
 
 (api/defendpoint GET "/card/:uuid/query/json"
   "Fetch a publically-accessible Card and return query results as JSON. Does not require auth credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
-  (with-generic-exceptions
-    (dataset-api/as-json (run-query-for-card-with-public-uuid uuid parameters, :constraints nil))))
+  (dataset-api/as-json (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
 (api/defendpoint GET "/card/:uuid/query/csv"
   "Fetch a publically-accessible Card and return query results as CSV. Does not require auth credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
-  (with-generic-exceptions
-    (dataset-api/as-csv (run-query-for-card-with-public-uuid uuid parameters, :constraints nil))))
+  (dataset-api/as-csv (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
 
 ;;; ------------------------------------------------------------ Public Dashboards ------------------------------------------------------------
@@ -141,8 +142,11 @@
   [dashboard]
   (assoc dashboard :param_values (dashboard->param-field-values dashboard)))
 
-(defn- dashboard-with-uuid [uuid]
-  (-> (api/check-404 (db/select-one [Dashboard :name :description :id :parameters], :public_uuid uuid))
+(defn public-dashboard
+  "Return a public Dashboard matching key-value CONDITIONS, removing all fields that should not be visible to the general public.
+   Throws a 404 if the Dashboard doesn't exist."
+  [& conditions]
+  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters] conditions))
       (hydrate [:ordered_cards :card :series])
       add-field-values-for-parameters
       (update :ordered_cards (fn [dashcards]
@@ -153,28 +157,34 @@
                                                        (for [series series]
                                                          (remove-card-non-public-fields series))))))))))
 
+(defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
+
 (api/defendpoint GET "/dashboard/:uuid"
   "Fetch a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [uuid]
-  (with-generic-exceptions
-    (api/check-public-sharing-enabled)
-    (dashboard-with-uuid uuid)))
+  (api/check-public-sharing-enabled)
+  (dashboard-with-uuid uuid))
+
+
+(defn public-dashcard-results
+  "Return the results of running a query with PARAMETERS for Card with CARD-ID belonging to Dashboard with DASHBOARD-ID.
+   Throws a 404 if the Card isn't part of the Dashboard."
+  [dashboard-id card-id parameters]
+  (api/check-404 (or (db/exists? DashboardCard
+                       :dashboard_id dashboard-id
+                       :card_id      card-id)
+                     (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
+                       (db/exists? DashboardCardSeries
+                         :card_id          card-id
+                         :dashboardcard_id [:in dashcard-ids]))))
+  (run-query-for-card-with-id card-id parameters))
 
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [uuid card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (with-generic-exceptions
-    (api/check-public-sharing-enabled)
-    (api/check-404 (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid))]
-                     (or (db/exists? DashboardCard
-                           :dashboard_id dashboard-id
-                           :card_id      card-id)
-                         (when-let [dashcard-ids (db/select-ids DashboardCard :dashboard_id dashboard-id)]
-                           (db/exists? DashboardCardSeries
-                             :card_id          card-id
-                             :dashboardcard_id [:in dashcard-ids])))))
-    (run-query-for-card-with-id card-id parameters)))
+  (api/check-public-sharing-enabled)
+  (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid)) card-id parameters))
 
 
 (api/defendpoint GET "/oembed"
@@ -186,14 +196,13 @@
    format    (s/maybe (s/enum "json"))
    maxheight (s/maybe su/IntString)
    maxwidth  (s/maybe su/IntString)}
-  (with-generic-exceptions
-    (let [height (if maxheight (Integer/parseInt maxheight) default-embed-max-height)
-          width  (if maxwidth  (Integer/parseInt maxwidth) default-embed-max-width)]
-      {:version "1.0"
-       :type    "rich"
-       :width   width
-       :height  height
-       :html    (embed/iframe url width height)})))
+  (let [height (if maxheight (Integer/parseInt maxheight) default-embed-max-height)
+        width  (if maxwidth  (Integer/parseInt maxwidth) default-embed-max-width)]
+    {:version "1.0"
+     :type    "rich"
+     :width   width
+     :height  height
+     :html    (embed/iframe url width height)}))
 
 
 (api/define-routes)

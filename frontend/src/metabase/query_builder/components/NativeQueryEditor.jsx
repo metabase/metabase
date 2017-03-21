@@ -345,6 +345,7 @@ export default class NativeQueryEditor extends Component {
                             parameters={parameters}
                             query={location.query}
                             setParameterValue={setParameterValue}
+                            syncQueryString
                             isQB
                         />
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>

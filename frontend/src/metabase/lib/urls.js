@@ -51,6 +51,10 @@ var Urls = {
     publicDashboard(uuid) {
         return `/public/dashboard/${uuid}`;
     },
+
+    embedCard(token, type = null) {
+        return `/embed/question/${token}` + (type ? `.${type}` : ``);
+    },
 }
 
 export default Urls;

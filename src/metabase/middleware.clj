@@ -7,6 +7,7 @@
             (toucan [db :as db]
                     [models :as models])
             [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
+            [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
             [metabase.config :as config]
             [metabase.db :as mdb]
             (metabase.models [session :refer [Session]]
@@ -37,6 +38,11 @@
   "Is this ring request one that will serve `public.html`?"
   [{:keys [uri]}]
   (re-matches #"^/public/.*$" uri))
+
+(defn- embed?
+  "Is this ring request one that will serve `public.html`?"
+  [{:keys [uri]}]
+  (re-matches #"^/embed/.*$" uri))
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
@@ -83,9 +89,14 @@
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with SESSION-ID if it is valid and not expired."
   [session-id]
-  (when (and session-id ((resolve 'metabase.core/initialized?)))
-    (when-let [session (session-with-id session-id)]
-      (when-not (session-expired? session)
+  (when (and session-id (or ((resolve 'metabase.core/initialized?))
+                            (println "Metabase is not initialized!") ; NOCOMMIT
+                            ))
+    (when-let [session (or (session-with-id session-id)
+                           (println "no matching session with ID") ; NOCOMMIT
+                           )]
+      (if (session-expired? session)
+        (println (format "session-is-expired! %d min / %d min" (session-age-minutes session) (config/config-int :max-session-age))) ; NOCOMMIT
         {:metabase-user-id (:user_id session)
          :is-superuser?    (:is_superuser session)}))))
 
@@ -236,6 +247,7 @@
       (update response :headers merge (cond
                                         (api-call? request) (api-security-headers)
                                         (public? request)   (html-page-security-headers, :allow-iframes? true)
+                                        (embed? request)    (html-page-security-headers, :allow-iframes? true)
                                         (index? request)    (html-page-security-headers))))))
 
 
@@ -318,3 +330,28 @@
         (db/with-call-counting [call-count]
           (u/prog1 (handler request)
             (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
+
+
+;;; ------------------------------------------------------------ EXCEPTION HANDLING ------------------------------------------------------------
+
+(defn genericize-exceptions
+  "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead.
+   This minimizes information available to bad actors when exceptions occur on public endpoints."
+  [handler]
+  (fn [request]
+    (try (binding [*automatically-catch-api-exceptions* false]
+           (handler request))
+         (catch Throwable _
+           {:status 400, :body "An error occurred."}))))
+
+(defn message-only-exceptions
+  "Catch any exceptions thrown in the request handler body and rethrow a 400 exception that only has
+   the message from the original instead (i.e., don't rethrow the original stacktrace).
+   This reduces the information available to bad actors but still provides some information that will
+   prove useful in debugging errors."
+  [handler]
+  (fn [request]
+    (try (binding [*automatically-catch-api-exceptions* false]
+           (handler request))
+         (catch Throwable e
+           {:status 400, :body (.getMessage e)}))))

@@ -67,11 +67,27 @@
 
 
 (defendpoint PUT "/:id"
-  "Update a `Dashboard`."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started], :as dashboard} :body}]
-  {name       su/NonBlankString
-   parameters [su/Map]}
-  (write-check Dashboard id)
+  "Update a `Dashboard`.
+
+   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate permissions for the Cards belonging to this Dashboard),
+   but to change the value of `enable_embedding` you must be a superuser."
+  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding embedding_params], :as dashboard} :body}]
+  {name                    (s/maybe su/NonBlankString)
+   description             (s/maybe su/NonBlankString)
+   caveats                 (s/maybe su/NonBlankString)
+   points_of_interest      (s/maybe su/NonBlankString)
+   show_in_getting_started (s/maybe su/NonBlankString)
+   enable_embedding        (s/maybe s/Bool)
+   embedding_params        (s/maybe su/EmbeddingParams)
+   parameters              (s/maybe [su/Map])}
+  (let [dash (write-check Dashboard id)]
+    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
+    (when (or (and (not (nil? enable_embedding))
+                   (not= enable_embedding (:enable_embedding dash)))
+              (and embedding_params
+                   (not= embedding_params (:embedding_params dash))))
+      (check-embedding-enabled)
+      (check-superuser)))
   (check-500 (-> (assoc dashboard :id id)
                  (dashboard/update-dashboard! *current-user-id*))))
 
@@ -103,6 +119,7 @@
       (events/publish-event! :dashboard-add-cards {:id id, :actor_id *current-user-id*, :dashcards [<>]}))))
 
 
+;; TODO - we should use schema to validate the format of the Cards :D
 (defendpoint PUT "/:id/cards"
   "Update `Cards` on a `Dashboard`. Request body should have the form:
 
@@ -186,6 +203,13 @@
   (check-superuser)
   (check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil]))
+
+(defendpoint GET "/embeddable"
+  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding endpoints and a signed JWT."
+  []
+  (check-superuser)
+  (check-embedding-enabled)
+  (db/select [Dashboard :name :id], :enable_embedding true))
 
 
 (define-routes)

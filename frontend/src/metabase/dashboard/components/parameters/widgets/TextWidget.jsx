@@ -5,7 +5,8 @@ export default class TextWidget extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            value: props.value
+            value: props.value,
+            isFocused: false
         };
     }
 
@@ -15,6 +16,8 @@ export default class TextWidget extends Component {
         className: PropTypes.string,
         isEditing: PropTypes.bool,
         commitImmediately: PropTypes.bool,
+        placeholder: PropTypes.string,
+        focusChanged: PropTypes.func
     };
 
     static defaultProps = {
@@ -32,7 +35,14 @@ export default class TextWidget extends Component {
     }
 
     render() {
-        const { setValue, className, isEditing } = this.props;
+        const { setValue, className, isEditing, focusChanged: parentFocusChanged } = this.props;
+        const defaultPlaceholder = this.state.isFocused ? "" : (this.props.placeholder || "Enter a value...");
+
+        const focusChanged = (isFocused) => {
+            if (parentFocusChanged) parentFocusChanged(isFocused);
+            this.setState({isFocused})
+        };
+
         return (
             <input
                 className={className}
@@ -52,8 +62,12 @@ export default class TextWidget extends Component {
                         e.target.blur();
                     }
                 }}
-                onBlur={() => this.setState({ value: this.props.value })}
-                placeholder={isEditing ? "Enter a default value..." : "Enter a value..."}
+                onFocus={() => {focusChanged(true)}}
+                onBlur={() => {
+                    focusChanged(false);
+                    this.setState({ value: this.props.value });
+                }}
+                placeholder={isEditing ? "Enter a default value..." : defaultPlaceholder}
             />
         );
     }
