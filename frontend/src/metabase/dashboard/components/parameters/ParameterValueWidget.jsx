@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react"
+import React, {Component, PropTypes} from "react"
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -18,16 +18,17 @@ import cx from "classnames";
 
 const WIDGETS = {
     "date/single": DateSingleWidget,
-    "date/range":  DateRangeWidget,
-    "date/relative":  DateRelativeWidget,
-    "date/month-year":  DateMonthYearWidget,
-    "date/quarter-year":  DateQuarterYearWidget,
+    "date/range": DateRangeWidget,
+    "date/relative": DateRelativeWidget,
+    "date/month-year": DateMonthYearWidget,
+    "date/quarter-year": DateQuarterYearWidget,
 }
 
 export default class ParameterValueWidget extends Component {
 
     static propTypes = {
         parameter: PropTypes.object.isRequired,
+        name: PropTypes.string,
         value: PropTypes.any,
         setValue: PropTypes.func.isRequired,
         placeholder: PropTypes.string,
@@ -35,13 +36,17 @@ export default class ParameterValueWidget extends Component {
         isEditing: PropTypes.bool,
         noReset: PropTypes.bool,
         commitImmediately: PropTypes.bool,
+        focusChanged: PropTypes.func,
+        isFullscreen: PropTypes.bool,
+        className: PropTypes.string
     };
 
-    static defautProps = {
+    static defaultProps = {
         values: [],
         isEditing: false,
         noReset: false,
         commitImmediately: false,
+        className: ""
     };
 
     static getWidget(parameter, values) {
@@ -54,52 +59,86 @@ export default class ParameterValueWidget extends Component {
         }
     }
 
+    static getParameterIconName(parameterType) {
+        if (parameterType.search(/date/) !== -1) return "calendar";
+        if (parameterType.search(/location/) !== -1) return "location";
+        if (parameterType.search(/id/) !== -1) return "label";
+        return "clipboard";
+    }
+
+    state = { isFocused: false };
+
     render() {
-        const { parameter, value, values, setValue, isEditing, placeholder, noReset, commitImmediately } = this.props;
+        const {parameter, value, values, setValue, isEditing, placeholder, isFullscreen,
+               noReset, commitImmediately, className, focusChanged: parentFocusChanged} = this.props;
 
         let hasValue = value != null;
 
         let Widget = ParameterValueWidget.getWidget(parameter, values);
 
-        if (Widget.noPopover) {
-            return (
-                <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
-                    <Widget value={value} values={values} setValue={setValue} isEditing={isEditing} commitImmediately={commitImmediately} />
-                    { hasValue && !noReset &&
-                        <Icon name="close" className="flex-align-right cursor-pointer" size={12} onClick={(e) => {
+        const focusChanged = (isFocused) => {
+            if (parentFocusChanged) {
+                parentFocusChanged(isFocused);
+            }
+            this.setState({isFocused})
+        };
+
+        const getParameterTypeIcon = () => {
+            if (!isEditing && !hasValue && !this.state.isFocused) {
+                return <Icon name={ParameterValueWidget.getParameterIconName(parameter.type)} className="flex-align-left mr1 flex-no-shrink" size={14} />
+            } else {
+                return null;
+            }
+        };
+
+        const getWidgetStatusIcon = () => {
+            if (isFullscreen) return null;
+
+            if (hasValue && !noReset) {
+                return <Icon name="close" className="flex-align-right cursor-pointer flex-no-shrink" size={12} onClick={(e) => {
                             if (hasValue) {
                                 e.stopPropagation();
                                 setValue(null);
                             }
-                        }} />
-                    }
+                        }}/>
+            } else if (Widget.noPopover && this.state.isFocused) {
+                return <Icon name="enterorreturn" className="flex-align-right flex-no-shrink" size={12}/>
+            } else if (Widget.noPopover) {
+                return <Icon name="empty" className="flex-align-right cursor-pointer flex-no-shrink" size={12}/>
+            } else if (!Widget.noPopover) {
+                return <Icon name="chevrondown" className="flex-align-right flex-no-shrink" size={12}/>
+            }
+        };
+
+        if (Widget.noPopover) {
+            return (
+                <div className={cx(S.parameter, S.noPopover, className, { [S.selected]: hasValue, [S.isEditing]: isEditing})}>
+                    { getParameterTypeIcon() }
+                    <Widget placeholder={placeholder} value={value} values={values} setValue={setValue}
+                            isEditing={isEditing} commitImmediately={commitImmediately} focusChanged={focusChanged}/>
+                    { getWidgetStatusIcon() }
                 </div>
             );
-        }
+        } else {
+            let placeholderText = isEditing ? "Select a default value…" : (placeholder || "Select…");
 
-        let placeholderText = placeholder || (isEditing ? "Select a default value…" : "Select…");
-
-        return (
-            <PopoverWithTrigger
-                ref="valuePopover"
-                triggerElement={
-                    <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
-                        <div className="mr1">{ hasValue ? Widget.format(value) : placeholderText }</div>
-                        { hasValue && !noReset ?
-                            <Icon name="close" className="flex-align-right" size={12} onClick={(e) => {
-                                e.stopPropagation();
-                                setValue(null);
-                                this.refs.valuePopover.close();
-                            }} />
-                        :
-                            <Icon name="chevrondown" className="flex-align-right" size={12} />
-                        }
+            return (
+                <PopoverWithTrigger
+                    ref="valuePopover"
+                    triggerElement={
+                    <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
+                        { getParameterTypeIcon() }
+                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value) : placeholderText }</div>
+                        { getWidgetStatusIcon() }
                     </div>
                 }
-                target={() => this.refs.trigger} // not sure why this is necessary
-            >
-                <Widget value={value} values={values} setValue={setValue} onClose={() => this.refs.valuePopover.close()} />
-            </PopoverWithTrigger>
-        );
+                    target={() => this.refs.trigger} // not sure why this is necessary
+                >
+                    <Widget value={value} values={values} setValue={setValue}
+                            onClose={() => this.refs.valuePopover.close()}/>
+                </PopoverWithTrigger>
+            );
+        }
     }
+
 }
