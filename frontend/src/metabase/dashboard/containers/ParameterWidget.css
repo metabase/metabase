@@ -1,7 +1,7 @@
 :local(.container) {
     composes: flex align-center from "style";
     transition: opacity 500ms linear;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--grey-1);
     margin-right: 0.85em;
     margin-bottom: 0.5em;
     padding: 0.25em 1em 0.25em 1em;
