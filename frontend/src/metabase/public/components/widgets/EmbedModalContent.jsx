@@ -142,14 +142,6 @@ export default class EmbedModalContent extends Component<*, Props, State> {
 
         const params = this.getPreviewParams();
 
-        let iframeUrl;
-        if (embedType === "application") {
-            iframeUrl = getSignedPreviewUrl(siteUrl, resourceType, resource.id, params, displayOptions, secretKey, embeddingParams);
-        } else {
-            iframeUrl = getUnsignedPreviewUrl(siteUrl, resourceType, resource.public_uuid, displayOptions);
-        }
-        const token = getSignedToken(resourceType, resource.id, params, secretKey, embeddingParams);
-
         const previewParameters = resourceParameters.filter(p => embeddingParams[p.slug] === "locked");
 
         return (
@@ -176,8 +168,8 @@ export default class EmbedModalContent extends Component<*, Props, State> {
                         <div className="flex-full ml-auto mr-auto" style={{ maxWidth: 1040 }}>
                             <SharingPane
                                 {...this.props}
-                                publicUrl={iframeUrl}
-                                iframeUrl={iframeUrl}
+                                publicUrl={getUnsignedPreviewUrl(siteUrl, resourceType, resource.public_uuid, displayOptions)}
+                                iframeUrl={getUnsignedPreviewUrl(siteUrl, resourceType, resource.public_uuid, displayOptions)}
                                 onChangeEmbedType={(embedType) => this.setState({ embedType })}
                             />
                         </div>
@@ -187,8 +179,8 @@ export default class EmbedModalContent extends Component<*, Props, State> {
                             resource={resource}
                             resourceType={resourceType}
                             embedType={embedType}
-                            token={token}
-                            iframeUrl={iframeUrl}
+                            token={getSignedToken(resourceType, resource.id, params, secretKey, embeddingParams)}
+                            iframeUrl={getSignedPreviewUrl(siteUrl, resourceType, resource.id, params, displayOptions, secretKey, embeddingParams)}
                             siteUrl={siteUrl}
                             secretKey={secretKey}
                             params={params}
