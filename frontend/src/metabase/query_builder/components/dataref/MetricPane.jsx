@@ -65,7 +65,7 @@ export default class MetricPane extends Component {
         let useForCurrentQuestion = [];
         let usefulQuestions = [];
 
-        usefulQuestions.push(<QueryButton icon="illustration-icon-scalar" text={"See " + metricName} onClick={this.setQueryMetric} />);
+        usefulQuestions.push(<QueryButton icon="number" text={"See " + metricName} onClick={this.setQueryMetric} />);
 
         return (
             <DetailPane

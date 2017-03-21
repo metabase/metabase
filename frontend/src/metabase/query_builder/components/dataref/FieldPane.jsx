@@ -122,13 +122,13 @@ export default class FieldPane extends Component {
         }
 
         if (isSummable(field)) {
-            usefulQuestions.push(<QueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} />);
+            usefulQuestions.push(<QueryButton icon="number" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} />);
         }
-        usefulQuestions.push(<QueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} />);
+        usefulQuestions.push(<QueryButton icon="table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} />);
         let queryCountGroupedByText = "Number of " + inflection.pluralize(tableName) + " grouped by " + fieldName;
         if (validBreakout) {
-            usefulQuestions.push(<QueryButton icon="illustration-icon-bars" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} />);
-            usefulQuestions.push(<QueryButton icon="illustration-icon-pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} />);
+            usefulQuestions.push(<QueryButton icon="bar" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "bar")} />);
+            usefulQuestions.push(<QueryButton icon="pie" text={queryCountGroupedByText} onClick={this.setQueryCountGroupedBy.bind(null, "pie")} />);
         }
 
         return (
