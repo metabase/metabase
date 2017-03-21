@@ -3,7 +3,6 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { slugify } from "metabase/lib/formatting";
-
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
 import {
     PublicLinksDashboardListing,
@@ -216,10 +215,7 @@ const SECTIONS = [
                 key: "enable-embedding",
                 display_name: "Enable Embedding Metabase in other Applications",
                 type: "boolean",
-                getHidden: (settings) => !settings["enable-embedding"],
-                onChanged: (oldValue, newValue) => {
-                    console.log(oldValue, newValue)
-                }
+                getHidden: (settings) => !settings["enable-embedding"]
             },
             {
                 key: "embedding-secret-key",
