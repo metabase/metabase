@@ -23,9 +23,8 @@
 
 (defn- post-select [{:keys [engine] :as database}]
   (if-not engine database
-          (assoc database :features (or (when-let [driver ((resolve 'metabase.driver/engine->driver) engine)]
-                                          (seq ((resolve 'metabase.driver/features) driver)))
-                                        []))))
+          (assoc database :features (set (when-let [driver ((resolve 'metabase.driver/engine->driver) engine)]
+                                           ((resolve 'metabase.driver/features) driver))))))
 
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'Card        :database_id id)
