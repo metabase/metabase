@@ -9,7 +9,10 @@
 
 :local(.container) legend {
     text-transform: none;
-    height: 12px;
+    position: relative;
+    height: 0;
+    line-height: 0;
+    margin-left: 0.5em;
 }
 
 :local(.container.deemphasized) {
