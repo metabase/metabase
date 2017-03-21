@@ -297,7 +297,7 @@
 (defn- executions-chunk
   "Fetch the chunk of QueryExecutions whose ID is greater than STARTING-ID."
   [starting-id]
-  (db/select [QueryExecution :id :executor_id :running_time :status]
+  (db/select [QueryExecution :id :executor_id :running_time :error]
     :id [:> starting-id]
     {:order-by [:id], :limit executions-chunk-size}))
 
@@ -316,7 +316,9 @@
   ([summary execution]
    (-> summary
        (update :executions u/safe-inc)
-       (update-in [:by_status (:status execution)] u/safe-inc)
+       (update-in [:by_status (if (:error execution)
+                                "failed"
+                                "completed")] u/safe-inc)
        (update-in [:num_per_user (:executor_id execution)] u/safe-inc)
        (update-in [:num_by_latency (bin-large-number (/ (:running_time execution) 1000))] u/safe-inc))))
 
