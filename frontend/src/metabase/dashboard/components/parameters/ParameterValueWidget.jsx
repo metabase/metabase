@@ -36,7 +36,8 @@ export default class ParameterValueWidget extends Component {
         isEditing: PropTypes.bool,
         noReset: PropTypes.bool,
         commitImmediately: PropTypes.bool,
-        focusChanged: PropTypes.func
+        focusChanged: PropTypes.func,
+        isFullscreen: PropTypes.bool
     };
 
     static defautProps = {
@@ -69,7 +70,7 @@ export default class ParameterValueWidget extends Component {
     }
 
     render() {
-        const {parameter, value, values, setValue, isEditing, placeholder,
+        const {parameter, value, values, setValue, isEditing, placeholder, isFullscreen,
                noReset, commitImmediately, focusChanged: parentFocusChanged} = this.props;
 
         let hasValue = value != null;
@@ -83,7 +84,7 @@ export default class ParameterValueWidget extends Component {
         }
 
         function getParameterTypeIcon() {
-            if (!hasValue && !self.state.isFocused) {
+            if (!isEditing && !hasValue && !self.state.isFocused) {
                 return <Icon name={ParameterValueWidget.getParameterIconName(parameter.type)} className="flex-align-left mr1 flex-no-shrink" size={14} />
             } else {
                 return null;
@@ -91,6 +92,8 @@ export default class ParameterValueWidget extends Component {
         }
 
         function getWidgetStatusIcon() {
+            if (isFullscreen) return null;
+
             if (hasValue && !noReset) {
                 return <Icon name="close" className="flex-align-right cursor-pointer flex-no-shrink" size={12} onClick={(e) => {
                             if (hasValue) {
@@ -109,7 +112,7 @@ export default class ParameterValueWidget extends Component {
 
         if (Widget.noPopover) {
             return (
-                <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
+                <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue, [S.isEditing]: isEditing})}>
                     { getParameterTypeIcon() }
                     <Widget placeholder={placeholder} value={value} values={values} setValue={setValue}
                             isEditing={isEditing} commitImmediately={commitImmediately} focusChanged={focusChanged}/>

@@ -1,9 +1,9 @@
 :local(.container) {
     composes: flex align-center from "style";
     transition: opacity 500ms linear;
-    background-color: white;
     border: 2px solid var(--border-color);
     margin-right: 0.85em;
+    margin-bottom: 0.5em;
     padding: 0.25em 1em 0.25em 1em;
 }
 
@@ -71,6 +71,11 @@
     font-weight: 600;
     border: none;
 }
+
+:local(.parameter.noPopover.isEditing) input {
+    width: 138px;
+}
+
 :local(.parameter.noPopover.selected) input {
     width: 127px;
     font-weight: bold;

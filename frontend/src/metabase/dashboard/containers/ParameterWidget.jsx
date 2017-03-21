@@ -54,7 +54,7 @@ export default class ParameterWidget extends Component {
             .value();
     }
 
-    renderPopover(value, setValue, placeholder) {
+    renderPopover(value, setValue, placeholder, isFullscreen) {
         const {parameter, editingParameter} = this.props;
         const isEditingParameter = !!(editingParameter && editingParameter.id === parameter.id);
         const values = this.getValues();
@@ -68,6 +68,7 @@ export default class ParameterWidget extends Component {
                 isEditing={isEditingParameter}
                 placeholder={placeholder}
                 focusChanged={this.focusChanged}
+                isFullscreen={isFullscreen}
             />
         );
     }
@@ -92,7 +93,7 @@ export default class ParameterWidget extends Component {
             return (
                 <FieldSet legend={legend} noPadding={true}
                           className={cx(className, containerClassName, {"border-brand": fieldHasValueOrFocus})}>
-                    {self.renderPopover(parameter.value, (value) => setValue(value), parameter.name)}
+                    {self.renderPopover(parameter.value, (value) => setValue(value), parameter.name, isFullscreen)}
                 </FieldSet>
             );
         }
@@ -129,7 +130,7 @@ export default class ParameterWidget extends Component {
 
             return (
                 <FieldSet legend={legend} noPadding={true} className={cx(className, containerClassName)}>
-                    {self.renderPopover(parameter.default, (value) => setDefaultValue(value), parameter.name)}
+                    {self.renderPopover(parameter.default, (value) => setDefaultValue(value), parameter.name, isFullscreen)}
                 </FieldSet>
             );
         }
