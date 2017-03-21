@@ -8,7 +8,7 @@ databaseChangeLog:
       value: bytea
       dbms: postgresql
   - changeSet:
-      id: 51
+      id: 52
       author: camsaul
       changes:
         - createTable:
