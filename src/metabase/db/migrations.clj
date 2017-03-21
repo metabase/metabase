@@ -6,7 +6,8 @@
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.string :as str]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [schema.core :as s]
             (toucan [db :as db]
@@ -26,12 +27,14 @@
                              [permissions :refer [Permissions], :as perms]
                              [permissions-group :as perm-group]
                              [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
+                             [query-execution :refer [QueryExecution], :as query-execution]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]]
                              [table :refer [Table] :as table]
                              [setting :refer [Setting], :as setting]
                              [user :refer [User]])
             [metabase.public-settings :as public-settings]
+            [metabase.query-processor.util :as qputil]
             [metabase.util :as u]))
 
 ;;; # Migration Helpers
@@ -327,3 +330,44 @@
 (defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
   (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
     (public-settings/site-url site-url)))
+
+
+;;; ------------------------------------------------------------ Migrating QueryExecutions ------------------------------------------------------------
+
+;; We're copying over data from the legacy `query_queryexecution` table to the new `query_execution` table; see #4522 and #4531 for details
+
+;; model definition for the old table to facilitate the data copying process
+(models/defmodel ^:private ^:deprecated LegacyQueryExecution :query_queryexecution)
+
+(u/strict-extend (class LegacyQueryExecution)
+  models/IModel
+  (merge models/IModelDefaults
+         {:default-fields (constantly [:executor_id :result_rows :started_at :json_query :error :running_time])
+          :types          (constantly {:json_query :json, :error :clob})}))
+
+(defn- LegacyQueryExecution->QueryExecution
+  "Convert a LegacyQueryExecution to a format suitable for insertion as a new-format QueryExecution."
+  [{query :json_query, :as query-execution}]
+  (-> (assoc query-execution
+        :hash   (qputil/query-hash query)
+        :native (not (qputil/mbql-query? query)))
+      ;; since error is nullable now remove the old blank error message strings
+      (update :error (fn [error-message]
+                       (when-not (str/blank? error-message)
+                         error-message)))
+      (dissoc :json_query)))
+
+;; Migrate entries from the old query execution table to the new one. This might take a few minutes
+(defmigration ^{:author "camsaul", :added "0.23.0"} migrate-query-executions
+  ;; migrate the most recent 100,000 entries
+  ;; make sure the DB doesn't get snippy by trying to insert too many records at once. Divide the INSERT statements into chunks of 1,000
+  (binding [query-execution/*validate-context* false]
+    (doseq [chunk (partition-all 1000 (db/select LegacyQueryExecution {:limit 100000, :order-by [[:id :desc]]}))]
+      (db/insert-many! QueryExecution
+        (for [query-execution chunk]
+          (LegacyQueryExecution->QueryExecution query-execution))))))
+
+;; drop the legacy QueryExecution table now that we don't need it anymore
+(defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
+  ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
+  (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s;" ((db/quote-fn) "query_queryexecution"))]))

@@ -1,9 +1,36 @@
 (ns metabase.models.query-execution
-  (:require [toucan.models :as models]
+  (:require [schema.core :as s]
+            [toucan.models :as models]
             [metabase.util :as u]))
 
 
-(models/defmodel QueryExecution :query_queryexecution)
+(models/defmodel QueryExecution :query_execution)
+
+(def ^:dynamic ^Boolean *validate-context*
+  "Whether we should validate the values of `context` for QueryExecutions when INSERTing them.
+   (In normal usage, this should always be `true`, but this switch is provided so we can migrating
+   legacy QueryExecution entries, which have no `context` information)."
+  true)
+
+(def Context
+  "Schema for valid values of QueryExecution `:context`."
+  (s/enum :ad-hoc
+          :csv-download
+          :dashboard
+          :embedded-dashboard
+          :embedded-question
+          :json-download
+          :map-tiles
+          :metabot
+          :public-dashboard
+          :public-question
+          :pulse
+          :question))
+
+(defn- pre-insert [{context :context, :as query-execution}]
+  (u/prog1 query-execution
+    (when *validate-context*
+      (s/validate Context context))))
 
 (defn- post-select [{:keys [result_rows] :as query-execution}]
   ;; sadly we have 2 ways to reference the row count :(
@@ -12,6 +39,7 @@
 (u/strict-extend (class QueryExecution)
   models/IModel
   (merge models/IModelDefaults
-         {:default-fields (constantly [:id :uuid :version :json_query :raw_query :status :started_at :finished_at :running_time :error :result_rows])
-          :types          (constantly {:json_query :json, :result_data :json, :status :keyword, :raw_query :clob, :error :clob, :additional_info :clob})
-          :post-select    post-select}))
+         {:types       (constantly {:json_query :json, :status :keyword, :context :keyword, :error :clob})
+          :pre-insert  pre-insert
+          :pre-update  (fn [& _] (throw (Exception. "You cannot update a QueryExecution!")))
+          :post-select post-select}))

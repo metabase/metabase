@@ -74,9 +74,12 @@
 (def ^:private large-histogram (partial histogram bin-large-number))
 
 (defn- old-execution-metrics []
-  (let [executions (db/select [QueryExecution :executor_id :running_time :status])]
+  (let [executions (db/select [QueryExecution :executor_id :running_time :error])]
     {:executions     (count executions)
-     :by_status      (frequencies (map :status executions))
+     :by_status      (frequencies (for [{error :error} executions]
+                                    (if error
+                                      "failed"
+                                      "completed")))
      :num_per_user   (large-histogram executions :executor_id)
      :num_by_latency (frequencies (for [{latency :running_time} executions]
                                     (bin-large-number (/ latency 1000))))}))
