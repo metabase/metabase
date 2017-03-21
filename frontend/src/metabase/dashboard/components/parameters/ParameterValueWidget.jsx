@@ -37,14 +37,16 @@ export default class ParameterValueWidget extends Component {
         noReset: PropTypes.bool,
         commitImmediately: PropTypes.bool,
         focusChanged: PropTypes.func,
-        isFullscreen: PropTypes.bool
+        isFullscreen: PropTypes.bool,
+        className: PropTypes.string
     };
 
-    static defautProps = {
+    static defaultProps = {
         values: [],
         isEditing: false,
         noReset: false,
         commitImmediately: false,
+        className: ""
     };
 
     static getWidget(parameter, values) {
@@ -64,34 +66,32 @@ export default class ParameterValueWidget extends Component {
         return "clipboard";
     }
 
-    constructor(props) {
-        super(props);
-        this.state = {isFocused: false}
-    }
+    state = { isFocused: false };
 
     render() {
         const {parameter, value, values, setValue, isEditing, placeholder, isFullscreen,
-               noReset, commitImmediately, focusChanged: parentFocusChanged} = this.props;
+               noReset, commitImmediately, className, focusChanged: parentFocusChanged} = this.props;
 
         let hasValue = value != null;
 
         let Widget = ParameterValueWidget.getWidget(parameter, values);
-        const self = this;
 
-        function focusChanged(isFocused) {
-            if (parentFocusChanged) parentFocusChanged(isFocused);
-            self.setState({isFocused})
-        }
+        const focusChanged = (isFocused) => {
+            if (parentFocusChanged) {
+                parentFocusChanged(isFocused);
+            }
+            this.setState({isFocused})
+        };
 
-        function getParameterTypeIcon() {
-            if (!isEditing && !hasValue && !self.state.isFocused) {
+        const getParameterTypeIcon = () => {
+            if (!isEditing && !hasValue && !this.state.isFocused) {
                 return <Icon name={ParameterValueWidget.getParameterIconName(parameter.type)} className="flex-align-left mr1 flex-no-shrink" size={14} />
             } else {
                 return null;
             }
-        }
+        };
 
-        function getWidgetStatusIcon() {
+        const getWidgetStatusIcon = () => {
             if (isFullscreen) return null;
 
             if (hasValue && !noReset) {
@@ -101,18 +101,18 @@ export default class ParameterValueWidget extends Component {
                                 setValue(null);
                             }
                         }}/>
-            } else if (Widget.noPopover && self.state.isFocused) {
+            } else if (Widget.noPopover && this.state.isFocused) {
                 return <Icon name="enterorreturn" className="flex-align-right flex-no-shrink" size={12}/>
             } else if (Widget.noPopover) {
                 return <Icon name="empty" className="flex-align-right cursor-pointer flex-no-shrink" size={12}/>
             } else if (!Widget.noPopover) {
                 return <Icon name="chevrondown" className="flex-align-right flex-no-shrink" size={12}/>
             }
-        }
+        };
 
         if (Widget.noPopover) {
             return (
-                <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue, [S.isEditing]: isEditing})}>
+                <div className={cx(S.parameter, S.noPopover, className, { [S.selected]: hasValue, [S.isEditing]: isEditing})}>
                     { getParameterTypeIcon() }
                     <Widget placeholder={placeholder} value={value} values={values} setValue={setValue}
                             isEditing={isEditing} commitImmediately={commitImmediately} focusChanged={focusChanged}/>
@@ -126,7 +126,7 @@ export default class ParameterValueWidget extends Component {
                 <PopoverWithTrigger
                     ref="valuePopover"
                     triggerElement={
-                    <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
+                    <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
                         { getParameterTypeIcon() }
                         <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value) : placeholderText }</div>
                         { getWidgetStatusIcon() }

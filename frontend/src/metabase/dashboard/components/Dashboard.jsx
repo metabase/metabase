@@ -228,7 +228,6 @@ export default class Dashboard extends Component {
         if (dashboard && dashboard.parameters && dashboard.parameters.length) {
             parameters = (
                 <Parameters
-                    className=""
                     syncQueryString
 
                     isEditing={isEditing}

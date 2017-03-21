@@ -83,30 +83,27 @@ export default class ParameterWidget extends Component {
         const isEditingDashboard = isEditing;
         const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
 
-        const containerClassName = cx(S.container);
-        const self = this;
-
-        function renderFieldInNormalMode() {
-            const fieldHasValueOrFocus = parameter.value != null || self.state.isFocused;
+        const renderFieldInNormalMode = () => {
+            const fieldHasValueOrFocus = parameter.value != null || this.state.isFocused;
             const legend = fieldHasValueOrFocus ? parameter.name : "";
 
             return (
                 <FieldSet legend={legend} noPadding={true}
-                          className={cx(className, containerClassName, {"border-brand": fieldHasValueOrFocus})}>
-                    {self.renderPopover(parameter.value, (value) => setValue(value), parameter.name, isFullscreen)}
+                          className={cx(className, S.container, {"border-brand": fieldHasValueOrFocus})}>
+                    {this.renderPopover(parameter.value, (value) => setValue(value), parameter.name, isFullscreen)}
                 </FieldSet>
             );
-        }
+        };
 
-        function renderEditFieldNameUI() {
+        const renderEditFieldNameUI = () => {
             return (
-                <FieldSet legend="" noPadding={true} className={cx(className, containerClassName)}>
+                <FieldSet legend="" noPadding={true} className={cx(className, S.container)}>
                     <input
                         type="text"
                         className={cx(S.nameInput, { "border-error": _.any(parameters, (p) => p.name === parameter.name && p.id !== parameter.id) })}
                         value={parameter.name}
                         onChange={(e) => setName(e.target.value)}
-                        onBlur={() => self.setState({ isEditingName: false })}
+                        onBlur={() => this.setState({ isEditingName: false })}
                         onKeyUp={(e) => {
                                 if (e.keyCode === 27 || e.keyCode === 13) {
                                     e.target.blur();
@@ -116,28 +113,28 @@ export default class ParameterWidget extends Component {
                     />
                 </FieldSet>
             )
-        }
+        };
 
-        function renderSetDefaultFieldValueUI() {
+        const renderSetDefaultFieldValueUI = () => {
             const editNameButton = (
                 <span className={S.editNameIconContainer}>
                 <Icon name="pencil" size={12} className="text-brand cursor-pointer"
-                      onClick={() => self.setState({ isEditingName: true })}/>
+                      onClick={() => this.setState({ isEditingName: true })}/>
                 </span>
             )
 
             const legend = <span>{parameter.name} {editNameButton}</span>
 
             return (
-                <FieldSet legend={legend} noPadding={true} className={cx(className, containerClassName)}>
-                    {self.renderPopover(parameter.default, (value) => setDefaultValue(value), parameter.name, isFullscreen)}
+                <FieldSet legend={legend} noPadding={true} className={cx(className, S.container)}>
+                    {this.renderPopover(parameter.default, (value) => setDefaultValue(value), parameter.name, isFullscreen)}
                 </FieldSet>
             );
-        }
+        };
 
-        function renderFieldEditingButtons() {
+        const renderFieldEditingButtons = () => {
             return (
-                <FieldSet legend={parameter.name} noPadding={true} className={cx(className, containerClassName)}>
+                <FieldSet legend={parameter.name} noPadding={true} className={cx(className, S.container)}>
                     <div className={cx(S.parameter, S.parameterButtons)}>
                         <div className={S.editButton} onClick={() => setEditingParameter(parameter.id)}>
                             <Icon name="pencil"/>
@@ -150,7 +147,7 @@ export default class ParameterWidget extends Component {
                     </div>
                 </FieldSet>
             );
-        }
+        };
 
         if (isFullscreen) {
             if (parameter.value != null) {

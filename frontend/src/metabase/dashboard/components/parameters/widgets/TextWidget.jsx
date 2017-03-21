@@ -37,12 +37,11 @@ export default class TextWidget extends Component {
     render() {
         const { setValue, className, isEditing, focusChanged: parentFocusChanged } = this.props;
         const defaultPlaceholder = this.state.isFocused ? "" : (this.props.placeholder || "Enter a value...");
-        const self = this;
 
-        function focusChanged(isFocused) {
+        const focusChanged = (isFocused) => {
             if (parentFocusChanged) parentFocusChanged(isFocused);
-            self.setState({isFocused})
-        }
+            this.setState({isFocused})
+        };
 
         return (
             <input
