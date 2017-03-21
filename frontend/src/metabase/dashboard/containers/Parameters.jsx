@@ -77,7 +77,6 @@ export default class Parameters extends Component {
                         isEditing={isEditing}
                         isFullscreen={isFullscreen}
                         isNightMode={isNightMode}
-                        isQB={isQB}
 
                         parameter={parameter}
                         parameters={parameters}
