@@ -89,7 +89,7 @@ export default class SegmentPane extends Component {
             useForCurrentQuestion.push(<UseForButton title={"Filter by " + segmentName} onClick={this.filterBy} />);
         }
 
-        usefulQuestions.push(<QueryButton icon="scalar" text={"Number of " + segmentName} onClick={this.setQueryCountFilteredBy} />);
+        usefulQuestions.push(<QueryButton icon="number" text={"Number of " + segmentName} onClick={this.setQueryCountFilteredBy} />);
         usefulQuestions.push(<QueryButton icon="table" text={"See all " + segmentName} onClick={this.setQueryFilteredBy} />);
 
         return (
