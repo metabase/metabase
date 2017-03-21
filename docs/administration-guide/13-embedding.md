@@ -44,7 +44,7 @@ Here you will see a preview of the question or dashboard as it will appear in yo
 
 ![Preview](images/embedding/04-preview.png)
 
-Importantly, you will need to hit "Publish" when you first set up a  chart or dashboard for embedding and each time you embedding settings. Also, any changes you make to the resource might require you to update the code in your own application to the latest code sample in the "Code Pane". 
+Importantly, you will need to hit "Publish" when you first set up a  chart or dashboard for embedding and each time you change your embedding settings. Also, any changes you make to the resource might require you to update the code in your own application to the latest code sample in the "Code Pane". 
 
 ![Code samples for embedding](images/embedding/05-code.png)
 
