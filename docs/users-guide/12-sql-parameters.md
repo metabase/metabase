@@ -56,5 +56,6 @@ WHERE True
 
 ---
 
-## That’s it!
-If you still have questions, or want to share Metabase tips and tricks, head over to our [discussion board](http://discourse.metabase.com/). See you there!
+
+## Next: Embedding Metabase charts and dashboards in your application
+Find out [how to embed Metabase in your Application](13-embedding.md).

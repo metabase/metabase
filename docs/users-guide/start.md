@@ -14,5 +14,6 @@
 *   [Get answers in Slack with Metabot](10-metabot.md)
 *   [Some helpful tips on building your data model](11-data-model-reference.md)
 *   [Creating SQL Templates](12-sql-parameters.md)
+*   [Embedding Metabase in other Applications](13-embedding.md)
 
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).
