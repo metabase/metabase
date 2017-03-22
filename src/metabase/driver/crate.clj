@@ -1,11 +1,11 @@
 (ns metabase.driver.crate
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.crate.util :as crate-util]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
-            [clojure.tools.logging :as log])
+            [metabase.util :as u])
   (:import java.sql.DatabaseMetaData))
 
 (def ^:private ^:const column->base-type
@@ -61,14 +61,16 @@
   [database, driver, {:keys [schema name]}]
   (let [columns (jdbc/query
                   (sql/db->jdbc-connection-spec database)
-                    [(format "select column_name, data_type as type_name from information_schema.columns
-                              where table_name like '%s' and table_schema like '%s'" name schema)])]
+                  [(format "select column_name, data_type as type_name
+                            from information_schema.columns
+                            where table_name like '%s' and table_schema like '%s'
+                            and data_type != 'object_array'" name schema)])] ; clojure jdbc can't handle fields of type "object_array" atm
     (set (for [{:keys [column_name type_name]} columns]
-      (merge {:name      column_name
-              :custom    {:column-type type_name}
-              :base-type (or (column->base-type (keyword type_name))
-                           (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
-                             :type/*))})))))
+           (merge {:name      column_name
+                   :custom    {:column-type type_name}
+                   :base-type (or (column->base-type (keyword type_name))
+                                  (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
+                                      :type/*))})))))
 
 (defn- add-table-pks
   [^DatabaseMetaData metadata, table]
@@ -84,9 +86,10 @@
 
 (defn- describe-table [driver database table]
   (sql/with-metadata [metadata driver database]
-    (->> (assoc (select-keys table [:name :schema]) :fields (describe-table-fields database driver table))
-      ;; find PKs and mark them
-      (add-table-pks metadata))))
+    (->> (describe-table-fields database driver table)
+         (assoc (select-keys table [:name :schema]) :fields)
+         ;; find PKs and mark them
+         (add-table-pks metadata))))
 
 (defrecord CrateDriver []
   clojure.lang.Named

@@ -30,13 +30,13 @@
   [^CharSequence s]
   (let [idx (s/index-of s "[")]
     (if (nil? idx)
-    (str \" s \")
-    (str-insert s "\"" idx))))
+      (str \" s \")
+      (str-insert s "\"" idx))))
 
 ;; `:crate` quote style that correctly quotes nested column identifiers
 (let [quote-fns     @(resolve 'honeysql.format/quote-fns)]
-  (intern 'honeysql.format 'quote-fns
-    (assoc quote-fns :crate crate-column-identifier)))
+  (->> (assoc quote-fns :crate crate-column-identifier)
+       (intern 'honeysql.format 'quote-fns)))
 
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
