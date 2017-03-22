@@ -54,7 +54,7 @@ export default class TextPicker extends Component<*, Props, *> {
     }
 
     render() {
-        let {values, validations, multi, onCommit} = this.props;
+        let {validations, multi, onCommit} = this.props;
         const hasInvalidValues = _.some(validations, (v) => v === false);
 
         const commitOnEnter = (e) => {
