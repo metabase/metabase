@@ -90,6 +90,10 @@
   line-height: 1.5em;
 }
 
+.text-small {
+    font-size: 0.875em;
+}
+
 .text-current {
     color: currentColor;
 }

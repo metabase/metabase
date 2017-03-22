@@ -6557,6 +6557,10 @@ react-test-renderer@^15.4.2:
     fbjs "^0.8.4"
     object-assign "^4.1.0"
 
+react-textarea-autosize@^4.0.5:
+  version "4.0.5"
+  resolved "https://registry.yarnpkg.com/react-textarea-autosize/-/react-textarea-autosize-4.0.5.tgz#55379f6a6fa575fc87d1b8de2756e57e3b6c995d"
+
 react-virtualized@^8.6.0:
   version "8.11.4"
   resolved "https://registry.yarnpkg.com/react-virtualized/-/react-virtualized-8.11.4.tgz#0bb94f1ecbd286d07145ce63983d0a11724522c0"
