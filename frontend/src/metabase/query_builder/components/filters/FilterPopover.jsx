@@ -64,7 +64,7 @@ export default class FilterPopover extends Component<*, Props, State> {
     }
 
     commitOnEnter(event: Object) {
-        if(this.isValid() && event.keyCode === 13) {
+        if(this.isValid() && event.key === "Enter") {
             this.commitFilter(this.state.filter);
         }
     }
