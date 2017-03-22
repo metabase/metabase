@@ -126,7 +126,7 @@
      (do
        (with-metabot-permissions
          (read-check Card card-id))
-       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id)])]
+       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id, :context :metabot)])]
                    (slack/post-chat-message! *channel-id*
                                              nil
                                              attachments)))

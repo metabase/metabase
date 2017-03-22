@@ -221,11 +221,6 @@ export default class Visualization extends Component<*, Props, State> {
             }
         }
 
-        // if on dashoard, and error didn't come from props replace it with the generic error message
-        if (isDashboard && error && this.props.error !== error) {
-            error = ERROR_MESSAGE_GENERIC;
-        }
-
         if (!error) {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }

@@ -68,7 +68,7 @@ export default class Parameters extends Component {
         const parameters = this._parametersWithValues();
 
         return (
-            <div className={cx(className, "flex align-end", vertical ? "flex-column" : "flex-row")}>
+            <div className={cx(className, "flex align-end flex-wrap", vertical ? "flex-column" : "flex-row", {"mt1": isQB})}>
                 { parameters.map(parameter =>
                     <ParameterWidget
                         className={vertical ? "mb2" : null}
@@ -77,7 +77,6 @@ export default class Parameters extends Component {
                         isEditing={isEditing}
                         isFullscreen={isFullscreen}
                         isNightMode={isNightMode}
-                        isQB={isQB}
 
                         parameter={parameter}
                         parameters={parameters}

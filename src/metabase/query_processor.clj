@@ -1,9 +1,10 @@
 (ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.tools.logging :as log]
+            [schema.core :as s]
             [toucan.db :as db]
             [metabase.driver :as driver]
-            [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.models.query-execution :refer [QueryExecution], :as query-execution]
             [metabase.query-processor.util :as qputil]
             (metabase.query-processor.middleware [add-implicit-clauses :as implicit-clauses]
                                                  [add-row-count-and-status :as row-count-and-status]
@@ -22,7 +23,8 @@
                                                  [parameters :as parameters]
                                                  [permissions :as perms]
                                                  [resolve-driver :as resolve-driver])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.schema :as su]))
 
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                           QUERY PROCESSOR                                             |
@@ -99,49 +101,42 @@
 
 (defn- save-query-execution!
   "Save (or update) a `QueryExecution`."
-  [{:keys [id], :as query-execution}]
-  (if id
-    ;; execution has already been saved, so update it
-    (u/prog1 query-execution
-      (db/update! QueryExecution id query-execution))
-    ;; first time saving execution, so insert it
-    (db/insert! QueryExecution query-execution)))
+  [query-execution]
+  (u/prog1 query-execution
+    (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-and-return-failed-query!
   "Save QueryExecution state and construct a failed query response"
   [query-execution error-message]
-  (let [updates {:status       :failed
-                 :error        error-message
-                 :finished_at  (u/new-sql-timestamp)
-                 :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))}]
-    ;; record our query execution and format response
-    (-> query-execution
-        (dissoc :start_time_millis)
-        (merge updates)
-        save-query-execution!
-        (dissoc :raw_query :result_rows :version)
-        ;; this is just for the response for clien
-        (assoc :error     error-message
-               :row_count 0
-               :data      {:rows    []
-                           :cols    []
-                           :columns []}))))
+  ;; record our query execution and format response
+  (-> query-execution
+      (dissoc :start_time_millis)
+      (merge {:error        error-message
+              :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))})
+      save-query-execution!
+      (dissoc :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
+      ;; this is just for the response for client
+      (assoc :status    :failed
+             :error     error-message
+             :row_count 0
+             :data      {:rows    []
+                         :cols    []
+                         :columns []})))
 
 (defn- save-and-return-successful-query!
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
   (-> (assoc query-execution
-        :status       :completed
-        :finished_at  (u/new-sql-timestamp)
         :running_time (- (System/currentTimeMillis)
                          (:start_time_millis query-execution))
         :result_rows  (get query-result :row_count 0))
       (dissoc :start_time_millis)
       save-query-execution!
       ;; at this point we've saved and we just need to massage things into our final response format
-      (dissoc :error :raw_query :result_rows :version)
-      (merge query-result)))
+      (dissoc :error :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
+      (merge query-result)
+      (assoc :status :completed)))
 
 
 (defn- assert-query-status-successful
@@ -161,21 +156,20 @@
 
 (defn- query-execution-info
   "Return the info for the `QueryExecution` entry for this QUERY."
-  [{{:keys [uuid executed-by query-hash]} :info, :as query}]
-  {:uuid              (or uuid (throw (Exception. "Missing query UUID!")))
-   :executor_id       executed-by
+  [{{:keys [executed-by query-hash query-type context card-id dashboard-id pulse-id]} :info, :as query}]
+  {:pre [(instance? (Class/forName "[B") query-hash)
+         (string? query-type)]}
+  {:executor_id       executed-by
+   :card_id           card-id
+   :dashboard_id      dashboard-id
+   :pulse_id          pulse-id
+   :context           context
+   :hash              (or query-hash (throw (Exception. "Missing query hash!")))
+   :native            (= query-type "native")
    :json_query        (dissoc query :info)
-   :query_hash        (or query-hash (throw (Exception. "Missing query hash!")))
-   :version           0
-   :error             ""
    :started_at        (u/new-sql-timestamp)
-   :finished_at       (u/new-sql-timestamp)
    :running_time      0
    :result_rows       0
-   :result_file       ""
-   :result_data       "{}"
-   :raw_query         ""
-   :additional_info   ""
    :start_time_millis (System/currentTimeMillis)})
 
 (defn- run-and-save-query!
@@ -190,31 +184,31 @@
         (log/warn (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (save-and-return-failed-query! query-execution (.getMessage e))))))
 
-(defn dataset-query
+(def ^:private DatasetQueryOptions
+  "Schema for the options map for the `dataset-query` function."
+  (s/constrained {:context                       query-execution/Context
+                  (s/optional-key :executed-by)  (s/maybe su/IntGreaterThanZero)
+                  (s/optional-key :card-id)      (s/maybe su/IntGreaterThanZero)
+                  (s/optional-key :dashboard-id) (s/maybe su/IntGreaterThanZero)
+                  (s/optional-key :pulse-id)     (s/maybe su/IntGreaterThanZero)}
+                 (fn [{:keys [executed-by]}]
+                   (or (integer? executed-by)
+                       *allow-queries-with-no-executor-id*))
+                 "executed-by cannot be nil unless *allow-queries-with-no-executor-id* is true"))
+
+(s/defn ^:always-validate dataset-query
   "Process and run a json based dataset query and return results.
 
   Takes 2 arguments:
 
-  1.  the json query as a dictionary
-  2.  query execution options specified in a dictionary
+  1.  the json query as a map
+  2.  query execution options (and context information) specified as a map
 
   Depending on the database specified in the query this function will delegate to a driver specific implementation.
   For the purposes of tracking we record each call to this function as a QueryExecution in the database.
 
-  Possible caller-options include:
-
-    :executed-by [int]  (User ID of caller)
-    :card-id     [int]  (ID of Card associated with this execution)"
-  {:arglists '([query options])}
-  [query {:keys [executed-by card-id]}]
-  {:pre [(or (integer? executed-by)
-             *allow-queries-with-no-executor-id*)
-         (u/maybe? integer? card-id)]}
-  (let [query-uuid (str (java.util.UUID/randomUUID))
-        query-hash (hash query)
-        query      (assoc query :info {:executed-by executed-by
-                                       :card-id     card-id
-                                       :uuid        query-uuid
-                                       :query-hash  query-hash
-                                       :query-type  (if (qputil/mbql-query? query) "MBQL" "native")})]
-    (run-and-save-query! query)))
+  OPTIONS must conform to the `DatasetQueryOptions` schema; refer to that for more details."
+  [query, options :- DatasetQueryOptions]
+  (run-and-save-query! (assoc query :info (assoc options
+                                            :query-hash (qputil/query-hash query)
+                                            :query-type (if (qputil/mbql-query? query) "MBQL" "native")))))

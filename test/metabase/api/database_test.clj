@@ -93,7 +93,7 @@
      :description        nil
      :caveats            nil
      :points_of_interest nil
-     :features           (vec (driver/features (driver/engine->driver :postgres)))})
+     :features           (driver/features (driver/engine->driver :postgres))})
   (Database (:id db)))
 
 
