@@ -28,15 +28,28 @@ export default class TextPicker extends Component<*, Props, *> {
     static defaultProps = {
         validations: [],
         placeholder: "Enter desired text"
+    };
+
+    constructor(props) {
+        super(props);
+        this.state = {
+            fieldString: props.values.join(', ')
+        };
     }
 
     setValue(fieldString: ?string) {
-        if (fieldString != null && fieldString !== "") {
+        if (fieldString != null) {
+            // Only strip newlines from field string to not interfere with copy-pasting
             const newLineRegex = /\r?\n|\r/g;
-            const newValues = fieldString.replace(newLineRegex,'').split(',').map((value: string|null) => value);
+            const newFieldString = fieldString.replace(newLineRegex,'');
+            this.setState({fieldString: newFieldString});
+
+            // Construct the values array for real-time validation
+            // Trim values to prevent confusing problems with leading/trailing whitespaces
+            const newValues = newFieldString.split(',').map((v) => v.trim()).filter((v) => v !== "");
             this.props.onValuesChange(newValues);
         } else {
-            this.props.onValuesChange([null]);
+            this.props.onValuesChange([]);
         }
     }
 
@@ -56,7 +69,7 @@ export default class TextPicker extends Component<*, Props, *> {
                     <AutosizeTextarea
                         className={cx("input block full border-purple", { "border-error": hasInvalidValues })}
                         type="text"
-                        value={values.join(',')}
+                        value={this.state.fieldString}
                         onChange={(e) => this.setValue(e.target.value)}
                         onKeyPress={commitOnEnter}
                         placeholder={this.props.placeholder}
