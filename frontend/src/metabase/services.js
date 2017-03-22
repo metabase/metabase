@@ -2,10 +2,10 @@
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
-import { IFRAMED_IN_METABASE } from "metabase/lib/dom";
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 // use different endpoints for embed previews
-const embedBase = IFRAMED_IN_METABASE ? "/api/preview_embed" : "/api/embed";
+const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default

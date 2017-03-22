@@ -191,7 +191,7 @@
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-params embedding-params token-params query-params)
         parameters       (apply-parameter-values (resolve-card-parameters card-id) parameter-values)]
-    (apply public-api/run-query-for-card-with-id card-id parameters options)))
+    (apply public-api/run-query-for-card-with-id card-id parameters, :context :embedded-question, options)))
 
 
 ;;; ------------------------------------------------------------ Dashboard Fns used by both /api/embed and /api/preview_embed ------------------------------------------------------------
@@ -215,7 +215,7 @@
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-params embedding-params token-params query-params)
         parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id) parameter-values)]
-    (public-api/public-dashcard-results dashboard-id card-id parameters)))
+    (public-api/public-dashcard-results dashboard-id card-id parameters, :context :embedded-dashboard)))
 
 
 ;;; ------------------------------------------------------------ Other /api/embed-specific utility fns ------------------------------------------------------------

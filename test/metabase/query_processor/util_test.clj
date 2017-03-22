@@ -16,54 +16,81 @@
 (expect false (qputil/query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :count}]
                                                                      :page        1}}))
 
-;;; ------------------------------------------------------------ Tests for qputil/secure-query-hash ------------------------------------------------------------
 
-(defn- array= {:style/indent 0} [a b]
-  (java.util.Arrays/equals a b))
+;;; ------------------------------------------------------------ Tests for qputil/query-hash ------------------------------------------------------------
 
-;; qputil/secure-query-hash should always hash something the same way, every time
+(defn- array= {:style/indent 0}
+  ([a b]
+   (java.util.Arrays/equals a b))
+  ([a b & more]
+   (and (array= a b)
+        (apply array= b more))))
+
+;; qputil/query-hash should always hash something the same way, every time
 (expect
   (array=
-    (byte-array [41, 6, -19, -29, -19, 124, -91, -26, -107, -120, -120, -32, -117, 102, -65, -122, -37, -38, 111, 19, -12, 100, -54, -119, 59, 86, -57, -96, 63, -57, -81, -96])
-    (qputil/secure-query-hash {:query :abc})))
+    (byte-array [124 17 52 -28 71 -73 107 4 -108 39 42 -6 15 36 58 46 93 -59 103 -123 101 78 15 63 -10 -110 55 100 91 122 71 -23])
+    (qputil/query-hash {:query :abc})))
 
 (expect
-  (array= (qputil/secure-query-hash {:query :def})
-          (qputil/secure-query-hash {:query :def})))
+  (array=
+    (qputil/query-hash {:query :def})
+    (qputil/query-hash {:query :def})))
 
 ;; different queries should produce different hashes
 (expect
   false
   (array=
-    (qputil/secure-query-hash {:query :abc})
-    (qputil/secure-query-hash {:query :def})))
+    (qputil/query-hash {:query :abc})
+    (qputil/query-hash {:query :def})))
 
 (expect
   false
   (array=
-    (qputil/secure-query-hash {:query :abc, :database 1})
-    (qputil/secure-query-hash {:query :abc, :database 2})))
+    (qputil/query-hash {:query :abc, :database 1})
+    (qputil/query-hash {:query :abc, :database 2})))
 
 (expect
   false
   (array=
-    (qputil/secure-query-hash {:query :abc, :type "query"})
-    (qputil/secure-query-hash {:query :abc, :type "native"})))
+    (qputil/query-hash {:query :abc, :type "query"})
+    (qputil/query-hash {:query :abc, :type "native"})))
 
 (expect
   false
   (array=
-    (qputil/secure-query-hash {:query :abc, :parameters [1]})
-    (qputil/secure-query-hash {:query :abc, :parameters [2]})))
+    (qputil/query-hash {:query :abc, :parameters [1]})
+    (qputil/query-hash {:query :abc, :parameters [2]})))
 
 (expect
   false
   (array=
-    (qputil/secure-query-hash {:query :abc, :constraints {:max-rows 1000}})
-    (qputil/secure-query-hash {:query :abc, :constraints nil})))
+    (qputil/query-hash {:query :abc, :constraints {:max-rows 1000}})
+    (qputil/query-hash {:query :abc, :constraints nil})))
 
-;; ... but keys that are irrelevant to the query should be ignored by qputil/secure-query-hash
+;; ... but keys that are irrelevant to the query should be ignored by qputil/query-hash
 (expect
   (array=
-    (qputil/secure-query-hash {:query :abc, :random :def})
-    (qputil/secure-query-hash {:query :abc, :random :xyz})))
+    (qputil/query-hash {:query :abc, :random :def})
+    (qputil/query-hash {:query :abc, :random :xyz})))
+
+;; empty `:parameters` lists should not affect the hash
+(expect
+  (array=
+    (qputil/query-hash {:query :abc})
+    (qputil/query-hash {:query :abc, :parameters []})
+    (qputil/query-hash {:query :abc, :parameters nil})))
+
+;; ...but non-empty ones should
+(expect
+  false
+  (array=
+    (qputil/query-hash {:query :abc})
+    (qputil/query-hash {:query :abc, :parameters ["ABC"]})))
+
+;; similarly, the presence of a `nil` value for `:constraints` should produce the same hash as not including the key at all
+(expect
+  (array=
+    (qputil/query-hash {:query :abc})
+    (qputil/query-hash {:query :abc, :constraints nil})
+    (qputil/query-hash {:query :abc, :constraints {}})))

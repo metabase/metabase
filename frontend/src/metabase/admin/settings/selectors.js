@@ -3,7 +3,6 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { slugify } from "metabase/lib/formatting";
-
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
 import {
     PublicLinksDashboardListing,

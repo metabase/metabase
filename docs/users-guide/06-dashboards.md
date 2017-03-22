@@ -61,6 +61,11 @@ Enabling auto refresh will re-run all the queries on the dashboard at the interv
 
 Combining fullscreen mode and auto refresh is a great way to keep your team in sync with your data throughout the day.
 
+## Sharing dashboards with public links
+If your Metabase administrator has enabled [public sharing](../administration-guide/12-public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
+
+![Share icon](images/share-icon.png)
+
 ### Configuring a dashboard through its URL
 
 It is possible to amend URL of the dashboard to automatically enter fullscreen, enable night mode or auto-refresh the dashboard. This allows you to configure the dashboard even when you do not have any input access to the device where the dashboard will be displayed, like scripted screens, for example.
