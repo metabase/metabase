@@ -1,4 +1,5 @@
 import React from 'react';
+import MetabaseAnalytics from 'metabase/lib/analytics';
 
 const EmbeddingLegalese = ({ updateSetting }) =>
     <div className="bordered rounded text-measure p4">
@@ -14,7 +15,15 @@ const EmbeddingLegalese = ({ updateSetting }) =>
             If you want to hide the Metabase logo inside your own application we'd love to get in touch.
         </p> */}
         <div className="flex layout-centered mt4">
-            <button className="Button Button--primary" onClick={() => updateSetting(true)}>Enable</button>
+            <button
+                className="Button Button--primary"
+                onClick={() => {
+                    MetabaseAnalytics.trackEvent("Admin Embed Settings", "Embedding Enable Click");
+                    updateSetting(true);
+                }}
+            >
+                Enable
+            </button>
         </div>
     </div>
 

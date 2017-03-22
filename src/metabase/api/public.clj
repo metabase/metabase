@@ -56,7 +56,7 @@
   (u/prog1 (-> (let [parameters (if (string? parameters) (json/parse-string parameters keyword) parameters)]
                  (binding [api/*current-user-permissions-set*     (atom #{"/"})
                            qp/*allow-queries-with-no-executor-id* true]
-                   (apply card-api/run-query-for-card card-id, :parameters parameters, options)))
+                   (apply card-api/run-query-for-card card-id, :parameters parameters, :context :public-question, options)))
                (u/select-nested-keys [[:data :columns :cols :rows :rows_truncated] [:json_query :parameters] :error :status]))
     ;; if the query failed instead of returning anything about the query just return a generic error message
     (when (= (:status <>) :failed)
@@ -169,7 +169,8 @@
 (defn public-dashcard-results
   "Return the results of running a query with PARAMETERS for Card with CARD-ID belonging to Dashboard with DASHBOARD-ID.
    Throws a 404 if the Card isn't part of the Dashboard."
-  [dashboard-id card-id parameters]
+  [dashboard-id card-id parameters & {:keys [context]
+                                      :or   {context :public-dashboard}}]
   (api/check-404 (or (db/exists? DashboardCard
                        :dashboard_id dashboard-id
                        :card_id      card-id)
@@ -177,7 +178,7 @@
                        (db/exists? DashboardCardSeries
                          :card_id          card-id
                          :dashboardcard_id [:in dashcard-ids]))))
-  (run-query-for-card-with-id card-id parameters))
+  (run-query-for-card-with-id card-id parameters, :context context, :dashboard-id dashboard-id))
 
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
@@ -197,7 +198,7 @@
    maxheight (s/maybe su/IntString)
    maxwidth  (s/maybe su/IntString)}
   (let [height (if maxheight (Integer/parseInt maxheight) default-embed-max-height)
-        width  (if maxwidth  (Integer/parseInt maxwidth) default-embed-max-width)]
+        width  (if maxwidth  (Integer/parseInt maxwidth)  default-embed-max-width)]
     {:version "1.0"
      :type    "rich"
      :width   width

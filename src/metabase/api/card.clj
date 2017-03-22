@@ -356,34 +356,44 @@
 
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
-  [card-id & {:keys [parameters constraints]
-              :or   {constraints dataset-api/default-query-constraints}}]
+  {:style/indent 1}
+  [card-id & {:keys [parameters constraints context dashboard-id]
+              :or   {constraints dataset-api/default-query-constraints
+                     context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (read-check Card card-id)
         query   (assoc (:dataset_query card)
                   :parameters  parameters
                   :constraints constraints)
-        options {:executed-by *current-user-id*
-                 :card-id     card-id}]
+        options {:executed-by  *current-user-id*
+                 :context      context
+                 :card-id      card-id
+                 :dashboard-id dashboard-id}]
     (check-not-archived card)
     (qp/dataset-query query options)))
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters]} :body}]
+  [card-id, :as {{:keys [parameters]} :body}]
   (run-query-for-card card-id, :parameters parameters))
 
 (defendpoint POST "/:card-id/query/csv"
   "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+  (dataset-api/as-csv (run-query-for-card card-id
+                        :parameters  (json/parse-string parameters keyword)
+                        :constraints nil
+                        :context     :csv-download)))
 
 (defendpoint POST "/:card-id/query/json"
   "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+  (dataset-api/as-json (run-query-for-card card-id
+                         :parameters  (json/parse-string parameters keyword)
+                         :constraints nil
+                         :context     :json-download)))
 
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------

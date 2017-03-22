@@ -11,6 +11,8 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { CardApi, DashboardApi } from "metabase/services";
 import Urls from "metabase/lib/urls";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 type PublicLink = {
     id: string,
     name: string,
@@ -23,6 +25,7 @@ type Props = {
     getUrl:       (link: PublicLink) => string,
     getPublicUrl: (link: PublicLink) => string,
     noLinksMessage: string,
+    type: string
 };
 
 type State = {
@@ -64,6 +67,10 @@ export default class PublicLinksListing extends Component<*, Props, State> {
         }
     }
 
+    trackEvent(label: string) {
+        MetabaseAnalytics.trackEvent(`Admin ${this.props.type}`, label)
+    }
+
     render() {
         const { getUrl, getPublicUrl, revoke, noLinksMessage } = this.props;
         let { list, error } = this.state;
@@ -91,13 +98,23 @@ export default class PublicLinksListing extends Component<*, Props, State> {
                         { list && list.map(link =>
                             <tr>
                                 <td>
-                                    <Link to={getUrl(link)}>
+                                    <Link
+                                        to={getUrl(link)}
+                                        onClick={() =>
+                                            this.trackEvent('Entity Link Clicked')
+                                        }
+                                    >
                                         {link.name}
                                     </Link>
                                 </td>
                                 { getPublicUrl &&
                                     <td>
-                                        <ExternalLink href={getPublicUrl(link)}>
+                                        <ExternalLink
+                                            href={getPublicUrl(link)}
+                                            onClick={() =>
+                                                this.trackEvent('Public Link Clicked')
+                                            }
+                                        >
                                             {getPublicUrl(link)}
                                         </ExternalLink>
                                     </td>
@@ -107,7 +124,10 @@ export default class PublicLinksListing extends Component<*, Props, State> {
                                         <Confirm
                                             title="Disable this link?"
                                             content="They won't work any more, and can't be restored, but you can create new links."
-                                            action={() => this.revoke(link)}
+                                            action={() => {
+                                                this.revoke(link)
+                                                this.trackEvent('Revoked link')
+                                            }}
                                         >
                                             <Icon
                                                 name="close"
@@ -130,6 +150,7 @@ export const PublicLinksDashboardListing = () =>
     <PublicLinksListing
         load={DashboardApi.listPublic}
         revoke={DashboardApi.deletePublicLink}
+        type='Public Dashboard Listing'
         getUrl={({ id }) => Urls.dashboard(id)}
         getPublicUrl={({ public_uuid }) => window.location.origin + Urls.publicDashboard(public_uuid)}
         noLinksMessage="No dashboards have been publicly shared yet."
@@ -139,6 +160,7 @@ export const PublicLinksQuestionListing = () =>
     <PublicLinksListing
         load={CardApi.listPublic}
         revoke={CardApi.deletePublicLink}
+        type='Public Card Listing'
         getUrl={({ id }) => Urls.card(id)}
         getPublicUrl={({ public_uuid }) => window.location.origin + Urls.publicCard(public_uuid)}
         noLinksMessage="No questions have been publicly shared yet."
@@ -148,6 +170,7 @@ export const EmbeddedDashboardListing = () =>
     <PublicLinksListing
         load={DashboardApi.listEmbeddable}
         getUrl={({ id }) => Urls.dashboard(id)}
+        type='Embedded Dashboard Listing'
         noLinksMessage="No dashboards have been embedded yet."
     />;
 
@@ -155,5 +178,6 @@ export const EmbeddedQuestionListing = () =>
     <PublicLinksListing
         load={CardApi.listEmbeddable}
         getUrl={({ id }) => Urls.card(id)}
+        type='Embedded Card Listing'
         noLinksMessage="No questions have been embedded yet."
     />;

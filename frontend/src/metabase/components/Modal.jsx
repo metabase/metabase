@@ -105,7 +105,6 @@ export class WindowModal extends Component {
 
 import routeless from "metabase/hoc/Routeless";
 
-@routeless
 export class FullPageModal extends Component {
     static childContextTypes = MODAL_CHILD_CONTEXT_TYPES;
 
@@ -183,10 +182,12 @@ export class InlineModal extends Component {
     }
 }
 
+// the "routeless" version should only be used for non-inline modals
+const RoutelessFullPageModal = routeless(FullPageModal);
 
 const Modal = ({ full, inline, ...props }) =>
     full ?
-        (props.isOpen ? <FullPageModal {...props} /> : null)
+        (props.isOpen ? <RoutelessFullPageModal {...props} /> : null)
     : inline ?
         <InlineModal {...props} />
     :

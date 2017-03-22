@@ -2,6 +2,8 @@
 
 import MetabaseSettings from "metabase/lib/settings";
 
+import { DEBUG } from "metabase/lib/debug";
+
 
 // Simple module for in-app analytics.  Currently sends data to GA but could be extended to anything else.
 const MetabaseAnalytics = {
@@ -27,6 +29,9 @@ const MetabaseAnalytics = {
         if (category && action) {
             ga('set', 'dimension1', tag);
             ga('send', 'event', category, action, label, value);
+        }
+        if (DEBUG) {
+            console.log("trackEvent", { category, action, label, value });
         }
     }
 }
