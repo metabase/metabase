@@ -30,7 +30,7 @@ export default class TextPicker extends Component<*, Props, *> {
         placeholder: "Enter desired text"
     };
 
-    constructor(props) {
+    constructor(props: Props) {
         super(props);
         this.state = {
             fieldString: props.values.join(', ')
