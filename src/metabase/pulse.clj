@@ -63,7 +63,7 @@
                               (str "Pulse: " (:name pulse))
                               attachments)))
 
-(defn is-card-empty?
+(defn- is-card-empty?
   "Check if the card is empty"
   [card]
   (let [result (:result card)]
