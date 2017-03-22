@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, {Component, PropTypes} from "react";
+import AutosizeTextarea from 'react-textarea-autosize';
 
 import cx from "classnames";
 import _ from "underscore";
@@ -31,7 +32,8 @@ export default class TextPicker extends Component<*, Props, *> {
 
     setValue(fieldString: string|null) {
         const fieldIsNonEmpty = fieldString !== null && fieldString !== "";
-        const values = fieldIsNonEmpty ? fieldString.split(',') : [null];
+        const newLineRegex = /\r?\n|\r/g;
+        const values = fieldIsNonEmpty ? fieldString.replace(newLineRegex,'').split(',') : [null];
         this.props.onValuesChange(values);
     }
 
@@ -48,7 +50,7 @@ export default class TextPicker extends Component<*, Props, *> {
         return (
             <div>
                 <div className="FilterInput px1 pt1 relative">
-                    <input
+                    <AutosizeTextarea
                         className={cx("input block full border-purple", { "border-error": hasInvalidValues })}
                         type="text"
                         value={values.join(',')}
@@ -56,6 +58,8 @@ export default class TextPicker extends Component<*, Props, *> {
                         onKeyPress={commitOnEnter}
                         placeholder={this.props.placeholder}
                         autoFocus={true}
+                        style={{resize: "none"}}
+                        maxRows={8}
                     />
                 </div>
 
