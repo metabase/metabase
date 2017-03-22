@@ -55,6 +55,7 @@
     ;; First try LDAP if it's enabled
     (when (ldap/ldap-configured?)
       (when-let [{:keys [first-name last-name email], :as user-info} (ldap/find-user username)]
+        (println user-info)
         (if (ldap/verify-password user-info password)
           (ldap-fetch-or-create-user! first-name last-name email password)
           ;; Since LDAP knows about our user, fail fast here to prevent the local strategy to be tried with a potentially outdated password

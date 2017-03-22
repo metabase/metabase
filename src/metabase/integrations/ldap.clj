@@ -15,7 +15,7 @@
   :default "none"
   :setter  (fn [new-value]
              (when-not (nil? new-value)
-               (assert (contains? #{"none" "ssl" "tls"} new-value)))
+               (assert (contains? #{"none" "ssl" "starttls"} new-value)))
              (setting/set-string! :ldap-security new-value)))
 
 (defsetting ldap-bind-dn
@@ -57,7 +57,7 @@
                  :bind-dn   (ldap-bind-dn)
                  :password  (ldap-password)
                  :ssl?      (= (ldap-security) "ssl")
-                 :startTLS? (= (ldap-security) "tls")}))
+                 :startTLS? (= (ldap-security) "starttls")}))
 
 (defn- with-connection [f & args]
   "Applies `f` with a connection pool followed by `args`"
@@ -80,27 +80,19 @@
           email-attr (keyword (ldap-attribute-email))]
       (when-let [[result] (ldap/search conn (ldap-base) {:scope      :sub
                                                          :filter     (s/replace (ldap-user-filter) "{login}" (escape-value username))
-                                                         :attributes [:dn :distinguishedName fname-attr lname-attr email-attr]
+                                                         :attributes [:dn :distinguishedName :membderOf fname-attr lname-attr email-attr]
                                                          :size-limit 1})]
-        {:dn         (or (:dn result) (:distinguishedName result)) ; TODO - Check if AD also provides "dn"
+        {:dn         (or (:dn result) (:distinguishedName result))
          :first-name (get result fname-attr)
          :last-name  (get result lname-attr)
-         :email      (get result email-attr)}))))
-
-(defn auth-user
-  "Authenticates the user with an LDAP bind operation. Returns the user information when successful, nil otherwise."
-  ([username password]
-    (with-connection auth-user username password))
-  ([conn username password]
-    ;; first figure out the user even exists, we also need the DN to reliably bind with LDAP
-    (when-let [{:keys [dn], :as user} (find-user conn username)]
-      ;; then try a bind with the DN we got and the supplied password
-      (when (ldap/bind? conn dn password)
-        user))))
+         :email      (get result email-attr)
+         :groups     (or (:membderOf result) [])}))))
 
 (defn verify-password
-  "Verifies if the password supplied is correct. `user-info` is what `find-user` returns (alternarively only the :dn needs to be filled in)"
+  "Verifies if the password supplied is valid for the supplied `user-info` (from `find-user`) or DN."
   ([user-info password]
     (with-connection verify-password user-info password))
-  ([conn {:keys [dn]} password]
-    (ldap/bind? conn dn password)))
+  ([conn user-info password]
+    (if (string? user-info)
+      (ldap/bind? conn user-info password)
+      (ldap/bind? conn (:dn user-info) password))))
