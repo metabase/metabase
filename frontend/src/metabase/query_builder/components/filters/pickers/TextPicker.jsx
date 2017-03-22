@@ -30,11 +30,14 @@ export default class TextPicker extends Component<*, Props, *> {
         placeholder: "Enter desired text"
     }
 
-    setValue(fieldString: string|null) {
-        const fieldIsNonEmpty = fieldString !== null && fieldString !== "";
-        const newLineRegex = /\r?\n|\r/g;
-        const values = fieldIsNonEmpty ? fieldString.replace(newLineRegex,'').split(',') : [null];
-        this.props.onValuesChange(values);
+    setValue(fieldString: ?string) {
+        if (fieldString != null && fieldString !== "") {
+            const newLineRegex = /\r?\n|\r/g;
+            const newValues = fieldString.replace(newLineRegex,'').split(',').map((value: string|null) => value);
+            this.props.onValuesChange(newValues);
+        } else {
+            this.props.onValuesChange([null]);
+        }
     }
 
     render() {
