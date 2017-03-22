@@ -56,7 +56,7 @@ export default class FilterPopover extends Component<*, Props, State> {
     };
 
     componentWillMount() {
-        window.addEventListener('keydown', this.commitOnEnter);
+        window.addEventListener('keydown', this.commitOnEnter.bind(this));
     }
 
     componentWillUnmount() {
