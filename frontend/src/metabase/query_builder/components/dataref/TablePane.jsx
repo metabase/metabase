@@ -61,7 +61,7 @@ export default class TablePane extends Component {
             var queryButton;
             if (table.rows != null) {
                 var text = `See the raw data for ${table.display_name}`
-                queryButton = (<QueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
+                queryButton = (<QueryButton className="border-bottom border-top mb3" icon="table" text={text} onClick={this.setQueryAllRows} />);
             }
             var panes = {
                 "fields": table.fields.length,
