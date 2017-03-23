@@ -201,8 +201,7 @@ type Props = {
 export default class DatePicker extends Component<*, Props, *> {
     static propTypes = {
         filter: PropTypes.array.isRequired,
-        onFilterChange: PropTypes.func.isRequired,
-        tableMetadata: PropTypes.object.isRequired
+        onFilterChange: PropTypes.func.isRequired
     };
 
     componentWillMount() {

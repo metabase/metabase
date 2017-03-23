@@ -261,8 +261,6 @@ export default class FilterPopover extends Component<*, Props, State> {
                         <DatePicker
                             filter={filter}
                             onFilterChange={this.setFilter}
-                            onOperatorChange={this.setOperator}
-                            tableMetadata={this.props.tableMetadata}
                         />
                     :
                         <div>
