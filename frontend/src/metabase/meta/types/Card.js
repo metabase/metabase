@@ -2,16 +2,18 @@
 
 import type { DatabaseId } from "./Database";
 import type { StructuredQuery, NativeQuery } from "./Query";
-import type { ParameterInstance } from "./Dashboard";
+import type { Parameter, ParameterInstance } from "./Dashboard";
 
 export type CardId = number;
 
 export type Card = {
     id: CardId,
     name: ?string,
+    description: ?string,
     dataset_query: DatasetQuery,
     display: string,
-    visualization_settings: VisualizationSettings
+    visualization_settings: VisualizationSettings,
+    parameters?: Array<Parameter>
 };
 
 export type StructuredDatasetQuery = {

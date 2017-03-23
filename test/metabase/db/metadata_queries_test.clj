@@ -1,6 +1,6 @@
 (ns metabase.db.metadata-queries-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.db.metadata-queries :refer :all]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])

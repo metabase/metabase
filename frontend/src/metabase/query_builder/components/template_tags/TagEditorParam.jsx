@@ -106,6 +106,7 @@ export default class TagEditorParam extends Component {
                             }}
                             value={tag.default}
                             setValue={(value) => this.setParameterAttribute("default", value)}
+                            className="AdminSelect p1 text-bold text-grey-4 bordered border-med rounded bg-white"
                             isEditing
                             commitImmediately
                         />

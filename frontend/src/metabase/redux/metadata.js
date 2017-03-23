@@ -352,7 +352,21 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
 const fields = handleActions({
     [FETCH_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.fields }) },
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.fields }) },
-    [UPDATE_FIELD]: { next: (state, { payload }) => payload }
+    [UPDATE_FIELD]: { next: (state, { payload }) => payload },
+    // NOTE: from metabase/dashboard/dashboard
+    ["metabase/dashboard/FETCH_DASHBOARD"]: { next: (state, { payload }) => {
+        // extract field values from dashboard endpoint
+        if (payload.entities && payload.entities.dashboard) {
+            for (const dashboard of Object.values(payload.entities.dashboard)) {
+                if (dashboard.param_values) {
+                    for (const fieldValues of Object.values(dashboard.param_values)) {
+                        state = assocIn(state, [fieldValues.field_id, "values"], fieldValues);
+                    }
+                }
+            }
+        }
+        return state;
+    }}
 }, {});
 
 const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";

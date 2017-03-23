@@ -59,7 +59,9 @@ export default class DashboardGrid extends Component {
     };
 
     static defaultProps = {
-        width: 0
+        width: 0,
+        isEditing: false,
+        isEditingParameter: false
     };
 
     shouldComponentUpdate(nextProps, nextState) {
@@ -195,6 +197,7 @@ export default class DashboardGrid extends Component {
                 onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                 onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(this, dc.id)}
                 onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(this, dc.id)}
+                linkToCard={this.props.linkToCard}
             />
         )
     }

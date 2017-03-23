@@ -3,9 +3,9 @@
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [schema.core :as s]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [interface :as models]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
+            (metabase.models [interface :as mi]
                              [revision :as revision]
                              [segment :refer [Segment], :as segment]
                              [table :refer [Table]])
@@ -33,7 +33,7 @@
 (defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
-  (filter models/can-read? (-> (db/select Segment, :is_active true, {:order-by [[:%lower.name :asc]]})
+  (filter mi/can-read? (-> (db/select Segment, :is_active true, {:order-by [[:%lower.name :asc]]})
                                (hydrate :creator))))
 
 
@@ -64,7 +64,7 @@
   (check-superuser)
   (write-check Segment id)
   (segment/delete-segment! id *current-user-id* revision_message)
-  {:success true})
+  {:success true}) ; TODO - why doesn't this return a 204 'No Content'?
 
 
 (defendpoint GET "/:id/revisions"

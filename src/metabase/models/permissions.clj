@@ -5,10 +5,10 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [schema.core :as s]
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.api.common :refer [*current-user-id*]]
-            [metabase.db :as db]
-            (metabase.models [interface :as i]
-                             [permissions-group :as group]
+            (metabase.models [permissions-group :as group]
                              [permissions-revision :refer [PermissionsRevision] :as perms-revision])
             [metabase.util :as u]
             (metabase.util [honeysql-extensions :as hx]
@@ -169,7 +169,7 @@
 ;;; |                                                                 ENTITY + LIFECYCLE                                                                   |
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-(i/defentity Permissions :permissions)
+(models/defmodel Permissions :permissions)
 
 (defn- pre-insert [permissions]
   (u/prog1 permissions
@@ -179,16 +179,16 @@
 (defn- pre-update [_]
   (throw (Exception. "You cannot update a permissions entry! Delete it and create a new one.")))
 
-(defn- pre-cascade-delete [permissions]
+(defn- pre-delete [permissions]
   (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
   (assert-not-admin-group permissions))
 
 
 (u/strict-extend (class Permissions)
-  i/IEntity (merge i/IEntityDefaults
+  models/IModel (merge models/IModelDefaults
                    {:pre-insert         pre-insert
                     :pre-update         pre-update
-                    :pre-cascade-delete pre-cascade-delete}))
+                    :pre-delete pre-delete}))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -208,7 +208,7 @@
 (def ^:private DBPermissionsGraph
   {(s/optional-key :native)  NativePermissionsGraph
    (s/optional-key :schemas) (s/cond-pre (s/enum :all :none)
-                                         {(s/maybe s/Str) SchemaPermissionsGraph})})
+                                         {s/Str SchemaPermissionsGraph})})
 
 (def ^:private GroupPermissionsGraph
   {su/IntGreaterThanZero DBPermissionsGraph})
@@ -268,7 +268,7 @@
     :all  :all
     :none :none
     :some (into {} (for [table tables]
-                     {(:id table) (permissions-for-path permissions-set (table->table-object-path table))}))))
+                     {(u/get-id table) (permissions-for-path permissions-set (table->table-object-path table))}))))
 
 (s/defn ^:private db-graph :- DBPermissionsGraph [permissions-set tables]
   {:native  (case (permissions-for-path permissions-set (table->native-readwrite-path (first tables)))
@@ -278,8 +278,9 @@
    :schemas (case (permissions-for-path permissions-set (table->all-schemas-path (first tables)))
               :all  :all
               :none :none
-              (m/map-vals (partial schema-graph permissions-set)
-                          (group-by :schema tables)))})
+              (into {} (for [[schema tables] (group-by :schema tables)]
+                         ;; if schema is nil, replace it with an empty string, since that's how it will get encoded in JSON :D
+                         {(str schema) (schema-graph permissions-set tables)})))})
 
 (s/defn ^:private group-graph :- GroupPermissionsGraph [permissions-set tables]
   (m/map-vals (partial db-graph permissions-set)
@@ -322,7 +323,7 @@
                              other-conditions)}]
     (when-let [revoked (db/select-field :object Permissions where)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/get-id group-or-id) revoked))
-      (db/cascade-delete! Permissions where))))
+      (db/delete! Permissions where))))
 
 (defn revoke-permissions!
   "Revoke all permissions for GROUP-OR-ID to object with PATH-COMPONENTS, *including* related permissions."

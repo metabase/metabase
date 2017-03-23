@@ -13,6 +13,7 @@ const BUTTON_VARIANTS = [
     "primary",
     "warning",
     "cancel",
+    "success",
     "purple",
     "borderless"
 ];

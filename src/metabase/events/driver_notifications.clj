@@ -1,7 +1,7 @@
 (ns metabase.events.driver-notifications
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.events :as events]
             [metabase.models.database :refer [Database]]))

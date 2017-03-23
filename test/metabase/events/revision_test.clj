@@ -1,7 +1,8 @@
 (ns metabase.events.revision-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            [metabase.events.revision :refer [process-revision-event]]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            [metabase.events.revision :refer [process-revision-event!]]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
@@ -27,18 +28,22 @@
    :creator_id             (user->id :crowberto)})
 
 (defn- card->revision-object [card]
-  {:description            nil
-   :table_id               (id :categories)
-   :database_id            (id)
-   :query_type             "query"
-   :name                   (:name card)
-   :creator_id             (:creator_id card)
-   :dataset_query          (:dataset_query card)
-   :id                     (:id card)
-   :display                "table"
-   :visualization_settings {}
+  {:archived               false
    :collection_id          nil
-   :archived               false})
+   :creator_id             (:creator_id card)
+   :database_id            (id)
+   :dataset_query          (:dataset_query card)
+   :description            nil
+   :display                "table"
+   :enable_embedding       false
+   :embedding_params       nil
+   :id                     (:id card)
+   :made_public_by_id      nil
+   :name                   (:name card)
+   :public_uuid            nil
+   :query_type             "query"
+   :table_id               (id :categories)
+   :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil
@@ -46,7 +51,7 @@
 
 
 ;; :card-create
-(tu/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
+(tt/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
   {:model        "Card"
    :model_id     card-id
    :user_id      (user->id :crowberto)
@@ -54,15 +59,15 @@
    :is_reversion false
    :is_creation  true}
   (do
-    (process-revision-event {:topic :card-create
-                             :item  card})
+    (process-revision-event! {:topic :card-create
+                              :item  card})
     (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
       :model       "Card"
       :model_id    card-id)))
 
 
 ;; :card-update
-(tu/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
+(tt/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
   {:model        "Card"
    :model_id     card-id
    :user_id      (user->id :crowberto)
@@ -70,15 +75,15 @@
    :is_reversion false
    :is_creation  false}
   (do
-    (process-revision-event {:topic :card-update
-                             :item  card})
+    (process-revision-event! {:topic :card-update
+                              :item  card})
     (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
       :model       "Card"
       :model_id    card-id)))
 
 
 ;; :dashboard-create
-(tu/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
+(tt/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :rasta)
@@ -86,15 +91,15 @@
    :is_reversion false
    :is_creation  true}
   (do
-    (process-revision-event {:topic :dashboard-create
-                             :item  dashboard})
+    (process-revision-event! {:topic :dashboard-create
+                              :item  dashboard})
     (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
       :model    "Dashboard"
       :model_id dashboard-id)))
 
 
 ;; :dashboard-update
-(tu/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
+(tt/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :rasta)
@@ -102,15 +107,15 @@
    :is_reversion false
    :is_creation  false}
   (do
-    (process-revision-event {:topic :dashboard-update
-                             :item  dashboard})
+    (process-revision-event! {:topic :dashboard-update
+                              :item  dashboard})
     (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
       :model    "Dashboard"
       :model_id dashboard-id)))
 
 
 ;; :dashboard-add-cards
-(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+(tt/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
                       Card          [{card-id :id}                     (card-properties)]
                       DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
@@ -120,17 +125,17 @@
    :is_reversion false
    :is_creation  false}
   (do
-    (process-revision-event {:topic :dashboard-add-cards
-                             :item  {:id        dashboard-id
-                                     :actor_id  (user->id :rasta)
-                                     :dashcards [dashcard]}})
+    (process-revision-event! {:topic :dashboard-add-cards
+                              :item  {:id        dashboard-id
+                                      :actor_id  (user->id :rasta)
+                                      :dashcards [dashcard]}})
     (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
       :model    "Dashboard"
       :model_id dashboard-id)))
 
 
 ;; :dashboard-remove-cards
-(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+(tt/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
                       Card          [{card-id :id}                     (card-properties)]
                       DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
@@ -140,18 +145,18 @@
    :is_reversion false
    :is_creation  false}
   (do
-    (db/delete! DashboardCard, :id (:id dashcard))
-    (process-revision-event {:topic :dashboard-remove-cards
-                             :item  {:id       dashboard-id
-                                     :actor_id (user->id :rasta)
-                                     :dashcards [dashcard]}})
+    (db/simple-delete! DashboardCard, :id (:id dashcard))
+    (process-revision-event! {:topic :dashboard-remove-cards
+                              :item  {:id       dashboard-id
+                                      :actor_id (user->id :rasta)
+                                      :dashcards [dashcard]}})
     (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
       :model    "Dashboard"
       :model_id dashboard-id)))
 
 
 ;; :dashboard-reposition-cards
-(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+(tt/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
                       Card          [{card-id :id}                     (card-properties)]
                       DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
@@ -168,10 +173,10 @@
    :is_creation  false}
   (do
     (db/update! DashboardCard (:id dashcard), :sizeX 4)
-    (process-revision-event {:topic :dashboard-reeposition-cards
-                             :item  {:id        dashboard-id
-                                     :actor_id  (user->id :crowberto)
-                                     :dashcards [(assoc dashcard :sizeX 4)]}})
+    (process-revision-event! {:topic :dashboard-reeposition-cards
+                              :item  {:id        dashboard-id
+                                      :actor_id  (user->id :crowberto)
+                                      :dashcards [(assoc dashcard :sizeX 4)]}})
     (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
       :model    "Dashboard"
       :model_id dashboard-id)))
@@ -193,11 +198,11 @@
    :is_reversion false
    :is_creation  true
    :message      nil}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Metric   [metric       {:table_id id, :definition {:a "b"}}]]
-    (process-revision-event {:topic :metric-create
-                             :item  metric})
+    (process-revision-event! {:topic :metric-create
+                              :item  metric})
 
     (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
@@ -219,13 +224,13 @@
    :is_reversion false
    :is_creation  false
    :message      "updated"}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Metric   [metric       {:table_id id, :definition {:a "b"}}]]
-    (process-revision-event {:topic :metric-update
-                             :item  (assoc metric
-                                      :actor_id         (user->id :crowberto)
-                                      :revision_message "updated")})
+    (process-revision-event! {:topic :metric-update
+                              :item  (assoc metric
+                                       :actor_id         (user->id :crowberto)
+                                       :revision_message "updated")})
     (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
@@ -246,11 +251,11 @@
    :is_reversion false
    :is_creation  false
    :message      nil}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Metric   [metric       {:table_id id, :definition {:a "b"}, :is_active false}]]
-    (process-revision-event {:topic :metric-delete
-                             :item  metric})
+    (process-revision-event! {:topic :metric-delete
+                              :item  metric})
     (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
@@ -270,12 +275,12 @@
    :is_reversion false
    :is_creation  true
    :message      nil}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [segment      {:table_id   id
                                           :definition {:a "b"}}]]
-    (process-revision-event {:topic :segment-create
-                             :item  segment})
+    (process-revision-event! {:topic :segment-create
+                              :item  segment})
     (let [revision (-> (Revision :model "Segment", :model_id (:id segment))
                        (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
@@ -295,14 +300,14 @@
    :is_reversion false
    :is_creation  false
    :message      "updated"}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table [{:keys [id]} {:db_id database-id}]
                   Segment [segment {:table_id   id
                                     :definition {:a "b"}}]]
-    (process-revision-event {:topic :segment-update
-                             :item  (assoc segment
-                                      :actor_id         (user->id :crowberto)
-                                      :revision_message "updated")})
+    (process-revision-event! {:topic :segment-update
+                              :item  (assoc segment
+                                       :actor_id         (user->id :crowberto)
+                                       :revision_message "updated")})
     (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
             :object (u/rpartial dissoc :id :table_id))))
 
@@ -321,12 +326,12 @@
    :is_reversion false
    :is_creation  false
    :message      nil}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [segment      {:table_id   id
                                           :definition {:a "b"}
                                           :is_active  false}]]
-    (process-revision-event {:topic :segment-delete
-                             :item  segment})
+    (process-revision-event! {:topic :segment-delete
+                              :item  segment})
     (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
             :object (u/rpartial dissoc :id :table_id))))

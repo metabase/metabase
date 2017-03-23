@@ -305,7 +305,7 @@
 
 (defprotocol ^:private IClobToStr
   (jdbc-clob->str ^String [this]
-   "Convert a Postgres/H2/SQLServer JDBC Clob to a string."))
+   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)"))
 
 (extend-protocol IClobToStr
   nil     (jdbc-clob->str [_]    nil)
@@ -787,3 +787,38 @@
                      :when   (and (.startsWith (name ns-symb) "metabase.")
                                   (not (.contains (name ns-symb) "test")))]
                  ns-symb))))
+
+(def ^:const ^java.util.regex.Pattern uuid-regex
+  "A regular expression for matching canonical string representations of UUIDs."
+  #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
+
+
+(defn select-nested-keys
+  "Like `select-keys`, but can also handle nested keypaths:
+
+     (select-nested-keys {:a 100, :b {:c 200, :d 300}} [:a [:b :d] :c])
+     ;; -> {:a 100, :b {:d 300}}
+
+   The values of KEYSEQ can be either regular keys, which work the same way as `select-keys`,
+   or vectors of the form `[k & nested-keys]`, which call `select-nested-keys` recursively
+   on the value of `k`. "
+  [m keyseq]
+  ;; TODO - use (empty m) once supported by model instances
+  (into {} (for [k     keyseq
+                 :let  [[k & nested-keys] (if (sequential? k) k [k])
+                        v                 (get m k)]
+                 :when (contains? m k)]
+             {k (if-not (seq nested-keys)
+                  v
+                  (select-nested-keys v nested-keys))})))
+
+(defn base-64-string?
+  "Is S a Base-64 encoded string?"
+  ^Boolean [s]
+  (boolean (when (string? s)
+             (re-find #"^[0-9A-Za-z/+]+=*$" s))))
+
+(defn safe-inc
+  "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
+  [n]
+  (if n (inc n) 1))

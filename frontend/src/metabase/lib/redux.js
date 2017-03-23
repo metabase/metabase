@@ -34,7 +34,7 @@ export const createStore = compose(
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
 export function createThunkAction(actionType, actionThunkCreator) {
-    return function(...actionArgs) {
+    function fn(...actionArgs) {
         var thunk = actionThunkCreator(...actionArgs);
         return async function(dispatch, getState) {
             try {
@@ -46,6 +46,8 @@ export function createThunkAction(actionType, actionThunkCreator) {
             }
         }
     }
+    fn.toString = () => actionType;
+    return fn;
 }
 
 // turns string timestamps into moment objects

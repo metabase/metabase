@@ -15,7 +15,7 @@
   (reset! inbox {}))
 
 (defn fake-inbox-email-fn
-  "A function that can be used in place of `*send-email-fn*`.
+  "A function that can be used in place of `send-email!`.
    Put all messages into `inbox` instead of actually sending them."
   [_ email]
   (doseq [recipient (:to email)]
@@ -25,14 +25,14 @@
 (defn do-with-fake-inbox
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
   [f]
-  (binding [email/*send-email-fn* fake-inbox-email-fn]
+  (with-redefs [metabase.email/send-email! fake-inbox-email-fn]
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                        email-smtp-port "587"]
       (f))))
 
 (defmacro with-fake-inbox
-  "Clear `inbox`, bind `*send-email-fn*` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username`
+  "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username`
    and `email-smtp-password` (which will cause `metabase.email/email-configured?` to return `true`, and execute BODY.
 
    Fetch the emails send by dereffing `inbox`.
@@ -47,9 +47,9 @@
 
 ;; simple test of email sending capabilities
 (expect
-  [{:from    "notifications@metabase.com",
-    :to      ["test@test.com"],
-    :subject "101 Reasons to use Metabase",
+  [{:from    "notifications@metabase.com"
+    :to      ["test@test.com"]
+    :subject "101 Reasons to use Metabase"
     :body    [{:type    "text/html; charset=utf-8"
                :content "101. Metabase will make you a better person"}]}]
   (with-fake-inbox

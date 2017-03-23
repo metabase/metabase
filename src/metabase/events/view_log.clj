@@ -1,7 +1,7 @@
 (ns metabase.events.view-log
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.events :as events]
             [metabase.models.view-log :refer [ViewLog]]))
 

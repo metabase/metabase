@@ -3,28 +3,29 @@
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [hiccup.core :refer [html]]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.email :as email]
             [metabase.events :as events]
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
-                             [interface :as models]
+                             [interface :as mi]
                              [pulse :refer [Pulse retrieve-pulse] :as pulse]
                              [pulse-channel :refer [channel-types]])
             [metabase.query-processor :as qp]
             [metabase.pulse :as p]
             [metabase.pulse.render :as render]
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su])
+  (:import java.io.ByteArrayInputStream))
 
 
 (defendpoint GET "/"
   "Fetch all `Pulses`"
   []
   (for [pulse (pulse/retrieve-pulses)
-        :let  [can-read?  (models/can-read? pulse)
-               can-write? (models/can-write? pulse)]
+        :let  [can-read?  (mi/can-read? pulse)
+               can-write? (mi/can-write? pulse)]
         :when (or can-read?
                   can-write?)]
     (assoc pulse :read_only (not can-write?))))
@@ -71,8 +72,9 @@
   "Delete a `Pulse`."
   [id]
   (let-404 [pulse (Pulse id)]
-    (u/prog1 (db/cascade-delete! Pulse :id id)
-      (events/publish-event! :pulse-delete (assoc pulse :actor_id *current-user-id*)))))
+    (db/delete! Pulse :id id)
+    (events/publish-event! :pulse-delete (assoc pulse :actor_id *current-user-id*)))
+  generic-204-no-content)
 
 
 (defendpoint GET "/form_input"
@@ -96,7 +98,7 @@
   "Get HTML rendering of a `Card` with ID."
   [id]
   (let [card   (read-check Card id)
-        result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})]
+        result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*, :context :pulse, :card-id id})]
     {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
                                                                             render/*include-buttons* true]
                                                                     (render/render-pulse-card card result))]])}))
@@ -105,7 +107,7 @@
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
   [id]
   (let [card      (read-check Card id)
-        result    (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})
+        result    (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*, :context :pulse, :card-id id})
         data      (:data result)
         card-type (render/detect-pulse-card-type card data)
         card-html (html (binding [render/*include-title* true]
@@ -119,10 +121,10 @@
   "Get PNG rendering of a `Card` with ID."
   [id]
   (let [card   (read-check Card id)
-        result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})
+        result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*, :context :pulse, :card-id id})
         ba     (binding [render/*include-title* true]
                  (render/render-pulse-card-to-png card result))]
-    {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba)}))
+    {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
 (defendpoint POST "/test"
   "Test send an unsaved pulse."

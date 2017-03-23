@@ -6,17 +6,18 @@
             (honeysql [core :as hsql]
                       [helpers :as h])
             [metabase.config :as config]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.google :as google]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
-            [metabase.query-processor :as qp]
             metabase.query-processor.interface
+            [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import (java.util Collections Date)
@@ -120,6 +121,8 @@
    {:pre [client (seq project-id) (seq query-string)]}
    (let [request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
+                   ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
+                   (.setUseLegacySql (not (s/includes? (s/lower-case query-string) "#standardsql")))
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 
@@ -242,9 +245,6 @@
     :quarter-of-year (hx/quarter expr)
     :year            (hx/year expr)))
 
-(defn- date-string->literal [^String date-string]
-  (hx/->timestamp (hx/literal (u/format-date "yyyy-MM-dd 00:00" (u/->Date date-string)))))
-
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :sec_to_timestamp  expr)
@@ -297,8 +297,10 @@
        :table-name table-name
        :mbql?      true})))
 
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native, :as outer-query}]
-  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" sql)
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
+  (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
+                                                                     (unprepare/unprepare (cons sql params))
+                                                                     sql))
         results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
@@ -396,7 +398,6 @@
           :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
-          :date-string->literal      (u/drop-first-arg date-string->literal)
           :field->alias              (u/drop-first-arg field->alias)
           :field->identifier         (u/drop-first-arg field->identifier)
           :prepare-value             (u/drop-first-arg prepare-value)

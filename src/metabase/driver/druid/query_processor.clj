@@ -5,7 +5,6 @@
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [metabase.driver.druid.js :as js]
-            [metabase.query-processor :as qp]
             (metabase.query-processor [annotate :as annotate]
                                       [interface :as i])
             [metabase.util :as u])
@@ -81,11 +80,11 @@
                   :granularity :all
                   :context     {:timeout 60000}}]
     {::select             (merge defaults {:queryType  :select
-                                           :pagingSpec {:threshold qp/absolute-max-results}})
+                                           :pagingSpec {:threshold i/absolute-max-results}})
      ::total              (merge defaults {:queryType :timeseries})
      ::grouped-timeseries (merge defaults {:queryType :timeseries})
      ::topN               (merge defaults {:queryType :topN
-                                           :threshold qp/absolute-max-results})
+                                           :threshold i/absolute-max-results})
      ::groupBy            (merge defaults {:queryType :groupBy})}))
 
 

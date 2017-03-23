@@ -1,14 +1,14 @@
 (ns metabase.api.revision-test
   (:require [expectations :refer :all]
             [metabase.api.revision :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             (metabase.models [card :refer [Card serialize-instance]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [revision :refer [Revision push-revision! revert! revisions]])
             [metabase.test.data :refer :all]
-            [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [expect-with-temp with-temp]]))
+            [metabase.test.data.users :refer :all]))
 
 (def ^:private rasta-revision-info
   (delay {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))
@@ -44,7 +44,7 @@
 ;; case with no revisions (maintains backwards compatibility with old installs before revisions)
 (expect
   [{:user {}, :diff nil, :description nil}]
-  (with-temp Card [{:keys [id]}]
+  (tt/with-temp Card [{:keys [id]}]
     (get-revisions :card id)))
 
 ;; case with single creation revision
@@ -55,12 +55,12 @@
     :user         @rasta-revision-info
     :diff         nil
     :description  nil}]
-  (with-temp Card [{:keys [id] :as card}]
+  (tt/with-temp Card [{:keys [id] :as card}]
     (create-card-revision card true)
     (get-revisions :card id)))
 
 ;; case with multiple revisions, including reversion
-(expect-with-temp [Card [{:keys [id name], :as card}]]
+(tt/expect-with-temp [Card [{:keys [id name], :as card}]]
   [{:is_reversion true
     :is_creation  false
     :message      "because i wanted to"
@@ -101,8 +101,8 @@
   [objects]
   (mapv #(dissoc % :id) objects))
 
-(expect-with-temp [Dashboard [{:keys [id] :as dash}]
-                   Card      [{card-id :id, :as card}]]
+(tt/expect-with-temp [Dashboard [{:keys [id] :as dash}]
+                      Card      [{card-id :id, :as card}]]
   [{:is_reversion true
     :is_creation  false
     :message      nil
@@ -134,7 +134,7 @@
     (create-dashboard-revision! dash true)
     (let [dashcard (db/insert! DashboardCard :dashboard_id id :card_id (:id card))]
       (create-dashboard-revision! dash false)
-      (db/delete! DashboardCard, :id (:id dashcard)))
+      (db/simple-delete! DashboardCard, :id (:id dashcard)))
     (create-dashboard-revision! dash false)
     (let [[_ {previous-revision-id :id}] (revisions Dashboard id)]
       ;; Revert to the previous revision

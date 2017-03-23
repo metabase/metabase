@@ -204,8 +204,9 @@
                                 {:target_table_id (data/id :venues)}
                                 {})
                 :target       (target-field (venues-col :id))
-                :special_type (when (data/fks-supported?)
-                                :type/FK)
+                :special_type (if (data/fks-supported?)
+                                :type/FK
+                                :type/Category)
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "venue_id")
                 :display_name "Venue ID"}

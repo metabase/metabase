@@ -3,26 +3,27 @@
             [cheshire.core :as json]
             [compojure.core :refer [GET POST DELETE PUT]]
             [schema.core :as s]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             (metabase.api [common :refer :all]
                           [dataset :as dataset-api]
                           [label :as label-api])
-            (metabase [db :as db]
-                      [events :as events])
-            (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer [Card], :as card]
+            [metabase.events :as events]
+            (metabase.models [card :refer [Card], :as card]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
                              [collection :refer [Collection]]
                              [common :as common]
                              [database :refer [Database]]
-                             [interface :as models]
+                             [interface :as mi]
                              [label :refer [Label]]
                              [permissions :as perms]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
             (metabase [query-processor :as qp]
                       [util :as u])
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su])
+  (:import java.util.UUID))
 
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
@@ -171,7 +172,7 @@
         :database (read-check Database model_id)
         :table    (read-check Database (db/select-one-field :db_id Table, :id model_id))))
     (->> (cards-for-filter-option f model_id label collection)
-         (filterv models/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
+         (filterv mi/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
 
 
 (defendpoint POST "/"
@@ -219,15 +220,18 @@
   {:pre [(map? query)]}
   (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set query :read))))
 
+;; TODO - This endpoint desperately needs to be broken out into smaller, bite-sized chunks
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id], :as body} :body}]
+  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params], :as body} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
    description            (s/maybe su/NonBlankString)
    visualization_settings (s/maybe su/Map)
    archived               (s/maybe s/Bool)
+   enable_embedding       (s/maybe s/Bool)
+   embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)}
   (let [card (write-check Card id)]
     ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
@@ -241,15 +245,21 @@
     (when (and (false? archived)
                (:archived card))
       (check-data-permissions-for-query (:dataset_query card)))
+    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
+    (when (or (and (not (nil? enable_embedding))
+                   (not= enable_embedding (:enable_embedding card)))
+              (and embedding_params
+                   (not= embedding_params (:embedding_params card))))
+      (check-embedding-enabled)
+      (check-superuser))
     ;; ok, now save the Card
     (db/update! Card id
-      (merge (when (contains? body :collection_id)   {:collection_id          collection_id})
-             (when-not (nil? dataset_query)          {:dataset_query          dataset_query})
-             (when-not (nil? description)            {:description            description})
-             (when-not (nil? display)                {:display                display})
-             (when-not (nil? name)                   {:name                   name})
-             (when-not (nil? visualization_settings) {:visualization_settings visualization_settings})
-             (when-not (nil? archived)               {:archived               archived})))
+      (merge (when (contains? body :collection_id)
+               {:collection_id collection_id})
+             (into {} (for [k     [:dataset_query :description :display :name :visualization_settings :archived :enable_embedding :embedding_params]
+                            :let  [v (k body)]
+                            :when (not (nil? v))]
+                        {k v}))))
     (let [event (cond
                   ;; card was archived
                   (and archived
@@ -268,8 +278,9 @@
   "Delete a `Card`."
   [id]
   (let [card (write-check Card id)]
-    (u/prog1 (db/cascade-delete! Card :id id)
-      (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))))
+    (db/delete! Card :id id)
+    (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))
+  generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
@@ -286,7 +297,8 @@
   [card-id]
   (read-check Card card-id)
   (let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
-    (db/cascade-delete! CardFavorite, :id id)))
+    (db/delete! CardFavorite, :id id))
+  generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ Editing Card Labels ------------------------------------------------------------
@@ -302,7 +314,7 @@
   (let [[labels-to-remove labels-to-add] (data/diff (set (db/select-field :label_id CardLabel :card_id card-id))
                                                     (set label_ids))]
     (when (seq labels-to-remove)
-      (db/cascade-delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
+      (db/delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
     (doseq [label-id labels-to-add]
       (db/insert! CardLabel :label_id label-id, :card_id card-id)))
   {:status :ok})
@@ -344,34 +356,86 @@
 
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
-  [card-id & {:keys [parameters constraints]
-              :or   {constraints dataset-api/default-query-constraints}}]
+  {:style/indent 1}
+  [card-id & {:keys [parameters constraints context dashboard-id]
+              :or   {constraints dataset-api/default-query-constraints
+                     context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (read-check Card card-id)
         query   (assoc (:dataset_query card)
                   :parameters  parameters
                   :constraints constraints)
-        options {:executed-by *current-user-id*
-                 :card-id     card-id}]
+        options {:executed-by  *current-user-id*
+                 :context      context
+                 :card-id      card-id
+                 :dashboard-id dashboard-id}]
     (check-not-archived card)
     (qp/dataset-query query options)))
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters]} :body}]
+  [card-id, :as {{:keys [parameters]} :body}]
   (run-query-for-card card-id, :parameters parameters))
 
 (defendpoint POST "/:card-id/query/csv"
   "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+  (dataset-api/as-csv (run-query-for-card card-id
+                        :parameters  (json/parse-string parameters keyword)
+                        :constraints nil
+                        :context     :csv-download)))
 
 (defendpoint POST "/:card-id/query/json"
   "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+  (dataset-api/as-json (run-query-for-card card-id
+                         :parameters  (json/parse-string parameters keyword)
+                         :constraints nil
+                         :context     :json-download)))
+
+
+;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
+
+(defendpoint POST "/:card-id/public_link"
+  "Generate publically-accessible links for this Card. Returns UUID to be used in public links.
+   (If this Card has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled."
+  [card-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (check-not-archived (read-check Card card-id))
+  {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
+             (u/prog1 (str (UUID/randomUUID))
+               (db/update! Card card-id
+                 :public_uuid       <>
+                 :made_public_by_id *current-user-id*)))})
+
+(defendpoint DELETE "/:card-id/public_link"
+  "Delete the publically-accessible link to this Card."
+  [card-id]
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (check-exists? Card :id card-id, :public_uuid [:not= nil])
+  (db/update! Card card-id
+    :public_uuid       nil
+    :made_public_by_id nil)
+  {:status 204, :body nil})
+
+(defendpoint GET "/public"
+  "Fetch a list of Cards with public UUIDs. These cards are publically-accessible *if* public sharing is enabled."
+  []
+  (check-superuser)
+  (check-public-sharing-enabled)
+  (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+(defendpoint GET "/embeddable"
+  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints and a signed JWT."
+  []
+  (check-superuser)
+  (check-embedding-enabled)
+  (db/select [Card :name :id], :enable_embedding true, :archived false))
 
 
 (define-routes)

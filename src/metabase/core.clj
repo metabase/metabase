@@ -13,8 +13,9 @@
                              [params :refer [wrap-params]]
                              [session :refer [wrap-session]])
             [medley.core :as m]
+            [toucan.db :as db]
             (metabase [config :as config]
-                      [db :as db]
+                      [db :as mdb]
                       [driver :as driver]
                       [events :as events]
                       [logger :as logger]
@@ -45,6 +46,7 @@
       mb-middleware/wrap-current-user-id ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
       mb-middleware/wrap-api-key         ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
       mb-middleware/wrap-session-id      ; looks for a Metabase Session ID and assoc as :metabase-session-id
+      mb-middleware/maybe-set-site-url   ; set the value of `site-url` if it hasn't been set yet
       wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
       wrap-session                       ; reads in current HTTP session and sets :session/key
       wrap-gzip))                        ; GZIP response if client can handle it
@@ -110,7 +112,7 @@
   (reset! metabase-initialization-progress 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
-  (db/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
+  (mdb/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
   (reset! metabase-initialization-progress 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation
@@ -207,7 +209,7 @@
 (defn ^:command migrate
   "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
-  (db/migrate! (keyword direction)))
+  (mdb/migrate! (keyword direction)))
 
 (defn ^:command load-from-h2
   "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
@@ -215,7 +217,7 @@
    (load-from-h2 nil))
   ([h2-connection-string]
    (require 'metabase.cmd.load-from-h2)
-   (binding [db/*disable-data-migrations* true]
+   (binding [mdb/*disable-data-migrations* true]
      ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
 
 (defn ^:command profile

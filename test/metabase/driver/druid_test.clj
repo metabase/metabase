@@ -1,13 +1,13 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
             [expectations :refer :all]
+            [toucan.util.test :as tt]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :refer [rows rows+column-names]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets, :refer [expect-with-engine]]
-            [metabase.test.util :as tu]
             [metabase.timeseries-query-processor-test :as timeseries-qp-test]
             [metabase.util :as u]))
 
@@ -38,7 +38,6 @@
    :data      {:columns     ["timestamp" "id" "user_name" "venue_price" "venue_name" "count"]
                :rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
                              ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
-               :annotate?   nil
                :cols        [{:name "timestamp",   :base_type :type/Text}
                              {:name "id",          :base_type :type/Text}
                              {:name "user_name",   :base_type :type/Text}
@@ -239,7 +238,7 @@
    ["3"  346.0]
    ["4" 197.0]]
   (timeseries-qp-test/with-flattened-dbdef
-    (tu/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
+    (tt/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
                                                :filter      [:> [:field-id (data/id :checkins :venue_price)] 1]}}]
       (rows (qp/process-query
               {:database (data/id)

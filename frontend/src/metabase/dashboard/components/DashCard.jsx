@@ -11,27 +11,26 @@ import Icon from "metabase/components/Icon.jsx";
 
 import DashCardParameterMapper from "../components/parameters/DashCardParameterMapper.jsx";
 
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
 
+const HEADER_ICON_SIZE = 16;
+
+const HEADER_ACTION_STYLE = {
+    padding: 4
+};
+
 export default class DashCard extends Component {
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {
-            error: null
-        };
-
-        _.bindAll(this, "updateVisibility");
-    }
-
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         dashcardData: PropTypes.object.isRequired,
         parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
+        linkToCard: PropTypes.bool,
     };
 
     async componentDidMount() {
@@ -52,7 +51,7 @@ export default class DashCard extends Component {
         window.removeEventListener("scroll", this.updateVisibility, false);
     }
 
-    updateVisibility() {
+    updateVisibility = () => {
         const { isFullscreen } = this.props;
         const element = ReactDOM.findDOMNode(this);
         if (element) {
@@ -67,7 +66,7 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
+        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove, linkToCard } = this.props;
 
         const mainCard = {
             ...dashcard.card,
@@ -99,14 +98,18 @@ export default class DashCard extends Component {
         if (_.any(errors, e => e && e.status === 403)) {
             errorMessage = ERROR_MESSAGE_PERMISSION;
             errorIcon = "key";
-        } else if (errors.length > 0 || this.state.error) {
-            errorMessage = ERROR_MESSAGE_GENERIC;
+        } else if (errors.length > 0) {
+            if (IS_EMBED_PREVIEW) {
+                errorMessage = errors[0] && errors[0].data || ERROR_MESSAGE_GENERIC;
+            } else {
+                errorMessage = ERROR_MESSAGE_GENERIC;
+            }
             errorIcon = "warning";
         }
 
         return (
             <div
-                className={"Card bordered rounded flex flex-column " + cx({
+                className={"Card bordered rounded flex flex-column hover-parent hover--visibility" + cx({
                     "Card--recent": dashcard.isAdded,
                     "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
@@ -119,7 +122,8 @@ export default class DashCard extends Component {
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
                     series={series}
-                    isDashboard={true}
+                    showTitle
+                    isDashboard
                     isEditing={isEditing}
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing && !isEditingParameter ?
@@ -132,6 +136,7 @@ export default class DashCard extends Component {
                     }
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
+                    linkToCard={linkToCard}
                 />
             </div>
         );
@@ -139,7 +144,7 @@ export default class DashCard extends Component {
 }
 
 const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisualizationSettings }) =>
-    <span className="DashCard-actions flex align-center">
+    <span className="DashCard-actions flex align-center" style={{ lineHeight: 1 }}>
         { getVisualizationRaw(series).CardVisualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
@@ -152,8 +157,8 @@ const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisu
 const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     <ModalWithTrigger
         wide tall
-        triggerElement={<Icon name="gear" />}
-        triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer mr1 flex align-center flex-no-shrink"
+        triggerElement={<Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />}
+        triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer flex align-center flex-no-shrink"
     >
         <ChartSettings
             series={series}
@@ -163,19 +168,26 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     </ModalWithTrigger>
 
 const RemoveButton = ({ onRemove }) =>
-    <a className="text-grey-2 text-grey-4-hover expand-clickable" data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
-        <Icon name="close" size={14} />
+    <a className="text-grey-2 text-grey-4-hover " data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove} style={HEADER_ACTION_STYLE}>
+        <Icon name="close" size={HEADER_ICON_SIZE} />
     </a>
 
 const AddSeriesButton = ({ series, onAddSeries }) =>
     <a
         data-metabase-event={"Dashboard;Edit Series Modal;open"}
-        className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative"
+        className="text-grey-2 text-grey-4-hover cursor-pointer h3 flex-no-shrink relative"
         onClick={onAddSeries}
+        style={HEADER_ACTION_STYLE}
     >
-        <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" size={8} />
-        <Icon name={getSeriesIconName(series)} size={12} />
-        <span className="flex-no-shrink">{ series.length > 1 ? "Edit" : "Add" }</span>
+        <span className="flex align-center">
+            <span className="flex" style={{ marginRight: 1 }}>
+                <Icon className="absolute" name="add" style={{ top: 0, left: 0 }} size={HEADER_ICON_SIZE / 2} />
+                <Icon name={getSeriesIconName(series)} size={HEADER_ICON_SIZE} />
+            </span>
+            <span className="flex-no-shrink text-bold">
+                { series.length > 1 ? "Edit" : "Add" }
+            </span>
+        </span>
     </a>
 
 function getSeriesIconName(series) {

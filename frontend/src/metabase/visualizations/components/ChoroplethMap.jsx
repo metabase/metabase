@@ -66,7 +66,7 @@ export default class ChoroplethMap extends Component {
         return cols.length > 1 && isString(cols[0]);
     }
 
-    static checkRenderable(cols, rows) {
+    static checkRenderable([{ data: { cols, rows} }]) {
         if (cols.length < 2) { throw new MinColumnsError(2, cols.length); }
     }
 

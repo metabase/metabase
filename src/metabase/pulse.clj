@@ -19,13 +19,15 @@
 
 ;; TODO: this is probably something that could live somewhere else and just be reused
 (defn execute-card
-  "Execute the query for a single card."
-  [card-id]
+  "Execute the query for a single card with CARD-ID. OPTIONS are passed along to `dataset-query`."
+  [card-id & {:as options}]
   {:pre [(integer? card-id)]}
   (when-let [card (Card card-id)]
     (let [{:keys [creator_id dataset_query]} card]
       (try
-        {:card card :result (qp/dataset-query dataset_query {:executed-by creator_id})}
+        {:card   card
+         :result (qp/dataset-query dataset_query (merge {:executed-by creator_id, :context :pulse, :card-id card-id}
+                                                        options))}
         (catch Throwable t
           (log/warn (format "Error running card query (%n)" card-id) t))))))
 
@@ -70,10 +72,10 @@
    Example:
        (send-pulse! pulse)                       Send to all Channels
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
-  [{:keys [cards] :as pulse} & {:keys [channel-ids]}]
+  [{:keys [cards], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (every? map? cards) (every? :id cards)]}
   (let [results     (for [card cards]
-                      (execute-card (:id card)))
+                      (execute-card (:id card), :pulse-id (:id pulse))) ; Pulse ID may be `nil` if the Pulse isn't saved yet
         channel-ids (or channel-ids (mapv :id (:channels pulse)))]
     (doseq [channel-id channel-ids]
       (let [{:keys [channel_type details recipients]} (some #(when (= channel-id (:id %)) %)

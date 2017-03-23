@@ -3,7 +3,7 @@
             [schema.core :as s]
             (metabase.api [card :as card-api]
                           [common :refer :all])
-            [metabase.db :as db]
+            [toucan.db :as db]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [revision :as revision, :refer [Revision]])))

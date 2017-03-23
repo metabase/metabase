@@ -1,8 +1,8 @@
 
-## Sharing Your Questions and Answers
+## Sharing your questions and answers
 ---
 
-### How to Save a Question
+### How to save a question
 Whenever you’ve arrived at an answer that you want to save for later, click the **SAVE** button in the top right of the screen. This will also save the visualization option you’ve chosen for your answer.
 
 ![savebutton](images/SaveButton.png)
@@ -11,7 +11,12 @@ A pop-up box will appear, you to give your question a name and a description. We
 
 Now, whenever you want to refer to your question again you can find it in the saved questions list by clicking on the **Questions** link from the main navigation. To edit your question, go to it and click the pencil icon in the top-right.
 
-### Organizing and Finding your Saved Questions
+### Sharing questions with public links
+If your Metabase administrator has enabled [public sharing](../administration-guide/12-public-links.md) on a saved question or dashboard, you can go to that question or dashboard and click on the sharing icon to find its public links. Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post.
+
+![Share icon](images/share-icon.png)
+
+### Organizing and finding your saved questions
 After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions. The Questions page has several tools that’ll help you organize things and find what you’re looking for.
 
 ![Questions](images/saved-questions.png)
@@ -45,5 +50,5 @@ Clicking on the icon to the left of questions let's you select several at once s
 
 ---
 
-## Next: Creating dashboards
+## Next: creating dashboards
 Next, we'll learn about [creating dashboards and adding questions to them](06-dashboards.md).

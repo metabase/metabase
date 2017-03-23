@@ -2,10 +2,10 @@
   (:require [compojure.core :refer [GET PUT POST]]
             [schema.core :as s]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             [metabase.db.metadata-queries :as metadata]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [field :refer [Field] :as field]
+            (metabase.models [field :refer [Field] :as field]
                              [field-values :refer [FieldValues create-field-values-if-needed! field-should-have-field-values?]])
             metabase.types
             [metabase.util :as u]

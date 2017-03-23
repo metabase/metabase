@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*], :as api]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
             (metabase.models [card-label :refer [CardLabel]]
                              [collection :refer [Collection], :as collection]
                              [dependency :as dependency]
@@ -12,13 +13,14 @@
                              [permissions :as perms]
                              [revision :as revision]
                              [user :as user])
+            [metabase.public-settings :as public-settings]
             [metabase.query :as q]
             [metabase.query-processor :as qp]
             [metabase.query-processor.permissions :as qp-perms]
             [metabase.util :as u]))
 
 
-(i/defentity Card :report_card)
+(models/defmodel Card :report_card)
 
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
@@ -27,7 +29,7 @@
   "Return the number of Dashboards this Card is in."
   {:hydrate :dashboard_count}
   [{:keys [id]}]
-  (db/select-one-count 'DashboardCard, :card_id id))
+  (db/count 'DashboardCard, :card_id id))
 
 (defn labels
   "Return `Labels` for CARD."
@@ -134,29 +136,38 @@
   (u/prog1 card
     ;; if the Card is archived, then remove it from any Dashboards
     (when archived?
-      (db/cascade-delete! 'DashboardCard :card_id (u/get-id card)))))
+      (db/delete! 'DashboardCard :card_id (u/get-id card)))))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'PulseCard :card_id id)
-  (db/cascade-delete! 'Revision :model "Card", :model_id id)
-  (db/cascade-delete! 'DashboardCardSeries :card_id id)
-  (db/cascade-delete! 'DashboardCard :card_id id)
-  (db/cascade-delete! 'CardFavorite :card_id id)
-  (db/cascade-delete! 'CardLabel :card_id id))
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! 'PulseCard :card_id id)
+  (db/delete! 'Revision :model "Card", :model_id id)
+  (db/delete! 'DashboardCardSeries :card_id id)
+  (db/delete! 'DashboardCard :card_id id)
+  (db/delete! 'CardFavorite :card_id id)
+  (db/delete! 'CardLabel :card_id id))
 
 
 (u/strict-extend (class Card)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:hydration-keys     (constantly [:card])
-          :types              (constantly {:display :keyword, :query_type :keyword, :dataset_query :json, :visualization_settings :json, :description :clob})
-          :timestamped?       (constantly true)
-          :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :pre-update         (comp populate-query-fields pre-update)
-          :pre-insert         (comp populate-query-fields pre-insert)
-          :pre-cascade-delete pre-cascade-delete
-          :perms-objects-set  perms-objects-set})
+  models/IModel
+  (merge models/IModelDefaults
+         {:hydration-keys (constantly [:card])
+          :types          (constantly {:dataset_query          :json
+                                       :description            :clob
+                                       :display                :keyword
+                                       :embedding_params       :json
+                                       :query_type             :keyword
+                                       :visualization_settings :json})
+          :properties     (constantly {:timestamped? true})
+          :pre-update     (comp populate-query-fields pre-update)
+          :pre-insert     (comp populate-query-fields pre-insert)
+          :pre-delete     pre-delete
+          :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)
+          :perms-objects-set perms-objects-set})
 
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults

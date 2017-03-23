@@ -10,14 +10,6 @@ import { reduxForm } from "redux-form";
 
 import { normal } from "metabase/lib/colors";
 
-const COLLECTION_COLORS = [
-    ...Object.values(normal),
-    '#F1B556',
-    '#A6E7F3',
-    '#7172AD',
-    '#7B8797',
-];
-
 @reduxForm({
     form: 'collection',
     fields: ['id', 'name', 'description', 'color'],
@@ -37,7 +29,7 @@ const COLLECTION_COLORS = [
         name: "",
         description: "",
         // pick a random color to start so everything isn't blue all the time
-        color: COLLECTION_COLORS[Math.floor(Math.random() * COLLECTION_COLORS.length)]
+        color: normal[Math.floor(Math.random() * normal.length)]
     }
 })
 export default class CollectionEditorForm extends Component {
@@ -84,10 +76,7 @@ export default class CollectionEditorForm extends Component {
                         displayName="Color"
                         {...fields.color}
                     >
-                        <ColorPicker
-                            {...fields.color}
-                            colors={COLLECTION_COLORS}
-                        />
+                        <ColorPicker {...fields.color} />
                     </FormField>
                 </div>
             </Modal>

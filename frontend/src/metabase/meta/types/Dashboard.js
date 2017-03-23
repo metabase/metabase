@@ -8,6 +8,8 @@ export type DashboardId = number;
 
 export type Dashboard = {
     id: DashboardId,
+    name: string,
+    description: ?string,
     ordered_cards: Array<DashCard>,
     // incomplete
     parameters: Array<Parameter>
@@ -43,6 +45,7 @@ export type Parameter = {
     id: ParameterId,
     name: string,
     type: ParameterType,
+    slug: string,
     default?: string
 };
 

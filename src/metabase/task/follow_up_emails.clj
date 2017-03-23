@@ -6,8 +6,8 @@
             [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
-            (metabase [db :as db]
-                      [email :as email])
+            [toucan.db :as db]
+            [metabase.email :as email]
             [metabase.email.messages :as messages]
             (metabase.models [activity :refer [Activity]]
                              [setting :as setting]
@@ -113,11 +113,9 @@
   (when (and (email/email-configured?)
              (public-settings/anon-tracking-enabled)
              (not (follow-up-email-sent)))
-    (println "here") ; NOCOMMIT
     ;; grab the oldest admins email address (likely the user who created this MB instance), that's who we'll send to
     ;; TODO - Does it make to send to this user instead of `(public-settings/admin-email)`?
     (when-let [admin (User :is_superuser true, :is_active true, {:order-by [:date_joined]})]
-      (println "admin:" admin) ; NOCOMMIT
       (try
         (messages/send-follow-up-email! (:email admin) "follow-up")
         (catch Throwable e

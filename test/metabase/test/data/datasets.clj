@@ -93,19 +93,13 @@
      (with-engine ~engine
        ~@body)))
 
-(defmacro expect-when-testing-engine
-  "Generate a unit test that only runs if we're currently testing against ENGINE."
+(defmacro expect-with-engine
+  "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*driver*` to the driver for ENGINE."
   [engine expected actual]
   `(when-testing-engine ~engine
-     (expect ~expected
-       ~actual)))
-
-(defmacro expect-with-engine
-  "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*driver*` to the current dataset."
-  [engine expected actual]
-  `(expect-when-testing-engine ~engine
-     (with-engine ~engine ~expected)
-     (with-engine ~engine ~actual)))
+     (expect
+       (with-engine ~engine ~expected)
+       (with-engine ~engine ~actual))))
 
 (defmacro expect-with-engines
   "Generate unit tests for all datasets in ENGINES; each test will only run if we're currently testing the corresponding dataset.
@@ -118,9 +112,10 @@
     `(let [~e (fn [] ~expected)
            ~a (fn [] ~actual)]
        ~@(for [engine (eval engines)]
-           `(expect-when-testing-engine ~engine
-              (do-with-engine ~engine ~e)
-              (do-with-engine ~engine ~a))))))
+           `(when-testing-engine ~engine
+              (expect
+                (do-with-engine ~engine ~e)
+                (do-with-engine ~engine ~a)))))))
 
 (defmacro expect-with-all-engines
   "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.

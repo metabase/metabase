@@ -11,7 +11,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import { duration, formatNumber } from "metabase/lib/formatting";
 
 import { getVisualizationTransformed } from "metabase/visualizations";
-import { getSettings } from "metabase/lib/visualization_settings";
+import { getSettings } from "metabase/visualizations/lib/settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import Utils from "metabase/lib/utils";
 
@@ -32,6 +32,7 @@ type Props = {
 
     className: string,
 
+    showTitle: boolean,
     isDashboard: boolean,
     isEditing: boolean,
 
@@ -63,6 +64,13 @@ type Props = {
     // misc
     onUpdateWarnings: (string[]) => void,
     onOpenChartSettings: () => void,
+
+    // number of grid cells wide and tall
+    gridSize?: { width: number, height: number },
+    // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
+    gridUnit?: number,
+
+    linkToCard?: bool,
 }
 
 type State = {
@@ -97,8 +105,10 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     static defaultProps = {
+        showTitle: false,
         isDashboard: false,
         isEditing: false,
+        linkToCard: true,
         onUpdateVisualizationSettings: (...args) => console.warn("onUpdateVisualizationSettings", args)
     };
 
@@ -142,8 +152,10 @@ export default class Visualization extends Component<*, Props, State> {
 
     transform(newProps) {
         this.setState({
-            yAxisSplit: null,
+            hovered: null,
+            error: null,
             warnings: [],
+            yAxisSplit: null,
             ...getVisualizationTransformed(newProps.series)
         });
     }
@@ -169,7 +181,7 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     render() {
-        const { actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
+        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, linkToCard } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -187,8 +199,7 @@ export default class Visualization extends Component<*, Props, State> {
             } else {
                 try {
                     if (CardVisualization.checkRenderable) {
-                        // $FlowFixMe
-                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows, settings);
+                        CardVisualization.checkRenderable(series, settings);
                     }
                 } catch (e) {
                     error = e.message || "Could not display this chart with this data.";
@@ -210,11 +221,6 @@ export default class Visualization extends Component<*, Props, State> {
             }
         }
 
-        // if on dashoard, and error didn't come from props replace it with the generic error message
-        if (isDashboard && error && this.props.error !== error) {
-            error = ERROR_MESSAGE_GENERIC;
-        }
-
         if (!error) {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
@@ -228,9 +234,17 @@ export default class Visualization extends Component<*, Props, State> {
             </span>
         );
 
+        let { gridSize, gridUnit } = this.props;
+        if (!gridSize && gridUnit) {
+            gridSize = {
+                width: Math.round(width / (gridUnit * 4)),
+                height: Math.round(height / (gridUnit * 3)),
+            };
+        }
+
         return (
             <div className={cx(className, "flex flex-column")}>
-                { isDashboard && (settings["card.title"] || extra) && (loading || error || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
+                { showTitle && (settings["card.title"] || extra) && (loading || error || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
                             series={
@@ -242,7 +256,9 @@ export default class Visualization extends Component<*, Props, State> {
                                     series
                             }
                             actionButtons={extra}
+                            description={settings["card.description"]}
                             settings={settings}
+                            linkToCard={linkToCard}
                         />
                     </div>
                 : null
@@ -308,6 +324,8 @@ export default class Visualization extends Component<*, Props, State> {
                         onHoverChange={this.onHoverChange}
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
+                        gridSize={gridSize}
+                        linkToCard={linkToCard}
                     />
                 }
             </div>

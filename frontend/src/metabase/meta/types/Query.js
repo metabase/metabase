@@ -19,11 +19,15 @@ export type RelativeDatetimePeriod = "current" | "last" | "next" | number;
 export type RelativeDatetimeUnit = "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
 export type DatetimeUnit = "default" | "minute" | "minute-of-hour" | "hour" | "hour-of-day" | "day" | "day-of-week" | "day-of-month" | "day-of-year" | "week" | "week-of-year" | "month" | "month-of-year" | "quarter" | "quarter-of-year" | "year";
 
+export type TemplateTagId = string;
+
 export type TemplateTag = {
-    name: string,
+    id:           TemplateTagId,
+    name:         string,
     display_name: string,
-    type: string,
-    dimension?: ["field-id", number]
+    type:         string,
+    dimension?:   ["field-id", number],
+    default?:     string,
 };
 
 export type NativeQuery = {
