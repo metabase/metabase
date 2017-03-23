@@ -56,14 +56,14 @@ export default class FilterPopover extends Component<*, Props, State> {
     };
 
     componentWillMount() {
-        window.addEventListener('keydown', this.commitOnEnter.bind(this));
+        window.addEventListener('keydown', this.commitOnEnter);
     }
 
     componentWillUnmount() {
         window.removeEventListener('keydown', this.commitOnEnter);
     }
 
-    commitOnEnter(event: Object) {
+    commitOnEnter = (event: KeyboardEvent) => {
         if(this.isValid() && event.key === "Enter") {
             this.commitFilter(this.state.filter);
         }
