@@ -22,6 +22,7 @@
     "history": "^4.5.0",
     "humanize-plus": "^1.8.1",
     "icepick": "^1.1.0",
+    "iframe-resizer": "^3.5.11",
     "inflection": "^1.7.1",
     "isomorphic-fetch": "^2.2.1",
     "js-cookie": "^2.1.2",

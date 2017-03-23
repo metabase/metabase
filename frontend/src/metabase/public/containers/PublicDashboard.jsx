@@ -75,7 +75,6 @@ export default class PublicDashboard extends Component<*, Props, *> {
         const { dashboard, parameterValues } = this.props;
         return (
             <EmbedFrame
-                className="spread flex"
                 name={dashboard && dashboard.name}
                 description={dashboard && dashboard.description}
                 parameters={dashboard && dashboard.parameters}

@@ -12,11 +12,6 @@ import cx from "classnames";
 
 import "./EmbedFrame.css";
 
-const DEFAULT_OPTIONS = {
-    bordered: IFRAMED,
-    titled: true
-}
-
 import type { Parameter } from "metabase/meta/types/Dashboard";
 
 type Props = {
@@ -31,8 +26,34 @@ type Props = {
     setParameterValue: (id: string, value: string) => void
 }
 
+const DEFAULT_OPTIONS = {
+    bordered: IFRAMED,
+    titled: true
+}
+
+let frames = [];
+window.iFrameResizer = {
+    autoResize: true,
+    heightCalculationMethod: "bodyScroll",
+    readyCallback() {
+        frames.map(frame => frame.setState({ innerScroll: false }))
+    }
+}
+import "iframe-resizer/js/iframeResizer.contentWindow.js";
+
 @withRouter
 export default class EmbedFrame extends Component<*, Props, *> {
+    state = {
+        innerScroll: true
+    }
+
+    componentWillMount() {
+        frames = frames.concat(this);
+    }
+    componentWillUnmount() {
+        frames = frames.filter(frame => frame !== this);
+    }
+
     _getOptions() {
         let options = querystring.parse(window.location.hash.replace(/^#/, ""));
         for (var name in options) {
@@ -45,6 +66,8 @@ export default class EmbedFrame extends Component<*, Props, *> {
 
     render() {
         const { className, children, actionButtons, location, parameters, parameterValues, setParameterValue } = this.props;
+        const { innerScroll } = this.state;
+
         const footer = true;
 
         const { bordered, titled, theme } = this._getOptions();
@@ -53,10 +76,11 @@ export default class EmbedFrame extends Component<*, Props, *> {
 
         return (
             <div className={cx("EmbedFrame flex flex-column", className, {
+                "spread": innerScroll,
                 "bordered rounded shadowed": bordered,
                 [`Theme--${theme}`]: !!theme
             })}>
-                <div className="flex flex-column flex-full scroll-y relative">
+                <div className={cx("flex flex-column flex-full relative", { "scroll-y": innerScroll })}>
                     { name || (parameters && parameters.length > 0) ?
                         <div className="EmbedFrame-header flex align-center p1 sm-p2 lg-p3">
                             { name && (
