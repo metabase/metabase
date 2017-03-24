@@ -11,6 +11,7 @@ import moment from "moment";
 
 import Query from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
+import cx from "classnames";
 
 import _ from "underscore";
 
@@ -201,7 +202,8 @@ type Props = {
 export default class DatePicker extends Component<*, Props, *> {
     static propTypes = {
         filter: PropTypes.array.isRequired,
-        onFilterChange: PropTypes.func.isRequired
+        onFilterChange: PropTypes.func.isRequired,
+        className: PropTypes.string.isRequired
     };
 
     componentWillMount() {
@@ -214,12 +216,12 @@ export default class DatePicker extends Component<*, Props, *> {
     }
 
     render() {
-        let { filter, onFilterChange } = this.props;
+        let { filter, onFilterChange, className} = this.props;
         const operator = this._getOperator();
         const Widget = operator && operator.widget;
 
         return (
-            <div className="mt1 pt2 border-top">
+            <div className={cx("pt2", className)}>
                 <DateOperatorSelector
                     operator={operator && operator.name}
                     operators={OPERATORS}
