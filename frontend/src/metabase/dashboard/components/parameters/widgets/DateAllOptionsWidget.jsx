@@ -1,42 +1,121 @@
+/* @flow */
+
 import React, {Component, PropTypes} from "react";
 
-import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
+import DatePicker, {OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
 import {generateTimeFilterValuesDescriptions} from "metabase/lib/query_time";
 
-import type {FieldFilter} from "metabase/meta/types/Query";
+import type {OperatorName} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
+import type {FieldFilter, LocalFieldReference} from "metabase/meta/types/Query";
 
-export default class DateAllOptionsWidget extends Component {
-    constructor(props, context) {
+type UrlEncoded = string;
+// $FlowFixMe
+type RegexMatches = [string];
+type Deserializer = (RegexMatches) => FieldFilter;
+
+// Use a placeholder value as field references are not used in dashboard filters
+// $FlowFixMe
+const noopRef: LocalFieldReference = null;
+
+function getFilterValueSerializer(func: ((val1: string, val2: string) => UrlEncoded)) {
+    // $FlowFixMe
+    return filter => func(filter[2], filter[3])
+}
+
+const serializersByOperatorName: { [id: OperatorName]: (FieldFilter) => UrlEncoded } = {
+    // $FlowFixMe
+    "Previous": getFilterValueSerializer((value, unit) => `past${-value}${unit}s`),
+    "Next": getFilterValueSerializer((value, unit) => `next${value}${unit}s`),
+    "Current": getFilterValueSerializer((_, unit) => `current${unit}`),
+    "Before": getFilterValueSerializer((value) => `~${value}`),
+    "After": getFilterValueSerializer((value) => `${value}~`),
+    "On": getFilterValueSerializer((value) => `${value}`),
+    "Between": getFilterValueSerializer((from, to) => `${from}~${to}`),
+    "Is Empty": () => "is-empty",
+    "Not Empty": () => "not-empty"
+};
+
+function getFilterOperator(filter) {
+    return OPERATORS.find((op) => op.test(filter));
+}
+function filterToUrlEncoded(filter: FieldFilter): ?UrlEncoded {
+    const operator = getFilterOperator(filter)
+
+    if (operator) {
+        return serializersByOperatorName[operator.name](filter);
+    } else {
+        return null;
+    }
+}
+
+const deserializersWithTestRegex: [{ testRegex: RegExp, deserialize: Deserializer}] = [
+    {testRegex: /^past([0-9]+)([a-z]+)s$/, deserialize: (matches) => {
+        return ["time-interval", noopRef, -parseInt(matches[0]), matches[1]]
+    }},
+    {testRegex: /^next([0-9]+)([a-z]+)s$/, deserialize: (matches) => {
+        return ["time-interval", noopRef, parseInt(matches[0]), matches[1]]
+    }},
+    {testRegex: /^current([a-z]+)$/, deserialize: (matches) => ["time-interval", noopRef, "current", matches[0]] },
+    {testRegex: /^~(.+)$/, deserialize: (matches) => ["<", noopRef, matches[0]]},
+    {testRegex: /^(.+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
+    {testRegex: /^(.+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
+    {testRegex: /^([0-9-T:]+)$/, deserialize: (matches) => ["between", noopRef, matches[0], matches[1]]},
+    {testRegex: /is-empty/, deserialize: (matches) => ["is-null", noopRef]},
+    {testRegex: /not-empty/, deserialize: (matches) => ["not-null", noopRef]},
+];
+
+function urlEncodedToFilter(urlEncoded: UrlEncoded): ?FieldFilter {
+    const deserializer =
+        deserializersWithTestRegex.find((des) => urlEncoded.search(des.testRegex) !== -1);
+
+    if (deserializer) {
+        const substringMatches = deserializer.testRegex.exec(urlEncoded).splice(1);
+        return deserializer.deserialize(substringMatches);
+    } else {
+        return null;
+    }
+}
+
+const prefixedOperators: [OperatorName] = ["Before", "After", "On", "Is Empty", "Not Empty"];
+function getFilterTitle(filter) {
+    const desc = generateTimeFilterValuesDescriptions(filter).join(" - ")
+    const op = getFilterOperator(filter);
+    const prefix = op && prefixedOperators.indexOf(op.name) !== -1 ? `${op.name} ` : "";
+    return prefix + desc;
+}
+
+type DefaultProps = {};
+type Props = { setValue: *, onClose: * };
+type State = { filter: FieldFilter };
+
+export default class DateAllOptionsWidget extends Component<DefaultProps, Props, State> {
+    state: State;
+
+    constructor(props: *, context: *) {
         super(props, context);
 
         this.state = {
-            filter: props.value != null ? this.convertWidgetValueToFilter(props.value) : []
+            // $FlowFixMe
+            filter: props.value != null ? urlEncodedToFilter(props.value) || [] : []
         }
     }
 
     static propTypes = {};
     static defaultProps = {};
 
-    static format = (filterValue) => {
-        return filterValue ? generateTimeFilterValuesDescriptions(filterValue).join(" - ") : null;
+    static format = (urlEncoded: ?string) => {
+        if (urlEncoded == null) return null;
+        const filter = urlEncodedToFilter(urlEncoded);
+
+        return filter ? getFilterTitle(filter) : null;
     };
 
     componentWillUnmount() {
-        this.props.setValue(this.state.filter);
+        this.props.setValue(filterToUrlEncoded(this.state.filter));
     }
 
     setFilter = (filter: FieldFilter) => {
-        this.setState(this.convertFilterToWidgetValue({filter}));
-    };
-
-    convertWidgetValueToFilter = (value) => {
-        // TODO: Implement url-friendly value deserialization
-        return value;
-    };
-
-    convertFilterToWidgetValue = (filter) => {
-        // TODO: Implement url-friendly value serialization
-        return filter;
+        this.setState({filter});
     };
 
     render() {

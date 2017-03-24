@@ -129,14 +129,18 @@ function getDateTimeFieldAndValues(filter: FieldFilter): [ConcreteField, any] {
     return [field, ...values];
 }
 
+
+export type OperatorName =
+    ("Previous"|"Next"|"Current"|"Before"|"After"|"On"|"Between"|"Is Empty"|"Not Empty");
+
 export type Operator = {
-    name: string,
+    name: OperatorName,
     widget?: any,
     init: (filter: FieldFilter) => any,
     test: (filter: FieldFilter) => boolean
 }
 
-const OPERATORS: Operator[] = [
+export const OPERATORS: Operator[] = [
     {
         name: "Previous",
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter)],
@@ -178,7 +182,7 @@ const OPERATORS: Operator[] = [
     {
         name: "Between",
         init: (filter) => ["BETWEEN", ...getDateTimeFieldAndValues(filter)],
-        test: ([op]) => op === "BETWEEN",
+        test: ([op]) => mbqlEq(op, "between"),
         widget: MultiDatePicker,
     },
     {
@@ -196,14 +200,15 @@ const OPERATORS: Operator[] = [
 type Props = {
     filter: FieldFilter,
     onFilterChange: (filter: FieldFilter) => void,
-    tableMetadata: any
+    tableMetadata: any,
+    className: string
 }
 
 export default class DatePicker extends Component<*, Props, *> {
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
-        className: PropTypes.string.isRequired
+        className: PropTypes.string
     };
 
     componentWillMount() {
