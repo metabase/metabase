@@ -12,6 +12,7 @@ In Metabase, an answer to a question can be visualized in a number of ways:
 * Area chart
 * Scatterplot or bubble chart
 * Pie/donut chart
+* Funnel
 * Map
 
 To change how the answer to your question is displayed, click on the Visualization dropdown menu beneath the question builder bar.
@@ -56,6 +57,11 @@ Scatterplots and bubble charts also have similar chart options as line, bar, and
 A pie or donut chart can be used when breaking out a metric by a single dimension, especially when the number of possible breakouts is small, like users by gender. If you have more than a few breakouts, like users by country, it's usually better to use a bar chart so that your users can more easily compare the relative sizes of each bar.
 
 The options for pie charts let you choose which field to use as your measurement, and which one to use for the dimension (i.e., the pie slices). You can also customize the pie chart's legend, whether or not to show each slice's percent of the whole in the legend, and the minimum size a slice needs to be in order for it to be displayed.
+
+#### Funnel
+Funnels are commonly used in e-commerce or sales to visualize how many customers are present within each step of a checkout flow or sales cycle. At their most general, funnels show you values broken out by steps, and the percent decrease between each successive step. To create a funnel in Metabase, you'll need to have a table with at least two columns: one column that contains the metric you're interested in, and another that contains the funnel's steps. For example, I might have an Opportunities table, and I could create a question that gives me the number of sales leads broken out by a field that contains stages such as `Prospecting`, `Qualification`, `Proposal`, `Negotiation`, and `Closed`.
+
+![Funnel](images/VisualizeChoices.png)
 
 #### Maps
 When you select the Map visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set you're currently looking at. Here are the maps that Metabase uses:
