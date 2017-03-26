@@ -191,8 +191,7 @@
 ;;; |                                                   EXCEPTION HANDLING                                                   |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-;; TODO - this can all probably be implemented as middleware instead
-
+;; TODO - this SHOULD all be implemented as middleware instead
 (defn- api-exception-response
   "Convert an exception from an API endpoint into an appropriate HTTP response."
   [^Throwable e]
@@ -216,12 +215,20 @@
                                                  {:sql-exception-chain (str/split (with-out-str (jdbc/print-sql-exception-chain e))
                                                                                   #"\s*\n\s*")}))))}))
 
+(def ^:dynamic ^Boolean *automatically-catch-api-exceptions*
+  "Should API exceptions automatically be caught? By default, this is `true`, but this can be disabled when we want to catch
+   Exceptions and return something generic to avoid leaking information, e.g. with the `api/public` and `api/embed` endpoints.
+   generic exceptions"
+  true)
+
 (defn do-with-caught-api-exceptions
   "Execute F with and catch any exceptions, converting them to the appropriate HTTP response."
   [f]
-  (try (f)
-       (catch Throwable e
-         (api-exception-response e))))
+  (if-not *automatically-catch-api-exceptions*
+    (f)
+    (try (f)
+         (catch Throwable e
+           (api-exception-response e)))))
 
 (defmacro catch-api-exceptions
   "Execute BODY, and if an exception is thrown, return the appropriate HTTP response."

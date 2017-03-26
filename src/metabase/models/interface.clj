@@ -37,7 +37,7 @@
 
 (models/add-type! :encrypted-json
   :in  encrypted-json-in
-  :out cached-encrypted-json-out)
+  :out (comp cached-encrypted-json-out u/jdbc-clob->str))
 
 
 (defn- add-created-at-timestamp [obj & _]

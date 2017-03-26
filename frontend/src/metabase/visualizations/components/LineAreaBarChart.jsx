@@ -56,7 +56,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
         return getChartTypeFromData(cols, rows, false) != null;
     }
 
-    static checkRenderable(cols, rows, settings) {
+    static checkRenderable([{ data: { cols, rows} }], settings) {
         if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
         const dimensions = (settings["graph.dimensions"] || []).filter(name => name);
         const metrics = (settings["graph.metrics"] || []).filter(name => name);
@@ -108,6 +108,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     static propTypes = {
         series: PropTypes.array.isRequired,
         actionButtons: PropTypes.node,
+        showTitle: PropTypes.bool,
         isDashboard: PropTypes.bool
     };
 
@@ -175,7 +176,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     }
 
     render() {
-        const { series, hovered, isDashboard, actionButtons, linkToCard } = this.props;
+        const { series, hovered, showTitle, actionButtons, linkToCard } = this.props;
 
         const settings = this.getSettings();
 
@@ -184,7 +185,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
         let originalSeries = series._raw || series;
         let cardIds = _.uniq(originalSeries.map(s => s.card.id))
 
-        if (isDashboard && settings["card.title"]) {
+        if (showTitle && settings["card.title"]) {
             titleHeaderSeries = [{ card: {
                 name: settings["card.title"],
                 id: cardIds.length === 1 ? cardIds[0] : null
@@ -201,6 +202,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                     <LegendHeader
                         className="flex-no-shrink"
                         series={titleHeaderSeries}
+                        description={settings["card.description"]}
                         actionButtons={actionButtons}
                         linkToCard={linkToCard}
                     />

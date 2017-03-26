@@ -9,7 +9,7 @@
   [email-address]
   (let [user-id (or (db/select-one-id 'User, :email email-address)
                     (throw (Exception. (format "No user found with email address '%s'. Please check the spelling and try again." email-address))))]
-    (user/set-user-password-reset-token! user-id)))
+    (user/set-password-reset-token! user-id)))
 
 (defn -main
   [email-address]

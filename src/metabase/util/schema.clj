@@ -119,3 +119,8 @@
   "Schema for a string that is valid serialized JSON."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (json/parse-string %)))
     "value must be a valid JSON string."))
+
+(def EmbeddingParams
+  "Schema for a valid map of embedding params."
+  (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
+    "value must be a valid embedding params map."))

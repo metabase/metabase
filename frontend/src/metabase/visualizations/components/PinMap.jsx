@@ -39,7 +39,7 @@ export default class PinMap extends Component<*, Props, State> {
         return hasLatitudeAndLongitudeColumns(cols);
     }
 
-    static checkRenderable(cols, rows) {
+    static checkRenderable([{ data: { cols, rows} }]) {
         if (!hasLatitudeAndLongitudeColumns(cols)) { throw new LatitudeLongitudeError(); }
     }
 

@@ -22,6 +22,7 @@ type Props = {
     revoke:       (link: PublicLink) => Promise<void>,
     getUrl:       (link: PublicLink) => string,
     getPublicUrl: (link: PublicLink) => string,
+    noLinksMessage: string,
 };
 
 type State = {
@@ -64,11 +65,11 @@ export default class PublicLinksListing extends Component<*, Props, State> {
     }
 
     render() {
-        const { getUrl, getPublicUrl } = this.props;
+        const { getUrl, getPublicUrl, revoke, noLinksMessage } = this.props;
         let { list, error } = this.state;
 
         if (list && list.length === 0) {
-            error = new Error("No public links have been created yet.");
+            error = new Error(noLinksMessage);
         }
 
         return (
@@ -78,8 +79,12 @@ export default class PublicLinksListing extends Component<*, Props, State> {
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Public Link</th>
-                            <th>Revoke Link</th>
+                            { getPublicUrl &&
+                                <th>Public Link</th>
+                            }
+                            { revoke &&
+                                <th>Revoke Link</th>
+                            }
                         </tr>
                     </thead>
                     <tbody>
@@ -90,23 +95,27 @@ export default class PublicLinksListing extends Component<*, Props, State> {
                                         {link.name}
                                     </Link>
                                 </td>
-                                <td>
-                                    <ExternalLink href={getPublicUrl(link)}>
-                                        {getPublicUrl(link)}
-                                    </ExternalLink>
-                                </td>
-                                <td className="flex layout-centered">
-                                    <Confirm
-                                        title="Disable this link?"
-                                        content="They won't work any more, and can't be restored, but you can create new links."
-                                        action={() => this.revoke(link)}
-                                    >
-                                        <Icon
-                                            name="close"
-                                            className="text-grey-2 text-grey-4-hover cursor-pointer"
-                                        />
-                                    </Confirm>
-                                </td>
+                                { getPublicUrl &&
+                                    <td>
+                                        <ExternalLink href={getPublicUrl(link)}>
+                                            {getPublicUrl(link)}
+                                        </ExternalLink>
+                                    </td>
+                                }
+                                { revoke &&
+                                    <td className="flex layout-centered">
+                                        <Confirm
+                                            title="Disable this link?"
+                                            content="They won't work any more, and can't be restored, but you can create new links."
+                                            action={() => this.revoke(link)}
+                                        >
+                                            <Icon
+                                                name="close"
+                                                className="text-grey-2 text-grey-4-hover cursor-pointer"
+                                            />
+                                        </Confirm>
+                                    </td>
+                                }
                             </tr>
                         ) }
                     </tbody>
@@ -123,6 +132,7 @@ export const PublicLinksDashboardListing = () =>
         revoke={DashboardApi.deletePublicLink}
         getUrl={({ id }) => Urls.dashboard(id)}
         getPublicUrl={({ public_uuid }) => window.location.origin + Urls.publicDashboard(public_uuid)}
+        noLinksMessage="No dashboards have been publicly shared yet."
     />;
 
 export const PublicLinksQuestionListing = () =>
@@ -131,4 +141,19 @@ export const PublicLinksQuestionListing = () =>
         revoke={CardApi.deletePublicLink}
         getUrl={({ id }) => Urls.card(id)}
         getPublicUrl={({ public_uuid }) => window.location.origin + Urls.publicCard(public_uuid)}
+        noLinksMessage="No questions have been publicly shared yet."
+    />;
+
+export const EmbeddedDashboardListing = () =>
+    <PublicLinksListing
+        load={DashboardApi.listEmbeddable}
+        getUrl={({ id }) => Urls.dashboard(id)}
+        noLinksMessage="No dashboards have been embedded yet."
+    />;
+
+export const EmbeddedQuestionListing = () =>
+    <PublicLinksListing
+        load={CardApi.listEmbeddable}
+        getUrl={({ id }) => Urls.card(id)}
+        noLinksMessage="No questions have been embedded yet."
     />;

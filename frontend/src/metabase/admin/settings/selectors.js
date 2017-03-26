@@ -5,7 +5,16 @@ import MetabaseSettings from "metabase/lib/settings";
 import { slugify } from "metabase/lib/formatting";
 
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
-import { PublicLinksDashboardListing, PublicLinksQuestionListing } from "./components/widgets/PublicLinksListing.jsx";
+import {
+    PublicLinksDashboardListing,
+    PublicLinksQuestionListing,
+    EmbeddedQuestionListing,
+    EmbeddedDashboardListing
+} from "./components/widgets/PublicLinksListing.jsx";
+import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
+import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+
+import { UtilApi } from "metabase/services";
 
 const SECTIONS = [
     {
@@ -21,7 +30,7 @@ const SECTIONS = [
                 type: "string"
             },
             {
-                key: "-site-url",
+                key: "site-url",
                 display_name: "Site URL",
                 type: "string"
             },
@@ -128,7 +137,7 @@ const SECTIONS = [
             },
             {
                 key: "metabot-enabled",
-                display_name: "Metabot",
+                display_name: "MetaBot",
                 type: "boolean",
                 // TODO: why do we have "defaultValue" in addition to "default" in the backend?
                 defaultValue: false,
@@ -167,7 +176,7 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Public Links",
+        name: "Public Sharing",
         settings: [
             {
                 key: "enable-public-sharing",
@@ -185,6 +194,47 @@ const SECTIONS = [
                 display_name: "Shared Questions",
                 widget: PublicLinksQuestionListing,
                 getHidden: (settings) => !settings["enable-public-sharing"]
+            }
+        ]
+    },
+    {
+        name: "Embedding in other Applications",
+        settings: [
+            {
+                key: "enable-embedding",
+                description: null,
+                widget: EmbeddingLegalese,
+                getHidden: (settings) => settings["enable-embedding"]
+            },
+            {
+                key: "enable-embedding",
+                display_name: "Enable Embedding Metabase in other Applications",
+                type: "boolean",
+                onChanged: async (oldValue, newValue, settingsValues, onChange) => {
+                    if (!oldValue && newValue && !settingsValues["embedding-secret-key"]) {
+                        let result = await UtilApi.random_token();
+                        await onChange("embedding-secret-key", result.token);
+                    }
+                },
+                getHidden: (settings) => !settings["enable-embedding"]
+            },
+            {
+                key: "embedding-secret-key",
+                display_name: "Embedding secret key",
+                widget: SecretKeyWidget,
+                getHidden: (settings) => !settings["enable-embedding"]
+            },
+            {
+                key: "-embedded-dashboards",
+                display_name: "Embedded Dashboards",
+                widget: EmbeddedDashboardListing,
+                getHidden: (settings) => !settings["enable-embedding"]
+            },
+            {
+                key: "-embedded-questions",
+                display_name: "Embedded Questions",
+                widget: EmbeddedQuestionListing,
+                getHidden: (settings) => !settings["enable-embedding"]
             }
         ]
     }

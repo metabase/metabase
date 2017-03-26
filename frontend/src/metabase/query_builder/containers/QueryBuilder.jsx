@@ -7,7 +7,6 @@ import _ from "underscore";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 
-import NotFound from "metabase/components/NotFound.jsx";
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
 import QueryHeader from "../components/QueryHeader.jsx";
@@ -127,7 +126,6 @@ export default class QueryBuilder extends Component {
 
     componentDidMount() {
         window.addEventListener("resize", this.handleResize);
-        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -159,7 +157,6 @@ export default class QueryBuilder extends Component {
         this.props.cancelQuery();
 
         window.removeEventListener("resize", this.handleResize);
-        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     // When the window is resized we need to re-render, mainly so that our visualization pane updates
@@ -172,25 +169,8 @@ export default class QueryBuilder extends Component {
         }
     }
 
-    handleKeyDown = (e) => {
-        const ENTER_KEY = 13;
-        if (e.keyCode === ENTER_KEY && e.metaKey && this.props.isRunnable) {
-            this.props.runQueryFn();
-        }
-    }
-
     render() {
         const { card, isDirty, databases, uiControls } = this.props;
-
-        // if we can't load the card that was intended then we end up with a 404
-        // TODO: we should do something more unique for is500
-        if (uiControls.is404 || uiControls.is500) {
-            return (
-                <div className="flex flex-column flex-full layout-centered">
-                    <NotFound />
-                </div>
-            );
-        }
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {

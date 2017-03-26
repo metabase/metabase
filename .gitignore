@@ -21,6 +21,7 @@ profiles.clj
 /resources/frontend_client/app/dist/
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/frontend_client/embed.html
 /node_modules/
 /.babel_cache
 /coverage

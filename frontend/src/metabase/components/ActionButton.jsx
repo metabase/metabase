@@ -1,22 +1,42 @@
+/* @flow */
+
 import React, { Component, PropTypes } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
 
 import { cancelable } from "metabase/lib/promise";
 
 import cx from "classnames";
-import _ from "underscore";
 
-export default class ActionButton extends Component {
-    constructor(props, context) {
-        super(props, context);
+type Props = {
+    actionFn: (...args: any[]) => Promise<any>,
+    className?: string,
+    children?: any,
+    normalText?: string,
+    activeText?: string,
+    failedText?: string,
+    successText?: string,
+}
+
+type State = {
+    active: bool,
+    result: null|"success"|"failed",
+}
+
+export default class ActionButton extends Component<*, Props, State> {
+    state: State;
+
+    timeout: ?any;
+    actionPromise: ?{ cancel: () => void }
+
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
             active: false,
             result: null
         };
-
-        _.bindAll(this, "onClick", "resetStateOnTimeout")
     }
 
     static propTypes = {
@@ -38,7 +58,7 @@ export default class ActionButton extends Component {
         }
     }
 
-    resetStateOnTimeout() {
+    resetStateOnTimeout = () => {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
         this.timeout = setTimeout(() => this.setState({
@@ -47,7 +67,7 @@ export default class ActionButton extends Component {
         }), 5000);
     }
 
-    onClick(event) {
+    onClick = (event: MouseEvent) => {
         event.preventDefault();
 
         // set state to active
@@ -75,28 +95,34 @@ export default class ActionButton extends Component {
     }
 
     render() {
-        var buttonStateClasses = cx(this.props.className, {
-            'Button--waiting': this.state.active,
-            'Button--success': this.state.result === 'success',
-            'Button--danger': this.state.result === 'failed'
-        });
+        // eslint-disable-next-line no-unused-vars
+        const { normalText, activeText, failedText, successText, actionFn, className, children, ...props } = this.props;
+        const { active, result } = this.state;
 
         return (
-            <button className={buttonStateClasses} onClick={this.onClick}>
-                { this.state.active ?
+            <Button
+                {...props}
+                className={cx(className, {
+                    'Button--waiting pointer-events-none': active,
+                    'Button--success': result === 'success',
+                    'Button--danger': result === 'failed'
+                })}
+                onClick={this.onClick}
+            >
+                { active ?
                     // TODO: loading spinner
-                    this.props.activeText
-                : this.state.result === "success" ?
+                    activeText
+                : result === "success" ?
                     <span>
                         <Icon name='check' size={12} />
-                        <span className="ml1">{this.props.successText}</span>
+                        <span className="ml1">{successText}</span>
                     </span>
-                : this.state.result === "failed" ?
-                    this.props.failedText
+                : result === "failed" ?
+                    failedText
                 :
-                    this.props.normalText
+                    children || normalText
                 }
-            </button>
+            </Button>
         );
     }
 }

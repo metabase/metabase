@@ -32,6 +32,7 @@ type Props = {
 
     className: string,
 
+    showTitle: boolean,
     isDashboard: boolean,
     isEditing: boolean,
 
@@ -104,6 +105,7 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     static defaultProps = {
+        showTitle: false,
         isDashboard: false,
         isEditing: false,
         linkToCard: true,
@@ -179,7 +181,7 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     render() {
-        const { actionButtons, className, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, linkToCard } = this.props;
+        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, linkToCard } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -197,8 +199,7 @@ export default class Visualization extends Component<*, Props, State> {
             } else {
                 try {
                     if (CardVisualization.checkRenderable) {
-                        // $FlowFixMe
-                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows, settings);
+                        CardVisualization.checkRenderable(series, settings);
                     }
                 } catch (e) {
                     error = e.message || "Could not display this chart with this data.";
@@ -248,7 +249,7 @@ export default class Visualization extends Component<*, Props, State> {
 
         return (
             <div className={cx(className, "flex flex-column")}>
-                { isDashboard && (settings["card.title"] || extra) && (loading || error || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
+                { showTitle && (settings["card.title"] || extra) && (loading || error || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
                             series={
@@ -260,6 +261,7 @@ export default class Visualization extends Component<*, Props, State> {
                                     series
                             }
                             actionButtons={extra}
+                            description={settings["card.description"]}
                             settings={settings}
                             linkToCard={linkToCard}
                         />

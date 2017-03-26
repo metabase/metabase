@@ -46,7 +46,7 @@ export default class Table extends Component<*, Props, State> {
         return true;
     }
 
-    static checkRenderable(cols, rows) {
+    static checkRenderable([{ data: { cols, rows} }]) {
         // scalar can always be rendered, nothing needed here
     }
 

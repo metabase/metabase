@@ -28,7 +28,7 @@ export default class Progress extends Component<*, VisualizationProps, *> {
         return rows.length === 1 && cols.length === 1;
     }
 
-    static checkRenderable(cols, rows) {
+    static checkRenderable([{ data: { cols, rows} }]) {
         if (!isNumeric(cols[0])) {
             throw new Error("Progress visualization requires a number.");
         }

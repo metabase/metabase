@@ -113,7 +113,7 @@ export default class DashCard extends Component {
 
         return (
             <div
-                className={"Card bordered rounded flex flex-column " + cx({
+                className={"Card bordered rounded flex flex-column hover-parent hover--visibility" + cx({
                     "Card--recent": dashcard.isAdded,
                     "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
@@ -126,7 +126,8 @@ export default class DashCard extends Component {
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
                     series={series}
-                    isDashboard={true}
+                    showTitle
+                    isDashboard
                     isEditing={isEditing}
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing && !isEditingParameter ?

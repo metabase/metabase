@@ -179,54 +179,52 @@ export default class EntityList extends Component {
         const showSearchHeader = (entityIds.length > 0 && showSearchWidget);
         const showEntityFilterWidget = onChangeSection;
         return (
-            <div className="full" style={style}>
-                <div className="full">
-                    { (showActionHeader || showSearchHeader || showEntityFilterWidget) &&
-                        <div className="flex align-center my1" style={{height: 40}}>
-                            { showActionHeader ?
-                                <ActionHeader
-                                    visibleCount={visibleCount}
-                                    selectedCount={selectedCount}
-                                    allAreSelected={allAreSelected}
-                                    sectionIsArchive={sectionIsArchive}
-                                    setAllSelected={setAllSelected}
-                                    setArchived={setArchived}
-                                    labels={labels}
-                                />
-                            : showSearchHeader ?
-                                <SearchHeader
-                                    searchText={searchText}
-                                    setSearchText={setSearchText}
-                                />
-                            :
-                                null
-                          }
-                          { showEntityFilterWidget && entityIds.length > 0 &&
-                              <EntityFilterWidget
-                                section={section}
-                                onChange={onChangeSection}
-                              />
-                          }
-                        </div>
-                    }
-                    <LoadingAndErrorWrapper className="full" loading={!error && loading} error={error}>
-                    { () =>
-                        entityIds.length > 0 ?
-                            <List
-                                entityType={entityType}
-                                entityIds={entityIds}
-                                editable={editable}
-                                setItemSelected={setItemSelected}
-                                onEntityClick={onEntityClick}
-                                showCollectionName={showCollectionName}
+            <div style={style}>
+                { (showActionHeader || showSearchHeader || showEntityFilterWidget) &&
+                    <div className="flex align-center my1" style={{height: 40}}>
+                        { showActionHeader ?
+                            <ActionHeader
+                                visibleCount={visibleCount}
+                                selectedCount={selectedCount}
+                                allAreSelected={allAreSelected}
+                                sectionIsArchive={sectionIsArchive}
+                                setAllSelected={setAllSelected}
+                                setArchived={setArchived}
+                                labels={labels}
+                            />
+                        : showSearchHeader ?
+                            <SearchHeader
+                                searchText={searchText}
+                                setSearchText={setSearchText}
                             />
                         :
-                            <div className={S.empty}>
-                                <EmptyState message={section.section === "all" && this.props.defaultEmptyState ? this.props.defaultEmptyState : section.empty} icon={section.icon} />
-                            </div>
-                    }
-                    </LoadingAndErrorWrapper>
-                </div>
+                            null
+                      }
+                      { showEntityFilterWidget && entityIds.length > 0 &&
+                          <EntityFilterWidget
+                            section={section}
+                            onChange={onChangeSection}
+                          />
+                      }
+                    </div>
+                }
+                <LoadingAndErrorWrapper className="full" loading={!error && loading} error={error}>
+                { () =>
+                    entityIds.length > 0 ?
+                        <List
+                            entityType={entityType}
+                            entityIds={entityIds}
+                            editable={editable}
+                            setItemSelected={setItemSelected}
+                            onEntityClick={onEntityClick}
+                            showCollectionName={showCollectionName}
+                        />
+                    :
+                        <div className={S.empty}>
+                            <EmptyState message={section.section === "all" && this.props.defaultEmptyState ? this.props.defaultEmptyState : section.empty} icon={section.icon} />
+                        </div>
+                }
+                </LoadingAndErrorWrapper>
             </div>
         );
     }

@@ -1,4 +1,6 @@
 (ns metabase.query-processor.annotate
+  "Code that analyzes the results of running a query and adds relevant type information about results (including foreign key information).
+   TODO - The code in this namespace could definitely use a little cleanup to make it a little easier to wrap one's head around :)"
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -6,32 +8,11 @@
             [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor.interface :as i]
+            (metabase.query-processor [interface :as i]
+                                      [sort :as sort])
             [metabase.util :as u])
   (:import (metabase.query_processor.interface Expression
                                                ExpressionRef)))
-
-;; Fields should be returned in the following order:
-;; 1.  Breakout Fields
-;;
-;; 2.  Aggregation Fields (e.g. sum, count)
-;;
-;; 3.  Fields clause Fields, if they were added explicitly
-;;
-;; 4.  All other Fields, sorted by:
-;;     A.  :position (ascending)
-;;         Users can manually specify default Field ordering for a Table in the Metadata admin. In that case, return Fields in the specified
-;;         order; most of the time they'll have the default value of 0, in which case we'll compare...
-;;
-;;     B.  :special_type "group" -- :id Fields, then :name Fields, then everyting else
-;;         Attempt to put the most relevant Fields first. Order the Fields as follows:
-;;         1.  :id Fields
-;;         2.  :name Fields
-;;         3.  all other Fields
-;;
-;;     C.  Field Name
-;;         When two Fields have the same :position and :special_type "group", fall back to sorting Fields alphabetically by name.
-;;         This is arbitrary, but it makes the QP deterministic by keeping the results in a consistent order, which makes it testable.
 
 ;;; ## Field Resolution
 
@@ -194,53 +175,6 @@
     (concat fields (for [k missing-keys]
                      (info-for-missing-key fields k)))))
 
-
-;;; ## Field Sorting (TODO - Maybe move this into a separate namespace (`metabase.query-processor.sort`?)
-
-;; We sort Fields with a "importance" vector like [source-importance position special-type-importance name]
-
-(defn- source-importance-fn
-  "Create a function to return a importance for FIELD based on its source clause in the query.
-   e.g. if a Field comes from a `:breakout` clause, we should return that column first in the results."
-  [{:keys [fields-is-implicit]}]
-  (fn [{:keys [source]}]
-    (cond
-      (= source :breakout)          :0-breakout
-      (= source :aggregation)       :1-aggregation
-      (and (not fields-is-implicit)
-           (= source :fields))      :2-fields
-      :else                         :3-other)))
-
-(defn- special-type-importance
-  "Return a importance for FIELD based on the relative importance of its `:special-type`.
-   i.e. a Field with special type `:id` should be sorted ahead of all other Fields in the results."
-  [{:keys [special-type]}]
-  (cond
-    (isa? special-type :type/PK)   :0-id
-    (isa? special-type :type/Name) :1-name
-    :else                          :2-other))
-
-(defn- field-importance-fn
-  "Create a function to return an \"importance\" vector for use in sorting FIELD."
-  [query]
-  (let [source-importance (source-importance-fn query)]
-    (fn [{:keys [position clause-position field-name source], :as field}]
-      [(source-importance field)
-       (or position
-           (when (contains? #{:fields :breakout} source)
-             clause-position)
-           Integer/MAX_VALUE)
-       (special-type-importance field)
-       field-name])))
-
-(defn- sort-fields
-  "Sort FIELDS by their \"importance\" vectors."
-  [query fields]
-  (let [field-importance (field-importance-fn query)]
-    (when-not @(resolve 'metabase.query-processor/*disable-qp-logging*)
-      (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields))))))
-    (sort-by field-importance fields)))
-
 (defn- convert-field-to-expected-format
   "Rename keys, provide default values, etc. for FIELD so it is in the format expected by the frontend."
   [field]
@@ -310,25 +244,26 @@
          (add-aggregate-fields-if-needed query)
          (map (u/rpartial update :field-name keyword))
          (add-unknown-fields-if-needed result-keys)
-         (sort-fields query)
+         (sort/sort-fields query)
          (map convert-field-to-expected-format)
          (filter (comp (partial contains? result-keys) :name))
          (m/distinct-by :name)
          add-extra-info-to-fk-fields)))
 
-(defn annotate
+(defn annotate-and-sort
   "Post-process a structured query to add metadata to the results. This stage:
 
   1.  Sorts the results according to the rules at the top of this page
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols`
       expected by the frontend."
-  [query {:keys [columns rows]}]
+  [query {:keys [columns rows], :as results}]
   (let [row-maps (for [row rows]
                    (zipmap columns row))
         cols    (resolve-sort-and-format-columns (:query query) (set columns))
         columns (mapv :name cols)]
-    {:cols    (vec (for [col cols]
-                     (update col :name name)))
-     :columns (mapv name columns)
-     :rows    (for [row row-maps]
-                (mapv row columns))}))
+    (assoc results
+      :cols    (vec (for [col cols]
+                      (update col :name name)))
+      :columns (mapv name columns)
+      :rows    (for [row row-maps]
+                 (mapv row columns)))))

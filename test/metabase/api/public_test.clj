@@ -1,5 +1,5 @@
 (ns metabase.api.public-test
-  "Tests for `api/public/` endpoints."
+  "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
             [expectations :refer :all]
             [toucan.db :as db]
@@ -21,7 +21,7 @@
 
 ;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
 
-(defn- count-of-venues-card []
+(defn count-of-venues-card []
   {:dataset_query {:database (data/id)
                    :type     :query
                    :query    {:source_table (data/id :venues)

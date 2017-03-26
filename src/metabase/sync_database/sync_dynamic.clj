@@ -6,11 +6,11 @@
             [schema.core :as schema]
             [toucan.db :as db]
             [metabase.driver :as driver]
-            [metabase.models.field :as field]
-            [metabase.models.raw-table :as raw-table]
-            [metabase.models.table :as table]
-            [metabase.sync-database.sync :as sync]
-            [metabase.sync-database.interface :as i]
+            (metabase.models [field :refer [Field], :as field]
+                             [raw-table :refer [RawTable], :as raw-table]
+                             [table :refer [Table], :as table])
+            (metabase.sync-database [interface :as i]
+                                    [sync :as sync])
             [metabase.util :as u]))
 
 
@@ -19,7 +19,7 @@
    All field-defs provided are assumed to be children of the given FIELD."
   [{parent-id :id, table-id :table_id, :as parent-field} nested-field-defs]
   ;; NOTE: remember that we never retire any fields in dynamic-schema tables
-  (let [existing-field-name->field (u/key-by :name (db/select field/Field, :parent_id parent-id))]
+  (let [existing-field-name->field (u/key-by :name (db/select Field, :parent_id parent-id))]
     (u/prog1 (set/difference (set (map :name nested-field-defs)) (set (keys existing-field-name->field)))
       (when (seq <>)
         (log/debug (u/format-color 'blue "Found new nested fields for field '%s': %s" (:name parent-field) <>))))
@@ -43,7 +43,7 @@
   {:pre [(integer? table-id)
          (coll? field-defs)
          (every? map? field-defs)]}
-  (let [field-name->field (u/key-by :name (db/select field/Field, :table_id table-id, :parent_id nil))]
+  (let [field-name->field (u/key-by :name (db/select Field, :table_id table-id, :parent_id nil))]
     ;; NOTE: with dynamic schemas we never disable fields
     ;; create/update the fields
     (doseq [{field-name :name, :keys [nested-fields], :as field-def} field-defs]
@@ -59,7 +59,7 @@
 (defn scan-table-and-update-data-model!
   "Update the working `Table` and `Field` metadata for the given `Table`."
   [driver database {raw-table-id :raw_table_id, table-id :id, :as existing-table}]
-  (when-let [raw-table (raw-table/RawTable raw-table-id)]
+  (when-let [raw-table (RawTable raw-table-id)]
     (try
       (if-not (:active raw-table)
         ;; looks like table was deactivated, so lets retire this Table
@@ -87,7 +87,7 @@
   (sync/retire-tables! database)
 
   (let [raw-tables          (raw-table/active-tables database-id)
-        raw-table-id->table (u/key-by :raw_table_id (db/select table/Table, :db_id database-id, :active true))]
+        raw-table-id->table (u/key-by :raw_table_id (db/select Table, :db_id database-id, :active true))]
     ;; create/update tables (and their fields)
     ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
     (doseq [{raw-table-id :id, :as raw-table} raw-tables
