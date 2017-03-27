@@ -30,7 +30,7 @@ Each visualization type has its own advanced options you can tweak. Just click t
 #### Numbers
 This option is for displaying a single number, nice and big. The options for numbers include adding character prefixes or suffixes to it (so you can do things like put a currency symbol in front or a percent at the end), setting the number of decimal places you want to include, and multiplying your result by a number (like if you want to multiply a decimal by 100 to make it look like a percent).
 
-![Funnel](images/visualizations/number.png)
+![Number](images/visualizations/number.png)
 
 #### Progress bars
 Progress bars are for comparing a single number result to a goal value that you input. Open up the chart options for your progress bar to choose a goal for it, and Metabase will show you how far away your question's current result is from the goal.
