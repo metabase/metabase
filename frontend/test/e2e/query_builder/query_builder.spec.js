@@ -106,7 +106,7 @@ describeE2E("query_builder", () => {
 
         xit("should allow users to create bar charts", async () => {
             // load line chart
-            await d.get("/card/2");
+            await d.get("/question/2");
 
             // dismiss saved questions modal
             await d.select(".Modal .Button.Button--primary").wait().click();

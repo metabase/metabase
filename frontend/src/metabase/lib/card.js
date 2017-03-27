@@ -1,6 +1,7 @@
 import _ from "underscore";
 import Query, { createQuery } from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
+import Urls from "metabase/lib/urls";
 
 import { CardApi } from "metabase/services";
 
@@ -24,10 +25,10 @@ export function startNewCard(type, databaseId, tableId) {
 }
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
+// TODO: move to redux
 export async function loadCard(cardId) {
     try {
-        let card = await CardApi.get({ "cardId": cardId });
-        return card && cleanCopyCard(card);
+        return await CardApi.get({ "cardId": cardId });
     } catch (error) {
         console.log("error loading card", error);
         throw error;
@@ -113,7 +114,7 @@ export function b64url_to_utf8(b64url) {
 export function urlForCardState(state, dirty) {
     var url;
     if (state.cardId) {
-        url = "/card/" + state.cardId;
+        url = Urls.card(state.cardId);
     } else {
         url = "/q";
     }

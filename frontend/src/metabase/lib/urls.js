@@ -1,8 +1,8 @@
 // provides functions for building urls to things we care about
 var Urls = {
-    card: function(card_id) {
+    card: function(cardId) {
         // NOTE that this is for an ephemeral card link, not an editable card
-        return "/card/"+card_id;
+        return `/question/${cardId}`;
     },
 
     dashboard: function(dashboard_id) {
