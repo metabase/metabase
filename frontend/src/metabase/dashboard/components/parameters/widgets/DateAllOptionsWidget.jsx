@@ -59,9 +59,14 @@ const deserializersWithTestRegex: [{ testRegex: RegExp, deserialize: Deserialize
     {testRegex: /^~(.+)$/, deserialize: (matches) => ["<", noopRef, matches[0]]},
     {testRegex: /^(.+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
     {testRegex: /^(.+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
-    {testRegex: /^([0-9-T:]+)$/, deserialize: (matches) => ["between", noopRef, matches[0], matches[1]]},
-    {testRegex: /is-empty/, deserialize: (matches) => ["is-null", noopRef]},
-    {testRegex: /not-empty/, deserialize: (matches) => ["not-null", noopRef]},
+    // TODO 3/27/17 Atte Keinänen
+    // Unify BETWEEN -> between, IS_NULL -> is-null, NOT_NULL -> not-null throughout the codebase
+    // $FlowFixMe
+    {testRegex: /^([0-9-T:]+)$/, deserialize: (matches) => ["BETWEEN", noopRef, matches[0], matches[1]]},
+    // $FlowFixMe
+    {testRegex: /is-empty/, deserialize: (matches) => ["IS_NULL", noopRef]},
+    // $FlowFixMe
+    {testRegex: /not-empty/, deserialize: (matches) => ["NOT_NULL", noopRef]},
 ];
 
 function urlEncodedToFilter(urlEncoded: UrlEncoded): ?FieldFilter {
