@@ -60,9 +60,6 @@
   (context "/field"           [] (+auth field/routes))
   (context "/getting_started" [] (+auth getting-started/routes))
   (context "/geojson"         [] (+auth geojson/routes))
-  (GET     "/health"          [] (if ((resolve 'metabase.core/initialized?))
-                                   {:status 200, :body {:status "ok"}}
-                                   {:status 503, :body {:status "initializing", :progress ((resolve 'metabase.core/initialization-progress))}}))
   (context "/label"           [] (+auth label/routes))
   (context "/metric"          [] (+auth metric/routes))
   (context "/notify"          [] (+apikey notify/routes))
