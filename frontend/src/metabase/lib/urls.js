@@ -5,32 +5,32 @@ var Urls = {
         return `/question/${cardId}`;
     },
 
-    dashboard: function(dashboard_id) {
-        return "/dash/"+dashboard_id;
+    dashboard: function(dashboardId) {
+        return `/dashboard/${dashboardId}`;
     },
 
-    modelToUrl: function(model, model_id) {
+    modelToUrl: function(model, modelId) {
         switch (model) {
-            case "card":      return Urls.card(model_id);
-            case "dashboard": return Urls.dashboard(model_id);
-            case "pulse":     return Urls.pulse(model_id);
+            case "card":      return Urls.card(modelId);
+            case "dashboard": return Urls.dashboard(modelId);
+            case "pulse":     return Urls.pulse(modelId);
             default:          return null;
         }
     },
 
-    pulse: function(pulse_id) {
-        return "/pulse/#"+pulse_id;
+    pulse: function(pulseId) {
+        return `/pulse/#${pulseId}`;
     },
 
-    tableRowsQuery: function(database_id, table_id, metric_id, segment_id) {
-        let url = "/q#?db="+database_id+"&table="+table_id;
+    tableRowsQuery: function(databaseId, tableId, metricId, segmentId) {
+        let url = `/q#?db=${databaseId}&table=${tableId}`;
 
-        if (metric_id) {
-            url = url + "&metric="+metric_id;
+        if (metricId) {
+            url += `&metric=${metricId}`;
         }
 
-        if (segment_id) {
-            url = url + "&segment="+segment_id;
+        if (segmentId) {
+            url += `&segment=${segmentId}`;
         }
 
         return url;

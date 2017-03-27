@@ -151,7 +151,7 @@ export const getRoutes = (store) =>
                 <Route path="/" component={HomepageApp} />
 
                 {/* DASHBOARD */}
-                <Route path="/dash/:dashboardId" component={DashboardApp} />
+                <Route path="/dashboard/:dashboardId" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
                 <Route path="/question/:cardId" component={QueryBuilder} />
@@ -264,6 +264,7 @@ export const getRoutes = (store) =>
 
             {/* DEPRECATED */}
             <Redirect from="/card/:cardId" to="/question/:cardId" />
+            <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
 
             {/* MISC */}
             <Route path="/unauthorized" component={Unauthorized} />

@@ -115,7 +115,13 @@ export default class Navbar extends Component {
                     </li>
                     <li className="pl3">
                         <DashboardsDropdown {...this.props}>
-                            <a data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"} style={this.styles.navButton} className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}>
+                            <a
+                                data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"}
+                                style={this.styles.navButton}
+                                className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {
+                                    "NavItem--selected": this.isActive("/dashboard/")
+                                })}
+                            >
                                 <span className="NavDropdown-button-layer">
                                     Dashboards
                                     <Icon className="ml1" name={'chevrondown'} size={8}></Icon>
