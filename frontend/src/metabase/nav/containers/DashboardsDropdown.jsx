@@ -8,7 +8,7 @@ import Modal from "metabase/components/Modal.jsx";
 import ConstrainToScreen from "metabase/components/ConstrainToScreen";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";

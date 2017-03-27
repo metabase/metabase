@@ -154,8 +154,8 @@ export const getRoutes = (store) =>
                 <Route path="/dashboard/:dashboardId" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
+                <Route path="/question" component={QueryBuilder} />
                 <Route path="/question/:cardId" component={QueryBuilder} />
-                <Route path="/q" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
                 <Route path="/questions">
@@ -263,6 +263,7 @@ export const getRoutes = (store) =>
             </Route>
 
             {/* DEPRECATED */}
+            <Redirect from="/q" to="/question" />
             <Redirect from="/card/:cardId" to="/question/:cardId" />
             <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
 

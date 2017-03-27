@@ -1,60 +1,71 @@
 // provides functions for building urls to things we care about
-var Urls = {
-    card: function(cardId) {
-        // NOTE that this is for an ephemeral card link, not an editable card
-        return `/question/${cardId}`;
-    },
 
-    dashboard: function(dashboardId) {
-        return `/dashboard/${dashboardId}`;
-    },
+import { serializeCardForUrl } from "metabase/lib/card";
 
-    modelToUrl: function(model, modelId) {
-        switch (model) {
-            case "card":      return Urls.card(modelId);
-            case "dashboard": return Urls.dashboard(modelId);
-            case "pulse":     return Urls.pulse(modelId);
-            default:          return null;
-        }
-    },
-
-    pulse: function(pulseId) {
-        return `/pulse/#${pulseId}`;
-    },
-
-    tableRowsQuery: function(databaseId, tableId, metricId, segmentId) {
-        let url = `/q#?db=${databaseId}&table=${tableId}`;
-
-        if (metricId) {
-            url += `&metric=${metricId}`;
-        }
-
-        if (segmentId) {
-            url += `&segment=${segmentId}`;
-        }
-
-        return url;
-    },
-
-    collection(collection) {
-        return `/questions/collections/${encodeURIComponent(collection.slug)}`;
-    },
-
-    label(label) {
-        return `/questions/search?label=${encodeURIComponent(label.slug)}`;
-    },
-
-    publicCard(uuid, type = null) {
-        return `/public/question/${uuid}` + (type ? `.${type}` : ``);
-    },
-
-    publicDashboard(uuid) {
-        return `/public/dashboard/${uuid}`;
-    },
-
-    embedCard(token, type = null) {
-        return `/embed/question/${token}` + (type ? `.${type}` : ``);
-    },
+export function question(cardId, cardOrHash = "") {
+    if (cardOrHash && typeof cardOrHash === "object") {
+        cardOrHash = serializeCardForUrl(cardOrHash);
+    }
+    if (cardOrHash && cardOrHash.charAt(0) !== "#") {
+        cardOrHash = "#" + cardOrHash;
+    }
+    // NOTE that this is for an ephemeral card link, not an editable card
+    return cardId != null
+        ? `/question/${cardId}${cardOrHash}`
+        : `/question${cardOrHash}`;
 }
 
-export default Urls;
+export function dashboard(dashboardId) {
+    return `/dashboard/${dashboardId}`;
+}
+
+export function modelToUrl(model, modelId) {
+    switch (model) {
+        case "card":
+            return question(modelId);
+        case "dashboard":
+            return dashboard(modelId);
+        case "pulse":
+            return pulse(modelId);
+        default:
+            return null;
+    }
+}
+
+export function pulse(pulseId) {
+    return `/pulse/#${pulseId}`;
+}
+
+export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
+    let query = `?db=${databaseId}&table=${tableId}`;
+
+    if (metricId) {
+        query += `&metric=${metricId}`;
+    }
+
+    if (segmentId) {
+        query += `&segment=${segmentId}`;
+    }
+
+    return question(null, query);
+}
+
+export function collection(collection) {
+    return `/questions/collections/${encodeURIComponent(collection.slug)}`;
+}
+
+export function label(label) {
+    return `/questions/search?label=${encodeURIComponent(label.slug)}`;
+}
+
+export function publicCard(uuid, type = null) {
+    return `/public/question/${uuid}` + (type ? `.${type}` : ``);
+}
+
+export function publicDashboard(uuid) {
+    return `/public/dashboard/${uuid}`;
+}
+
+export function embedCard(token, type = null) {
+    return `/embed/question/${token}` + (type ? `.${type}` : ``);
+}

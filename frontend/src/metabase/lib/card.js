@@ -1,7 +1,7 @@
 import _ from "underscore";
 import Query, { createQuery } from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import { CardApi } from "metabase/services";
 
@@ -112,16 +112,10 @@ export function b64url_to_utf8(b64url) {
 }
 
 export function urlForCardState(state, dirty) {
-    var url;
-    if (state.cardId) {
-        url = Urls.card(state.cardId);
-    } else {
-        url = "/q";
-    }
-    if (state.serializedCard && dirty) {
-        url += "#" + state.serializedCard;
-    }
-    return url;
+    return Urls.question(
+        state.cardId,
+        (state.serializedCard && dirty) ? state.serializedCard : ""
+    );
 }
 
 export function cleanCopyCard(card) {

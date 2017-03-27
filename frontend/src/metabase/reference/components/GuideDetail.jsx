@@ -4,7 +4,7 @@ import pure from "recompose/pure";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon"
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import {
     getQuestionUrl,

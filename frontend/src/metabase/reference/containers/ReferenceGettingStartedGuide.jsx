@@ -9,7 +9,7 @@ import { assoc } from "icepick";
 import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
