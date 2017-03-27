@@ -49,7 +49,7 @@
   (context "/api" [] (fn [& args]
                        ;; if Metabase is not finished initializing, return a generic error message rather than something potentially confusing like "DB is not set up"
                        (if-not (init-status/complete?)
-                         {:status 400, :body "Metabase is still initializing. Please sit tight..."}
+                         {:status 503, :body "Metabase is still initializing. Please sit tight..."}
                          (apply api/routes args))))
   ;; ^/app/ -> static files under frontend_client/app
   (context "/app" []
