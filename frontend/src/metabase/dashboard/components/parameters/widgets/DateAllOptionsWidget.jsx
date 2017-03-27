@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, {Component, PropTypes} from "react";
+import cx from "classnames";
 
 import DatePicker, {OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
 import {generateTimeFilterValuesDescriptions} from "metabase/lib/query_time";
@@ -56,13 +57,13 @@ const deserializersWithTestRegex: [{ testRegex: RegExp, deserialize: Deserialize
         return ["time-interval", noopRef, parseInt(matches[0]), matches[1]]
     }},
     {testRegex: /^current([a-z]+)$/, deserialize: (matches) => ["time-interval", noopRef, "current", matches[0]] },
-    {testRegex: /^~(.+)$/, deserialize: (matches) => ["<", noopRef, matches[0]]},
-    {testRegex: /^(.+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
-    {testRegex: /^(.+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
+    {testRegex: /^~([0-9-T:]+)$/, deserialize: (matches) => ["<", noopRef, matches[0]]},
+    {testRegex: /^([0-9-T:]+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
+    {testRegex: /^([0-9-T:]+)$/, deserialize: (matches) => ["=", noopRef, matches[0]]},
     // TODO 3/27/17 Atte Keinänen
     // Unify BETWEEN -> between, IS_NULL -> is-null, NOT_NULL -> not-null throughout the codebase
     // $FlowFixMe
-    {testRegex: /^([0-9-T:]+)$/, deserialize: (matches) => ["BETWEEN", noopRef, matches[0], matches[1]]},
+    {testRegex: /^([0-9-T:]+)~([0-9-T:]+)$/, deserialize: (matches) => ["BETWEEN", noopRef, matches[0], matches[1]]},
     // $FlowFixMe
     {testRegex: /is-empty/, deserialize: (matches) => ["IS_NULL", noopRef]},
     // $FlowFixMe
@@ -115,17 +116,21 @@ export default class DateAllOptionsWidget extends Component<DefaultProps, Props,
         return filter ? getFilterTitle(filter) : null;
     };
 
-    componentWillUnmount() {
+    commitAndClose = () => {
         this.props.setValue(filterToUrlEncoded(this.state.filter));
+        this.props.onClose()
     }
 
     setFilter = (filter: FieldFilter) => {
         this.setState({filter});
-    };
+    }
+
+    isValid() {
+        const filterValues = this.state.filter.slice(2);
+        return filterValues.every((value) => value != null);
+    }
 
     render() {
-        const {onClose} = this.props;
-
         return (<div>
             <DatePicker
                 filter={this.state.filter}
@@ -133,8 +138,8 @@ export default class DateAllOptionsWidget extends Component<DefaultProps, Props,
             />
             <div className="FilterPopover-footer p1">
                 <button
-                    className="Button Button--purple full"
-                    onClick={onClose}
+                    className={cx("Button Button--purple full", {"disabled": !this.isValid()})}
+                    onClick={this.commitAndClose}
                 >
                     Update filter
                 </button>
