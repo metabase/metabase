@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 52
+      author: senior
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: min_value
+                  type: float
+                  constraints:
+                    nullable: true
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: max_value
+                  type: float
+                  constraints:
+                    nullable: true

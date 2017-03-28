@@ -73,8 +73,12 @@
   {:row_count 100,
    :fields    [{:id (id :venues :category_id)}
                {:id (id :venues :id)}
-               {:id (id :venues :latitude)}
-               {:id (id :venues :longitude)}
+               {:id (id :venues :latitude)
+                :min-value 10, :max-value 40
+                :special-type :type/Latitude}
+               {:id (id :venues :longitude)
+                :min-value -165, :max-value -73
+                :special-type :type/Longitude}
                {:id (id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (id :venues :name))}
                {:id (id :venues :price), :values [1 2 3 4]}]}
   (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))

@@ -109,7 +109,9 @@
    :position           0
    :visibility_type    :normal
    :preview_display    true
-   :created_at         true})
+   :created_at         true
+   :min_value          nil
+   :max_value          nil})
 
 (def ^:const toucanery-tables-and-fields
   [(merge table-defaults

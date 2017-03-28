@@ -53,3 +53,11 @@
   [{field-id :id :as field}]
   (-> (field-query field (ql/aggregation {} (ql/count (ql/field-id field-id))))
       first first int))
+
+(defn field-max-min
+  "Returns a pair [max min] for the given `field`"
+  [{field-id :id :as field}]
+  (->> (field-query field (ql/aggregation {} [(ql/min (ql/field-id field-id))
+                                              (ql/max (ql/field-id field-id))]))
+       first
+       (map int)))

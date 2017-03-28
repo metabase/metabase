@@ -111,7 +111,9 @@
    :fk_target_field_id false
    :last_analyzed      false
    :created_at         true
-   :updated_at         true})
+   :updated_at         true
+   :min_value          nil
+   :max_value          nil})
 
 ;; save-table-fields!
 ;; this test also covers create-field-from-field-def! and update-field-from-field-def!

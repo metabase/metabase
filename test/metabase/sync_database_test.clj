@@ -96,7 +96,9 @@
    :fk_target_field_id false
    :created_at         true
    :updated_at         true
-   :last_analyzed      true})
+   :last_analyzed      true
+   :min_value          nil
+   :max_value          nil})
 
 
 ;; ## SYNC DATABASE
@@ -317,3 +319,13 @@
      ;; 3. Now re-sync the table and make sure the value is back
      (do (sync-table! @venues-table)
          (get-field-values))]))
+
+(expect
+  [-165.0 -73.0 10.0 40.0]
+  (tt/with-temp* [Database [database {:details (:details (Database (id))), :engine :h2}]
+                  Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
+    (sync-table! table)
+    [(db/select-one-field :min_value Field, :id (id :venues :longitude))
+     (db/select-one-field :max_value Field, :id (id :venues :longitude))
+     (db/select-one-field :min_value Field, :id (id :venues :latitude))
+     (db/select-one-field :max_value Field, :id (id :venues :latitude))]))
