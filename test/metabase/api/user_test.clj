@@ -31,7 +31,8 @@
        :last_login   $
        :first_name   "Crowberto"
        :email        "crowberto@metabase.com"
-       :google_auth  false})
+       :google_auth  false
+       :ldap_auth    false})
     (match-$ (fetch-user :lucky)
       {:common_name  "Lucky Pigeon"
        :last_name    "Pigeon"
@@ -40,7 +41,8 @@
        :last_login   $
        :first_name   "Lucky"
        :email        "lucky@metabase.com"
-       :google_auth  false})
+       :google_auth  false
+       :ldap_auth    false})
     (match-$ (fetch-user :rasta)
       {:common_name  "Rasta Toucan"
        :last_name    "Toucan"
@@ -49,7 +51,8 @@
        :last_login   $
        :first_name   "Rasta"
        :email        "rasta@metabase.com"
-       :google_auth  false})}
+       :google_auth  false
+       :ldap_auth    false})}
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
@@ -131,6 +134,7 @@
      :is_superuser false
      :is_qbnewb    true
      :google_auth  false
+     :ldap_auth    false
      :id           $})
   ((user->client :rasta) :get 200 "user/current"))
 

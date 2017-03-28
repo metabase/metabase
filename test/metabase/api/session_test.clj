@@ -11,8 +11,9 @@
             [metabase.public-settings :as public-settings]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.util :as u]
-            [metabase.test.util :refer [random-name resolve-private-vars with-temporary-setting-values], :as tu]))
+            [metabase.test.integrations.ldap :refer [expect-with-ldap-server]]
+            [metabase.test.util :refer [random-name resolve-private-vars with-temporary-setting-values], :as tu]
+            [metabase.util :as u]))
 
 ;; ## POST /api/session
 ;; Test that we can login
@@ -249,3 +250,40 @@
                                      admin-email                             "rasta@toucans.com"]
     (u/prog1 (is-session? (google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
       (db/delete! User :email "rasta@sf-toucannery.com"))))                                       ; clean up after ourselves
+
+
+;;; ------------------------------------------------------------ TESTS FOR LDAP AUTH STUFF ------------------------------------------------------------
+
+;; Test that we can login with LDAP
+(expect-with-ldap-server
+  true
+  ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
+  (do (db/simple-delete! Session, :user_id (user->id :rasta))
+      (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
+
+;; Test that login will fallback to local for users not in LDAP
+(expect-with-ldap-server
+  true
+  ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
+  (do (db/simple-delete! Session, :user_id (user->id :crowberto))
+      (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :crowberto))))))
+
+;; Test that login will NOT fallback for users in LDAP but with an invalid password
+(expect-with-ldap-server
+  {:errors {:password "did not match stored password"}}
+  (client :post 400 "session" (user->credentials :lucky))) ; NOTE: there's a different password in LDAP for Lucky
+
+;; Test that login will fallback to local for broken LDAP settings
+;; NOTE: This will ERROR out in the logs, it's normal
+(expect-with-ldap-server
+  true
+  (tu/with-temporary-setting-values [ldap-base "cn=wrong,cn=com"]
+    ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
+    (do (db/simple-delete! Session, :user_id (user->id :rasta))
+        (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta)))))))
+
+;; Test that we can login with LDAP with new user
+(expect-with-ldap-server
+  true
+  (u/prog1 (tu/is-uuid-string? (:id (client :post 200 "session" {:username "sbrown20", :password "1234"})))
+    (db/delete! User :email "sally.brown@metabase.com"))) ; clean up

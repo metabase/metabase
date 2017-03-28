@@ -33,10 +33,11 @@
       :user_id (:id user))
     (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
-(defn- ldap-fetch-or-create-user! [first-name last-name email password]
- (if-let [user (or (db/select-one [User :id :last_login] :email email) ; TODO - Update the user's password
-                   (user/create-new-ldap-auth-user! first-name last-name email password))]
-   {:id (create-session! user)}))
+(defn- ldap-auth-fetch-or-create-user! [first-name last-name email password]
+  (when-let [user (or (db/select-one [User :id :last_login] :email email)
+                      (user/create-new-ldap-auth-user! first-name last-name email password))]
+    (u/prog1 {:id (create-session! user)}
+      (user/set-password! (:id user) password))))
 
 ;;; ## API Endpoints
 
@@ -51,16 +52,19 @@
    password su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :username)   username)
+  ;; Primitive "strategy implementation", should be reworked for #3210
   (or
     ;; First try LDAP if it's enabled
     (when (ldap/ldap-configured?)
-      (when-let [{:keys [first-name last-name email], :as user-info} (ldap/find-user username)]
-        (println user-info)
-        (if (ldap/verify-password user-info password)
-          (ldap-fetch-or-create-user! first-name last-name email password)
-          ;; Since LDAP knows about our user, fail fast here to prevent the local strategy to be tried with a potentially outdated password
-          (throw (ex-info "Password did not match stored password." {:status-code 400
-                                                                     :errors      {:password "did not match stored password"}})))))
+      (try
+        (when-let [{:keys [first-name last-name email], :as user-info} (ldap/find-user username)]
+          (if (ldap/verify-password user-info password)
+            (ldap-auth-fetch-or-create-user! first-name last-name email password)
+            ;; Since LDAP knows about our user, fail here to prevent the local strategy to be tried with an outdated password
+            (throw (ex-info "Password did not match stored password." {:status-code 400
+                                                                       :errors      {:password "did not match stored password"}}))))
+        (catch com.unboundid.util.LDAPSDKException e
+          (log/error (u/format-color 'red "Unexpected LDAP error, will fallback to local authentication") (.getMessage e)))))
 
     ;; Then try local authentication
     (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]
