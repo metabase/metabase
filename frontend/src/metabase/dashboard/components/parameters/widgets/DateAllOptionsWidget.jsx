@@ -91,14 +91,19 @@ function getFilterTitle(filter) {
 }
 
 type DefaultProps = {};
-type Props = { setValue: *, onClose: * };
+type Props = {
+    setValue: (value: ?string) => void,
+    onClose: () => void
+};
+
 type State = { filter: FieldFilter };
+
 
 export default class DateAllOptionsWidget extends Component<DefaultProps, Props, State> {
     state: State;
 
-    constructor(props: *, context: *) {
-        super(props, context);
+    constructor(props: Props) {
+        super(props);
 
         this.state = {
             // $FlowFixMe

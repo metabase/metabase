@@ -200,8 +200,7 @@ export const OPERATORS: Operator[] = [
 type Props = {
     filter: FieldFilter,
     onFilterChange: (filter: FieldFilter) => void,
-    tableMetadata: any,
-    className: string
+    className: ?string
 }
 
 export default class DatePicker extends Component<*, Props, *> {
