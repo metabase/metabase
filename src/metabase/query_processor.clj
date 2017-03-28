@@ -4,7 +4,8 @@
             [schema.core :as s]
             [toucan.db :as db]
             [metabase.driver :as driver]
-            [metabase.models.query-execution :refer [QueryExecution], :as query-execution]
+            (metabase.models [query :as query]
+                             [query-execution :refer [QueryExecution], :as query-execution])
             [metabase.query-processor.util :as qputil]
             (metabase.query-processor.middleware [add-implicit-clauses :as implicit-clauses]
                                                  [add-row-count-and-status :as row-count-and-status]
@@ -102,9 +103,10 @@
 ;;; +----------------------------------------------------------------------------------------------------+
 
 (defn- save-query-execution!
-  "Save a `QueryExecution`."
+  "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [query-execution]
   (u/prog1 query-execution
+    (query/update-average-execution-time! (:hash query-execution) (:running_time query-execution))
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-and-return-failed-query!

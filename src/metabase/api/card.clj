@@ -19,6 +19,7 @@
                              [interface :as mi]
                              [label :refer [Label]]
                              [permissions :as perms]
+                             [query :as query]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
             [metabase.public-settings :as public-settings]
@@ -362,11 +363,11 @@
   "Compute a 'magic' cache TTL time (in seconds) for QUERY by multipling its historic average execution times by the `query-caching-ttl-ratio`.
    If the TTL is less than a second, this returns `nil` (i.e., the cache should not be utilized.)"
   [query]
-  (when-let [average-duration (qputil/query-average-duration query)]
+  (when-let [average-duration (query/average-execution-time-ms (qputil/query-hash query))]
     (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
-                                            1000)))]
+                                            1000.0)))]
       (when-not (zero? ttl-seconds)
-        (log/info (format "Question's average execution duration is %d ms; using 'magic' TTL of %d seconds" (Math/round average-duration) ttl-seconds) (u/emoji "💾"))
+        (log/info (format "Question's average execution duration is %d ms; using 'magic' TTL of %d seconds" average-duration ttl-seconds) (u/emoji "💾"))
         ttl-seconds))))
 
 (defn- query-for-card [card parameters constraints]
