@@ -196,7 +196,9 @@
                           :schema-name        :schema_name
                           :special-type       :special_type
                           :table-id           :table_id
-                          :visibility-type    :visibility_type})
+                          :visibility-type    :visibility_type
+                          :min-value          :min_value
+                          :max-value          :max_value})
         (dissoc :position :clause-position :parent :parent-id :table-name))))
 
 (defn- fk-field->dest-fn

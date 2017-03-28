@@ -28,7 +28,9 @@
                                     :visibility_type :visibility-type
                                     :base_type       :base-type
                                     :table_id        :table-id
-                                    :parent_id       :parent-id}))
+                                    :parent_id       :parent-id
+                                    :min_value       :min-value
+                                    :max_value       :max-value}))
 
 ;;; # ------------------------------------------------------------ IRESOLVE PROTOCOL ------------------------------------------------------------
 
@@ -98,17 +100,19 @@
 
 ;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
-(defn- field-ph-resolve-field [{:keys [field-id datetime-unit fk-field-id], :as this} field-id->field]
+(defn- field-ph-resolve-field [{:keys [field-id datetime-unit fk-field-id binning-strategy], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                i/map->Field
                                                                (assoc :fk-field-id fk-field-id))]
-    ;; try to resolve the Field with the ones available in field-id->field
-    (let [datetime-field? (or (isa? base-type :type/DateTime)
-                              (isa? special-type :type/DateTime))]
-      (if-not datetime-field?
-        field
-        (i/map->DateTimeField {:field field
-                               :unit  (or datetime-unit :day)}))) ; default to `:day` if a unit wasn't specified
+    (cond
+      (or (isa? base-type :type/DateTime)
+          (isa? special-type :type/DateTime))
+      (i/map->DateTimeField {:field field
+                             :unit  (or datetime-unit :day)}) ; default to `:day` if a unit wasn't specified
+      binning-strategy
+      (i/map->BinnedField {:field field
+                           :num-bins binning-strategy})
+      :else field)
     ;; If that fails just return ourselves as-is
     this))
 
@@ -192,7 +196,7 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+        (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id :max_value :min_value]
                                           :visibility_type [:not= "sensitive"]
                                           :id [:in field-ids]))
                           (m/map-vals rename-mb-field-keys)

@@ -68,15 +68,19 @@
 
 
 ;; ANALYZE-TABLE
-
 (expect
   {:row_count 100,
-   :fields    [{:id (id :venues :category_id)}
-               {:id (id :venues :id)}
-               {:id (id :venues :latitude)}
-               {:id (id :venues :longitude)}
+   :fields    [{:id (id :venues :category_id)
+                :min-value 2.0, :max-value 74.0}
+               {:id (id :venues :id)
+                :min-value 1.0, :max-value 100.0}
+               {:id (id :venues :latitude)
+                :min-value 10.0646, :max-value 40.7794}
+               {:id (id :venues :longitude)
+                :min-value -165.374, :max-value -73.9533}
                {:id (id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (id :venues :name))}
-               {:id (id :venues :price), :values [1 2 3 4]}]}
+               {:id (id :venues :price), :values [1 2 3 4]
+                :min-value 1.0, :max-value 4.0}]}
   (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
 
 (resolve-private-vars metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq)

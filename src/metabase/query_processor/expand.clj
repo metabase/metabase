@@ -181,6 +181,10 @@
 
 ;;; ## breakout & fields
 
+(s/defn ^:ql ^:always-validate binning-strategy :- FieldPlaceholder
+  "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and `STRATEGY-PARAM`"
+  ([f strategy-name strategy-param]   (assoc (field f) :binning-strategy strategy-param)))
+
 (defn- fields-list-clause
   ([k query] query)
   ([k query & fields] (assoc query k (mapv field fields))))

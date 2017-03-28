@@ -18,10 +18,18 @@
   [(set (venues-cols))
    #{(venues-col :category_id)
      (venues-col :name)
-     (venues-col :latitude)
-     (venues-col :id)
-     (venues-col :longitude)
-     (assoc (venues-col :price) :visibility_type :details-only)}
+     (assoc (venues-col :latitude)
+       :min_value nil
+       :max_value nil)
+     (assoc (venues-col :id)
+       :min_value nil
+       :max_value nil)
+     (assoc (venues-col :longitude)
+       :min_value nil
+       :max_value nil)
+     (assoc (venues-col :price) :visibility_type :details-only
+            :min_value nil
+            :max_value nil)}
    (set (venues-cols))]
   [(get-col-names)
    (do (db/update! Field (data/id :venues :price), :visibility_type :details-only)
@@ -34,7 +42,9 @@
 ;;; Make sure :sensitive information fields are never returned by the QP
 (qp-expect-with-all-engines
   {:columns     (->columns "id" "name" "last_login")
-   :cols        [(users-col :id)
+   :cols        [(assoc (users-col :id)
+                   :min_value nil
+                   :max_value nil)
                  (users-col :name)
                  (users-col :last_login)],
    :rows        [[ 1 "Plato Yeshua"]

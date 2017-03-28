@@ -2,9 +2,10 @@
   "Tests for the `:breakout` clause."
   (:require [metabase.query-processor-test :refer :all]
             [metabase.query-processor.expand :as ql]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [metabase.util :as u]))
 
-;;; single column
+;; single column
 (qp-expect-with-all-engines
   {:rows    [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]]
    :columns [(data/format-name "user_id")
@@ -69,3 +70,25 @@
          (ql/limit 10))
        booleanize-native-form
        (format-rows-by [int int int])))
+
+(expect-with-non-timeseries-dbs
+  [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :default 20))))))
+
+(expect-with-non-timeseries-dbs
+  [[10.0 1] [30.0 90] [40.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :default 3))))))
+
+(expect-with-non-timeseries-dbs
+  [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :default 20)
+                         (ql/binning-strategy $longitude :default 20))))))

@@ -103,7 +103,9 @@
    :fk_target_field_id false
    :created_at         true
    :updated_at         true
-   :last_analyzed      true})
+   :last_analyzed      true
+   :min_value          nil
+   :max_value          nil})
 
 
 ;; ## SYNC DATABASE
@@ -325,7 +327,6 @@
      (do (sync-table! @venues-table)
          (get-field-values))]))
 
-
 ;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.analyze/low-cardinality-threshold` (currently 300) (#3215) --------------------
 (defn- insert-range-sql [rang]
   (str "INSERT INTO blueberries_consumed (num) VALUES "
@@ -354,3 +355,13 @@
             (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold))))])
             (sync-database! db, :full-sync? true)
             (db/exists? FieldValues :field_id field-id)))))))
+
+(expect
+  [-165.374 -73.9533 10.0646 40.7794]
+  (tt/with-temp* [Database [database {:details (:details (Database (id))), :engine :h2}]
+                  Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
+    (sync-table! table)
+    [(db/select-one-field :min_value Field, :id (id :venues :longitude))
+     (db/select-one-field :max_value Field, :id (id :venues :longitude))
+     (db/select-one-field :min_value Field, :id (id :venues :latitude))
+     (db/select-one-field :max_value Field, :id (id :venues :latitude))]))
