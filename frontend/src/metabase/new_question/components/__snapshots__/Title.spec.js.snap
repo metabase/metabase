@@ -1,0 +1,6 @@
+exports[`Title should render correctly 1`] = `
+<h1
+  className="c-2E353B fs-25p63px fw-900">
+  Hey it\'s me the title
+</h1>
+`;

@@ -1,0 +1,5 @@
+exports[`Text should render correctly 1`] = `
+<p>
+  Why hey here\'s some body text
+</p>
+`;
