@@ -160,6 +160,12 @@ const SECTIONS = [
         name: "LDAP",
         settings: [
             {
+                key: "ldap-enabled",
+                display_name: "LDAP Authentication",
+                description: null,
+                type: "boolean"
+            },
+            {
                 key: "ldap-host",
                 display_name: "LDAP Host",
                 placeholder: "ldap.yourdomain.org",

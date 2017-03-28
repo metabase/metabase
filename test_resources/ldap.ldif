@@ -1,0 +1,35 @@
+dn: dc=example,dc=com
+objectClass: top
+objectClass: organization
+objectClass: dcObject
+dc: example
+o: Example Corporation
+
+dn: ou=people,dc=example,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: people
+
+dn: cn=John Smith,ou=people,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: John Smith
+sn: Smith
+givenName: John
+uid: jsmith1
+mail: John.Smith@example.com
+userPassword: strongpassword
+
+dn: cn=Sally Brown,ou=people,dc=example,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Sally Brown
+sn: Brown
+givenName: Sally
+uid: sbrown20
+mail: sally.brown@example.com
+userPassword: 1234

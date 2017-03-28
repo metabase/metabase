@@ -3,6 +3,11 @@
             [clj-ldap.client :as ldap]
             (metabase.models [setting :refer [defsetting], :as setting])))
 
+(defsetting ldap-enabled
+  "Enable LDAP authentication."
+  :type    :boolean
+  :default false)
+
 (defsetting ldap-host
   "LDAP server hostname.")
 
@@ -44,15 +49,15 @@
   :default "sn")
 
 (defn ldap-configured?
-  "Check if LDAP is configured (enough)."
+  "Check if LDAP is enabled and that the mandatory settings are configured."
   []
-  ;; TODO - This is fine and all, but should we instead have a toggle to "Enabled LDAP? Yes/No"
-  (and (boolean (ldap-host))
+  (and (ldap-enabled)
+       (boolean (ldap-host))
        (boolean (ldap-bind-dn))
        (boolean (ldap-password))
        (boolean (ldap-base))))
 
-(defn- ldap-connection []
+(defn- get-ldap-connection []
   (ldap/connect {:host      (str (ldap-host) ":" (ldap-port))
                  :bind-dn   (ldap-bind-dn)
                  :password  (ldap-password)
@@ -61,7 +66,7 @@
 
 (defn- with-connection [f & args]
   "Applies `f` with a connection pool followed by `args`"
-  (let [conn (ldap-connection)]
+  (let [conn (get-ldap-connection)]
     (try
       (apply f conn args)
       (finally (ldap/close conn)))))
