@@ -16,7 +16,7 @@
   nil)
 
 (defn- get-server-config []
-  (doto (new InMemoryDirectoryServerConfig (into-array String ["dc=example,dc=com"]))
+  (doto (new InMemoryDirectoryServerConfig (into-array String ["dc=metabase,dc=com"]))
           (.addAdditionalBindCredentials "cn=Directory Manager" "password")
           (.setSchema (Schema/getDefaultStandardSchema))
           (.setListenerConfigs (into-array InMemoryListenerConfig [(InMemoryListenerConfig/createLDAPConfig "LDAP" 0)]))))

@@ -1,16 +1,16 @@
-dn: dc=example,dc=com
+dn: dc=metabase,dc=com
 objectClass: top
 objectClass: organization
 objectClass: dcObject
-dc: example
-o: Example Corporation
+dc: metabase
+o: Metabase Corporation
 
-dn: ou=people,dc=example,dc=com
+dn: ou=people,dc=metabase,dc=com
 objectClass: top
 objectClass: organizationalUnit
 ou: people
 
-dn: cn=John Smith,ou=people,dc=example,dc=com
+dn: cn=John Smith,ou=people,dc=metabase,dc=com
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson
@@ -22,7 +22,7 @@ uid: jsmith1
 mail: John.Smith@example.com
 userPassword: strongpassword
 
-dn: cn=Sally Brown,ou=people,dc=example,dc=com
+dn: cn=Sally Brown,ou=people,dc=metabase,dc=com
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson

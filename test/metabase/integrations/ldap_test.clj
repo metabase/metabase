@@ -32,21 +32,21 @@
 (expect-with-ldap-server
   ;; Login with invalid DN should fail
   false
-  (ldap/verify-password "cn=Nobody,ou=people,dc=example,dc=com" "password"))
+  (ldap/verify-password "cn=Nobody,ou=people,dc=metabase,dc=com" "password"))
 
 (expect-with-ldap-server
   ;; Login for regular users should also work
   true
-  (ldap/verify-password "cn=Sally Brown,ou=people,dc=example,dc=com" "1234"))
+  (ldap/verify-password "cn=Sally Brown,ou=people,dc=metabase,dc=com" "1234"))
 
 (expect-with-ldap-server
   ;; Login for regular users should also fail for the wrong password
   false
-  (ldap/verify-password "cn=Sally Brown,ou=people,dc=example,dc=com" "password"))
+  (ldap/verify-password "cn=Sally Brown,ou=people,dc=metabase,dc=com" "password"))
 
 (expect-with-ldap-server
   ;; Find by username should work (given the default LDAP filter and test fixtures)
-  {:dn         "cn=Sally Brown,ou=people,dc=example,dc=com"
+  {:dn         "cn=Sally Brown,ou=people,dc=metabase,dc=com"
    :first-name "Sally"
    :last-name  "Brown"
    :email      "sally.brown@example.com"
@@ -55,7 +55,7 @@
 
 (expect-with-ldap-server
   ;; Find by email should also work (also given our test setup)
-  {:dn         "cn=Sally Brown,ou=people,dc=example,dc=com"
+  {:dn         "cn=Sally Brown,ou=people,dc=metabase,dc=com"
    :first-name "Sally"
    :last-name  "Brown"
    :email      "sally.brown@example.com"
