@@ -64,21 +64,57 @@ export const getSelectedTableMetadata = createSelector(
 
 export const getCurrentFlowType = state => state.newQuestion.flow.type;
 
+const getGeoFieldFilter = (state) => {
+    const settings = state.newQuestion.card.visualization_settings;
+    return settings && MAP_FILTERS[settings["map.region"]] || (() => false);
+}
+
+export const getFieldFilterForFlow = createSelector(
+    [getCurrentFlowType, getGeoFieldFilter],
+    (flowType, isGeo) => {
+    switch (flowType) {
+        case "timeseries":
+            return isDate
+        case "geo":
+            return isGeo
+        default:
+            return () => true;
+    }
+});
+
 export const getBreakoutsForFlow = createSelector(
-    [getCurrentFlowType, getSelectedTable],
-    (flowType, selectedTable) => {
-        console.log(selectedTable);
-        const fields = Object.values(selectedTable.fields_lookup);
-        switch (flowType) {
-            case "timeseries":
-                return fields.filter(field => isDate(field));
-            case "map":
-                return fields.filter(field => isDate(field));
-            default:
-                return fields;
-        }
+    [getCurrentFlowType, getSelectedTable, getFieldFilterForFlow],
+    (flowType, selectedTable, fieldFilter) => {
+        return Object.values(selectedTable.fields_lookup).filter(fieldFilter);
     }
 );
+
+const MAP_FILTERS = {
+    "us_states": isState,
+    "world_countries": isCountry,
+}
+
+export const getTablesByMapType = createSelector(
+    [getFields],
+    (fields) => {
+        const tablesByMapType = {};
+        for (const fieldId in fields) {
+            const field = fields[fieldId];
+            for (const mapType in MAP_FILTERS) {
+                if (MAP_FILTERS[mapType](field)) {
+                    if (!tablesByMapType[mapType]) {
+                        tablesByMapType[mapType] = new Set
+                    }
+                    tablesByMapType[mapType].add(field.table_id);
+                }
+            }
+        }
+        for (const mapType in tablesByMapType) {
+            tablesByMapType[mapType] = Array.from(tablesByMapType[mapType]);
+        }
+        return tablesByMapType;
+    }
+)
 
 export const getSubtitle = state => {
     const subtitle = state.newQuestion.currentStep.subtitle;
@@ -95,10 +131,12 @@ export const breakoutsByCategory = state => {
         getSelectedTable(state)
     ].fields_lookup;
     const fields = Object.keys(rawFields).map(field => rawFields[field]);
+    const isMap = getGeoFieldFilter(state);
     return {
-        date: fields.filter(f => isDate(f)),
-        number: fields.filter(f => isNumber(f)),
-        category: fields.filter(f => isCategory(f))
+        date: fields.filter(isDate),
+        number: fields.filter(isNumber),
+        category: fields.filter(isCategory),
+        geo: fields.filter(isMap)
     };
 };
 
@@ -133,17 +171,18 @@ export const breakoutsForDisplay = state => {
             displayColor: normal.indigo,
             iconName: "label",
             show: () => flow === "metric"
+        },
+        {
+            display_name: "Map",
+            fields: categories["geo"],
+            displayColor: normal.indigo,
+            iconName: "label",
+            show: () => flow === "geo"
         }
     ];
 };
 
 import Query from "metabase/lib/query";
-
-const FIELD_FILTERS_BY_FLOW_TYPE = {
-    timeseries: isDate,
-    map: field => isCountry(field) || isState(field),
-    default: () => true
-};
 
 export const getFieldsForMetric = createSelector(
     [getCurrentFlowType],
@@ -166,7 +205,8 @@ export const getTablesForFlow = createSelector(
             switch (flowType) {
                 case "timeseries":
                     return isDate(field);
-                case "map":
+                case "geo":
+                    // TODO
                     return field;
                 default:
                     return field;
@@ -179,10 +219,8 @@ export const getTablesForFlow = createSelector(
 );
 
 export const getMetricsForCurrentFlow = createSelector(
-    [getCurrentFlowType, getMetrics, getTables, getFields],
-    (currentFlowType, metrics, tables, fields) => {
-        let fieldFilter = FIELD_FILTERS_BY_FLOW_TYPE[currentFlowType] ||
-            FIELD_FILTERS_BY_FLOW_TYPE["default"];
+    [getCurrentFlowType, getMetrics, getTables, getFields, getFieldFilterForFlow],
+    (currentFlowType, metrics, tables, fields, fieldFilter) => {
         return Object.values(metrics).filter(metric => {
             const tableMetadata = tables[metric.table_id];
             const fieldOptions = Query.getFieldOptions(

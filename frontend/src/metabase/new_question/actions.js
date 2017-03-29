@@ -139,18 +139,13 @@ export const selectMetricBreakout = createAction(
 );
 
 export const SELECT_METRIC = "SELECT_METRIC";
-export const selectMetric = createAction(SELECT_METRIC, ({
-    database_id,
-    table_id,
-    id
-}) => {
-    let card = startNewCard("query", database_id, table_id);
-    card.dataset_query.query.aggregation = [["METRIC", id]];
-    return card;
-});
+export const selectMetric = createAction(SELECT_METRIC);
 
 export const SET_AGGREGATION = "SET_AGGREGATION";
 export const setAggregation = createAction(SET_AGGREGATION);
 
 export const SET_TABLE = "SET_TABLE";
 export const setTable = createAction(SET_TABLE);
+
+export const SET_MAP = "metabase/new_question/SET_MAP";
+export const setMap = createAction(SET_MAP);
