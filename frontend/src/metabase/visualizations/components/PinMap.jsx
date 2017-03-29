@@ -2,7 +2,7 @@
 
 import React, { Component, PropTypes } from "react";
 
-import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { isZipCode, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
 import LeafletMarkerPinMap from "./LeafletMarkerPinMap.jsx";
@@ -14,6 +14,8 @@ import cx from "classnames";
 import L from "leaflet";
 
 import type { VisualizationProps } from "metabase/visualizations";
+
+import zipToCoordinates from "metabase/lib/zip-to-coordinates.json";
 
 type Props = VisualizationProps;
 
@@ -28,6 +30,15 @@ type State = {
 const MAP_COMPONENTS_BY_TYPE = {
     "markers": LeafletMarkerPinMap,
     "tiles": LeafletTilePinMap,
+}
+
+const padZip = (zip) => {
+    if (typeof zip === "string") {
+        return zip;
+    } else {
+        // meh, better than left-pad
+        return "00000".substring(0, 5 - String(zip).length) + zip;
+    }
 }
 
 export default class PinMap extends Component<*, Props, State> {
@@ -88,10 +99,20 @@ export default class PinMap extends Component<*, Props, State> {
         const { settings, series: [{ data: { cols, rows }}] } = props;
         const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
         const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
-        const points = rows.map(row => [
-            row[latitudeIndex],
-            row[longitudeIndex]
-        ]);
+        const latitudeColumn = cols[latitudeIndex];
+
+        let points;
+        if (isZipCode(latitudeColumn)) {
+            points = rows.map(row => zipToCoordinates[padZip(row[latitudeIndex])]).filter(c => c);
+            if (rows.length > points.length) {
+                console.warn(`Missing ${rows.length - points.length} ZIP codes.`);
+            }
+        } else {
+            points = rows.map(row => [
+                row[latitudeIndex],
+                row[longitudeIndex]
+            ]);
+        }
         const bounds = L.latLngBounds(points);
         return { points, bounds };
     }

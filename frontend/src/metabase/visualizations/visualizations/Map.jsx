@@ -6,7 +6,7 @@ import ChoroplethMap from "../components/ChoroplethMap.jsx";
 import PinMap from "../components/PinMap.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { isNumeric, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { isNumeric, isLatitude, isLongitude, isZipCode } from "metabase/lib/schema_metadata";
 import { metricSetting, dimensionSetting, fieldSetting } from "metabase/visualizations/lib/settings";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -45,7 +45,9 @@ export default class Map extends Component<*, VisualizationProps, *> {
                     case "pin_map":
                         return "pin";
                     default:
-                        if (hasLatitudeAndLongitudeColumns(cols)) {
+                        if (_.any(cols, isLongitude) && _.any(cols, isLatitude)) {
+                            return "pin";
+                        } else if (_.any(cols, isZipCode)) {
                             return "pin";
                         } else {
                             return "region";
@@ -54,16 +56,25 @@ export default class Map extends Component<*, VisualizationProps, *> {
             }
         },
         "map.latitude_column": {
-            title: "Latitude field",
+            title: "Latitude or ZIP Code field",
             ...fieldSetting("map.latitude_column", isNumeric,
-                ([{ data: { cols }}]) => (_.find(cols, isLatitude) || {}).name),
+                ([{ data: { cols }}]) =>
+                    (_.find(cols, isLatitude) || {}).name ||
+                    (_.find(cols, isZipCode) || {}).name
+            ),
             getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
         },
         "map.longitude_column": {
             title: "Longitude field",
             ...fieldSetting("map.longitude_column", isNumeric,
-                ([{ data: { cols }}]) => (_.find(cols, isLongitude) || {}).name),
-            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+                ([{ data: { cols }}]) =>
+                    (_.find(cols, isLongitude) || {}).name
+                ),
+            getHidden: ([{ data: { cols }}], vizSettings) =>
+                vizSettings["map.type"] !== "pin" ||
+                (vizSettings["map.latitude_column"] &&
+                    isZipCode(_.findWhere(cols, { name: vizSettings["map.latitude_column"] }))),
+            readDependencies: ["map.type", "map.latitude_column"]
         },
         "map.region": {
             title: "Region map",
@@ -107,14 +118,17 @@ export default class Map extends Component<*, VisualizationProps, *> {
             props: {
                 options: [{ name: "Tiles", value: "tiles" }, { name: "Markers", value: "markers" }]
             },
-            getDefault: (series) => series[0].data.rows.length >= 1000 ? "tiles" : "markers",
+            getDefault: (series) => series[0].data.rows.length > 1000 ? "tiles" : "markers",
             getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
         }
     }
 
     static checkRenderable([{ data: { cols, rows} }], settings) {
         if (settings["map.type"] === "pin") {
-            if (!settings["map.longitude_column"] || !settings["map.latitude_column"]) {
+            let latColumn = settings["map.latitude_column"] && _.findWhere(cols, { name: settings["map.latitude_column"] });
+            let lonColumn = settings["map.longitude_column"] && _.findWhere(cols, { name: settings["map.longitude_column"] });
+            if (isZipCode(latColumn)) {
+            } else if (!latColumn || !lonColumn){
                 throw new ChartSettingsError("Please select longitude and latitude columns in the chart settings.", "Data");
             }
         } else if (settings["map.type"] === "region"){
