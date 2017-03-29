@@ -54,8 +54,8 @@
 (defn sybase
   "Create a database specification for a sybase database. Opts should include keys
   for :db, :user, and :password. You can also optionally set host and port."
-  [{:keys [user password db host port]
-    :or {user "dbuser", password "dbpassword", db "", host "localhost", port 5000}
+  [{:keys [user password db host port params]
+    :or {user "dbuser", password "dbpassword", db "", host "localhost", port 5000, params ""}
     :as opts}]
   (merge {:classname "net.sourceforge.jtds.jdbc.Driver" ; must be in classpath
           :subprotocol "sybase"
