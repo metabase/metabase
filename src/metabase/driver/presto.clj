@@ -13,7 +13,7 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
-  (:import (java.util Date)
+  (:import java.util.Date
            (metabase.query_processor.interface DateTimeValue Value)))
 
 
@@ -26,42 +26,39 @@
 (defn- details->headers [{:keys [user catalog report-timezone]}]
   (merge {"X-Presto-Source" "metabase"
           "X-Presto-User"   user}
-         (when-not (nil? catalog)
+         (when catalog
            {"X-Presto-Catalog" catalog})
-         (when-not (nil? report-timezone)
+         (when report-timezone
            {"X-Presto-Time-Zone" report-timezone})))
 
-(defn- parse-time-str [s]
-  (.parse (java.text.SimpleDateFormat. "HH:mm:ss.SSS") s))
+(defn- parse-time-with-tz [s]
+  ;; Try parsing with offset first then with full ZoneId
+  (or (u/ignore-exceptions (u/parse-date "HH:mm:ss.SSS ZZ" s))
+      (u/parse-date "HH:mm:ss.SSS ZZZ" s)))
 
-(defn- parse-time-with-tz-str [s]
-  (.parse (java.text.SimpleDateFormat. "HH:mm:ss.SSS z") s))
-
-(defn- parse-timestamp-str [s]
-  (.parse (java.text.SimpleDateFormat. "yyyy-MM-dd HH:mm:ss.SSS") s))
-
-(defn- parse-timestamp-with-tz-str [s]
-  (.parse (java.text.SimpleDateFormat. "yyyy-MM-dd HH:mm:ss.SSS z") s))
+(defn- parse-timestamp-with-tz [s]
+  ;; Try parsing with offset first then with full ZoneId
+  (or (u/ignore-exceptions (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
+      (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
 
 (defn- field-type->parser [field-type]
   (case field-type
-    "date"                     u/->Timestamp
-    "time"                     (comp u/->Timestamp parse-time-str)
-    "time with time zone"      (comp u/->Timestamp parse-time-with-tz-str)
-    "timestamp"                (comp u/->Timestamp parse-timestamp-str)
-    "timestamp with time zone" (comp u/->Timestamp parse-timestamp-with-tz-str)
+    "time"                     (partial u/parse-date :hour-minute-second-ms)
+    "time with time zone"      parse-time-with-tz
+    "timestamp"                (partial u/parse-date "yyyy-MM-dd HH:mm:ss.SSS")
+    "timestamp with time zone" parse-timestamp-with-tz
     identity))
 
 (defn- parse-presto-results [columns data]
   (let [parsers (map (comp field-type->parser :type) columns)]
     (for [row data]
       (for [[value parser] (partition 2 (interleave row parsers))]
-        (when-not (nil? value)
+        (when value
           (parser value))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
   (let [{{:keys [columns data nextUri error]} :body} (http/get uri {:headers (details->headers details), :as :json})]
-    (when-not (nil? error)
+    (when error
       (throw (ex-info (or (:message error) "Error running query.") error)))
     (let [rows    (parse-presto-results columns data)
           results {:columns (or columns prev-columns)
@@ -74,7 +71,7 @@
 (defn- execute-presto-query! [details query]
   (let [{{:keys [columns data nextUri error]} :body} (http/post (details->uri details "/v1/statement")
                                                                 {:headers (details->headers details), :body query, :as :json})]
-    (when-not (nil? error)
+    (when error
       (throw (ex-info (or (:message error) "Error preparing query.") error)))
     (let [rows    (parse-presto-results (or columns []) (or data []))
           results {:columns (or columns [])
@@ -87,7 +84,6 @@
 ;;; Generic helpers
 
 (defn- quote-name [nm]
-  ;; Not sure if this is provided somewhere
   (str \" (str/replace nm "\"" "\"\"") \"))
 
 (defn- quote+combine-names [& names]
@@ -132,13 +128,15 @@
   (let [sql            (str "SHOW TABLES FROM " (quote+combine-names catalog schema))
         {:keys [rows]} (execute-presto-query! details sql)
         tables         (map first rows)]
-    (set (map (fn [name] {:name name, :schema schema}) tables))))
+    (set (for [name tables]
+           {:name name, :schema schema}))))
 
 (defn- describe-database [{{:keys [catalog] :as details} :details :as database}]
   (let [sql            (str "SHOW SCHEMAS FROM " (quote-name catalog))
         {:keys [rows]} (execute-presto-query! details sql)
         schemas        (remove #{"information_schema"} (map first rows))] ; inspecting "information_schema" breaks weirdly
-    {:tables (apply set/union (map (fn [name] (describe-schema database {:schema name})) schemas))}))
+    {:tables (apply set/union (for [name schemas]
+                                (describe-schema database {:schema name})))}))
 
 (defn- presto-type->base-type [field-type]
   (condp re-matches field-type
@@ -166,7 +164,8 @@
         {:keys [rows]} (execute-presto-query! details sql)]
     {:schema schema
      :name   table-name
-     :fields (set (map (fn [[name type]] {:name name, :base-type (presto-type->base-type type)}) rows))}))
+     :fields (set (for [[name type] rows]
+                    {:name name, :base-type (presto-type->base-type type)}))}))
 
 (defprotocol ^:private IPrepareValue
   (^:private prepare-value [this]))
@@ -219,10 +218,9 @@
 (defn- table-rows-seq [{:keys [details]} {:keys [schema name]}]
   (let [sql                        (format "SELECT * FROM %s" (quote+combine-names schema name))
         {:keys [rows], :as result} (execute-presto-query! details sql)
-        columns                    (map (comp keyword :name) (:columns result))
-        fn-zipcols                 (partial zipmap columns)]
+        columns                    (map (comp keyword :name) (:columns result))]
     (for [row rows]
-      (fn-zipcols row))))
+      (zipmap columns row))))
 
 
 ;;; ISQLDriver implementation
@@ -303,6 +301,10 @@
                                                            :display-name "Database username"
                                                            :placeholder  "What username do you use to login to the database"
                                                            :default      "metabase"}
+                                                          {:name         "password"
+                                                           :display-name "Database password"
+                                                           :type         :password
+                                                           :placeholder  "*******"}
                                                           {:name         "ssl"
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean

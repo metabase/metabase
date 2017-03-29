@@ -7,8 +7,8 @@
             [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
-  (:import (java.util Date)
-           (metabase.driver.presto PrestoDriver)
+  (:import java.util.Date
+           metabase.driver.presto.PrestoDriver
            (metabase.query_processor.interface DateTimeValue Value)))
 
 (resolve-private-vars metabase.driver.presto execute-presto-query! presto-type->base-type quote-name quote+combine-names unprepare)
@@ -32,7 +32,7 @@
            {:catalog database-name})))
 
 (defn- qualify-name
-  ;; wehave to use the default schema from H2
+  ;; we have to use the default schema from the in-memory connectory
   ([db-name]                       [db-name])
   ([db-name table-name]            [db-name "default" table-name])
   ([db-name table-name field-name] [db-name "default" table-name field-name]))
@@ -86,10 +86,10 @@
             :let [rows       (:rows tabledef)
                   keyed-rows (map-indexed (fn [i row] (conj row (inc i))) rows) ; generate an ID for each row because we don't have auto increments
                   batches    (partition 100 100 nil keyed-rows)]]               ; make 100 rows batches since we have to inline everything
-      (do (execute-presto-query! details (drop-table-if-exists-sql dbdef tabledef))
-          (execute-presto-query! details (create-table-sql dbdef tabledef))
-          (doseq [batch batches]
-            (execute-presto-query! details (insert-sql dbdef tabledef batch)))))))
+      (execute-presto-query! details (drop-table-if-exists-sql dbdef tabledef))
+      (execute-presto-query! details (create-table-sql dbdef tabledef))
+      (doseq [batch batches]
+        (execute-presto-query! details (insert-sql dbdef tabledef batch))))))
 
 
 ;;; IDatasetLoader implementation
