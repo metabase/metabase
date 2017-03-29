@@ -48,7 +48,7 @@
     :xml              :type/*
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
-(defn- connection-details->spec [{:keys [domain instance ssl], :as details}]
+(defn- connection-details->spec [{:keys [domain instance ssl params], :as details}]
   (-> ;; Having the `:ssl` key present, even if it is `false`, will make the driver attempt to connect with SSL
       (dbspec/sybase (if ssl
                       details
@@ -68,6 +68,9 @@
 
                            ;; If SSL is specified append ;ssl=require, which enables SSL and throws exception if SSL connection cannot be made
                            ssl (str ";ssl=require"))))))
+
+                           ;; One can specify additional params
+                           (seq params) (str ";" + params))))))
 
 (defn- date-part [unit expr]
   (hsql/call :datepart (hsql/raw (name unit)) expr))
@@ -164,7 +167,12 @@
                                        {:name         "ssl"
                                         :display-name "Use a secure connection (SSL)?"
                                         :type         :boolean
-                                        :default      false}])})
+                                        :default      false}
+                                        {:name         "params"
+                                        :display-name "Additional params for driver"
+                                        :type         :boolean
+                                        :default      false}
+                                       ])})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
