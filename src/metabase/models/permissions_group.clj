@@ -68,8 +68,9 @@
 
 (defn- pre-delete [{id :id, :as group}]
   (check-not-magic-group group)
-  (db/delete! 'Permissions                :group_id id)
-  (db/delete! 'PermissionsGroupMembership :group_id id))
+  (db/delete! 'Permissions                 :group_id id)
+  (db/delete! 'PermissionsGroupMembership  :group_id id)
+  (db/delete! 'PermissionsGroupLdapMapping :group_id id))
 
 (defn- pre-update [{group-name :name, :as group}]
   (u/prog1 group

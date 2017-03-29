@@ -1,7 +1,6 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [cemerick.friend.credentials :as creds]
             [cheshire.core :as json]
             [clj-http.client :as http]
@@ -52,7 +51,7 @@
    password su/NonBlankString}
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :username)   username)
-  ;; Primitive "strategy implementation", should be reworked for #3210
+  ;; Primitive "strategy implementation", should be reworked for modular providers in #3210
   (or
     ;; First try LDAP if it's enabled
     (when (ldap/ldap-configured?)
@@ -75,7 +74,6 @@
     ;; Don't leak whether the account doesn't exist or the password was incorrect
     (throw (ex-info "Password did not match stored password." {:status-code 400
                                                                :errors      {:password "did not match stored password"}}))))
-
 
 (defendpoint DELETE "/"
   "Logout."

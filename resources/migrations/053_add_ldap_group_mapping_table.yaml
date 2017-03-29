@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 53
+      author: wwwiiilll
+      changes:
+        - createTable:
+            tableName: permissions_group_ldap_mapping
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: permissions_group(id)
+                    foreignKeyName: fk_permissions_group_ldap_mapping_group_id
+              - column:
+                  name: ldap_dn
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: permissions_group_ldap_mapping
+            columnNames: group_id, ldap_dn
+            constraintName: unique_permissions_group_ldap_mapping_group_id_ldap_dn
+        - createIndex:
+            tableName: permissions_group_ldap_mapping
+            indexName: idx_permissions_group_ldap_mapping_ldap_dn
+            columns:
+              column:
+                name: ldap_dn

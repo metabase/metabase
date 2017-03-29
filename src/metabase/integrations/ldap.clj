@@ -105,7 +105,7 @@
         :bind-dn  \"cn=Directory Manager\"
         :password \"password\"
         :security \"none\"
-        :base     \"ou=people,dc=metabase,dc=com\"}"
+        :base     \"ou=People,dc=metabase,dc=com\"}"
   [{:keys [base], :as details}]
   (try
     (with-open [conn (ldap/connect (details->ldap-options details))]
