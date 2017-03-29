@@ -88,7 +88,9 @@
                     description        :- (s/maybe su/NonBlankString)
                     parent-id          :- (s/maybe su/IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
-                    parent             :- s/Any]
+                    parent             :- s/Any
+                    min-value          :- (s/maybe s/Num)
+                    max-value          :- (s/maybe s/Num)]
   clojure.lang.Named
   (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 
