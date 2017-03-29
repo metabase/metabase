@@ -13,6 +13,7 @@ import { getTemplateTags } from "./Card";
 import { slugify, stripId } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { TYPE, isa } from "metabase/lib/types";
+import { mbqlEq } from "metabase/lib/query/util";
 
 import _ from "underscore";
 
@@ -140,7 +141,7 @@ export function getCardDimensions(metadata: Metadata, card: Card, filter: FieldF
     } else if (card.dataset_query.type === "native") {
         let dimensions = [];
         for (const tag of getTemplateTags(card)) {
-            if (tag.type === "dimension" && Array.isArray(tag.dimension) && tag.dimension[0] === "field-id") {
+            if (tag.type === "dimension" && Array.isArray(tag.dimension) && mbqlEq(tag.dimension[0], "field-id")) {
                 const field = metadata.field(tag.dimension[1]);
                 if (field && filter(field)) {
                     let fieldDimension = getFieldDimension(field);
@@ -154,7 +155,7 @@ export function getCardDimensions(metadata: Metadata, card: Card, filter: FieldF
 }
 
 function getDimensionTargetFieldId(target: DimensionTarget): ?FieldId {
-    if (Array.isArray(target) && target[0] === "template-tag") {
+    if (Array.isArray(target) && mbqlEq(target[0], "template-tag")) {
         return null;
     } else {
         return Query.getFieldTargetId(target);
@@ -202,7 +203,7 @@ export function getCardVariables(metadata: Metadata, card: Card, filter: Templat
 export function getParameterMappingTargetField(metadata: Metadata, card: Card, target: ParameterMappingTarget): ?Field {
     if (target[0] === "dimension") {
         let dimension = target[1];
-        if (Array.isArray(dimension) && dimension[0] === "template-tag") {
+        if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
             if (card.dataset_query.type === "native") {
                 let templateTag = card.dataset_query.native.template_tags[String(dimension[1])];
                 if (templateTag && templateTag.type === "dimension") {

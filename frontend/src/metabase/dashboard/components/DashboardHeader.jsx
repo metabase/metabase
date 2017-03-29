@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-import DashboardShareWidget from "../containers/DashboardShareWidget";
+import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
 import ParametersPopover from "./parameters/ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -134,6 +134,7 @@ export default class DashboardHeader extends Component {
         const canEdit = isEditable && !!dashboard;
 
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
+        const isEmbeddingEnabled = MetabaseSettings.get("embedding");
 
         const buttons = [];
 
@@ -228,9 +229,12 @@ export default class DashboardHeader extends Component {
             );
         }
 
-        if (!isFullscreen && isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) {
+        if (!isFullscreen && (
+            (isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
+            (isEmbeddingEnabled && isAdmin)
+        )) {
             buttons.push(
-                <DashboardShareWidget dashboard={dashboard} isAdmin={isAdmin} />
+                <DashboardEmbedWidget dashboard={dashboard} />
             )
         }
 

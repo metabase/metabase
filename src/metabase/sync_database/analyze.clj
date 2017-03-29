@@ -175,6 +175,9 @@
        (test:json-special-type  driver field)
        (test:email-special-type driver field)))
 
+;; TODO - It's weird that this one function requires other functions as args when the whole rest of the Metabase driver system
+;;        is built around protocols and record types. These functions should be put back in the `IDriver` protocol (where they
+;;        were originally) or in a special `IAnalyzeTable` protocol).
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
   {:style/indent 1}

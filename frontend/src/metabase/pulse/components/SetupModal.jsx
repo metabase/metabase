@@ -2,7 +2,6 @@
 import React, { Component, PropTypes } from "react";
 
 import SetupMessage from "./SetupMessage.jsx";
-
 import ModalContent from "metabase/components/ModalContent.jsx";
 
 export default class SetupModal extends Component {
@@ -15,11 +14,9 @@ export default class SetupModal extends Component {
         return (
             <ModalContent
                 onClose={this.props.onClose}
+                title={`To send pulses, ${ this.props.user.is_superuser ? "you'll need" : "an admin needs"} to set up email or Slack integration.`}
             >
-                <div className="mx4 px4 pb4 text-centered">
-                    <h2>To send pulses, an admin needs to set up email or Slack integration.</h2>
-                    <SetupMessage user={this.props.user} />
-                </div>
+                <SetupMessage user={this.props.user} />
             </ModalContent>
         );
     }

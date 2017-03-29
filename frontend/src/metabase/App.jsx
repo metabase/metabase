@@ -23,7 +23,8 @@ export default class App extends Component {
                 <Navbar location={location} className="flex-no-shrink" />
                 { errorPage && errorPage.status === 403 ?
                     <Unauthorized />
-                : errorPage && errorPage.status === 404 ?
+                : errorPage ?
+                    // TODO: different error page for non-404 errors
                     <NotFound />
                 :
                     children

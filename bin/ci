@@ -45,6 +45,7 @@ node-5() {
     run_step lein eastwood
     run_step yarn run lint
     run_step yarn run test
+    run_step yarn run test-jest
     run_step yarn run flow
 }
 node-6() {

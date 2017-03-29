@@ -76,20 +76,17 @@
       fields
       (recur more-keys (update fields k (partial update-field-attrs (k field-value)))))))
 
-(defn- safe-inc [n]
-  (inc (or n 0)))
-
 (defn- update-field-attrs [field-value field-def]
   (-> field-def
-      (update :count safe-inc)
+      (update :count u/safe-inc)
       (update :len #(if (string? field-value)
                       (+ (or % 0) (count field-value))
                       %))
       (update :types (fn [types]
-                       (update types (type field-value) safe-inc)))
+                       (update types (type field-value) u/safe-inc)))
       (update :special-types (fn [special-types]
                                (if-let [st (val->special-type field-value)]
-                                 (update special-types st safe-inc)
+                                 (update special-types st u/safe-inc)
                                  special-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)

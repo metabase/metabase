@@ -58,3 +58,4 @@ WHERE True
 
 ## That’s it!
 If you still have questions, or want to share Metabase tips and tricks, head over to our [discussion board](http://discourse.metabase.com/). See you there!
+

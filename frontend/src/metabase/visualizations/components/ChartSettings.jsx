@@ -142,6 +142,7 @@ class ChartSettings extends Component {
                                 className="spread"
                                 series={series}
                                 isEditing
+                                showTitle
                                 isDashboard
                                 showWarnings
                                 onUpdateVisualizationSettings={this.onChangeSettings}

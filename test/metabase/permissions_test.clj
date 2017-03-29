@@ -679,9 +679,9 @@
 
 ;; admin should see all 3
 (expect-with-test-data
-  ["DB 1 Count of Venues"
-   "DB 2 Count of Venues"
-   "DB 2 Count of Users"]
+ ["DB 1 Count of Venues"
+  "DB 2 Count of Users"
+  "DB 2 Count of Venues"]
   (GET-metric :crowberto))
 
 ;; regular should only see metric for DB 1

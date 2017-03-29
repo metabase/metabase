@@ -60,7 +60,10 @@ function _init(reducers, getRoutes, callback) {
     });
 
     // received a 401 response
-    api.on("401", () => {
+    api.on("401", (url) => {
+        if (url === "/api/user/current") {
+            return
+        }
         store.dispatch(push("/auth/login"));
     });
 
