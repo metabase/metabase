@@ -29,7 +29,7 @@ export const toUnderlyingRecords = (card: Card): Card => {
     return newCard;
 };
 
-const getFieldClauseFromCol = col => {
+export const getFieldClauseFromCol = col => {
     if (col.fk_field_id != null) {
         return ["fk->", col.fk_field_id, col.id];
     } else {
@@ -103,6 +103,27 @@ const drillFilter = (card, value, column) => {
 
 const UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year"];
 
+export const drillDownForDimensions = dimensions => {
+    const timeDimensions = dimensions.filter(
+        dimension => dimension.column.unit
+    );
+    if (timeDimensions.length === 1) {
+        const column = timeDimensions[0].column;
+        let nextUnit = UNITS[Math.max(0, UNITS.indexOf(column.unit) - 1)];
+        if (nextUnit) {
+            return {
+                name: nextUnit,
+                breakout: [
+                    "datetime-field",
+                    getFieldClauseFromCol(column),
+                    "as",
+                    nextUnit
+                ]
+            };
+        }
+    }
+};
+
 export const drillTimeseriesFilter = (card, value, column) => {
     const newCard = drillFilter(card, value, column);
 
@@ -118,8 +139,11 @@ export const drillTimeseriesFilter = (card, value, column) => {
     return newCard;
 };
 
-export const drillUnderlyingRecords = (card, value, column) => {
-    return toUnderlyingRecords(drillFilter(card, value, column));
+export const drillUnderlyingRecords = (card, dimensions) => {
+    for (const dimension of dimensions) {
+        card = drillFilter(card, dimension.value, dimension.column);
+    }
+    return toUnderlyingRecords(card);
 };
 
 export const drillRecord = (databaseId, tableId, fieldId, value) => {
@@ -150,42 +174,29 @@ export const summarize = (card, aggregation, tableMetadata) => {
     return newCard;
 };
 
-import { Value, Column } from "metabase/meta/types/Dataset";
-
-type DrillClick = {
-    value: Value,
-    column: Column,
-    metricValue?: Value,
-    metricColumn?: Column,
-    event?: MouseEvent,
-    element?: HTMLElement
-};
-
 export const pivot = (
     card: Card,
     breakout,
     tableMetadata: TableMetadata,
-    clicked: ?DrillClick
+    dimensions: DimensionValue[] = []
 ): Card => {
-    let newCard;
+    let newCard = startNewCard("query");
+    newCard.dataset_query = card.dataset_query;
 
-    if (clicked) {
-        newCard = drillFilter(card, clicked.value, clicked.column);
+    for (const dimension of dimensions) {
+        newCard = drillFilter(newCard, dimension.value, dimension.column);
         const breakoutFields = Query.getBreakoutFields(
             newCard.dataset_query.query,
             tableMetadata
         );
         for (const [index, field] of breakoutFields.entries()) {
-            if (field && field.id === clicked.column.id) {
+            if (field && field.id === dimension.column.id) {
                 newCard.dataset_query.query = Query.removeBreakout(
                     newCard.dataset_query.query,
                     index
                 );
             }
         }
-    } else {
-        newCard = startNewCard("query");
-        newCard.dataset_query = card.dataset_query;
     }
 
     newCard.dataset_query.query = Query.addBreakout(

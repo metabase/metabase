@@ -42,6 +42,16 @@ export default class TimeseriesGroupingWidget extends Component {
                             runQueryFn();
                             this._popover.close();
                         }}
+                        title={null}
+                        groupingOptions={[
+                            "minute",
+                            "hour",
+                            "day",
+                            "week",
+                            "month",
+                            "quarter",
+                            "year"
+                        ]}
                     />
                 </PopoverWithTrigger>
             );

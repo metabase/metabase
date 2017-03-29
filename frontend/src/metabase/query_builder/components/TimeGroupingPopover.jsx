@@ -36,6 +36,7 @@ export default class TimeGroupingPopover extends Component {
     };
 
     static defaultProps = {
+        title: "Group time by",
         groupingOptions: [
             // "default",
             "minute",
@@ -61,11 +62,13 @@ export default class TimeGroupingPopover extends Component {
     }
 
     render() {
-        const { field, className } = this.props;
-        const enabledOptions = new Set(this.props.groupingOptions);
+        const { title, field, className, groupingOptions } = this.props;
+        const enabledOptions = new Set(groupingOptions);
         return (
-            <div className={cx(className, "px2 pt2 pb1")} style={{width:"250px"}}>
-                <h3 className="List-section-header mx2">Group time by</h3>
+            <div className={cx(className, "px2 py1")} style={{width:"250px"}}>
+                { title &&
+                    <h3 className="List-section-header pt1 mx2">{title}</h3>
+                }
                 <ul className="py1">
                 { BUCKETINGS.filter(o => o == null || enabledOptions.has(o)).map((bucketing, bucketingIndex) =>
                     bucketing == null ?

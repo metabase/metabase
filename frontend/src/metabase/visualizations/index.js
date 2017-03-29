@@ -38,7 +38,7 @@ export type ClickObject = {
     element?: HTMLElement,
 }
 
-export type DrillAction = {
+export type ClickAction = {
     title: any,
     popover?: any,
     card?: Card | () => Card

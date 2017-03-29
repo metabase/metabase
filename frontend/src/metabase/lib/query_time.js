@@ -169,13 +169,22 @@ export function parseFieldBucketing(field, defaultUnit = null) {
     return defaultUnit;
 }
 
+// returns field with "datetime-field" removed
 export function parseFieldTarget(field) {
+    if (mbqlEq(field[0], "datetime-field")) {
+        return field[1];
+    } else {
+        return field;
+    }
+}
+
+export function parseFieldTargetId(field) {
     if (Number.isInteger(field)) return field;
 
     if (Array.isArray(field)) {
         if (mbqlEq(field[0], "field-id"))       return field[1];
         if (mbqlEq(field[0], "fk->"))           return field[1];
-        if (mbqlEq(field[0], "datetime-field")) return parseFieldTarget(field[1]);
+        if (mbqlEq(field[0], "datetime-field")) return parseFieldTargetId(field[1]);
     }
 
     console.warn("Unknown field format", field);

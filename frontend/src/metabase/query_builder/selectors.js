@@ -6,7 +6,7 @@ import { getTemplateTags } from "metabase/meta/Card";
 import { getTemplateTagParameters } from "metabase/meta/Parameter";
 
 import { isCardDirty, isCardRunnable } from "metabase/lib/card";
-import { parseFieldTarget } from "metabase/lib/query_time";
+import { parseFieldTargetId } from "metabase/lib/query_time";
 import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
@@ -116,7 +116,7 @@ export const isObjectDetail = createSelector(
                     if (Array.isArray(filter) &&
                             filter.length === 3 &&
                             filter[0] === "=" &&
-                               parseFieldTarget(filter[1]) === pkField &&
+                               parseFieldTargetId(filter[1]) === pkField &&
                             filter[2] !== null) {
                         // well, all of our conditions have passed so we have an object detail query here
                         response = true;

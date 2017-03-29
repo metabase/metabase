@@ -5,7 +5,7 @@ import React, { Component, PropTypes, Element } from "react";
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip.jsx";
-import ChartDrillThrough from "metabase/visualizations/components/ChartDrillThrough.jsx";
+import ChartClickActions from "metabase/visualizations/components/ChartClickActions.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -178,14 +178,18 @@ export default class Visualization extends Component<*, Props, State> {
         this.setState({ hovered });
     }
 
+    visualizationIsClickable = (clicked: ClickObject) => {
+        return true; // TODO;
+    }
+
     handleVisualizationClick = (clicked: ClickObject) => {
         // needs to be delayed so we don't clear it when switching from one drill through to another
         setTimeout(() => {
             const { onChangeCardAndRun } = this.props;
-            let drillActions = this.getDrillActions(clicked);
+            let clickActions = this.getClickActions(clicked);
             // if there's a single drill action (without a popover) execute it immediately
-            if (drillActions.length === 1 && drillActions[0].card) {
-                onChangeCardAndRun(drillActions[0].card());
+            if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
+                onChangeCardAndRun(clickActions[0].card());
             } else {
                 this.setState({ clicked });
             }
@@ -200,7 +204,7 @@ export default class Visualization extends Component<*, Props, State> {
         this.setState({ error })
     }
 
-    getDrillActions(clicked) {
+    getClickActions(clicked) {
         const { mode, series, tableMetadata } = this.props;
         if (clicked && mode && mode.getDrills) {
             return mode.getDrills()
@@ -217,8 +221,8 @@ export default class Visualization extends Component<*, Props, State> {
 
         let { hovered, clicked } = this.state;
 
-        const drillActions = this.getDrillActions(clicked);
-        if (drillActions.length > 0) {
+        const clickActions = this.getClickActions(clicked);
+        if (clickActions.length > 0) {
             hovered = null;
         }
 
@@ -360,6 +364,7 @@ export default class Visualization extends Component<*, Props, State> {
                         hovered={hovered}
                         onHoverChange={this.handleHoverChange}
                         onVisualizationClick={this.handleVisualizationClick}
+                        visualizationIsClickable={this.visualizationIsClickable}
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
                         gridSize={gridSize}
@@ -370,9 +375,9 @@ export default class Visualization extends Component<*, Props, State> {
                     series={series}
                     hovered={hovered}
                 />
-                <ChartDrillThrough
+                <ChartClickActions
                     clicked={clicked}
-                    drillActions={drillActions}
+                    clickActions={clickActions}
                     onChangeCardAndRun={this.props.onChangeCardAndRun}
                     onClose={() => this.setState({ clicked: null })}
                 />

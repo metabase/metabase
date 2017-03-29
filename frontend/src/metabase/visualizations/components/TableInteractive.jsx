@@ -79,7 +79,8 @@ export default class TableInteractive extends Component<*, Props, State> {
     };
 
     static defaultProps = {
-        isPivoted: false
+        isPivoted: false,
+        visualizationIsClickable: () => false,
     };
 
     componentWillMount() {
@@ -223,10 +224,37 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-        const { data: { cols, rows }, onVisualizationClick} = this.props;
+        const { data: { cols, rows }, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
         const column = cols[columnIndex];
-        const value = rows[rowIndex][columnIndex];
-        const isClickable = onVisualizationClick && column.source !== "aggregation"
+        const row = rows[rowIndex];
+        const value = row[columnIndex];
+
+        let clicked;
+        if (isPivoted) {
+            // if it's a pivot table, the first column is
+            if (columnIndex === 0) {
+                clicked = row._dimension;
+            } else {
+                clicked = {
+                    value,
+                    column,
+                    dimensions: [row._dimension, column._dimension]
+                };
+            }
+        } else if (column.source === "aggregation") {
+            clicked = {
+                value,
+                column,
+                dimensions: cols
+                    .map((column, index) => ({ value: row[index], column }))
+                    .filter(dimension => dimension.column.source === "breakout")
+            };
+        } else {
+            clicked = { value, column };
+        }
+
+        const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+
         return (
             <div
                 key={key} style={style}
@@ -235,11 +263,7 @@ export default class TableInteractive extends Component<*, Props, State> {
                     "cursor-pointer": isClickable
                 })}
                 onClick={isClickable && ((e) => {
-                    onVisualizationClick({
-                        value: value,
-                        column: column,
-                        element: e.currentTarget
-                    })
+                    onVisualizationClick({ ...clicked, element: e.currentTarget });
                 })}
             >
                 <Value className="link" value={value} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
@@ -248,7 +272,7 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-        const { sort, data: { cols }} = this.props;
+        const { sort, data: { cols }, onVisualizationClick, visualizationIsClickable } = this.props;
         const isSortable = this.isSortable();
         const column = cols[columnIndex];
 
@@ -260,6 +284,18 @@ export default class TableInteractive extends Component<*, Props, State> {
             columnTitle = "Unset";
         }
 
+        let clicked;
+        if (this.props.isPivoted) {
+            // if it's a pivot table, the first column is
+            if (columnIndex >= 0) {
+                clicked = column._dimension;
+            }
+        } else {
+            clicked = { column };
+        }
+
+        const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+
         return (
             <div
                 key={key}
@@ -270,8 +306,10 @@ export default class TableInteractive extends Component<*, Props, State> {
                 })}
             >
                 <div
-                    className={cx("cellData", { "cursor-pointer": isSortable })}
-                    onClick={isSortable && this.setSort.bind(this, column)}
+                    className={cx("cellData", { "cursor-pointer": isClickable })}
+                    onClick={isClickable && ((e) => {
+                        onVisualizationClick({ ...clicked, element: e.currentTarget });
+                    })}
                 >
                     {columnTitle}
                     {isSortable &&

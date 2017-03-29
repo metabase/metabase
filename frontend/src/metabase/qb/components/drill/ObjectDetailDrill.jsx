@@ -42,6 +42,7 @@ export default ({ card, tableMetadata, clicked }) => {
                 </span>
             </span>
         ),
+        default: true,
         card: () =>
             drillRecord(tableMetadata.db_id, table.id, field.id, clicked.value)
     };

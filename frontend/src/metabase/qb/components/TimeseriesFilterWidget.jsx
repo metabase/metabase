@@ -15,6 +15,7 @@ import * as Card from "metabase/meta/Card";
 
 import {
     parseFieldTarget,
+    parseFieldTargetId,
     generateTimeFilterValuesDescriptions
 } from "metabase/lib/query_time";
 
@@ -31,7 +32,10 @@ export default class TimeseriesFilterWidget extends Component {
         const query = Card.getQuery(nextProps.card);
         const breakouts = Query.getBreakouts(query);
         const filters = Query.getFilters(query);
-        const timeFieldId = parseFieldTarget(breakouts[0]);
+
+        const timeFieldId = parseFieldTargetId(breakouts[0]);
+        const timeField = parseFieldTarget(breakouts[0]);
+
         const filterIndex = _.findIndex(
             filters,
             filter =>
@@ -43,8 +47,9 @@ export default class TimeseriesFilterWidget extends Component {
         if (filterIndex >= 0) {
             filter = (currentFilter = filters[filterIndex]);
         } else {
-            filter = ["BETWEEN", timeFieldId];
+            filter = ["BETWEEN", timeField];
         }
+
         this.setState({ filter, filterIndex, currentFilter });
     }
 
@@ -58,6 +63,7 @@ export default class TimeseriesFilterWidget extends Component {
         } = this.props;
         const { filter, filterIndex, currentFilter } = this.state;
         let currentDescription;
+
         if (currentFilter) {
             currentDescription = generateTimeFilterValuesDescriptions(
                 currentFilter
@@ -70,6 +76,7 @@ export default class TimeseriesFilterWidget extends Component {
         } else {
             currentDescription = "All Time";
         }
+
         return (
             <PopoverWithTrigger
                 triggerElement={

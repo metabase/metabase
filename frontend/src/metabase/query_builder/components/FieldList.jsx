@@ -8,7 +8,7 @@ import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
 import { isDate, getIconForField } from 'metabase/lib/schema_metadata';
-import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
+import { parseFieldBucketing, parseFieldTargetId } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 
@@ -87,7 +87,7 @@ export default class FieldList extends Component {
         }
         sections.push(...fkSections);
 
-        let fieldTarget = parseFieldTarget(field);
+        let fieldTarget = parseFieldTargetId(field);
 
         this.setState({ sections, fieldTarget });
     }

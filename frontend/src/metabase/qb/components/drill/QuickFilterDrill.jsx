@@ -26,7 +26,12 @@ function getFiltersForColumn(column) {
 }
 
 export default ({ card, tableMetadata, clicked }) => {
-    if (!(clicked && clicked.column && clicked.column.id != null)) {
+    if (
+        !clicked ||
+        !clicked.column ||
+        clicked.column.id == null ||
+        clicked.value == undefined
+    ) {
         return;
     }
 
@@ -41,6 +46,7 @@ export default ({ card, tableMetadata, clicked }) => {
                 Filter by this value
             </span>
         ),
+        default: true,
         popover({ onChangeCardAndRun, onClose }) {
             return (
                 <ul className="h1 flex align-center px1">

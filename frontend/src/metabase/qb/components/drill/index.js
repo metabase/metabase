@@ -1,9 +1,9 @@
-import RecordsDrill from "./RecordDrill";
-import FilterDrill from "./FilterDrill";
+import RecordsDrill from "./ObjectDetailDrill";
+import QuickFilterDrill from "./QuickFilterDrill";
 import UnderlyingRecordsDrill from "./UnderlyingRecordsDrill";
 
 export const DEFAULT_DRILLS = [
     RecordsDrill,
-    FilterDrill,
+    QuickFilterDrill,
     UnderlyingRecordsDrill
 ];

@@ -7,25 +7,19 @@ import { drillUnderlyingRecords } from "metabase/qb/lib/actions";
 import { isPK } from "metabase/lib/types";
 
 export default ({ card, tableMetadata, clicked }) => {
-    if (
-        !clicked ||
-        !clicked.column ||
-        clicked.column.id == null ||
-        isPK(clicked.column.special_type)
-    ) {
+    let dimensions = clicked.dimensions || [];
+    if (dimensions.length === 0) {
         return;
     }
 
     return {
         title: (
             <span>
-                Filter
+                View these
                 {" "}
                 <span className="text-dark">{tableMetadata.display_name}</span>
-                {" "}
-                by this value
             </span>
         ),
-        card: () => drillUnderlyingRecords(card, clicked.value, clicked.column)
+        card: () => drillUnderlyingRecords(card, dimensions)
     };
 };

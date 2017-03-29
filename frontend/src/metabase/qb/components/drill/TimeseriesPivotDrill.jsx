@@ -2,10 +2,12 @@
 
 import React from "react";
 
-import { drillTimeseriesFilter } from "metabase/qb/lib/actions";
+import { pivot, drillDownForDimensions } from "metabase/qb/lib/actions";
 
 export default ({ card, tableMetadata, clicked }) => {
-    if (!clicked || !clicked.column || !clicked.column.unit) {
+    const dimensions = clicked.dimensions || [];
+    const drilldown = drillDownForDimensions(dimensions);
+    if (!drilldown) {
         return;
     }
 
@@ -15,10 +17,10 @@ export default ({ card, tableMetadata, clicked }) => {
                 Drill into this
                 {" "}
                 <span className="text-dark">
-                    {clicked.column.unit}
+                    {drilldown.name}
                 </span>
             </span>
         ),
-        card: () => drillTimeseriesFilter(card, clicked.value, clicked.column)
+        card: () => pivot(card, drilldown.breakout, tableMetadata, dimensions)
     };
 };

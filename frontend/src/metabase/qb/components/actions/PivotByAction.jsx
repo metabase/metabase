@@ -7,16 +7,20 @@ import BreakoutPopover from "metabase/qb/components/gui/BreakoutPopover";
 import Query from "metabase/lib/query";
 import { pivot } from "metabase/qb/lib/actions";
 
+// PivotByAction displays a breakout picker, and optionally filters by the
+// clicked dimesion values (and removes corresponding breakouts)
 export default (name, icon, fieldFilter) => (
     { card, tableMetadata, clicked }
 ) => {
-    if (clicked && !clicked.column) {
+    // Click target types: metric value
+    if (
+        clicked &&
+        (clicked.value === undefined || clicked.column.source !== "aggregation")
+    ) {
         return;
     }
 
-    if (clicked && clicked.column.id == null) {
-        clicked = null;
-    }
+    let dimensions = (clicked && clicked.dimensions) || [];
 
     const breakouts = Query.getBreakouts(card.dataset_query.query);
     const usedFields = {};
@@ -42,19 +46,13 @@ export default (name, icon, fieldFilter) => (
     }
 
     return {
-        title: clicked
-            ? <span>
-                  Pivot this
-                  {" "}
-                  <span className="text-dark">
-                      {clicked.column.unit || clicked.column.display_name}
-                  </span>
-                  {" "}
-                  by
-                  {" "}
-                  <span className="text-dark">{name.toLowerCase()}</span>
-              </span>
-            : <span>Pivot by <span className="text-dark">{name}</span></span>,
+        title: (
+            <span>
+                Pivot by
+                {" "}
+                <span className="text-dark">{name.toLowerCase()}</span>
+            </span>
+        ),
         icon: icon,
         // eslint-disable-next-line react/display-name
         popover: ({ onChangeCardAndRun, onClose }) => (
@@ -66,7 +64,7 @@ export default (name, icon, fieldFilter) => (
                 )}
                 onCommitBreakout={breakout => {
                     onChangeCardAndRun(
-                        pivot(card, breakout, tableMetadata, clicked)
+                        pivot(card, breakout, tableMetadata, dimensions)
                     );
                     onClose && onClose();
                 }}

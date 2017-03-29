@@ -171,10 +171,12 @@ export default class PieChart extends Component<*, Props, *> {
         const onClickSlice = ({ index, event }) => {
             if (onVisualizationClick && slices[index] !== otherSlice) {
                 onVisualizationClick({
-                    value:        slices[index].key,
-                    column:       cols[dimensionIndex],
-                    metricValue:  slices[index].value,
-                    metricColumn: cols[metricIndex],
+                    value:  slices[index].value,
+                    column: cols[metricIndex],
+                    dimensions: [{
+                        value: slices[index].key,
+                        column: cols[dimensionIndex],
+                    }],
                     event:        event
                 })
             }

@@ -28,7 +28,7 @@ type StepInfo = {
 
 export default class Funnel extends Component<*, VisualizationProps, *> {
     render() {
-        const { className, series, gridSize, hovered, onHoverChange } = this.props;
+        const { className, series, gridSize, hovered, onHoverChange, onVisualizationClick, visualizationIsClickable } = this.props;
 
         const dimensionIndex = 0;
         const metricIndex = 1;
@@ -60,12 +60,14 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
 
             infos[rowIndex + 1] = {
                 value: row[metricIndex],
+
                 graph: {
                     startBottom: infos[rowIndex].graph.endBottom,
                     startTop: infos[rowIndex].graph.endTop,
                     endTop: 0.5 + ((remaining / infos[0].value) / 2),
                     endBottom: 0.5 - ((remaining / infos[0].value) / 2),
                 },
+
                 tooltip: [
                     {
                         key: 'Step',
@@ -80,6 +82,15 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                         value: formatPercent(row[metricIndex] / infos[0].value),
                     },
                 ],
+
+                clicked: {
+                    value: row[metricIndex],
+                    column: cols[metricIndex],
+                    dimensions: [{
+                        value: row[dimensionIndex],
+                        column: cols[dimensionIndex],
+                    }]
+                }
             };
         });
 
@@ -87,6 +98,8 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         infos = infos.slice(1);
 
         let initial = infos[0];
+
+        const isClickable = visualizationIsClickable(infos[0].clicked);
 
         return (
             <div className={cx(className, styles.Funnel, 'flex', {
@@ -110,11 +123,16 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                     <div key={index} className={cx(styles.FunnelStep, 'flex flex-column')}>
                         <Ellipsified className={styles.Head}>{formatDimension(rows[index + 1][dimensionIndex])}</Ellipsified>
                         <GraphSection
+                            className={cx({ "cursor-pointer": isClickable })}
                             index={index}
                             info={info}
                             infos={infos}
                             hovered={hovered}
                             onHoverChange={onHoverChange}
+                            onClick={isClickable && ((e) => onVisualizationClick({
+                                ...info.clicked,
+                                event: e.nativeEvent
+                            }))}
                         />
                         <div className={styles.Infos}>
                             <div className={styles.Title}>{formatPercent(info.value / initial.value)}</div>
@@ -132,7 +150,9 @@ const GraphSection = (
         info,
         infos,
         hovered,
-        onHoverChange
+        onHoverChange,
+        onClick,
+        className,
     }: {
         index: number,
         info: StepInfo,
@@ -143,13 +163,14 @@ const GraphSection = (
 ) => {
     return (
         <svg
-            className={styles.Graph}
+            className={cx(className, styles.Graph)}
             onMouseMove={event => onHoverChange({
                 index: index,
                 event: event.nativeEvent,
                 data: info.tooltip
             })}
             onMouseLeave={() => onHoverChange(null)}
+            onClick={onClick}
             viewBox="0 0 1 1"
             preserveAspectRatio="none"
         >

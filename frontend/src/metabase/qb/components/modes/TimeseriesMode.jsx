@@ -16,7 +16,7 @@ import PivotByLocationAction from "../actions/PivotByLocationAction";
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
 
-import TimeseriesFilterDrill from "../drill/TimeseriesFilterDrill";
+import TimeseriesPivotDrill from "../drill/TimeseriesPivotDrill";
 
 export const ModeFooter = props => {
     return (
@@ -41,7 +41,7 @@ export default {
 
     getDrills() {
         return DEFAULT_DRILLS.concat([
-            TimeseriesFilterDrill,
+            TimeseriesPivotDrill,
             PivotByCategoryDrill,
             PivotByLocationDrill
         ]);

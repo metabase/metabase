@@ -5,12 +5,12 @@ import React, { Component, PropTypes } from "react";
 import Button from "metabase/components/Button";
 import Popover from "metabase/components/Popover";
 
-import type { ClickObject, DrillAction } from "metabase/visualizations";
+import type { ClickObject, ClickAction } from "metabase/visualizations";
 import type { Card } from "metabase/meta/types/Card";
 
 type Props = {
     clicked: ClickObject,
-    drillActions: ?DrillAction[],
+    clickActions: ?ClickAction[],
     onChangeCardAndRun: (card: Card) => void,
     onClose: () => void
 };
@@ -19,7 +19,7 @@ type State = {
     popoverIndex: ?number;
 }
 
-export default class ChartDrillThrough extends Component<*, Props, State> {
+export default class ChartClickActions extends Component<*, Props, State> {
     state: State = {
         popoverIndex: null
     };
@@ -32,20 +32,20 @@ export default class ChartDrillThrough extends Component<*, Props, State> {
     }
 
     render() {
-        const { clicked, drillActions, onChangeCardAndRun } = this.props;
+        const { clicked, clickActions, onChangeCardAndRun } = this.props;
 
-        if (!clicked || !drillActions || drillActions.length === 0) {
+        if (!clicked || !clickActions || clickActions.length === 0) {
             return null;
         }
 
         let { popoverIndex } = this.state;
-        if (drillActions.length === 1 && drillActions[0].popover) {
+        if (clickActions.length === 1 && clickActions[0].popover) {
             popoverIndex = 0;
         }
 
         let popover;
         if (popoverIndex != null) {
-            const PopoverContent = drillActions[popoverIndex].popover;
+            const PopoverContent = clickActions[popoverIndex].popover;
             popover = (
                 <PopoverContent
                     onChangeCardAndRun={onChangeCardAndRun}
@@ -66,7 +66,7 @@ export default class ChartDrillThrough extends Component<*, Props, State> {
                     popover
                 :
                     <div className="px1 pt1 flex flex-column">
-                        { drillActions.map((action, index) =>
+                        { clickActions.map((action, index) =>
                             <Button
                                 className="mb1"
                                 medium

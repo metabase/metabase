@@ -945,13 +945,13 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
         if (!isScalarVisualization &&
                 queryResult.data.rows &&
                 queryResult.data.rows.length === 1 &&
-                queryResult.data.columns.length === 1) {
+                queryResult.data.cols.length === 1) {
             // if we have a 1x1 data result then this should always be viewed as a scalar
             cardDisplay = "scalar";
 
         } else if (isScalarVisualization &&
                     queryResult.data.rows &&
-                    (queryResult.data.rows.length > 1 || queryResult.data.columns.length > 1)) {
+                    (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)) {
             // any time we were a scalar and now have more than 1x1 data switch to table view
             cardDisplay = "table";
 
