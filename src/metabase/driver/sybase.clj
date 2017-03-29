@@ -65,12 +65,12 @@
 
                            ;; add Windows domain for Windows domain authentication if applicable. useNTLMv2 = send LMv2/NTLMv2 responses when using Windows auth
                            (seq domain) (str ";domain=" domain ";useNTLMv2=true")
+                                 
+                           ;; One can specify additional params
+                           (seq params) (str ";" + params)
 
                            ;; If SSL is specified append ;ssl=require, which enables SSL and throws exception if SSL connection cannot be made
                            ssl (str ";ssl=require"))))))
-
-                           ;; One can specify additional params
-                           (seq params) (str ";" + params))))))
 
 (defn- date-part [unit expr]
   (hsql/call :datepart (hsql/raw (name unit)) expr))
