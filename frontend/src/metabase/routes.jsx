@@ -37,6 +37,9 @@ import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
+// new question"
+import NewQuestion from "metabase/new_question/containers/NewQuestion";
+
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
 import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
@@ -156,6 +159,9 @@ export const getRoutes = (store) =>
                 {/* QUERY BUILDER */}
                 <Route path="/card/:cardId" component={QueryBuilder} />
                 <Route path="/q" component={QueryBuilder} />
+
+                {/* NEW QUESTION */}
+                <Route path="/new" component={NewQuestion} />
 
                 {/* QUESTIONS */}
                 <Route path="/questions">
