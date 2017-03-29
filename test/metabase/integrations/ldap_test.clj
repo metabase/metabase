@@ -4,7 +4,7 @@
             (metabase.test [util :refer [resolve-private-vars]])
             (metabase.test.integrations [ldap :refer [expect-with-ldap-server get-ldap-port]])))
 
-(resolve-private-vars metabase.integrations.ldap escape-value settings->ldap-options get-ldap-connection)
+(resolve-private-vars metabase.integrations.ldap escape-value settings->ldap-options get-connection get-user-groups)
 
 
 (defn- get-ldap-details []
@@ -47,7 +47,7 @@
 ;; Make sure the basic connection stuff works, this will throw otherwise
 (expect-with-ldap-server
   nil
-  (.close (get-ldap-connection)))
+  (.close (get-connection)))
 
 ;; Login with everything right should succeed
 (expect-with-ldap-server
@@ -67,27 +67,27 @@
 ;; Login for regular users should also work
 (expect-with-ldap-server
   true
-  (ldap/verify-password "cn=Sally Brown,ou=people,dc=metabase,dc=com" "1234"))
+  (ldap/verify-password "cn=Sally Brown,ou=People,dc=metabase,dc=com" "1234"))
 
 ;; Login for regular users should also fail for the wrong password
 (expect-with-ldap-server
   false
-  (ldap/verify-password "cn=Sally Brown,ou=people,dc=metabase,dc=com" "password"))
+  (ldap/verify-password "cn=Sally Brown,ou=People,dc=metabase,dc=com" "password"))
 
 ;; Find by username should work (given the default LDAP filter and test fixtures)
 (expect-with-ldap-server
-  {:dn         "cn=Sally Brown,ou=people,dc=metabase,dc=com"
-   :first-name "Sally"
-   :last-name  "Brown"
-   :email      "sally.brown@metabase.com"
-   :groups     []}
-  (ldap/find-user "sbrown20"))
+  {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
+   :first-name "John"
+   :last-name  "Smith"
+   :email      "John.Smith@metabase.com"
+   :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
+  (ldap/find-user "jsmith1"))
 
 ;; Find by email should also work (also given our default settings and fixtures)
 (expect-with-ldap-server
-  {:dn         "cn=Sally Brown,ou=people,dc=metabase,dc=com"
-   :first-name "Sally"
-   :last-name  "Brown"
-   :email      "sally.brown@metabase.com"
-   :groups     []}
-  (ldap/find-user "sally.brown@metabase.com"))
+  {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
+   :first-name "John"
+   :last-name  "Smith"
+   :email      "John.Smith@metabase.com"
+   :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
+  (ldap/find-user "John.Smith@metabase.com"))

@@ -33,7 +33,7 @@
       :user_id (:id user))
     (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
-(defn- ldap-auth-fetch-or-create-user! [first-name last-name email password]
+(defn- ldap-auth-fetch-or-create-user! [first-name last-name email password groups]
   (when-let [user (or (db/select-one [User :id :last_login] :email email)
                       (user/create-new-ldap-auth-user! first-name last-name email password))]
     (u/prog1 {:id (create-session! user)}
@@ -57,9 +57,9 @@
     ;; First try LDAP if it's enabled
     (when (ldap/ldap-configured?)
       (try
-        (when-let [{:keys [first-name last-name email], :as user-info} (ldap/find-user username)]
+        (when-let [{:keys [first-name last-name email groups], :as user-info} (ldap/find-user username)]
           (if (ldap/verify-password user-info password)
-            (ldap-auth-fetch-or-create-user! first-name last-name email password)
+            (ldap-auth-fetch-or-create-user! first-name last-name email password groups)
             ;; Since LDAP knows about our user, fail here to prevent the local strategy to be tried with an outdated password
             (throw (ex-info "Password did not match stored password." {:status-code 400
                                                                        :errors      {:password "did not match stored password"}}))))

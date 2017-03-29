@@ -71,6 +71,31 @@
                           :password  (ldap-password)
                           :security  (ldap-security)}))
 
+(defn- escape-value [value]
+  "Escapes a value for use in an LDAP filter expression."
+  (s/replace value #"[\*\(\)\\\\0]" (comp (partial format "\\%02X") int first)))
+
+(defn- get-connection []
+  "Connects to LDAP with the currently set settings and returns the connection."
+  (ldap/connect (settings->ldap-options)))
+
+(defn- with-connection [f & args]
+  "Applies `f` with a connection and `args`"
+  (with-open [conn (get-connection)]
+    (apply f conn args)))
+
+(defn- get-user-groups
+  "Retrieve groups for a supplied DN."
+  ([dn]
+    (with-connection get-user-groups dn))
+  ([conn dn]
+    (let [results (ldap/search conn (ldap-base) {:scope      :sub
+                                                 :filter     (str "member=" (escape-value dn))
+                                                 :attributes [:dn :distinguishedName]})]
+      (filter some?
+        (for [result results]
+          (or (:dn result) (:distinguishedName result)))))))
+
 (defn test-ldap-connection
   "Test the connection to an LDAP server to determine if we can find the search base.
 
@@ -88,22 +113,9 @@
         {:status  :SUCCESS}
         {:status  :ERROR
          :message "Search base does not exist or is unreadable"}))
-    (catch com.unboundid.util.LDAPSDKException e
+    (catch Exception e
       {:status  :ERROR
        :message (.getMessage e)})))
-
-(defn- get-ldap-connection []
-  "Connects to LDAP with the currently set settings and returns the connection."
-  (ldap/connect (settings->ldap-options)))
-
-(defn- with-connection [f & args]
-  "Applies `f` with a connection pool followed by `args`"
-  (with-open [conn (get-ldap-connection)]
-    (apply f conn args)))
-
-(defn- escape-value [value]
-  "Escapes a value for use in an LDAP filter expression."
-  (s/replace value #"[\*\(\)\\\\0]" (comp (partial format "\\%02X") int first)))
 
 (defn find-user
   "Gets user information for the supplied username."
@@ -115,18 +127,21 @@
           email-attr (keyword (ldap-attribute-email))]
       (when-let [[result] (ldap/search conn (ldap-base) {:scope      :sub
                                                          :filter     (s/replace (ldap-user-filter) "{login}" (escape-value username))
-                                                         :attributes [:dn :distinguishedName :membderOf fname-attr lname-attr email-attr]
+                                                         :attributes [:dn :distinguishedName fname-attr lname-attr email-attr :memberOf]
                                                          :size-limit 1})]
         (let [dn    (or (:dn result) (:distinguishedName result))
               fname (get result fname-attr)
               lname (get result lname-attr)
               email (get result email-attr)]
           (when-not (or (empty? dn) (empty? fname) (empty? lname) (empty? email))
-            {:dn         dn
-             :first-name fname
-             :last-name  lname
-             :email      email
-             :groups     (or (:membderOf result) [])}))))))
+            ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
+            ;; Otherwise we have to make the inverse query to get them
+            (let [groups (or (:memberOf result) (get-user-groups dn) [])]
+              {:dn         dn
+               :first-name fname
+               :last-name  lname
+               :email      email
+               :groups     groups})))))))
 
 (defn verify-password
   "Verifies if the password supplied is valid for the supplied `user-info` (from `find-user`) or DN."

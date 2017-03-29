@@ -5,12 +5,12 @@ objectClass: dcObject
 dc: metabase
 o: Metabase Corporation
 
-dn: ou=people,dc=metabase,dc=com
+dn: ou=People,dc=metabase,dc=com
 objectClass: top
 objectClass: organizationalUnit
-ou: people
+ou: People
 
-dn: cn=John Smith,ou=people,dc=metabase,dc=com
+dn: cn=John Smith,ou=People,dc=metabase,dc=com
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson
@@ -22,7 +22,7 @@ uid: jsmith1
 mail: John.Smith@metabase.com
 userPassword: strongpassword
 
-dn: cn=Sally Brown,ou=people,dc=metabase,dc=com
+dn: cn=Sally Brown,ou=People,dc=metabase,dc=com
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson
@@ -34,12 +34,12 @@ uid: sbrown20
 mail: sally.brown@metabase.com
 userPassword: 1234
 
-dn: ou=birds,dc=metabase,dc=com
+dn: ou=Birds,dc=metabase,dc=com
 objectClass: top
 objectClass: organizationalUnit
-ou: birds
+ou: Birds
 
-dn: cn=Rasta Toucan,ou=birds,dc=metabase,dc=com
+dn: cn=Rasta Toucan,ou=Birds,dc=metabase,dc=com
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson
@@ -51,7 +51,7 @@ uid: rasta
 mail: rasta@metabase.com
 userPassword: blueberries
 
-dn: cn=Lucky Pigeon,ou=birds,dc=metabase,dc=com
+dn: cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson
@@ -62,3 +62,15 @@ sn: Pigeon
 uid: lucky
 mail: lucky@metabase.com
 userPassword: notalmonds
+
+dn: ou=Groups,dc=metabase,dc=com
+objectClass: top
+objectClass: organizationalUnit
+ou: Groups
+
+dn: cn=Accounting,ou=Groups,dc=metabase,dc=com
+objectClass: top
+objectClass: groupOfNames
+cn: Accounting
+member: cn=John Smith,ou=People,dc=metabase,dc=com
+member: cn=Rasta Toucan,ou=Birds,dc=metabase,dc=com
