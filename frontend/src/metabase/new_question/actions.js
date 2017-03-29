@@ -73,16 +73,20 @@ export const SELECT_AND_ADVANCE = "SELECT_AND_ADVANCE";
 export const selectAndAdvance = createThunkAction(
     SELECT_AND_ADVANCE,
     selectionAction => {
-        return (dispatch, getState) => {
+        return async (dispatch, getState) => {
+            console.log('ey?')
+
+            await dispatch(selectionAction());
+            await dispatch(checkFlowCompletion());
+
             const state = getState();
             const nextStep = getNextStep(state);
             const isSkippable = nextStep && nextStep.skip;
 
-            dispatch(selectionAction());
-            dispatch(checkFlowCompletion());
+            console.log('next', nextStep)
 
             if (!nextStep) {
-                dispatch(addBreakoutStep());
+                await dispatch(addBreakoutStep());
             }
 
             if (isSkippable) {
@@ -90,6 +94,8 @@ export const selectAndAdvance = createThunkAction(
 
                 const { resource, resolve } = nextStep.skip;
                 const resourcesForStep = getResource(resource, state);
+
+                console.log('resources?', resourcesForStep)
 
                 /*
                 if(!nextStep.skip.resolve(resourcesForStep)) {
@@ -100,7 +106,8 @@ export const selectAndAdvance = createThunkAction(
             // selection action is a wrapper function that
             // dispatches an action provided by the caller that we shouldn't care
             // about here, for example adding a breakout
-            return dispatch(advanceStep());
+            console.log('yo?')
+            return await dispatch(advanceStep());
         };
     }
 );

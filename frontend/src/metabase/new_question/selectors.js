@@ -82,9 +82,7 @@ export const getBreakoutsForFlow = createSelector(
 
 export const getSubtitle = state => {
     const subtitle = state.newQuestion.currentStep.subtitle;
-    console.log(typeof subtitle);
     if (typeof subtitle === "function") {
-        console.log(subtitle(state));
         return subtitle(state);
     }
     return subtitle;

@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import { normal } from "metabase/lib/colors";
-import { selectFlow } from "../actions";
+import { selectAndAdvance, selectFlow } from "../actions";
 
 const queryTypes = [
     { name: "A metric", type: "metric", color: normal.blue },
@@ -17,10 +17,12 @@ const otherTypes = [
 ];
 
 @connect(() => ({}), {
-    selectFlow: flowType => selectFlow(flowType)
+    selectFlow: flowType => selectFlow(flowType),
+    selectAndAdvance,
 })
 class QueryTypeList extends Component {
     render() {
+        const { selectFlow, selectAndAdvance } = this.props;
         return (
             <div
                 className={cxs({
@@ -38,7 +40,11 @@ class QueryTypeList extends Component {
                         <li
                             className={`p1 ${cxs({ flex: "0 0 50%" })}`}
                             key={type.type}
-                            onClick={() => this.props.selectFlow(type.type)}
+                            onClick={() =>
+                                selectAndAdvance(() =>
+                                    selectFlow(type.type)
+                                )
+                            }
                         >
                             <div
                                 className={cxs({

@@ -48,7 +48,11 @@ const metric = [
     {
         title: "Pick a metric",
         component: MetricLanding,
-        tip: tips["metric"]
+        tip: tips["metric"],
+        skip: {
+            resource: 'metrics',
+            resolve: metrics => metrics.length > 0
+        }
     },
     breakoutStep
 ];
@@ -100,7 +104,11 @@ const geo = [
     {
         title: geoTitle,
         component: MetricLanding,
-        tip: tips["metric"]
+        tip: tips["metric"],
+        skip: {
+            resource: 'metrics',
+            resolve: metrics => metrics.length > 0
+        }
     },
     breakoutStep
 ];
@@ -110,7 +118,11 @@ const pivot = [
     {
         title: pivotTitle,
         component: MetricLanding,
-        tip: tips["metric"]
+        tip: tips["metric"],
+        skip: {
+            resource: 'metrics',
+            resolve: metrics => metrics.length > 0
+        }
     },
     {
         title: pivotTitle,
