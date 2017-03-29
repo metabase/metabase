@@ -178,7 +178,6 @@ const SECTIONS = [
                 display_name: "LDAP Port",
                 placeholder: "389",
                 type: "string",
-                required: true,
                 validations: [["integer", "That's not a valid port number"]]
             },
             {
@@ -187,7 +186,7 @@ const SECTIONS = [
                 description: null,
                 type: "radio",
                 options: { none: "None", ssl: "SSL", starttls: "StartTLS" },
-                defaultValue: 'none'
+                defaultValue: "none"
             },
             {
                 key: "ldap-bind-dn",
@@ -210,26 +209,22 @@ const SECTIONS = [
             {
                 key: "ldap-user-filter",
                 display_name: "User filter",
-                type: "string",
-                required: true
+                type: "string"
             },
             {
                 key: "ldap-attribute-email",
                 display_name: "User email attribute",
-                type: "string",
-                required: true
+                type: "string"
             },
             {
                 key: "ldap-attribute-firstname",
                 display_name: "User first name attribute",
-                type: "string",
-                required: true
+                type: "string"
             },
             {
                 key: "ldap-attribute-lastname",
                 display_name: "User last name attribute",
-                type: "string",
-                required: true
+                type: "string"
             }
         ]
     },
