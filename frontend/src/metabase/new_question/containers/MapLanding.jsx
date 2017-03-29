@@ -5,35 +5,41 @@ import { connect } from "react-redux";
 
 import Button from "metabase/components/Button";
 
-import { advanceStep } from "../actions";
+import { selectAndAdvance, setMap } from "../actions";
 import { Sidebar } from "../components/Layout";
+import { getTablesByMapType } from "../selectors";
 
 import WorldMapPreview from "../components/WorldMapPreview";
 import USStateMapPreview from "../components/USStateMapPreview";
 
 const MAP_OPTIONS = [
-    { name: "World", key: "world", component: WorldMapPreview },
-    { name: "US State", key: "us", component: USStateMapPreview }
+    { name: "World", key: "world_countries", component: WorldMapPreview },
+    { name: "US State", key: "us_states", component: USStateMapPreview }
 ];
 
+const getMapOptions = (tablesByMapType) =>
+    MAP_OPTIONS.filter(option => tablesByMapType[option.key]);
+
 const mapStateToProps = state => ({
-    title: state.newQuestion.currentStep.title
+    title: state.newQuestion.currentStep.title,
+    tablesByMapType: getTablesByMapType(state)
 });
 
 const mapDispatchToProps = {
-    advanceStep
+    selectAndAdvance,
+    setMap
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
 class MapLanding extends Component {
-    constructor() {
-        super();
+    constructor(props) {
+        super(props);
         this.state = {
-            selectedMap: MAP_OPTIONS[0]
+            selectedMap: getMapOptions(props.tablesByMapType)[0]
         };
     }
     render() {
-        const { advanceStep, title } = this.props;
+        const { selectAndAdvance, setMap, title, tablesByMapType } = this.props;
         const Preview = this.state.selectedMap.component;
         return (
             <div className="flex">
@@ -42,7 +48,7 @@ class MapLanding extends Component {
                         <h3>{title}</h3>
                         <Button
                             className="ml-auto"
-                            onClick={() => advanceStep()}
+                            onClick={() => selectAndAdvance(() => setMap(this.state.selectedMap.key))}
                             primary
                         >
                             Next
@@ -63,7 +69,7 @@ class MapLanding extends Component {
                 <Sidebar>
                     <ol className={cxs({ marginTop: 200 })}>
                         {// lol
-                        MAP_OPTIONS.map((map, index) => (
+                        getMapOptions(tablesByMapType).map((map, index) => (
                             <li
                                 onClick={() =>
                                     this.setState({ selectedMap: map })}

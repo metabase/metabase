@@ -8,6 +8,7 @@ import {
     SET_DATABASE,
     SET_TABLE,
     SET_AGGREGATION,
+    SET_MAP,
     SET_TIP,
     SELECT_METRIC,
     SELECT_METRIC_BREAKOUT
@@ -26,6 +27,8 @@ import BreakoutSelection from "./containers/BreakoutSelection";
 import PivotSelection from "./containers/PivotSelection";
 
 import tips from "./tips";
+
+import { assocIn, chain } from "icepick";
 
 const breakoutStep = {
     title: "How do you want to see this metric?",
@@ -191,13 +194,13 @@ export default function(state = initialState, { type, payload, error }) {
                 }
             };
         case SELECT_METRIC:
-            return {
-                ...state,
-                card: {
-                    ...payload,
-                    display: setVizForFlow(state.flow.type)
-                }
-            };
+            return chain(state)
+                .assocIn(["card", "display"], setVizForFlow(state.flow.type))
+                .assocIn(["card", "dataset_query", "type"], "query")
+                .assocIn(["card", "dataset_query", "database"], payload.database_id)
+                .assocIn(["card", "dataset_query", "query", "source_table"], payload.table_id)
+                .assocIn(["card", "dataset_query", "query", "aggregation"], [["METRIC", payload.id]])
+                .value();
         case SELECT_METRIC_BREAKOUT:
             return {
                 ...state,
@@ -288,6 +291,11 @@ export default function(state = initialState, { type, payload, error }) {
                     ...payload
                 }
             };
+        case SET_MAP:
+        return assocIn(state, ["card", "visualization_settings"], {
+            "map.region": payload,
+            "map.type": "region"
+        })
         case SELECT_FLOW:
             return {
                 ...state,
