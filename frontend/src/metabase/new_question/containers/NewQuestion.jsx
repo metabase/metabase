@@ -13,14 +13,14 @@ import { Sidebar } from "../components/Layout";
 
 import { back, resetNewQuestionFlow } from "../actions";
 
-import { getSubtitle } from "../selectors";
+import { getSubtitle, getBack, getCurrentStepTip, getCurrentStepComponent } from "../selectors";
 
 const mapStateToProps = state => ({
     advance: state.newQuestion.advance,
-    back: state.newQuestion.currentStep.back,
-    component: state.newQuestion.currentStep.component,
+    back: getBack(state),
+    component: getCurrentStepComponent(state),
     subtitle: getSubtitle(state),
-    tip: state.newQuestion.currentStep.tip,
+    tip: getCurrentStepTip(state),
     title: state.newQuestion.flow.title
 });
 

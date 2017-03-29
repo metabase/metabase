@@ -13,9 +13,34 @@ import { getTables, getMetrics, getFields } from "metabase/selectors/metadata";
 
 export const getCurrentStep = state => state.newQuestion.currentStep;
 
-const getCurrentStepIndex = state => state.newQuestion.currentStepIndex;
+export const getBack = createSelector(
+    [getCurrentStep],
+    (currentStep) => {
+        console.log(currentStep)
+        if(currentStep.hasOwnProperty('back')) {
+            return currentStep.back
+        }
+        return true
+    }
+);
 
-const getFlowSteps = state => state.newQuestion.flow.steps;
+export const getCurrentStepComponent = createSelector(
+    [getCurrentStep],
+    (currentStep) => currentStep.component
+)
+
+export const getCurrentStepTip = createSelector(
+    [getCurrentStep],
+    (currentStep) => currentStep.tip
+)
+
+const getCurrentStepIndex = state => state.newQuestion.currentStepIndex;
+const getCurrentFlow = state => state.newQuestion.flow;
+
+const getFlowSteps = createSelector(
+    [getCurrentFlow],
+    (flow) => flow.steps
+);
 
 export const getNextStep = createSelector(
     [getCurrentStepIndex, getFlowSteps],
