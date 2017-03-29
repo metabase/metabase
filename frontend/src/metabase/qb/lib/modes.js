@@ -1,15 +1,11 @@
-import Q, { AggregationClause, NamedClause } from "metabase/lib/query"; // legacy query lib
+import Q from "metabase/lib/query"; // legacy query lib
 import {
     isDate,
     isAddress,
     isCategory,
-    getAggregator
 } from "metabase/lib/schema_metadata";
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
-import { format } from "metabase/lib/expressions/formatter";
-
-import _ from "underscore";
 
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
@@ -75,49 +71,4 @@ export function getMode(card, tableMetadata): QueryBuilderMode {
     }
 
     return DefaultMode;
-}
-
-function getAggregationName(aggregation, tableMetadata, customFields) {
-    if (NamedClause.isNamed(aggregation)) {
-        return NamedClause.getName(aggregation);
-    } else if (AggregationClause.isCustom(aggregation)) {
-        return format(aggregation, { tableMetadata, customFields });
-    } else if (AggregationClause.isMetric(aggregation)) {
-        const metricId = AggregationClause.getMetric(aggregation);
-        const selectedMetric = _.findWhere(tableMetadata.metrics, {
-            id: metricId
-        });
-        if (selectedMetric) {
-            return selectedMetric.name;
-        }
-    } else {
-        const fieldId = AggregationClause.getField(aggregation);
-        const selectedAggregation = getAggregator(
-            AggregationClause.getOperator(aggregation)
-        );
-        if (
-            selectedAggregation &&
-            _.findWhere(tableMetadata.aggregation_options, {
-                short: selectedAggregation.short
-            })
-        ) {
-            return selectedAggregation.name.replace(" of ...", "") +
-                (fieldId ? " of FIXME" : "");
-        }
-    }
-    return null;
-}
-
-export function getMetrics(card, tableMetadata) {
-    if (tableMetadata && Card.isStructured(card)) {
-        const query = Card.getQuery(card);
-        return Query.getAggregations(query).map(aggregation => ({
-            name: getAggregationName(
-                aggregation,
-                tableMetadata,
-                query.expression
-            )
-        }));
-    }
-    return [];
 }

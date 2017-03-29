@@ -25,6 +25,8 @@ import labels from "metabase/questions/labels";
 import collections from "metabase/questions/collections";
 import * as qb from "metabase/query_builder/reducers";
 
+import newQuestion from "metabase/new_question/reducers";
+
 /* data reference */
 import reference from "metabase/reference/reference";
 
@@ -39,6 +41,7 @@ export default {
     home: combineReducers(home),
     pulse: combineReducers(pulse),
     qb: combineReducers(qb),
+    newQuestion,
     questions,
     collections,
     labels,
