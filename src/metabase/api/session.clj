@@ -64,7 +64,7 @@
             (throw (ex-info "Password did not match stored password." {:status-code 400
                                                                        :errors      {:password "did not match stored password"}}))))
         (catch com.unboundid.util.LDAPSDKException e
-          (log/error (u/format-color 'red "Unexpected LDAP error, will fallback to local authentication") (.getMessage e)))))
+          (log/error (u/format-color 'red "Problem connecting to LDAP server, will fallback to local authentication") (.getMessage e)))))
 
     ;; Then try local authentication
     (when-let [user (db/select-one [User :id :password_salt :password :last_login], :email username, :is_active true)]

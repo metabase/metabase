@@ -32,11 +32,6 @@
   []
   (.getListenPort *ldap-server*))
 
-(defn get-ldap-base
-  "Get the base DN for the bound in-memory LDAP testing server."
-  []
-  (.toNormalizedString (first (.getBaseDNs *ldap-server*))))
-
 (defn do-with-ldap-server
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `f`."
   [f]
@@ -47,7 +42,7 @@
                                          ldap-port     (str (get-ldap-port))
                                          ldap-bind-dn  "cn=Directory Manager"
                                          ldap-password "password"
-                                         ldap-base     (get-ldap-base)]
+                                         ldap-base     "dc=metabase,dc=com"]
         (f))
       (finally (.shutDown *ldap-server* true)))))
 

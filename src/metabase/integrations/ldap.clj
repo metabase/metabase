@@ -9,7 +9,7 @@
   :default false)
 
 (defsetting ldap-host
-  "LDAP server hostname.")
+  "Server hostname.")
 
 (defsetting ldap-port
   "Server port, usually 389 or 636 if SSL is used."
@@ -57,19 +57,49 @@
        (boolean (ldap-password))
        (boolean (ldap-base))))
 
+(defn- details->ldap-options [{:keys [host port bind-dn password security]}]
+  {:host      (str host ":" port)
+   :bind-dn   bind-dn
+   :password  password
+   :ssl?      (= security "ssl")
+   :startTLS? (= security "starttls")})
+
+(defn- settings->ldap-options []
+  (details->ldap-options {:host      (ldap-host)
+                          :port      (ldap-port)
+                          :bind-dn   (ldap-bind-dn)
+                          :password  (ldap-password)
+                          :security  (ldap-security)}))
+
+(defn test-ldap-connection
+  "Test the connection to an LDAP server to determine if we can find the search base.
+
+   Takes in a dictionary of properties such as:
+       {:host     \"localhost\"
+        :port     389
+        :bind-dn  \"cn=Directory Manager\"
+        :password \"password\"
+        :security \"none\"
+        :base     \"ou=people,dc=metabase,dc=com\"}"
+  [{:keys [base], :as details}]
+  (try
+    (with-open [conn (ldap/connect (details->ldap-options details))]
+      (if-let [_ (ldap/get conn base)]
+        {:status  :SUCCESS}
+        {:status  :ERROR
+         :message "Search base does not exist or is unreadable"}))
+    (catch com.unboundid.util.LDAPSDKException e
+      {:status  :ERROR
+       :message (.getMessage e)})))
+
 (defn- get-ldap-connection []
-  (ldap/connect {:host      (str (ldap-host) ":" (ldap-port))
-                 :bind-dn   (ldap-bind-dn)
-                 :password  (ldap-password)
-                 :ssl?      (= (ldap-security) "ssl")
-                 :startTLS? (= (ldap-security) "starttls")}))
+  "Connects to LDAP with the currently set settings and returns the connection."
+  (ldap/connect (settings->ldap-options)))
 
 (defn- with-connection [f & args]
   "Applies `f` with a connection pool followed by `args`"
-  (let [conn (get-ldap-connection)]
-    (try
-      (apply f conn args)
-      (finally (ldap/close conn)))))
+  (with-open [conn (get-ldap-connection)]
+    (apply f conn args)))
 
 (defn- escape-value [value]
   "Escapes a value for use in an LDAP filter expression."
@@ -87,11 +117,16 @@
                                                          :filter     (s/replace (ldap-user-filter) "{login}" (escape-value username))
                                                          :attributes [:dn :distinguishedName :membderOf fname-attr lname-attr email-attr]
                                                          :size-limit 1})]
-        {:dn         (or (:dn result) (:distinguishedName result))
-         :first-name (get result fname-attr)
-         :last-name  (get result lname-attr)
-         :email      (get result email-attr)
-         :groups     (or (:membderOf result) [])}))))
+        (let [dn    (or (:dn result) (:distinguishedName result))
+              fname (get result fname-attr)
+              lname (get result lname-attr)
+              email (get result email-attr)]
+          (when-not (or (empty? dn) (empty? fname) (empty? lname) (empty? email))
+            {:dn         dn
+             :first-name fname
+             :last-name  lname
+             :email      email
+             :groups     (or (:membderOf result) [])}))))))
 
 (defn verify-password
   "Verifies if the password supplied is valid for the supplied `user-info` (from `find-user`) or DN."
