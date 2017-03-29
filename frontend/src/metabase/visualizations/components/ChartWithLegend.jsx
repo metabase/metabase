@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 import styles from "./ChartWithLegend.css";
 
 import LegendVertical from "./LegendVertical.jsx";

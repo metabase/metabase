@@ -66,7 +66,8 @@ export function pivot(data) {
         }
 
         var colDef = _.clone(data.cols[cellCol]);
-        colDef['name'] = colDef['display_name'] = formatValue(val, { column: data.cols[pivotCol] }) || "";
+        colDef.name = colDef.display_name = formatValue(val, { column: data.cols[pivotCol] }) || "";
+        // delete colDef.id
         return colDef;
     });
 

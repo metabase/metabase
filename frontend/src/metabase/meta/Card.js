@@ -113,6 +113,12 @@ export function applyParameters(
                     value: value
                 });
             }
+        } else if (datasetQuery.type === "query") {
+            datasetQuery.parameters.push({
+                type: parameter.type,
+                target: parameter.target,
+                value: value
+            });
         }
     }
 

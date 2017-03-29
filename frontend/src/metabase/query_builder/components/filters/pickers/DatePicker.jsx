@@ -120,8 +120,8 @@ function getDateTimeFieldTarget(field: ConcreteField): LocalFieldReference|Forei
 }
 
 // wraps values in "datetime-field" is any of them have a time component
-function getDateTimeFieldAndValues(filter: FieldFilter): [ConcreteField, any] {
-    const values = filter.slice(2).map(value => value && getDate(value));
+function getDateTimeFieldAndValues(filter: FieldFilter, count: number): [ConcreteField, any] {
+    const values = filter.slice(2, 2 + count).map(value => value && getDate(value));
     const bucketing = _.any(values, hasTime) ? "minute" : null;
     const field = getDateTimeField(filter[1], bucketing);
     // $FlowFixMe
@@ -158,25 +158,25 @@ const OPERATORS: Operator[] = [
     },
     {
         name: "Before",
-        init: (filter) =>  ["<", ...getDateTimeFieldAndValues(filter)],
+        init: (filter) =>  ["<", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === "<",
         widget: SingleDatePicker,
     },
     {
         name: "After",
-        init: (filter) => [">", ...getDateTimeFieldAndValues(filter)],
+        init: (filter) => [">", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === ">",
         widget: SingleDatePicker,
     },
     {
         name: "On",
-        init: (filter) => ["=", ...getDateTimeFieldAndValues(filter)],
+        init: (filter) => ["=", ...getDateTimeFieldAndValues(filter, 1)],
         test: ([op]) => op === "=",
         widget: SingleDatePicker,
     },
     {
         name: "Between",
-        init: (filter) => ["BETWEEN", ...getDateTimeFieldAndValues(filter)],
+        init: (filter) => ["BETWEEN", ...getDateTimeFieldAndValues(filter, 2)],
         test: ([op]) => op === "BETWEEN",
         widget: MultiDatePicker,
     },
@@ -215,12 +215,12 @@ export default class DatePicker extends Component<*, Props, *> {
     }
 
     render() {
-        let { filter, onFilterChange } = this.props;
+        let { className, filter, onFilterChange } = this.props;
         const operator = this._getOperator();
         const Widget = operator && operator.widget;
 
         return (
-            <div className="mt1 pt2 border-top">
+            <div className={className}>
                 <DateOperatorSelector
                     operator={operator && operator.name}
                     operators={OPERATORS}

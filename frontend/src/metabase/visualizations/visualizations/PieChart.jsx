@@ -90,7 +90,7 @@ export default class PieChart extends Component<*, Props, *> {
     }
 
     render() {
-        const { series, hovered, onHoverChange, className, gridSize, settings } = this.props;
+        const { series, hovered, onHoverChange, onVisualizationClick, className, gridSize, settings } = this.props;
 
         const [{ data: { cols, rows }}] = series;
         const dimensionIndex = _.findIndex(cols, (col) => col.name === settings["pie.dimension"]);
@@ -154,7 +154,7 @@ export default class PieChart extends Component<*, Props, *> {
             .outerRadius(OUTER_RADIUS)
             .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-        let hoverForIndex = (index, event) => ({
+        const hoverForIndex = (index, event) => ({
             index,
             event: event && event.nativeEvent,
             data: slices[index] === otherSlice ?
@@ -167,6 +167,18 @@ export default class PieChart extends Component<*, Props, *> {
                 { key: getFriendlyName(cols[metricIndex]), value: formatMetric(slices[index].value) },
             ].concat(showPercentInTooltip ? [{ key: "Percentage", value: formatPercent(slices[index].percentage) }] : [])
         });
+
+        const onClickSlice = ({ index, event }) => {
+            if (onVisualizationClick && slices[index] !== otherSlice) {
+                onVisualizationClick({
+                    value:        slices[index].key,
+                    column:       cols[dimensionIndex],
+                    metricValue:  slices[index].value,
+                    metricColumn: cols[metricIndex],
+                    event:        event
+                })
+            }
+        }
 
         let value, title;
         if (hovered && hovered.index != null && slices[hovered.index] !== otherSlice) {
@@ -201,6 +213,10 @@ export default class PieChart extends Component<*, Props, *> {
                                         opacity={(hovered && hovered.index != null && hovered.index !== index) ? 0.3 : 1}
                                         onMouseMove={(e) => onHoverChange && onHoverChange(hoverForIndex(index, e))}
                                         onMouseLeave={() => onHoverChange && onHoverChange(null)}
+                                        onClick={(e) => onClickSlice({
+                                            index: index,
+                                            event: e.nativeEvent
+                                        })}
                                     />
                                 )}
                             </g>

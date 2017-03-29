@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import BarChart from "metabase/visualizations/visualizations/BarChart.jsx";
 

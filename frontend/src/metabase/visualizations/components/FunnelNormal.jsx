@@ -1,12 +1,10 @@
 /* @flow */
 
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import cx from "classnames";
 import styles from "./FunnelNormal.css";
 
-import ChartTooltip from "metabase/visualizations/components/ChartTooltip.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
@@ -144,8 +142,6 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                         </div>
                     </div>
                 )}
-                {/* Display tooltips following mouse */}
-                <ChartTooltip series={series} hovered={hovered} />
             </div>
         );
     }

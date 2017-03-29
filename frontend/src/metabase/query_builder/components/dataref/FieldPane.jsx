@@ -26,10 +26,10 @@ export default class FieldPane extends Component {
 
     static propTypes = {
         field: PropTypes.object.isRequired,
-        query: PropTypes.object,
+        datasetQuery: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
+        setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
 
@@ -47,22 +47,22 @@ export default class FieldPane extends Component {
     }
 
     filterBy() {
-        var query = this.setDatabaseAndTable();
+        var datasetQuery = this.setDatabaseAndTable();
         // Add an aggregation so both aggregation and filter popovers aren't visible
-        if (!Query.hasValidAggregation(query.query)) {
-            Query.clearAggregations(query.query);
+        if (!Query.hasValidAggregation(datasetQuery.query)) {
+            Query.clearAggregations(datasetQuery.query);
         }
-        Query.addFilter(query.query, [null, this.props.field.id, null]);
-        this.props.setQueryFn(query);
+        Query.addFilter(datasetQuery.query, [null, this.props.field.id, null]);
+        this.props.setDatasetQuery(datasetQuery);
     }
 
     groupBy() {
-        let query = this.props.query;
-        if (!Query.hasValidAggregation(query.query)) {
-            Query.clearAggregations(query.query);
+        let { datasetQuery } = this.props;
+        if (!Query.hasValidAggregation(datasetQuery.query)) {
+            Query.clearAggregations(datasetQuery.query);
         }
-        Query.addBreakout(query.query, this.props.field.id);
-        this.props.setQueryFn(query);
+        Query.addBreakout(datasetQuery.query, this.props.field.id);
+        this.props.setDatasetQuery(datasetQuery);
         this.props.runQueryFn();
     }
 
@@ -94,7 +94,7 @@ export default class FieldPane extends Component {
     }
 
     render() {
-        let { field, query } = this.props;
+        let { field, datasetQuery } = this.props;
         let { table, error } = this.state;
 
         let fieldName = field.display_name;
@@ -111,12 +111,12 @@ export default class FieldPane extends Component {
         }
 
         // TODO: allow for filters/grouping via foreign keys
-        if (!query.query || query.query.source_table == undefined || query.query.source_table === field.table_id) {
+        if (!datasetQuery.query || datasetQuery.query.source_table == undefined || datasetQuery.query.source_table === field.table_id) {
             // NOTE: disabled this for now because we need a way to capture the completed filter before adding it to the query, or to pop open the filter widget here?
             // useForCurrentQuestion.push(<UseForButton title={"Filter by " + name} onClick={this.filterBy} />);
 
             // current field must be a valid breakout option for this table AND cannot already be in the breakout clause of our query
-            if (validBreakout && this.state.table.id === this.props.query.query.source_table && (query.query.breakout && !_.contains(query.query.breakout, field.id))) {
+            if (validBreakout && this.state.table.id === datasetQuery.query.source_table && (datasetQuery.query.breakout && !_.contains(datasetQuery.query.breakout, field.id))) {
                 useForCurrentQuestion.push(<UseForButton title={"Group by " + name} onClick={this.groupBy} />);
             }
         }

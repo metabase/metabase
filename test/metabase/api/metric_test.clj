@@ -9,7 +9,7 @@
                              [metric :refer [Metric], :as metric]
                              [revision :refer [Revision]]
                              [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase.test.data :refer :all, :as data]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]))
 
@@ -372,6 +372,7 @@
 (tt/expect-with-temp [Metric [metric-1 {:name "Metric A"}]
                       Metric [metric-2 {:name "Metric B"}]
                       Metric [_        {:is_active false}]] ; inactive metrics shouldn't show up
-  (tu/mappify (hydrate [metric-1
-                        metric-2] :creator))
+  (tu/mappify (hydrate [(assoc metric-1 :database_id (data/id))
+                        (assoc metric-2 :database_id (data/id))]
+                       :creator))
   ((user->client :rasta) :get 200 "metric/"))

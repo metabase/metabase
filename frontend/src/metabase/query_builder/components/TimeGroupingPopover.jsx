@@ -32,7 +32,6 @@ export default class TimeGroupingPopover extends Component {
 
     static propTypes = {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        value: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
         onFieldChange: PropTypes.func.isRequired
     };
 
@@ -58,14 +57,14 @@ export default class TimeGroupingPopover extends Component {
     }
 
     setField(bucketing) {
-        this.props.onFieldChange(["datetime-field", this.props.value, "as", bucketing]);
+        this.props.onFieldChange(["datetime-field", this.props.field[1], "as", bucketing]);
     }
 
     render() {
-        const { field } = this.props;
+        const { field, className } = this.props;
         const enabledOptions = new Set(this.props.groupingOptions);
         return (
-            <div className="px2 pt2 pb1" style={{width:"250px"}}>
+            <div className={cx(className, "px2 pt2 pb1")} style={{width:"250px"}}>
                 <h3 className="List-section-header mx2">Group time by</h3>
                 <ul className="py1">
                 { BUCKETINGS.filter(o => o == null || enabledOptions.has(o)).map((bucketing, bucketingIndex) =>

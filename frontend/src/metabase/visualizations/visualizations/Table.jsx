@@ -24,13 +24,10 @@ type Props = {
     data: DatasetData,
     settings: VisualizationSettings,
     isDashboard: boolean,
-    cellClickedFn: (number, number) => void,
-    cellIsClickableFn: (number, number) => boolean,
     setSortFn: (/* TODO */) => void,
 }
 type State = {
-    data: ?DatasetData,
-    columnIndexes: number[]
+    data: ?DatasetData
 }
 
 export default class Table extends Component<*, Props, State> {
@@ -87,8 +84,7 @@ export default class Table extends Component<*, Props, State> {
         super(props);
 
         this.state = {
-            data: null,
-            columnIndexes: []
+            data: null
         };
     }
 
@@ -101,14 +97,6 @@ export default class Table extends Component<*, Props, State> {
         if (newProps.data !== this.props.data || !_.isEqual(newProps.settings, this.props.settings)) {
             this._updateData(newProps);
         }
-    }
-
-    cellClicked = (rowIndex: number, columnIndex: number, ...args: any[]) => {
-        this.props.cellClickedFn(rowIndex, this.state.columnIndexes[columnIndex], ...args);
-    }
-
-    cellIsClickable = (rowIndex: number, columnIndex: number, ...args: any[]) => {
-        return this.props.cellIsClickableFn(rowIndex, this.state.columnIndexes[columnIndex], ...args);
     }
 
     _updateData({ data, settings }: { data: DatasetData, settings: VisualizationSettings }) {
@@ -135,7 +123,7 @@ export default class Table extends Component<*, Props, State> {
     }
 
     render() {
-        const { card, cellClickedFn, cellIsClickableFn, setSortFn, isDashboard, settings } = this.props;
+        const { card, setSortFn, isDashboard, settings } = this.props;
         const { data } = this.state;
         const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
         const isPivoted = settings["table.pivot"];
@@ -147,8 +135,6 @@ export default class Table extends Component<*, Props, State> {
                 isPivoted={isPivoted}
                 sort={sort}
                 setSortFn={isPivoted ? undefined : setSortFn}
-                cellClickedFn={(!cellClickedFn || isPivoted) ? undefined : this.cellClicked}
-                cellIsClickableFn={(!cellIsClickableFn || isPivoted) ? undefined : this.cellIsClickable}
             />
         );
     }

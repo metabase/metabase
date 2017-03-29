@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component, PropTypes } from "react";
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+
 import cx from "classnames";
 import { titleCase } from "humanize-plus";
 

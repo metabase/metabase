@@ -293,11 +293,15 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, series, isStacked, onHoverChange) {
+function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll(".bar, .dot, .area, .line, .bubble")
             .on("mousemove", function(d, i) {
+                if (!onHoverChange) {
+                    return;
+                }
+
                 const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
                 const card = series[seriesIndex].card;
                 const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
@@ -337,7 +341,7 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange) {
 
                 data = _.uniq(data, (d) => d.col);
 
-                onHoverChange && onHoverChange({
+                onHoverChange({
                     // for single series bar charts, fade the series and highlght the hovered element with CSS
                     index: isSingleSeriesBar ? -1 : seriesIndex,
                     // for area charts, use the mouse location rather than the DOM element
@@ -347,7 +351,28 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange) {
                 });
             })
             .on("mouseleave", function() {
-                onHoverChange && onHoverChange(null);
+                if (!onHoverChange) {
+                    return;
+                }
+                onHoverChange(null);
+            })
+            .on("mouseup", function(d) {
+                if (!onVisualizationClick) {
+                    return;
+                }
+
+                // TODO: multiseries, scatter
+                if (d.data) {
+                    const isLine = this.classList.contains("dot");
+                    onVisualizationClick({
+                        value:        d.data.key,
+                        column:       cols[0],
+                        metricValue:  d.data.value,
+                        metricColumn: cols[1],
+                        element:      isLine ? this : null,
+                        event:        isLine ? null : d3.event,
+                    });
+                }
             });
 
         chart.selectAll("title").remove();
@@ -486,6 +511,10 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
                         let e = point[2];
                         dispatchUIEvent(e, "mouseleave");
                         d3.select(e).classed("hover", false);
+                    })
+                    .on("mouseup", ({ point }) => {
+                        let e = point[2];
+                        dispatchUIEvent(e, "mouseup");
                     })
                 .order();
 
@@ -746,7 +775,7 @@ function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], indexMa
 }
 
 
-export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings, maxSeries }) {
+export default function lineAreaBar(element, { series, onHoverChange, onVisualizationClick, onRender, chartType, isScalarSeries, settings, maxSeries }) {
     const colors = settings["graph.colors"];
 
     const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
@@ -1073,7 +1102,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             }
             onHoverChange(hovered);
         }
-    });
+    }, onVisualizationClick);
 
     // render
     parent.render();

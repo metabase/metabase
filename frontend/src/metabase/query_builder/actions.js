@@ -481,9 +481,9 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shoul
 });
 
 
-// setQuery
-export const SET_QUERY = "SET_QUERY";
-export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false) => {
+// setDatasetQuery
+export const SET_DATASET_QUERY = "SET_DATASET_QUERY";
+export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls, databases } } = getState();
 
@@ -744,6 +744,102 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
     };
 });
 
+function createQueryAction(action, updaterFunction, event) {
+    return createThunkAction(action, (...args) =>
+        (dispatch, getState) => {
+            const { qb: { card } } = getState();
+            if (card.dataset_query.type === "query") {
+                const datasetQuery = Utils.copy(card.dataset_query);
+                updaterFunction(datasetQuery.query, ...args);
+                dispatch(setDatasetQuery(datasetQuery));
+                MetabaseAnalytics.trackEvent(...(typeof event === "function" ? event(...args) : event));
+            }
+            return null;
+        }
+    );
+}
+
+export const addQueryBreakout = createQueryAction(
+    "metabase/qb/ADD_QUERY_BREAKOUT",
+    Query.addBreakout,
+    ["QueryBuilder", "Add GroupBy"]
+);
+export const updateQueryBreakout = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_BREAKOUT",
+    Query.updateBreakout,
+    ["QueryBuilder", "Modify GroupBy"]
+);
+export const removeQueryBreakout = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_BREAKOUT",
+    Query.removeBreakout,
+    ["QueryBuilder", "Remove GroupBy"]
+);
+export const addQueryFilter = createQueryAction(
+    "metabase/qb/ADD_QUERY_FILTER",
+    Query.addFilter,
+    ["QueryBuilder", "Add Filter"]
+);
+export const updateQueryFilter = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_FILTER",
+    Query.updateFilter,
+    ["QueryBuilder", "Modify Filter"]
+);
+export const removeQueryFilter = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_FILTER",
+    Query.removeFilter,
+    ["QueryBuilder", "Remove Filter"]
+);
+export const addQueryAggregation = createQueryAction(
+    "metabase/qb/ADD_QUERY_AGGREGATION",
+    Query.addAggregation,
+    ["QueryBuilder", "Add Aggregation"]
+);
+export const updateQueryAggregation = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_AGGREGATION",
+    Query.updateAggregation,
+    ["QueryBuilder", "Set Aggregation"]
+);
+export const removeQueryAggregation = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_AGGREGATION",
+    Query.removeAggregation,
+    ["QueryBuilder", "Remove Aggregation"]
+);
+export const addQueryOrderBy = createQueryAction(
+    "metabase/qb/ADD_QUERY_ORDER_BY",
+    Query.addOrderBy,
+    ["QueryBuilder", "Add OrderBy"]
+);
+export const updateQueryOrderBy = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_ORDER_BY",
+    Query.updateOrderBy,
+    ["QueryBuilder", "Set OrderBy"]
+);
+export const removeQueryOrderBy = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_ORDER_BY",
+    Query.removeOrderBy,
+    ["QueryBuilder", "Remove OrderBy"]
+);
+export const updateQueryLimit = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_LIMIT",
+    Query.updateLimit,
+    ["QueryBuilder", "Update Limit"]
+);
+export const addQueryExpression = createQueryAction(
+    "metabase/qb/ADD_QUERY_EXPRESSION",
+    Query.addExpression,
+    ["QueryBuilder", "Add Expression"]
+);
+export const updateQueryExpression = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_EXPRESSION",
+    Query.updateExpression,
+    ["QueryBuilder", "Set Expression"]
+);
+export const removeQueryExpression = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_EXPRESSION",
+    Query.removeExpression,
+    ["QueryBuilder", "Remove Expression"]
+);
+
 // setQuerySort
 export const SET_QUERY_SORT = "SET_QUERY_SORT";
 export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
@@ -781,13 +877,12 @@ export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
             dataset_query.query.order_by = [sortClause];
 
             // update and run the query
-            dispatch(setQuery(dataset_query, true));
+            dispatch(setDatasetQuery(dataset_query, true));
         }
 
         return null;
     };
 });
-
 
 // runQuery
 export const RUN_QUERY = "RUN_QUERY";
@@ -956,7 +1051,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             }
 
             // update and run the query
-            dispatch(setQuery(dataset_query, true));
+            dispatch(setDatasetQuery(dataset_query, true));
 
             MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "Quick Filter");
         }
@@ -1052,7 +1147,6 @@ export const onBeginEditing = beginEditing;
 export const onCancelEditing = cancelEditing;
 export const setQueryModeFn = setQueryMode;
 export const setSortFn = setQuerySort;
-export const setQueryFn = setQuery;
 export const runQueryFn = runQuery;
 export const cancelQueryFn = cancelQuery;
 export const setDatabaseFn = setQueryDatabase;

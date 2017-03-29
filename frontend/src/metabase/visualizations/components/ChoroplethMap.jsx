@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
@@ -10,7 +9,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import { formatNumber } from "metabase/lib/formatting";
 
 import ChartWithLegend from "./ChartWithLegend.jsx";
-import ChartTooltip from "./ChartTooltip.jsx";
 import LegacyChoropleth from "./LegacyChoropleth.jsx";
 import LeafletChoropleth from "./LeafletChoropleth.jsx";
 
@@ -120,7 +118,7 @@ export default class ChoroplethMap extends Component {
             );
         }
 
-        const { series, className, gridSize, hovered, onHoverChange, settings } = this.props;
+        const { series, className, gridSize, hovered, onHoverChange, onVisualizationClick, settings } = this.props;
         let { geoJson, minimalBounds } = this.state;
 
         // special case builtin maps to use legacy choropleth map
@@ -160,6 +158,19 @@ export default class ChoroplethMap extends Component {
                 event: hover.event,
                 data: { key: getFeatureName(hover.feature), value: getFeatureValue(hover.feature)
             } })
+        }
+        const onClickFeature = (click) => {
+            const featureKey = getFeatureKey(click.feature);
+            const row = _.find(rows, row => getRowKey(row) === featureKey);
+            if (onVisualizationClick && row !== undefined) {
+                onVisualizationClick({
+                    value:        row[dimensionIndex],
+                    column:       cols[dimensionIndex],
+                    metricValue:  row[metricIndex],
+                    metricColumn: cols[metricIndex],
+                    event:        click.event
+                });
+            }
         }
 
         const valuesMap = {};
@@ -213,6 +224,7 @@ export default class ChoroplethMap extends Component {
                         geoJson={geoJson}
                         getColor={getColor}
                         onHoverFeature={onHoverFeature}
+                        onClickFeature={onClickFeature}
                         projection={projection}
                     />
                 :
@@ -221,10 +233,10 @@ export default class ChoroplethMap extends Component {
                         geoJson={geoJson}
                         getColor={getColor}
                         onHoverFeature={onHoverFeature}
+                        onClickFeature={onClickFeature}
                         minimalBounds={minimalBounds}
                     />
                 }
-                <ChartTooltip series={series} hovered={hovered} />
             </ChartWithLegend>
         );
     }

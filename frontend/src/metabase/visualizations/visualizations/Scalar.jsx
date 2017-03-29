@@ -101,6 +101,17 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
         },
     };
 
+    handleClick = () => {
+        const { onVisualizationClick, data: { rows, cols } } = this.props;
+        if (onVisualizationClick) {
+            onVisualizationClick({
+                value: rows[0] && rows[0][0],
+                column: cols[0],
+                element: this._scalar
+            });
+        }
+    }
+
     render() {
         let { card, data, className, actionButtons, gridSize, settings, linkToCard } = this.props;
         let description = settings["card.description"];
@@ -176,7 +187,12 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
                     alwaysShowTooltip={fullScalarValue !== compactScalarValue}
                     style={{maxWidth: '100%'}}
                 >
-                    {compactScalarValue}
+                    <span
+                        onClick={this.handleClick}
+                        ref={scalar => this._scalar = scalar}
+                    >
+                        {compactScalarValue}
+                    </span>
                 </Ellipsified>
                 <div className={styles.Title + " flex align-center"}>
                     <Ellipsified tooltip={card.name}>

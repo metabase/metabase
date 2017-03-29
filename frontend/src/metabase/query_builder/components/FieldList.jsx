@@ -63,7 +63,7 @@ export default class FieldList extends Component {
             name: singularize(tableName),
             items: specialOptions.concat(fieldOptions.fields.map(field => ({
                 name: Query.getFieldPathName(field.id, tableMetadata),
-                value: ["field-id", field.id],
+                value: typeof field.id === "number" ? ["field-id", field.id] : field.id,
                 field: field
             })))
         };
@@ -81,7 +81,12 @@ export default class FieldList extends Component {
             })
         }));
 
-        let sections = [mainSection].concat(fkSections);
+        let sections = []
+        if (mainSection.items.length > 0) {
+            sections.push(mainSection);
+        }
+        sections.push(...fkSections);
+
         let fieldTarget = parseFieldTarget(field);
 
         this.setState({ sections, fieldTarget });
@@ -120,8 +125,7 @@ export default class FieldList extends Component {
                         }}
                     >
                         <TimeGroupingPopover
-                            field={field}
-                            value={item.value}
+                            field={field || ["datetime-field", item.value, "as", null]}
                             onFieldChange={this.props.onFieldChange}
                             groupingOptions={item.field.grouping_options}
                         />
@@ -204,6 +208,7 @@ export default class FieldList extends Component {
                 renderItemExtra={this.renderItemExtra}
                 renderItemIcon={this.renderItemIcon}
                 getItemClasses={this.getItemClasses}
+                alwaysExpanded={this.props.alwaysExpanded}
             />
         )
     }
