@@ -56,8 +56,12 @@ export default class SettingsLdapForm extends Component {
         if (MetabaseUtils.isEmpty(value)) return;
 
         switch (validationType) {
+            case "email":
+                return !MetabaseUtils.validEmail(value) ? (validationMessage || "That's not a valid email address") : null;
             case "integer":
                 return isNaN(parseInt(value)) ? (validationMessage || "That's not a valid integer") : null;
+            case "ldap_filter":
+                return (value.match(/\(/g) || []).length !== (value.match(/\)/g) || []).length ? (validationMessage || "Check your parentheses") : null;
         }
     }
 
@@ -146,6 +150,19 @@ export default class SettingsLdapForm extends Component {
             // merge together data from a couple places to provide a complete view of the Element state
             let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
             let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
+
+            if (element.key === "ldap-enabled") {
+                let configuredEnough = formData["ldap-host"] && formData['ldap-bind-dn'] && formData['ldap-password'] && formData['ldap-base'];
+                return (
+                    <SettingsSetting
+                        key={element.key}
+                        setting={{ ...element, value }}
+                        updateSetting={(value) => this.handleChangeEvent(element, value)}
+                        errorMessage={errorMessage}
+                        disabled={!configuredEnough}
+                    />
+                );
+            }
 
             return (
                 <SettingsSetting

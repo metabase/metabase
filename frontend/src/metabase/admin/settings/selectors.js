@@ -209,7 +209,8 @@ const SECTIONS = [
             {
                 key: "ldap-user-filter",
                 display_name: "User filter",
-                type: "string"
+                type: "string",
+                validations: [["ldap_filter", "Check your parentheses"]]
             },
             {
                 key: "ldap-attribute-email",
