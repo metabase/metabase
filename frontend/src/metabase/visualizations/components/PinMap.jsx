@@ -110,6 +110,7 @@ export default class PinMap extends Component<*, Props, State> {
                 { Map ?
                     <Map
                         {...this.props}
+                        ref={map => this._map = map}
                         className="absolute top left bottom right z1"
                         onMapCenterChange={this.onMapCenterChange}
                         onMapZoomChange={this.onMapZoomChange}
@@ -118,13 +119,30 @@ export default class PinMap extends Component<*, Props, State> {
                         zoom={zoom}
                         points={points}
                         bounds={bounds}
+                        onFiltering={(filtering) => this.setState({ filtering })}
                     />
                 : null }
-                { isEditing || !isDashboard ?
-                    <div className={cx("PinMapUpdateButton Button Button--small absolute top right m1 z2", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
-                        Save as default view
-                    </div>
-                : null }
+                <div className="absolute top right m1 z2 flex flex-column">
+                    { isEditing || !isDashboard ?
+                        <div className={cx("PinMapUpdateButton Button Button--small mb1", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
+                            Save as default view
+                        </div>
+                    : null }
+                    { !isDashboard &&
+                        <div
+                            className={cx("PinMapUpdateButton Button Button--small mb1")}
+                            onClick={() => {
+                                if (!this.state.filtering && this._map && this._map.startFilter) {
+                                    this._map.startFilter();
+                                } else if (this.state.filtering && this._map && this._map.stopFilter) {
+                                    this._map.stopFilter();
+                                }
+                            }}
+                        >
+                            { !this.state.filtering ? "Filter by rectange" : "Cancel filter" }
+                        </div>
+                    }
+                </div>
             </div>
         );
     }
