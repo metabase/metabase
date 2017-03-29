@@ -27,7 +27,7 @@ const serializersByOperatorName: { [id: OperatorName]: (FieldFilter) => UrlEncod
     // $FlowFixMe
     "Previous": getFilterValueSerializer((value, unit) => `past${-value}${unit}s`),
     "Next": getFilterValueSerializer((value, unit) => `next${value}${unit}s`),
-    "Current": getFilterValueSerializer((_, unit) => `current${unit}`),
+    "Current": getFilterValueSerializer((_, unit) => `this${unit}`),
     "Before": getFilterValueSerializer((value) => `~${value}`),
     "After": getFilterValueSerializer((value) => `${value}~`),
     "On": getFilterValueSerializer((value) => `${value}`),
@@ -56,7 +56,7 @@ const deserializersWithTestRegex: [{ testRegex: RegExp, deserialize: Deserialize
     {testRegex: /^next([0-9]+)([a-z]+)s$/, deserialize: (matches) => {
         return ["time-interval", noopRef, parseInt(matches[0]), matches[1]]
     }},
-    {testRegex: /^current([a-z]+)$/, deserialize: (matches) => ["time-interval", noopRef, "current", matches[0]] },
+    {testRegex: /^this([a-z]+)$/, deserialize: (matches) => ["time-interval", noopRef, "current", matches[0]] },
     {testRegex: /^~([0-9-T:]+)$/, deserialize: (matches) => ["<", noopRef, matches[0]]},
     {testRegex: /^([0-9-T:]+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
     {testRegex: /^([0-9-T:]+)$/, deserialize: (matches) => ["=", noopRef, matches[0]]},
