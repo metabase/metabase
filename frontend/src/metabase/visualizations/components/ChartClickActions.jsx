@@ -39,7 +39,7 @@ export default class ChartClickActions extends Component<*, Props, State> {
         }
 
         let { popoverIndex } = this.state;
-        if (clickActions.length === 1 && clickActions[0].popover) {
+        if (clickActions.length === 1 && clickActions[0].popover && clickActions[0].default) {
             popoverIndex = 0;
         }
 
