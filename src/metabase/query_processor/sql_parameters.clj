@@ -256,9 +256,11 @@
 
   DateRange
   (->replacement-snippet-info [{:keys [start end]}]
-    (if (= start end)
-      {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
+    (cond
+      (= start end) {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
+      (nil? start)  {:replacement-snippet "< ?",             :prepared-statement-args [(u/->Timestamp end)]}
+      (nil? end)    {:replacement-snippet "> ?",             :prepared-statement-args [(u/->Timestamp start)]}
+      :else         {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
 
   ;; TODO - clean this up if possible!
   Dimension
