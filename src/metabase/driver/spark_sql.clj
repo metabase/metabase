@@ -33,8 +33,7 @@
    :varchar :type/Text
    :char :type/Text
    :boolean :type/Boolean
-   :binary :type/*
-   })
+   :binary :type/*})
 
 (defn- connection-details->spec [details]
   (-> details
@@ -119,18 +118,13 @@
     message))
 
 (defn describe-database [driver database]
-  (log/info "Describe Spark SQL database" database)
-  (log/info "Spec is" (sql/db->jdbc-connection-spec database))
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-             (set (for [result (jdbc/query {:connection conn} ["show tables"])
-                        ;; result (jdbc/query spec ["show tables"])
-                        ]
+             (set (for [result (jdbc/query {:connection conn} ["show tables"])]
                     {:name (:tablename result)
-                     :schema nil ; seems to work better than (:database result)
-                     })))})
+                     ;; setting schema to nil seems to work better than (:database result)
+                     :schema nil})))})
 
 (defn describe-table [driver database table]
-  (log/info "Describing Spark SQL table" table "in database" database)
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
     {:name (:name table)
      :schema nil
@@ -217,8 +211,6 @@
                          :date (u/drop-first-arg date)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly now))
-                         ;; :set-timezone-sql ""
-                         ;; :active-tables active-tables
                          :string-length-fn (u/drop-first-arg string-length-fn)
                          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
