@@ -125,12 +125,11 @@
   "Transforms native query's `template_tags` into `parameters`."
   [card]
   ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/meta/Parameter.js
-  (for [[_ {tag-type :type, :as tag}] (get-in card [:dataset_query :native :template_tags])
+  (for [[_ {tag-type :type, widget-type :widget_type, :as tag}] (get-in card [:dataset_query :native :template_tags])
         :when                         (and tag-type
-                                           (or (:widget_type tag)
-                                               (not= tag-type "dimension")))]
+                                           (or widget-type (not= tag-type "dimension")))]
     {:id      (:id tag)
-     :type    (or (:widget_type tag) (if (= tag-type "date") "date/single" "category"))
+     :type    widget-type (if (= tag-type "date") "date/single" "category")
      :target  ["variable" ["template-tag" (:name tag)]]
      :name    (:display_name tag)
      :slug    (:name tag)
@@ -192,7 +191,6 @@
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-params embedding-params token-params query-params)
         parameters       (apply-parameter-values (resolve-card-parameters card-id) parameter-values)]
-    (log/info parameters)
     (apply public-api/run-query-for-card-with-id card-id parameters, :context :embedded-question, options)))
 
 
