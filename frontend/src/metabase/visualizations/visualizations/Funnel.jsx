@@ -33,7 +33,12 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         return cols.length === 2;
     }
 
-    static checkRenderable([{ data: { cols, rows} }], settings) {
+    static checkRenderable(series, settings) {
+        const [{ data: { rows} }] = series;
+        if (series.length > 1) {
+            return;
+        }
+
         if (rows.length < 1) {
             throw new MinRowsError(1, rows.length);
         }
