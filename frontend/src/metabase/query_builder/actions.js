@@ -840,50 +840,6 @@ export const removeQueryExpression = createQueryAction(
     ["QueryBuilder", "Remove Expression"]
 );
 
-// setQuerySort
-export const SET_QUERY_SORT = "SET_QUERY_SORT";
-export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
-    return (dispatch, getState) => {
-        const { qb: { card } } = getState();
-
-        // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
-        if (card.dataset_query.type === "query") {
-            let field = null;
-            if (column.id == null) {
-                // ICK.  this is hacky for dealing with aggregations.  need something better
-                // DOUBLE ICK.  we also need to deal with custom fields now as well
-                if (_.contains(_.keys(Query.getExpressions(card.dataset_query.query)), column.display_name)) {
-                    field = ["expression", column.display_name];
-                } else {
-                    field = ["aggregation", 0];
-                }
-            } else {
-                field = column.id;
-            }
-
-            let dataset_query = Utils.copy(card.dataset_query),
-                sortClause = [field, "ascending"];
-
-            if (card.dataset_query.query.order_by &&
-                card.dataset_query.query.order_by.length > 0 &&
-                card.dataset_query.query.order_by[0].length > 0 &&
-                card.dataset_query.query.order_by[0][1] === "ascending" &&
-                Query.isSameField(card.dataset_query.query.order_by[0][0], field)) {
-                // someone triggered another sort on the same column, so flip the sort direction
-                sortClause = [field, "descending"];
-            }
-
-            // set clause
-            dataset_query.query.order_by = [sortClause];
-
-            // update and run the query
-            dispatch(setDatasetQuery(dataset_query, true));
-        }
-
-        return null;
-    };
-});
-
 // runQuery
 export const RUN_QUERY = "RUN_QUERY";
 export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = true, parameterValues, dirty) => {
@@ -1146,7 +1102,6 @@ export const toggleDataReferenceFn = toggleDataReference;
 export const onBeginEditing = beginEditing;
 export const onCancelEditing = cancelEditing;
 export const setQueryModeFn = setQueryMode;
-export const setSortFn = setQuerySort;
 export const runQueryFn = runQuery;
 export const cancelQueryFn = cancelQuery;
 export const setDatabaseFn = setQueryDatabase;

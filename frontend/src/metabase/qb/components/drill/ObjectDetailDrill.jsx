@@ -11,10 +11,10 @@ import * as Table from "metabase/lib/query/table";
 
 export default ({ card, tableMetadata, clicked }) => {
     if (
-        !(clicked &&
-            clicked.column &&
-            (isFK(clicked.column.special_type) ||
-                isPK(clicked.column.special_type)))
+        !clicked.column ||
+        clicked.value === undefined ||
+        !(isFK(clicked.column.special_type) ||
+            isPK(clicked.column.special_type))
     ) {
         return;
     }

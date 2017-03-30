@@ -33,7 +33,6 @@ type Props = VisualizationProps & {
     height: number,
     sort: any,
     isPivoted: boolean,
-    setSortFn: (/* TODO */) => void,
 }
 type State = {
     columnWidths: number[],
@@ -74,8 +73,7 @@ export default class TableInteractive extends Component<*, Props, State> {
     static propTypes = {
         data: PropTypes.object.isRequired,
         isPivoted: PropTypes.bool.isRequired,
-        sort: PropTypes.array,
-        setSortFn: PropTypes.func
+        sort: PropTypes.array
     };
 
     static defaultProps = {
@@ -213,16 +211,6 @@ export default class TableInteractive extends Component<*, Props, State> {
         setTimeout(() => this.recomputeGridSize(), 1);
     }
 
-    isSortable() {
-        return (this.props.setSortFn !== undefined);
-    }
-
-    setSort(column: Column) {
-        // lets completely delegate this to someone else up the stack :)
-        this.props.setSortFn(column);
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'table column');
-    }
-
     cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
         const { data: { cols, rows }, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
         const column = cols[columnIndex];
@@ -272,8 +260,7 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-        const { sort, data: { cols }, onVisualizationClick, visualizationIsClickable } = this.props;
-        const isSortable = this.isSortable();
+        const { sort, data: { cols }, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
         const column = cols[columnIndex];
 
         let columnTitle = getFriendlyName(column);
@@ -285,7 +272,7 @@ export default class TableInteractive extends Component<*, Props, State> {
         }
 
         let clicked;
-        if (this.props.isPivoted) {
+        if (isPivoted) {
             // if it's a pivot table, the first column is
             if (columnIndex >= 0) {
                 clicked = column._dimension;
@@ -295,6 +282,7 @@ export default class TableInteractive extends Component<*, Props, State> {
         }
 
         const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+        const isSortable = isClickable && column.source;
 
         return (
             <div

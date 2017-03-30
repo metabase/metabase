@@ -59,7 +59,6 @@ type Props = {
     replacementContent: Element<any>,
 
     // used by TableInteractive
-    setSortFn: (any) => void,
     cellIsClickableFn: (number, number) => boolean,
     cellClickedFn: (number, number) => void,
 
@@ -178,8 +177,27 @@ export default class Visualization extends Component<*, Props, State> {
         this.setState({ hovered });
     }
 
+    getClickActions(clicked) {
+        const { mode, series, tableMetadata } = this.props;
+        const actions = [];
+        if (clicked && mode && mode.getDrills) {
+            const props = { card: series[0].card, tableMetadata, clicked };
+            for (const getAction of mode.getDrills()) {
+                const action = getAction(props);
+                if (action) {
+                    actions.push(action);
+                }
+            }
+        }
+        return actions;
+    }
+
     visualizationIsClickable = (clicked: ClickObject) => {
-        return true; // TODO;
+        try {
+            return this.getClickActions(clicked).length > 0;
+        } catch (e) {
+            return false;
+        }
     }
 
     handleVisualizationClick = (clicked: ClickObject) => {
@@ -202,16 +220,6 @@ export default class Visualization extends Component<*, Props, State> {
 
     onRenderError = (error) => {
         this.setState({ error })
-    }
-
-    getClickActions(clicked) {
-        const { mode, series, tableMetadata } = this.props;
-        if (clicked && mode && mode.getDrills) {
-            return mode.getDrills()
-                .map(getAction => getAction({ card: series[0].card, tableMetadata, clicked }))
-                .filter(action => action);
-        }
-        return [];
     }
 
     render() {

@@ -24,7 +24,6 @@ type Props = {
     data: DatasetData,
     settings: VisualizationSettings,
     isDashboard: boolean,
-    setSortFn: (/* TODO */) => void,
 }
 type State = {
     data: ?DatasetData
@@ -123,7 +122,7 @@ export default class Table extends Component<*, Props, State> {
     }
 
     render() {
-        const { card, setSortFn, isDashboard, settings } = this.props;
+        const { card, isDashboard, settings } = this.props;
         const { data } = this.state;
         const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
         const isPivoted = settings["table.pivot"];
@@ -134,7 +133,6 @@ export default class Table extends Component<*, Props, State> {
                 data={data}
                 isPivoted={isPivoted}
                 sort={sort}
-                setSortFn={isPivoted ? undefined : setSortFn}
             />
         );
     }
