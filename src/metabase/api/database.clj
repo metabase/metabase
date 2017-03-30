@@ -144,9 +144,9 @@
   [id]
   (read-check Database id)
   (for [{:keys [id display_name table base_type special_type]} (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :special_type]
-                                                                       :table_id        [:in (db/select-field :id Table, :db_id id)]
-                                                                       :visibility_type [:not-in ["sensitive" "retired"]])
-                                                                     (hydrate :table)))]
+                                                                                                   :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                                                                                   :visibility_type [:not-in ["sensitive" "retired"]])
+                                                                                        (hydrate :table)))]
     {:id           id
      :name         display_name
      :base_type    base_type
