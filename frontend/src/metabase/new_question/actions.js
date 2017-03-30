@@ -50,6 +50,7 @@ export const checkFlowCompletion = createThunkAction(
     () => {
         const isComplete = (flow, card, table) => {
             const wouldBeMode = getMode(card, table).name;
+            console.log('mode', wouldBeMode)
             return wouldBeMode === flow;
         };
 
@@ -74,8 +75,6 @@ export const selectAndAdvance = createThunkAction(
     SELECT_AND_ADVANCE,
     selectionAction => {
         return async (dispatch, getState) => {
-            console.log('ey?')
-
             await dispatch(selectionAction());
             await dispatch(checkFlowCompletion());
 
@@ -83,8 +82,7 @@ export const selectAndAdvance = createThunkAction(
             const nextStep = getNextStep(state);
             const isSkippable = nextStep && nextStep.skip;
 
-            console.log('next', nextStep)
-
+            // if there's not a next step that probable means we need to break out
             if (!nextStep) {
                 await dispatch(addBreakoutStep());
             }
@@ -106,7 +104,6 @@ export const selectAndAdvance = createThunkAction(
             // selection action is a wrapper function that
             // dispatches an action provided by the caller that we shouldn't care
             // about here, for example adding a breakout
-            console.log('yo?')
             return await dispatch(advanceStep());
         };
     }
@@ -132,6 +129,9 @@ export const SET_DATABASE = "SET_DATABASE";
 export const setDatabase = createAction(SET_DATABASE, databaseId => {
     return startNewCard("query", databaseId);
 });
+
+export const SET_PIVOT_BREAKOUTS = "SET_PIVOT_BREAKOUTS";
+export const setPivotBreakouts = createAction(SET_PIVOT_BREAKOUTS)
 
 export const SELECT_METRIC_BREAKOUT = "SELECT_METRIC_BREAKOUT";
 export const selectMetricBreakout = createAction(

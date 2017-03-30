@@ -11,7 +11,8 @@ import {
     SET_MAP,
     SET_TIP,
     SELECT_METRIC,
-    SELECT_METRIC_BREAKOUT
+    SELECT_METRIC_BREAKOUT,
+    SET_PIVOT_BREAKOUTS
 } from "./actions";
 
 import QueryTypeList from "./components/QueryTypeList";
@@ -29,6 +30,12 @@ import PivotSelection from "./containers/PivotSelection";
 import tips from "./tips";
 
 import { assocIn, chain } from "icepick";
+
+const pivotSelection = {
+    title: pivotTitle,
+    component: PivotSelection,
+    tip: tips['metric']
+}
 
 const breakoutStep = {
     title: "How do you want to see this metric?",
@@ -127,10 +134,7 @@ const pivot = [
             resolve: metrics => metrics.length > 0
         }
     },
-    {
-        title: pivotTitle,
-        component: PivotSelection
-    }
+    pivotSelection
 ];
 
 const timeSeriesTitle = "A metric as a timeseries";
@@ -261,6 +265,8 @@ export default function(state = initialState, { type, payload, error }) {
                     }
                 }
             };
+        case SET_PIVOT_BREAKOUTS:
+            return assocIn(state, ["card", "dataset_query", "query", "breakout"], payload);
         case SET_AGGREGATION:
             return {
                 ...state,
@@ -276,11 +282,15 @@ export default function(state = initialState, { type, payload, error }) {
                 }
             };
         case ADD_BREAKOUT_STEP:
+            let step = breakoutStep
+            if(state.flow.type === 'pivot') {
+                step = pivotSelection
+            }
             return {
                 ...state,
                 flow: {
                     ...state.flow,
-                    steps: state.flow.steps.concat([breakoutStep])
+                    steps: state.flow.steps.concat([step])
                 }
             };
         case SET_DATABASE:

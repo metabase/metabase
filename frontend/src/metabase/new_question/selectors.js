@@ -108,9 +108,9 @@ export const getFieldFilterForFlow = createSelector(
 });
 
 export const getBreakoutsForFlow = createSelector(
-    [getCurrentFlowType, getSelectedTable, getFieldFilterForFlow],
-    (flowType, selectedTable, fieldFilter) => {
-        return Object.values(selectedTable.fields_lookup).filter(fieldFilter);
+    [getCurrentFlowType, getSelectedTable, getTables, getFieldFilterForFlow],
+    (flowType, selectedTable, tables, fieldFilter) => {
+        return Object.values(tables[selectedTable].fields_lookup).filter(fieldFilter);
     }
 );
 
