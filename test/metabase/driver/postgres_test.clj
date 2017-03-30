@@ -205,7 +205,7 @@
         (driver/describe-database pg-driver database)))))
 
 ;; make sure that if a view is dropped and recreated that the original Table object is marked active rather than a new one being created (#3331)
-(expect
+(expect-with-engine :postgres
   [{:name "angry_birds", :active true}]
   (let [details (i/database->connection-details pg-driver :db {:database-name "dropped_views_test"})
         spec    (sql/connection-details->spec pg-driver details)
