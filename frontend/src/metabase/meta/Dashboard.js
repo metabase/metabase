@@ -6,7 +6,7 @@ import type Field from "./metadata/Field";
 import type { FieldId } from "./types/Field";
 import type { TemplateTag } from "./types/Query";
 import type { Card } from "./types/Card";
-import type { ParameterOption, Parameter, ParameterMappingUIOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
+import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
 
 import { getTemplateTags } from "./Card";
 
@@ -217,20 +217,28 @@ export function getParameterMappingTargetField(metadata: Metadata, card: Card, t
     return null;
 }
 
-function fieldFilterForParameter(parameter: Parameter): FieldFilter {
-    const [type] = parameter.type.split("/");
+function fieldFilterForParameter(parameter: Parameter) {
+    return fieldFilterForParameterType(parameter.type);
+}
+
+export function fieldFilterForParameterType(parameterType: ParameterType): FieldFilter {
+    const [type] = parameterType.split("/");
     switch (type) {
         case "date":        return (field: Field) => field.isDate();
         case "id":          return (field: Field) => field.isID();
         case "category":    return (field: Field) => field.isCategory();
     }
-    switch (parameter.type) {
+    switch (parameterType) {
         case "location/city":     return (field: Field) => isa(field.special_type, TYPE.City);
         case "location/state":    return (field: Field) => isa(field.special_type, TYPE.State);
         case "location/zip_code": return (field: Field) => isa(field.special_type, TYPE.ZipCode);
         case "location/country":  return (field: Field) => isa(field.special_type, TYPE.Country);
     }
     return (field: Field) => false;
+}
+
+export function parameterOptionsForField(field: Field): ParameterOption[] {
+    return PARAMETER_OPTIONS.filter(option => fieldFilterForParameterType(option.type)(field));
 }
 
 function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
