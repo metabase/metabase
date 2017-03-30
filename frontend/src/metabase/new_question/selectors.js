@@ -102,6 +102,8 @@ export const getFieldFilterForFlow = createSelector(
             return isDate
         case "geo":
             return isGeo
+        case "pivot":
+            return (field) => !isDate(field)
         default:
             return () => true;
     }
