@@ -67,6 +67,11 @@
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
+                 [org.apache.hive/hive-jdbc "1.2.1"
+                  :exclusions [org.mortbay.jetty/jetty
+                               org.eclipse.jetty.aggregate/jetty-all]
+                  :classifier "standalone"]
+                 [org.apache.hadoop/hadoop-common "2.7.3"]
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
@@ -85,6 +90,7 @@
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
+  :java-source-paths ["src-java"]
   :target-path "target/%s"
   :jvm-opts ["-server"                                                ; Run JVM in server mode as opposed to client -- see http://stackoverflow.com/questions/198577/real-differences-between-java-server-and-java-client for a good explanation of this
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
