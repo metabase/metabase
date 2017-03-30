@@ -13,7 +13,9 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
         .map(tag => ({
             id: tag.id,
             type: tag.widget_type || (tag.type === "date" ? "date/single" : "category"),
-            target: ["variable", ["template-tag", tag.name]],
+            target: tag.type === "dimension" ?
+                ["dimension", ["template-tag", tag.name]]:
+                ["variable", ["template-tag", tag.name]],
             name: tag.display_name,
             slug: tag.name,
             default: tag.default

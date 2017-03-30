@@ -130,7 +130,9 @@
                                            (or widget-type (not= tag-type "dimension")))]
     {:id      (:id tag)
      :type    (or widget-type (if (= tag-type "date") "date/single" "category"))
-     :target  ["variable" ["template-tag" (:name tag)]]
+     :target  (if (= tag-type "dimension")
+                ["dimension" ["template-tag" (:name tag)]]
+                ["variable" ["template-tag" (:name tag)]])
      :name    (:display_name tag)
      :slug    (:name tag)
      :default (:default tag)}))
