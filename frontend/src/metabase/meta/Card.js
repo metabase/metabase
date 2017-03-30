@@ -79,7 +79,7 @@ export function getParameters(card: ?Card): Parameter[] {
 export function applyParameters(
     card: Card,
     parameters: Parameter[],
-    parameterValues: { [key: ParameterId]: string } = {},
+    parameterValues: { [key: ParameterId]: ?string } = {},
     parameterMappings: ParameterMapping[] = []
 ): DatasetQuery {
     const datasetQuery = Utils.copy(card.dataset_query);
@@ -102,7 +102,7 @@ export function applyParameters(
         }
 
         // SQL parameters
-        if (datasetQuery.type === "native") {
+        if (value != null && datasetQuery.type === "native") {
             let tag = _.findWhere(datasetQuery.native.template_tags, { id: parameter.id });
             if (tag) {
                 datasetQuery.parameters.push({

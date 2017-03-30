@@ -89,9 +89,6 @@ export default class TagEditorParam extends Component {
             const field = _.findWhere(databaseFields, { id: tag.dimension[1] });
             if (field) {
                 widgetOptions = parameterOptionsForField(new Field(field));
-                if (widgetOptions.length === 1 && widgetOptions[0].type === tag.widget_type) {
-                    widgetOptions = [];
-                }
             }
         }
 
@@ -126,7 +123,7 @@ export default class TagEditorParam extends Component {
                 </div>
 
                 { tag.type === "dimension" &&
-                    <div className="pb">
+                    <div className="pb1">
                         <h5 className="pb1 text-normal">Field</h5>
                         <Select
                             className="border-med bg-white block"
@@ -160,7 +157,7 @@ export default class TagEditorParam extends Component {
                             isInitiallyOpen={!tag.widget_type}
                             placeholder="Select…"
                         >
-                            {widgetOptions.map(widgetOption =>
+                            {[{ name: "None", type: undefined }].concat(widgetOptions).map(widgetOption =>
                                 <Option key={widgetOption.type} value={widgetOption.type}>
                                     {widgetOption.name}
                                 </Option>
