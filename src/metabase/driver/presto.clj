@@ -23,13 +23,15 @@
   [{:keys [ssl host port]} path]
   (str (if ssl "https" "http") "://" host ":" port path))
 
-(defn- details->headers [{:keys [user catalog report-timezone]}]
-  (merge {"X-Presto-Source" "metabase"
-          "X-Presto-User"   user}
-         (when catalog
-           {"X-Presto-Catalog" catalog})
-         (when report-timezone
-           {"X-Presto-Time-Zone" report-timezone})))
+(defn- details->request [{:keys [user password catalog report-timezone]}]
+  (merge {:headers (merge {"X-Presto-Source" "metabase"
+                           "X-Presto-User"   user}
+                          (when catalog
+                            {"X-Presto-Catalog" catalog})
+                          (when report-timezone
+                            {"X-Presto-Time-Zone" report-timezone}))}
+         (when password
+           {:basic-auth [user password]})))
 
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
@@ -57,7 +59,7 @@
           (parser value))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
-  (let [{{:keys [columns data nextUri error]} :body} (http/get uri {:headers (details->headers details), :as :json})]
+  (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
     (when error
       (throw (ex-info (or (:message error) "Error running query.") error)))
     (let [rows    (parse-presto-results columns data)
@@ -70,7 +72,7 @@
 
 (defn- execute-presto-query! [details query]
   (let [{{:keys [columns data nextUri error]} :body} (http/post (details->uri details "/v1/statement")
-                                                                {:headers (details->headers details), :body query, :as :json})]
+                                                                (assoc (details->request details) :body query, :as :json))]
     (when error
       (throw (ex-info (or (:message error) "Error preparing query.") error)))
     (let [rows    (parse-presto-results (or columns []) (or data []))

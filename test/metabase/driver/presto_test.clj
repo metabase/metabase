@@ -9,7 +9,7 @@
             [metabase.test.util :refer [resolve-private-vars]])
   (:import (metabase.driver.presto PrestoDriver)))
 
-(resolve-private-vars metabase.driver.presto details->uri details->headers quote-name quote+combine-names unprepare apply-page)
+(resolve-private-vars metabase.driver.presto details->uri details->request quote-name quote+combine-names unprepare apply-page)
 
 ;;; HELPERS
 
@@ -26,16 +26,22 @@
   (details->uri {:host "localhost", :port 8080, :ssl false} "/v1/statement"))
 
 (expect
-  {"X-Presto-Source" "metabase"
-   "X-Presto-User"   "user"}
-  (details->headers {:user "user"}))
+  {:headers {"X-Presto-Source" "metabase"
+             "X-Presto-User"   "user"}}
+  (details->request {:user "user"}))
 
 (expect
-  {"X-Presto-Source"    "metabase"
-   "X-Presto-User"      "user"
-   "X-Presto-Catalog"   "test_data"
-   "X-Presto-Time-Zone" "America/Toronto"}
-  (details->headers {:user "user", :catalog "test_data", :report-timezone "America/Toronto"}))
+  {:headers    {"X-Presto-Source" "metabase"
+                "X-Presto-User"   "user"}
+   :basic-auth ["user" "test"]}
+  (details->request {:user "user", :password "test"}))
+
+(expect
+  {:headers {"X-Presto-Source"    "metabase"
+             "X-Presto-User"      "user"
+             "X-Presto-Catalog"   "test_data"
+             "X-Presto-Time-Zone" "America/Toronto"}}
+  (details->request {:user "user", :catalog "test_data", :report-timezone "America/Toronto"}))
 
 (expect
   "\"weird.table\"\" name\""

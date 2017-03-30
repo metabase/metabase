@@ -26,7 +26,7 @@
 (defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host (get-env-var :host)
           :port (get-env-var :port)
-          :user "test"
+          :user "metabase"
           :ssl  false}
          (when (= context :db)
            {:catalog database-name})))
