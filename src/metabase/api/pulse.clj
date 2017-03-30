@@ -87,12 +87,14 @@
                  ;; no Slack integration, so we are g2g
                  chan-types
                  ;; if we have Slack enabled build a dynamic list of channels/users
-                 (let [slack-channels (for [channel (slack/channels-list)]
-                                        (str \# (:name channel)))
-                       slack-users    (for [user (slack/users-list)]
-                                        (str \@ (:name user)))]
-                   (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users))))}))
-
+                 (try
+                   (let [slack-channels (for [channel (slack/channels-list)]
+                                          (str \# (:name channel)))
+                         slack-users    (for [user (slack/users-list)]
+                                          (str \@ (:name user)))]
+                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
+                   (catch Throwable e
+                     (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
 (defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a `Card` with ID."

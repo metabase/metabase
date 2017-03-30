@@ -15,7 +15,7 @@ import { normal } from "metabase/lib/colors";
 
 const DEFAULT_COLORS = Object.values(normal);
 
-import type { VisualizationProps, HoverData } from "metabase/visualizations";
+import type { VisualizationProps, HoverData, HoverObject } from "metabase/visualizations";
 
 type StepInfo = {
     value: number,
@@ -43,24 +43,6 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         const formatDimension = (dimension, jsx = true) => formatValue(dimension, { column: cols[dimensionIndex], jsx, majorWidth: 0 })
         const formatMetric    =    (metric, jsx = true) => formatValue(metric, { column: cols[metricIndex], jsx, majorWidth: 0 , comma: true})
         const formatPercent   =               (percent) => `${(100 * percent).toFixed(2)} %`
-        const calculateGraphStyle = (info, currentStep, stepsNumber, hovered) => {
-            var sizeConverter = 100;
-
-            let styles = {
-                WebkitClipPath: `polygon(0 ${info.graph.startBottom * sizeConverter}%, 0 ${info.graph.startTop * sizeConverter}%, 100% ${info.graph.endTop * sizeConverter}%, 100% ${info.graph.endBottom * sizeConverter}%)`,
-                MozClipPath: `polygon(0 ${info.graph.startBottom * sizeConverter}%, 0 ${info.graph.startTop * sizeConverter}%, 100% ${info.graph.endTop * sizeConverter}%, 100% ${info.graph.endBottom * sizeConverter}%)`,
-                msClipPath: `polygon(0 ${info.graph.startBottom * sizeConverter}%, 0 ${info.graph.startTop * sizeConverter}%, 100% ${info.graph.endTop * sizeConverter}%, 100% ${info.graph.endBottom * sizeConverter}%)`,
-                ClipPath: `polygon(0 ${info.graph.startBottom * sizeConverter}%, 0 ${info.graph.startTop * sizeConverter}%, 100% ${info.graph.endTop * sizeConverter}%, 100% ${info.graph.endBottom * sizeConverter}%)`,
-                backgroundColor: DEFAULT_COLORS[0],
-                opacity: 1 - (currentStep * (0.9 / stepsNumber)),
-            };
-
-            if (hovered) {
-                styles.opacity = hovered.index !== currentStep ? 0.3 : 1;
-            }
-
-            return styles
-        }
 
         // Initial infos (required for step calculation)
         var infos: StepInfo[] = [{
@@ -129,15 +111,13 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                 {infos.slice(1).map((info, index) =>
                     <div key={index} className={cx(styles.FunnelStep, 'flex flex-column')}>
                         <Ellipsified className={styles.Head}>{formatDimension(rows[index + 1][dimensionIndex])}</Ellipsified>
-                        <div
-                            className={styles.Graph}
-                            onMouseMove={(event) => onHoverChange({
-                                index: index,
-                                event: event.nativeEvent,
-                                data: info.tooltip,
-                            })}
-                            onMouseLeave={() => onHoverChange(null)}
-                            style={calculateGraphStyle(info, index, infos.length + 1, hovered)}>&nbsp;</div>
+                        <GraphSection
+                            index={index}
+                            info={info}
+                            infos={infos}
+                            hovered={hovered}
+                            onHoverChange={onHoverChange}
+                        />
                         <div className={styles.Infos}>
                             <div className={styles.Title}>{formatPercent(info.value / initial.value)}</div>
                             <div className={styles.Subtitle}>{formatMetric(rows[index + 1][metricIndex])}</div>
@@ -150,3 +130,40 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         );
     }
 }
+const GraphSection = (
+    {
+        index,
+        info,
+        infos,
+        hovered,
+        onHoverChange
+    }: {
+        index: number,
+        info: StepInfo,
+        infos: StepInfo[],
+        hovered: ?HoverObject,
+        onHoverChange: (hovered: ?HoverObject) => void
+    }
+) => {
+    return (
+        <svg
+            className={styles.Graph}
+            onMouseMove={event => onHoverChange({
+                index: index,
+                event: event.nativeEvent,
+                data: info.tooltip
+            })}
+            onMouseLeave={() => onHoverChange(null)}
+            viewBox="0 0 1 1"
+            preserveAspectRatio="none"
+        >
+            <polygon
+                opacity={1 - index * (0.9 / (infos.length + 1))}
+                fill={DEFAULT_COLORS[0]}
+                points={
+                    `0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`
+                }
+            />
+        </svg>
+    );
+};
