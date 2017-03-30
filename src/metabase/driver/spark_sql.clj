@@ -45,7 +45,7 @@
       dbspec/spark-sql
       (sql/handle-additional-options details)))
 
-(def ^:private ^:const now (hsql/raw "SYSDATE"))
+(def ^:private ^:const now (hsql/raw "NOW()"))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (hsql/call :from_unixtime (case seconds-or-milliseconds
