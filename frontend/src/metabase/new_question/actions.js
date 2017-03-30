@@ -50,7 +50,6 @@ export const checkFlowCompletion = createThunkAction(
     () => {
         const isComplete = (flow, card, table) => {
             const wouldBeMode = getMode(card, table).name;
-            console.log('mode', wouldBeMode)
             return wouldBeMode === flow;
         };
 

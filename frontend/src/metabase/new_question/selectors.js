@@ -16,7 +16,6 @@ export const getCurrentStep = state => state.newQuestion.currentStep;
 export const getBack = createSelector(
     [getCurrentStep],
     (currentStep) => {
-        console.log(currentStep)
         if(currentStep.hasOwnProperty('back')) {
             return currentStep.back
         }
