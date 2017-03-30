@@ -9,7 +9,7 @@
             [metabase.test.util :refer [resolve-private-vars]])
   (:import (metabase.driver.presto PrestoDriver)))
 
-(resolve-private-vars metabase.driver.presto details->uri details->request quote-name quote+combine-names unprepare apply-page)
+(resolve-private-vars metabase.driver.presto details->uri details->request quote-name quote+combine-names apply-page)
 
 ;;; HELPERS
 
@@ -50,12 +50,6 @@
 (expect
   "\"weird . \"\"schema\".\"weird.table\"\" name\""
   (quote+combine-names "weird . \"schema" "weird.table\" name"))
-
-(expect
-  ;; adapted from unprepare-test
-  "SELECT 'Cam''s Cool Toucan' FROM TRUE WHERE x ?? y AND z = from_iso8601_timestamp('2017-01-01T00:00:00.000Z')"
-  (unprepare "SELECT ? FROM ? WHERE x ?? y AND z = ?"
-             ["Cam's Cool Toucan", true, #inst "2017-01-01T00:00:00.000Z"]))
 
 ;; DESCRIBE-DATABASE
 (datasets/expect-with-engine :presto

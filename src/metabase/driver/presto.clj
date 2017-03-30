@@ -7,6 +7,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             (metabase.models [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
@@ -181,11 +182,9 @@
   Number        (prepare-value [this] this)
   Object        (prepare-value [this] (throw (Exception. (format "Don't know how to prepare value %s %s" (class this) this)))))
 
-(defn- unprepare [sql params]
-  (reduce #(str/replace-first %1 #"(?<!\?)\?(?!\?)" (first (hsql/format (prepare-value %2)))) sql params))
-
 (defn- execute-query [{:keys [database settings], {sql :query, params :params} :native, :as outer-query}]
-  (let [sql                    (str "-- " (qputil/query->remark outer-query) "\n" (unprepare sql params))
+  (let [sql                    (str "-- " (qputil/query->remark outer-query) "\n"
+                                          (unprepare/unprepare (cons sql params) :quote-escape "'", :iso-8601-fn  :from_iso8601_timestamp))
         details                (merge (:details database) settings)
         {:keys [columns rows]} (execute-presto-query! details sql)]
     {:columns (map (comp keyword :name) columns)
