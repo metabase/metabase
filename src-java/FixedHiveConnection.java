@@ -35,6 +35,7 @@ public class FixedHiveConnection extends HiveConnection {
         return ResultSet.CLOSE_CURSORS_AT_COMMIT;
     }
 
+    // From https://issues.apache.org/jira/browse/HIVE-11501
     @Override
     public void setReadOnly(boolean readOnly) throws SQLException {
         // Per JDBC spec, if the connection is closed a SQLException should be thrown.
