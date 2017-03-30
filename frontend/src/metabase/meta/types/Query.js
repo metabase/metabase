@@ -3,6 +3,7 @@
 import type { TableId } from "./Table";
 import type { FieldId } from "./Field";
 import type { SegmentId } from "./Segment";
+import type { ParameterType } from "./Dashboard";
 
 export type MetricId = number;
 
@@ -27,6 +28,8 @@ export type TemplateTag = {
     display_name: string,
     type:         string,
     dimension?:   ["field-id", number],
+    widget_type?: ParameterType,
+    required?:    boolean,
     default?:     string,
 };
 
