@@ -244,7 +244,7 @@ export default class Visualization extends Component<*, Props, State> {
 
         return (
             <div className={cx(className, "flex flex-column")}>
-                { showTitle && (settings["card.title"] || extra) && (loading || error || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
+                { showTitle && (settings["card.title"] || extra) && (loading || error || noResults || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
                             series={
