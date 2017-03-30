@@ -58,13 +58,14 @@
 ;; TAGS in this case are simple params like {{x}} that get replaced with a single value ("ABC" or 1) as opposed to a "FieldFilter" clause like Dimensions
 (def ^:private TagParam
   "Schema for values passed in as part of the `:template_tags` list."
-  {(s/optional-key :id)        su/NonBlankString ; this is used internally by the frontend
-   :name                       su/NonBlankString
-   :display_name               su/NonBlankString
-   :type                       (s/enum "number" "dimension" "text" "date")
-   (s/optional-key :dimension) [s/Any]
-   (s/optional-key :required)  s/Bool
-   (s/optional-key :default)   s/Any})
+  {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
+   :name                         su/NonBlankString
+   :display_name                 su/NonBlankString
+   :type                         (s/enum "number" "dimension" "text" "date")
+   (s/optional-key :dimension)   [s/Any]
+   (s/optional-key :widget_type) su/NonBlankString
+   (s/optional-key :required)    s/Bool
+   (s/optional-key :default)     s/Any})
 
 (def ^:private DimensionValue
   {:type                   su/NonBlankString
