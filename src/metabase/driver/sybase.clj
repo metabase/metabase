@@ -170,8 +170,7 @@
                                         :default      false}
                                         {:name         "params"
                                         :display-name "Additional params for driver"
-                                        :type         :boolean
-                                        :default      false}
+                                        :default      ""}
                                        ])})
 
   sql/ISQLDriver
