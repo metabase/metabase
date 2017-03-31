@@ -277,7 +277,7 @@
 ;; NOTE: This will ERROR out in the logs, it's normal
 (expect-with-ldap-server
   true
-  (tu/with-temporary-setting-values [ldap-base "cn=wrong,cn=com"]
+  (tu/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
     ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
     (do (db/simple-delete! Session, :user_id (user->id :rasta))
         (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta)))))))

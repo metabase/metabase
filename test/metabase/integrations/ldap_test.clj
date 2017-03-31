@@ -8,12 +8,13 @@
 
 
 (defn- get-ldap-details []
-  {:host     "localhost"
-   :port     (get-ldap-port)
-   :bind-dn  "cn=Directory Manager"
-   :password "password"
-   :security "none"
-   :base     "dc=metabase,dc=com"})
+  {:host       "localhost"
+   :port       (get-ldap-port)
+   :bind-dn    "cn=Directory Manager"
+   :password   "password"
+   :security   "none"
+   :user-base  "dc=metabase,dc=com"
+   :group-base "dc=metabase,dc=com"})
 
 ;; See test_resources/ldap.ldif for fixtures
 
@@ -26,23 +27,25 @@
   {:status :SUCCESS}
   (ldap/test-ldap-connection (get-ldap-details)))
 
-;; The connection test should fail with an invalid search base
+;; The connection test should fail with an invalid user search base
 (expect-with-ldap-server
-  {:status  :ERROR
-   :message "Search base does not exist or is unreadable"}
-  (ldap/test-ldap-connection (assoc (get-ldap-details) :base "dc=example,dc=com")))
+  :ERROR
+  (:status (ldap/test-ldap-connection (assoc (get-ldap-details) :user-base "dc=example,dc=com"))))
+
+;; The connection test should fail with an invalid group search base
+(expect-with-ldap-server
+  :ERROR
+  (:status (ldap/test-ldap-connection (assoc (get-ldap-details) :group-base "dc=example,dc=com"))))
 
 ;; The connection test should fail with an invalid bind DN
 (expect-with-ldap-server
-  {:status  :ERROR
-   :message "Unable to bind as user 'cn=Not Directory Manager' because no such entry exists in the server."}
-  (ldap/test-ldap-connection (assoc (get-ldap-details) :bind-dn "cn=Not Directory Manager")))
+  :ERROR
+  (:status (ldap/test-ldap-connection (assoc (get-ldap-details) :bind-dn "cn=Not Directory Manager"))))
 
 ;; The connection test should fail with an invalid bind password
 (expect-with-ldap-server
-  {:status  :ERROR
-   :message "Unable to bind as user 'cn=Directory Manager' because the provided password was incorrect."}
-  (ldap/test-ldap-connection (assoc (get-ldap-details) :password "wrong")))
+  :ERROR
+  (:status (ldap/test-ldap-connection (assoc (get-ldap-details) :password "wrong"))))
 
 ;; Make sure the basic connection stuff works, this will throw otherwise
 (expect-with-ldap-server

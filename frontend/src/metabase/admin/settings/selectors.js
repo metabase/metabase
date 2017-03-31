@@ -201,7 +201,7 @@ const SECTIONS = [
                 required: true
             },
             {
-                key: "ldap-base",
+                key: "ldap-user-base",
                 display_name: "Search base",
                 type: "string",
                 required: true
@@ -226,6 +226,12 @@ const SECTIONS = [
                 key: "ldap-attribute-lastname",
                 display_name: "User last name attribute",
                 type: "string"
+            },
+            {
+                key: "ldap-group-sync",
+                display_name: "Synchronize groups",
+                description: null,
+                type: "boolean"
             }
         ]
     },

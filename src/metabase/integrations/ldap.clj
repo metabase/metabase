@@ -29,7 +29,7 @@
 (defsetting ldap-password
   "The password to bind with.")
 
-(defsetting ldap-base
+(defsetting ldap-user-base
   "Search base for users. (Will be searched recursively)")
 
 (defsetting ldap-user-filter
@@ -48,6 +48,14 @@
   "Attribute to use for the user's last name. (i.e.: 'sn')"
   :default "sn")
 
+(defsetting ldap-group-sync
+  "Wether to synchronize group membership with LDAP."
+  :type    :boolean
+  :default false)
+
+(defsetting ldap-group-base
+  "Search base for groups. (Will be searched recursively)")
+
 (defn ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
   []
@@ -55,7 +63,9 @@
        (boolean (ldap-host))
        (boolean (ldap-bind-dn))
        (boolean (ldap-password))
-       (boolean (ldap-base))))
+       (boolean (ldap-user-base))
+       (or (not (ldap-group-sync))
+           (boolean (ldap-group-base)))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   {:host      (str host ":" port)
@@ -89,9 +99,9 @@
   ([dn]
     (with-connection get-user-groups dn))
   ([conn dn]
-    (let [results (ldap/search conn (ldap-base) {:scope      :sub
-                                                 :filter     (str "member=" (escape-value dn))
-                                                 :attributes [:dn :distinguishedName]})]
+    (let [results (ldap/search conn (ldap-group-base) {:scope      :sub
+                                                       :filter     (str "member=" (escape-value dn))
+                                                       :attributes [:dn :distinguishedName]})]
       (filter some?
         (for [result results]
           (or (:dn result) (:distinguishedName result)))))))
@@ -100,19 +110,23 @@
   "Test the connection to an LDAP server to determine if we can find the search base.
 
    Takes in a dictionary of properties such as:
-       {:host     \"localhost\"
-        :port     389
-        :bind-dn  \"cn=Directory Manager\"
-        :password \"password\"
-        :security \"none\"
-        :base     \"ou=People,dc=metabase,dc=com\"}"
-  [{:keys [base], :as details}]
+       {:host       \"localhost\"
+        :port       389
+        :bind-dn    \"cn=Directory Manager\"
+        :password   \"password\"
+        :security   \"none\"
+        :user-base  \"ou=Birds,dc=metabase,dc=com\"
+        :group-base \"ou=Groups,dc=metabase,dc=com\"}"
+  [{:keys [user-base group-base], :as details}]
   (try
     (with-open [conn (ldap/connect (details->ldap-options details))]
-      (if-let [_ (ldap/get conn base)]
-        {:status  :SUCCESS}
+      (if-let [_ (ldap/get conn user-base)]
+        (if-let [_ (or (nil? group-base) (ldap/get conn group-base))]
+          {:status :SUCCESS}
+          {:status  :ERROR
+           :message "Group search base does not exist or is unreadable"})
         {:status  :ERROR
-         :message "Search base does not exist or is unreadable"}))
+         :message "User search base does not exist or is unreadable"}))
     (catch Exception e
       {:status  :ERROR
        :message (.getMessage e)})))
@@ -125,10 +139,10 @@
     (let [fname-attr (keyword (ldap-attribute-firstname))
           lname-attr (keyword (ldap-attribute-lastname))
           email-attr (keyword (ldap-attribute-email))]
-      (when-let [[result] (ldap/search conn (ldap-base) {:scope      :sub
-                                                         :filter     (s/replace (ldap-user-filter) "{login}" (escape-value username))
-                                                         :attributes [:dn :distinguishedName fname-attr lname-attr email-attr :memberOf]
-                                                         :size-limit 1})]
+      (when-let [[result] (ldap/search conn (ldap-user-base) {:scope      :sub
+                                                              :filter     (s/replace (ldap-user-filter) "{login}" (escape-value username))
+                                                              :attributes [:dn :distinguishedName fname-attr lname-attr email-attr :memberOf]
+                                                              :size-limit 1})]
         (let [dn    (or (:dn result) (:distinguishedName result))
               fname (get result fname-attr)
               lname (get result lname-attr)
@@ -136,7 +150,7 @@
           (when-not (or (empty? dn) (empty? fname) (empty? lname) (empty? email))
             ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
             ;; Otherwise we have to make the inverse query to get them
-            (let [groups (or (:memberOf result) (get-user-groups dn) [])]
+            (let [groups (when (ldap-group-sync) (or (:memberOf result) (get-user-groups dn) []))]
               {:dn         dn
                :first-name fname
                :last-name  lname

@@ -152,7 +152,7 @@ export default class SettingsLdapForm extends Component {
             let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
 
             if (element.key === "ldap-enabled") {
-                let configuredEnough = formData["ldap-host"] && formData['ldap-bind-dn'] && formData['ldap-password'] && formData['ldap-base'];
+                let configuredEnough = formData["ldap-host"] && formData['ldap-bind-dn'] && formData['ldap-password'] && formData['ldap-user-base'];
                 return (
                     <SettingsSetting
                         key={element.key}

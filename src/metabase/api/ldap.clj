@@ -16,11 +16,13 @@
    :ldap-bind-dn             :bind-dn
    :ldap-password            :password
    :ldap-security            :security
-   :ldap-base                :base
+   :ldap-user-base           :user-base
    :ldap-user-filter         :user-filter
    :ldap-attribute-email     :attribute-email
    :ldap-attribute-firstname :attribute-firstname
-   :ldap-attribute-lastname  :attribute-lastname})
+   :ldap-attribute-lastname  :attribute-lastname
+   :ldap-group-sync          :group-sync
+   :ldap-group-base          :group-base})
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
@@ -28,13 +30,12 @@
   (println message)
   (when (not= :SUCCESS status)
     (log/warn "Problem connecting to LDAP server:" message)
-    (let [conn-error     {:errors {:ldap-host "Wrong host or port"
-                                   :ldap-port "Wrong host or port"}}
-          security-error {:errors {:ldap-port     "Wrong port or security setting"
-                                   :ldap-security "Wrong port or security setting"}}
-          creds-error    {:errors {:ldap-bind-dn  "Wrong bind DN or password"
-                                   :ldap-password "Wrong bind DN or password"}}
-          base-error     {:errors {:ldap-base "Search base does not exist or is unreadable"}}]
+    (let [conn-error       {:errors {:ldap-host "Wrong host or port"
+                                     :ldap-port "Wrong host or port"}}
+          security-error   {:errors {:ldap-port     "Wrong port or security setting"
+                                     :ldap-security "Wrong port or security setting"}}
+          creds-error      {:errors {:ldap-bind-dn  "Wrong bind DN or password"
+                                     :ldap-password "Wrong bind DN or password"}}]
       (condp re-matches message
         #".*UnknownHostException.*"
         conn-error
@@ -52,10 +53,14 @@
         creds-error
 
         #"(?s)^0000202B:.*"
-        base-error
+        {:errors {:ldap-user-base  "User or group search base does not exist or is unreadable"}
+                  :ldap-group-base "User or group search base does not exist or is unreadable"}
 
-        #"^Search base does not exist .*"
-        base-error
+        #"^User search base does not exist .*"
+        {:errors {:ldap-user-base "User search base does not exist or is unreadable"}}
+
+        #"^Group search base does not exist .*"
+        {:errors {:ldap-group-base "Group search base does not exist or is unreadable"}}
 
         ;; everything else :(
         #"(?s).*"

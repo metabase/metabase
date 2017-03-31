@@ -37,12 +37,14 @@
   [f]
   (binding [*ldap-server* (start-ldap-server!)]
     (try
-      (tu/with-temporary-setting-values [ldap-enabled  true
-                                         ldap-host     "localhost"
-                                         ldap-port     (str (get-ldap-port))
-                                         ldap-bind-dn  "cn=Directory Manager"
-                                         ldap-password "password"
-                                         ldap-base     "dc=metabase,dc=com"]
+      (tu/with-temporary-setting-values [ldap-enabled    true
+                                         ldap-host       "localhost"
+                                         ldap-port       (str (get-ldap-port))
+                                         ldap-bind-dn    "cn=Directory Manager"
+                                         ldap-password   "password"
+                                         ldap-user-base  "dc=metabase,dc=com"
+                                         ldap-group-sync true
+                                         ldap-group-base "dc=metabase,dc=com"]
         (f))
       (finally (.shutDown *ldap-server* true)))))
 
