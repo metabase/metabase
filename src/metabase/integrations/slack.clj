@@ -52,7 +52,7 @@
   (or (some (fn [channel] (when (= (:name channel) files-channel-name)
                             channel))
             (channels-list :exclude_archived 0))
-      (let [channel-missing-msg (str "Slack channel named `metabase_files` is missing! Please create the channel in order to proceed with "
+      (let [channel-missing-msg (str "Slack channel named `metabase_files` is missing! Please create the channel in order to complete"
                                      "the Slack integration. The channel is used for storing graphs that are included in pulses and "
                                      "Metabot anwers.")]
         (log/error (u/format-color 'red channel-missing-msg))
