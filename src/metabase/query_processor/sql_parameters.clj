@@ -198,7 +198,7 @@
       (->replacement-snippet-info \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"))
 
 
-(defn- relative-date-param-type? [param-type] (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative"} param-type))
+(defn- relative-date-param-type? [param-type] (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative" "date/all-options"} param-type))
 (defn- date-param-type?          [param-type] (str/starts-with? param-type "date/"))
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it

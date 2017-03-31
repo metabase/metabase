@@ -10,57 +10,41 @@
             [metabase.util :as u])
   (:import (org.joda.time DateTimeConstants DateTime)))
 
-(defn- start-of-quarter [quarter year]
-  (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) (case quarter
-                                                                   "Q1" DateTimeConstants/JANUARY
-                                                                   "Q2" DateTimeConstants/APRIL
-                                                                   "Q3" DateTimeConstants/JULY
-                                                                   "Q4" DateTimeConstants/OCTOBER))))
+(defn- day-range
+  [^DateTime end ^DateTime start]
+  {:end   end
+   :start start})
 
 (defn- week-range
-  ([^DateTime dt] (week-range dt dt))
-  ([^DateTime end ^DateTime start]
+  [^DateTime end ^DateTime start]
     ;; weeks always start on SUNDAY and end on SATURDAY
     ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
    {:end   (.withDayOfWeek end DateTimeConstants/SATURDAY)
-    :start (.withDayOfWeek ^DateTime (t/minus start (t/weeks 1)) DateTimeConstants/SUNDAY)}))
+    :start (.withDayOfWeek ^DateTime (t/minus start (t/weeks 1)) DateTimeConstants/SUNDAY)})
 
 (defn- month-range
-  ([^DateTime dt] (month-range dt dt))
-  ([^DateTime end ^DateTime start]
+  [^DateTime end ^DateTime start]
   {:end   (t/last-day-of-the-month end)
-   :start (t/first-day-of-the-month start)}))
-
-;; NOTE: this is perhaps a little hacky, but we are assuming that `dt` will be in the first month of the quarter
-(defn- quarter-range
-  ([^DateTime dt] (quarter-range dt dt))
-  ([^DateTime end ^DateTime start]
-  {:end   (t/last-day-of-the-month (t/plus end (t/months 2)))
-   :start (t/first-day-of-the-month start)}))
+   :start (t/first-day-of-the-month start)})
 
 (defn- year-range
-  ([^DateTime dt] (year-range dt dt))
-  ([^DateTime end ^DateTime start]
+  [^DateTime end ^DateTime start]
   {:end   (t/last-day-of-the-month  (.withMonthOfYear end DateTimeConstants/DECEMBER))
-   :start (t/first-day-of-the-month (.withMonthOfYear start DateTimeConstants/JANUARY))}))
-
-;(defn- str->int [str] (if (number? (read-string str))))
+   :start (t/first-day-of-the-month (.withMonthOfYear start DateTimeConstants/JANUARY))})
 
 (def ^:private operations-by-date-unit
-  {"day"   {:range     (fn [dt]
-                         {:end   dt,
-                          :start dt})
+  {"day"   {:unit-range     day-range
             :to-period t/days}
-   "week"  {:range     week-range
+   "week"  {:unit-range     week-range
             :to-period t/weeks}
-   "month" {:range     month-range
+   "month" {:unit-range     month-range
             :to-period t/months}
-   "year"  {:range     year-range
+   "year"  {:unit-range     year-range
             :to-period t/years}})
 
 (defn ^:private parse-absolute-date
   [date]
-  (tf/parse (tf/formatters :year-month-day) date))
+  (tf/parse (tf/formatters :date-parser) date))
 
 (defn ^:private expand-parser-groups
   [group-label group-value]
@@ -103,22 +87,29 @@
     :filter (fn [_ field] ["=" field ["relative_datetime" -1 "day"]])}
 
    {:parser (regex->parser #"past([0-9]+)(day|week|month|year)s", [:int-value :unit])
-    :range  (fn [{:keys [unit int-value range to-period]} dt]
-              (range (t/minus dt (to-period 1))
+    :range  (fn [{:keys [unit int-value unit-range to-period]} dt]
+              (unit-range (t/minus dt (to-period 1))
                      (t/minus dt (to-period int-value))))
     :filter (fn [{:keys [unit int-value]} field]
               ["TIME_INTERVAL" field (- int-value) unit])}
 
    {:parser (regex->parser #"next([0-9]+)(day|week|month|year)s" [:int-value :unit])
-    :range  (fn [{:keys [unit int-value to-period]} dt]
-              (range (t/plus dt (to-period int-value))
+    :range  (fn [{:keys [unit int-value unit-range to-period]} dt]
+              (unit-range (t/plus dt (to-period int-value))
                      (t/plus dt (to-period 1))))
     :filter (fn [{:keys [unit int-value]} field]
               ["TIME_INTERVAL" field int-value unit])}
 
+   {:parser (regex->parser #"last(day|week|month|year)" [:unit])
+    :range  (fn [{:keys [unit-range to-period]} dt]
+              (let [last-unit (t/minus dt (to-period 1))]
+                (unit-range last-unit last-unit)))
+    :filter (fn [{:keys [unit]} field]
+              ["TIME_INTERVAL" field "las" unit])}
+
    {:parser (regex->parser #"this(day|week|month|year)" [:unit])
-    :range  (fn [{:keys [range]} dt]
-              (range dt))
+    :range  (fn [{:keys [unit-range]} dt]
+              (unit-range dt dt))
     :filter (fn [{:keys [unit]} field]
               ["TIME_INTERVAL" field "current" unit])}])
 
@@ -127,25 +118,36 @@
   (tf/unparse (tf/formatters :year-month-day) date))
 
 (defn ^:private range->filter
-  [[start end] field]
+  [{:keys [start end]} field]
   ["BETWEEN" field (date->iso8601 start) (date->iso8601 end)])
+
+(defn- start-of-quarter [quarter year]
+  (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) (case quarter
+                                                                   "Q1" DateTimeConstants/JANUARY
+                                                                   "Q2" DateTimeConstants/APRIL
+                                                                   "Q3" DateTimeConstants/JULY
+                                                                   "Q4" DateTimeConstants/OCTOBER))))
+
+;; NOTE: this is perhaps a little hacky, but we are assuming that `dt` will be in the first month of the quarter
+(defn- quarter-range
+  [quarter year]
+  (let [dt (start-of-quarter quarter year)]
+    {:end   (t/last-day-of-the-month (t/plus dt (t/months 2)))
+     :start (t/first-day-of-the-month dt)}))
 
 (def ^:private absolute-date-param-values
   ;; year and month
-  ;; TODO: Find out if the standard date formatter could be used instead
-   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:year-month])
-    :range  (fn [{:keys [year-month]} _]
-              (month-range (tf/parse (tf/formatters :year-month) year-month)))
-    :filter (fn [{:keys [year-month]} field]
-              (range->filter (month-range (tf/parse (tf/formatters :year-month) year-month))
-                             field))}
+   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
+    :range  (fn [{:keys [date]} _]
+                (month-range date date))
+    :filter (fn [{:keys [date]} field]
+              (range->filter (month-range date date) field))}
   ;; quarter year
-  ;; TODO: Find out if the standard date formatter could be used instead
    {:parser (regex->parser #"(Q[1-4]{1})-([0-9]{4})" [:quarter :year])
     :range (fn [{:keys [quarter year]} _]
-               (quarter-range (start-of-quarter quarter (Integer/parseInt year))))
+               (quarter-range quarter (Integer/parseInt year)))
     :filter (fn [{:keys [quarter year]} field]
-               (range->filter (quarter-range (start-of-quarter quarter (Integer/parseInt year)))
+               (range->filter (quarter-range quarter (Integer/parseInt year))
                               field))}
   ;; single day
   {:parser (regex->parser #"([0-9-T:]+)" [:date])
@@ -223,7 +225,11 @@
 
 (defn- build-filter-clause [{param-type :type, param-value :value, [_ field] :target}]
   (let [param-value (parse-param-value-for-type param-type param-value)]
-    (date->filter param-value field)))
+    (cond
+      ;; default behavior (non-date filtering) is to use a simple equals filter
+      (not (s/starts-with? param-type "date")) ["=" field param-value]
+      ;; date range
+      :else (date->filter param-value field))))
 
 (defn- merge-filter-clauses [base addtl]
   (cond
