@@ -3,7 +3,7 @@
 import React, {Component, PropTypes} from "react";
 import cx from "classnames";
 
-import DatePicker, {OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
+import DatePicker, {DATE_OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
 import {generateTimeFilterValuesDescriptions} from "metabase/lib/query_time";
 
 import type {OperatorName} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
@@ -31,13 +31,11 @@ const serializersByOperatorName: { [id: OperatorName]: (FieldFilter) => UrlEncod
     "Before": getFilterValueSerializer((value) => `~${value}`),
     "After": getFilterValueSerializer((value) => `${value}~`),
     "On": getFilterValueSerializer((value) => `${value}`),
-    "Between": getFilterValueSerializer((from, to) => `${from}~${to}`),
-    "Is Empty": () => "is-empty",
-    "Not Empty": () => "not-empty"
+    "Between": getFilterValueSerializer((from, to) => `${from}~${to}`)
 };
 
 function getFilterOperator(filter) {
-    return OPERATORS.find((op) => op.test(filter));
+    return DATE_OPERATORS.find((op) => op.test(filter));
 }
 function filterToUrlEncoded(filter: FieldFilter): ?UrlEncoded {
     const operator = getFilterOperator(filter)
@@ -64,10 +62,6 @@ const deserializersWithTestRegex: [{ testRegex: RegExp, deserialize: Deserialize
     // Unify BETWEEN -> between, IS_NULL -> is-null, NOT_NULL -> not-null throughout the codebase
     // $FlowFixMe
     {testRegex: /^([0-9-T:]+)~([0-9-T:]+)$/, deserialize: (matches) => ["BETWEEN", noopRef, matches[0], matches[1]]},
-    // $FlowFixMe
-    {testRegex: /is-empty/, deserialize: (matches) => ["IS_NULL", noopRef]},
-    // $FlowFixMe
-    {testRegex: /not-empty/, deserialize: (matches) => ["NOT_NULL", noopRef]},
 ];
 
 function urlEncodedToFilter(urlEncoded: UrlEncoded): ?FieldFilter {
@@ -140,6 +134,7 @@ export default class DateAllOptionsWidget extends Component<DefaultProps, Props,
             <DatePicker
                 filter={this.state.filter}
                 onFilterChange={this.setFilter}
+                hideEmptinessOperators
             />
             <div className="FilterPopover-footer p1">
                 <button

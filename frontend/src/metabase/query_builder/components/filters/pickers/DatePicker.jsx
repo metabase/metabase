@@ -140,7 +140,7 @@ export type Operator = {
     test: (filter: FieldFilter) => boolean
 }
 
-export const OPERATORS: Operator[] = [
+export const DATE_OPERATORS: Operator[] = [
     {
         name: "Previous",
         init: (filter) => ["time-interval", getDateTimeField(filter[1]), -getIntervals(filter), getUnit(filter)],
@@ -185,6 +185,10 @@ export const OPERATORS: Operator[] = [
         test: ([op]) => mbqlEq(op, "between"),
         widget: MultiDatePicker,
     },
+
+];
+
+export const EMPTINESS_OPERATORS: Operator[] = [
     {
         name: "Is Empty",
         init: (filter) => ["IS_NULL", getDateTimeField(filter[1])],
@@ -197,38 +201,46 @@ export const OPERATORS: Operator[] = [
     }
 ];
 
+export const ALL_OPERATORS: Operator[] = DATE_OPERATORS.concat(EMPTINESS_OPERATORS);
+
 type Props = {
     filter: FieldFilter,
     onFilterChange: (filter: FieldFilter) => void,
-    className: ?string
+    className: ?string,
+    hideEmptinessOperators: boolean, // Don't show is empty / not empty dialog
 }
 
 export default class DatePicker extends Component<*, Props, *> {
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
-        className: PropTypes.string
+        className: PropTypes.string,
+        hideEmptinessOperators: PropTypes.bool
     };
 
     componentWillMount() {
-        const operator = this._getOperator() || OPERATORS[0];
+        const operators = this.props.hideEmptinessOperators ? DATE_OPERATORS : ALL_OPERATORS;
+
+        const operator = this._getOperator(operators) || operators[0];
         this.props.onFilterChange(operator.init(this.props.filter));
+
+        this.setState({operators})
     }
 
-    _getOperator() {
-        return _.find(OPERATORS, (o) => o.test(this.props.filter));
+    _getOperator(operators: Operator[]) {
+        return _.find(operators, (o) => o.test(this.props.filter));
     }
 
     render() {
         let { filter, onFilterChange, className} = this.props;
-        const operator = this._getOperator();
+        const operator = this._getOperator(this.state.operators);
         const Widget = operator && operator.widget;
 
         return (
             <div className={cx("pt2", className)}>
                 <DateOperatorSelector
                     operator={operator && operator.name}
-                    operators={OPERATORS}
+                    operators={this.state.operators}
                     onOperatorChange={operator => onFilterChange(operator.init(filter))}
                 />
                 { Widget &&
