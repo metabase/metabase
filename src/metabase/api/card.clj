@@ -377,7 +377,7 @@
         ttl   (when (public-settings/enable-query-caching)
                 (or (:cache_ttl card)
                     (query-magic-ttl query)))]
-    (assoc query :cache-ttl ttl)))
+    (assoc query :cache_ttl ttl)))
 
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."

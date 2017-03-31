@@ -55,10 +55,10 @@
 (defn- cached-results [query-hash max-age-seconds]
   (when-not *ignore-cached-results*
     (when-let [results (i/cached-results @backend-instance query-hash max-age-seconds)]
-      (assert (u/is-temporal? (:updated-at results))
-        "cached-results should include an `:updated-at` field containing the date when the query was last ran.")
+      (assert (u/is-temporal? (:updated_at results))
+        "cached-results should include an `:updated_at` field containing the date when the query was last ran.")
       (log/info "Returning cached results for query" (u/emoji "💾"))
-      (assoc results :cached? true))))
+      (assoc results :cached true))))
 
 (defn- save-results!  [query-hash results]
   (log/info "Caching results for next time for query" (u/emoji "💾"))
@@ -67,7 +67,7 @@
 
 ;;; ------------------------------------------------------------ Middleware ------------------------------------------------------------
 
-(defn- is-cacheable? ^Boolean [{cache-ttl :cache-ttl}]
+(defn- is-cacheable? ^Boolean [{cache-ttl :cache_ttl}]
   (boolean (and (public-settings/enable-query-caching)
                 cache-ttl)))
 
@@ -103,7 +103,7 @@
       (save-results-if-successful! query-hash results))
     results))
 
-(defn- run-query-with-cache [qp {cache-ttl :cache-ttl, :as query}]
+(defn- run-query-with-cache [qp {cache-ttl :cache_ttl, :as query}]
   (let [query-hash (qputil/query-hash query)]
     (or (cached-results query-hash cache-ttl)
         (run-query-and-save-results-if-successful! query-hash qp query))))
@@ -114,7 +114,7 @@
    In order for a query to be eligible for caching:
 
      *  Caching (the `enable-query-caching` Setting) must be enabled
-     *  The query must pass a `:cache-ttl` value. For Cards, this can be the value of `:cache_ttl`,
+     *  The query must pass a `:cache_ttl` value. For Cards, this can be the value of `:cache_ttl`,
         otherwise falling back to the value of the `query-caching-default-ttl` Setting.
      *  The query must already be permissions-checked. Since the cache bypasses the normal
         query processor pipeline, the ad-hoc permissions-checking middleware isn't applied for cached results.

@@ -13,7 +13,7 @@
                                             :query_hash query-hash
                                             :updated_at [:>= (u/->Timestamp (- (System/currentTimeMillis)
                                                                                (* 1000 max-age-seconds)))])]
-    (assoc results :updated-at updated_at)))
+    (assoc results :updated_at updated_at)))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."

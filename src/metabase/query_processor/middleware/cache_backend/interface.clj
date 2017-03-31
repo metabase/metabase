@@ -25,11 +25,11 @@
      than MAX-AGE-SECONDS old. Otherwise, return `nil`.
 
   This method must also return a Timestamp from when the query was last ran. This must be `assoc`ed with the query results
-  under the key `:updated-at`.
+  under the key `:updated_at`.
 
     (cached-results [_ query-hash max-age-seconds]
       (when-let [[results updated-at] (maybe-fetch-results query-hash max-age-seconds)]
-        (assoc results :updated-at updated-at)))")
+        (assoc results :updated_at updated-at)))")
 
   (save-results! [this query-hash results]
     "Add a cache entry with the RESULTS of running query with byte array QUERY-HASH.

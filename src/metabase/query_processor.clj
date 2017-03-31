@@ -136,7 +136,7 @@
                               :result_rows  (get query-result :row_count 0))
                             (dissoc :start_time_millis))]
     ;; only insert a new record into QueryExecution if the results *were not* cached (i.e., only if a Query was actually ran)
-    (when-not (:cached? query-result)
+    (when-not (:cached query-result)
       (save-query-execution! query-execution))
     ;; ok, now return the results in the normal response format
     (-> query-execution
