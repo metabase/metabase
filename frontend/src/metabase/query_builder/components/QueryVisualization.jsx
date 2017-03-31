@@ -19,6 +19,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 import _ from "underscore";
+import moment from "moment";
 
 export default class QueryVisualization extends Component {
     constructor(props, context) {
@@ -103,6 +104,11 @@ export default class QueryVisualization extends Component {
                     />
                 </div>
                 <div className="absolute right z4 flex align-center" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
+                    { result && result.cached &&
+                        <div className="text-grey-4 px1">
+                            Last updated {moment(result.updated_at).fromNow()}
+                        </div>
+                    }
                     { !isDirty && this.renderCount() }
                     { !isObjectDetail &&
                         <Warnings warnings={this.state.warnings} className="mx2" size={18} />
