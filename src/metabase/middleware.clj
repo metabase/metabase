@@ -260,10 +260,11 @@
   "Middleware to set the `site-url` Setting if it's unset the first time a request is made."
   [handler]
   (fn [{{:strs [origin host] :as headers} :headers, :as request}]
-    (when-not (public-settings/site-url)
-      (when-let [site-url (or origin host)]
-        (log/info "Setting Metabase site URL to" site-url)
-        (public-settings/site-url site-url)))
+    (when (mdb/db-is-setup?)
+      (when-not (public-settings/site-url)
+        (when-let [site-url (or origin host)]
+          (log/info "Setting Metabase site URL to" site-url)
+          (public-settings/site-url site-url))))
     (handler request)))
 
 
