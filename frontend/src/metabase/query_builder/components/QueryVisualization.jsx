@@ -3,6 +3,8 @@ import ReactDOM from "react-dom";
 import { Link } from "react-router";
 
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
+import Tooltip from "metabase/components/Tooltip";
+
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
@@ -13,13 +15,15 @@ import Warnings from "./Warnings.jsx";
 import QueryDownloadWidget from "./QueryDownloadWidget.jsx";
 import QuestionEmbedWidget from "../containers/QuestionEmbedWidget";
 
-import { formatNumber, inflect } from "metabase/lib/formatting";
+import { formatNumber, inflect, duration } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
 import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 import _ from "underscore";
 import moment from "moment";
+
+const REFRESH_TOOLTIP_THRESHOLD = 60 * 1000; // 60 seconds
 
 export default class QueryVisualization extends Component {
     constructor(props, context) {
@@ -86,6 +90,12 @@ export default class QueryVisualization extends Component {
         const { isObjectDetail, isRunning, isAdmin, card, result } = this.props;
         const isDirty = this.queryIsDirty();
         const isSaved = card.id != null;
+
+        let runButtonTooltip;
+        if (!isDirty && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
+            runButtonTooltip = `This question will take approximately ${duration(result.average_execution_time)} to refresh`;
+        }
+
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
         const isEmbeddingEnabled = MetabaseSettings.get("embedding");
         return (
@@ -94,13 +104,15 @@ export default class QueryVisualization extends Component {
                   { !isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
                 </span>
                 <div className="absolute flex layout-centered left right z3">
-                    <RunButton
-                        canRun={this.props.isRunnable}
-                        isDirty={isDirty}
-                        isRunning={isRunning}
-                        runFn={this.runQuery}
-                        cancelFn={this.props.cancelQueryFn}
-                    />
+                    <Tooltip tooltip={runButtonTooltip}>
+                        <RunButton
+                            canRun={this.props.isRunnable}
+                            isDirty={isDirty}
+                            isRunning={isRunning}
+                            runFn={this.runQuery}
+                            cancelFn={this.props.cancelQueryFn}
+                        />
+                    </Tooltip>
                 </div>
                 <div className="absolute right z4 flex align-center" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
                     { result && result.cached &&
