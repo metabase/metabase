@@ -24,7 +24,6 @@ import moment from "moment";
 export default class QueryVisualization extends Component {
     constructor(props, context) {
         super(props, context);
-        this.runQuery = this.runQuery.bind(this);
 
         this.state = this._getStateFromProps(props);
     }
@@ -44,7 +43,7 @@ export default class QueryVisualization extends Component {
         cellClickedFn: PropTypes.func,
         isRunning: PropTypes.bool.isRequired,
         isRunnable: PropTypes.bool.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
         cancelQueryFn: PropTypes.func
     };
 
@@ -79,8 +78,8 @@ export default class QueryVisualization extends Component {
         return (display !== "table" && display !== "scalar");
     }
 
-    runQuery() {
-        this.props.runQueryFn();
+    runQuery = () => {
+        this.props.runQuery(null, { ignoreCache: true });
     }
 
     renderHeader() {

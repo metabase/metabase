@@ -28,7 +28,7 @@ export default class FieldPane extends Component {
         field: PropTypes.object.isRequired,
         query: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
@@ -63,7 +63,7 @@ export default class FieldPane extends Component {
         }
         Query.addBreakout(query.query, this.props.field.id);
         this.props.setQueryFn(query);
-        this.props.runQueryFn();
+        this.props.runQuery();
     }
 
     newCard() {

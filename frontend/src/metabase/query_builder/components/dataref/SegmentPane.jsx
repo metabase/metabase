@@ -27,7 +27,7 @@ export default class SegmentPane extends Component {
         segment: PropTypes.object.isRequired,
         query: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
@@ -53,7 +53,7 @@ export default class SegmentPane extends Component {
         }
         Query.addFilter(query.query, ["SEGMENT", this.props.segment.id]);
         this.props.setQueryFn(query);
-        this.props.runQueryFn();
+        this.props.runQuery();
     }
 
     newCard() {

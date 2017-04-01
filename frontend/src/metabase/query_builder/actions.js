@@ -223,7 +223,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         if (card && card.dataset_query && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
             // NOTE: timeout to allow Parameters widget to set parameterValues
             setTimeout(() =>
-                dispatch(runQuery(card, false))
+                dispatch(runQuery(card, { shouldUpdateUrl: false }))
             , 0);
         }
 
@@ -285,7 +285,7 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
+        dispatch(runQuery(card, { shouldUpdateUrl: false }));
         dispatch(updateUrl(card, { dirty: false }));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Cancel");
@@ -458,7 +458,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
+        dispatch(runQuery(card, { shouldUpdateUrl: false }));
         dispatch(updateUrl(card, { dirty: false }));
 
         return card;
@@ -474,7 +474,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shoul
 
         dispatch(loadMetadataForCard(card));
 
-        dispatch(runQuery(card, shouldUpdateUrl));
+        dispatch(runQuery(card, { shouldUpdateUrl: shouldUpdateUrl }));
 
         return card;
     };
@@ -788,10 +788,13 @@ export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
     };
 });
 
-
 // runQuery
 export const RUN_QUERY = "RUN_QUERY";
-export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = true, parameterValues, dirty) => {
+export const runQuery = createThunkAction(RUN_QUERY, (card, {
+    shouldUpdateUrl = true,
+    ignoreCache = false, // currently only implemented for saved cards
+    parameterValues
+} = {}) => {
     return async (dispatch, getState) => {
         const state = getState();
         const parameters = getParameters(state);
@@ -824,8 +827,12 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
         }
 
         // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        if (card && card.id && !isDirty(state) && dirty !== true) {
-            CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+        if (card && card.id != null && !cardIsDirty) {
+            CardApi.query({
+                cardId: card.id,
+                parameters: card.dataset_query.parameters,
+                ignore_cache: ignoreCache
+            }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
             MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         }
@@ -1053,7 +1060,6 @@ export const onCancelEditing = cancelEditing;
 export const setQueryModeFn = setQueryMode;
 export const setSortFn = setQuerySort;
 export const setQueryFn = setQuery;
-export const runQueryFn = runQuery;
 export const cancelQueryFn = cancelQuery;
 export const setDatabaseFn = setQueryDatabase;
 export const setSourceTableFn = setQuerySourceTable;
