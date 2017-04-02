@@ -38,7 +38,8 @@ export default class PulseEditChannels extends Component {
         user: PropTypes.object.isRequired,
         userList: PropTypes.array.isRequired,
         setPulse: PropTypes.func.isRequired,
-        testPulse: PropTypes.func.isRequired
+        testPulse: PropTypes.func.isRequired,
+        cardPreviews: PropTypes.array
     };
     static defaultProps = {};
 
@@ -135,7 +136,6 @@ export default class PulseEditChannels extends Component {
     }
 
     willPulseSkip() {
-        console.log(this);
         let cards = _.pluck(this.props.pulse.cards, 'id');
         let cardPreviews = this.props.cardPreviews;
         let previews = _.map(cards, function (id) { return _.find(cardPreviews, function(card){ return (id == card.id);})});
