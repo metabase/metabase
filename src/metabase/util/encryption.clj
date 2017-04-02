@@ -11,13 +11,14 @@
 
 (defn secret-key->hash
   "Generate a 64-byte byte array hash of SECRET-KEY using 100,000 iterations of PBKDF2+SHA512."
-  [^String secret-key]
+  ^bytes [^String secret-key]
   (kdf/get-bytes (kdf/engine {:alg        :pbkdf2+sha512
                               :key        secret-key
                               :iterations 100000}) ; 100,000 iterations takes about ~160ms on my laptop
                  64))
 
-(defonce ^:private default-secret-key
+;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick) so you have to do `^{:tag 'bytes}` instead
+(defonce ^:private ^{:tag 'bytes} default-secret-key
   (when-let [secret-key (env/env :mb-encryption-secret-key)]
     (when (seq secret-key)
       (assert (>= (count secret-key) 16)
@@ -34,18 +35,18 @@
   (^String [^String s]
    (encrypt default-secret-key s))
   (^String [^String secret-key, ^String s]
-   (let [iv (nonce/random-bytes 16)]
-     (codec/base64-encode (byte-array (concat iv
-                                              (crypto/encrypt (codecs/to-bytes s) secret-key iv {:algorithm :aes256-cbc-hmac-sha512})))))))
+   (let [initialization-vector (nonce/random-bytes 16)]
+     (codec/base64-encode (byte-array (concat initialization-vector
+                                              (crypto/encrypt (codecs/to-bytes s) secret-key initialization-vector {:algorithm :aes256-cbc-hmac-sha512})))))))
 
 (defn decrypt
   "Decrypt string S  using a SECRET-KEY (a 64-byte byte array), by default the hashed value of `MB_ENCRYPTION_SECRET_KEY`."
   (^String [^String s]
    (decrypt default-secret-key s))
   (^String [secret-key, ^String s]
-   (let [bytes        (codec/base64-decode s)
-         [iv message] (split-at 16 bytes)]
-     (codecs/bytes->str (crypto/decrypt (byte-array message) secret-key (byte-array iv) {:algorithm :aes256-cbc-hmac-sha512})))))
+   (let [bytes                           (codec/base64-decode s)
+         [initialization-vector message] (split-at 16 bytes)]
+     (codecs/bytes->str (crypto/decrypt (byte-array message) secret-key (byte-array initialization-vector) {:algorithm :aes256-cbc-hmac-sha512})))))
 
 
 (defn maybe-encrypt

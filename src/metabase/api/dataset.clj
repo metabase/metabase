@@ -9,8 +9,9 @@
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
                              [query-execution :refer [QueryExecution]])
-            (metabase [query-processor :as qp]
-                      [util :as u])
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [metabase.util.schema :as su]))
 
 (def ^:private ^:const max-results-bare-rows
@@ -27,27 +28,22 @@
    :max-results-bare-rows max-results-bare-rows})
 
 (defendpoint POST "/"
-  "Execute an MQL query and retrieve the results as JSON."
+  "Execute a query and retrieve the results in the usual format."
   [:as {{:keys [database] :as body} :body}]
   (read-check Database database)
   ;; add sensible constraints for results limits on our query
   (let [query (assoc body :constraints default-query-constraints)]
-    (qp/dataset-query query {:executed-by *current-user-id*})))
+    (qp/dataset-query query {:executed-by *current-user-id*, :context :ad-hoc})))
 
 (defendpoint POST "/duration"
   "Get historical query execution duration."
-  [:as {{:keys [database] :as query} :body}]
+  [:as {{:keys [database], :as query} :body}]
   (read-check Database database)
-  ;; add sensible constraints for results limits on our query
-  (let [query         (assoc query :constraints default-query-constraints)
-        running-times (db/select-field :running_time QueryExecution
-                        :query_hash (hash query)
-                        {:order-by [[:started_at :desc]]
-                         :limit    10})]
-    {:average (if (empty? running-times)
-                0
-                (float (/ (reduce + running-times)
-                          (count running-times))))}))
+  ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if there's no data there.
+  ;; if we still can't find relevant info, just default to 0
+  {:average (or (qputil/query-average-duration query)
+                (qputil/query-average-duration (assoc query :constraints default-query-constraints))
+                0)})
 
 (defn as-csv
   "Return a CSV response containing the RESULTS of a query."
@@ -85,7 +81,7 @@
   {query su/JSONString}
   (let [query (json/parse-string query keyword)]
     (read-check Database (:database query))
-    (as-csv (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*}))))
+    (as-csv (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :csv-download}))))
 
 (defendpoint POST "/json"
   "Execute a query and download the result data as a JSON file."
@@ -93,7 +89,7 @@
   {query su/JSONString}
   (let [query (json/parse-string query keyword)]
     (read-check Database (:database query))
-    (as-json (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*}))))
+    (as-json (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :json-download}))))
 
 
 (define-routes)

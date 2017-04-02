@@ -55,7 +55,7 @@ describeE2E("admin/datamodel", () => {
             await waitForElementAndClick(driver, "#FilterPopover .List-item:nth-child(4)>a");
             const addFilterButton = findElement(driver, "#FilterPopover .Button.disabled");
             await waitForElementAndClick(driver, "#OperatorSelector .Button.Button-normal.Button--medium:nth-child(2)");
-            await waitForElementAndSendKeys(driver, "#FilterPopover input.border-purple", 'gmail');
+            await waitForElementAndSendKeys(driver, "#FilterPopover textarea.border-purple", 'gmail');
             expect(await addFilterButton.isEnabled()).toBe(true);
             await addFilterButton.click();
 

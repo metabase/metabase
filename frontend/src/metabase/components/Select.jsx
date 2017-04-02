@@ -81,8 +81,8 @@ class BrowserSelect extends Component {
                 className={className}
                 triggerElement={
                     <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
-                        <span className="mr1">{selectedName}</span>
-                        <Icon className="flex-align-right" name="chevrondown" size={12} />
+                        <span className="AdminSelect-content mr1">{selectedName}</span>
+                        <Icon className="AdminSelect-chevron flex-align-right" name="chevrondown" size={12} />
                     </div>
                 }
                 triggerClasses={cx("AdminSelect", className)}

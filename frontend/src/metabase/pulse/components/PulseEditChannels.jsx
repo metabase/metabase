@@ -135,8 +135,9 @@ export default class PulseEditChannels extends Component {
     }
 
     willPulseSkip() {
+        console.log(this);
         let cards = _.pluck(this.props.pulse.cards, 'id');
-        let cardPreviews = this.props.cardPreviews
+        let cardPreviews = this.props.cardPreviews;
         let previews = _.map(cards, function (id) { return _.find(cardPreviews, function(card){ return (id == card.id);})});
         let types = _.pluck(previews, 'pulse_card_type');
         let empty = _.isEqual( _.uniq(types), ["empty"]);
@@ -169,6 +170,9 @@ export default class PulseEditChannels extends Component {
         let isValid = this.props.pulseIsValid && channelIsValid(channel, channelSpec);
         return (
             <li key={index} className="py2">
+                { channelSpec.error &&
+                    <div className="pb2 text-bold text-error">{channelSpec.error}</div>
+                }
                 { channelSpec.recipients &&
                     <div>
                         <div className="h4 text-bold mb1">To:</div>

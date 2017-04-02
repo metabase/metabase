@@ -17,6 +17,7 @@ import LeafletChoropleth from "./LeafletChoropleth.jsx";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
 import d3 from "d3";
+import ss from "simple-statistics";
 import _ from "underscore";
 
 // const HEAT_MAP_COLORS = [
@@ -162,15 +163,20 @@ export default class ChoroplethMap extends Component {
         }
 
         const valuesMap = {};
+        const domain = []
         for (const row of rows) {
             valuesMap[getRowKey(row)] = (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
+            domain.push(getRowValue(row));
         }
 
-        var colorScale = d3.scale.quantize().domain(d3.extent(rows, getRowValue)).range(HEAT_MAP_COLORS);
+        const groups = ss.ckmeans(domain, HEAT_MAP_COLORS.length);
+
+        var colorScale = d3.scale.quantile().domain(groups.map((cluster) => cluster[0])).range(HEAT_MAP_COLORS);
 
         let legendColors = HEAT_MAP_COLORS.slice();
         let legendTitles = HEAT_MAP_COLORS.map((color, index) => {
-            let [min, max] = colorScale.invertExtent(color);
+            const min = groups[index][0];
+            const max = groups[index].slice(-1)[0];
             return index === HEAT_MAP_COLORS.length - 1 ?
                 formatNumber(min) + " +" :
                 formatNumber(min) + " - " + formatNumber(max)

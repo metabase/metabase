@@ -27,6 +27,7 @@
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.1"]                                      ; Async HTTP library; WebSockets
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
+                 [buddy/buddy-sign "1.1.0"]                           ; JSON Web Tokens; High-Level message signing library
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.4.1"                                    ; HTTP client
                   :exclusions [commons-codec
@@ -50,6 +51,7 @@
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
+                 [crypto-random "1.2.0"]                              ; library for generating cryptographically secure random bytes and strings
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
@@ -69,7 +71,7 @@
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver !!! DO NOT UPGRADE THIS UNTIL UPSTREAM BUG IS FIXED -- SEE https://github.com/metabase/metabase/issues/3753 !!!
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
-                 [io.crate/crate-jdbc "2.1.5"]                        ; Crate JDBC driver
+                 [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [prismatic/schema "1.1.3"]                           ; Data schema declaration and validation library
                  [ring/ring-jetty-adapter "1.5.1"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically

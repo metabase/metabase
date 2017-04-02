@@ -73,6 +73,20 @@ Get `Card` with ID.
 *  **`id`** 
 
 
+## `GET /api/card/embeddable`
+
+Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints and a signed JWT.
+
+You must be a superuser to do this.
+
+
+## `GET /api/card/public`
+
+Fetch a list of Cards with public UUIDs. These cards are publically-accessible *if* public sharing is enabled.
+
+You must be a superuser to do this.
+
+
 ## `POST /api/card/`
 
 Create a new `Card`.
@@ -177,21 +191,25 @@ Update a `Card`.
 
 ##### PARAMS:
 
-*  **`id`** 
-
-*  **`dataset_query`** 
+*  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
 *  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`enable_embedding`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
+*  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
 
-*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+*  **`dataset_query`** value may be nil, or if non-nil, value must be a map.
 
-*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`id`** 
+
+*  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
 
 
 ## `GET /api/collection/`
@@ -321,6 +339,20 @@ Fetch `Revisions` for `Dashboard` with ID.
 *  **`id`** 
 
 
+## `GET /api/dashboard/embeddable`
+
+Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding endpoints and a signed JWT.
+
+You must be a superuser to do this.
+
+
+## `GET /api/dashboard/public`
+
+Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is enabled.
+
+You must be a superuser to do this.
+
+
 ## `POST /api/dashboard/`
 
 Create a new `Dashboard`.
@@ -379,23 +411,30 @@ Revert a `Dashboard` to a prior `Revision`.
 
 Update a `Dashboard`.
 
+   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate permissions for the Cards belonging to this Dashboard),
+   but to change the value of `enable_embedding` you must be a superuser.
+
 ##### PARAMS:
 
-*  **`id`** 
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a map.
 
-*  **`description`** 
+*  **`points_of_interest`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`name`** value must be a non-blank string.
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`parameters`** value must be an array. Each value must be a map.
+*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`caveats`** 
+*  **`enable_embedding`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`points_of_interest`** 
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`show_in_getting_started`** 
+*  **`caveats`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`dashboard`** 
+
+*  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
+
+*  **`id`** 
 
 
 ## `PUT /api/dashboard/:id/cards`
@@ -600,6 +639,100 @@ You must be a superuser to do this.
 ##### PARAMS:
 
 *  **`settings`** value must be a map.
+
+
+## `GET /api/embed/card/:token`
+
+Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}}
+
+##### PARAMS:
+
+*  **`token`** 
+
+
+## `GET /api/embed/card/:token/query`
+
+Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}
+      :params   <parameters>}
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/embed/card/:token/query/csv`
+
+Like `GET /api/embed/card/query`, but returns the results as CSV.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/embed/card/:token/query/json`
+
+Like `GET /api/embed/card/query`, but returns the results as JSOn.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/embed/dashboard/:token`
+
+Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:dashboard <dashboard-id>}}
+
+##### PARAMS:
+
+*  **`token`** 
+
+
+## `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+
+Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:dashboard <dashboard-id>}
+      :params   <parameters>}
+
+   Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`dashcard-id`** 
+
+*  **`card-id`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
 
 
 ## `GET /api/field/:id`
@@ -959,7 +1092,64 @@ You must be a superuser to do this.
 *  **`name`** value must be a non-blank string.
 
 
+## `GET /api/preview-embed/card/:token`
+
+Fetch a Card you're considering embedding by passing a JWT TOKEN.
+
+##### PARAMS:
+
+*  **`token`** 
+
+
+## `GET /api/preview-embed/card/:token/query`
+
+Fetch the query results for a Card you're considering embedding by passing a JWT TOKEN.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/preview-embed/dashboard/:token`
+
+Fetch a Dashboard you're considering embedding by passing a JWT TOKEN. 
+
+##### PARAMS:
+
+*  **`token`** 
+
+
+## `GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+
+Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT TOKEN.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`dashcard-id`** 
+
+*  **`card-id`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
 ## `GET /api/public/card/:uuid`
+
+Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+
+## `GET /api/public/card/:uuid/query`
 
 Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled.
 
@@ -970,7 +1160,7 @@ Fetch a publically-accessible Card an return query results as well as `:card` in
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 
-## `GET /api/public/card/:uuid/csv`
+## `GET /api/public/card/:uuid/query/csv`
 
 Fetch a publically-accessible Card and return query results as CSV. Does not require auth credentials. Public sharing must be enabled.
 
@@ -981,7 +1171,7 @@ Fetch a publically-accessible Card and return query results as CSV. Does not req
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 
-## `GET /api/public/card/:uuid/json`
+## `GET /api/public/card/:uuid/query/json`
 
 Fetch a publically-accessible Card and return query results as JSON. Does not require auth credentials. Public sharing must be enabled.
 
@@ -1012,6 +1202,21 @@ Fetch the results for a Card in a publically-accessible Dashboard. Does not requ
 *  **`card-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/oembed`
+
+oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL.
+
+##### PARAMS:
+
+*  **`url`** value must be a non-blank string.
+
+*  **`format`** value may be nil, or if non-nil, value must be one of: `json`.
+
+*  **`maxheight`** value may be nil, or if non-nil, value must be a valid integer.
+
+*  **`maxwidth`** value may be nil, or if non-nil, value must be a valid integer.
 
 
 ## `DELETE /api/pulse/:id`
@@ -1493,7 +1698,7 @@ This endpoints provides an image with the appropriate pins rendered given a MBQL
 
 ## `DELETE /api/user/:id`
 
-Disable a `User`.  This does not remove the `User` from the db and instead disables their account.
+Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account.
 
 You must be a superuser to do this.
 
@@ -1593,6 +1798,12 @@ Indicate that a user has been informed about the vast intricacies of 'the' Query
 Logs.
 
 You must be a superuser to do this.
+
+
+## `GET /api/util/random_token`
+
+Return a cryptographically secure random 32-byte token, encoded as a hexidecimal string.
+   Intended for use when creating a value for `embedding-secret-key`.
 
 
 ## `GET /api/util/stats`

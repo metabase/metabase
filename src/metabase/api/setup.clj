@@ -120,7 +120,7 @@
       :triggered   :always}
      {:title       "Set Slack credentials"
       :group       "Get connected"
-      :description "Does your team use Slack?  If so, you can send automated updates via pulses and ask questions with Metabot."
+      :description "Does your team use Slack?  If so, you can send automated updates via pulses and ask questions with MetaBot."
       :link        "/admin/settings/slack"
       :completed   (slack/slack-configured?)
       :triggered   :always}

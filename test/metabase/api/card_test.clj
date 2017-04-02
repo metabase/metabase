@@ -19,10 +19,8 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name obj->json->obj]]
-            [metabase.util :as u]
-            [metabase.test.util :as tu]
-            [clojure.string :as str])
+            [metabase.test.util :refer [match-$ random-name obj->json->obj], :as tu]
+            [metabase.util :as u])
   (:import java.util.UUID))
 
 ;;; CARD LIFECYCLE
@@ -34,6 +32,8 @@
    :collection_id     nil
    :description       nil
    :display           "scalar"
+   :enable_embedding  false
+   :embedding_params  nil
    :made_public_by_id nil
    :public_uuid       nil
    :query_type        "query"})
@@ -65,6 +65,11 @@
   ((user->client :crowberto) :get 400 "card" :f :database))
 
 ;; Filter cards by table
+(defn- card-returned? [table-id card-id]
+  (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :table, :model_id table-id)]
+                    (u/get-id card)))
+             card-id))
+
 (expect
   [true
    false
@@ -74,13 +79,9 @@
                   Table    [{table-2-id :id}  {:db_id database-id}]
                   Card     [{card-1-id :id}   {:table_id table-1-id}]
                   Card     [{card-2-id :id}   {:table_id table-2-id}]]
-    (let [card-returned? (fn [table-id card-id]
-                           (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :table, :model_id table-id)]
-                                             (u/get-id card)))
-                                      card-id))]
-      [(card-returned? table-1-id card-1-id)
-       (card-returned? table-2-id card-1-id)
-       (card-returned? table-2-id card-2-id)])))
+    [(card-returned? table-1-id card-1-id)
+     (card-returned? table-2-id card-1-id)
+     (card-returned? table-2-id card-2-id)]))
 
 ;; Make sure `id` is required when `f` is :table
 (expect {:errors {:id "id is required parameter when filter mode is 'table'"}}
@@ -154,7 +155,7 @@
 ;; Test that we can make a card
 (let [card-name (random-name)]
   (tt/expect-with-temp [Database [{database-id :id}]
-                     Table    [{table-id :id}  {:db_id database-id}]]
+                        Table    [{table-id :id}  {:db_id database-id}]]
     (merge card-defaults
            {:name                   card-name
             :creator_id             (user->id :rasta)
@@ -229,7 +230,6 @@
      (do ((user->client :rasta) :put 200 (str "card/" card-id) {:name updated-name})
          (db/select-one-field :name Card, :id card-id))]))
 
-
 (defmacro ^:private with-temp-card {:style/indent 1} [binding & body]
   `(tt/with-temp Card ~binding
      ~@body))
@@ -246,6 +246,27 @@
        (set-archived! true)
        (set-archived! false)])))
 
+;; Can we update a card's embedding_params?
+(expect
+  {:abc "enabled"}
+  (with-temp-card [card]
+    (tu/with-temporary-setting-values [enable-embedding true]
+      ((user->client :crowberto) :put 200 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))
+    (db/select-one-field :embedding_params Card :id (u/get-id card))))
+
+;; We shouldn't be able to update them if we're not an admin...
+(expect
+  "You don't have permissions to do that."
+  (with-temp-card [card]
+    (tu/with-temporary-setting-values [enable-embedding true]
+      ((user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))))
+
+;; ...or if embedding isn't enabled
+(expect
+  "Embedding is not enabled."
+  (with-temp-card [card]
+    (tu/with-temporary-setting-values [enable-embedding false]
+      ((user->client :crowberto) :put 400 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))))
 
 ;; ## DELETE /api/card/:id
 ;; Check that we can delete a card
@@ -653,3 +674,11 @@
     (tt/with-temp Card [card (shared-card)]
       (for [card ((user->client :crowberto) :get 200 "card/public")]
         (m/map-vals boolean (select-keys card [:name :id :public_uuid]))))))
+
+;; Test that we can fetch a list of embeddable cards
+(expect
+  [{:name true, :id true}]
+  (tu/with-temporary-setting-values [enable-embedding true]
+    (tt/with-temp Card [card {:enable_embedding true}]
+      (for [card ((user->client :crowberto) :get 200 "card/embeddable")]
+        (m/map-vals boolean (select-keys card [:name :id]))))))

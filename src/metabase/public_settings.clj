@@ -22,9 +22,9 @@
   "The name used for this instance of Metabase."
   :default "Metabase")
 
+;; This value is *guaranteed* to never have a trailing slash :D
 (defsetting site-url
-  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".
-   This is *guaranteed* never to have a tailing slash."
+  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
   :setter (fn [new-value]
             (setting/set-string! :site-url (when new-value
                                              (s/replace new-value #"/$" "")))))
@@ -42,7 +42,12 @@
   :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
 (defsetting enable-public-sharing
-  "Enable admins to create publically viewable links for Cards and Dashboards?"
+  "Enable admins to create publically viewable links (and embeddable iframes) for Questions and Dashboards?"
+  :type    :boolean
+  :default false)
+
+(defsetting enable-embedding
+  "Allow admins to securely embed questions and dashboards within other applications?"
   :type    :boolean
   :default false)
 
@@ -81,6 +86,7 @@
    :map_tile_server_url   (map-tile-server-url)
    :password_complexity   password/active-password-complexity
    :public_sharing        (enable-public-sharing)
+   :embedding             (enable-embedding)
    :report_timezone       (setting/get :report-timezone)
    :setup_token           ((resolve 'metabase.setup/token-value))
    :site_name             (site-name)

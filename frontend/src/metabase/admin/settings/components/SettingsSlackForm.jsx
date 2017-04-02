@@ -209,7 +209,7 @@ export default class SettingsSlackForm extends Component {
 
                     <div className="pt3">
                         <a href="https://my.slack.com/services/new/bot" target="_blank" className="Button Button--primary" style={{padding:0}}>
-                            <div className="float-left py2 pl2">Create a Slack Bot User for Metabot</div>
+                            <div className="float-left py2 pl2">Create a Slack Bot User for MetaBot</div>
                             <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" size={18}/>
                         </a>
                     </div>
