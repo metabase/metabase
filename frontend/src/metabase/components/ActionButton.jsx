@@ -82,13 +82,13 @@ export default class ActionButton extends Component {
         });
 
         return (
-            <button className={buttonStateClasses} onClick={this.onClick}>
+            <button className={this.props.overrideStyle ? cx('Button', 'Button--waiting') : buttonStateClasses} onClick={this.onClick}>
                 { this.state.active ?
                     // TODO: loading spinner
                     this.props.activeText
                 : this.state.result === "success" ?
                     <span>
-                        <Icon name='check' size={12} />
+                        {this.props.overrideStyle ? null : <Icon name='check' size={12} /> }
                         <span className="ml1">{this.props.successText}</span>
                     </span>
                 : this.state.result === "failed" ?
