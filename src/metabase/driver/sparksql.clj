@@ -88,30 +88,9 @@
 
 (driver/register-driver! :sparksql (SparkSQLDriver.))
 
-(defn spark-sql
+(defn sparksql
   "Create a database specification for a Spark SQL database. Opts should include
   keys for :db, :user, and :password. You can also optionally set host and
   port."
-  [{:keys [host port db]
-    :or {host "localhost", port 10000, db ""}
-    :as opts}]
-  ;; This is a bit awkward. HiveDriver is a superclass of FixedHiveDriver,
-  ;; so its constructor will always be called first and register with the
-  ;; DriverManager.
-  ;; Doing the following within the constructor of FixedHiveDriver didn't seem
-  ;; to work, so we make sure FixedHiveDriver is returned for jdbc:hive2
-  ;; connections here by manually deregistering all other jdbc:hive2 drivers.
-  (loop []
-    (let [driver (try
-                   (java.sql.DriverManager/getDriver "jdbc:hive2://localhost:10000")
-                   (catch java.sql.SQLException e
-                     nil))]
-      (if driver
-        (when-not (instance? com.metabase.hive.jdbc.FixedHiveDriver driver)
-          (java.sql.DriverManager/deregisterDriver driver)
-          (recur))
-        (java.sql.DriverManager/registerDriver (com.metabase.hive.jdbc.FixedHiveDriver.)))))
-  (merge {:classname "com.metabase.hive.jdbc.FixedHiveDriver"
-          :subprotocol "hive2"
-          :subname (str "//" host ":" port "/")}
-         (dissoc opts :host :port)))
+  [opts]
+  (hive/hive opts))

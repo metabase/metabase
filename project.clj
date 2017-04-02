@@ -28,6 +28,17 @@
                  [aleph "0.4.3"]                                      ; Async HTTP library; WebSockets
                  [buddy/buddy-core "1.2.0"]                           ; various cryptograhpic functions
                  [buddy/buddy-sign "1.5.0"]                           ; JSON Web Tokens; High-Level message signing library
+                 [org.apache.hadoop/hadoop-common "2.7.3"]
+                 [org.apache.drill.exec/drill-jdbc-all "1.10.0"
+                  :exclusions [org.slf4j/log4j-over-slf4j
+                               org.slf4j/jcl-over-slf4j
+                               org.slf4j/slf4j-api
+                               log4j]]
+                 [org.apache.hive/hive-jdbc "1.2.1"
+                  :exclusions [org.mortbay.jetty/jetty
+                               org.eclipse.jetty.aggregate/jetty-all
+                               org.codehaus.jackson/jackson-xc]
+                  :classifier "standalone"]
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.4.1"                                    ; HTTP client
                   :exclusions [commons-codec
@@ -40,7 +51,8 @@
                   :exclusions [commons-codec
                                org.apache.httpcomponents/httpclient
                                net.sourceforge.nekohtml/nekohtml
-                               ring/ring-core]]
+                               ring/ring-core
+                               com.google.inject/guice]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev139-1.22.0"]
@@ -67,11 +79,6 @@
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
-                 [org.apache.hive/hive-jdbc "1.2.1"
-                  :exclusions [org.mortbay.jetty/jetty
-                               org.eclipse.jetty.aggregate/jetty-all]
-                  :classifier "standalone"]
-                 [org.apache.hadoop/hadoop-common "2.7.3"]
                  [org.liquibase/liquibase-core "3.5.3"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.25"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.18"]                          ; YAML parser (required by liquibase)
@@ -79,7 +86,9 @@
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
-                 [ring/ring-jetty-adapter "1.5.1"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                 [ring/ring-jetty-adapter "1.5.1"
+                  :exclusions [commons-io]
+                  ]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.0.2"                                      ; Model layer, hydration, and DB utilities
