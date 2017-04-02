@@ -134,6 +134,15 @@ export default class PulseEditChannels extends Component {
         return this.props.testPulse({ ...this.props.pulse, channels: [channel] });
     }
 
+    willPulseSkip() {
+        let cards = _.pluck(this.props.pulse.cards, 'id');
+        let cardPreviews = this.props.cardPreviews
+        let previews = _.map(cards, function (id) { return _.find(cardPreviews, function(card){ return (id == card.id);})});
+        let types = _.pluck(previews, 'pulse_card_type');
+        let empty = _.isEqual( _.uniq(types), ["empty"]);
+        return (empty && this.props.pulse.skip_if_empty);
+    }
+
     renderFields(channel, index, channelSpec) {
         return (
             <div>
@@ -191,7 +200,8 @@ export default class PulseEditChannels extends Component {
                             "Send to  " + channelSpec.name + " now"}
                         activeText="Sending…"
                         failedText="Sending failed"
-                        successText="Pulse sent"
+                        successText={ this.willPulseSkip.bind(this)() ?  "Didn’t send because the Pulse has no results." : "Pulse sent"}
+
                     />
                 </div>
             </li>
