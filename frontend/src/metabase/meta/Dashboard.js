@@ -45,7 +45,8 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
     },
     {
         type: "date/all-options",
-        name: "All Options",
+        name: "Date Filter",
+        menuName: "All Options",
         description: "Contains all of the above"
     },
     {
