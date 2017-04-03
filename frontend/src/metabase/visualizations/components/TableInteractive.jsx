@@ -124,7 +124,7 @@ export default class TableInteractive extends Component<*, Props, State> {
             contentWidths: null
         });
         this.columnHasResized = {};
-        this.props.onUpdateVisualizationSettings({ "table.column_widths": [] });
+        this.props.onUpdateVisualizationSettings({ "table.column_widths": undefined });
     }
 
     _measure() {

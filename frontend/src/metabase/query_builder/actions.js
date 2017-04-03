@@ -350,6 +350,14 @@ export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId)
 });
 
 function updateVisualizationSettings(card, isEditing, display, vizSettings) {
+    // don't need to store undefined
+    vizSettings = Utils.copy(vizSettings)
+    for (const name in vizSettings) {
+        if (vizSettings[name] === undefined) {
+            delete vizSettings[name];
+        }
+    }
+
     // make sure that something actually changed
     if (card.display === display && _.isEqual(card.visualization_settings, vizSettings)) return card;
 
@@ -853,11 +861,6 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
 
         const cardIsDirty = isCardDirty(card, state.qb.originalCard);
 
-        card = {
-            ...card,
-            dataset_query: applyParameters(card, parameters, parameterValues)
-        };
-
         if (shouldUpdateUrl) {
             dispatch(updateUrl(card, { dirty: cardIsDirty }));
         }
@@ -874,11 +877,13 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
             dispatch(queryErrored(startTime, error));
         }
 
+        const datasetQuery = applyParameters(card, parameters, parameterValues);
+
         // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        if (card && card.id && !isDirty(state) && dirty !== true) {
-            CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+        if (card.id && !cardIsDirty) {
+            CardApi.query({ cardId: card.id, parameters: datasetQuery.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
-            MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+            MetabaseApi.dataset(datasetQuery, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         }
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);
