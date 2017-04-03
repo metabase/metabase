@@ -393,8 +393,9 @@
       (or (zero? (-> card :rows count))
           (= [[nil]]
              (-> card :rows))
-          (= [[0]]
-             (-> card :rows)))                                     :empty
+          (and (= [[0]]
+                  (-> card :rows))
+               (= ["count"] aggregation)))                         :empty
       (and (= col-count 1)
            (= row-count 1))                                        :scalar
       (and (= col-count 2)

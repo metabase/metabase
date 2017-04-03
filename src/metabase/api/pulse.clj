@@ -141,10 +141,6 @@
    skip_if_empty s/Bool}
   (check-card-read-permissions cards)
   (p/send-pulse! body)
-   {:ok   true
-    :skip (and skip_if_empty
-               (p/are-all-cards-empty?
-                (for [card cards]
-                  (p/execute-card (:id card)))))})
+   {:ok true})
 
 (define-routes)
