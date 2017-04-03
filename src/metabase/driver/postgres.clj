@@ -180,23 +180,6 @@
       (isa? base-type :type/IPAddress) (hx/cast :inet value)
       :else                            value)))
 
-
-(defn- materialized-views
-  "Fetch the Materialized Views for a Postgres DATABASE.
-   These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
-  [database]
-  (try (set (jdbc/query (sql/db->jdbc-connection-spec database)
-                        ["SELECT schemaname AS \"schema\", matviewname AS \"name\" FROM pg_matviews;"]))
-       (catch Throwable e
-         (log/error "Failed to fetch materialized views for this database:" (.getMessage e)))))
-
-(defn- describe-database
-  "Custom implementation of `describe-database` for Postgres.
-   Postgres Materialized Views are not returned by normal JDBC methods: see [issue #2355](https://github.com/metabase/metabase/issues/2355); we have to manually fetch them.
-   This implementation combines the results from the generic SQL default implementation with materialized views fetched from `materialized-views`."
-  [driver database]
-  (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
-
 (defn- string-length-fn [field-key]
   (hsql/call :char_length (hx/cast :VARCHAR field-key)))
 
@@ -221,7 +204,6 @@
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     (u/drop-first-arg date-interval)
-          :describe-database                 describe-database
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
