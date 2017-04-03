@@ -71,11 +71,7 @@
   (let [result (:result card)]
     (or (zero? (-> result :row_count))
         (= [[nil]]
-           (-> result :data :rows))
-        (and (= [["count"]]
-                (-> card :card :dataset_query :query :aggregation))
-             (= [[0]]
-                (-> result :data :rows))))))
+           (-> result :data :rows)))))
 
 (defn are-all-cards-empty?
   "Do none of the cards have any results?"
