@@ -5,8 +5,9 @@
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [expectations :refer :all]
-            (metabase [core :as core]
-                      [db :as mdb]
+            [metabase.core :as core]
+            [metabase.core.initialization-status :as init-status]
+            (metabase [db :as mdb]
                       [driver :as driver])
             (metabase.models [setting :as setting]
                              [table :refer [Table]])
@@ -79,7 +80,7 @@
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
       (mdb/setup-db! :auto-migrate true)
       (setting/set! :site-name "Metabase Test")
-      (core/initialization-complete!)
+      (init-status/set-complete!)
 
       ;; make sure the driver test extensions are loaded before running the tests. :reload them because otherwise we get wacky 'method in protocol not implemented' errors
       ;; when running tests against an individual namespace

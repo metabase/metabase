@@ -9,6 +9,7 @@
             [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
             [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
             [metabase.config :as config]
+            [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             (metabase.models [session :refer [Session]]
                              [setting :refer [defsetting]]
@@ -89,9 +90,7 @@
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with SESSION-ID if it is valid and not expired."
   [session-id]
-  (when (and session-id (or ((resolve 'metabase.core/initialized?))
-                            (println "Metabase is not initialized!") ; NOCOMMIT
-                            ))
+  (when (and session-id (init-status/complete?))
     (when-let [session (or (session-with-id session-id)
                            (println "no matching session with ID") ; NOCOMMIT
                            )]
@@ -101,7 +100,7 @@
          :is-superuser?    (:is_superuser session)}))))
 
 (defn- add-current-user-info [{:keys [metabase-session-id], :as request}]
-  (when-not ((resolve 'metabase.core/initialized?))
+  (when-not (init-status/complete?)
     (println "Metabase is not initialized yet!")) ; DEBUG
   (merge request (current-user-info-for-session metabase-session-id)))
 
@@ -261,10 +260,11 @@
   "Middleware to set the `site-url` Setting if it's unset the first time a request is made."
   [handler]
   (fn [{{:strs [origin host] :as headers} :headers, :as request}]
-    (when-not (public-settings/site-url)
-      (when-let [site-url (or origin host)]
-        (log/info "Setting Metabase site URL to" site-url)
-        (public-settings/site-url site-url)))
+    (when (mdb/db-is-setup?)
+      (when-not (public-settings/site-url)
+        (when-let [site-url (or origin host)]
+          (log/info "Setting Metabase site URL to" site-url)
+          (public-settings/site-url site-url))))
     (handler request)))
 
 

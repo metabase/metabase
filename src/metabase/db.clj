@@ -289,6 +289,11 @@
 (def ^:private setup-db-has-been-called?
   (atom false))
 
+(defn db-is-setup?
+  "True if the Metabase DB is setup and ready."
+  ^Boolean []
+  @setup-db-has-been-called?)
+
 (def ^:dynamic *allow-potentailly-unsafe-connections*
   "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists, etc.
    At the same time, we'd like to be able to use driver functionality like `can-connect-with-details?` to check whether we can
@@ -360,11 +365,11 @@
   [& {:keys [db-details auto-migrate]
       :or   {db-details   @db-connection-details
              auto-migrate true}}]
-  (reset! setup-db-has-been-called? true)
   (verify-db-connection db-details)
   (run-schema-migrations! auto-migrate db-details)
   (create-connection-pool! (jdbc-details db-details))
-  (run-data-migrations!))
+  (run-data-migrations!)
+  (reset! setup-db-has-been-called? true))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."
