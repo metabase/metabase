@@ -1,3 +1,5 @@
+/* @flow */
+
 import UnderlyingDataAction from "./UnderlyingDataAction";
 import UnderlyingRecordsAction from "./UnderlyingRecordsAction";
 

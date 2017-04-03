@@ -3,30 +3,36 @@
 import moment from "moment";
 
 import Q from "metabase/lib/query"; // legacy query lib
+import * as Card from "metabase/meta/Card";
 import * as Query from "metabase/lib/query/query";
 import * as Field from "metabase/lib/query/field";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
 import { isDate, isState, isCountry } from "metabase/lib/schema_metadata";
 
-import type { Card } from "metabase/meta/types/Card";
+import type { Card as CardObject } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
+import type { DimensionValue } from "metabase/meta/types/Visualization";
 
-export const toUnderlyingData = (card: Card): Card => {
+export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
     newCard.dataset_query = card.dataset_query;
     newCard.display = "table";
     return newCard;
 };
 
-export const toUnderlyingRecords = (card: Card): Card => {
-    const newCard = startNewCard(
-        "query",
-        card.dataset_query.database,
-        card.dataset_query.query.source_table
-    );
-    newCard.dataset_query.query.filter = card.dataset_query.query.filter;
-    return newCard;
+export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
+    if (card.dataset_query.type === "query") {
+        const query: StructuredQuery = card.dataset_query.query;
+        const newCard = startNewCard(
+            "query",
+            card.dataset_query.database,
+            query.source_table
+        );
+        newCard.dataset_query.query.filter = query.filter;
+        return newCard;
+    }
 };
 
 export const getFieldClauseFromCol = col => {
@@ -49,12 +55,17 @@ const clone = card => {
 
 // Adds a new filter with the specified operator, column, and value
 export const filter = (card, operator, column, value) => {
-    let newCard = clone(card);
-    newCard.dataset_query.query = Query.addFilter(newCard.dataset_query.query, [
+    const newCard = clone(card);
+    // $FlowFixMe:
+    const filter: FieldFilter = [
         operator,
         getFieldClauseFromCol(column),
         value
-    ]);
+    ];
+    newCard.dataset_query.query = Query.addFilter(
+        newCard.dataset_query.query,
+        filter
+    );
     return newCard;
 };
 
@@ -175,11 +186,15 @@ export const summarize = (card, aggregation, tableMetadata) => {
 };
 
 export const pivot = (
-    card: Card,
+    card: CardObject,
     breakout,
     tableMetadata: TableMetadata,
     dimensions: DimensionValue[] = []
-): Card => {
+): ?CardObject => {
+    if (card.dataset_query.type !== "query") {
+        return null;
+    }
+
     let newCard = startNewCard("query");
     newCard.dataset_query = card.dataset_query;
 
@@ -200,6 +215,7 @@ export const pivot = (
     }
 
     newCard.dataset_query.query = Query.addBreakout(
+        // $FlowFixMe: we know newCard is a StructuredDatasetQuery but flow doesn't
         newCard.dataset_query.query,
         breakout
     );
@@ -219,9 +235,13 @@ export const pivot = (
 // ]);
 const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
 
-const guessVisualization = (card: Card, tableMetadata: TableMetadata) => {
-    const aggregations = Query.getAggregations(card.dataset_query.query);
-    const breakoutFields = Query.getBreakouts(card.dataset_query.query).map(
+const guessVisualization = (card: CardObject, tableMetadata: TableMetadata) => {
+    const query = Card.getQuery(card);
+    if (!query) {
+        return;
+    }
+    const aggregations = Query.getAggregations(query);
+    const breakoutFields = Query.getBreakouts(query).map(
         breakout => (Q.getFieldTarget(breakout, tableMetadata) || {}).field
     );
     if (aggregations.length === 0 && breakoutFields.length === 0) {

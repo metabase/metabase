@@ -1,8 +1,13 @@
-/* @flow weak */
+/* @flow */
 
 import { plotSegmentField } from "metabase/qb/lib/actions";
 
-export default ({ card, tableMetadata }) => {
+import type {
+    ClickAction,
+    ClickActionProps
+} from "metabase/meta/types/Visualization";
+
+export default ({ card, tableMetadata }: ClickActionProps): ?ClickAction => {
     if (card.display !== "table") {
         return;
     }

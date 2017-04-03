@@ -16,63 +16,7 @@ import Funnel      from "./visualizations/Funnel.jsx";
 
 import _ from "underscore";
 
-import type { DatasetData, Column } from "metabase/meta/types/Dataset";
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-
-export type HoverData = Array<{ key: string, value: any, col?: Column }>;
-
-export type HoverObject = {
-    index?: number,
-    axisIndex?: number,
-    data?: HoverData,
-    element?: HTMLElement,
-    event?: MouseEvent,
-}
-
-export type ClickObject = {
-    value: Value,
-    column: Column,
-    metricValue?: Value,
-    metricColumn?: Column,
-    event?: MouseEvent,
-    element?: HTMLElement,
-}
-
-export type ClickAction = {
-    title: any,
-    popover?: any,
-    card?: Card | () => Card
-}
-
-// type Visualization = Component<*, VisualizationProps, *>;
-
-// $FlowFixMe
-export type Series = { card: Card, data: DatasetData }[] & { _raw: Series }
-
-export type VisualizationProps = {
-    series: Series,
-    card: Card,
-    data: DatasetData,
-    settings: VisualizationSettings,
-
-    className?: string,
-    gridSize: ?{
-        width: number,
-        height: number
-    },
-
-    showTitle: boolean,
-    isDashboard: boolean,
-    isEditing: boolean,
-    actionButtons: Node,
-    linkToCard?: bool,
-
-    hovered: ?HoverObject,
-    onHoverChange: (?HoverObject) => void,
-    onVisualizationClick: (?ClickObject) => void,
-
-    onUpdateVisualizationSettings: ({ [key: string]: any }) => void
-}
+import type { Series } from "metabase/meta/types/Visualization";
 
 const visualizations = new Map();
 const aliases = new Map();

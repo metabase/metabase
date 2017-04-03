@@ -115,8 +115,7 @@ export default class Table extends Component<*, Props, State> {
                     cols: columnIndexes.map(i => cols[i]),
                     columns: columnIndexes.map(i => columns[i]),
                     rows: rows.map(row => columnIndexes.map(i => row[i]))
-                },
-                columnIndexes
+                }
             });
         }
     }

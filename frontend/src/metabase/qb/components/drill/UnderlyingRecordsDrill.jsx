@@ -1,4 +1,4 @@
-/* @flow weak */
+/* @flow */
 
 import React from "react";
 
@@ -6,9 +6,16 @@ import { drillUnderlyingRecords } from "metabase/qb/lib/actions";
 
 import { inflect } from "metabase/lib/formatting";
 
-export default ({ card, tableMetadata, clicked }) => {
-    let dimensions = clicked.dimensions || [];
-    if (dimensions.length === 0) {
+import type {
+    ClickAction,
+    ClickActionProps
+} from "metabase/meta/types/Visualization";
+
+export default (
+    { card, tableMetadata, clicked }: ClickActionProps
+): ?ClickAction => {
+    const dimensions = (clicked && clicked.dimensions) || [];
+    if (!clicked || dimensions.length === 0) {
         return;
     }
 

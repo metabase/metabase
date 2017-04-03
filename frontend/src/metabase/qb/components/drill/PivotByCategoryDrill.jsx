@@ -1,9 +1,16 @@
-/* @flow weak */
+/* @flow */
 
 import React, { Component, PropTypes } from "react";
 
 import PivotByCategoryAction from "../actions/PivotByCategoryAction";
 
-export default ({ card, tableMetadata, clicked }) => {
+import type {
+    ClickAction,
+    ClickActionProps
+} from "metabase/meta/types/Visualization";
+
+export default (
+    { card, tableMetadata, clicked }: ClickActionProps
+): ?ClickAction => {
     return PivotByCategoryAction({ card, tableMetadata, clicked });
 };

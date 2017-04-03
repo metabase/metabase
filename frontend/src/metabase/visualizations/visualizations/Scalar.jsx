@@ -16,7 +16,7 @@ import { isNumber } from "metabase/lib/schema_metadata";
 import cx from "classnames";
 import d3 from "d3";
 
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 export default class Scalar extends Component<*, VisualizationProps, *> {
     static uiName = "Number";
@@ -27,6 +27,8 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
     static supportsSeries = true;
 
     static minSize = { width: 3, height: 3 };
+
+    _scalar: ?HTMLElement;
 
     static isSensible(cols, rows) {
         return rows.length === 1 && cols.length === 1;
@@ -184,7 +186,7 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
                     style={{maxWidth: '100%'}}
                 >
                     <span
-                        onClick={isClickable && (() => onVisualizationClick({ ...clicked, element: this._scalar }))}
+                        onClick={isClickable && (() => this._scalar && onVisualizationClick({ ...clicked, element: this._scalar }))}
                         ref={scalar => this._scalar = scalar}
                     >
                         {compactScalarValue}

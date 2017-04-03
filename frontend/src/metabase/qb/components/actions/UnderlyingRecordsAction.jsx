@@ -1,12 +1,19 @@
-/* @flow weak */
+/* @flow */
 
 import React from "react";
 
 import { toUnderlyingRecords } from "metabase/qb/lib/actions";
 import * as Query from "metabase/lib/query/query";
+import * as Card from "metabase/meta/Card";
 
-export default ({ card, tableMetadata }) => {
-    if (!Query.isBareRows(card.dataset_query.query)) {
+import type { ClickActionProps } from "metabase/meta/types/Visualization";
+
+export default ({ card, tableMetadata }: ClickActionProps) => {
+    const query = Card.getQuery(card);
+    if (!query) {
+        return;
+    }
+    if (!Query.isBareRows(query)) {
         return {
             title: (
                 <span>

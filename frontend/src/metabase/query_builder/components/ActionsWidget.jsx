@@ -5,11 +5,22 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
-import cx from "classnames";
+import { getModeActions } from "metabase/qb/lib/modes";
 
+import cx from "classnames";
 import _ from "underscore";
 
-type Props = {};
+import type { Card } from "metabase/meta/types/Card";
+import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+
+type Props = {
+    className?: string,
+    mode: QueryMode,
+    card: Card,
+    tableMetadata: TableMetadata,
+    setCardAndRun: (card: Card) => void
+};
 
 const CIRCLE_SIZE = 48;
 const NEEDLE_SIZE = 20;
@@ -55,39 +66,29 @@ export default class ActionsWidget extends Component<*, Props, *> {
         });
     };
 
-    handleActionClick = index => {
-        const action = this.getActions()[index];
+    handleActionClick = (index: number) => {
+        const { mode, card, tableMetadata } = this.props;
+        const action = getModeActions(mode, card, tableMetadata)[index];
         if (action && action.popover) {
             this.setState({ selectedActionIndex: index });
         } else if (action && action.card) {
-            this.props.setCardAndRun(
-                typeof action.card === "function" ? action.card() : action.card
-            );
+            const card = action.card();
+            if (card) {
+                this.props.setCardAndRun(card);
+            }
             this.close();
         }
     };
-
-    getActions() {
-        const { mode, card, tableMetadata } = this.props;
-        if (!mode || !mode.getActions) {
-            return [];
-        }
-        return mode
-            .getActions()
-            .map(getAction => getAction({ card, tableMetadata }))
-            .filter(action => action);
-    }
-
     render() {
-        const { className } = this.props;
+        const { className, mode, card, tableMetadata } = this.props;
         const { isOpen, isVisible, selectedActionIndex } = this.state;
 
-        const actions = this.getActions();
+        const actions: ClickAction[] = getModeActions(mode, card, tableMetadata);
         if (actions.length === 0) {
             return null;
         }
 
-        const selectedAction = selectedActionIndex != null &&
+        const selectedAction: ?ClickAction = selectedActionIndex == null ? null :
             actions[selectedActionIndex];
         let PopoverComponent = selectedAction && selectedAction.popover;
 
@@ -142,18 +143,21 @@ export default class ActionsWidget extends Component<*, Props, *> {
                                           <div
                                               className="text-centered flex-full"
                                           >
-                                              {selectedAction.title}
+                                              {selectedAction && selectedAction.title}
                                           </div>
                                       </div>
                                       <PopoverComponent
-                                          onChangeCardAndRun={
-                                              this.props.setCardAndRun
-                                          }
+                                          onChangeCardAndRun={(card) => {
+                                              if (card) {
+                                                  this.props.setCardAndRun(card);
+                                              }
+                                          }}
                                           onClose={this.close}
                                       />
                                   </div>
                                 : actions.map((action, index) => (
                                       <div
+                                          key={index}
                                           className="p2 flex align-center text-grey-4 brand-hover cursor-pointer"
                                           onClick={() =>
                                               this.handleActionClick(index)}

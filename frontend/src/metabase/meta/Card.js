@@ -43,8 +43,8 @@ export function isNative(card: Card): bool {
 
 export function canRun(card: Card): bool {
     if (card.dataset_query.type === "query") {
-        const query : StructuredQuery = card.dataset_query.query;
-        return query && query.source_table != undefined && Query.hasValidAggregation(query);
+        const query = getQuery(card);
+        return query != null && query.source_table != undefined && Query.hasValidAggregation(query);
     } else if (card.dataset_query.type === "native") {
         const native : NativeQuery = card.dataset_query.native;
         return native && card.dataset_query.database != undefined && native.query !== "";

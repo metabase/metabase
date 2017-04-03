@@ -22,35 +22,62 @@ import {
 import cx from "classnames";
 import _ from "underscore";
 
-export default class TimeseriesFilterWidget extends Component {
+import type {
+    Card as CardObject,
+    DatasetQuery
+} from "metabase/meta/types/Card";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { FieldFilter } from "metabase/meta/types/Query";
+
+type Props = {
+    className: string,
+    card: CardObject,
+    tableMetadata: TableMetadata,
+    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+    runQueryFn: () => void
+};
+
+type State = {
+    filterIndex: number,
+    filter: FieldFilter,
+    currentFilter: any
+};
+
+export default class TimeseriesFilterWidget extends Component<*, Props, State> {
     state = {
         filter: null,
-        filterIndex: -1
+        filterIndex: -1,
+        currentFilter: null
     };
 
-    componentWillReceiveProps(nextProps) {
+    _popover: ?any;
+
+    componentWillReceiveProps(nextProps: Props) {
         const query = Card.getQuery(nextProps.card);
-        const breakouts = Query.getBreakouts(query);
-        const filters = Query.getFilters(query);
+        if (query) {
+            const breakouts = Query.getBreakouts(query);
+            const filters = Query.getFilters(query);
 
-        const timeFieldId = parseFieldTargetId(breakouts[0]);
-        const timeField = parseFieldTarget(breakouts[0]);
+            const timeFieldId = parseFieldTargetId(breakouts[0]);
+            const timeField = parseFieldTarget(breakouts[0]);
 
-        const filterIndex = _.findIndex(
-            filters,
-            filter =>
-                Filter.isFieldFilter(filter) &&
-                Field.getFieldTargetId(filter[1]) === timeFieldId
-        );
+            const filterIndex = _.findIndex(
+                filters,
+                filter =>
+                    Filter.isFieldFilter(filter) &&
+                    Field.getFieldTargetId(filter[1]) === timeFieldId
+            );
 
-        let filter, currentFilter;
-        if (filterIndex >= 0) {
-            filter = (currentFilter = filters[filterIndex]);
-        } else {
-            filter = ["BETWEEN", timeField];
+            let filter, currentFilter;
+            if (filterIndex >= 0) {
+                filter = (currentFilter = filters[filterIndex]);
+            } else {
+                filter = ["BETWEEN", timeField];
+            }
+
+            // $FlowFixMe
+            this.setState({ filter, filterIndex, currentFilter });
         }
-
-        this.setState({ filter, filterIndex, currentFilter });
     }
 
     render() {
@@ -101,18 +128,26 @@ export default class TimeseriesFilterWidget extends Component {
                         className="full"
                         onClick={() => {
                             let query = Card.getQuery(card);
-                            if (filterIndex >= 0) {
-                                query = Query.updateFilter(
-                                    query,
-                                    filterIndex,
-                                    filter
-                                );
-                            } else {
-                                query = Query.addFilter(query, filter);
+                            if (query) {
+                                if (filterIndex >= 0) {
+                                    query = Query.updateFilter(
+                                        query,
+                                        filterIndex,
+                                        filter
+                                    );
+                                } else {
+                                    query = Query.addFilter(query, filter);
+                                }
+                                // $FlowFixMe
+                                setDatasetQuery({
+                                    ...card.dataset_query,
+                                    query
+                                });
+                                runQueryFn();
                             }
-                            setDatasetQuery({ ...card.dataset_query, query });
-                            runQueryFn();
-                            this._popover.close();
+                            if (this._popover) {
+                                this._popover.close();
+                            }
                         }}
                     >Apply</Button>
                 </div>

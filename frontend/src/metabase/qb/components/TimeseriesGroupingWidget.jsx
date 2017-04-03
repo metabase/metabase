@@ -12,12 +12,29 @@ import * as Card from "metabase/meta/Card";
 
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 
-export default class TimeseriesGroupingWidget extends Component {
+import type {
+    Card as CardObject,
+    DatasetQuery
+} from "metabase/meta/types/Card";
+
+type Props = {
+    card: CardObject,
+    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+    runQueryFn: () => void
+};
+
+export default class TimeseriesGroupingWidget extends Component<*, Props, *> {
+    _popover: ?any;
+
     render() {
         const { card, setDatasetQuery, runQueryFn } = this.props;
         if (Card.isStructured(card)) {
             const query = Card.getQuery(card);
-            const breakouts = Query.getBreakouts(query);
+            const breakouts = query && Query.getBreakouts(query);
+
+            if (!breakouts || breakouts.length === 0) {
+                return null;
+            }
 
             return (
                 <PopoverWithTrigger
@@ -33,14 +50,23 @@ export default class TimeseriesGroupingWidget extends Component {
                         className="text-brand"
                         field={breakouts[0]}
                         onFieldChange={breakout => {
-                            Query.updateBreakout(
-                                card.dataset_query.query,
-                                0,
-                                breakout
-                            );
-                            setDatasetQuery(card.dataset_query);
-                            runQueryFn();
-                            this._popover.close();
+                            let query = Card.getQuery(card);
+                            if (query) {
+                                query = Query.updateBreakout(
+                                    query,
+                                    0,
+                                    breakout
+                                );
+                                // $FlowFixMe
+                                setDatasetQuery({
+                                    ...card.dataset_query,
+                                    query
+                                });
+                                runQueryFn();
+                                if (this._popover) {
+                                    this._popover.close();
+                                }
+                            }
                         }}
                         title={null}
                         groupingOptions={[

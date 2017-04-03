@@ -13,7 +13,7 @@ import { normal } from "metabase/lib/colors";
 
 const DEFAULT_COLORS = Object.values(normal);
 
-import type { VisualizationProps, HoverData, HoverObject } from "metabase/visualizations";
+import type { VisualizationProps, HoverObject, ClickObject } from "metabase/meta/types/Visualization";
 
 type StepInfo = {
     value: number,
@@ -23,7 +23,8 @@ type StepInfo = {
         endBottom: number,
         endTop: number
     },
-    tooltip?: HoverData
+    hovered?: HoverObject,
+    clicked?: ClickObject,
 };
 
 export default class Funnel extends Component<*, VisualizationProps, *> {
@@ -33,7 +34,7 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         const dimensionIndex = 0;
         const metricIndex = 1;
         const cols = series[0].data.cols;
-        // $FlowFixMe: doesn't like intersection type
+        // $FlowFixMe
         const rows = series.map(s => s.data.rows[0]);
 
         const funnelSmallSize = gridSize && (gridSize.width < 7 || gridSize.height <= 5);
@@ -68,20 +69,23 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                     endBottom: 0.5 - ((remaining / infos[0].value) / 2),
                 },
 
-                tooltip: [
-                    {
-                        key: 'Step',
-                        value: formatDimension(row[dimensionIndex]),
-                    },
-                    {
-                        key: getFriendlyName(cols[metricIndex]),
-                        value: formatMetric(row[metricIndex]),
-                    },
-                    {
-                        key: 'Retained',
-                        value: formatPercent(row[metricIndex] / infos[0].value),
-                    },
-                ],
+                hovered: {
+                    index: rowIndex,
+                    data: [
+                        {
+                            key: 'Step',
+                            value: formatDimension(row[dimensionIndex]),
+                        },
+                        {
+                            key: getFriendlyName(cols[metricIndex]),
+                            value: formatMetric(row[metricIndex]),
+                        },
+                        {
+                            key: 'Retained',
+                            value: formatPercent(row[metricIndex] / infos[0].value),
+                        },
+                    ]
+                },
 
                 clicked: {
                     value: row[metricIndex],
@@ -129,10 +133,7 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                             infos={infos}
                             hovered={hovered}
                             onHoverChange={onHoverChange}
-                            onClick={isClickable && ((e) => onVisualizationClick({
-                                ...info.clicked,
-                                event: e.nativeEvent
-                            }))}
+                            onVisualizationClick={isClickable ? onVisualizationClick : null}
                         />
                         <div className={styles.Infos}>
                             <div className={styles.Title}>{formatPercent(info.value / initial.value)}</div>
@@ -151,26 +152,38 @@ const GraphSection = (
         infos,
         hovered,
         onHoverChange,
-        onClick,
+        onVisualizationClick,
         className,
     }: {
+        className?: string,
         index: number,
         info: StepInfo,
         infos: StepInfo[],
         hovered: ?HoverObject,
+        onVisualizationClick: ?((clicked: ?ClickObject) => void),
         onHoverChange: (hovered: ?HoverObject) => void
     }
 ) => {
     return (
         <svg
             className={cx(className, styles.Graph)}
-            onMouseMove={event => onHoverChange({
-                index: index,
-                event: event.nativeEvent,
-                data: info.tooltip
-            })}
-            onMouseLeave={() => onHoverChange(null)}
-            onClick={onClick}
+            onMouseMove={e => {
+                if (onHoverChange && info.hovered) {
+                    onHoverChange({
+                        ...info.hovered,
+                        event: e.nativeEvent
+                    })
+                }
+            }}
+            onMouseLeave={() => onHoverChange && onHoverChange(null)}
+            onClick={e => {
+                if (onVisualizationClick && info.clicked) {
+                    onVisualizationClick({
+                        ...info.clicked,
+                        event: e.nativeEvent
+                    })
+                }
+            }}
             viewBox="0 0 1 1"
             preserveAspectRatio="none"
         >

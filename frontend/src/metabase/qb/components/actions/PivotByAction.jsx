@@ -1,28 +1,43 @@
-/* @flow weak */
+/* @flow */
 
 import React from "react";
 
 import BreakoutPopover from "metabase/qb/components/gui/BreakoutPopover";
 
+import * as Card from "metabase/meta/Card";
 import Query from "metabase/lib/query";
 import { pivot } from "metabase/qb/lib/actions";
 
+import type { Field } from "metabase/meta/types/Field";
+import type {
+    ClickAction,
+    ClickActionProps,
+    ClickActionPopoverProps
+} from "metabase/meta/types/Visualization";
+
+type FieldFilter = (field: Field) => boolean;
+
 // PivotByAction displays a breakout picker, and optionally filters by the
 // clicked dimesion values (and removes corresponding breakouts)
-export default (name, icon, fieldFilter) => (
-    { card, tableMetadata, clicked }
-) => {
+export default (name: string, icon: string, fieldFilter: FieldFilter) => (
+    { card, tableMetadata, clicked }: ClickActionProps
+): ?ClickAction => {
+    const query = Card.getQuery(card);
+
     // Click target types: metric value
     if (
-        clicked &&
-        (clicked.value === undefined || clicked.column.source !== "aggregation")
+        !query ||
+        !tableMetadata ||
+        (clicked &&
+            (clicked.value === undefined ||
+                clicked.column.source !== "aggregation"))
     ) {
         return;
     }
 
     let dimensions = (clicked && clicked.dimensions) || [];
 
-    const breakouts = Query.getBreakouts(card.dataset_query.query);
+    const breakouts = Query.getBreakouts(query);
     const usedFields = {};
     for (const breakout of breakouts) {
         usedFields[breakout] = true;
@@ -31,7 +46,7 @@ export default (name, icon, fieldFilter) => (
     const fieldOptions = Query.getFieldOptions(
         tableMetadata.fields,
         true,
-        fields => {
+        (fields: Field[]): Field[] => {
             fields = tableMetadata.breakout_options.validFieldsFilter(fields);
             if (fieldFilter) {
                 fields = fields.filter(fieldFilter);
@@ -40,6 +55,8 @@ export default (name, icon, fieldFilter) => (
         },
         usedFields
     );
+
+    const customFieldOptions = Query.getExpressions(query);
 
     if (fieldOptions.count === 0) {
         return null;
@@ -55,19 +72,17 @@ export default (name, icon, fieldFilter) => (
         ),
         icon: icon,
         // eslint-disable-next-line react/display-name
-        popover: ({ onChangeCardAndRun, onClose }) => (
+        popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
             <BreakoutPopover
                 tableMetadata={tableMetadata}
                 fieldOptions={fieldOptions}
-                customFieldOptions={Query.getExpressions(
-                    card.dataset_query.query
-                )}
+                customFieldOptions={customFieldOptions}
                 onCommitBreakout={breakout => {
                     onChangeCardAndRun(
                         pivot(card, breakout, tableMetadata, dimensions)
                     );
-                    onClose && onClose();
                 }}
+                onClose={onClose}
             />
         )
     };

@@ -193,6 +193,7 @@ const OPERATORS: Operator[] = [
 ];
 
 type Props = {
+    className?: string,
     filter: FieldFilter,
     onFilterChange: (filter: FieldFilter) => void,
     tableMetadata: any

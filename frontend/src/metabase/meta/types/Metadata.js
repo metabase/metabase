@@ -35,7 +35,32 @@ export type FieldMetadata = Field & {
     operators_lookup: { [name: string]: Operator }
 }
 
+export type AggregationOption = {
+    name: string,
+    short: string,
+    fields: Field[],
+    validFieldsFilter: (fields: Field[]) => Field[]
+}
+
+export type BreakoutOptions = {
+    name: string,
+    short: string,
+    fields: Field[],
+    validFieldsFilter: (fields: Field[]) => Field[]
+}
+
 export type TableMetadata = Table & {
     segments: Segment[],
-    fields: FieldMetadata[]
+    fields: FieldMetadata[],
+    aggregation_options: AggregationOption[],
+    breakout_options: BreakoutOptions
 }
+
+export type FieldOptions = {
+    count: number,
+    fields: Field[],
+    fks: {
+        field: Field,
+        fields: Field[]
+    }
+};

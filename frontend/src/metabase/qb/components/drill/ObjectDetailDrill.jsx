@@ -1,4 +1,4 @@
-/* @flow weak */
+/* @flow */
 
 import React from "react";
 
@@ -9,8 +9,16 @@ import { singularize, stripId } from "metabase/lib/formatting";
 
 import * as Table from "metabase/lib/query/table";
 
-export default ({ card, tableMetadata, clicked }) => {
+import type {
+    ClickAction,
+    ClickActionProps
+} from "metabase/meta/types/Visualization";
+
+export default (
+    { card, tableMetadata, clicked }: ClickActionProps
+): ?ClickAction => {
     if (
+        !clicked ||
         !clicked.column ||
         clicked.value === undefined ||
         !(isFK(clicked.column.special_type) ||
@@ -18,6 +26,8 @@ export default ({ card, tableMetadata, clicked }) => {
     ) {
         return;
     }
+
+    const value = clicked.value;
 
     let field = Table.getField(tableMetadata, clicked.column.id);
     let table = tableMetadata;
@@ -43,7 +53,6 @@ export default ({ card, tableMetadata, clicked }) => {
             </span>
         ),
         default: true,
-        card: () =>
-            drillRecord(tableMetadata.db_id, table.id, field.id, clicked.value)
+        card: () => drillRecord(tableMetadata.db_id, table.id, field.id, value)
     };
 };

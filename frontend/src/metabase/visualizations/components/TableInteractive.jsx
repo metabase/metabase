@@ -9,7 +9,6 @@ import Icon from "metabase/components/Icon.jsx";
 
 import Value from "metabase/components/Value.jsx";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
 import { capitalize } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
@@ -25,8 +24,7 @@ const ROW_HEIGHT = 35;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
-import type { Column } from "metabase/meta/types/Dataset";
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 type Props = VisualizationProps & {
     width: number,
@@ -78,7 +76,6 @@ export default class TableInteractive extends Component<*, Props, State> {
 
     static defaultProps = {
         isPivoted: false,
-        visualizationIsClickable: () => false,
     };
 
     componentWillMount() {
@@ -131,7 +128,7 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     _measure() {
-        const { data: { cols } } = this.props;
+        const { series: [{ data: { cols }}] } = this.props;
 
         let contentWidths = cols.map((col, index) =>
             this._measureColumn(index)
@@ -144,6 +141,8 @@ export default class TableInteractive extends Component<*, Props, State> {
                     return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
                 } else if (this.state.columnWidths[index]) {
                     return this.state.columnWidths[index];
+                } else {
+                    return 0;
                 }
             } else {
                 return contentWidths[index] + 1;
@@ -212,7 +211,7 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-        const { data: { cols, rows }, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { series: [{ data: { cols, rows }}], isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
         const column = cols[columnIndex];
         const row = rows[rowIndex];
         const value = row[columnIndex];
@@ -260,7 +259,7 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-        const { sort, data: { cols }, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { sort, series: [{ data: { cols }}], isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
         const column = cols[columnIndex];
 
         let columnTitle = getFriendlyName(column);

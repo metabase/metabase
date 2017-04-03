@@ -1,4 +1,4 @@
-/* @flow weak */
+/* @flow */
 
 import { DEFAULT_ACTIONS } from "../actions";
 import { DEFAULT_DRILLS } from "../drill";
@@ -9,17 +9,12 @@ import PivotByTimeAction from "../actions/PivotByTimeAction";
 import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByTimeDrill from "../drill/PivotByTimeDrill";
 
-export default {
+import type { QueryMode } from "metabase/meta/types/Visualization";
+
+const GeoMode: QueryMode = {
     name: "geo",
-
-    getActions() {
-        return DEFAULT_ACTIONS.concat([
-            PivotByCategoryAction,
-            PivotByTimeAction
-        ]);
-    },
-
-    getDrills() {
-        return DEFAULT_DRILLS.concat([PivotByCategoryDrill, PivotByTimeDrill]);
-    }
+    actions: [...DEFAULT_ACTIONS, PivotByCategoryAction, PivotByTimeAction],
+    drills: [...DEFAULT_DRILLS, PivotByCategoryDrill, PivotByTimeDrill]
 };
+
+export default GeoMode;

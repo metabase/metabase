@@ -1,10 +1,20 @@
-/* @flow weak */
+/* @flow */
 
 import React, { Component, PropTypes } from "react";
 
 import FieldList from "metabase/query_builder/components/FieldList.jsx";
 
-type Props = {};
+import type { Breakout, ExpressionName } from "metabase/meta/types/Query";
+import type { TableMetadata, FieldOptions } from "metabase/meta/types/Metadata";
+
+type Props = {
+    breakout?: Breakout,
+    tableMetadata: TableMetadata,
+    fieldOptions: FieldOptions,
+    customFieldOptions: { [key: ExpressionName]: any },
+    onCommitBreakout: (breakout: Breakout) => void,
+    onClose?: () => void
+};
 
 const BreakoutPopover = (
     {
@@ -24,7 +34,9 @@ const BreakoutPopover = (
         customFieldOptions={customFieldOptions}
         onFieldChange={field => {
             onCommitBreakout(field);
-            onClose();
+            if (onClose) {
+                onClose();
+            }
         }}
         enableTimeGrouping
         alwaysExpanded

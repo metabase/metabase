@@ -1,13 +1,27 @@
-/* @flow weak */
+/* @flow */
 
 import React from "react";
 
 import { assocIn } from "icepick";
 import Query from "metabase/lib/query";
+import * as Card from "metabase/meta/Card";
 
-export default ({ card, tableMetadata, clicked }) => {
+import type {
+    ClickAction,
+    ClickActionProps
+} from "metabase/meta/types/Visualization";
+
+export default (
+    { card, tableMetadata, clicked }: ClickActionProps
+): ?ClickAction => {
+    const query = Card.getQuery(card);
+
     if (
-        !clicked.column || clicked.value !== undefined || !clicked.column.source
+        !query ||
+        !clicked ||
+        !clicked.column ||
+        clicked.value !== undefined ||
+        !clicked.column.source
     ) {
         return;
     }
@@ -25,9 +39,7 @@ export default ({ card, tableMetadata, clicked }) => {
             if (column.id == null) {
                 // ICK.  this is hacky for dealing with aggregations.  need something better
                 // DOUBLE ICK.  we also need to deal with custom fields now as well
-                const expressions = Query.getExpressions(
-                    card.dataset_query.query
-                );
+                const expressions = Query.getExpressions(query);
                 if (column.display_name in expressions) {
                     field = ["expression", column.display_name];
                 } else {
@@ -39,7 +51,6 @@ export default ({ card, tableMetadata, clicked }) => {
 
             let sortClause = [field, "ascending"];
 
-            const query = card.dataset_query.query;
             if (
                 query.order_by &&
                 query.order_by.length > 0 &&

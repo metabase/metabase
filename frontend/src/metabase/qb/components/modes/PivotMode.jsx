@@ -1,4 +1,4 @@
-/* @flow weak */
+/* @flow */
 
 import { DEFAULT_ACTIONS } from "../actions";
 import { DEFAULT_DRILLS } from "../drill";
@@ -11,22 +11,22 @@ import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
 import PivotByLocationDrill from "../drill/PivotByLocationDrill";
 import PivotByTimeDrill from "../drill/PivotByTimeDrill";
 
-export default {
+import type { QueryMode } from "metabase/meta/types/Visualization";
+
+const PivotMode: QueryMode = {
     name: "pivot",
-
-    getActions() {
-        return DEFAULT_ACTIONS.concat([
-            PivotByCategoryAction,
-            PivotByLocationAction,
-            PivotByTimeAction
-        ]);
-    },
-
-    getDrills() {
-        return DEFAULT_DRILLS.concat([
-            PivotByCategoryDrill,
-            PivotByLocationDrill,
-            PivotByTimeDrill
-        ]);
-    }
+    actions: [
+        ...DEFAULT_ACTIONS,
+        PivotByCategoryAction,
+        PivotByLocationAction,
+        PivotByTimeAction
+    ],
+    drills: [
+        ...DEFAULT_DRILLS,
+        PivotByCategoryDrill,
+        PivotByLocationDrill,
+        PivotByTimeDrill
+    ]
 };
+
+export default PivotMode;

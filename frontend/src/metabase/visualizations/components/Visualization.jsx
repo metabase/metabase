@@ -17,6 +17,8 @@ import { getSettings } from "metabase/visualizations/lib/settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import Utils from "metabase/lib/utils";
 
+import { getModeDrills } from "metabase/qb/lib/modes"
+
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import { assoc, getIn, setIn } from "icepick";
@@ -26,8 +28,9 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type { VisualizationSettings } from "metabase/meta/types/Card";
-import type { HoverObject, ClickObject, Series } from "metabase/visualizations";
+import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+import type { HoverObject, ClickObject, Series, QueryMode } from "metabase/meta/types/Visualization";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 type Props = {
     series: Series,
@@ -54,6 +57,11 @@ type Props = {
 
     // settings overrides from settings panel
     settings: VisualizationSettings,
+
+    // for click actions
+    mode?: QueryMode,
+    tableMetadata: TableMetadata,
+    onChangeCardAndRun: (card: Card) => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -177,22 +185,16 @@ export default class Visualization extends Component<*, Props, State> {
         this.setState({ hovered });
     }
 
-    getClickActions(clicked) {
-        const { mode, series, tableMetadata } = this.props;
-        const actions = [];
-        if (clicked && mode && mode.getDrills) {
-            const props = { card: series[0].card, tableMetadata, clicked };
-            for (const getAction of mode.getDrills()) {
-                const action = getAction(props);
-                if (action) {
-                    actions.push(action);
-                }
-            }
-        }
-        return actions;
+    getClickActions(clicked: ?ClickObject) {
+        const { mode, series: [{ card }], tableMetadata } = this.props;
+        return getModeDrills(mode, card, tableMetadata, clicked);
     }
 
     visualizationIsClickable = (clicked: ClickObject) => {
+        const { onChangeCardAndRun } = this.props;
+        if (!onChangeCardAndRun) {
+            return false;
+        }
         try {
             return this.getClickActions(clicked).length > 0;
         } catch (e) {

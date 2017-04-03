@@ -1,4 +1,4 @@
-/* @flow weak */
+/* @flow */
 
 import React, { Component, PropTypes } from "react";
 
@@ -18,7 +18,21 @@ import PivotByLocationDrill from "../drill/PivotByLocationDrill";
 
 import TimeseriesPivotDrill from "../drill/TimeseriesPivotDrill";
 
-export const ModeFooter = props => {
+import type { QueryMode } from "metabase/meta/types/Visualization";
+import type {
+    Card as CardObject,
+    DatasetQuery
+} from "metabase/meta/types/Card";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+
+type Props = {
+    card: CardObject,
+    tableMetadata: TableMetadata,
+    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+    runQueryFn: () => void
+};
+
+export const TimeseriesModeFooter = (props: Props) => {
     return (
         <div className="flex layout-centered">
             <TimeseriesFilterWidget {...props} className="mr1" />
@@ -27,23 +41,16 @@ export const ModeFooter = props => {
     );
 };
 
-export default {
+const TimeseriesMode: QueryMode = {
     name: "timeseries",
-
-    ModeFooter,
-
-    getActions() {
-        return DEFAULT_ACTIONS.concat([
-            PivotByCategoryAction,
-            PivotByLocationAction
-        ]);
-    },
-
-    getDrills() {
-        return DEFAULT_DRILLS.concat([
-            TimeseriesPivotDrill,
-            PivotByCategoryDrill,
-            PivotByLocationDrill
-        ]);
-    }
+    actions: [...DEFAULT_ACTIONS, PivotByCategoryAction, PivotByLocationAction],
+    drills: [
+        ...DEFAULT_DRILLS,
+        TimeseriesPivotDrill,
+        PivotByCategoryDrill,
+        PivotByLocationDrill
+    ],
+    ModeFooter: TimeseriesModeFooter
 };
+
+export default TimeseriesMode;

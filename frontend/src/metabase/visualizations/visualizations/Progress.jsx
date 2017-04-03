@@ -15,7 +15,7 @@ import cx from "classnames";
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
 
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 export default class Progress extends Component<*, VisualizationProps, *> {
     static uiName = "Progress";

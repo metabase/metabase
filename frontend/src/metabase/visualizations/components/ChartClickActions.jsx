@@ -5,13 +5,13 @@ import React, { Component, PropTypes } from "react";
 import Button from "metabase/components/Button";
 import Popover from "metabase/components/Popover";
 
-import type { ClickObject, ClickAction } from "metabase/visualizations";
+import type { ClickObject, ClickAction } from "metabase/meta/types/Visualization";
 import type { Card } from "metabase/meta/types/Card";
 
 type Props = {
     clicked: ClickObject,
     clickActions: ?ClickAction[],
-    onChangeCardAndRun: (card: Card) => void,
+    onChangeCardAndRun: (card: ?Card) => void,
     onClose: () => void
 };
 
@@ -44,7 +44,7 @@ export default class ChartClickActions extends Component<*, Props, State> {
         }
 
         let popover;
-        if (popoverIndex != null) {
+        if (popoverIndex != null && clickActions[popoverIndex].popover) {
             const PopoverContent = clickActions[popoverIndex].popover;
             popover = (
                 <PopoverContent
@@ -68,12 +68,13 @@ export default class ChartClickActions extends Component<*, Props, State> {
                     <div className="px1 pt1 flex flex-column">
                         { clickActions.map((action, index) =>
                             <Button
+                                key={index}
                                 className="mb1"
                                 medium
                                 onClick={() => {
                                     if (action.popover) {
                                         this.setState({ popoverIndex: index });
-                                    } else {
+                                    } else if (action.card) {
                                         onChangeCardAndRun(action.card());
                                         this.close();
                                     }
