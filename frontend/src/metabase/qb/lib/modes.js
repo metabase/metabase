@@ -102,7 +102,7 @@ export const getModeDrills = (
 ): ClickAction[] => {
     if (mode && card && tableMetadata && clicked) {
         const props: ClickActionProps = { card, tableMetadata, clicked };
-        return mode.actions
+        return mode.drills
             .map(actionCreator => actionCreator(props))
             .filter(action => action);
     }
