@@ -7,7 +7,6 @@
                       [helpers :as h])
             [metabase.config :as config]
             [toucan.db :as db]
-            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
@@ -42,8 +41,15 @@
    [#"URI"         :type/Text]
    [#"XML"         :type/*]])
 
-(defn- connection-details->spec [{:keys [sid], :as details}]
-  (update (dbspec/oracle details) :subname (u/rpartial str \: sid)))
+(defn- connection-details->spec
+  "Create a database specification for an Oracle database. DETAILS should include keys
+  for `:user`, `:password`, and `:sid`. You can also optionally set `:host` and `:port`."
+  [{:keys [host port sid]
+    :or   {host "localhost", port 1521}
+    :as   details}]
+  (merge {:subprotocol "oracle:thin"
+          :subname     (str "@" host ":" port ":" sid)}
+         (dissoc details :host :port)))
 
 (defn- can-connect? [details]
   (let [connection (connection-details->spec details)]

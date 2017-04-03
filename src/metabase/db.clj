@@ -19,6 +19,7 @@
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
   (:import java.io.StringWriter
            java.sql.Connection
+           java.util.Properties
            com.mchange.v2.c3p0.ComboPooledDataSource
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
@@ -268,7 +269,7 @@
                  (.setTestConnectionOnCheckin      false)
                  (.setTestConnectionOnCheckout     false)
                  (.setPreferredTestQuery           nil)
-                 (.setProperties                   (u/prog1 (java.util.Properties.)
+                 (.setProperties                   (u/prog1 (Properties.)
                                                      (doseq [[k v] (dissoc spec :classname :subprotocol :subname :naming :delimiters :alias-delimiter
                                                                                 :excess-timeout :minimum-pool-size :idle-connection-test-period)]
                                                        (.setProperty <> (name k) (str v))))))})
