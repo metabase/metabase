@@ -90,29 +90,25 @@ export function applyParameters(
     datasetQuery.parameters = [];
     for (const parameter of parameters || []) {
         let value = parameterValues[parameter.id];
+        if (value == null) {
+            continue;
+        }
 
-        // dashboards
         const mapping = _.findWhere(parameterMappings, { card_id: card.id, parameter_id: parameter.id });
-        if (value != null && mapping) {
+        if (mapping) {
+            // mapped target, e.x. on a dashboard
             datasetQuery.parameters.push({
                 type: parameter.type,
                 target: mapping.target,
                 value: value
             });
-        }
-
-        // SQL parameters
-        if (datasetQuery.type === "native") {
-            let tag = _.findWhere(datasetQuery.native.template_tags, { id: parameter.id });
-            if (tag) {
-                datasetQuery.parameters.push({
-                    type: parameter.type,
-                    target: tag.type === "dimension" ?
-                        ["dimension", ["template-tag", tag.name]]:
-                        ["variable", ["template-tag", tag.name]],
-                    value: value
-                });
-            }
+        } else if (parameter.target) {
+            // inline target, e.x. on a card
+            datasetQuery.parameters.push({
+                type: parameter.type,
+                target: parameter.target,
+                value: value
+            });
         }
     }
 

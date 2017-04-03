@@ -14,21 +14,23 @@
             [metabase.sync-database.interface :as i]
             [metabase.util :as u]))
 
-(def ^:private ^:const percent-valid-url-threshold
+(def ^:private ^:const ^Float percent-valid-url-threshold
   "Fields that have at least this percent of values that are valid URLs should be given a special type of `:type/URL`."
   0.95)
 
-
-(def ^:private ^:const low-cardinality-threshold
+(def ^:private ^:const ^Integer low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`."
   300)
 
-(def ^:private ^:const field-values-entry-max-length
+(def ^:private ^:const ^Integer field-values-entry-max-length
   "The maximum character length for a stored `FieldValues` entry."
   100)
 
+(def ^:private ^:const ^Integer field-values-total-max-length
+  "Maximum total length for a FieldValues entry (combined length of all values for the field)."
+  (* low-cardinality-threshold field-values-entry-max-length))
 
-(def ^:private ^:const average-length-no-preview-threshold
+(def ^:private ^:const ^Integer average-length-no-preview-threshold
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
 
@@ -52,6 +54,12 @@
            (not (isa? (:base_type field) :type/Collection))
            (not (= (:base_type field) :type/*)))))
 
+(defn- field-values-below-low-cardinality-threshold? [non-nil-values]
+  (and (<= (count non-nil-values) low-cardinality-threshold)
+      ;; very simple check to see if total length of field-values exceeds (total values * max per value)
+       (let [total-length (reduce + (map (comp count str) non-nil-values))]
+         (<= total-length field-values-total-max-length))))
+
 (defn test:cardinality-and-extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
   [field field-stats]
@@ -59,10 +67,7 @@
   ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
   (let [non-nil-values  (filter identity (queries/field-distinct-values field (inc low-cardinality-threshold)))
         ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
-        distinct-values (when-not (or (< low-cardinality-threshold (count non-nil-values))
-                                      ;; very simple check to see if total length of field-values exceeds (total values * max per value)
-                                      (< (* low-cardinality-threshold
-                                            field-values-entry-max-length) (reduce + (map (comp count str) non-nil-values))))
+        distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)
                           non-nil-values)]
     (cond-> (assoc field-stats :values distinct-values)
       (and (nil? (:special_type field))

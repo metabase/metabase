@@ -315,7 +315,6 @@
             #inst "2016-08-01T00:00:00.000000000-00:00"]}
   (expand-with-dimension-param {:type "date/range", :value "2016-07-01~2016-08-01"}))
 
-
 ;; dimension (date/month-year)
 (expect
   {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
@@ -329,6 +328,18 @@
    :params [#inst "2016-01-01T00:00:00.000000000-00:00"
             #inst "2016-03-31T00:00:00.000000000-00:00"]}
   (expand-with-dimension-param {:type "date/quarter-year", :value "Q1-2016"}))
+
+;; dimension (date/all-options, before)
+(expect
+  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) < ?;"
+   :params [#inst "2016-07-01T00:00:00.000000000-00:00"]}
+  (expand-with-dimension-param {:type "date/all-options", :value "~2016-07-01"}))
+
+;; dimension (date/all-options, after)
+(expect
+  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) > ?;"
+   :params [#inst "2016-07-01T00:00:00.000000000-00:00"]}
+  (expand-with-dimension-param {:type "date/all-options", :value "2016-07-01~"}))
 
 ;; relative date -- "yesterday"
 (expect

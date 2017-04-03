@@ -55,6 +55,20 @@ export default class FilterPopover extends Component<*, Props, State> {
         tableMetadata: PropTypes.object.isRequired
     };
 
+    componentWillMount() {
+        window.addEventListener('keydown', this.commitOnEnter);
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('keydown', this.commitOnEnter);
+    }
+
+    commitOnEnter = (event: KeyboardEvent) => {
+        if(this.isValid() && event.key === "Enter") {
+            this.commitFilter(this.state.filter);
+        }
+    }
+
     commitFilter = (filter: FieldFilter) => {
         this.props.onCommitFilter(filter);
         this.props.onClose();
@@ -259,10 +273,9 @@ export default class FilterPopover extends Component<*, Props, State> {
                     </div>
                     { isDate(field) ?
                         <DatePicker
+                            className="mt1 border-top"
                             filter={filter}
                             onFilterChange={this.setFilter}
-                            onOperatorChange={this.setOperator}
-                            tableMetadata={this.props.tableMetadata}
                         />
                     :
                         <div>

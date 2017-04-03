@@ -58,13 +58,14 @@
 ;; TAGS in this case are simple params like {{x}} that get replaced with a single value ("ABC" or 1) as opposed to a "FieldFilter" clause like Dimensions
 (def ^:private TagParam
   "Schema for values passed in as part of the `:template_tags` list."
-  {(s/optional-key :id)        su/NonBlankString ; this is used internally by the frontend
-   :name                       su/NonBlankString
-   :display_name               su/NonBlankString
-   :type                       (s/enum "number" "dimension" "text" "date")
-   (s/optional-key :dimension) [s/Any]
-   (s/optional-key :required)  s/Bool
-   (s/optional-key :default)   s/Any})
+  {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
+   :name                         su/NonBlankString
+   :display_name                 su/NonBlankString
+   :type                         (s/enum "number" "dimension" "text" "date")
+   (s/optional-key :dimension)   [s/Any]
+   (s/optional-key :widget_type) su/NonBlankString
+   (s/optional-key :required)    s/Bool
+   (s/optional-key :default)     s/Any})
 
 (def ^:private DimensionValue
   {:type                   su/NonBlankString
@@ -198,13 +199,13 @@
       (->replacement-snippet-info \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"))
 
 
-(defn- relative-date-param-type? [param-type] (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative"} param-type))
+(defn- relative-date-param-type? [param-type] (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative" "date/all-options"} param-type))
 (defn- date-param-type?          [param-type] (str/starts-with? param-type "date/"))
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private ^:always-validate relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
-  (->replacement-snippet-info (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value *timezone*)))) ; TODO - get timezone from query dict
+  (->replacement-snippet-info (map->DateRange ((resolve 'metabase.query-processor.parameters/date-string->range) value *timezone*)))) ; TODO - get timezone from query dict
 
 (s/defn ^:private ^:always-validate dimension-value->equals-clause-sql :- ParamSnippetInfo
   [value]
@@ -256,9 +257,11 @@
 
   DateRange
   (->replacement-snippet-info [{:keys [start end]}]
-    (if (= start end)
-      {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
+    (cond
+      (= start end) {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
+      (nil? start)  {:replacement-snippet "< ?",             :prepared-statement-args [(u/->Timestamp end)]}
+      (nil? end)    {:replacement-snippet "> ?",             :prepared-statement-args [(u/->Timestamp start)]}
+      :else         {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
 
   ;; TODO - clean this up if possible!
   Dimension
