@@ -204,7 +204,7 @@ export default class PulseEditChannels extends Component {
                             "Send to  " + channelSpec.name + " now"}
                         activeText="Sending…"
                         failedText="Sending failed"
-                        successText={ this.willPulseSkip.bind(this)() ?  "Didn’t send because the Pulse has no results." : "Pulse sent"}
+                        successText={ this.willPulseSkip.bind(this)() ?  "Didn’t send because the pulse has no results." : "Pulse sent"}
                         overrideStyle={ this.willPulseSkip.bind(this)() }
                     />
                 </div>
