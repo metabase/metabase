@@ -45,18 +45,26 @@
   "Calls Slack api `users.list` function and returns the list of available users."
   (comp :members (partial GET :users.list)))
 
+(def ^:private ^:const ^String channel-missing-msg
+  (str "Slack channel named `metabase_files` is missing! Please create the channel in order to complete "
+       "the Slack integration. The channel is used for storing graphs that are included in pulses and "
+       "MetaBot answers."))
+
+(defn- maybe-get-files-channel
+  "Return the `metabase_files channel (as a map) if it exists."
+  []
+  (some (fn [channel] (when (= (:name channel) files-channel-name)
+                        channel))
+        (channels-list :exclude_archived 0)))
+
 (defn files-channel
   "Calls Slack api `channels.info` to check whether a channel named #metabase_files exists. If it doesn't,
    throws an error that advices an admin to create it."
   []
-  (or (some (fn [channel] (when (= (:name channel) files-channel-name)
-                            channel))
-            (channels-list :exclude_archived 0))
-      (let [channel-missing-msg (str "Slack channel named `metabase_files` is missing! Please create the channel in order to complete"
-                                     "the Slack integration. The channel is used for storing graphs that are included in pulses and "
-                                     "Metabot anwers.")]
-        (log/error (u/format-color 'red channel-missing-msg))
-        (throw (Exception. channel-missing-msg)))))
+  (or (maybe-get-files-channel)
+      (do (log/error (u/format-color 'red channel-missing-msg))
+          (throw (ex-info channel-missing-msg {:status-code 400})))))
+
 
 (defn upload-file!
   "Calls Slack api `files.upload` function and returns the body of the uploaded file."

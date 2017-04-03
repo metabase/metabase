@@ -46,7 +46,7 @@
 (defn create-and-upload-slack-attachments!
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
   [card-results]
-  (when-let [{channel-id :id} (slack/files-channel)]
+  (let [{channel-id :id} (slack/files-channel)]
     (doall (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
              (let [image-byte-array (render/render-pulse-card-to-png card result)
                    slack-file-url   (slack/upload-file! image-byte-array "image.png" channel-id)]
