@@ -202,7 +202,7 @@ const SECTIONS = [
             },
             {
                 key: "ldap-user-base",
-                display_name: "Search base",
+                display_name: "User search base",
                 type: "string",
                 required: true
             },
@@ -232,6 +232,12 @@ const SECTIONS = [
                 display_name: "Synchronize groups",
                 description: null,
                 type: "boolean"
+            },
+            {
+                key: "ldap-group-base",
+                display_name: "Group search base",
+                type: "string",
+                required: true
             }
         ]
     },

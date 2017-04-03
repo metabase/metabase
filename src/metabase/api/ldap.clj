@@ -27,7 +27,6 @@
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
   [{:keys [status message]}]
-  (println message)
   (when (not= :SUCCESS status)
     (log/warn "Problem connecting to LDAP server:" message)
     (let [conn-error       {:errors {:ldap-host "Wrong host or port"
@@ -73,7 +72,9 @@
   (check-superuser)
   (let [ldap-settings (select-keys settings (keys mb-settings->ldap-details))
         ldap-details  (-> (set/rename-keys ldap-settings mb-settings->ldap-details)
-                          (assoc :port (Integer/parseInt (:ldap-port settings))))
+                          (assoc :port
+                            (when-not (empty? (:ldap-port settings))
+                              (Integer/parseInt (:ldap-port settings)))))
         results       (if (or config/is-test? (not (:ldap-enabled settings)))
                         ;; for unit testing or disabled status just respond with a success message
                         {:status :SUCCESS}

@@ -128,6 +128,7 @@
         {:status  :ERROR
          :message "User search base does not exist or is unreadable"}))
     (catch Exception e
+      ;; ActiveDirectory annoyingly throws for every little thing
       {:status  :ERROR
        :message (.getMessage e)})))
 
@@ -147,6 +148,7 @@
               fname (get result fname-attr)
               lname (get result lname-attr)
               email (get result email-attr)]
+          ;; Make sure we got everything as these are all required for new accounts
           (when-not (or (empty? dn) (empty? fname) (empty? lname) (empty? email))
             ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
             ;; Otherwise we have to make the inverse query to get them

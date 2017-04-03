@@ -72,19 +72,25 @@ export default class SettingsLdapForm extends Component {
         let valid = true,
             validationErrors = {};
 
-        elements.forEach(function(element) {
-            // test for required elements
-            if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
-                valid = false;
-            }
+        if (formData['ldap-enabled']) {
+            elements.forEach(function(element) {
+                if (element.key === 'ldap-group-base' && !formData['ldap-group-sync']) {
+                    return;
+                }
 
-            if (element.validations) {
-                element.validations.forEach(function(validation) {
-                    validationErrors[element.key] = this.validateElement(validation, formData[element.key], element);
-                    if (validationErrors[element.key]) valid = false;
-                }, this);
-            }
-        }, this);
+                // test for required elements
+                if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
+                    valid = false;
+                }
+
+                if (element.validations) {
+                    element.validations.forEach(function(validation) {
+                        validationErrors[element.key] = this.validateElement(validation, formData[element.key], element);
+                        if (validationErrors[element.key]) valid = false;
+                    }, this);
+                }
+            }, this);
+        }
 
         if (this.state.valid !== valid || !_.isEqual(this.state.validationErrors, validationErrors)) {
             this.setState({ valid, validationErrors });
@@ -117,14 +123,14 @@ export default class SettingsLdapForm extends Component {
     updateLdapSettings(e) {
         e.preventDefault();
 
-        this.setState({
-            formErrors: null,
-            submitting: "working"
-        });
-
         let { formData, valid } = this.state;
 
         if (valid) {
+            this.setState({
+                formErrors: null,
+                submitting: "working"
+            });
+
             this.props.updateLdapSettings(formData).then(() => {
                 this.setState({
                     dirty: false,
@@ -150,19 +156,6 @@ export default class SettingsLdapForm extends Component {
             // merge together data from a couple places to provide a complete view of the Element state
             let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
             let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
-
-            if (element.key === "ldap-enabled") {
-                let configuredEnough = formData["ldap-host"] && formData['ldap-bind-dn'] && formData['ldap-password'] && formData['ldap-user-base'];
-                return (
-                    <SettingsSetting
-                        key={element.key}
-                        setting={{ ...element, value }}
-                        updateSetting={(value) => this.handleChangeEvent(element, value)}
-                        errorMessage={errorMessage}
-                        disabled={!configuredEnough}
-                    />
-                );
-            }
 
             return (
                 <SettingsSetting
