@@ -32,7 +32,9 @@
    :fk_target_field_id false
    :last_analyzed      false
    :created_at         true
-   :updated_at         true})
+   :updated_at         true
+   :min_value          nil
+   :max_value          nil})
 
 ;; save-table-fields!  (also covers save-nested-fields!)
 (expect

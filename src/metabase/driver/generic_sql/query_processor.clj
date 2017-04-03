@@ -168,17 +168,40 @@
         form
         (recur form more)))))
 
+(def histogram-type? #{:type/Latitude :type/Longitude})
+(def ^:const histogram-bins 20)
+
+(defn merge-histogram
+  "Add to `honeysql-form` a histogram for the given `breakout-field`"
+  [honeysql-form {:keys [min-value max-value] :as breakout-field}]
+  (let [bin-width (Math/floor (/ (- max-value min-value) histogram-bins))]
+    (-> honeysql-form
+        (h/merge-select [(-> breakout-field
+                             formatted
+                             (hx// bin-width)
+                             hx/floor
+                             (hx/* bin-width))
+                         "bin"])
+        (h/group :bin))))
+
+(defn merge-breakout-without-histogram
+  "Set the `honeysql-form` projection and group-by to `breakout-fields`"
+  [honeysql-form breakout-fields fields]
+  (as-> honeysql-form new-hsql
+    (apply h/merge-select new-hsql (for [field breakout-fields
+                                         :when (not (contains? (set fields) field))]
+                                     (as (formatted field) field)))
+    (apply h/group new-hsql (map formatted breakout-fields))))
 
 (defn apply-breakout
   "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."
-  [_ honeysql-form {breakout-fields :breakout, fields-fields :fields}]
-  (-> honeysql-form
-      ;; Group by all the breakout fields
-      ((partial apply h/group) (map formatted breakout-fields))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field breakout-fields
-                                            :when (not (contains? (set fields-fields) field))]
-                                        (as (formatted field) field)))))
+  [_ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  (if (= 1 (count breakout-fields))
+    (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
+      (if (histogram-type? special-type)
+        (merge-histogram honeysql-form first-breakout-field)
+        (merge-breakout-without-histogram honeysql-form breakout-fields fields-fields)))
+    (merge-breakout-without-histogram honeysql-form breakout-fields fields-fields)))
 
 (defn apply-fields
   "Apply a `fields` clause to HONEYSQL-FORM. Default implementation of `apply-fields` for SQL drivers."
@@ -237,14 +260,17 @@
 
 (defn apply-order-by
   "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
-  [_ honeysql-form {subclauses :order-by}]
-  (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(formatted field) (case direction
-                                                                             :ascending  :asc
-                                                                             :descending :desc)])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+  [_ honeysql-form {subclauses :order-by breakout-fields :breakout}]
+  (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
+    (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
+      (let [honeysql-form (h/merge-order-by honeysql-form (if (histogram-type? special-type)
+                                                            [:bin :asc]
+                                                            [(formatted field) (case direction
+                                                                                 :ascending  :asc
+                                                                                 :descending :desc)]))]
+        (if (seq more)
+          (recur honeysql-form more)
+          honeysql-form)))))
 
 (defn apply-page
   "Apply `page` clause to HONEYSQL-FORM. Default implementation of `apply-page` for SQL drivers."

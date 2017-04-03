@@ -68,6 +68,18 @@
       (and (nil? (:special_type field))
            (pos? (count distinct-values))) (assoc :special-type :type/Category))))
 
+(def histogram-type? #{:type/Latitude :type/Longitude})
+(def histogram-value? (comp histogram-type? :special_type))
+
+(defn test:histogram-fields-with-min-max
+  "Add min/max and special-type values for Longitude/Latitude types"
+  [field field-stats]
+  (let [[max-val min-val] (queries/field-max-min field)]
+    (assoc field-stats
+      :min-value min-val
+      :max-value max-val
+      :special-type (:special_type field))))
+
 (defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
   [driver field field-stats]
@@ -190,8 +202,9 @@
        :fields    (for [{:keys [id] :as field} (table/fields table)]
                     (let [new-field? (contains? new-field-ids id)]
                       (cond->> {:id id}
-                               (test-for-cardinality? field new-field?) (test:cardinality-and-extract-field-values field)
-                               new-field?                               (test:new-field driver field))))})))
+                        (test-for-cardinality? field new-field?) (test:cardinality-and-extract-field-values field)
+                        (histogram-value? field)                 (test:histogram-fields-with-min-max field)
+                        new-field?                               (test:new-field driver field))))})))
 
 (defn generic-analyze-table
   "An implementation of `analyze-table` using the defaults (`default-field-avg-length` and `field-percent-urls`)."
@@ -213,13 +226,15 @@
         (db/update! table/Table table-id, :rows (:row_count table-stats)))
 
       ;; update individual fields
-      (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]
+      (doseq [{:keys [id preview-display special-type values min-value max-value]} (:fields table-stats)]
         ;; set Field metadata we may have detected
         (when (and id (or preview-display special-type))
           (db/update-non-nil-keys! field/Field id
             ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
             :visibility_type (when (false? preview-display) :details-only)
-            :special_type    special-type))
+            :special_type    special-type
+            :min_value       min-value
+            :max_value       max-value))
         ;; handle field values, setting them if applicable otherwise clearing them
         (if (and id values (pos? (count (filter identity values))))
           (field-values/save-field-values! id values)

@@ -71,3 +71,10 @@
          (ql/limit 10))
        booleanize-native-form
        (format-rows-by [int int int])))
+
+(expect-with-non-timeseries-dbs
+  [[1 10.0] [4 33.0] [57 34.0] [29 37.0] [9 40.0]]
+  (format-rows-by [int (partial u/round-to-decimals 4)]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout $latitude)))))

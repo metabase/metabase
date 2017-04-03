@@ -91,11 +91,13 @@
    :visibility_type :normal
    :schema_name     (data/default-schema)
    :source          :fields
-   :fk_field_id     nil})
+   :fk_field_id     nil
+   :min-value       nil
+   :max-value       nil})
 
 (defn- target-field [field]
   (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id)))
+    (dissoc field :target :extra_info :schema_name :source :fk_field_id :min-value :max-value)))
 
 (defn categories-col
   "Return column information for the `categories` column named by keyword COL."
@@ -154,7 +156,9 @@
      :id          {:special_type :type/PK
                    :base_type    (data/id-field-type)
                    :name         (data/format-name "id")
-                   :display_name "ID"}
+                   :display_name "ID"
+                   :min-value    nil
+                   :max-value    nil}
      :category_id {:extra_info   (if (data/fks-supported?)
                                    {:target_table_id (data/id :categories)}
                                    {})
@@ -164,23 +168,33 @@
                                    :type/Category)
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "category_id")
-                   :display_name "Category ID"}
+                   :display_name "Category ID"
+                   :min-value    nil
+                   :max-value    nil}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
-                   :display_name "Price"}
+                   :display_name "Price"
+                   :min-value    nil
+                   :max-value    nil}
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
-                   :display_name "Longitude"}
+                   :display_name "Longitude"
+                   :min-value    nil
+                   :max-value    nil}
      :latitude    {:special_type :type/Latitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "latitude")
-                   :display_name "Latitude"}
+                   :display_name "Latitude"
+                   :min-value    nil
+                   :max-value    nil}
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")
-                   :display_name "Name"})))
+                   :display_name "Name"
+                   :min-value    nil
+                   :max-value    nil})))
 
 (defn venues-cols
   "`cols` information for all the columns in `venues`."

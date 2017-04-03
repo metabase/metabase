@@ -11,7 +11,9 @@
    (s/optional-key :fields)    [{:id                               su/IntGreaterThanZero
                                  (s/optional-key :special-type)    su/FieldType
                                  (s/optional-key :preview-display) s/Bool
-                                 (s/optional-key :values)          [s/Any]}]})
+                                 (s/optional-key :values)          [s/Any]
+                                 (s/optional-key :min-value)       s/Num
+                                 (s/optional-key :max-value)       s/Num}]})
 
 (def DescribeDatabase
   "Schema for the expected output of `describe-database`."

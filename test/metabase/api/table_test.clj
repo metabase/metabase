@@ -70,7 +70,9 @@
    :visibility_type    "normal"
    :caveats            nil
    :points_of_interest nil
-   :parent_id          nil})
+   :parent_id          nil
+   :min_value          nil
+   :max_value          nil})
 
 
 ;; ## GET /api/table
