@@ -11,33 +11,33 @@ import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
-export const uiControls      = state => state.qb.uiControls;
+export const getUiControls      = state => state.qb.uiControls;
 
-export const card            = state => state.qb.card;
-export const originalCard    = state => state.qb.originalCard;
-export const parameterValues = state => state.qb.parameterValues;
-export const queryResult     = state => state.qb.queryResult;
+export const getCard            = state => state.qb.card;
+export const getOriginalCard    = state => state.qb.originalCard;
+export const getParameterValues = state => state.qb.parameterValues;
+export const getQueryResult     = state => state.qb.queryResult;
 
-export const isDirty = createSelector(
-    [card, originalCard],
+export const getIsDirty = createSelector(
+    [getCard, getOriginalCard],
     (card, originalCard) => {
         return isCardDirty(card, originalCard);
     }
 );
 
-export const isNew = (state) => state.qb.card && !state.qb.card.id;
+export const getIsNew = (state) => state.qb.card && !state.qb.card.id;
 
 export const getDatabaseId = createSelector(
-    [card],
+    [getCard],
     (card) => card && card.dataset_query && card.dataset_query.database
 );
 
-export const databases                 = state => state.qb.databases;
-export const tableForeignKeys          = state => state.qb.tableForeignKeys;
-export const tableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
+export const getDatabases                 = state => state.qb.databases;
+export const getTableForeignKeys          = state => state.qb.tableForeignKeys;
+export const getTableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
 
-export const tables = createSelector(
-    [getDatabaseId, databases],
+export const getTables = createSelector(
+    [getDatabaseId, getDatabases],
     (databaseId, databases) => {
         if (databaseId != null && databases && databases.length > 0) {
             let db = _.findWhere(databases, { id: databaseId });
@@ -51,14 +51,13 @@ export const tables = createSelector(
 );
 
 export const getNativeDatabases = createSelector(
-    databases,
+    [getDatabases],
     (databases) =>
         databases && databases.filter(db => db.native_permissions === "write")
 )
 
-export const tableMetadata = createSelector(
-    state => state.qb.tableMetadata,
-    databases,
+export const getTableMetadata = createSelector(
+    [state => state.qb.tableMetadata, getDatabases],
     (tableMetadata, databases) => tableMetadata && {
         ...tableMetadata,
         db: _.findWhere(databases, { id: tableMetadata.db_id })
@@ -66,7 +65,7 @@ export const tableMetadata = createSelector(
 )
 
 export const getSampleDatasetId = createSelector(
-    [databases],
+    [getDatabases],
     (databases) => {
         const sampleDataset = _.findWhere(databases, { is_sample: true });
         return sampleDataset && sampleDataset.id;
@@ -78,8 +77,8 @@ export const getDatabaseFields = createSelector(
     (databaseId, databaseFields) => databaseFields[databaseId]
 );
 
-export const isObjectDetail = createSelector(
-    [queryResult],
+export const getIsObjectDetail = createSelector(
+    [getQueryResult],
     (queryResult) => {
         if (!queryResult || !queryResult.json_query) {
             return false;
@@ -134,18 +133,18 @@ export const isObjectDetail = createSelector(
 import { getMode as getMode_ } from "metabase/qb/lib/modes";
 
 export const getMode = createSelector(
-    [card, tableMetadata],
+    [getCard, getTableMetadata],
     (card, tableMetadata) => getMode_(card, tableMetadata)
 )
 
 export const getImplicitParameters = createSelector(
-    [card],
+    [getCard],
     (card) =>
         getTemplateTagParameters(getTemplateTags(card))
 );
 
 export const getModeParameters = createSelector(
-    [card, tableMetadata, getMode],
+    [getCard, getTableMetadata, getMode],
     (card, tableMetadata, mode) =>
         (card && tableMetadata && mode && mode.getModeParameters) ?
             mode.getModeParameters(card, tableMetadata) :
@@ -158,7 +157,7 @@ export const getParameters = createSelector(
 );
 
 export const getParametersWithValues = createSelector(
-    [getParameters, parameterValues],
+    [getParameters, getParameterValues],
     (parameters, values) =>
         parameters.map(parameter => ({
             ...parameter,
@@ -167,14 +166,14 @@ export const getParametersWithValues = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-    [card, tableMetadata],
+    [getCard, getTableMetadata],
     (card, tableMetadata) => isCardRunnable(card, tableMetadata)
 )
 
-const getLastRunDatasetQuery = createSelector([queryResult], (queryResult) => _.omit(queryResult && queryResult.json_query, "parameters", "constraints"))
-const getNextRunDatasetQuery = createSelector([card], (card) => _.omit(card && card.dataset_query, "parameters", "constraints"))
+const getLastRunDatasetQuery = createSelector([getQueryResult], (queryResult) => _.omit(queryResult && queryResult.json_query, "parameters", "constraints"))
+const getNextRunDatasetQuery = createSelector([getCard], (card) => _.omit(card && card.dataset_query, "parameters", "constraints"))
 
-const getLastRunParameters = createSelector([queryResult], (queryResult) => queryResult && queryResult.json_query.parameters || [])
+const getLastRunParameters = createSelector([getQueryResult], (queryResult) => queryResult && queryResult.json_query.parameters || [])
 const getLastRunParameterValues = createSelector([getLastRunParameters], (parameters) => parameters.map(parameter => parameter.value))
 const getNextRunParameterValues = createSelector([getParametersWithValues], (parameters) => parameters.map(parameter => parameter.value))
 
