@@ -20,7 +20,7 @@
 ;; we hard code "now" to a specific point in time so that we can control the test output
 (defn- test-date->range [value]
   (with-redefs-fn {#'clj-time.core/now (fn [] (t/date-time 2016 06 07 12 0 0))}
-    #(date->range value nil)))
+    #(date-string->range value nil)))
 
 (expect {:end "2016-03-31", :start "2016-01-01"} (test-date->range "Q1-2016"))
 (expect {:end "2016-02-29", :start "2016-02-01"} (test-date->range "2016-02"))

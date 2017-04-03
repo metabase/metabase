@@ -205,7 +205,7 @@
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private ^:always-validate relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
-  (->replacement-snippet-info (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value *timezone*)))) ; TODO - get timezone from query dict
+  (->replacement-snippet-info (map->DateRange ((resolve 'metabase.query-processor.parameters/date-string->range) value *timezone*)))) ; TODO - get timezone from query dict
 
 (s/defn ^:private ^:always-validate dimension-value->equals-clause-sql :- ParamSnippetInfo
   [value]
