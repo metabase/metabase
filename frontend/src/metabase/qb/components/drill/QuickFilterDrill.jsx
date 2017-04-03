@@ -3,6 +3,8 @@
 import React from "react";
 
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
+import { singularize, pluralize, stripId } from "metabase/lib/formatting";
+
 import { filter } from "metabase/qb/lib/actions";
 
 import type {
@@ -11,10 +13,6 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 function getFiltersForColumn(column) {
-    if (isFK(column.special_type) || isPK(column.special_type)) {
-        return;
-    }
-
     if (
         isa(column.base_type, TYPE.Number) ||
         isa(column.base_type, TYPE.DateTime)
@@ -44,8 +42,26 @@ export default (
 
     const { value, column } = clicked;
 
+    if (isPK(column.special_type)) {
+        return null;
+    } else if (isFK(column.special_type)) {
+        return {
+            title: (
+                <span>
+                    View this
+                    {" "}
+                    {singularize(stripId(column.display_name))}
+                    's
+                    {" "}
+                    {pluralize(tableMetadata.display_name)}
+                </span>
+            ),
+            card: () => filter(card, "=", column, value)
+        };
+    }
+
     let operators = getFiltersForColumn(column);
-    if (!operators) {
+    if (!operators || operators.length === 0) {
         return;
     }
 
