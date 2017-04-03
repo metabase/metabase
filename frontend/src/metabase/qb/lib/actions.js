@@ -123,7 +123,7 @@ export const drillDownForDimensions = dimensions => {
         let nextUnit = UNITS[Math.max(0, UNITS.indexOf(column.unit) - 1)];
         if (nextUnit) {
             return {
-                name: nextUnit,
+                name: column.unit,
                 breakout: [
                     "datetime-field",
                     getFieldClauseFromCol(column),
