@@ -52,6 +52,10 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
 
     _popover: ?any;
 
+    componentWillMount() {
+        this.componentWillReceiveProps(this.props);
+    }
+
     componentWillReceiveProps(nextProps: Props) {
         const query = Card.getQuery(nextProps.card);
         if (query) {
@@ -113,6 +117,7 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                 }
                 triggerClasses={cx(className, "my2")}
                 ref={ref => this._popover = ref}
+                sizeToFit
             >
                 <DatePicker
                     className="mt2"

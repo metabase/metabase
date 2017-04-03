@@ -2,6 +2,7 @@ import moment from "moment";
 import inflection from "inflection";
 
 import { mbqlEq } from "metabase/lib/query/util";
+import { formatTimeWithUnit } from "metabase/lib/formatting";
 
 export function computeFilterTimeRange(filter) {
     let expandedFilter;
@@ -110,7 +111,9 @@ export function generateTimeIntervalDescription(n, unit) {
 export function generateTimeValueDescription(value, bucketing) {
     if (typeof value === "string") {
         let m = moment(value);
-        if(m.hours() || m.minutes()) {
+        if (bucketing) {
+            return formatTimeWithUnit(value, bucketing);
+        } else if (m.hours() || m.minutes()) {
             return m.format("MMMM D, YYYY hh:mm a");
         } else {
             return m.format("MMMM D, YYYY");

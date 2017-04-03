@@ -26,7 +26,7 @@ import type {
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 type Props = {
-    card: CardObject,
+    lastRun: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
     runQueryFn: () => void
@@ -36,9 +36,9 @@ export const TimeseriesModeFooter = (props: Props) => {
     return (
         <div className="flex layout-centered">
             <span className="mr1">View</span>
-            <TimeseriesFilterWidget {...props} />
+            <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
             <span className="mx1">by</span>
-            <TimeseriesGroupingWidget {...props} />
+            <TimeseriesGroupingWidget {...props} card={props.lastRunCard} />
         </div>
     );
 };
