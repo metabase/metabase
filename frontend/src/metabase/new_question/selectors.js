@@ -199,8 +199,8 @@ export const breakoutsForDisplay = state => {
         {
             display_name: "Map",
             fields: categories["geo"],
-            displayColor: normal.indigo,
-            iconName: "label",
+            displayColor: normal.orange,
+            iconName: "location",
             show: () => flow === "geo"
         }
     ];
