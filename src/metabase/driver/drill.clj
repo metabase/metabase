@@ -155,7 +155,9 @@
   Value (prepare-value [{:keys [value]}] (prepare-value value))
   String (prepare-value [this] (hx/literal this))
   Boolean (prepare-value [this] (hsql/raw (if this "TRUE" "FALSE")))
-  Date (prepare-value [this] (hsql/call :timestamp (hx/literal (u/date->iso-8601 this))))
+  Date (prepare-value [this] (hsql/call :to_timestamp
+                                        (hx/literal (u/date->iso-8601 this))
+                                        (hx/literal "YYYY-MM-dd''T''HH:mm:ss.SSSZ")))
   Number (prepare-value [this] this)
   Object (prepare-value [this] (throw (Exception. (format "Don't know how to prepare value %s %s" (class this) this)))))
 
@@ -184,6 +186,7 @@
                         {:column->base-type (u/drop-first-arg hive/column->base-type)
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
                          :date (u/drop-first-arg date)
+                         :prepare-value (u/drop-first-arg prepare-value)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly hive/now))
                          :string-length-fn (u/drop-first-arg hive/string-length-fn)
