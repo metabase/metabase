@@ -20,7 +20,7 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { applyParameters } from "metabase/meta/Card";
 
-import { isDirty, getParameters, getNativeDatabases } from "./selectors";
+import { getParameters, getNativeDatabases } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 

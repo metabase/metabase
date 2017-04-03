@@ -200,7 +200,7 @@ export default class GuiQueryEditor extends Component {
 
             const usedFields = {};
             for (const breakout of breakouts) {
-                usedFields[breakout] = true;
+                usedFields[Query.getFieldTargetId(breakout)] = true;
             }
 
             const remainingFieldOptions = Query.getFieldOptions(tableMetadata.fields, true, tableMetadata.breakout_options.validFieldsFilter, usedFields);

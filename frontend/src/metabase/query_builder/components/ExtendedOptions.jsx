@@ -75,7 +75,7 @@ export default class ExtendedOptions extends Component {
                 if (Query.isExpressionField(sort[0])) {
                     usedExpressions[sort[0][1]] = true;
                 } else {
-                    usedFields[sort[0]] = true;
+                    usedFields[Query.getFieldTargetId(sort[0])] = true;
                 }
             }
 

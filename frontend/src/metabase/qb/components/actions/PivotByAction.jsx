@@ -38,9 +38,10 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => (
     let dimensions = (clicked && clicked.dimensions) || [];
 
     const breakouts = Query.getBreakouts(query);
+
     const usedFields = {};
     for (const breakout of breakouts) {
-        usedFields[breakout] = true;
+        usedFields[Query.getFieldTargetId(breakout)] = true;
     }
 
     const fieldOptions = Query.getFieldOptions(
