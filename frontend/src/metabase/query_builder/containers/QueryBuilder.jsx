@@ -21,6 +21,7 @@ import ActionsWidget from "../components/ActionsWidget.jsx";
 import {
     getCard,
     getOriginalCard,
+    getLastRunCard,
     getDatabases,
     getQueryResult,
     getParameterValues,
@@ -74,19 +75,26 @@ const mapStateToProps = (state, props) => {
         fromUrl:                   props.location.query.from,
 
         mode:                      getMode(state),
+
         card:                      getCard(state),
         originalCard:              getOriginalCard(state),
+        lastRunCard:               getLastRunCard(state),
+
         parameterValues:           getParameterValues(state),
+
         databases:                 getDatabases(state),
         nativeDatabases:           getNativeDatabases(state),
         tables:                    getTables(state),
         tableMetadata:             getTableMetadata(state),
         tableForeignKeys:          getTableForeignKeys(state),
         tableForeignKeyReferences: getTableForeignKeyReferences(state),
+
         result:                    getQueryResult(state),
+
         isDirty:                   getIsDirty(state),
         isNew:                     getIsNew(state),
         isObjectDetail:            getIsObjectDetail(state),
+
         uiControls:                getUiControls(state),
         parameters:                getParametersWithValues(state),
         databaseFields:            getDatabaseFields(state),

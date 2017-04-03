@@ -15,6 +15,8 @@ export const getUiControls      = state => state.qb.uiControls;
 
 export const getCard            = state => state.qb.card;
 export const getOriginalCard    = state => state.qb.originalCard;
+export const getLastRunCard     = state => state.qb.lastRunCard;
+
 export const getParameterValues = state => state.qb.parameterValues;
 export const getQueryResult     = state => state.qb.queryResult;
 
@@ -133,7 +135,7 @@ export const getIsObjectDetail = createSelector(
 import { getMode as getMode_ } from "metabase/qb/lib/modes";
 
 export const getMode = createSelector(
-    [getCard, getTableMetadata],
+    [getLastRunCard, getTableMetadata],
     (card, tableMetadata) => getMode_(card, tableMetadata)
 )
 
@@ -144,7 +146,7 @@ export const getImplicitParameters = createSelector(
 );
 
 export const getModeParameters = createSelector(
-    [getCard, getTableMetadata, getMode],
+    [getLastRunCard, getTableMetadata, getMode],
     (card, tableMetadata, mode) =>
         (card && tableMetadata && mode && mode.getModeParameters) ?
             mode.getModeParameters(card, tableMetadata) :
@@ -170,8 +172,8 @@ export const getIsRunnable = createSelector(
     (card, tableMetadata) => isCardRunnable(card, tableMetadata)
 )
 
-const getLastRunDatasetQuery = createSelector([getQueryResult], (queryResult) => _.omit(queryResult && queryResult.json_query, "parameters", "constraints"))
-const getNextRunDatasetQuery = createSelector([getCard], (card) => _.omit(card && card.dataset_query, "parameters", "constraints"))
+const getLastRunDatasetQuery = createSelector([getLastRunCard], (card) => card && card.dataset_query);
+const getNextRunDatasetQuery = createSelector([getCard], (card) => card && card.dataset_query);
 
 const getLastRunParameters = createSelector([getQueryResult], (queryResult) => queryResult && queryResult.json_query.parameters || [])
 const getLastRunParameterValues = createSelector([getLastRunParameters], (parameters) => parameters.map(parameter => parameter.value))

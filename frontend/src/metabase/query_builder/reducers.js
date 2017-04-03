@@ -141,6 +141,11 @@ export const tableForeignKeyReferences = handleActions({
     [LOAD_OBJECT_DETAIL_FK_REFERENCES]: { next: (state, { payload }) => payload}
 }, null);
 
+export const lastRunCard = handleActions({
+    [RESET_QB]: { next: (state, { payload }) => null },
+    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.card },
+    [QUERY_ERRORED]: { next: (state, { payload }) => null },
+}, null);
 
 // the result of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResult = handleActions({
