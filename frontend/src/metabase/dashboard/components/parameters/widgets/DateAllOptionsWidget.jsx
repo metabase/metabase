@@ -135,6 +135,7 @@ export default class DateAllOptionsWidget extends Component<DefaultProps, Props,
                 filter={this.state.filter}
                 onFilterChange={this.setFilter}
                 hideEmptinessOperators
+                hideTimeSelectors
             />
             <div className="FilterPopover-footer p1">
                 <button
