@@ -317,7 +317,8 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange) {
                     }
                 } else if (d.data) { // line, area, bar
                     if (!isSingleSeriesBar) {
-                        cols = series[seriesIndex].data.cols;
+                        let idx = isStacked ? d.layer : seriesIndex;
+                        cols = series[idx].data.cols;
                     }
                     data = [
                         { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
