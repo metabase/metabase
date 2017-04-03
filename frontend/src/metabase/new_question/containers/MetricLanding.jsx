@@ -36,31 +36,30 @@ class MetricLanding extends Component {
         } = this.props;
         return (
             <div>
-                <div>
-                    <div className={cxs({ display: "flex" })}>
-                        <h3>Existing metrics</h3>
-                        <Button
-                            className="ml-auto"
-                            onClick={() => newMetric()}
-                            primary
-                        >
-                            A fresh metric
-                        </Button>
-                    </div>
-                    <ol>
-                        {metrics.map(metric => (
-                            <li
-                                onClick={() =>
-                                    selectAndAdvance(() =>
-                                        selectMetric(metric))}
-                                key={metric.id}
-                            >
-                                <h2 className="link">{metric.name}</h2>
-                                <Text>{metric.description}</Text>
-                            </li>
-                        ))}
-                    </ol>
+                <div className={cxs({ display: "flex", alignItems: 'center'})}>
+                    <h3>Existing metrics</h3>
+                    <Button
+                        className="ml-auto"
+                        onClick={() => newMetric()}
+                        primary
+                    >
+                        A fresh metric
+                    </Button>
                 </div>
+                <ol className="bg-white bordered rounded mt3">
+                    {metrics.map(metric => (
+                        <li
+                            className="border-bottom py2 px3"
+                            onClick={() =>
+                                selectAndAdvance(() =>
+                                    selectMetric(metric))}
+                            key={metric.id}
+                        >
+                            <h2 className="link">{metric.name}</h2>
+                            <Text>{metric.description}</Text>
+                        </li>
+                    ))}
+                </ol>
             </div>
         );
     }

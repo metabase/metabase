@@ -13,11 +13,14 @@ class Tip extends Component {
                     className={
                         `p4 ${cxs({
                             border: "1px solid #DCE1E4",
+                            backgroundColor: '#fff',
                             borderRadius: 4
                         })}`
                     }
                 >
-                    <h3>{title}</h3>
+                    <h3 className={cxs({ marginBottom: '1em' })}>
+                        {title}
+                    </h3>
                     <Text>{text}</Text>
                 </div>
             </div>

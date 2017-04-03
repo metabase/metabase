@@ -40,48 +40,55 @@ class NewQuestion extends Component {
         const { back, goBack, component, tip, title, subtitle } = this.props;
         const CurrentStep = component;
         return (
-            <div className="wrapper relative py4">
-
+            <div className="relative full-height" style={{ backgroundColor: '#FBFCFC' }}>
                 <div
                     className={cxs({
+                        backgroundColor: '#fff',
                         display: "flex",
-                        alignItems: "center"
+                        alignItems: "center",
+                        borderBottom: '1px solid #DCE1E4',
+                        paddingTop: '2em',
+                        paddingBottom: '2em',
                     })}
                 >
-                    {back &&
-                        <div
-                            className={cxs({
-                                borderRadius: 99,
-                                border: "1px solid #93A1AB",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: 52,
-                                height: 52,
-                                marginRight: "1em",
-                                ":hover": {
-                                    cursor: "pointer"
-                                }
-                            })}
-                            onClick={() => goBack()}
-                        >
-                            <Icon name="chevronleft" />
-                        </div>}
-                    <div>
-                        <Title>{title}</Title>
-                        {subtitle && <Text>{subtitle}</Text>}
+                    <div className="wrapper flex align-center">
+                        {back &&
+                            <div
+                                className={cxs({
+                                    borderRadius: 99,
+                                    border: "1px solid #93A1AB",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 52,
+                                    height: 52,
+                                    marginRight: "1em",
+                                    ":hover": {
+                                        cursor: "pointer"
+                                    }
+                                })}
+                                onClick={() => goBack()}
+                            >
+                                <Icon name="chevronleft" />
+                            </div>}
+                        <div>
+                            <Title>{title}</Title>
+                            {subtitle && <Text>{subtitle}</Text>}
+                        </div>
                     </div>
                 </div>
 
+                <div className="wrapper">
                 <div className="flex mt4">
-                    <div className={cxs({ flex: 1 })}>
-                        <CurrentStep />
-                    </div>
+                        <div className={cxs({ flex: 1 })}>
+                            <CurrentStep />
+                        </div>
 
-                    {tip &&
-                        <Sidebar>
-                            <Tip tip={tip} />
-                        </Sidebar>}
+                        {tip &&
+                            <Sidebar>
+                                <Tip tip={tip} />
+                            </Sidebar>}
+                    </div>
                 </div>
             </div>
         );
