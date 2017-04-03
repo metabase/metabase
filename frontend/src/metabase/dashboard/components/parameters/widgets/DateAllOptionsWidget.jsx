@@ -84,13 +84,14 @@ function getFilterTitle(filter) {
     return prefix + desc;
 }
 
-
 type Props = {
     setValue: (value: ?string) => void,
     onClose: () => void
 };
 
-export default class DateAllOptionsWidget extends Component<*, Props, *> {
+type State = { filter: FieldFilter };
+
+export default class DateAllOptionsWidget extends Component<*, Props, State> {
     state: State;
 
     constructor(props: Props) {
