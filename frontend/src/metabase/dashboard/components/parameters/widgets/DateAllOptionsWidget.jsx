@@ -84,16 +84,13 @@ function getFilterTitle(filter) {
     return prefix + desc;
 }
 
-type DefaultProps = {};
+
 type Props = {
     setValue: (value: ?string) => void,
     onClose: () => void
 };
 
-type State = { filter: FieldFilter };
-
-
-export default class DateAllOptionsWidget extends Component<DefaultProps, Props, State> {
+export default class DateAllOptionsWidget extends Component<*, Props, *> {
     state: State;
 
     constructor(props: Props) {
@@ -130,7 +127,7 @@ export default class DateAllOptionsWidget extends Component<DefaultProps, Props,
     }
 
     render() {
-        return (<div>
+        return (<div style={{minWidth: "300px"}}>
             <DatePicker
                 filter={this.state.filter}
                 onFilterChange={this.setFilter}
