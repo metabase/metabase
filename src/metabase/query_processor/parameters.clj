@@ -10,18 +10,39 @@
             [metabase.util :as u])
   (:import (org.joda.time DateTimeConstants DateTime)))
 
+;;; +-------------------------------------------------------------------------------------------------------+
+;;; |                                    DATE RANGES & PERIODS                                              |
+;;; +-------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const relative-dates
-  #{"today"
-    "yesterday"
-    "past7days"
-    "past30days"
-    "thisweek"
-    "thismonth"
-    "thisyear"
-    "lastweek"
-    "lastmonth"
-    "lastyear"})
+;; Both in MBQL and SQL parameter substitution a field value is compared to a date range, either relative or absolute.
+;; Currently the field value is casted to a day (ignoring the time of day), so the ranges should have the same
+;; granularity level.
+;;
+;; See https://github.com/metabase/metabase/pull/4607#issuecomment-290884313 how we could support
+;; hour/minute granularity in field parameter queries.
+
+
+(defn- day-range
+  [^DateTime start, ^DateTime end]
+  {:end   end
+   :start start})
+
+(defn- week-range
+  [^DateTime start, ^DateTime end]
+    ;; weeks always start on SUNDAY and end on SATURDAY
+    ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
+   {:end   (.withDayOfWeek end DateTimeConstants/SATURDAY)
+    :start (.withDayOfWeek ^DateTime (t/minus start (t/weeks 1)) DateTimeConstants/SUNDAY)})
+
+(defn- month-range
+  [^DateTime start, ^DateTime end]
+  {:end   (t/last-day-of-the-month end)
+   :start (t/first-day-of-the-month start)})
+
+(defn- year-range
+  [^DateTime start, ^DateTime end]
+  {:end   (t/last-day-of-the-month  (.withMonthOfYear end DateTimeConstants/DECEMBER))
+   :start (t/first-day-of-the-month (.withMonthOfYear start DateTimeConstants/JANUARY))})
 
 (defn- start-of-quarter [quarter year]
   (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) (case quarter
@@ -29,84 +50,179 @@
                                                                    "Q2" DateTimeConstants/APRIL
                                                                    "Q3" DateTimeConstants/JULY
                                                                    "Q4" DateTimeConstants/OCTOBER))))
+(defn- quarter-range
+  [quarter year]
+  (let [dt (start-of-quarter quarter year)]
+    {:end   (t/last-day-of-the-month (t/plus dt (t/months 2)))
+     :start (t/first-day-of-the-month dt)}))
 
-(defn- week-range [^DateTime dt]
-  ;; weeks always start on SUNDAY and end on SATURDAY
-  ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
-  {:end   (.withDayOfWeek dt DateTimeConstants/SATURDAY)
-   :start (.withDayOfWeek ^DateTime (t/minus dt (t/weeks 1)) DateTimeConstants/SUNDAY)})
+(def ^:private operations-by-date-unit
+  {"day"   {:unit-range day-range
+            :to-period  t/days}
+   "week"  {:unit-range week-range
+            :to-period  t/weeks}
+   "month" {:unit-range month-range
+            :to-period  t/months}
+   "year"  {:unit-range year-range
+            :to-period  t/years}})
 
-(defn- month-range [^DateTime dt]
-  {:end   (t/last-day-of-the-month dt)
-   :start (t/first-day-of-the-month dt)})
+(defn- parse-absolute-date
+  [date]
+  (tf/parse (tf/formatters :date-opt-time) date))
 
-;; NOTE: this is perhaps a little hacky, but we are assuming that `dt` will be in the first month of the quarter
-(defn- quarter-range [^DateTime dt]
-  {:end   (t/last-day-of-the-month (t/plus dt (t/months 2)))
-   :start (t/first-day-of-the-month dt)})
+;;; +-------------------------------------------------------------------------------------------------------+
+;;; |                                    DATE STRING DECODERS                                               |
+;;; +-------------------------------------------------------------------------------------------------------+
 
-(defn- year-range [^DateTime dt]
-  {:end   (t/last-day-of-the-month  (.withMonthOfYear dt DateTimeConstants/DECEMBER))
-   :start (t/first-day-of-the-month (.withMonthOfYear dt DateTimeConstants/JANUARY))})
+;; For parsing date strings and producing either a date range (for raw SQL parameter substitution) or a MBQL clause
 
-(defn- absolute-date->range
-  "Take a given string description of an absolute date range and return a MAP with a given `:start` and `:end`.
+(defn- expand-parser-groups
+  [group-label group-value]
+  (case group-label
+    :unit (conj (seq (get operations-by-date-unit group-value))
+                [group-label group-value])
+    :int-value [[group-label (Integer/parseInt group-value)]]
+    (:date :date-1 :date-2) [[group-label (parse-absolute-date group-value)]]
+    [[group-label group-value]]))
 
-   Supported formats:
+(defn- regex->parser
+  "Takes a regex and labels matching the regex capturing groups. Returns a parser which
+  takes a parameter value, validates the value against regex and gives a map of labels
+  and group values. Respects the following special label names:
+      :unit – finds a matching date unit and merges date unit operations to the result
+      :int-value – converts the group value to integer
+      :date, :date1, date2 – converts the group value to absolute date"
+  [regex group-labels]
+  (fn [param-value]
+    (when-let [regex-result (re-matches regex param-value)]
+      (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
 
-      \"2014-05-10~2014-05-16\"
-      \"Q1-2016\"
-      \"2016-04\"
-      \"2016-04-12\""
-  [value]
-  (if (s/includes? value "~")
-    ;; these values are already expected to be iso8601 strings, so we are done
-    (zipmap [:start :end] (s/split value #"~" 2))
-    ;; these cases represent fixed date ranges, but we need to calculate start/end still
-    (->> (cond
-           ;; quarter-year (Q1-2016)
-           (s/starts-with? value "Q") (let [[quarter year] (s/split value #"-" 2)]
-                                        (quarter-range (start-of-quarter quarter (Integer/parseInt year))))
-           ;; year-month (2016-04)
-           (= (count value) 7)        (month-range (tf/parse (tf/formatters :year-month) value))
-           ;; default is to assume a single day (2016-04-18).  we still parse just to validate.
-           :else                      (let [dt (tf/parse (tf/formatters :year-month-day) value)]
-                                        {:start dt, :end dt}))
-         (m/map-vals (partial tf/unparse (tf/formatters :year-month-day))))))
+;; Decorders consist of:
+;; 1) Parser which tries to parse the date parameter string
+;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
+;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference
 
+(def ^:private relative-date-string-decoders
+  [{:parser #(= % "today")
+    :range  (fn [_ dt]
+              {:start dt,
+               :end   dt})
+    :filter (fn [_ field] ["=" field ["relative_datetime" "current"]])}
 
-(defn- relative-date->range
-  "Take a given string description of a relative date range such as 'lastmonth' and return a MAP with a given
-   `:start` and `:end` as iso8601 string formatted dates.  Values should be appropriate for the given REPORT-TIMEZONE."
-  [value report-timezone]
-  (let [tz        (t/time-zone-for-id report-timezone)
-        formatter (tf/formatter "yyyy-MM-dd" tz)
-        today     (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
-    (->> (case value
-           "past7days"  {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 7))}
-           "past30days" {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 30))}
-           "thisweek"   (week-range today)
-           "thismonth"  (month-range today)
-           "thisyear"   (year-range today)
-           "lastweek"   (week-range (t/minus today (t/weeks 1)))
-           "lastmonth"  (month-range (t/minus today (t/months 1)))
-           "lastyear"   (year-range (t/minus today (t/years 1)))
-           "yesterday"  {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 1))}
-           "today"      {:end   today
-                         :start today})
-         ;; the above values are JodaTime objects, so unparse them to iso8601 strings
-         (m/map-vals (partial tf/unparse formatter)))))
+   {:parser #(= % "yesterday")
+    :range  (fn [_ dt]
+              {:start (t/minus dt (t/days 1))
+               :end   (t/minus dt (t/days 1))})
+    :filter (fn [_ field] ["=" field ["relative_datetime" -1 "day"]])}
 
-(defn date->range
-  "Convert a relative or absolute date range VALUE to a map with `:start` and `:end` keys."
-  [value report-timezone]
-  (if (contains? relative-dates value)
-    (relative-date->range value report-timezone)
-    (absolute-date->range value)))
+   {:parser (regex->parser #"past([0-9]+)(day|week|month|year)s", [:int-value :unit])
+    :range  (fn [{:keys [unit int-value unit-range to-period]} dt]
+              (unit-range (t/minus dt (to-period int-value))
+                          (t/minus dt (to-period 1))))
+    :filter (fn [{:keys [unit int-value]} field]
+              ["TIME_INTERVAL" field (- int-value) unit])}
 
+   {:parser (regex->parser #"next([0-9]+)(day|week|month|year)s" [:int-value :unit])
+    :range  (fn [{:keys [unit int-value unit-range to-period]} dt]
+              (unit-range (t/plus dt (to-period 1))
+                          (t/plus dt (to-period int-value))))
+    :filter (fn [{:keys [unit int-value]} field]
+              ["TIME_INTERVAL" field int-value unit])}
+
+   {:parser (regex->parser #"last(day|week|month|year)" [:unit])
+    :range  (fn [{:keys [unit-range to-period]} dt]
+              (let [last-unit (t/minus dt (to-period 1))]
+                (unit-range last-unit last-unit)))
+    :filter (fn [{:keys [unit]} field]
+              ["TIME_INTERVAL" field "last" unit])}
+
+   {:parser (regex->parser #"this(day|week|month|year)" [:unit])
+    :range  (fn [{:keys [unit-range]} dt]
+              (unit-range dt dt))
+    :filter (fn [{:keys [unit]} field]
+              ["TIME_INTERVAL" field "current" unit])}])
+
+(defn- day->iso8601 [date]
+  (tf/unparse (tf/formatters :year-month-day) date))
+
+(defn- range->filter
+  [{:keys [start end]} field]
+  ["BETWEEN" field (day->iso8601 start) (day->iso8601 end)])
+
+(def ^:private absolute-date-string-decoders
+  ;; year and month
+  [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
+    :range  (fn [{:keys [date]} _]
+              (month-range date date))
+    :filter (fn [{:keys [date]} field]
+              (range->filter (month-range date date) field))}
+   ;; quarter year
+   {:parser (regex->parser #"(Q[1-4]{1})-([0-9]{4})" [:quarter :year])
+    :range  (fn [{:keys [quarter year]} _]
+              (quarter-range quarter (Integer/parseInt year)))
+    :filter (fn [{:keys [quarter year]} field]
+              (range->filter (quarter-range quarter (Integer/parseInt year))
+                             field))}
+   ;; single day
+   {:parser (regex->parser #"([0-9-T:]+)" [:date])
+    :range  (fn [{:keys [date]} _]
+              {:start date, :end date})
+    :filter (fn [{:keys [date]} field]
+              (let [iso8601date (day->iso8601 date)]
+                ["BETWEEN" field iso8601date iso8601date]))}
+   ;; day range
+   {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
+    :range  (fn [{:keys [date-1 date-2]} _]
+              {:start date-1, :end date-2})
+    :filter (fn [{:keys [date-1 date-2]} field]
+              ["BETWEEN" field (day->iso8601 date-1) (day->iso8601 date-2)])}
+   ;; before day
+   {:parser (regex->parser #"~([0-9-T:]+)" [:date])
+    :range  (fn [{:keys [date]} _]
+              {:end date})
+    :filter (fn [{:keys [date]} field]
+              ["<" field (day->iso8601 date)])}
+   ;; after day
+   {:parser (regex->parser #"([0-9-T:]+)~" [:date])
+    :range  (fn [{:keys [date]} _]
+              {:start date})
+    :filter (fn [{:keys [date]} field]
+              [">" field (day->iso8601 date)])}])
+
+(def ^:private all-date-string-decoders
+  (concat relative-date-string-decoders absolute-date-string-decoders))
+
+(defn- execute-decoders
+  "Returns the first successfully decoded value, run through both
+   parser and a range/filter decoder depending on `decoder-type`."
+  [decoders decoder-type decoder-param date-string]
+  (some (fn [{parser :parser, parser-result-decoder decoder-type}]
+          (when-let [parser-result (parser date-string)]
+            (parser-result-decoder parser-result decoder-param)))
+        decoders))
+
+(defn date-string->range
+  "Takes a string description of a date range such as 'lastmonth' or '2016-07-15~2016-08-6' and
+   return a MAP with `:start` and `:end` as iso8601 string formatted dates, respecting the given timezone."
+  [date-string report-timezone]
+  (let [tz (t/time-zone-for-id report-timezone)
+        formatter-local-tz (tf/formatter "yyyy-MM-dd" tz)
+        formatter-no-tz (tf/formatter "yyyy-MM-dd")
+        today (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
+    ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of days
+    ;; depending on the user timezone
+    (or (->> (execute-decoders relative-date-string-decoders :range today date-string)
+             (m/map-vals (partial tf/unparse formatter-local-tz)))
+        ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared against
+        ;; the db field value that is casted granularity level of a day in the db time zone
+        (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
+             (m/map-vals (partial tf/unparse formatter-no-tz))))))
+
+(defn- date-string->filter
+  "Takes a string description of a date range such as 'lastmonth' or '2016-07-15~2016-08-6' and returns a
+   corresponding MBQL filter clause for a given field reference."
+  [date-string field-reference]
+  (execute-decoders all-date-string-decoders :filter field-reference date-string))
 
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                             MBQL QUERIES                                              |
@@ -125,27 +241,13 @@
     ;; otherwise convert to a Long
     :else                                   (Long/parseLong param-value)))
 
-
 (defn- build-filter-clause [{param-type :type, param-value :value, [_ field] :target}]
   (let [param-value (parse-param-value-for-type param-type param-value)]
     (cond
       ;; default behavior (non-date filtering) is to use a simple equals filter
       (not (s/starts-with? param-type "date")) ["=" field param-value]
-      ;; relative date range
-      (contains? relative-dates param-value)   (case param-value
-                                                 "past7days"  ["TIME_INTERVAL" field -7 "day"]
-                                                 "past30days" ["TIME_INTERVAL" field -30 "day"]
-                                                 "thisweek"   ["TIME_INTERVAL" field "current" "week"]
-                                                 "thismonth"  ["TIME_INTERVAL" field "current" "month"]
-                                                 "thisyear"   ["TIME_INTERVAL" field "current" "year"]
-                                                 "lastweek"   ["TIME_INTERVAL" field "last" "week"]
-                                                 "lastmonth"  ["TIME_INTERVAL" field "last" "month"]
-                                                 "lastyear"   ["TIME_INTERVAL" field "last" "year"]
-                                                 "yesterday"  ["=" field ["relative_datetime" -1 "day"]]
-                                                 "today"      ["=" field ["relative_datetime" "current"]])
-      ;; absolute date range
-      :else                                    (let [{:keys [start end]} (absolute-date->range param-value)]
-                                                 ["BETWEEN" field start end]))))
+      ;; date range
+      :else (date-string->filter param-value field))))
 
 (defn- merge-filter-clauses [base addtl]
   (cond

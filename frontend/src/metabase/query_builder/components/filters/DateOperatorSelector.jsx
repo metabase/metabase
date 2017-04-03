@@ -14,7 +14,8 @@ type Operator = {
 type Props = {
     operator: string,
     operators: Operator[],
-    onOperatorChange: (o: Operator) => void
+    onOperatorChange: (o: Operator) => void,
+    hideTimeSelectors?: bool
 }
 
 type State = {

@@ -44,6 +44,12 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
         description: "Like \"the last 7 days\" or \"this month\""
     },
     {
+        type: "date/all-options",
+        name: "Date Filter",
+        menuName: "All Options",
+        description: "Contains all of the above"
+    },
+    {
         type: "location/city",
         name: "City"
     },
