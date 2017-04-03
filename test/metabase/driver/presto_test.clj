@@ -9,7 +9,7 @@
             [metabase.test.util :refer [resolve-private-vars]])
   (:import (metabase.driver.presto PrestoDriver)))
 
-(resolve-private-vars metabase.driver.presto details->uri details->request quote-name quote+combine-names apply-page)
+(resolve-private-vars metabase.driver.presto details->uri details->request parse-presto-results quote-name quote+combine-names apply-page)
 
 ;;; HELPERS
 
@@ -42,6 +42,15 @@
              "X-Presto-Catalog"   "test_data"
              "X-Presto-Time-Zone" "America/Toronto"}}
   (details->request {:user "user", :catalog "test_data", :report-timezone "America/Toronto"}))
+
+(expect
+  [["2017-04-03"
+    #inst "2017-04-03T14:19:17.417000000-00:00"
+    #inst "2017-04-03T10:19:17.417000000-00:00"
+    3.1416M
+    "test"]]
+  (parse-presto-results [{:type "date"} {:type "timestamp with time zone"} {:type "timestamp"} {:type "decimal(10,4)"} {:type "varchar(255)"}]
+                        [["2017-04-03", "2017-04-03 10:19:17.417 America/Toronto", "2017-04-03 10:19:17.417", "3.1416", "test"]]))
 
 (expect
   "\"weird.table\"\" name\""

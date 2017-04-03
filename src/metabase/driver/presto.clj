@@ -45,12 +45,13 @@
       (u/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
 
 (defn- field-type->parser [field-type]
-  (case field-type
-    "time"                     (partial u/parse-date :hour-minute-second-ms)
-    "time with time zone"      parse-time-with-tz
-    "timestamp"                (partial u/parse-date "yyyy-MM-dd HH:mm:ss.SSS")
-    "timestamp with time zone" parse-timestamp-with-tz
-    identity))
+  (condp re-matches field-type
+    #"decimal.*"                bigdec
+    #"time"                     (partial u/parse-date :hour-minute-second-ms)
+    #"time with time zone"      parse-time-with-tz
+    #"timestamp"                (partial u/parse-date "yyyy-MM-dd HH:mm:ss.SSS")
+    #"timestamp with time zone" parse-timestamp-with-tz
+    #".*"                       identity))
 
 (defn- parse-presto-results [columns data]
   (let [parsers (map (comp field-type->parser :type) columns)]
