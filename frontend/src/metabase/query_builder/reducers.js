@@ -1,6 +1,6 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
-import { assoc } from "icepick";
+import { assoc, dissoc } from "icepick";
 
 import {
     RESET_QB,
@@ -158,7 +158,7 @@ export const queryExecutionPromise = handleActions({
 }, null);
 
 export const parameterValues = handleActions({
-    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => assoc(state, id, value) }
+    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => value == null ? dissoc(state, id) : assoc(state, id, value) }
 }, {});
 
 export const currentState = handleActions({
