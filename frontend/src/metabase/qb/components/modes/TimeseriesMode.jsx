@@ -35,8 +35,10 @@ type Props = {
 export const TimeseriesModeFooter = (props: Props) => {
     return (
         <div className="flex layout-centered">
-            <TimeseriesFilterWidget {...props} className="mr1" />
-            <TimeseriesGroupingWidget {...props} className="mr1" />
+            <span className="mr1">View</span>
+            <TimeseriesFilterWidget {...props} />
+            <span className="mx1">by</span>
+            <TimeseriesGroupingWidget {...props} />
         </div>
     );
 };

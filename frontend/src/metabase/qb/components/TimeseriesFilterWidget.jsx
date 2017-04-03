@@ -72,7 +72,7 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
             if (filterIndex >= 0) {
                 filter = (currentFilter = filters[filterIndex]);
             } else {
-                filter = ["BETWEEN", timeField];
+                filter = ["time-interval", timeField, -30, "day"];
             }
 
             // $FlowFixMe
