@@ -112,7 +112,7 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, { dirty = false, r
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
-export const INITIALIZE_QB = "INITIALIZE_QB";
+export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
     return async (dispatch, getState) => {
         // do this immediately to ensure old state is cleared before the user sees it
@@ -243,22 +243,22 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 });
 
 
-export const TOGGLE_DATA_REFERENCE = "TOGGLE_DATA_REFERENCE";
+export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Data Reference");
 });
 
-export const TOGGLE_TEMPLATE_TAGS_EDITOR = "TOGGLE_TEMPLATE_TAGS_EDITOR";
+export const TOGGLE_TEMPLATE_TAGS_EDITOR = "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
 export const toggleTemplateTagsEditor = createAction(TOGGLE_TEMPLATE_TAGS_EDITOR, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Template Tags Editor");
 });
 
-export const CLOSE_QB_TUTORIAL = "CLOSE_QB_TUTORIAL";
+export const CLOSE_QB_TUTORIAL = "metabase/qb/CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Tutorial Close");
 });
 
-export const CLOSE_QB_NEWB_MODAL = "CLOSE_QB_NEWB_MODAL";
+export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     return async (dispatch, getState) => {
         // persist the fact that this user has seen the NewbModal
@@ -269,12 +269,12 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
 });
 
 
-export const BEGIN_EDITING = "BEGIN_EDITING";
+export const BEGIN_EDITING = "metabase/qb/BEGIN_EDITING";
 export const beginEditing = createAction(BEGIN_EDITING, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Begin");
 });
 
-export const CANCEL_EDITING = "CANCEL_EDITING";
+export const CANCEL_EDITING = "metabase/qb/CANCEL_EDITING";
 export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     return (dispatch, getState) => {
         const { qb: { originalCard } } = getState();
@@ -293,7 +293,7 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     };
 });
 
-export const LOAD_METADATA_FOR_CARD = "LOAD_METADATA_FOR_CARD";
+export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
 export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (card) => {
     return async (dispatch, getState) => {
         // if we have a card with a known source table then dispatch an action to load up that info
@@ -307,7 +307,7 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
     }
 });
 
-export const LOAD_TABLE_METADATA = "LOAD_TABLE_METADATA";
+export const LOAD_TABLE_METADATA = "metabase/qb/LOAD_TABLE_METADATA";
 export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId) => {
     return async (dispatch, getState) => {
         // if we already have the metadata loaded for the given table then we are done
@@ -325,7 +325,7 @@ export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId
     };
 });
 
-export const LOAD_DATABASE_FIELDS = "LOAD_DATABASE_FIELDS";
+export const LOAD_DATABASE_FIELDS = "metabase/qb/LOAD_DATABASE_FIELDS";
 export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId) => {
     return async (dispatch, getState) => {
         // if we already have the metadata loaded for the given table then we are done
@@ -376,10 +376,10 @@ function updateVisualizationSettings(card, isEditing, display, vizSettings) {
     return updatedCard;
 }
 
-export const SET_CARD_ATTRIBUTE = "SET_CARD_ATTRIBUTE";
+export const SET_CARD_ATTRIBUTE = "metabase/qb/SET_CARD_ATTRIBUTE";
 export const setCardAttribute = createAction(SET_CARD_ATTRIBUTE, (attr, value) => ({attr, value}));
 
-export const SET_CARD_VISUALIZATION = "SET_CARD_VISUALIZATION";
+export const SET_CARD_VISUALIZATION = "metabase/qb/SET_CARD_VISUALIZATION";
 export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (display) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -389,7 +389,7 @@ export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (d
     }
 });
 
-export const UPDATE_CARD_VISUALIZATION_SETTINGS = "UPDATE_CARD_VISUALIZATION_SETTINGS";
+export const UPDATE_CARD_VISUALIZATION_SETTINGS = "metabase/qb/UPDATE_CARD_VISUALIZATION_SETTINGS";
 export const updateCardVisualizationSettings = createThunkAction(UPDATE_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -399,7 +399,7 @@ export const updateCardVisualizationSettings = createThunkAction(UPDATE_CARD_VIS
     };
 });
 
-export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS = "REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
+export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS = "metabase/qb/REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
 export const replaceAllCardVisualizationSettings = createThunkAction(REPLACE_ALL_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -409,7 +409,7 @@ export const replaceAllCardVisualizationSettings = createThunkAction(REPLACE_ALL
     };
 });
 
-export const UPDATE_TEMPLATE_TAG = "UPDATE_TEMPLATE_TAG";
+export const UPDATE_TEMPLATE_TAG = "metabase/qb/UPDATE_TEMPLATE_TAG";
 export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templateTag) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -427,12 +427,12 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
     };
 });
 
-export const SET_PARAMETER_VALUE = "SET_PARAMETER_VALUE";
+export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId, value) => {
     return { id: parameterId, value };
 });
 
-export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
+export const NOTIFY_CARD_CREATED = "metabase/qb/NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
     return (dispatch, getState) => {
         dispatch(updateUrl(card, { dirty: false }));
@@ -443,7 +443,7 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
     }
 });
 
-export const NOTIFY_CARD_UPDATED = "NOTIFY_CARD_UPDATED";
+export const NOTIFY_CARD_UPDATED = "metabase/qb/NOTIFY_CARD_UPDATED";
 export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (card) => {
     return (dispatch, getState) => {
         dispatch(updateUrl(card, { dirty: false }));
@@ -455,7 +455,7 @@ export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (car
 });
 
 // reloadCard
-export const RELOAD_CARD = "RELOAD_CARD";
+export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     return async (dispatch, getState) => {
         const { qb: { originalCard } } = getState();
@@ -474,7 +474,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 });
 
 // setCardAndRun
-export const SET_CARD_AND_RUN = "SET_CARD_AND_RUN";
+export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
@@ -490,7 +490,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shoul
 
 
 // setDatasetQuery
-export const SET_DATASET_QUERY = "SET_DATASET_QUERY";
+export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls, databases } } = getState();
@@ -593,7 +593,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 });
 
 // setQueryMode
-export const SET_QUERY_MODE = "SET_QUERY_MODE";
+export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
         const { qb: { card, queryResult, tableMetadata, uiControls } } = getState();
@@ -657,7 +657,7 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 });
 
 // setQueryDatabase
-export const SET_QUERY_DATABASE = "SET_QUERY_DATABASE";
+export const SET_QUERY_DATABASE = "metabase/qb/SET_QUERY_DATABASE";
 export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseId) => {
     return async (dispatch, getState) => {
         const { qb: { card, databases, uiControls } } = getState();
@@ -705,7 +705,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
 });
 
 // setQuerySourceTable
-export const SET_QUERY_SOURCE_TABLE = "SET_QUERY_SOURCE_TABLE";
+export const SET_QUERY_SOURCE_TABLE = "metabase/qb/SET_QUERY_SOURCE_TABLE";
 export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (sourceTable) => {
     return async (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -849,7 +849,7 @@ export const removeQueryExpression = createQueryAction(
 );
 
 // runQuery
-export const RUN_QUERY = "RUN_QUERY";
+export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = true, parameterValues, dirty) => {
     return async (dispatch, getState) => {
         const state = getState();
@@ -895,7 +895,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
     };
 });
 
-export const QUERY_COMPLETED = "QUERY_COMPLETED";
+export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResult) => {
     return async (dispatch, getState) => {
         let cardDisplay = card.display;
@@ -922,13 +922,14 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
         }
 
         return {
+            card,
             cardDisplay,
             queryResult
         }
     };
 });
 
-export const QUERY_ERRORED = "QUERY_ERRORED";
+export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) => {
     return async (dispatch, getState) => {
         if (error && error.status === 0) {
@@ -941,7 +942,7 @@ export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) 
 })
 
 // cancelQuery
-export const CANCEL_QUERY = "CANCEL_QUERY";
+export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
     return async (dispatch, getState) => {
         const { qb: { uiControls, queryExecutionPromise } } = getState();
@@ -953,7 +954,7 @@ export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
 });
 
 // cellClicked
-export const CELL_CLICKED = "CELL_CLICKED";
+export const CELL_CLICKED = "metabase/qb/CELL_CLICKED";
 export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnIndex, filter) => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult } } = getState();
@@ -1019,7 +1020,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
     };
 });
 
-export const FOLLOW_FOREIGN_KEY = "FOLLOW_FOREIGN_KEY";
+export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult } } = getState();
@@ -1047,7 +1048,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
 });
 
 
-export const LOAD_OBJECT_DETAIL_FK_REFERENCES = "LOAD_OBJECT_DETAIL_FK_REFERENCES";
+export const LOAD_OBJECT_DETAIL_FK_REFERENCES = "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL_FK_REFERENCES, () => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult, tableForeignKeys } } = getState();
