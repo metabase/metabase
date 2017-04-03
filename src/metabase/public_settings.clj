@@ -23,11 +23,13 @@
   :default "Metabase")
 
 ;; This value is *guaranteed* to never have a trailing slash :D
+;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
   "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
   :setter (fn [new-value]
             (setting/set-string! :site-url (when new-value
-                                             (s/replace new-value #"/$" "")))))
+                                             (cond->> (s/replace new-value #"/$" "")
+                                               (not (s/starts-with? new-value "http")) (str "http://"))))))
 
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")
