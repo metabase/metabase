@@ -70,6 +70,7 @@
   [card]
   (let [result (:result card)]
     (or (zero? (-> result :row_count))
+        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
         (= [[nil]]
            (-> result :data :rows)))))
 
