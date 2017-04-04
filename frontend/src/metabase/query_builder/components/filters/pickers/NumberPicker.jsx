@@ -23,7 +23,12 @@ export default class NumberPicker extends Component<*, Props, State> {
     constructor(props: Props) {
         super(props);
         this.state = {
-            stringValues: props.values.map(v => String(v || "")),
+            stringValues: props.values.map(v => {
+                if(v === 0) {
+                    return String(v)
+                }
+                return String(v || "")}
+            ),
             validations: this._validate(props.values)
         }
     }
