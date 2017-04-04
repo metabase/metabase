@@ -18,8 +18,9 @@ import LogoutApp from "metabase/auth/containers/LogoutApp.jsx"; import PasswordR
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
-import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
+import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
+import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
@@ -150,7 +151,10 @@ export const getRoutes = (store) =>
                 {/* HOME */}
                 <Route path="/" component={HomepageApp} />
 
-                {/* DASHBOARD */}
+                {/* DASHBOARD LIST */}
+                <Route path="/dashboards" component={Dashboards} />
+
+                {/* INDIVIDUAL DASHBOARDS */}
                 <Route path="/dash/:dashboardId" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
