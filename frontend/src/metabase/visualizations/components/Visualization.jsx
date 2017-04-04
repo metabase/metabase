@@ -222,7 +222,8 @@ export default class Visualization extends Component<*, Props, State> {
         }
 
         if (!error) {
-            noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
+            // Many aggregations result in [[null]] if there are no rows to aggregate after filters
+            noResults = getIn(series, [0, "data", "rows", "length"]) === 0 || _.isEqual(getIn(series, [0, "data", "rows"]), [[null]]);
         }
 
         let extra = (
