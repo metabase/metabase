@@ -40,7 +40,7 @@
    (This is done so irrelevant info or options that don't affect query results doesn't result in the same query producing different hashes.)"
   [query]
   {:pre [(map? query)]}
-  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :parameters :constraints])]
+  (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :native :parameters :constraints])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters))))
