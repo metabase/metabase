@@ -14,7 +14,7 @@ export default class Tooltip extends Component {
     }
 
     static propTypes = {
-        tooltip: PropTypes.node.isRequired,
+        tooltip: PropTypes.node,
         children: PropTypes.element.isRequired,
         isEnabled: PropTypes.bool,
         verticalAttachments: PropTypes.array,

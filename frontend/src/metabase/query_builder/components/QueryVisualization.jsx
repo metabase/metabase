@@ -3,6 +3,8 @@ import { Link } from "react-router";
 
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
 import Tooltip from "metabase/components/Tooltip";
+import Icon from "metabase/components/Icon";
+import ShrinkableList from "metabase/components/ShrinkableList";
 
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
@@ -22,7 +24,7 @@ import cx from "classnames";
 import _ from "underscore";
 import moment from "moment";
 
-const REFRESH_TOOLTIP_THRESHOLD = 60 * 1000; // 60 seconds
+const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
 export default class QueryVisualization extends Component {
     constructor(props, context) {
@@ -84,14 +86,38 @@ export default class QueryVisualization extends Component {
             runButtonTooltip = `This question will take approximately ${duration(result.average_execution_time)} to refresh`;
         }
 
+        const messages = [];
+        if (result && result.cached) {
+            messages.push({
+                icon: "clock",
+                message: (
+                    <div>
+                        Updated {moment(result.updated_at).fromNow()}
+                    </div>
+                )
+            })
+        }
+        if (result && result.data && !isObjectDetail && card.display === "table") {
+            messages.push({
+                icon: "table2",
+                message: (
+                    <div>
+                        { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
+                        <strong>{formatNumber(result.row_count)}</strong>
+                        { " " + inflect("row", result.data.rows.length) }
+                    </div>
+                )
+            })
+        }
+
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
         const isEmbeddingEnabled = MetabaseSettings.get("embedding");
         return (
-            <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
-                <span className="relative z4">
+            <div className="relative flex align-center flex-no-shrink mt2 mb1" style={{ minHeight: "2em" }}>
+                <div className="z4 flex-full">
                   { !isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
-                </span>
-                <div className="absolute flex layout-centered left right z3">
+                </div>
+                <div className="z3">
                     <Tooltip tooltip={runButtonTooltip}>
                         <RunButton
                             isRunnable={isRunnable}
@@ -102,15 +128,24 @@ export default class QueryVisualization extends Component {
                         />
                     </Tooltip>
                 </div>
-                <div className="absolute right z4 flex align-center" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
-                    { result && result.cached &&
-                        <div className="text-grey-4 px1">
-                            Last updated {moment(result.updated_at).fromNow()}
-                        </div>
-                    }
-                    { !isResultDirty && this.renderCount() }
+                <div className="z4 flex-full flex align-center justify-end" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
+                    <ShrinkableList
+                        className="flex"
+                        items={messages}
+                        renderItem={(item) =>
+                            <div className="flex-no-shrink flex align-center mx2 text-grey-4">
+                                <Icon className="mr1" name={item.icon} size={12} />
+                                {item.message}
+                            </div>
+                        }
+                        renderItemSmall={(item) =>
+                            <Tooltip tooltip={<div className="p1">{item.message}</div>}>
+                                <Icon className="mx1" name={item.icon} size={16} />
+                            </Tooltip>
+                        }
+                    />
                     { !isObjectDetail &&
-                        <Warnings warnings={this.state.warnings} className="mx2" size={18} />
+                        <Warnings warnings={this.state.warnings} className="mx1" size={18} />
                     }
                     { !isResultDirty && result && !result.error ?
                         <QueryDownloadWidget
@@ -131,19 +166,6 @@ export default class QueryVisualization extends Component {
                 </div>
             </div>
         );
-    }
-
-    renderCount() {
-        let { result, isObjectDetail, card } = this.props;
-        if (result && result.data && !isObjectDetail && card.display === "table") {
-            return (
-                <div>
-                    { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
-                    <b>{formatNumber(result.row_count)}</b>
-                    { " " + inflect("row", result.data.rows.length) }.
-                </div>
-            );
-        }
     }
 
     render() {
