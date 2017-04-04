@@ -175,7 +175,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     }
 
     render() {
-        const { series, hovered, showTitle, actionButtons, linkToCard } = this.props;
+        const { series, hovered, showTitle, actionButtons, linkToCard, onVisualizationClick, visualizationIsClickable } = this.props;
 
         const settings = this.getSettings();
 
@@ -215,6 +215,8 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         onHoverChange={this.props.onHoverChange}
                         actionButtons={!titleHeaderSeries ? actionButtons : null}
                         linkToCard={linkToCard}
+                        onVisualizationClick={onVisualizationClick}
+                        visualizationIsClickable={visualizationIsClickable}
                     />
                 : null }
                 <CardRenderer
@@ -294,12 +296,18 @@ function transformSingleSeries(s, series, seriesIndex) {
                 ].filter(n => n).join(": "),
                 _transformed: true,
                 _breakoutValue: breakoutValue,
-                _breakoutColumn: cols[seriesColumnIndex]
+                _breakoutColumn: cols[seriesColumnIndex],
             },
             data: {
                 rows: breakoutRowsByValue.get(breakoutValue),
                 cols: rowColumnIndexes.map(i => cols[i]),
                 _rawCols: cols
+            },
+            clicked: {
+                dimensions: [{
+                    value: breakoutValue,
+                    column: cols[seriesColumnIndex]
+                }]
             }
         }));
     } else {
