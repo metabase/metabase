@@ -8,7 +8,6 @@
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.driver.hive :as hive]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -16,8 +15,6 @@
   (:import
    (java.util Collections Date)
    (metabase.query_processor.interface DateTimeValue Value)))
-
-;; ceil(extract(month from pickup_datetime)/3.0)
 
 (def ^:const column->base-type
   "Map of Drill column types -> Field base types.
@@ -117,13 +114,6 @@
 
 (defn- describe-table [driver database table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-    (log/debug "describe table result:"
-               (prn-str {:name (:name table)
-                         :schema (:schema table)
-                         :fields (set (for [result (jdbc/query {:connection conn}
-                                                               [(str "select column_name, data_type from INFORMATION_SCHEMA.COLUMNS where table_name='" (:name table) "'")])]
-                                        {:name (:column_name result)
-                                         :base-type (column->base-type (keyword (:data_type result)))}))}))
     {:name (:name table)
      :schema (:schema table)
      :fields (set (for [result (jdbc/query {:connection conn}
@@ -131,12 +121,34 @@
                     {:name (:column_name result)
                      :base-type (column->base-type (keyword (:data_type result)))}))}))
 
+(defprotocol ^:private IUnprepare
+  (^:private unprepare-arg ^String [this]))
+
+(extend-protocol IUnprepare
+  nil     (unprepare-arg [this] "NULL")
+  String  (unprepare-arg [this] (str \' (s/replace this "'" "\\\\'") \')) ; escape single-quotes
+  Boolean (unprepare-arg [this] (if this "TRUE" "FALSE"))
+  Number  (unprepare-arg [this] (str this))
+  Date    (unprepare-arg [this] (first (hsql/format
+                                        (hsql/call :to_timestamp
+                                                   (hx/literal (u/date->iso-8601 this))
+                                                   (hx/literal "YYYY-MM-dd''T''HH:mm:ss.SSSZ"))))))
+
+(defn unprepare
+  "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement."
+  ^String [[sql & args]]
+  (loop [sql sql, [arg & more-args, :as args] args]
+    (if-not (seq args)
+      sql
+      (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-arg arg))
+             more-args))))
+
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native, :as outer-query}]
   (let [query (-> (assoc query :remark (qputil/query->remark outer-query))
                   (assoc :query (if (seq (:params query))
-                                  (unprepare/unprepare (cons (:query query) (:params query)))
+                                  (unprepare (cons (:query query) (:params query)))
                                   (:query query)))
                   (dissoc :params))]
     (hive/do-with-try-catch
