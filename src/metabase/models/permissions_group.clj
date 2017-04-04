@@ -3,6 +3,7 @@
             [clojure.string :as s]
             (toucan [db :as db]
                     [models :as models])
+            [metabase.integrations.ldap :as ldap]
             [metabase.util :as u]))
 
 (models/defmodel PermissionsGroup :permissions_group)
@@ -70,7 +71,11 @@
   (check-not-magic-group group)
   (db/delete! 'Permissions                 :group_id id)
   (db/delete! 'PermissionsGroupMembership  :group_id id)
-  (db/delete! 'PermissionsGroupLdapMapping :group_id id))
+  ;; Remove from LDAP mappings
+  (ldap/ldap-group-mappings
+    (zipmap (keys (ldap/ldap-group-mappings))
+            (for [val (vals (ldap/ldap-group-mappings))]
+              (remove (partial = id) val)))))
 
 (defn- pre-update [{group-name :name, :as group}]
   (u/prog1 group

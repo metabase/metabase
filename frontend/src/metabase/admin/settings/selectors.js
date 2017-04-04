@@ -12,6 +12,7 @@ import {
 } from "./components/widgets/PublicLinksListing.jsx";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
 
 import { UtilApi } from "metabase/services";
 
@@ -238,11 +239,6 @@ const SECTIONS = [
                 display_name: "Group search base",
                 type: "string",
                 required: true
-            },
-            {
-                key: "ldap-group-mappings",
-                display_name: "Group mappings",
-                type: "string"
             }
         ]
     },
