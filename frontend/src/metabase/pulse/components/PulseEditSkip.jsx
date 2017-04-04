@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import Toggle from "metabase/components/Toggle.jsx";
 
