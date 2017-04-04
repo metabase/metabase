@@ -334,7 +334,6 @@
         (let [driver       (driver/engine->driver :h2)
               spec         (sql/connection-details->spec driver details)
               exec!        #(doseq [statement %]
-                              (println "[H2]" statement) ; NOCOMMIT
                               (println (jdbc/execute! spec [statement])))
               insert-range #(str "INSERT INTO blueberries_consumed (num) VALUES "
                                  (str/join ", " (for [n %]
