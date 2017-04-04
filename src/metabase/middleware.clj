@@ -190,11 +190,9 @@
                                                                     "https://www.google-analytics.com" ; Safari requires the protocol
                                                                     "https://*.googleapis.com"
                                                                     "*.gstatic.com"
-                                                                    "js.intercomcdn.com"
-                                                                    "*.intercom.io"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
-                                                      :frame-src   ["'self'"
+                                                      :child-src   ["'self'"
                                                                     "https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
@@ -205,11 +203,9 @@
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
                                                       :img-src     ["*"
-                                                                    "self data:"]
+                                                                    "'self' data:"]
                                                       :connect-src ["'self'"
                                                                     "metabase.us10.list-manage.com"
-                                                                    "*.intercom.io"
-                                                                    "wss://*.intercom.io" ; allow websockets as well
                                                                     (when config/is-dev?
                                                                       "localhost:8080 ws://localhost:8080")]}]
                                           (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
