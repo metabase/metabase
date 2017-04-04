@@ -211,7 +211,10 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-        const { data: { cols, rows }, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
+        // $FlowFixMe: not sure why flow has a problem with this
+        const { rows, cols } = this.props.data;
+
         const column = cols[columnIndex];
         const row = rows[rowIndex];
         const value = row[columnIndex];
@@ -259,7 +262,9 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
-        const { sort, data: { cols }, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { sort, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
+        // $FlowFixMe: not sure why flow has a problem with this
+        const { cols } = this.props.data;
         const column = cols[columnIndex];
 
         let columnTitle = getFriendlyName(column);

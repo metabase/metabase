@@ -26,7 +26,7 @@ import type {
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 type Props = {
-    lastRun: CardObject,
+    lastRunCard: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
     runQueryFn: () => void
