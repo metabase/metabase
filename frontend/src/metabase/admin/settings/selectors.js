@@ -232,7 +232,7 @@ const SECTIONS = [
                 key: "ldap-group-sync",
                 display_name: "Synchronize group memberships",
                 description: null,
-                type: "boolean"
+                widget: LdapGroupMappingsWidget
             },
             {
                 key: "ldap-group-base",
