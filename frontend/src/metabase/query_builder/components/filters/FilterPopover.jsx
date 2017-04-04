@@ -270,14 +270,11 @@ export default class FilterPopover extends Component<*, Props, State> {
                         <h3 className="text-default">{field.display_name}</h3>
                     </div>
                     { isDate(field) ?
-                        <div className="mt1 pt2 border-top">
-                            <DatePicker
-                                filter={filter}
-                                onFilterChange={this.setFilter}
-                                onOperatorChange={this.setOperator}
-                                tableMetadata={this.props.tableMetadata}
-                            />
-                        </div>
+                        <DatePicker
+                            className="mt1 border-top"
+                            filter={filter}
+                            onFilterChange={this.setFilter}
+                        />
                     :
                         <div>
                             <OperatorSelector

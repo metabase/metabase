@@ -109,7 +109,7 @@
      (relative-datetime -31 :day)"
   ([n]                (s/validate (s/eq :current) (normalize-token n))
                       (relative-datetime 0 nil))
-  ([n :- s/Int, unit] (i/map->RelativeDatetime {:amount n, :unit (if (zero? n)
+  ([n :- s/Int, unit] (i/map->RelativeDatetime {:amount n, :unit (if (nil? unit)
                                                                    :day                        ; give :unit a default value so we can simplify the schema a bit and require a :unit
                                                                    (normalize-token unit))})))
 
@@ -307,7 +307,7 @@
       :next    (recur f  1 unit))
     (let [f (datetime-field f unit)]
       (cond
-        (core/= n  0) (= f (value f (relative-datetime :current)))
+        (core/= n  0) (= f (value f (relative-datetime  0 unit)))
         (core/= n -1) (= f (value f (relative-datetime -1 unit)))
         (core/= n  1) (= f (value f (relative-datetime  1 unit)))
         (core/< n -1) (between f (value f (relative-datetime  n unit))
