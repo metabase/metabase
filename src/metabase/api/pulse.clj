@@ -64,11 +64,11 @@
    skip_if_empty s/Bool}
   (write-check Pulse id)
   (check-card-read-permissions cards)
-  (pulse/update-pulse! {:id            id
-                        :name          name
-                        :cards         (map u/get-id cards)
-                        :channels      channels
-                        :skip_if_empty? skip_if_empty})
+  (pulse/update-pulse! {:id             id
+                        :name           name
+                        :cards          (map u/get-id cards)
+                        :channels       channels
+                        :skip-if-empty? skip_if_empty})
   (pulse/retrieve-pulse id))
 
 
@@ -141,6 +141,6 @@
    skip_if_empty s/Bool}
   (check-card-read-permissions cards)
   (p/send-pulse! body)
-   {:ok true})
+  {:ok true})
 
 (define-routes)

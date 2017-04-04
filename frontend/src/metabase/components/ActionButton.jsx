@@ -17,6 +17,7 @@ type Props = {
     activeText?: string,
     failedText?: string,
     successText?: string,
+    forceActiveStyle?: boolean
 }
 
 type State = {
@@ -49,7 +50,7 @@ export default class ActionButton extends Component<*, Props, State> {
         activeText: "Saving...",
         failedText: "Save failed",
         successText: "Saved",
-        overrideStyle: false
+        forceActiveStyle: false
     };
 
     componentWillUnmount() {
@@ -97,13 +98,13 @@ export default class ActionButton extends Component<*, Props, State> {
 
     render() {
         // eslint-disable-next-line no-unused-vars
-        const { normalText, activeText, failedText, successText, actionFn, className, overrideStyle, children, ...props } = this.props;
+        const { normalText, activeText, failedText, successText, actionFn, className, forceActiveStyle, children, ...props } = this.props;
         const { active, result } = this.state;
 
         return (
             <Button
                 {...props}
-                    className={overrideStyle ? cx('Button', 'Button--waiting') : cx(className, {
+                    className={forceActiveStyle ? cx('Button', 'Button--waiting') : cx(className, {
                     'Button--waiting pointer-events-none': active,
                     'Button--success': result === 'success',
                     'Button--danger': result === 'failed'
@@ -115,7 +116,7 @@ export default class ActionButton extends Component<*, Props, State> {
                     activeText
                 : result === "success" ?
                     <span>
-                        {overrideStyle ? null : <Icon name='check' size={12} /> }
+                        {forceActiveStyle ? null : <Icon name='check' size={12} /> }
                         <span className="ml1">{successText}</span>
                     </span>
                 : result === "failed" ?

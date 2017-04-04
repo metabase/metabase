@@ -74,7 +74,7 @@
         (= [[nil]]
            (-> result :data :rows)))))
 
-(defn are-all-cards-empty?
+(defn- are-all-cards-empty?
   "Do none of the cards have any results?"
   [results]
   (every? is-card-empty? results))
@@ -86,7 +86,7 @@
    Example:
        (send-pulse! pulse)                       Send to all Channels
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
-  [{:keys [cards] :as pulse} & {:keys [channel-ids]}]
+  [{:keys [cards], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (every? map? cards) (every? :id cards)]}
   (let [results     (for [card cards]
                       (execute-card (:id card), :pulse-id (:id pulse))) ; Pulse ID may be `nil` if the Pulse isn't saved yet

@@ -172,13 +172,13 @@
   (tt/with-temp* [Pulse [{pulse-id :id}]
                   Card  [{card-id-1 :id} {:name "Test Card"}]
                   Card  [{card-id-2 :id} {:name "Bar Card", :display :bar}]]
-    (update-pulse-then-select! {:id            pulse-id
-                                :name          "We like to party"
-                                :creator_id    (user->id :crowberto)
-                                :cards         [card-id-2 card-id-1]
-                                :channels      [{:channel_type  :email
-                                                 :schedule_type :daily
-                                                 :schedule_hour 18
-                                                 :recipients    [{:email "foo@bar.com"}
-                                                                 {:id (user->id :crowberto)}]}]
-                                :skip_if_empty? false})))
+    (update-pulse-then-select! {:id             pulse-id
+                                :name           "We like to party"
+                                :creator_id     (user->id :crowberto)
+                                :cards          [card-id-2 card-id-1]
+                                :channels       [{:channel_type  :email
+                                                  :schedule_type :daily
+                                                  :schedule_hour 18
+                                                  :recipients    [{:email "foo@bar.com"}
+                                                                  {:id (user->id :crowberto)}]}]
+                                :skip-if-empty? false})))
