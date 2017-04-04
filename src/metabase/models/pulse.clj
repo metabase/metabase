@@ -193,7 +193,7 @@
   "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 
    Returns the updated `Pulse` or throws an Exception."
-  [{:keys [id name cards channels skip-if-empty?] :as pulse}]
+  [{:keys [id name cards channels skip_if_empty?] :as pulse}]
   {:pre [(integer? id)
          (string? name)
          (sequential? cards)
@@ -203,7 +203,7 @@
          (every? map? channels)]}
   (db/transaction
     ;; update the pulse itself
-    (db/update! Pulse id, :name name, :skip_if_empty skip-if-empty?)
+    (db/update! Pulse id, :name name, :skip_if_empty skip_if_empty?)
     ;; update cards (only if they changed)
     (when (not= cards (map :card_id (db/select [PulseCard :card_id], :pulse_id id, {:order-by [[:position :asc]]})))
       (update-pulse-cards! pulse cards))

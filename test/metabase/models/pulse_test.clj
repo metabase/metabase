@@ -181,4 +181,4 @@
                                                  :schedule_hour 18
                                                  :recipients    [{:email "foo@bar.com"}
                                                                  {:id (user->id :crowberto)}]}]
-                                :skip_if_empty false})))
+                                :skip_if_empty? false})))

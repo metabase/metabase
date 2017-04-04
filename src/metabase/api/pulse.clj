@@ -68,7 +68,7 @@
                         :name          name
                         :cards         (map u/get-id cards)
                         :channels      channels
-                        :skip-if-empty? skip_if_empty})
+                        :skip_if_empty? skip_if_empty})
   (pulse/retrieve-pulse id))
 
 
