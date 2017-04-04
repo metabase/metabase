@@ -295,7 +295,7 @@ export default class QueryHeader extends Component {
         }
 
         // parameters
-        if (Query.isNative(this.props.query) && database && _.contains(database.features, "native-parameters")) {
+        if (Query.isNative(card && card.dataset_query) && database && _.contains(database.features, "native-parameters")) {
             const parametersButtonClasses = cx('transition-color', {
                 'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor

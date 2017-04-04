@@ -15,7 +15,7 @@ import LegendHeader from "../components/LegendHeader";
 import _ from "underscore";
 import cx from "classnames";
 
-import type { VisualizationProps } from "..";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 export default class Funnel extends Component<*, VisualizationProps, *> {
     static uiName = "Funnel";

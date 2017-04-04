@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -33,13 +32,13 @@ const QueryDownloadWidget = ({ className, card, result, uuid, token }) =>
             <div className="flex flex-row mt2">
                 {["csv", "json"].map(type =>
                     uuid ?
-                        <PublicQueryButton type={type} uuid={uuid} className="mr1 text-uppercase text-default" />
+                        <PublicQueryButton key={type} type={type} uuid={uuid} className="mr1 text-uppercase text-default" />
                     : token ?
-                        <EmbedQueryButton type={type} token={token} className="mr1 text-uppercase text-default" />
+                        <EmbedQueryButton key={type} type={type} token={token} className="mr1 text-uppercase text-default" />
                     : card && card.id ?
-                        <SavedQueryButton type={type} card={card} result={result} className="mr1 text-uppercase text-default" />
+                        <SavedQueryButton key={type} type={type} card={card} result={result} className="mr1 text-uppercase text-default" />
                     : card && !card.id ?
-                        <UnsavedQueryButton type={type} card={card} result={result} className="mr1 text-uppercase text-default" />
+                        <UnsavedQueryButton key={type} type={type} card={card} result={result} className="mr1 text-uppercase text-default" />
                     :
                       null
                 )}

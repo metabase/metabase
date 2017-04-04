@@ -20,7 +20,7 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { applyParameters } from "metabase/meta/Card";
 
-import { isDirty, getParameters, getNativeDatabases } from "./selectors";
+import { getParameters, getNativeDatabases } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -112,7 +112,7 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, { dirty = false, r
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
-export const INITIALIZE_QB = "INITIALIZE_QB";
+export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
     return async (dispatch, getState) => {
         // do this immediately to ensure old state is cleared before the user sees it
@@ -243,22 +243,22 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 });
 
 
-export const TOGGLE_DATA_REFERENCE = "TOGGLE_DATA_REFERENCE";
+export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Data Reference");
 });
 
-export const TOGGLE_TEMPLATE_TAGS_EDITOR = "TOGGLE_TEMPLATE_TAGS_EDITOR";
+export const TOGGLE_TEMPLATE_TAGS_EDITOR = "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
 export const toggleTemplateTagsEditor = createAction(TOGGLE_TEMPLATE_TAGS_EDITOR, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Template Tags Editor");
 });
 
-export const CLOSE_QB_TUTORIAL = "CLOSE_QB_TUTORIAL";
+export const CLOSE_QB_TUTORIAL = "metabase/qb/CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Tutorial Close");
 });
 
-export const CLOSE_QB_NEWB_MODAL = "CLOSE_QB_NEWB_MODAL";
+export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     return async (dispatch, getState) => {
         // persist the fact that this user has seen the NewbModal
@@ -269,12 +269,12 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
 });
 
 
-export const BEGIN_EDITING = "BEGIN_EDITING";
+export const BEGIN_EDITING = "metabase/qb/BEGIN_EDITING";
 export const beginEditing = createAction(BEGIN_EDITING, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Begin");
 });
 
-export const CANCEL_EDITING = "CANCEL_EDITING";
+export const CANCEL_EDITING = "metabase/qb/CANCEL_EDITING";
 export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     return (dispatch, getState) => {
         const { qb: { originalCard } } = getState();
@@ -293,7 +293,7 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     };
 });
 
-export const LOAD_METADATA_FOR_CARD = "LOAD_METADATA_FOR_CARD";
+export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
 export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (card) => {
     return async (dispatch, getState) => {
         // if we have a card with a known source table then dispatch an action to load up that info
@@ -307,7 +307,7 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
     }
 });
 
-export const LOAD_TABLE_METADATA = "LOAD_TABLE_METADATA";
+export const LOAD_TABLE_METADATA = "metabase/qb/LOAD_TABLE_METADATA";
 export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId) => {
     return async (dispatch, getState) => {
         // if we already have the metadata loaded for the given table then we are done
@@ -325,7 +325,7 @@ export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId
     };
 });
 
-export const LOAD_DATABASE_FIELDS = "LOAD_DATABASE_FIELDS";
+export const LOAD_DATABASE_FIELDS = "metabase/qb/LOAD_DATABASE_FIELDS";
 export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId) => {
     return async (dispatch, getState) => {
         // if we already have the metadata loaded for the given table then we are done
@@ -350,6 +350,14 @@ export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId)
 });
 
 function updateVisualizationSettings(card, isEditing, display, vizSettings) {
+    // don't need to store undefined
+    vizSettings = Utils.copy(vizSettings)
+    for (const name in vizSettings) {
+        if (vizSettings[name] === undefined) {
+            delete vizSettings[name];
+        }
+    }
+
     // make sure that something actually changed
     if (card.display === display && _.isEqual(card.visualization_settings, vizSettings)) return card;
 
@@ -368,10 +376,10 @@ function updateVisualizationSettings(card, isEditing, display, vizSettings) {
     return updatedCard;
 }
 
-export const SET_CARD_ATTRIBUTE = "SET_CARD_ATTRIBUTE";
+export const SET_CARD_ATTRIBUTE = "metabase/qb/SET_CARD_ATTRIBUTE";
 export const setCardAttribute = createAction(SET_CARD_ATTRIBUTE, (attr, value) => ({attr, value}));
 
-export const SET_CARD_VISUALIZATION = "SET_CARD_VISUALIZATION";
+export const SET_CARD_VISUALIZATION = "metabase/qb/SET_CARD_VISUALIZATION";
 export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (display) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -381,7 +389,7 @@ export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (d
     }
 });
 
-export const UPDATE_CARD_VISUALIZATION_SETTINGS = "UPDATE_CARD_VISUALIZATION_SETTINGS";
+export const UPDATE_CARD_VISUALIZATION_SETTINGS = "metabase/qb/UPDATE_CARD_VISUALIZATION_SETTINGS";
 export const updateCardVisualizationSettings = createThunkAction(UPDATE_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -391,7 +399,7 @@ export const updateCardVisualizationSettings = createThunkAction(UPDATE_CARD_VIS
     };
 });
 
-export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS = "REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
+export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS = "metabase/qb/REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
 export const replaceAllCardVisualizationSettings = createThunkAction(REPLACE_ALL_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -401,7 +409,7 @@ export const replaceAllCardVisualizationSettings = createThunkAction(REPLACE_ALL
     };
 });
 
-export const UPDATE_TEMPLATE_TAG = "UPDATE_TEMPLATE_TAG";
+export const UPDATE_TEMPLATE_TAG = "metabase/qb/UPDATE_TEMPLATE_TAG";
 export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templateTag) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -419,12 +427,12 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
     };
 });
 
-export const SET_PARAMETER_VALUE = "SET_PARAMETER_VALUE";
+export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId, value) => {
     return { id: parameterId, value };
 });
 
-export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
+export const NOTIFY_CARD_CREATED = "metabase/qb/NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
     return (dispatch, getState) => {
         dispatch(updateUrl(card, { dirty: false }));
@@ -435,7 +443,7 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
     }
 });
 
-export const NOTIFY_CARD_UPDATED = "NOTIFY_CARD_UPDATED";
+export const NOTIFY_CARD_UPDATED = "metabase/qb/NOTIFY_CARD_UPDATED";
 export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (card) => {
     return (dispatch, getState) => {
         dispatch(updateUrl(card, { dirty: false }));
@@ -447,7 +455,7 @@ export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (car
 });
 
 // reloadCard
-export const RELOAD_CARD = "RELOAD_CARD";
+export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     return async (dispatch, getState) => {
         const { qb: { originalCard } } = getState();
@@ -466,7 +474,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 });
 
 // setCardAndRun
-export const SET_CARD_AND_RUN = "SET_CARD_AND_RUN";
+export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
@@ -481,9 +489,9 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shoul
 });
 
 
-// setQuery
-export const SET_QUERY = "SET_QUERY";
-export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false) => {
+// setDatasetQuery
+export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
+export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls, databases } } = getState();
 
@@ -585,7 +593,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
 });
 
 // setQueryMode
-export const SET_QUERY_MODE = "SET_QUERY_MODE";
+export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
         const { qb: { card, queryResult, tableMetadata, uiControls } } = getState();
@@ -649,7 +657,7 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 });
 
 // setQueryDatabase
-export const SET_QUERY_DATABASE = "SET_QUERY_DATABASE";
+export const SET_QUERY_DATABASE = "metabase/qb/SET_QUERY_DATABASE";
 export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseId) => {
     return async (dispatch, getState) => {
         const { qb: { card, databases, uiControls } } = getState();
@@ -697,7 +705,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
 });
 
 // setQuerySourceTable
-export const SET_QUERY_SOURCE_TABLE = "SET_QUERY_SOURCE_TABLE";
+export const SET_QUERY_SOURCE_TABLE = "metabase/qb/SET_QUERY_SOURCE_TABLE";
 export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (sourceTable) => {
     return async (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -744,53 +752,104 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
     };
 });
 
-// setQuerySort
-export const SET_QUERY_SORT = "SET_QUERY_SORT";
-export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
-    return (dispatch, getState) => {
-        const { qb: { card } } = getState();
-
-        // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
-        if (card.dataset_query.type === "query") {
-            let field = null;
-            if (column.id == null) {
-                // ICK.  this is hacky for dealing with aggregations.  need something better
-                // DOUBLE ICK.  we also need to deal with custom fields now as well
-                if (_.contains(_.keys(Query.getExpressions(card.dataset_query.query)), column.display_name)) {
-                    field = ["expression", column.display_name];
-                } else {
-                    field = ["aggregation", 0];
-                }
-            } else {
-                field = column.id;
+function createQueryAction(action, updaterFunction, event) {
+    return createThunkAction(action, (...args) =>
+        (dispatch, getState) => {
+            const { qb: { card } } = getState();
+            if (card.dataset_query.type === "query") {
+                const datasetQuery = Utils.copy(card.dataset_query);
+                updaterFunction(datasetQuery.query, ...args);
+                dispatch(setDatasetQuery(datasetQuery));
+                MetabaseAnalytics.trackEvent(...(typeof event === "function" ? event(...args) : event));
             }
-
-            let dataset_query = Utils.copy(card.dataset_query),
-                sortClause = [field, "ascending"];
-
-            if (card.dataset_query.query.order_by &&
-                card.dataset_query.query.order_by.length > 0 &&
-                card.dataset_query.query.order_by[0].length > 0 &&
-                card.dataset_query.query.order_by[0][1] === "ascending" &&
-                Query.isSameField(card.dataset_query.query.order_by[0][0], field)) {
-                // someone triggered another sort on the same column, so flip the sort direction
-                sortClause = [field, "descending"];
-            }
-
-            // set clause
-            dataset_query.query.order_by = [sortClause];
-
-            // update and run the query
-            dispatch(setQuery(dataset_query, true));
+            return null;
         }
+    );
+}
 
-        return null;
-    };
-});
-
+export const addQueryBreakout = createQueryAction(
+    "metabase/qb/ADD_QUERY_BREAKOUT",
+    Query.addBreakout,
+    ["QueryBuilder", "Add GroupBy"]
+);
+export const updateQueryBreakout = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_BREAKOUT",
+    Query.updateBreakout,
+    ["QueryBuilder", "Modify GroupBy"]
+);
+export const removeQueryBreakout = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_BREAKOUT",
+    Query.removeBreakout,
+    ["QueryBuilder", "Remove GroupBy"]
+);
+export const addQueryFilter = createQueryAction(
+    "metabase/qb/ADD_QUERY_FILTER",
+    Query.addFilter,
+    ["QueryBuilder", "Add Filter"]
+);
+export const updateQueryFilter = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_FILTER",
+    Query.updateFilter,
+    ["QueryBuilder", "Modify Filter"]
+);
+export const removeQueryFilter = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_FILTER",
+    Query.removeFilter,
+    ["QueryBuilder", "Remove Filter"]
+);
+export const addQueryAggregation = createQueryAction(
+    "metabase/qb/ADD_QUERY_AGGREGATION",
+    Query.addAggregation,
+    ["QueryBuilder", "Add Aggregation"]
+);
+export const updateQueryAggregation = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_AGGREGATION",
+    Query.updateAggregation,
+    ["QueryBuilder", "Set Aggregation"]
+);
+export const removeQueryAggregation = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_AGGREGATION",
+    Query.removeAggregation,
+    ["QueryBuilder", "Remove Aggregation"]
+);
+export const addQueryOrderBy = createQueryAction(
+    "metabase/qb/ADD_QUERY_ORDER_BY",
+    Query.addOrderBy,
+    ["QueryBuilder", "Add OrderBy"]
+);
+export const updateQueryOrderBy = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_ORDER_BY",
+    Query.updateOrderBy,
+    ["QueryBuilder", "Set OrderBy"]
+);
+export const removeQueryOrderBy = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_ORDER_BY",
+    Query.removeOrderBy,
+    ["QueryBuilder", "Remove OrderBy"]
+);
+export const updateQueryLimit = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_LIMIT",
+    Query.updateLimit,
+    ["QueryBuilder", "Update Limit"]
+);
+export const addQueryExpression = createQueryAction(
+    "metabase/qb/ADD_QUERY_EXPRESSION",
+    Query.addExpression,
+    ["QueryBuilder", "Add Expression"]
+);
+export const updateQueryExpression = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_EXPRESSION",
+    Query.updateExpression,
+    ["QueryBuilder", "Set Expression"]
+);
+export const removeQueryExpression = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_EXPRESSION",
+    Query.removeExpression,
+    ["QueryBuilder", "Remove Expression"]
+);
 
 // runQuery
-export const RUN_QUERY = "RUN_QUERY";
+export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = true, parameterValues, dirty) => {
     return async (dispatch, getState) => {
         const state = getState();
@@ -801,11 +860,6 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
         parameterValues = parameterValues || state.qb.parameterValues || {};
 
         const cardIsDirty = isCardDirty(card, state.qb.originalCard);
-
-        card = {
-            ...card,
-            dataset_query: applyParameters(card, parameters, parameterValues)
-        };
 
         if (shouldUpdateUrl) {
             dispatch(updateUrl(card, { dirty: cardIsDirty }));
@@ -823,11 +877,13 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
             dispatch(queryErrored(startTime, error));
         }
 
+        const datasetQuery = applyParameters(card, parameters, parameterValues);
+
         // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        if (card && card.id && !isDirty(state) && dirty !== true) {
-            CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+        if (card.id && !cardIsDirty) {
+            CardApi.query({ cardId: card.id, parameters: datasetQuery.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
-            MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+            MetabaseApi.dataset(datasetQuery, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         }
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);
@@ -839,7 +895,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
     };
 });
 
-export const QUERY_COMPLETED = "QUERY_COMPLETED";
+export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResult) => {
     return async (dispatch, getState) => {
         let cardDisplay = card.display;
@@ -850,13 +906,13 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
         if (!isScalarVisualization &&
                 queryResult.data.rows &&
                 queryResult.data.rows.length === 1 &&
-                queryResult.data.columns.length === 1) {
+                queryResult.data.cols.length === 1) {
             // if we have a 1x1 data result then this should always be viewed as a scalar
             cardDisplay = "scalar";
 
         } else if (isScalarVisualization &&
                     queryResult.data.rows &&
-                    (queryResult.data.rows.length > 1 || queryResult.data.columns.length > 1)) {
+                    (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)) {
             // any time we were a scalar and now have more than 1x1 data switch to table view
             cardDisplay = "table";
 
@@ -866,13 +922,14 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
         }
 
         return {
+            card,
             cardDisplay,
             queryResult
         }
     };
 });
 
-export const QUERY_ERRORED = "QUERY_ERRORED";
+export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) => {
     return async (dispatch, getState) => {
         if (error && error.status === 0) {
@@ -885,7 +942,7 @@ export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) 
 })
 
 // cancelQuery
-export const CANCEL_QUERY = "CANCEL_QUERY";
+export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
     return async (dispatch, getState) => {
         const { qb: { uiControls, queryExecutionPromise } } = getState();
@@ -897,7 +954,7 @@ export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
 });
 
 // cellClicked
-export const CELL_CLICKED = "CELL_CLICKED";
+export const CELL_CLICKED = "metabase/qb/CELL_CLICKED";
 export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnIndex, filter) => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult } } = getState();
@@ -956,14 +1013,14 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             }
 
             // update and run the query
-            dispatch(setQuery(dataset_query, true));
+            dispatch(setDatasetQuery(dataset_query, true));
 
             MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "Quick Filter");
         }
     };
 });
 
-export const FOLLOW_FOREIGN_KEY = "FOLLOW_FOREIGN_KEY";
+export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult } } = getState();
@@ -991,7 +1048,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
 });
 
 
-export const LOAD_OBJECT_DETAIL_FK_REFERENCES = "LOAD_OBJECT_DETAIL_FK_REFERENCES";
+export const LOAD_OBJECT_DETAIL_FK_REFERENCES = "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL_FK_REFERENCES, () => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult, tableForeignKeys } } = getState();
@@ -1051,8 +1108,6 @@ export const toggleDataReferenceFn = toggleDataReference;
 export const onBeginEditing = beginEditing;
 export const onCancelEditing = cancelEditing;
 export const setQueryModeFn = setQueryMode;
-export const setSortFn = setQuerySort;
-export const setQueryFn = setQuery;
 export const runQueryFn = runQuery;
 export const cancelQueryFn = cancelQuery;
 export const setDatabaseFn = setQueryDatabase;

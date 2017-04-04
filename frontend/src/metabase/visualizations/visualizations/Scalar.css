@@ -6,7 +6,6 @@
   color: #525658;
 }
 :local .Scalar .Value {
-  color: rgb(31,31,31);
   font-weight: bold;
 }
 :local .Scalar .Title {
