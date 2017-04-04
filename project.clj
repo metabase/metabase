@@ -34,6 +34,7 @@
                                org.slf4j/jcl-over-slf4j
                                org.slf4j/slf4j-api
                                log4j]]
+                 [javax.validation/validation-api "1.1.0.Final"]      ; Fix DRILL-5383
                  [org.apache.hive/hive-jdbc "1.2.1"
                   :exclusions [org.mortbay.jetty/jetty
                                org.eclipse.jetty.aggregate/jetty-all
@@ -102,6 +103,7 @@
   :java-source-paths ["src-java"]
   :target-path "target/%s"
   :jvm-opts ["-server"                                                ; Run JVM in server mode as opposed to client -- see http://stackoverflow.com/questions/198577/real-differences-between-java-server-and-java-client for a good explanation of this
+             "-Xmx4g"
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
