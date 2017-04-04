@@ -19,7 +19,7 @@ export default class ChartTooltip extends Component {
     };
 
     componentWillReceiveProps({ hovered }) {
-        if (hovered && !Array.isArray(hovered.data)) {
+        if (hovered && hovered.data && !Array.isArray(hovered.data)) {
             console.warn("hovered.data should be an array of { key, value, col }", hovered.data);
         }
     }

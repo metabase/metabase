@@ -31,12 +31,20 @@
   (check-superuser)
   (read-check (metric/retrieve-metric id)))
 
+(defn- add-db-ids
+  "Add `:database_id` fields to METRICS by looking them up from their `:table_id`."
+  [metrics]
+  (when (seq metrics)
+    (let [table-id->db-id (db/select-id->field :db_id Table, :id [:in (set (map :table_id metrics))])]
+      (for [metric metrics]
+        (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
 (defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
   (filter mi/can-read? (-> (db/select Metric, :is_active true, {:order-by [:%lower.name]})
-                           (hydrate :creator))))
+                           (hydrate :creator)
+                           add-db-ids)))
 
 
 (defendpoint PUT "/:id"

@@ -3,6 +3,8 @@ import { Route } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 
+import cx from "classnames";
+
 const SIZES = [12, 16];
 
 const ListApp = () =>
@@ -94,10 +96,26 @@ class EmbedTestApp extends Component {
     }
 }
 
+// eslint-disable-next-line import/no-commonjs
+let colorStyles = require("!style!css?modules!postcss!metabase/css/core/colors.css");
+
+const ColorsApp = () =>
+    <div className="p2">
+        {Object.entries(colorStyles).map(([name, className]) =>
+            <div
+                className={cx(className, "rounded px1")}
+                style={{ paddingTop: "0.25em", paddingBottom: "0.25em", marginBottom: "0.25em" }}
+            >
+                {name}
+            </div>
+        )}
+    </div>
+
 export default (
     <Route>
         <Route path="list" component={ListApp} />
         <Route path="icons" component={IconsApp} />
+        <Route path="colors" component={ColorsApp} />
         <Route path="embed/:type/:uuid" component={EmbedTestApp} />
     </Route>
 );

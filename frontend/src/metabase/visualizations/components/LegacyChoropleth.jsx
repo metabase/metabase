@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import d3 from "d3";
 
-const LegacyChoropleth = ({ series, geoJson, projection, getColor, onHoverFeature }) => {
+const LegacyChoropleth = ({ series, geoJson, projection, getColor, onHoverFeature, onClickFeature }) => {
     let geo = d3.geo.path()
         .projection(projection);
 
@@ -27,6 +27,10 @@ const LegacyChoropleth = ({ series, geoJson, projection, getColor, onHoverFeatur
                                 event: e.nativeEvent
                             })}
                             onMouseLeave={() => onHoverFeature(null)}
+                            onClick={(e) => onClickFeature({
+                                feature: feature,
+                                event: e.nativeEvent
+                            })}
                         />
                     )}
                     </svg>

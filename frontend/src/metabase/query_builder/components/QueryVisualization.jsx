@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 import { Link } from "react-router";
 
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
@@ -28,7 +27,6 @@ const REFRESH_TOOLTIP_THRESHOLD = 60 * 1000; // 60 seconds
 export default class QueryVisualization extends Component {
     constructor(props, context) {
         super(props, context);
-
         this.state = this._getStateFromProps(props);
     }
 
@@ -42,13 +40,12 @@ export default class QueryVisualization extends Component {
         setDisplayFn: PropTypes.func.isRequired,
         onUpdateVisualizationSettings: PropTypes.func.isRequired,
         onReplaceAllVisualizationSettings: PropTypes.func.isRequired,
-        setSortFn: PropTypes.func.isRequired,
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
         isRunning: PropTypes.bool.isRequired,
         isRunnable: PropTypes.bool.isRequired,
         runQuery: PropTypes.func.isRequired,
-        cancelQueryFn: PropTypes.func
+        cancelQuery: PropTypes.func
     };
 
     static defaultProps = {
@@ -70,14 +67,6 @@ export default class QueryVisualization extends Component {
         }
     }
 
-    queryIsDirty() {
-        // a query is considered dirty if ANY part of it has been changed
-        return (
-            !Utils.equals(this.props.card.dataset_query, this.state.lastRunDatasetQuery) ||
-            !Utils.equals(this.props.parameterValues, this.state.lastRunParameterValues)
-        );
-    }
-
     isChartDisplay(display) {
         return (display !== "table" && display !== "scalar");
     }
@@ -87,12 +76,11 @@ export default class QueryVisualization extends Component {
     }
 
     renderHeader() {
-        const { isObjectDetail, isRunning, isAdmin, card, result } = this.props;
-        const isDirty = this.queryIsDirty();
+        const { isObjectDetail, isRunnable, isRunning, isResultDirty, isAdmin, card, result, cancelQuery } = this.props;
         const isSaved = card.id != null;
 
         let runButtonTooltip;
-        if (!isDirty && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
+        if (!isResultDirty && result && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
             runButtonTooltip = `This question will take approximately ${duration(result.average_execution_time)} to refresh`;
         }
 
@@ -106,11 +94,11 @@ export default class QueryVisualization extends Component {
                 <div className="absolute flex layout-centered left right z3">
                     <Tooltip tooltip={runButtonTooltip}>
                         <RunButton
-                            canRun={this.props.isRunnable}
-                            isDirty={isDirty}
+                            isRunnable={isRunnable}
+                            isDirty={isResultDirty}
                             isRunning={isRunning}
-                            runFn={this.runQuery}
-                            cancelFn={this.props.cancelQueryFn}
+                            onRun={this.runQuery}
+                            onCancel={cancelQuery}
                         />
                     </Tooltip>
                 </div>
@@ -120,11 +108,11 @@ export default class QueryVisualization extends Component {
                             Last updated {moment(result.updated_at).fromNow()}
                         </div>
                     }
-                    { !isDirty && this.renderCount() }
+                    { !isResultDirty && this.renderCount() }
                     { !isObjectDetail &&
                         <Warnings warnings={this.state.warnings} className="mx2" size={18} />
                     }
-                    { !isDirty && result && !result.error ?
+                    { !isResultDirty && result && !result.error ?
                         <QueryDownloadWidget
                             className="mx1"
                             card={card}
@@ -159,7 +147,7 @@ export default class QueryVisualization extends Component {
     }
 
     render() {
-        const { card, databases, isObjectDetail, isRunning, result } = this.props
+        const { className, card, databases, isObjectDetail, isRunning, result } = this.props
         let viz;
 
         if (!result) {
@@ -177,24 +165,25 @@ export default class QueryVisualization extends Component {
                         onUpdateWarnings={(warnings) => this.setState({ warnings })}
                         onOpenChartSettings={() => this.refs.settings.open()}
                         {...this.props}
+                        className="spread"
                     />
                 );
             }
         }
 
-        const wrapperClasses = cx('wrapper full relative mb2 z1', {
+        const wrapperClasses = cx(className, 'relative', {
             'flex': !isObjectDetail,
             'flex-column': !isObjectDetail
         });
 
-        const visualizationClasses = cx('flex flex-full Visualization z1 px1', {
+        const visualizationClasses = cx('flex flex-full Visualization z1 relative', {
             'Visualization--errors': (result && result.error),
             'Visualization--loading': isRunning
         });
 
         return (
             <div className={wrapperClasses}>
-                {this.renderHeader()}
+                { !this.props.noHeader && this.renderHeader()}
                 { isRunning && (
                     <div className="Loading spread flex flex-column layout-centered text-brand z2">
                         <LoadingSpinner />

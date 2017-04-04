@@ -27,7 +27,7 @@ describe("data_grid", () => {
             ])
             let pivotedData = pivot(data);
             expect(pivotedData.cols.length).toEqual(3);
-            expect(pivotedData.rows).toEqual([
+            expect(pivotedData.rows.map(row => [...row])).toEqual([
                 ["x", 1, 4],
                 ["y", 2, 5],
                 ["z", 3, 6]
