@@ -171,7 +171,7 @@ export default class PieChart extends Component<*, Props, *> {
         let value, title;
         if (hovered && hovered.index != null && slices[hovered.index] !== otherSlice) {
             title = slices[hovered.index].key;
-            value = slices[hovered.index].value;
+            value = formatMetric(slices[hovered.index].value);
         } else {
             title = "Total";
             value = formatMetric(total);
