@@ -152,9 +152,11 @@ export default class ChoroplethMap extends Component {
         const getFeatureKey   = (feature) => String(feature.properties[keyProperty]).toLowerCase();
         const getFeatureValue = (feature) => valuesMap[getFeatureKey(feature)];
 
+        const heatMapColors = HEAT_MAP_COLORS.slice(0, Math.min(HEAT_MAP_COLORS.length, rows.length))
+
         const onHoverFeature = (hover) => {
             onHoverChange && onHoverChange(hover && {
-                index: HEAT_MAP_COLORS.indexOf(getColor(hover.feature)),
+                index: heatMapColors.indexOf(getColor(hover.feature)),
                 event: hover.event,
                 data: { key: getFeatureName(hover.feature), value: getFeatureValue(hover.feature)
             } })
@@ -182,15 +184,15 @@ export default class ChoroplethMap extends Component {
             domain.push(getRowValue(row));
         }
 
-        const groups = ss.ckmeans(domain, HEAT_MAP_COLORS.length);
+        const groups = ss.ckmeans(domain, heatMapColors.length);
 
-        var colorScale = d3.scale.quantile().domain(groups.map((cluster) => cluster[0])).range(HEAT_MAP_COLORS);
+        var colorScale = d3.scale.quantile().domain(groups.map((cluster) => cluster[0])).range(heatMapColors);
 
-        let legendColors = HEAT_MAP_COLORS.slice();
-        let legendTitles = HEAT_MAP_COLORS.map((color, index) => {
+        let legendColors = heatMapColors.slice();
+        let legendTitles = heatMapColors.map((color, index) => {
             const min = groups[index][0];
             const max = groups[index].slice(-1)[0];
-            return index === HEAT_MAP_COLORS.length - 1 ?
+            return index === heatMapColors.length - 1 ?
                 formatNumber(min) + " +" :
                 formatNumber(min) + " - " + formatNumber(max)
         });
