@@ -30,6 +30,25 @@
 (def ^:private backend-instance
   (atom nil))
 
+(defn- valid-backend? [instance] (extends? i/IQueryProcessorCacheBackend (class instance)))
+
+(defn- get-backend-instance-in-namespace
+  "Return a valid query cache backend `instance` in BACKEND-NS-SYMB, or throw an Exception if none exists."
+  ;; if for some reason the resolved var doesn't satisfy `IQueryProcessorCacheBackend` we'll reload the namespace
+  ;; it belongs to and try one more time.
+  ;; This fixes the issue in dev sessions where the interface namespace gets reloaded causing the cache implementation
+  ;; to no longer satisfy the protocol
+  ([backend-ns-symb]
+   (get-backend-instance-in-namespace backend-ns-symb :allow-reload))
+  ([backend-ns-symb allow-reload?]
+   (let [varr (ns-resolve backend-ns-symb 'instance)]
+     (cond
+       (not varr)             (throw (Exception. (str "No var named 'instance' found in namespace " backend-ns-symb)))
+       (valid-backend? @varr) @varr
+       allow-reload?          (do (require backend-ns-symb :reload)
+                                  (get-backend-instance-in-namespace backend-ns-symb false))
+       :else                  (throw (Exception. (format "%s/instance doesn't satisfy IQueryProcessorCacheBackend" backend-ns-symb)))))))
+
 (defn- set-backend!
   "Set the cache backend to the cache defined by the keyword BACKEND.
 
@@ -41,12 +60,7 @@
    (let [backend-ns (symbol (str "metabase.query-processor.middleware.cache-backend." (munge (name backend))))]
      (require backend-ns)
      (log/info "Using query processor cache backend:" (u/format-color 'blue backend) (u/emoji "💾"))
-     (let [instance (ns-resolve backend-ns 'instance)]
-       (assert instance
-         (str "No var named 'instance' found in namespace " backend-ns))
-       (assert (extends? i/IQueryProcessorCacheBackend (class @instance))
-         (str "%s/instance doesn't satisfy IQueryProcessorCacheBackend" backend-ns))
-       (reset! backend-instance @instance)))))
+     (reset! backend-instance (get-backend-instance-in-namespace backend-ns)))))
 
 
 
