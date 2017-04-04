@@ -142,7 +142,9 @@
     (-> query-execution
         (dissoc :error :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
         (merge query-result)
-        (assoc :status :completed))))
+        (assoc :status :completed
+               :average_execution_time (when (:cached query-result)
+                                         (query/average-execution-time-ms (:hash query-execution)))))))
 
 
 (defn- assert-query-status-successful
