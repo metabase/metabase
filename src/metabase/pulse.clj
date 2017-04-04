@@ -65,6 +65,20 @@
                               (str "Pulse: " (:name pulse))
                               attachments)))
 
+(defn- is-card-empty?
+  "Check if the card is empty"
+  [card]
+  (let [result (:result card)]
+    (or (zero? (-> result :row_count))
+        ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+        (= [[nil]]
+           (-> result :data :rows)))))
+
+(defn- are-all-cards-empty?
+  "Do none of the cards have any results?"
+  [results]
+  (every? is-card-empty? results))
+
 (defn send-pulse!
   "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
    `PulseCard`, formatting the results, and sending the results to any specified destination.
@@ -77,9 +91,10 @@
   (let [results     (for [card cards]
                       (execute-card (:id card), :pulse-id (:id pulse))) ; Pulse ID may be `nil` if the Pulse isn't saved yet
         channel-ids (or channel-ids (mapv :id (:channels pulse)))]
-    (doseq [channel-id channel-ids]
-      (let [{:keys [channel_type details recipients]} (some #(when (= channel-id (:id %)) %)
-                                                            (:channels pulse))]
-        (condp = (keyword channel_type)
-          :email (send-email-pulse! pulse results recipients)
-          :slack (send-slack-pulse! pulse results (:channel details)))))))
+    (when-not (and (:skip_if_empty pulse) (are-all-cards-empty? results))
+      (doseq [channel-id channel-ids]
+        (let [{:keys [channel_type details recipients]} (some #(when (= channel-id (:id %)) %)
+                                                              (:channels pulse))]
+          (condp = (keyword channel_type)
+            :email (send-email-pulse! pulse results recipients)
+            :slack (send-slack-pulse! pulse results (:channel details))))))))
