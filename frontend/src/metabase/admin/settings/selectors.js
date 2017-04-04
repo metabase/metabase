@@ -229,7 +229,7 @@ const SECTIONS = [
             },
             {
                 key: "ldap-group-sync",
-                display_name: "Synchronize groups",
+                display_name: "Synchronize group memberships",
                 description: null,
                 type: "boolean"
             },
@@ -238,6 +238,11 @@ const SECTIONS = [
                 display_name: "Group search base",
                 type: "string",
                 required: true
+            },
+            {
+                key: "ldap-group-mappings",
+                display_name: "Group mappings",
+                type: "string"
             }
         ]
     },

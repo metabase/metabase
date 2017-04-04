@@ -1,6 +1,7 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require [clojure.tools.logging :as log]
+            [clojure.set :as set]
             [cemerick.friend.credentials :as creds]
             [cheshire.core :as json]
             [clj-http.client :as http]
@@ -11,7 +12,8 @@
             [metabase.api.common :refer :all]
             [metabase.email.messages :as email]
             [metabase.events :as events]
-            (metabase.models [user :refer [User], :as user]
+            (metabase.models [permissions-group :as group]
+                             [user :refer [User], :as user]
                              [session :refer [Session]]
                              [setting :refer [defsetting]])
             [metabase.integrations.ldap :as ldap]
@@ -32,11 +34,30 @@
       :user_id (:id user))
     (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
+(defn- ldap-groups->mb-group-ids
+  [ldap-groups]
+  (-> (ldap/ldap-group-mappings)
+      (select-keys (map keyword ldap-groups))
+      (vals)
+      (flatten)
+      (set)))
+
 (defn- ldap-auth-fetch-or-create-user! [first-name last-name email password groups]
   (when-let [user (or (db/select-one [User :id :last_login] :email email)
                       (user/create-new-ldap-auth-user! first-name last-name email password))]
     (u/prog1 {:id (create-session! user)}
-      (user/set-password! (:id user) password))))
+      (user/set-password! (:id user) password)
+      (when (ldap/ldap-group-sync)
+        (let [special-ids #{(:id (group/admin)) (:id (group/all-users))}
+              current-ids (set (map :group_id (db/select ['PermissionsGroupMembership :group_id] :user_id (:id user))))
+              ldap-ids    (when-let [ids (seq (ldap-groups->mb-group-ids groups))]
+                            (set (map :id (db/select ['PermissionsGroup :id] :id [:in ids]))))
+              to-remove   (set/difference current-ids ldap-ids special-ids)
+              to-add      (set/difference ldap-ids current-ids)]
+          (when (seq to-remove)
+            (db/delete! 'PermissionsGroupMembership :group_id [:in to-remove], :user_id (:id user)))
+          (doseq [id to-add]
+            (db/insert! 'PermissionsGroupMembership :group_id id, :user_id (:id user))))))))
 
 ;;; ## API Endpoints
 

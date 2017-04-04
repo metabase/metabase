@@ -49,12 +49,20 @@
   :default "sn")
 
 (defsetting ldap-group-sync
-  "Wether to synchronize group membership with LDAP."
+  "Enable group membership synchronization with LDAP."
   :type    :boolean
   :default false)
 
 (defsetting ldap-group-base
-  "Search base for groups. (Will be searched recursively)")
+  "Search base for groups. (Will be searched recursively if the LDAP server does not provide a 'memberOf' property)")
+
+
+(defsetting ldap-group-mappings
+  ;; Not too sure about this
+  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
+  "JSON containing LDAP to Metabase group mappings."
+  :type    :json
+  :default {})
 
 (defn ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
