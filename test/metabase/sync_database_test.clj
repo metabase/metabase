@@ -326,21 +326,23 @@
 
 
 ;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.analyze/low-cardinality-threshold` (currently 300) (#3215) --------------------
+(defn- insert-range-sql [rang]
+  (str "INSERT INTO blueberries_consumed (num) VALUES "
+       (str/join ", " (for [n rang]
+                        (str "(" n ")")))))
+
 (expect
   false
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
     (binding [mdb/*allow-potentailly-unsafe-connections* true]
       (tt/with-temp Database [db {:engine :h2, :details details}]
-        (let [driver       (driver/engine->driver :h2)
-              spec         (sql/connection-details->spec driver details)
-              exec!        #(doseq [statement %]
-                              (println (jdbc/execute! spec [statement])))
-              insert-range #(str "INSERT INTO blueberries_consumed (num) VALUES "
-                                 (str/join ", " (for [n %]
-                                                  (str "(" n ")"))))]
+        (let [driver (driver/engine->driver :h2)
+              spec   (sql/connection-details->spec driver details)
+              exec!  #(doseq [statement %]
+                        (jdbc/execute! spec [statement]))]
           ;; create the `blueberries_consumed` table and insert a 100 values
           (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
-                  (insert-range (range 100))])
+                  (insert-range-sql (range 100))])
           (sync-database! db, :full-sync? true)
           (let [table-id (db/select-one-id Table :db_id (u/get-id db))
                 field-id (db/select-one-id Field :table_id table-id)]
@@ -348,6 +350,6 @@
             (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
                        100))
             ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
-            (exec! [(insert-range (range 100 (+ 100 @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold))))])
+            (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold))))])
             (sync-database! db, :full-sync? true)
             (db/exists? FieldValues :field_id field-id)))))))

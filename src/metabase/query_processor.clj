@@ -139,12 +139,11 @@
     (when-not (:cached query-result)
       (save-query-execution! query-execution))
     ;; ok, now return the results in the normal response format
-    (-> query-execution
-        (dissoc :error :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
-        (merge query-result)
-        (assoc :status :completed
-               :average_execution_time (when (:cached query-result)
-                                         (query/average-execution-time-ms (:hash query-execution)))))))
+    (merge (dissoc query-execution :error :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
+           query-result
+           {:status                 :completed
+            :average_execution_time (when (:cached query-result)
+                                      (query/average-execution-time-ms (:hash query-execution)))})))
 
 
 (defn- assert-query-status-successful

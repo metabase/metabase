@@ -40,7 +40,7 @@
 (defn format-response [m]
   (into {} (for [[k v] m]
              (cond
-               (contains? #{:id :started_at :running_time :hash :average_execution_time} k) [k (boolean v)]
+               (contains? #{:id :started_at :running_time :hash} k) [k (boolean v)]
                (= :data k) [k (if-not (contains? v :native_form)
                                 v
                                 (update v :native_form boolean))]
@@ -68,7 +68,7 @@
                                 (assoc :constraints default-query-constraints))
     :started_at             true
     :running_time           true
-    :average_execution_time true}
+    :average_execution_time nil}
    ;; QueryExecution record in the DB
    {:hash         true
     :row_count    1

@@ -95,7 +95,7 @@
                            (println "no matching session with ID") ; DEBUG
                            )]
       (if (session-expired? session)
-        (println (format "session-is-expired! %d min / %d min" (session-age-minutes session) (config/config-int :max-session-age))) ; DEBUG
+        (printf "session-is-expired! %d min / %d min\n" (session-age-minutes session) (config/config-int :max-session-age)) ; DEBUG
         {:metabase-user-id (:user_id session)
          :is-superuser?    (:is_superuser session)}))))
 
