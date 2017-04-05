@@ -64,7 +64,7 @@ function formatMajorMinor(major, minor, options = {}) {
     }
 }
 
-function formatTimeWithUnit(value, unit, options = {}) {
+export function formatTimeWithUnit(value, unit, options = {}) {
     let m = parseTimestamp(value, unit);
     if (!m.isValid()) {
         return String(value);

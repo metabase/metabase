@@ -4,17 +4,11 @@ import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor.jsx
 
 import { serializeCardForUrl } from "metabase/lib/card";
 
-import _ from "underscore";
 import cx from "classnames";
 
+import * as Query from "metabase/lib/query/query";
+
 export default class PartialQueryBuilder extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-
-        _.bindAll(this, "setQuery");
-    }
-
     static propTypes = {
         onChange: PropTypes.func.isRequired,
         tableMetadata: PropTypes.object.isRequired,
@@ -34,15 +28,15 @@ export default class PartialQueryBuilder extends Component {
         });
     }
 
-    setQuery(query) {
-        this.props.onChange(query.query);
-        this.props.updatePreviewSummary(query);
+    setDatasetQuery = (datasetQuery) => {
+        this.props.onChange(datasetQuery.query);
+        this.props.updatePreviewSummary(datasetQuery);
     }
 
     render() {
         let { features, value, tableMetadata, previewSummary } = this.props;
 
-        let dataset_query = {
+        let datasetQuery = {
             type: "query",
             database: tableMetadata.db_id,
             query: {
@@ -53,28 +47,39 @@ export default class PartialQueryBuilder extends Component {
 
         let previewCard = {
             dataset_query: {
-                ...dataset_query,
+                ...datasetQuery,
                 query: {
                     aggregation: ["rows"],
                     breakout: [],
                     filter: [],
-                    ...dataset_query.query
+                    ...datasetQuery.query
                 }
             }
         };
         let previewUrl = "/q#" + serializeCardForUrl(previewCard);
 
+        const onChange = (query) => {
+            this.props.onChange(query);
+            this.props.updatePreviewSummary({ ...datasetQuery, query });
+        }
+
         return (
             <div className="py1">
                 <GuiQueryEditor
-                    query={dataset_query}
                     features={features}
+                    datasetQuery={datasetQuery}
                     tableMetadata={tableMetadata}
                     databases={tableMetadata && [tableMetadata.db]}
-                    setQueryFn={this.setQuery}
+                    setDatasetQuery={this.setDatasetQuery}
                     isShowingDataReference={false}
                     setDatabaseFn={null}
                     setSourceTableFn={null}
+                    addQueryFilter={(filter) => onChange(Query.addFilter(datasetQuery.query, filter))}
+                    updateQueryFilter={(index, filter) => onChange(Query.updateFilter(datasetQuery.query, index, filter))}
+                    removeQueryFilter={(index) => onChange(Query.removeFilter(datasetQuery.query, index))}
+                    addQueryAggregation={(aggregation) => onChange(Query.addAggregation(datasetQuery.query, aggregation))}
+                    updateQueryAggregation={(index, aggregation) => onChange(Query.updateAggregation(datasetQuery.query, index, aggregation))}
+                    removeQueryAggregation={(index) => onChange(Query.removeAggregation(datasetQuery.query, index))}
                 >
                     <div className="flex align-center mx2 my2">
                         <span className="text-bold px3">{previewSummary}</span>

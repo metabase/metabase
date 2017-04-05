@@ -33,7 +33,8 @@ export default class LegendHeader extends Component {
 
     static defaultProps = {
         series: [],
-        settings: {}
+        settings: {},
+        visualizationIsClickable: () => false
     };
 
     componentDidMount() {
@@ -48,12 +49,15 @@ export default class LegendHeader extends Component {
     }
 
     render() {
-        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings, description } = this.props;
+        const { series, hovered, onRemoveSeries, actionButtons, onHoverChange, linkToCard, settings, description, onVisualizationClick, visualizationIsClickable } = this.props;
         const showDots = series.length > 1;
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
 
         let colors = settings["graph.colors"] || DEFAULT_COLORS;
+
+        const isClickable = series.length > 0 && series[0].clicked && visualizationIsClickable(series[0].clicked);
+
         return (
             <div  className={cx(styles.LegendHeader, "Card-title mx1 flex flex-no-shrink flex-row align-center")}>
                 { series.map((s, index) => [
@@ -68,7 +72,10 @@ export default class LegendHeader extends Component {
                         isMuted={hovered && hovered.index != null && index !== hovered.index}
                         onMouseEnter={() => onHoverChange && onHoverChange({ index })}
                         onMouseLeave={() => onHoverChange && onHoverChange(null) }
-                        />,
+                        onClick={isClickable && ((e) =>
+                            onVisualizationClick({ ...s.clicked, element: e.currentTarget })
+                        )}
+                    />,
                     onRemoveSeries && index > 0 &&
                       <Icon
                           name="close"
