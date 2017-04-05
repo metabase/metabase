@@ -6,6 +6,7 @@ import Button from "metabase/components/Button";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
 import GroupSummary from "metabase/admin/people/components/GroupSummary";
 import Icon from "metabase/components/Icon.jsx";
+import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Modal from "metabase/components/Modal";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
@@ -23,7 +24,6 @@ type Props = {
 type State = {
     showModal: boolean,
     groups: Object[],
-    newMapping: string,
     mappings: { [string]: number[] },
     error: any
 };
@@ -37,7 +37,6 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
         this.state = {
             showModal: false,
             groups: [],
-            newMapping: '',
             mappings: {},
             error: null
         };
@@ -45,16 +44,15 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
 
     _editMappingsClick = async (e) => {
         e.preventDefault();
-        let groups = await PermissionsApi.groups();
-        this.setState({ showModal: true, groups });
+        this.setState({ showModal: true });
+        PermissionsApi.groups().then((groups) => this.setState({ groups }));
     }
 
-    _addMappingClick = () => {
-        const { newMapping } = this.state;
-        this.setState((prevState: State) => ({ mappings: { ...prevState.mappings, [newMapping]: [] }, newMapping: '' }));
+    _addMapping = (dn) => {
+        this.setState((prevState: State) => ({ mappings: { ...prevState.mappings, [dn]: [] } }));
     }
 
-    _mappingGroupChange = (dn: string) => (group, selected) => {
+    _changeMapping = (dn: string) => (group, selected) => {
         if (selected) {
             this.setState((prevState: State) => ({ mappings: { ...prevState.mappings, [dn]: [...prevState.mappings[dn], group.id] } }));
         } else {
@@ -62,7 +60,7 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
         }
     }
 
-    _deleteMappingClick = (dn: string) => (e) => {
+    _deleteMapping = (dn: string) => (e) => {
         e.preventDefault();
         this.setState((prevState: State) => ({ mappings: _.omit(prevState.mappings, dn) }));
     }
@@ -78,9 +76,7 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
     }
 
     render() {
-        const { showModal, groups, newMapping, mappings } = this.state;
-
-        let isAddValid = newMapping && !mappings[newMapping];
+        const { showModal, groups, mappings } = this.state;
 
         return (
             <div className="flex align-center">
@@ -98,49 +94,17 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td colSpan="3" style={{ padding: 0 }}>
-                                            <div className="my2 pl1 p1 bordered border-brand rounded relative flex align-center">
-                                                <input
-                                                    className="input--borderless h3 ml1 flex-full"
-                                                    type="text"
-                                                    value={newMapping}
-                                                    placeholder="cn=People,ou=Groups,dc=metabase,dc=com"
-                                                    autoFocus
-                                                    onChange={(e) => this.setState({newMapping: e.target.value})}
-                                                />
-                                                <Button className="ml2" primary={!!isAddValid} disabled={!isAddValid} onClick={this._addMappingClick}>Add</Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    { Object.entries(mappings).map(([dn, ids]) => {
-                                        let selected = ids.reduce((g, id) => ({ ...g, [id]: true }), {});
-                                        return (
-                                            <tr key={dn}>
-                                                <td>{dn}</td>
-                                                <td>
-                                                    <PopoverWithTrigger
-                                                        ref="popover"
-                                                        triggerElement={
-                                                            <div className="flex align-center">
-                                                                <span className="mr1 text-grey-4">
-                                                                    <GroupSummary groups={groups} selectedGroups={selected} />
-                                                                </span>
-                                                                <Icon className="text-grey-2" name="chevrondown"  size={10}/>
-                                                            </div>
-                                                        }
-                                                        triggerClasses="AdminSelectBorderless py1"
-                                                        sizeToFit
-                                                    >
-                                                        <GroupSelect groups={groups} selectedGroups={selected} onGroupChange={this._mappingGroupChange(dn)} />
-                                                    </PopoverWithTrigger>
-                                                </td>
-                                                <td className="Table-actions">
-                                                    <Button warning onClick={this._deleteMappingClick(dn)}>Remove</Button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    }) }
+                                    <AddMappingRow mappings={mappings} onAdd={this._addMapping} />
+                                    { Object.entries(mappings).map(([dn, ids]) =>
+                                        <MappingRow
+                                            key={dn}
+                                            dn={dn}
+                                            groups={groups}
+                                            selectedIds={ids}
+                                            onChange={this._changeMapping(dn)}
+                                            onDelete={this._deleteMapping(dn)}
+                                        />
+                                    ) }
                                 </tbody>
                             </table>
                             <div className="py1">
@@ -153,4 +117,88 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
             </div>
         );
     }
+}
+
+class AddMappingRow extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.state = {
+            value: ''
+        };
+    }
+
+    _handleAddClick = (e) => {
+        const { state: { value }, props: { onAdd } } = this;
+        e.preventDefault();
+        this.setState({ value: '' });
+        onAdd && onAdd(value);
+    }
+
+    render() {
+        const { state: { value }, props: { mappings } } = this;
+
+        let isValid = value && !mappings[value];
+
+        return (
+            <tr>
+                <td colSpan="3" style={{ padding: 0 }}>
+                    <div className="my2 pl1 p1 bordered border-brand rounded relative flex align-center">
+                        <input
+                            className="input--borderless h3 ml1 flex-full"
+                            type="text"
+                            value={value}
+                            placeholder="cn=People,ou=Groups,dc=metabase,dc=com"
+                            autoFocus
+                            onChange={(e) => this.setState({value: e.target.value})}
+                        />
+                        <Button className="ml2" primary={!!isValid} disabled={!isValid} onClick={this._handleAddClick}>Add</Button>
+                    </div>
+                </td>
+            </tr>
+        );
+    }
+}
+
+const MappingGroupSelect = ({ groups, selectedIds = {}, onGroupChange }) => {
+    let selected = selectedIds.reduce((g, id) => ({ ...g, [id]: true }), {});
+
+    if (!groups || groups.length === 0) {
+        return <LoadingSpinner />;
+    }
+
+    return (
+        <PopoverWithTrigger
+            ref="popover"
+            triggerElement={
+                <div className="flex align-center">
+                    <span className="mr1 text-grey-4">
+                        <GroupSummary groups={groups} selectedGroups={selected} />
+                    </span>
+                    <Icon className="text-grey-2" name="chevrondown"  size={10}/>
+                </div>
+            }
+            triggerClasses="AdminSelectBorderless py1"
+            sizeToFit
+        >
+            <GroupSelect groups={groups} selectedGroups={selected} onGroupChange={onGroupChange} />
+        </PopoverWithTrigger>
+    );
+}
+
+const MappingRow = ({ dn, groups, selectedIds, onChange, onDelete }) => {
+    return (
+        <tr>
+            <td>{dn}</td>
+            <td>
+                <MappingGroupSelect
+                    groups={groups}
+                    selectedIds={selectedIds}
+                    onGroupChange={onChange}
+                />
+            </td>
+            <td className="Table-actions">
+                <Button warning onClick={onDelete}>Remove</Button>
+            </td>
+        </tr>
+    );
 }
