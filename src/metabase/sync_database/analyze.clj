@@ -186,12 +186,13 @@
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
   {:style/indent 1}
-  [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
+  [driver & {:keys [field-avg-length-fn field-percent-urls-fn calculate-row-count?]
              :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
-                    field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
+                    field-percent-urls-fn (partial driver/default-field-percent-urls driver)
+                    calculate-row-count?  true}}]
   (fn [driver table new-field-ids]
     (let [driver (assoc driver :field-avg-length field-avg-length-fn, :field-percent-urls field-percent-urls-fn)]
-      {:row_count (u/try-apply table-row-count table)
+      {:row_count (when calculate-row-count? (u/try-apply table-row-count table))
        :fields    (for [{:keys [id] :as field} (table/fields table)]
                     (let [new-field? (contains? new-field-ids id)]
                       (cond->> {:id id}
