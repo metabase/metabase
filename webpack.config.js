@@ -9,6 +9,7 @@ var webpackPostcssTools = require('webpack-postcss-tools');
 
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
+var HtmlWebpackHarddiskPlugin = require('html-webpack-harddisk-plugin');
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
 var BannerWebpackPlugin = require('banner-webpack-plugin');
 
@@ -159,19 +160,25 @@ var config = module.exports = {
             filename: '../../index.html',
             chunks: ["app-main", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
-            inject: 'head'
+            inject: 'head',
+            alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../public.html',
             chunks: ["app-public", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
-            inject: 'head'
+            inject: 'head',
+            alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../embed.html',
             chunks: ["app-embed", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
-            inject: 'head'
+            inject: 'head',
+            alwaysWriteToDisk: true,
+        }),
+        new HtmlWebpackHarddiskPlugin({
+            outputPath: __dirname + '/resources/frontend_client/app/dist'
         }),
         new webpack.DefinePlugin({
             'process.env': {
