@@ -11,6 +11,11 @@ import cx from "classnames";
 
 import "./EmbedFrame.css";
 
+const DEFAULT_OPTIONS = {
+    bordered: IFRAMED,
+    titled: true
+}
+
 import type { Parameter } from "metabase/meta/types/Dashboard";
 
 type Props = {
@@ -25,21 +30,6 @@ type Props = {
     setParameterValue: (id: string, value: string) => void
 }
 
-const DEFAULT_OPTIONS = {
-    bordered: IFRAMED,
-    titled: true
-}
-
-let frames = [];
-window.iFrameResizer = {
-    autoResize: true,
-    heightCalculationMethod: "bodyScroll",
-    readyCallback() {
-        frames.map(frame => frame.setState({ innerScroll: false }))
-    }
-}
-import "iframe-resizer/js/iframeResizer.contentWindow.js";
-
 @withRouter
 export default class EmbedFrame extends Component<*, Props, *> {
     state = {
@@ -47,10 +37,20 @@ export default class EmbedFrame extends Component<*, Props, *> {
     }
 
     componentWillMount() {
-        frames = frames.concat(this);
-    }
-    componentWillUnmount() {
-        frames = frames.filter(frame => frame !== this);
+        if (window.iFrameResizer) {
+            console.error("iFrameResizer resizer already defined.")
+        } else {
+            window.iFrameResizer = {
+                autoResize: true,
+                heightCalculationMethod: "bodyScroll",
+                readyCallback: () => {
+                    this.setState({ innerScroll: false })
+                }
+            }
+            require.ensure([], () => {
+                require("iframe-resizer/js/iframeResizer.contentWindow.js")
+            });
+        }
     }
 
     _getOptions() {
