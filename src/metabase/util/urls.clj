@@ -18,14 +18,14 @@
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 
-     (dashboard-url 10) -> \"http://localhost:3000/dash/10\""
+     (dashboard-url 10) -> \"http://localhost:3000/dashboard/10\""
   [^Integer id]
   (format "%s/dashboard/%d" (public-settings/site-url) id))
 
 (defn card-url
   "Return an appropriate URL for a `Card` with ID.
 
-     (card-url 10) -> \"http://localhost:3000/card/10\""
+     (card-url 10) -> \"http://localhost:3000/question/10\""
   [^Integer id]
   (format "%s/question/%d" (public-settings/site-url) id))
 
