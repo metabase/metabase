@@ -10,7 +10,7 @@ import { isNumeric, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } fr
 import { metricSetting, dimensionSetting, fieldSetting } from "metabase/visualizations/lib/settings";
 import MetabaseSettings from "metabase/lib/settings";
 
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 import _ from "underscore";
 

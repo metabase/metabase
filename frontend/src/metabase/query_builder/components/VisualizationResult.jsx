@@ -5,9 +5,9 @@ import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetai
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
-const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result, ...rest}) => {
+const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result, ...props}) => {
     if (isObjectDetail) {
-        return <QueryVisualizationObjectDetailTable data={result.data} {...rest} />
+        return <QueryVisualizationObjectDetailTable data={result.data} {...props} />
     } else if (result.data.rows.length === 0) {
         // successful query but there were 0 rows returned with the result
         return <VisualizationErrorMessage
@@ -29,11 +29,11 @@ const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result,
             dataset_query: lastRunDatasetQuery
         };
         return <Visualization
-                  className="full"
                   series={[{ card: vizCard, data: result.data }]}
+                  onChangeCardAndRun={props.setCardAndRun}
                   isEditing={true}
                   // Table:
-                  {...rest}
+                  {...props}
               />
     }
 }
@@ -43,6 +43,7 @@ VisualizationResult.propTypes = {
     isObjectDetail:         PropTypes.bool.isRequired,
     lastRunDatasetQuery:    PropTypes.object.isRequired,
     result:                 PropTypes.object.isRequired,
+    setCardAndRun:          PropTypes.func,
 }
 
 export default VisualizationResult;

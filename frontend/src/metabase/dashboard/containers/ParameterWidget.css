@@ -12,7 +12,8 @@
     position: relative;
     height: 0;
     line-height: 0;
-    margin-left: 0.5em;
+    margin-left: -0.45em;
+    padding: 0 0.5em;
 }
 
 :local(.container.deemphasized) {

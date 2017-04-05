@@ -70,15 +70,33 @@ Step-by-step instructions on how to upgrade Metabase running on Heroku.
 
 # Troubleshooting Common Problems
 
-### Metabase fails to startup
+### Metabase fails to start due to database locks
 
-Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly.
+Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly. The error message will look something like:
+
+    liquibase.exception.DatabaseException: liquibase.exception.LockException: Could not acquire change log lock.
 
 When this happens, go to a terminal where Metabase is installed and run:
 
     java -jar metabase.jar migrate release-locks
 
-in the command line to manually clear the locks.  Then restart your Metabase instance.
+in the command line to manually clear the locks. Then restart your Metabase instance.
+
+### Metabase fails to start due to OutOfMemoryErrors
+
+On Java 7, Metabase may fail to launch with a message like
+
+    java.lang.OutOfMemoryError: PermGen space
+
+or one like
+
+    Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler
+
+If this happens, setting a few JVM options should fix your issue:
+
+    java -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m -jar target/uberjar/metabase.jar
+
+Alternatively, you can upgrade to Java 8 instead, which will fix the issue as well.
 
 
 # Configuring the Metabase Application Database

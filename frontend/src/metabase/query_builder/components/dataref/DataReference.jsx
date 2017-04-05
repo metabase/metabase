@@ -27,7 +27,7 @@ export default class DataReference extends Component {
         query: PropTypes.object.isRequired,
         onClose: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
+        setDatasetQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func.isRequired,
         setDisplayFn: PropTypes.func.isRequired

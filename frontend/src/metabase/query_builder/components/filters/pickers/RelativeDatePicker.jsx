@@ -9,20 +9,25 @@ import NumericInput from "./NumericInput.jsx";
 
 import type { TimeIntervalFilter, RelativeDatetimeUnit } from "metabase/meta/types/Query";
 
-const PERIODS: RelativeDatetimeUnit[] = [
-    "minute",
-    "hour",
+export const DATE_PERIODS: RelativeDatetimeUnit[] = [
     "day",
     "week",
     "month",
     "year"
 ];
 
+const TIME_PERIODS: RelativeDatetimeUnit[] = [
+    "minute",
+    "hour",
+];
+
+const ALL_PERIODS = DATE_PERIODS.concat(TIME_PERIODS);
 
 type Props = {
     filter: TimeIntervalFilter,
     onFilterChange: (filter: TimeIntervalFilter) => void,
-    formatter: (value: any) => any
+    formatter: (value: any) => any,
+    hideTimeSelectors?: boolean
 }
 
 type State = {
@@ -43,7 +48,8 @@ export default class RelativeDatePicker extends Component<*, Props, State> {
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
-        formatter: PropTypes.func.isRequired
+        formatter: PropTypes.func.isRequired,
+        hideTimeSelectors: PropTypes.bool
     };
 
     static defaultProps = {
@@ -74,6 +80,7 @@ export default class RelativeDatePicker extends Component<*, Props, State> {
                     // $FlowFixMe: intervals could be a string like "current" "next"
                     intervals={intervals}
                     formatter={formatter}
+                    periods={this.props.hideTimeSelectors ? DATE_PERIODS : ALL_PERIODS}
                 />
             </div>
         );
@@ -86,10 +93,11 @@ type UnitPickerProps = {
     open: bool,
     intervals?: number,
     togglePicker: () => void,
-    formatter: (value: ?number) => ?number
+    formatter: (value: ?number) => ?number,
+    periods: RelativeDatetimeUnit[]
 }
 
-export const UnitPicker = ({ open, value, onChange, togglePicker, intervals, formatter }: UnitPickerProps) =>
+export const UnitPicker = ({ open, value, onChange, togglePicker, intervals, formatter, periods }: UnitPickerProps) =>
    <div>
        <div
            onClick={() => togglePicker()}
@@ -110,7 +118,7 @@ export const UnitPicker = ({ open, value, onChange, togglePicker, intervals, for
                 overflow: 'hidden'
             }}
         >
-           { PERIODS.map((unit, index) =>
+           { periods.map((unit, index) =>
                <li
                    className={cx(
                        'List-item cursor-pointer p1',

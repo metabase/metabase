@@ -293,64 +293,119 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, series, isStacked, onHoverChange) {
+function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
-        chart.selectAll(".bar, .dot, .area, .line, .bubble")
-            .on("mousemove", function(d, i) {
-                const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
-                const card = series[seriesIndex].card;
-                const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
-                const isArea = this.classList.contains("area");
-
-                let data = [];
-                if (Array.isArray(d.key)) { // scatter
-                    if (d.key._origin) {
-                        data = d.key._origin.row.map((value, index) => {
-                            const col = d.key._origin.cols[index];
-                            return { key: getFriendlyName(col), value: value, col };
-                        });
-                    } else {
-                        data = d.key.map((value, index) => (
-                            { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
-                        ));
-                    }
-                } else if (d.data) { // line, area, bar
-                    if (!isSingleSeriesBar) {
-                        cols = series[seriesIndex].data.cols;
-                    }
-                    data = [
-                        { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
-                        { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
-                    ];
-                }
-
-                if (data && series.length > 1) {
-                    if (card._breakoutColumn) {
-                        data.unshift({
-                            key: getFriendlyName(card._breakoutColumn),
-                            value: card._breakoutValue,
-                            col: card._breakoutColumn
-                        });
-                    }
-                }
-
-                data = _.uniq(data, (d) => d.col);
-
-                onHoverChange && onHoverChange({
-                    // for single series bar charts, fade the series and highlght the hovered element with CSS
-                    index: isSingleSeriesBar ? -1 : seriesIndex,
-                    // for area charts, use the mouse location rather than the DOM element
-                    element: isArea ? null : this,
-                    event: isArea ? d3.event : null,
-                    data: data.length > 0 ? data : null,
-                });
-            })
-            .on("mouseleave", function() {
-                onHoverChange && onHoverChange(null);
-            });
-
         chart.selectAll("title").remove();
+
+        if (onHoverChange) {
+            chart.selectAll(".bar, .dot, .area, .line, .bubble")
+                .on("mousemove", function(d, i) {
+                    const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
+                    const card = series[seriesIndex].card;
+                    const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
+                    const isArea = this.classList.contains("area");
+
+                    let data = [];
+                    if (Array.isArray(d.key)) { // scatter
+                        if (d.key._origin) {
+                            data = d.key._origin.row.map((value, index) => {
+                                const col = d.key._origin.cols[index];
+                                return { key: getFriendlyName(col), value: value, col };
+                            });
+                        } else {
+                            data = d.key.map((value, index) => (
+                                { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
+                            ));
+                        }
+                    } else if (d.data) { // line, area, bar
+                        if (!isSingleSeriesBar) {
+                            cols = series[seriesIndex].data.cols;
+                        }
+                        data = [
+                            { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
+                            { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
+                        ];
+                    }
+
+                    if (data && series.length > 1) {
+                        if (card._breakoutColumn) {
+                            data.unshift({
+                                key: getFriendlyName(card._breakoutColumn),
+                                value: card._breakoutValue,
+                                col: card._breakoutColumn
+                            });
+                        }
+                    }
+
+                    data = _.uniq(data, (d) => d.col);
+
+                    onHoverChange({
+                        // for single series bar charts, fade the series and highlght the hovered element with CSS
+                        index: isSingleSeriesBar ? -1 : seriesIndex,
+                        // for area charts, use the mouse location rather than the DOM element
+                        element: isArea ? null : this,
+                        event: isArea ? d3.event : null,
+                        data: data.length > 0 ? data : null,
+                    });
+                })
+                .on("mouseleave", function() {
+                    if (!onHoverChange) {
+                        return;
+                    }
+                    onHoverChange(null);
+                })
+        }
+
+        if (onVisualizationClick) {
+            chart.selectAll(".bar, .dot, .bubble")
+                .style({ "cursor": "pointer" })
+                .on("mouseup", function(d) {
+                    const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
+                    const card = series[seriesIndex].card;
+                    const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
+
+                    let clicked;
+                    if (Array.isArray(d.key)) { // scatter
+                        clicked = {
+                            value: d.key[2],
+                            column: cols[2],
+                            dimensions: [
+                                { value: d.key[0], column: cols[0] },
+                                { value: d.key[1], column: cols[1] }
+                            ],
+                            origin: d.key._origin
+                        }
+                    } else if (d.data) { // line, area, bar
+                        if (!isSingleSeriesBar) {
+                            cols = series[seriesIndex].data.cols;
+                        }
+                        clicked = {
+                            value: d.data.value,
+                            column: cols[1],
+                            dimensions: [
+                                { value: d.data.key, column: cols[0] }
+                            ]
+                        }
+                    }
+
+                    if (clicked && series.length > 1 && card._breakoutColumn) {
+                        clicked.dimensions.push({
+                            value: card._breakoutValue,
+                            column: card._breakoutColumn
+                        });
+                    }
+
+                    if (clicked) {
+                        const isLine = this.classList.contains("dot");
+                        onVisualizationClick({
+                            ...clicked,
+                            element: isLine ? this : null,
+                            event: isLine ? null : d3.event,
+                        });
+                    }
+                });
+        }
     });
 }
 
@@ -486,6 +541,10 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
                         let e = point[2];
                         dispatchUIEvent(e, "mouseleave");
                         d3.select(e).classed("hover", false);
+                    })
+                    .on("mouseup", ({ point }) => {
+                        let e = point[2];
+                        dispatchUIEvent(e, "mouseup");
                     })
                 .order();
 
@@ -746,7 +805,7 @@ function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], indexMa
 }
 
 
-export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings, maxSeries }) {
+export default function lineAreaBar(element, { series, onHoverChange, onVisualizationClick, onRender, chartType, isScalarSeries, settings, maxSeries }) {
     const colors = settings["graph.colors"];
 
     const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
@@ -1073,7 +1132,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             }
             onHoverChange(hovered);
         }
-    });
+    }, onVisualizationClick);
 
     // render
     parent.render();
@@ -1101,9 +1160,18 @@ export const scatterRenderer = (element, props) => lineAreaBar(element, { ...pro
 
 export function rowRenderer(
   element,
-  { settings, series, onHoverChange, height }
+  { settings, series, onHoverChange, onVisualizationClick, height }
 ) {
+  const { cols } = series[0].data;
+
+  if (series.length > 1) {
+    throw new Error("Row chart does not support multiple series");
+  }
+
   const chart = dc.rowChart(element);
+
+  // disable clicks
+  chart.onClick = () => {};
 
   const colors = settings["graph.colors"];
 
@@ -1118,20 +1186,35 @@ export function rowRenderer(
   initChart(chart, element);
 
   chart.on("renderlet.tooltips", chart => {
-    chart.selectAll(".row rect").on("mousemove", (d, i) => {
-      const { cols } = series[0].data;
-      onHoverChange && onHoverChange({
-          // for single series bar charts, fade the series and highlght the hovered element with CSS
-          index: -1,
-          event: d3.event,
-          data: [
-            { key: getFriendlyName(cols[0]), value: d.key, col: cols[0] },
-            { key: getFriendlyName(cols[1]), value: d.value, col: cols[1] }
-          ]
-        });
-    }).on("mouseleave", () => {
-      onHoverChange && onHoverChange(null);
-    });
+      if (onHoverChange) {
+          chart.selectAll(".row rect").on("mousemove", (d, i) => {
+            onHoverChange && onHoverChange({
+                // for single series bar charts, fade the series and highlght the hovered element with CSS
+                index: -1,
+                event: d3.event,
+                data: [
+                  { key: getFriendlyName(cols[0]), value: d.key, col: cols[0] },
+                  { key: getFriendlyName(cols[1]), value: d.value, col: cols[1] }
+                ]
+              });
+          }).on("mouseleave", () => {
+            onHoverChange && onHoverChange(null);
+          });
+      }
+
+      if (onVisualizationClick) {
+          chart.selectAll(".row rect").on("mouseup", function(d) {
+              onVisualizationClick({
+                  value: d.value,
+                  column: cols[1],
+                  dimensions: [{
+                      value: d.key,
+                      column: cols[0]
+                  }],
+                  element: this
+              })
+          });
+      }
   });
 
   chart

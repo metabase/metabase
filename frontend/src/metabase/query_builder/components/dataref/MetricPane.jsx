@@ -27,7 +27,7 @@ export default class MetricPane extends Component {
         query: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
+        setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
 
@@ -65,7 +65,7 @@ export default class MetricPane extends Component {
         let useForCurrentQuestion = [];
         let usefulQuestions = [];
 
-        usefulQuestions.push(<QueryButton icon="illustration-icon-scalar" text={"See " + metricName} onClick={this.setQueryMetric} />);
+        usefulQuestions.push(<QueryButton icon="number" text={"See " + metricName} onClick={this.setQueryMetric} />);
 
         return (
             <DetailPane

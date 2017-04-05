@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 import { Link } from "react-router";
 
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
@@ -23,8 +22,6 @@ import _ from "underscore";
 export default class QueryVisualization extends Component {
     constructor(props, context) {
         super(props, context);
-        this.runQuery = this.runQuery.bind(this);
-
         this.state = this._getStateFromProps(props);
     }
 
@@ -38,7 +35,6 @@ export default class QueryVisualization extends Component {
         setDisplayFn: PropTypes.func.isRequired,
         onUpdateVisualizationSettings: PropTypes.func.isRequired,
         onReplaceAllVisualizationSettings: PropTypes.func.isRequired,
-        setSortFn: PropTypes.func.isRequired,
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
         isRunning: PropTypes.bool.isRequired,
@@ -78,12 +74,8 @@ export default class QueryVisualization extends Component {
         return (display !== "table" && display !== "scalar");
     }
 
-    runQuery() {
-        this.props.runQueryFn();
-    }
-
     renderHeader() {
-        const { isObjectDetail, isRunning, isAdmin, card, result } = this.props;
+        const { isObjectDetail, isRunnable, isRunning, isAdmin, card, result, runQueryFn, cancelQueryFn } = this.props;
         const isDirty = this.queryIsDirty();
         const isSaved = card.id != null;
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
@@ -95,11 +87,11 @@ export default class QueryVisualization extends Component {
                 </span>
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
-                        canRun={this.props.isRunnable}
+                        isRunnable={isRunnable}
                         isDirty={isDirty}
                         isRunning={isRunning}
-                        runFn={this.runQuery}
-                        cancelFn={this.props.cancelQueryFn}
+                        onRun={runQueryFn}
+                        onCancel={cancelQueryFn}
                     />
                 </div>
                 <div className="absolute right z4 flex align-center" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
@@ -142,7 +134,7 @@ export default class QueryVisualization extends Component {
     }
 
     render() {
-        const { card, databases, isObjectDetail, isRunning, result } = this.props
+        const { className, card, databases, isObjectDetail, isRunning, result } = this.props
         let viz;
 
         if (!result) {
@@ -160,24 +152,25 @@ export default class QueryVisualization extends Component {
                         onUpdateWarnings={(warnings) => this.setState({ warnings })}
                         onOpenChartSettings={() => this.refs.settings.open()}
                         {...this.props}
+                        className="spread"
                     />
                 );
             }
         }
 
-        const wrapperClasses = cx('wrapper full relative mb2 z1', {
+        const wrapperClasses = cx(className, 'relative', {
             'flex': !isObjectDetail,
             'flex-column': !isObjectDetail
         });
 
-        const visualizationClasses = cx('flex flex-full Visualization z1 px1', {
+        const visualizationClasses = cx('flex flex-full Visualization z1 relative', {
             'Visualization--errors': (result && result.error),
             'Visualization--loading': isRunning
         });
 
         return (
             <div className={wrapperClasses}>
-                {this.renderHeader()}
+                { !this.props.noHeader && this.renderHeader()}
                 { isRunning && (
                     <div className="Loading spread flex flex-column layout-centered text-brand z2">
                         <LoadingSpinner />

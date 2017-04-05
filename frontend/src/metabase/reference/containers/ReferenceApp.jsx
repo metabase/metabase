@@ -1,6 +1,5 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from 'react';
-import ReactDom from 'react-dom';
 import { connect } from 'react-redux';
 
 import Sidebar from 'metabase/components/Sidebar.jsx';

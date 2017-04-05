@@ -2,6 +2,7 @@
   "/api/pulse endpoints."
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [hiccup.core :refer [html]]
+            [schema.core :as s]
             [metabase.api.common :refer :all]
             [toucan.db :as db]
             [metabase.email :as email]
@@ -38,12 +39,13 @@
 
 (defendpoint POST "/"
   "Create a new `Pulse`."
-  [:as {{:keys [name cards channels]} :body}]
-  {name     su/NonBlankString
-   cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])}
+  [:as {{:keys [name cards channels skip_if_empty]} :body}]
+  {name          su/NonBlankString
+   cards         (su/non-empty [su/Map])
+   channels      (su/non-empty [su/Map])
+   skip_if_empty s/Bool}
   (check-card-read-permissions cards)
-  (check-500 (pulse/create-pulse! name *current-user-id* (map u/get-id cards) channels)))
+  (check-500 (pulse/create-pulse! name *current-user-id* (map u/get-id cards) channels skip_if_empty)))
 
 
 (defendpoint GET "/:id"
@@ -55,16 +57,18 @@
 
 (defendpoint PUT "/:id"
   "Update a `Pulse` with ID."
-  [id :as {{:keys [name cards channels]} :body}]
-  {name     su/NonBlankString
-   cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])}
+  [id :as {{:keys [name cards channels skip_if_empty]} :body}]
+  {name          su/NonBlankString
+   cards         (su/non-empty [su/Map])
+   channels      (su/non-empty [su/Map])
+   skip_if_empty s/Bool}
   (write-check Pulse id)
   (check-card-read-permissions cards)
-  (pulse/update-pulse! {:id       id
-                        :name     name
-                        :cards    (map u/get-id cards)
-                        :channels channels})
+  (pulse/update-pulse! {:id             id
+                        :name           name
+                        :cards          (map u/get-id cards)
+                        :channels       channels
+                        :skip-if-empty? skip_if_empty})
   (pulse/retrieve-pulse id))
 
 
@@ -87,12 +91,14 @@
                  ;; no Slack integration, so we are g2g
                  chan-types
                  ;; if we have Slack enabled build a dynamic list of channels/users
-                 (let [slack-channels (for [channel (slack/channels-list)]
-                                        (str \# (:name channel)))
-                       slack-users    (for [user (slack/users-list)]
-                                        (str \@ (:name user)))]
-                   (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users))))}))
-
+                 (try
+                   (let [slack-channels (for [channel (slack/channels-list)]
+                                          (str \# (:name channel)))
+                         slack-users    (for [user (slack/users-list)]
+                                          (str \@ (:name user)))]
+                     (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users)))
+                   (catch Throwable e
+                     (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
 (defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a `Card` with ID."
@@ -128,10 +134,11 @@
 
 (defendpoint POST "/test"
   "Test send an unsaved pulse."
-  [:as {{:keys [name cards channels] :as body} :body}]
-  {name     su/NonBlankString
-   cards    (su/non-empty [su/Map])
-   channels (su/non-empty [su/Map])}
+  [:as {{:keys [name cards channels skip_if_empty] :as body} :body}]
+  {name          su/NonBlankString
+   cards         (su/non-empty [su/Map])
+   channels      (su/non-empty [su/Map])
+   skip_if_empty s/Bool}
   (check-card-read-permissions cards)
   (p/send-pulse! body)
   {:ok true})

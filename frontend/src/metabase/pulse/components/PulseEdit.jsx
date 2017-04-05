@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCards from "./PulseEditCards.jsx";
 import PulseEditChannels from "./PulseEditChannels.jsx";
+import PulseEditSkip from "./PulseEditSkip.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
@@ -116,6 +117,7 @@ export default class PulseEdit extends Component {
                     <PulseEditName {...this.props} setPulse={this.setPulse} />
                     <PulseEditCards {...this.props} setPulse={this.setPulse} />
                     <PulseEditChannels {...this.props} setPulse={this.setPulse} pulseIsValid={isValid} />
+                    <PulseEditSkip {...this.props} setPulse={this.setPulse} />
                     { pulse && pulse.id != null &&
                         <div className="DangerZone mb2 p3 rounded bordered relative">
                             <h3 className="text-error absolute top bg-white px1" style={{ marginTop: "-12px" }}>Danger Zone</h3>

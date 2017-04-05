@@ -32,22 +32,13 @@
    (keyword "Long Varchar")   :type/Text
    (keyword "Long Varbinary") :type/*})
 
-(defn- vertica-spec [{:keys [host port db]
-                      :or   {host "localhost", port 5433, db ""}
-                      :as   opts}]
+(defn- connection-details->spec [{:keys [host port db dbname]
+                                  :or   {host "localhost", port 5433, db ""}
+                                  :as   details}]
   (merge {:classname   "com.vertica.jdbc.Driver"
           :subprotocol "vertica"
-          :subname     (str "//" host ":" port "/" db)}
-         (dissoc opts :host :port :db :ssl)))
-
-(defn- connection-details->spec [details-map]
-  (-> details-map
-      (update :port (fn [port]
-                      (if (string? port)
-                        (Integer/parseInt port)
-                        port)))
-      (rename-keys {:dbname :db})
-      vertica-spec))
+          :subname     (str "//" host ":" port "/" (or dbname db))}
+         (dissoc details :host :port :dbname :db :ssl)))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
