@@ -139,7 +139,6 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             return { uiControls };
         }
 
-
         // load up or initialize the card we'll be working on
         let options = {};
         let serializedCard;

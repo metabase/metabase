@@ -20,14 +20,14 @@
 
      (dashboard-url 10) -> \"http://localhost:3000/dash/10\""
   [^Integer id]
-  (format "%s/dash/%d" (public-settings/site-url) id))
+  (format "%s/dashboard/%d" (public-settings/site-url) id))
 
 (defn card-url
   "Return an appropriate URL for a `Card` with ID.
 
      (card-url 10) -> \"http://localhost:3000/card/10\""
   [^Integer id]
-  (format "%s/card/%d" (public-settings/site-url) id))
+  (format "%s/question/%d" (public-settings/site-url) id))
 
 (defn segment-url
   "Return an appropriate URL for a `Segment` with ID.
