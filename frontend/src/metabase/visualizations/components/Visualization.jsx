@@ -15,13 +15,14 @@ import { duration, formatNumber } from "metabase/lib/formatting";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/visualizations/lib/settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
-import Utils from "metabase/lib/utils";
 
+import Utils from "metabase/lib/utils";
+import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { getModeDrills } from "metabase/qb/lib/modes"
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
-import { assoc, getIn, setIn } from "icepick";
+import { assoc, setIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -273,7 +274,8 @@ export default class Visualization extends Component<*, Props, State> {
         }
 
         if (!error) {
-            noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
+            // $FlowFixMe
+            noResults = series[0] && series[0].data && datasetContainsNoResults(series[0].data);
         }
 
         let extra = (
