@@ -13,7 +13,7 @@ import { createParameter, setParameterName as setParamName, setParameterDefaultV
 import { applyParameters } from "metabase/meta/Card";
 import { getParametersBySlug } from "metabase/meta/Parameter";
 
-import type { Dashboard, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
+import type { DashboardWithCards, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
 import type { Card, CardId } from "metabase/meta/types/Card";
 
 import Utils from "metabase/lib/utils";
@@ -120,7 +120,7 @@ export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
 export const addCardToDashboard = function({ dashId, cardId }: { dashId: DashCardId, cardId: CardId }) {
     return function(dispatch, getState) {
         const { dashboards, dashcards, cards } = getState().dashboard;
-        const dashboard: Dashboard = dashboards[dashId];
+        const dashboard: DashboardWithCards = dashboards[dashId];
         const existingCards: Array<DashCard> = dashboard.ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved);
         const card: Card = cards[cardId];
         const dashcard: DashCard = {

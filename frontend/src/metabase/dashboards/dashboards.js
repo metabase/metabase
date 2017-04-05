@@ -4,6 +4,8 @@ import { handleActions, createAction, combineReducers, createThunkAction } from 
 import { DashboardApi } from "metabase/services";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import type { Dashboard } from "metabase/meta/types/Dashboard";
+
 export const FETCH_DASHBOARDS = "metabase/dashboards/FETCH_DASHBOARDS";
 export const CREATE_DASHBOARD = "metabase/dashboards/CREATE_DASHBOARD";
 export const DELETE_DASHBOARD = "metabase/dashboards/DELETE_DASHBOARD";
@@ -55,7 +57,7 @@ export const deleteDashboard = createAction(DELETE_DASHBOARD, async (dashId) => 
     return dashId;
 });
 
-export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashboard) {
+export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashboard: Dashboard) {
     return async function(dispatch, getState) {
         let { id, name, description, parameters } = dashboard
         MetabaseAnalytics.trackEvent("Dashboard", "Update");
