@@ -22,7 +22,7 @@ type Props = {
 };
 
 type State = {
-    showModal: boolean,
+    showEditModal: boolean,
     groups: Object[],
     mappings: { [string]: number[] },
     error: any
@@ -35,21 +35,31 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
     constructor(props, context) {
         super(props, context);
         this.state = {
-            showModal: false,
+            showEditModal: false,
+            showAddRow: false,
             groups: [],
             mappings: {},
             error: null
         };
     }
 
-    _editMappingsClick = async (e) => {
+    _showEditModal = (e) => {
         e.preventDefault();
-        this.setState({ showModal: true });
+        this.setState({ showEditModal: true });
         PermissionsApi.groups().then((groups) => this.setState({ groups }));
     }
 
+    _showAddRow = (e) => {
+        e.preventDefault();
+        this.setState({ showAddRow: true });
+    }
+
+    _hideAddRow = (e) => {
+        this.setState({ showAddRow: false });
+    }
+
     _addMapping = (dn) => {
-        this.setState((prevState: State) => ({ mappings: { ...prevState.mappings, [dn]: [] } }));
+        this.setState((prevState: State) => ({ mappings: { ...prevState.mappings, [dn]: [] }, showAddRow: false }));
     }
 
     _changeMapping = (dn: string) => (group, selected) => {
@@ -67,34 +77,43 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
 
     _cancelClick = (e) => {
         e.preventDefault();
-        this.setState({ showModal: false });
+        this.setState({ showEditModal: false, showAddRow: false });
     }
 
     _saveClick = (e) => {
         e.preventDefault();
-        this.setState({ showModal: false });
+        this.setState({ showEditModal: false, showAddRow: false });
     }
 
     render() {
-        const { showModal, groups, mappings } = this.state;
+        const { showEditModal, showAddRow, groups, mappings } = this.state;
 
         return (
             <div className="flex align-center">
                 <SettingToggle {...this.props} />
-                <Button className="ml1" primary medium onClick={this._editMappingsClick}>Edit Mappings</Button>
-                { showModal ? (
+                <Button className="ml1" primary medium onClick={this._showEditModal}>Edit Mappings</Button>
+                { showEditModal ? (
                     <Modal wide>
                         <div className="p4">
-                            <h2>Edit Mappings</h2>
+                            <h2>Group Mappings</h2>
+                            <Button className="float-right" primary onClick={this._showAddRow}>Create a mapping</Button>
+                            <p className="text-measure">
+                                Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
+                                directory server. Note however that membership to the Admin group can be granted through mappings, but will never be
+                                automatically revoked as a failsafe measure.
+                            </p>
                             <table className="ContentTable">
                                 <thead>
                                     <tr>
                                         <th>Distinguished Name</th>
                                         <th>Groups</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <AddMappingRow mappings={mappings} onAdd={this._addMapping} />
+                                    { showAddRow ? (
+                                        <AddMappingRow mappings={mappings} onCancel={this._hideAddRow} onAdd={this._addMapping} />
+                                    ) : null }
                                     { Object.entries(mappings).map(([dn, ids]) =>
                                         <MappingRow
                                             key={dn}
@@ -127,6 +146,13 @@ class AddMappingRow extends Component {
         };
     }
 
+    _handleCancelClick = (e) => {
+        const { onCancel } = this.props;
+        e.preventDefault();
+        this.setState({ value: '' });
+        onCancel && onCancel();
+    }
+
     _handleAddClick = (e) => {
         const { state: { value }, props: { onAdd } } = this;
         e.preventDefault();
@@ -151,6 +177,7 @@ class AddMappingRow extends Component {
                             autoFocus
                             onChange={(e) => this.setState({value: e.target.value})}
                         />
+                        <span className="link no-decoration cursor-pointer" onClick={this._handleCancelClick}>Cancel</span>
                         <Button className="ml2" primary={!!isValid} disabled={!isValid} onClick={this._handleAddClick}>Add</Button>
                     </div>
                 </td>
