@@ -47,7 +47,7 @@ export default class DashboardHeader extends Component {
         fetchDashboard: PropTypes.func.isRequired,
         fetchRevisions: PropTypes.func.isRequired,
         revertToRevision: PropTypes.func.isRequired,
-        saveEditedDashboard: PropTypes.func.isRequired,
+        saveDashboardAndCards: PropTypes.func.isRequired,
         setDashboardAttribute: PropTypes.func.isRequired,
         onEditingChange: PropTypes.func.isRequired,
         setRefreshPeriod: PropTypes.func.isRequired,
@@ -69,7 +69,7 @@ export default class DashboardHeader extends Component {
     }
 
     async onSave() {
-        await this.props.saveEditedDashboard(this.props.dashboard.id);
+        await this.props.saveDashboardAndCards(this.props.dashboard.id);
         this.onDoneEditing();
     }
 

@@ -47,7 +47,7 @@ export const DELETE_CARD = "metabase/dashboard/DELETE_CARD";
 
 // NOTE: this is used in metabase/redux/metadata but can't be imported directly due to circular reference
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
-export const SAVE_EDITED_DASHBOARD = "metabase/dashboard/SAVE_EDITED_DASHBOARD";
+export const SAVE_DASHBOARD_AND_CARDS = "metabase/dashboard/SAVE_DASHBOARD_AND_CARDS";
 export const SET_DASHBOARD_ATTRIBUTES = "metabase/dashboard/SET_DASHBOARD_ATTRIBUTES";
 
 export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
@@ -138,13 +138,72 @@ export const addCardToDashboard = function({ dashId, cardId }: { dashId: DashCar
     };
 }
 
-export const saveEditedDashboard = createThunkAction(SAVE_EDITED_DASHBOARD, function(cardId) {
+export const saveDashboardAndCards = createThunkAction(SAVE_DASHBOARD_AND_CARDS, function(cardId) {
     return async function (dispatch, getState) {
         let {dashboards, dashcards, dashboardId} = getState().dashboard;
         let dashboard = {
             ...dashboards[dashboardId],
             ordered_cards: dashboards[dashboardId].ordered_cards.map(dashcardId => dashcards[dashcardId])
         };
+
+        // remove isRemoved dashboards
+        await Promise.all(dashboard.ordered_cards
+            .filter(dc => dc.isRemoved && !dc.isAdded)
+            .map(dc => DashboardApi.removecard({ dashId: dashboard.id, dashcardId: dc.id })));
+
+        // add isAdded dashboards
+        let updatedDashcards = await Promise.all(dashboard.ordered_cards
+            .filter(dc => !dc.isRemoved)
+            .map(async dc => {
+                if (dc.isAdded) {
+                    let result = await DashboardApi.addcard({ dashId: dashboard.id, cardId: dc.card_id });
+                    dispatch(updateDashcardId(dc.id, result.id));
+
+                    // mark isAdded because addcard doesn't record the position
+                    return {
+                        ...result,
+                        col: dc.col, row: dc.row,
+                        sizeX: dc.sizeX, sizeY: dc.sizeY,
+                        series: dc.series,
+                        parameter_mappings: dc.parameter_mappings,
+                        visualization_settings: dc.visualization_settings,
+                        isAdded: true
+                    }
+                } else {
+                    return dc;
+                }
+            }));
+
+        // update modified cards
+        await Promise.all(dashboard.ordered_cards
+            .filter(dc => dc.card.isDirty)
+            .map(async dc => CardApi.update(dc.card)));
+
+        // update the dashboard itself
+        if (dashboard.isDirty) {
+            let { id, name, description, parameters } = dashboard
+            await dispatch(saveDashboard({ id, name, description, parameters }));
+        }
+
+        // reposition the cards
+        if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
+            let cards = updatedDashcards.map(({ id, card_id, row, col, sizeX, sizeY, series, parameter_mappings, visualization_settings }) =>
+                ({
+                    id, card_id, row, col, sizeX, sizeY, series, visualization_settings,
+                    parameter_mappings: parameter_mappings && parameter_mappings.filter(mapping =>
+                            // filter out mappings for deleted paramters
+                        _.findWhere(dashboard.parameters, { id: mapping.parameter_id }) &&
+                        // filter out mappings for deleted series
+                        (card_id === mapping.card_id || _.findWhere(series, { id: mapping.card_id }))
+                    )
+                })
+            );
+
+            const result = await DashboardApi.reposition_cards({ dashId: dashboard.id, cards });
+            if (result.status !== "ok") {
+                throw new Error(result.status);
+            }
+        }
 
         await dispatch(saveDashboard(dashboard));
 
@@ -154,6 +213,8 @@ export const saveEditedDashboard = createThunkAction(SAVE_EDITED_DASHBOARD, func
 });
 
 export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
+
+const updateDashcardId = createAction(UPDATE_DASHCARD_ID, (oldDashcardId, newDashcardId) => ({ oldDashcardId, newDashcardId }));
 
 export const clearCardData = createAction(CLEAR_CARD_DATA, (cardId, dashcardId) => ({ cardId, dashcardId }));
 
