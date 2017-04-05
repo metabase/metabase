@@ -16,26 +16,30 @@ import QueryVisualization from "../components/QueryVisualization.jsx";
 import DataReference from "../components/dataref/DataReference.jsx";
 import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
+import ActionsWidget from "../components/ActionsWidget.jsx";
 
 import {
-    card,
-    originalCard,
-    databases,
-    queryResult,
-    parameterValues,
-    isDirty,
-    isNew,
-    isObjectDetail,
-    tables,
-    tableMetadata,
-    tableForeignKeys,
-    tableForeignKeyReferences,
-    uiControls,
+    getCard,
+    getOriginalCard,
+    getLastRunCard,
+    getDatabases,
+    getQueryResult,
+    getParameterValues,
+    getIsDirty,
+    getIsNew,
+    getIsObjectDetail,
+    getTables,
+    getTableMetadata,
+    getTableForeignKeys,
+    getTableForeignKeyReferences,
+    getUiControls,
     getParametersWithValues,
     getDatabaseFields,
     getSampleDatasetId,
     getNativeDatabases,
     getIsRunnable,
+    getIsResultDirty,
+    getMode,
 } from "../selectors";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -70,21 +74,28 @@ const mapStateToProps = (state, props) => {
         isAdmin:                   getUserIsAdmin(state, props),
         fromUrl:                   props.location.query.from,
 
-        card:                      card(state),
-        originalCard:              originalCard(state),
-        query:                     state.qb.card && state.qb.card.dataset_query,  // TODO: EOL, redundant
-        parameterValues:           parameterValues(state),
-        databases:                 databases(state),
+        mode:                      getMode(state),
+
+        card:                      getCard(state),
+        originalCard:              getOriginalCard(state),
+        lastRunCard:               getLastRunCard(state),
+
+        parameterValues:           getParameterValues(state),
+
+        databases:                 getDatabases(state),
         nativeDatabases:           getNativeDatabases(state),
-        tables:                    tables(state),
-        tableMetadata:             tableMetadata(state),
-        tableForeignKeys:          tableForeignKeys(state),
-        tableForeignKeyReferences: tableForeignKeyReferences(state),
-        result:                    queryResult(state),
-        isDirty:                   isDirty(state),
-        isNew:                     isNew(state),
-        isObjectDetail:            isObjectDetail(state),
-        uiControls:                uiControls(state),
+        tables:                    getTables(state),
+        tableMetadata:             getTableMetadata(state),
+        tableForeignKeys:          getTableForeignKeys(state),
+        tableForeignKeyReferences: getTableForeignKeyReferences(state),
+
+        result:                    getQueryResult(state),
+
+        isDirty:                   getIsDirty(state),
+        isNew:                     getIsNew(state),
+        isObjectDetail:            getIsObjectDetail(state),
+
+        uiControls:                getUiControls(state),
         parameters:                getParametersWithValues(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
@@ -94,6 +105,7 @@ const mapStateToProps = (state, props) => {
         isEditing:                 state.qb.uiControls.isEditing,
         isRunning:                 state.qb.uiControls.isRunning,
         isRunnable:                getIsRunnable(state),
+        isResultDirty:             getIsResultDirty(state),
 
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
@@ -118,6 +130,10 @@ export default class QueryBuilder extends Component {
 
         // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
+
+        this.state = {
+            legacy: true
+        }
     }
 
     componentWillMount() {
@@ -170,7 +186,17 @@ export default class QueryBuilder extends Component {
     }
 
     render() {
-        const { card, isDirty, databases, uiControls } = this.props;
+        return (
+            <div className="flex-full flex relative">
+                <LegacyQueryBuilder {...this.props} />
+            </div>
+        )
+    }
+}
+
+class LegacyQueryBuilder extends Component {
+    render() {
+        const { card, isDirty, databases, uiControls, mode } = this.props;
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -180,6 +206,8 @@ export default class QueryBuilder extends Component {
         }
 
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
+        const ModeFooter = mode && mode.ModeFooter;
+
         return (
             <div className="flex-full relative">
                 <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showSideDrawer": showDrawer})}>
@@ -189,17 +217,28 @@ export default class QueryBuilder extends Component {
 
                     <div id="react_qb_editor" className="z2">
                         { card && card.dataset_query && card.dataset_query.type === "native" ?
-                            <NativeQueryEditor {...this.props} isOpen={!card.dataset_query.native.query || isDirty} />
+                            <NativeQueryEditor
+                                {...this.props}
+                                isOpen={!card.dataset_query.native.query || isDirty}
+                                datasetQuery={card && card.dataset_query}
+                            />
                         :
                             <div className="wrapper">
-                                <GuiQueryEditor {...this.props}/>
+                                <GuiQueryEditor
+                                    {...this.props}
+                                    datasetQuery={card && card.dataset_query}
+                                />
                             </div>
                         }
                     </div>
 
                     <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        <QueryVisualization {...this.props} />
+                        <QueryVisualization {...this.props} className="full wrapper mb2 z1" />
                     </div>
+
+                    { ModeFooter &&
+                        <ModeFooter {...this.props} className="flex-no-shrink" />
+                    }
                 </div>
 
                 <div className={cx("SideDrawer", { "SideDrawer--show": showDrawer })}>
@@ -219,6 +258,8 @@ export default class QueryBuilder extends Component {
                 { uiControls.isShowingNewbModal &&
                     <SavedQuestionIntroModal onClose={() => this.props.closeQbNewbModal()} />
                 }
+
+                <ActionsWidget {...this.props} className="z2 absolute bottom right" />
             </div>
         );
     }

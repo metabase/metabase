@@ -1,6 +1,6 @@
-// provides functions for building urls to things we care about
-
 import { serializeCardForUrl } from "metabase/lib/card";
+
+// provides functions for building urls to things we care about
 
 export function question(cardId, cardOrHash = "") {
     if (cardOrHash && typeof cardOrHash === "object") {

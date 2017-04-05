@@ -4,11 +4,21 @@
             (honeysql [core :as hsql]
                       [format :as hformat])
             [metabase.config :as config]
-            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
+
+(defn- connection-details->spec
+  "Create a database specification for a SQLite3 database. DETAILS should include a
+  key for `:db` which is the path to the database file."
+  [{:keys [db]
+    :or   {db "sqlite.db"}
+    :as   details}]
+  (merge {:classname   "org.sqlite.JDBC"
+          :subprotocol "sqlite"
+          :subname     db}
+         (dissoc details :db)))
 
 ;; We'll do regex pattern matching here for determining Field types
 ;; because SQLite types can have optional lengths, e.g. NVARCHAR(100) or NUMERIC(10,5)
@@ -158,7 +168,7 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables
           :column->base-type         (sql/pattern-based-column->base-type pattern->type)
-          :connection-details->spec  (u/drop-first-arg dbspec/sqlite3)
+          :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :current-datetime-fn       (constantly (hsql/call :datetime (hx/literal :now)))
           :date                      (u/drop-first-arg date)
           :prepare-sql-param         (u/drop-first-arg prepare-sql-param)

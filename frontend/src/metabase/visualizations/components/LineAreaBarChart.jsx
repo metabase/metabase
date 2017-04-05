@@ -4,7 +4,6 @@ import React, { Component, PropTypes } from "react";
 
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
-import ChartTooltip from "./ChartTooltip.jsx";
 
 import "./LineAreaBarChart.css";
 
@@ -41,7 +40,7 @@ for (let i = 0; i < MAX_SERIES; i++) {
     addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 export default class LineAreaBarChart extends Component<*, VisualizationProps, *> {
     static identifier: string;
@@ -176,7 +175,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     }
 
     render() {
-        const { series, hovered, showTitle, actionButtons, linkToCard } = this.props;
+        const { series, hovered, showTitle, actionButtons, linkToCard, onVisualizationClick, visualizationIsClickable } = this.props;
 
         const settings = this.getSettings();
 
@@ -216,6 +215,8 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         onHoverChange={this.props.onHoverChange}
                         actionButtons={!titleHeaderSeries ? actionButtons : null}
                         linkToCard={linkToCard}
+                        onVisualizationClick={onVisualizationClick}
+                        visualizationIsClickable={visualizationIsClickable}
                     />
                 : null }
                 <CardRenderer
@@ -226,7 +227,6 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                     maxSeries={MAX_SERIES}
                     renderer={this.constructor.renderer}
                 />
-                <ChartTooltip series={series} hovered={hovered} />
             </div>
         );
     }
@@ -296,12 +296,18 @@ function transformSingleSeries(s, series, seriesIndex) {
                 ].filter(n => n).join(": "),
                 _transformed: true,
                 _breakoutValue: breakoutValue,
-                _breakoutColumn: cols[seriesColumnIndex]
+                _breakoutColumn: cols[seriesColumnIndex],
             },
             data: {
                 rows: breakoutRowsByValue.get(breakoutValue),
                 cols: rowColumnIndexes.map(i => cols[i]),
                 _rawCols: cols
+            },
+            clicked: {
+                dimensions: [{
+                    value: breakoutValue,
+                    column: cols[seriesColumnIndex]
+                }]
             }
         }));
     } else {

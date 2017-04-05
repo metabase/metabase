@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import Button from "metabase/components/Button.jsx";
 

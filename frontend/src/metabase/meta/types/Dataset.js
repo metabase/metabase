@@ -11,7 +11,8 @@ export type Column = {
     name: ColumnName,
     display_name: string,
     base_type: string,
-    special_type: ?string
+    special_type: ?string,
+    source?: "fields"|"aggregation"|"breakout"
 };
 
 export type ISO8601Times = string;

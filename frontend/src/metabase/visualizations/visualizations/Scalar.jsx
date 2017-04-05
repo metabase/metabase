@@ -14,10 +14,9 @@ import { TYPE } from "metabase/lib/types";
 import { isNumber } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
-import { getIn } from "icepick";
 import d3 from "d3";
 
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 export default class Scalar extends Component<*, VisualizationProps, *> {
     static uiName = "Number";
@@ -28,6 +27,8 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
     static supportsSeries = true;
 
     static minSize = { width: 3, height: 3 };
+
+    _scalar: ?HTMLElement;
 
     static isSensible(cols, rows) {
         return rows.length === 1 && cols.length === 1;
@@ -102,13 +103,13 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
     };
 
     render() {
-        let { card, data, className, actionButtons, gridSize, settings, linkToCard } = this.props;
+        let { series: [{ card, data: { cols, rows }}], className, actionButtons, gridSize, settings, linkToCard, visualizationIsClickable, onVisualizationClick } = this.props;
         let description = settings["card.description"];
 
         let isSmall = gridSize && gridSize.width < 4;
-        const column = getIn(data, ["cols", 0]);
+        const column = cols[0];
 
-        let scalarValue = getIn(data, ["rows", 0, 0]);
+        let scalarValue = rows[0] && rows[0][0];
         if (scalarValue == null) {
             scalarValue = "";
         }
@@ -167,16 +168,29 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
             fullScalarValue = fullScalarValue + settings["scalar.suffix"];
         }
 
+        const clicked = {
+            value: rows[0] && rows[0][0],
+            column: cols[0]
+        };
+        const isClickable = visualizationIsClickable(clicked);
+
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>
                 <div className="Card-title absolute top right p1 px2">{actionButtons}</div>
                 <Ellipsified
-                    className={cx(styles.Value, 'ScalarValue', 'fullscreen-normal-text', 'fullscreen-night-text')}
+                    className={cx(styles.Value, 'ScalarValue text-dark fullscreen-normal-text fullscreen-night-text', {
+                        "text-brand-hover cursor-pointer": isClickable
+                    })}
                     tooltip={fullScalarValue}
                     alwaysShowTooltip={fullScalarValue !== compactScalarValue}
                     style={{maxWidth: '100%'}}
                 >
-                    {compactScalarValue}
+                    <span
+                        onClick={isClickable && (() => this._scalar && onVisualizationClick({ ...clicked, element: this._scalar }))}
+                        ref={scalar => this._scalar = scalar}
+                    >
+                        {compactScalarValue}
+                    </span>
                 </Ellipsified>
                 <div className={styles.Title + " flex align-center"}>
                     <Ellipsified tooltip={card.name}>

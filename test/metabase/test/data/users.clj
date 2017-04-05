@@ -3,8 +3,8 @@
   ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
             [toucan.db :as db]
-            (metabase [config :as config]
-                      [core :as core])
+            [metabase.config :as config]
+            [metabase.core.initialization-status :as init-status]
             [metabase.http-client :as http]
             (metabase.models [permissions-group :as perms-group]
                              [user :refer [User]])
@@ -56,7 +56,7 @@
    ;; only need to wait when running unit tests. When doing REPL dev and using the test users we're probably
    ;; the server is probably a separate process (`lein ring server`)
    (when config/is-test?
-     (when-not (core/initialized?)
+     (when-not (init-status/complete?)
        (when (<= max-wait-seconds 0)
          (throw (Exception. "Metabase still hasn't finished initializing.")))
        (println (format "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)..." max-wait-seconds))

@@ -822,3 +822,12 @@
   "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   [n]
   (if n (inc n) 1))
+
+(defn occurances-of-substring
+  "Return the number of times SUBSTR occurs in string S."
+  ^Integer [^String s, ^String substr]
+  (when (and (seq s) (seq substr))
+    (loop [index 0, cnt 0]
+      (if-let [new-index (s/index-of s substr index)]
+        (recur (inc new-index) (inc cnt))
+        cnt))))

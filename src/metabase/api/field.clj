@@ -78,6 +78,7 @@
       (create-field-values-if-needed! field))))
 
 
+;; TODO - not sure this is used anymore
 (defendpoint POST "/:id/value_map_update"
   "Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
    or whose base type is `type/Boolean`."

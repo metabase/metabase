@@ -10,7 +10,14 @@ import L from "leaflet";
 
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
-const LeafletChoropleth = ({ series, geoJson, minimalBounds = computeMinimalBounds(geoJson.features), getColor = () => normal.blue, onHoverFeature = () => {}, }) =>
+const LeafletChoropleth = ({
+    series,
+    geoJson,
+    minimalBounds = computeMinimalBounds(geoJson.features),
+    getColor = () => normal.blue,
+    onHoverFeature = () => {},
+    onClickFeature = () => {},
+}) =>
     <CardRenderer
         series={series}
         className="spread"
@@ -56,7 +63,13 @@ const LeafletChoropleth = ({ series, geoJson, minimalBounds = computeMinimalBoun
                     },
                     mouseout: (e) => {
                         onHoverFeature(null)
-                    }
+                    },
+                    click: (e) => {
+                        onClickFeature({
+                            feature: feature,
+                            event: e.originalEvent
+                        })
+                    },
                 });
             }
 

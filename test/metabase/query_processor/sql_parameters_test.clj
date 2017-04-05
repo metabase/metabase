@@ -315,7 +315,6 @@
             #inst "2016-08-01T00:00:00.000000000-00:00"]}
   (expand-with-dimension-param {:type "date/range", :value "2016-07-01~2016-08-01"}))
 
-
 ;; dimension (date/month-year)
 (expect
   {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
@@ -329,6 +328,18 @@
    :params [#inst "2016-01-01T00:00:00.000000000-00:00"
             #inst "2016-03-31T00:00:00.000000000-00:00"]}
   (expand-with-dimension-param {:type "date/quarter-year", :value "Q1-2016"}))
+
+;; dimension (date/all-options, before)
+(expect
+  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) < ?;"
+   :params [#inst "2016-07-01T00:00:00.000000000-00:00"]}
+  (expand-with-dimension-param {:type "date/all-options", :value "~2016-07-01"}))
+
+;; dimension (date/all-options, after)
+(expect
+  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) > ?;"
+   :params [#inst "2016-07-01T00:00:00.000000000-00:00"]}
+  (expand-with-dimension-param {:type "date/all-options", :value "2016-07-01~"}))
 
 ;; relative date -- "yesterday"
 (expect
@@ -516,3 +527,22 @@
                            :native     {:query         "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE {{x}}",
                                         :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}},
                            :parameters [{:type "category", :target ["variable" ["template-tag" "x"]]}]})))
+
+;; make sure that you can use the same parameter multiple times (#4659)
+(expect
+  {:query         "SELECT count(*) FROM products WHERE title LIKE ? AND subtitle LIKE ?"
+   :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}
+   :params        ["%Toucan%" "%Toucan%"]}
+  (:native (expand-params {:driver     (driver/engine->driver :h2)
+                           :native     {:query         "SELECT count(*) FROM products WHERE title LIKE {{x}} AND subtitle LIKE {{x}}",
+                                        :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}},
+                           :parameters [{:type "category", :target ["variable" ["template-tag" "x"]]}]})))
+
+(expect
+  {:query         "SELECT * FROM ORDERS WHERE true  AND ID = ? OR USER_ID = ?"
+   :template_tags {:id {:name "id", :display_name "ID", :type "text"}}
+   :params        ["2" "2"]}
+  (:native (expand-params {:driver     (driver/engine->driver :h2)
+                           :native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
+                                        :template_tags {:id {:name "id", :display_name "ID", :type "text"}}}
+                           :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]})))

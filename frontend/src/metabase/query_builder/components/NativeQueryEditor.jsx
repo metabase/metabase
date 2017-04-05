@@ -40,8 +40,8 @@ import Parameters from "metabase/dashboard/containers/Parameters";
 // *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
 // *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
 // *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
-function getModeInfo(query, databases) {
-    let databaseID = query ? query.database : null,
+function getModeInfo(datasetQuery, databases) {
+    let databaseID = datasetQuery ? datasetQuery.database : null,
         database   = _.findWhere(databases, { id: databaseID }),
         engine     = database ? database.engine : null;
 
@@ -65,13 +65,13 @@ export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
 
-        const lines = props.query.native.query ?
-            Math.min(MAX_AUTO_SIZE_LINES, countLines(props.query.native.query)) :
+        const lines = props.datasetQuery.native.query ?
+            Math.min(MAX_AUTO_SIZE_LINES, countLines(props.datasetQuery.native.query)) :
             MAX_AUTO_SIZE_LINES;
 
         this.state = {
             showEditor: !(props.card && props.card.id),
-            modeInfo: getModeInfo(props.query, props.databases),
+            modeInfo: getModeInfo(props.datasetQuery, props.databases),
             initialHeight: getEditorLineHeight(lines)
         };
 
@@ -88,8 +88,8 @@ export default class NativeQueryEditor extends Component {
         card: PropTypes.object.isRequired,
         databases: PropTypes.array.isRequired,
         nativeDatabases: PropTypes.array.isRequired,
-        query: PropTypes.object.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
+        datasetQuery: PropTypes.object.isRequired,
+        setDatasetQuery: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
@@ -110,9 +110,9 @@ export default class NativeQueryEditor extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (this.props.query.database !== nextProps.query.database) {
+        if (this.props.datasetQuery.database !== nextProps.datasetQuery.database) {
             this.setState({
-                modeInfo: getModeInfo(nextProps.query, nextProps.databases)
+                modeInfo: getModeInfo(nextProps.datasetQuery, nextProps.databases)
             });
         }
     }
@@ -120,12 +120,12 @@ export default class NativeQueryEditor extends Component {
     componentDidUpdate() {
         const { modeInfo } = this.state;
 
-        if (this._editor.getValue() !== this.props.query.native.query) {
+        if (this._editor.getValue() !== this.props.datasetQuery.native.query) {
             // This is a weird hack, but the purpose is to avoid an infinite loop caused by the fact that calling editor.setValue()
             // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
             // we need a way to update the editor without causing the onChange event to go through as well
             this.localUpdate = true;
-            this._editor.setValue(this.props.query.native.query);
+            this._editor.setValue(this.props.datasetQuery.native.query);
             this._editor.clearSelection();
             this.localUpdate = false;
         }
@@ -179,7 +179,7 @@ export default class NativeQueryEditor extends Component {
         this._editor.getSession().on('change', this.onChange);
 
         // initialize the content
-        const querySource = this.props.query.native.query;
+        const querySource = this.props.datasetQuery.native.query;
         this._editor.setValue(querySource);
 
         this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
@@ -240,9 +240,9 @@ export default class NativeQueryEditor extends Component {
     onChange(event) {
         if (this._editor && !this.localUpdate) {
             this._updateSize();
-            const { query } = this.props;
-            if (query.native.query !== this._editor.getValue()) {
-                this.props.setQueryFn(assocIn(query, ["native", "query"], this._editor.getValue()));
+            const { datasetQuery } = this.props;
+            if (datasetQuery.native.query !== this._editor.getValue()) {
+                this.props.setDatasetQuery(assocIn(datasetQuery, ["native", "query"], this._editor.getValue()));
             }
         }
     }
@@ -258,13 +258,13 @@ export default class NativeQueryEditor extends Component {
 
     setTableID(tableID) {
         // translate the table id into the table name
-        let database = this.props.databases ? _.findWhere(this.props.databases, { id: this.props.query.database }) : null,
+        let database = this.props.databases ? _.findWhere(this.props.databases, { id: this.props.datasetQuery.database }) : null,
             table = database ? _.findWhere(database.tables, { id: tableID }) : null;
 
         if (table) {
-            const { query } = this.props;
-            if (query.native.collection !== table.name) {
-                this.props.setQueryFn(assocIn(query, ["native", "collection"], table.name));
+            const { datasetQuery } = this.props;
+            if (datasetQuery.native.collection !== table.name) {
+                this.props.setDatasetQuery(assocIn(datasetQuery, ["native", "collection"], table.name));
             }
         }
     }
@@ -272,18 +272,18 @@ export default class NativeQueryEditor extends Component {
     render() {
         const { parameters, setParameterValue, location } = this.props;
 
-        let modeInfo = getModeInfo(this.props.query, this.props.databases);
+        let modeInfo = getModeInfo(this.props.datasetQuery, this.props.databases);
 
         let dataSelectors = [];
         if (this.state.showEditor && this.props.nativeDatabases) {
             // we only render a db selector if there are actually multiple to choose from
-            if (this.props.nativeDatabases.length > 1 && (this.props.query.database === null || _.any(this.props.nativeDatabases, (db) => db.id === this.props.query.database))) {
+            if (this.props.nativeDatabases.length > 1 && (this.props.datasetQuery.database === null || _.any(this.props.nativeDatabases, (db) => db.id === this.props.datasetQuery.database))) {
                 dataSelectors.push(
                     <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Database</span>
                         <DataSelector
                             databases={this.props.nativeDatabases}
-                            query={this.props.query}
+                            datasetQuery={this.props.datasetQuery}
                             setDatabaseFn={this.setDatabaseID}
                         />
                     </div>
@@ -295,10 +295,10 @@ export default class NativeQueryEditor extends Component {
             }
             if (modeInfo.requiresTable) {
                 let databases = this.props.nativeDatabases,
-                    dbId      = this.props.query.database,
+                    dbId      = this.props.datasetQuery.database,
                     database  = databases ? _.findWhere(databases, { id: dbId }) : null,
                     tables    = database ? database.tables : [],
-                    selectedTable = this.props.query.native.collection ? _.findWhere(tables, { name: this.props.query.native.collection }) : null;
+                    selectedTable = this.props.datasetQuery.native.collection ? _.findWhere(tables, { name: this.props.datasetQuery.native.collection }) : null;
 
                 dataSelectors.push(
                     <div key="table_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
@@ -306,7 +306,7 @@ export default class NativeQueryEditor extends Component {
                         <DataSelector
                             ref="dataSection"
                             includeTables={true}
-                            query={{
+                            datasetQuery={{
                                 type: "query",
                                 query: { source_table: selectedTable ? selectedTable.id : null },
                                 database: dbId
