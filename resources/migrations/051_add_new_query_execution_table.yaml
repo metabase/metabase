@@ -1,0 +1,91 @@
+databaseChangeLog:
+  - changeSet:
+      id: 51
+      author: camsaul
+      changes:
+        - createTable:
+            tableName: query_execution
+            remarks: 'A log of executed queries, used for calculating historic execution times, auditing, and other purposes.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: hash
+                  type: binary(32)
+                  remarks: 'The hash of the query dictionary. This is a 256-bit SHA3 hash of the query.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: datetime
+                  remarks: 'Timestamp of when this query started running.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: running_time
+                  type: integer
+                  remarks: 'The time, in milliseconds, this query took to complete.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result_rows
+                  type: integer
+                  remarks: 'Number of rows in the query results.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: native
+                  type: boolean
+                  remarks: 'Whether the query was a native query, as opposed to an MBQL one (e.g., created with the GUI).'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: context
+                  type: varchar(32)
+                  remarks: 'Short string specifying how this query was executed, e.g. in a Dashboard or Pulse.'
+              - column:
+                  name: error
+                  type: text
+                  remarks: 'Error message returned by failed query, if any.'
+              # The following columns are foreign keys, but we don't keep FK constraints on them for a few reasons:
+              # - We don't want to keep indexes on these columns since they wouldn't be generally useful and for size and performance reasons
+              # - If a related object (e.g. a Dashboard) is deleted, we don't want to delete the related entries in the QueryExecution log.
+              #   We could do something like make the constraint ON DELETE SET NULL, but that would require a full table scan to handle;
+              #   If the QueryExecution log became tens of millions of rows large it would take a very long time to scan and update records
+              - column:
+                  name: executor_id
+                  type: integer
+                  remarks: 'The ID of the User who triggered this query execution, if any.'
+              - column:
+                  name: card_id
+                  type: integer
+                  remarks: 'The ID of the Card (Question) associated with this query execution, if any.'
+              - column:
+                  name: dashboard_id
+                  type: integer
+                  remarks: 'The ID of the Dashboard associated with this query execution, if any.'
+              - column:
+                  name: pulse_id
+                  type: integer
+                  remarks: 'The ID of the Pulse associated with this query execution, if any.'
+        # For things like auditing recently executed queries
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_started_at
+            columns:
+              column:
+                name: started_at
+        # For things like seeing the 10 most recent executions of a certain query
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_query_hash_started_at
+            columns:
+              column:
+                name: query_hash
+              column:
+                name: started_at

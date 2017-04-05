@@ -213,7 +213,7 @@
     (ImageIO/write (.getImage content-canvas) "png" os)))
 
 (defn- render-html-to-png
-  [html-body width]
+  ^bytes [html-body width]
   (let [html (html [:html [:body {:style (style {:margin           0
                                                  :padding          0
                                                  :background-color :white})}
@@ -390,7 +390,9 @@
     (cond
       (or (= aggregation :rows)
           (contains? #{:pin_map :state :country} (:display card))) nil
-      (zero? row-count)                                            :empty
+      (or (zero? row-count)
+          ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+          (= [[nil]] (-> data :rows)))                             :empty
       (and (= col-count 1)
            (= row-count 1))                                        :scalar
       (and (= col-count 2)
@@ -402,7 +404,7 @@
       :else                                                        :table)))
 
 (defn render-pulse-card
-  "Render a single CARD for a `Pulse`. RESULT is the QP results."
+  "Render a single CARD for a `Pulse` to Hiccup HTML. RESULT is the QP results."
   [card {:keys [data error]}]
   [:a {:href   (card-href card)
        :target "_blank"
@@ -446,7 +448,7 @@
 
 
 (defn render-pulse-section
-  "Render a specific section of a Pulse, i.e. a single Card."
+  "Render a specific section of a Pulse, i.e. a single Card, to Hiccup HTML."
   [{:keys [card result]}]
   [:div {:style (style {:margin-top       :10px
                         :margin-bottom    :20px
@@ -459,6 +461,5 @@
 
 (defn render-pulse-card-to-png
   "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
-
-  [pulse-card result]
+  ^bytes [pulse-card result]
   (render-html-to-png (render-pulse-card pulse-card result) card-width))

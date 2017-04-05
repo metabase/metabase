@@ -31,6 +31,7 @@
       (setting/all)"
   (:refer-clojure :exclude [get])
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [environ.core :as env]
             [medley.core :as m]
@@ -81,7 +82,7 @@
 ;; Cache is a 1:1 mapping of what's in the DB
 ;; Cached lookup time is ~60µs, compared to ~1800µs for DB lookup
 
-(def ^:private cache
+(defonce ^:private cache
   (atom nil))
 
 (defn- restore-cache-if-needed! []
@@ -170,6 +171,24 @@
 
 ;;; ------------------------------------------------------------ set! ------------------------------------------------------------
 
+(defn- update-setting! [setting-name new-value]
+  (db/update-where! Setting {:key setting-name}
+    :value new-value))
+
+(defn- set-new-setting!
+  "Insert a new row for a Setting with SETTING-NAME and SETTING-VALUE.
+   Takes care of resetting the cache if the insert fails for some reason."
+  [setting-name new-value]
+  (try (db/insert! Setting
+         :key   setting-name
+         :value new-value)
+       ;; if for some reason inserting the new value fails it almost certainly means the cache is out of date
+       ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
+       ;; existing value and log a warning
+       (catch Throwable e
+         (log/warn "Error INSERTing a new Setting:" (.getMessage e) "\nAssuming Setting already exists in DB and updating existing value.")
+         (update-setting! setting-name new-value))))
+
 (s/defn ^:always-validate set-string!
   "Set string value of SETTING-OR-NAME. A `nil` or empty NEW-VALUE can be passed to unset (i.e., delete) SETTING-OR-NAME."
   [setting-or-name, new-value :- (s/maybe s/Str)]
@@ -182,12 +201,9 @@
     (cond
       (not new-value)                 (db/simple-delete! Setting :key setting-name)
       ;; if there's a value in the cache then the row already exists in the DB; update that
-      (contains? @cache setting-name) (db/update-where! Setting {:key setting-name}
-                                        :value new-value)
+      (contains? @cache setting-name) (update-setting! setting-name new-value)
       ;; if there's nothing in the cache then the row doesn't exist, insert a new one
-      :else                           (db/insert! Setting
-                                        :key  setting-name
-                                        :value new-value))
+      :else                           (set-new-setting! setting-name new-value))
     ;; update cached value
     (if new-value
       (swap! cache assoc  setting-name new-value)

@@ -220,15 +220,18 @@
   {:pre [(map? query)]}
   (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set query :read))))
 
+;; TODO - This endpoint desperately needs to be broken out into smaller, bite-sized chunks
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id], :as body} :body}]
+  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params], :as body} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
    description            (s/maybe su/NonBlankString)
    visualization_settings (s/maybe su/Map)
    archived               (s/maybe s/Bool)
+   enable_embedding       (s/maybe s/Bool)
+   embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)}
   (let [card (write-check Card id)]
     ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
@@ -242,15 +245,21 @@
     (when (and (false? archived)
                (:archived card))
       (check-data-permissions-for-query (:dataset_query card)))
+    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
+    (when (or (and (not (nil? enable_embedding))
+                   (not= enable_embedding (:enable_embedding card)))
+              (and embedding_params
+                   (not= embedding_params (:embedding_params card))))
+      (check-embedding-enabled)
+      (check-superuser))
     ;; ok, now save the Card
     (db/update! Card id
-      (merge (when (contains? body :collection_id)   {:collection_id          collection_id})
-             (when-not (nil? dataset_query)          {:dataset_query          dataset_query})
-             (when-not (nil? description)            {:description            description})
-             (when-not (nil? display)                {:display                display})
-             (when-not (nil? name)                   {:name                   name})
-             (when-not (nil? visualization_settings) {:visualization_settings visualization_settings})
-             (when-not (nil? archived)               {:archived               archived})))
+      (merge (when (contains? body :collection_id)
+               {:collection_id collection_id})
+             (into {} (for [k     [:dataset_query :description :display :name :visualization_settings :archived :enable_embedding :embedding_params]
+                            :let  [v (k body)]
+                            :when (not (nil? v))]
+                        {k v}))))
     (let [event (cond
                   ;; card was archived
                   (and archived
@@ -347,34 +356,44 @@
 
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
-  [card-id & {:keys [parameters constraints]
-              :or   {constraints dataset-api/default-query-constraints}}]
+  {:style/indent 1}
+  [card-id & {:keys [parameters constraints context dashboard-id]
+              :or   {constraints dataset-api/default-query-constraints
+                     context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (read-check Card card-id)
         query   (assoc (:dataset_query card)
                   :parameters  parameters
                   :constraints constraints)
-        options {:executed-by *current-user-id*
-                 :card-id     card-id}]
+        options {:executed-by  *current-user-id*
+                 :context      context
+                 :card-id      card-id
+                 :dashboard-id dashboard-id}]
     (check-not-archived card)
     (qp/dataset-query query options)))
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters]} :body}]
+  [card-id, :as {{:keys [parameters]} :body}]
   (run-query-for-card card-id, :parameters parameters))
 
 (defendpoint POST "/:card-id/query/csv"
   "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+  (dataset-api/as-csv (run-query-for-card card-id
+                        :parameters  (json/parse-string parameters keyword)
+                        :constraints nil
+                        :context     :csv-download)))
 
 (defendpoint POST "/:card-id/query/json"
   "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+  (dataset-api/as-json (run-query-for-card card-id
+                         :parameters  (json/parse-string parameters keyword)
+                         :constraints nil
+                         :context     :json-download)))
 
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
@@ -410,6 +429,13 @@
   (check-superuser)
   (check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+(defendpoint GET "/embeddable"
+  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints and a signed JWT."
+  []
+  (check-superuser)
+  (check-embedding-enabled)
+  (db/select [Card :name :id], :enable_embedding true, :archived false))
 
 
 (define-routes)

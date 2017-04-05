@@ -14,7 +14,7 @@ import MoveToCollection from "../containers/MoveToCollection.jsx";
 import Labels from "./Labels.jsx";
 import CollectionBadge from "./CollectionBadge.jsx";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 const ITEM_ICON_SIZE = 20;
 
@@ -122,7 +122,7 @@ Item.propTypes = {
 const ItemBody = pure(({ entity, id, name, description, labels, favorite, collection, setFavorited, onEntityClick }) =>
     <div className={S.itemBody}>
         <div className={cx('flex', S.itemTitle)}>
-            <Link to={Urls.card(id)} className={cx(S.itemName)} onClick={onEntityClick && ((e) => { e.preventDefault(); onEntityClick(entity); })}>
+            <Link to={Urls.question(id)} className={cx(S.itemName)} onClick={onEntityClick && ((e) => { e.preventDefault(); onEntityClick(entity); })}>
                 {name}
             </Link>
             { collection &&

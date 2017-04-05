@@ -132,7 +132,7 @@ export function getCardColors(card) {
         chartColor = settings.line.lineColor;
         chartColorList = settings.line.colors;
     }
-    return _.uniq([chartColor || Object.values(colors.normal)[0]].concat(chartColorList || Object.values(colors.normal)));
+    return _.uniq([chartColor || Object.values(colors.harmony)[0]].concat(chartColorList || Object.values(colors.harmony)));
 }
 
 export function isSameSeries(seriesA, seriesB) {

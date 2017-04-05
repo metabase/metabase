@@ -4,6 +4,7 @@ import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
 import PublicNotFound from "metabase/public/components/PublicNotFound";
+import PublicError from "metabase/public/components/PublicError";
 
 type Props = {
     children: any,
@@ -19,7 +20,11 @@ export default class PublicApp extends Component<*, Props, *> {
     render() {
         const { children, errorPage } = this.props;
         if (errorPage) {
-            return <PublicNotFound />;
+            if (errorPage.status === 404) {
+                return <PublicNotFound />;
+            } else {
+                return <PublicError />
+            }
         } else {
             return children;
         }

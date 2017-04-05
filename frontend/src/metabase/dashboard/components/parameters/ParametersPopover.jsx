@@ -58,7 +58,7 @@ const ParameterOptionsSectionsPane = ({ sections, onSelectSection }) =>
 
 const ParameterOptionItem = ({ option, onClick }) =>
     <li onClick={onClick} className="p1 px2 cursor-pointer brand-hover">
-        <div className="text-brand text-bold">{option.name}</div>
+        <div className="text-brand text-bold">{option.menuName || option.name}</div>
         <div>{option.description}</div>
     </li>
 

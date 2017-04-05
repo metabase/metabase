@@ -5,6 +5,8 @@ import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
 
+import { constrainToScreen } from "metabase/lib/dom";
+
 import cx from "classnames";
 
 export default class Popover extends Component {
@@ -24,7 +26,8 @@ export default class Popover extends Component {
         isOpen: PropTypes.bool,
         hasArrow: PropTypes.bool,
         // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
-        tetherOptions: PropTypes.object
+        tetherOptions: PropTypes.object,
+        sizeToFit: PropTypes.bool,
     };
 
     static defaultProps = {
@@ -33,7 +36,8 @@ export default class Popover extends Component {
         verticalAttachments: ["top", "bottom"],
         horizontalAttachments: ["center", "left", "right"],
         targetOffsetX: 24,
-        targetOffsetY: 5
+        targetOffsetY: 5,
+        sizeToFit: false,
     };
 
     _getPopoverElement() {
@@ -234,6 +238,22 @@ export default class Popover extends Component {
 
                 // finally set the best options
                 this._setTetherOptions(tetherOptions, best);
+            }
+
+            if (this.props.sizeToFit) {
+                const verticalPadding = 5;
+                const body = tetherOptions.element.querySelector(".PopoverBody");
+                if (this._tether.attachment.top === "top") {
+                    if (constrainToScreen(body, "bottom", verticalPadding)) {
+                        body.classList.add("scroll-y");
+                        body.classList.add("scroll-show");
+                    }
+                } else if (this._tether.attachment.top === "bottom") {
+                    if (constrainToScreen(body, "top", verticalPadding)) {
+                        body.classList.add("scroll-y");
+                        body.classList.add("scroll-show");
+                    }
+                }
             }
         } else {
             // if the popover isn't open then actively unmount our popover

@@ -19,6 +19,7 @@
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
   (:import java.io.StringWriter
            java.sql.Connection
+           java.util.Properties
            com.mchange.v2.c3p0.ComboPooledDataSource
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
@@ -268,7 +269,7 @@
                  (.setTestConnectionOnCheckin      false)
                  (.setTestConnectionOnCheckout     false)
                  (.setPreferredTestQuery           nil)
-                 (.setProperties                   (u/prog1 (java.util.Properties.)
+                 (.setProperties                   (u/prog1 (Properties.)
                                                      (doseq [[k v] (dissoc spec :classname :subprotocol :subname :naming :delimiters :alias-delimiter
                                                                                 :excess-timeout :minimum-pool-size :idle-connection-test-period)]
                                                        (.setProperty <> (name k) (str v))))))})
@@ -288,6 +289,11 @@
 
 (def ^:private setup-db-has-been-called?
   (atom false))
+
+(defn db-is-setup?
+  "True if the Metabase DB is setup and ready."
+  ^Boolean []
+  @setup-db-has-been-called?)
 
 (def ^:dynamic *allow-potentailly-unsafe-connections*
   "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists, etc.
@@ -360,11 +366,11 @@
   [& {:keys [db-details auto-migrate]
       :or   {db-details   @db-connection-details
              auto-migrate true}}]
-  (reset! setup-db-has-been-called? true)
   (verify-db-connection db-details)
   (run-schema-migrations! auto-migrate db-details)
   (create-connection-pool! (jdbc-details db-details))
-  (run-data-migrations!))
+  (run-data-migrations!)
+  (reset! setup-db-has-been-called? true))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."

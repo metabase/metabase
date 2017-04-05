@@ -23,9 +23,8 @@
 
 (defn- post-select [{:keys [engine] :as database}]
   (if-not engine database
-          (assoc database :features (or (when-let [driver ((resolve 'metabase.driver/engine->driver) engine)]
-                                          (seq ((resolve 'metabase.driver/features) driver)))
-                                        []))))
+          (assoc database :features (set (when-let [driver ((resolve 'metabase.driver/engine->driver) engine)]
+                                           ((resolve 'metabase.driver/features) driver))))))
 
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'Card        :database_id id)
@@ -42,7 +41,7 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:database :db])
-          :types          (constantly {:details :json, :engine :keyword})
+          :types          (constantly {:details :encrypted-json, :engine :keyword})
           :properties     (constantly {:timestamped? true})
           :post-insert    post-insert
           :post-select    post-select

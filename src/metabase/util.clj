@@ -305,7 +305,7 @@
 
 (defprotocol ^:private IClobToStr
   (jdbc-clob->str ^String [this]
-   "Convert a Postgres/H2/SQLServer JDBC Clob to a string."))
+   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)"))
 
 (extend-protocol IClobToStr
   nil     (jdbc-clob->str [_]    nil)
@@ -811,3 +811,23 @@
              {k (if-not (seq nested-keys)
                   v
                   (select-nested-keys v nested-keys))})))
+
+(defn base-64-string?
+  "Is S a Base-64 encoded string?"
+  ^Boolean [s]
+  (boolean (when (string? s)
+             (re-find #"^[0-9A-Za-z/+]+=*$" s))))
+
+(defn safe-inc
+  "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
+  [n]
+  (if n (inc n) 1))
+
+(defn occurances-of-substring
+  "Return the number of times SUBSTR occurs in string S."
+  ^Integer [^String s, ^String substr]
+  (when (and (seq s) (seq substr))
+    (loop [index 0, cnt 0]
+      (if-let [new-index (s/index-of s substr index)]
+        (recur (inc new-index) (inc cnt))
+        cnt))))

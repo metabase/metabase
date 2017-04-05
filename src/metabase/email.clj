@@ -23,8 +23,7 @@
 
 ;; ## PUBLIC INTERFACE
 
-;; TODO - just use `with-redefs` for tests ?
-(def ^:dynamic *send-email-fn*
+(def ^{:arglists '([smtp-credentials email-details]), :style/indent 1} send-email!
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
@@ -68,19 +67,18 @@
          (contains? #{:text :html :attachments} message-type)
          (if (= message-type :attachments) (sequential? message) (string? message))]}
   (try
-    ;; Check to make sure all valid settings are set!
     (when-not (email-smtp-host)
       (throw (Exception. "SMTP host is not set.")))
     ;; Now send the email
-    (*send-email-fn* (smtp-settings)
-                     {:from    (email-from-address)
-                      :to      recipients
-                      :subject subject
-                      :body    (case message-type
-                                 :attachments message
-                                 :text        message
-                                 :html        [{:type    "text/html; charset=utf-8"
-                                                :content message}])})
+    (send-email! (smtp-settings)
+      {:from    (email-from-address)
+       :to      recipients
+       :subject subject
+       :body    (case message-type
+                  :attachments message
+                  :text        message
+                  :html        [{:type    "text/html; charset=utf-8"
+                                 :content message}])})
     (catch Throwable e
       (log/warn "Failed to send email: " (.getMessage e))
       {:error   :ERROR

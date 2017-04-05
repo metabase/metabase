@@ -12,7 +12,8 @@
             [metabase.sync-database :as sync-database]
             [metabase.util.schema :as su]))
 
-(def ^:private TableEntityType
+;; TODO - I don't think this is used for anything any more
+(def ^:private ^:deprecated TableEntityType
   "Schema for a valid table entity type."
   (apply s/enum (map name table/entity-types)))
 

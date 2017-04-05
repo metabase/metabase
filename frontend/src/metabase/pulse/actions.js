@@ -40,7 +40,8 @@ export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(id)
         return {
             name: null,
             cards: [],
-            channels: []
+            channels: [],
+            skip_if_empty: false,
         }
     };
 });

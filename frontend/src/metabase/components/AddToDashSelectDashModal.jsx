@@ -5,7 +5,7 @@ import Icon from 'metabase/components/Icon.jsx';
 import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from 'metabase/components/SortableItemList.jsx';
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { DashboardApi } from "metabase/services";
 
 import moment from 'moment';

@@ -41,11 +41,6 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class SettingsEditorApp extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.updateSetting = this.updateSetting.bind(this);
-    }
-
     static propTypes = {
         sections: PropTypes.array.isRequired,
         activeSection: PropTypes.object,
@@ -59,18 +54,37 @@ export default class SettingsEditorApp extends Component {
         this.props.initializeSettings();
     }
 
-    updateSetting(setting, value) {
-        this.refs.layout.setSaving();
-        setting.value = value;
-        this.props.updateSetting(setting).then(() => {
-            this.refs.layout.setSaved();
+    updateSetting = async (setting, newValue) => {
+        const { settings, settingValues, updateSetting } = this.props;
 
-            let val = (setting.key === "report-timezone" || setting.key === "anon-tracking-enabled") ? setting.value : "success";
-            MetabaseAnalytics.trackEvent("General Settings", setting.display_name, val);
-        }, (error) => {
-            this.refs.layout.setSaveError(error.data);
+        this.refs.layout.setSaving();
+
+        const oldValue = setting.value;
+
+        // TODO: mutation bad!
+        setting.value = newValue;
+        try {
+            await updateSetting(setting);
+
+            if (setting.onChanged) {
+                await setting.onChanged(oldValue, newValue, settingValues, (key, value) => {
+                    let setting = _.findWhere(settings, { key });
+                    if (!setting) {
+                        throw new Error("Unknown setting " + key);
+                    }
+                    setting.value = value;
+                    return updateSetting(setting);
+                })
+            }
+
+            this.refs.layout.setSaved();
+            let val = (setting.key === "report-timezone" || setting.type === "boolean") ? setting.value : "success";
+            MetabaseAnalytics.trackEvent("General Settings", setting.display_name || setting.key, val);
+        } catch (error) {
+            let message = error && (error.message || (error.data && error.data.message));
+            this.refs.layout.setSaveError(message);
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
-        });
+        }
     }
 
     renderSettingsPane() {
@@ -133,6 +147,7 @@ export default class SettingsEditorApp extends Component {
                             updateSetting={this.updateSetting.bind(this, setting)}
                             reloadSettings={this.props.reloadSettings}
                             autoFocus={index === 0}
+                            settingValues={settingValues}
                         />
                     )}
                 </ul>

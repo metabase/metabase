@@ -12,26 +12,22 @@
            (and (seq clause)
                 (not (every? nil? clause))))))
 
-(defmacro defparser
-  "Convenience for writing a parser function, i.e. one that pattern-matches against a lone argument."
-  [fn-name & match-forms]
-  `(defn ~(vary-meta fn-name assoc :private true) [form#]
-     (when (non-empty-clause? form#)
-       (match form#
-         ~@match-forms
-         form# (throw (Exception. (format ~(format "%s failed: invalid clause: %%s" fn-name) form#)))))))
-
-
 ;;; ------------------------------------------------------------ Segments ------------------------------------------------------------
 
-(defparser segment-parse-filter-subclause
-  ["SEGMENT" (segment-id :guard integer?)] (:filter (db/select-one-field :definition 'Segment, :id segment-id))
-  subclause  subclause)
+(defn- segment-parse-filter-subclause [form]
+  (when (non-empty-clause? form)
+    (match form
+      ["SEGMENT" (segment-id :guard integer?)] (:filter (db/select-one-field :definition 'Segment :id segment-id))
+      subclause                                subclause
+      form                                     (throw (java.lang.Exception. (format "segment-parse-filter-subclause failed: invalid clause: %s" form))))))
 
-(defparser segment-parse-filter
-  ["AND" & subclauses] (into ["AND"] (mapv segment-parse-filter subclauses))
-  ["OR" & subclauses]  (into ["OR"] (mapv segment-parse-filter subclauses))
-  subclause            (segment-parse-filter-subclause subclause))
+(defn- segment-parse-filter [form]
+  (when (non-empty-clause? form)
+    (match form
+      ["AND" & subclauses] (into ["AND"] (mapv segment-parse-filter subclauses))
+      ["OR"  & subclauses] (into ["OR"]  (mapv segment-parse-filter subclauses))
+      subclause            (segment-parse-filter-subclause subclause)
+      form                 (throw (java.lang.Exception. (format "segment-parse-filter failed: invalid clause: %s" form))))))
 
 (defn- macroexpand-segment [query-dict]
   (if (non-empty-clause? (get-in query-dict [:query :filter]))

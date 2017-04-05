@@ -48,3 +48,15 @@ export function canAddFilter(filter: ?FilterClause): boolean {
     }
     return true;
 }
+
+export function isSegmentFilter(filter: FilterClause): boolean {
+    return Array.isArray(filter) && mbqlEq(filter[0], "segment");
+}
+
+export function isCompoundFilter(filter: FilterClause): boolean {
+    return Array.isArray(filter) && (mbqlEq(filter[0], "and") || mbqlEq(filter[0], "or"));
+}
+
+export function isFieldFilter(filter: FilterClause): boolean {
+    return !isSegmentFilter(filter) && !isCompoundFilter(filter);
+}

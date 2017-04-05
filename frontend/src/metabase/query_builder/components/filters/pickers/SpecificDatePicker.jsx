@@ -18,7 +18,8 @@ const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 type Props = {
     value: ?string,
     onChange: (value: ?string) => void,
-    calendar?: bool
+    calendar?: bool,
+    hideTimeSelectors?: bool
 }
 
 type State = {
@@ -66,7 +67,7 @@ export default class SpecificDatePicker extends Component<*, Props, State> {
     }
 
     render() {
-        const { value, calendar } = this.props;
+        const { value, calendar, hideTimeSelectors } = this.props;
         const { showCalendar } = this.state;
 
         let date, hours, minutes;
@@ -130,28 +131,30 @@ export default class SpecificDatePicker extends Component<*, Props, State> {
                     </ExpandingContent>
                 }
 
-                <div className={cx({ 'py2': calendar }, { 'mb3': !calendar })}>
-                    { hours == null || minutes == null ?
-                        <div
-                            className="text-purple-hover cursor-pointer flex align-center"
-                            onClick={() => this.onChange(date, 12, 30) }
-                        >
-                            <Icon
-                                className="mr1"
-                                name='clock'
+                { !hideTimeSelectors &&
+                    <div className={cx({'py2': calendar}, {'mb3': !calendar})}>
+                        { hours == null || minutes == null ?
+                            <div
+                                className="text-purple-hover cursor-pointer flex align-center"
+                                onClick={() => this.onChange(date, 12, 30) }
+                            >
+                                <Icon
+                                    className="mr1"
+                                    name='clock'
+                                />
+                                Add a time
+                            </div>
+                            :
+                            <HoursMinutes
+                                clear={() => this.onChange(date, null, null)}
+                                hours={hours}
+                                minutes={minutes}
+                                onChangeHours={hours => this.onChange(date, hours, minutes)}
+                                onChangeMinutes={minutes => this.onChange(date, hours, minutes)}
                             />
-                            Add a time
-                        </div>
-                    :
-                        <HoursMinutes
-                            clear={() => this.onChange(date, null, null)}
-                            hours={hours}
-                            minutes={minutes}
-                            onChangeHours={hours => this.onChange(date, hours, minutes)}
-                            onChangeMinutes={minutes => this.onChange(date, hours, minutes)}
-                        />
-                    }
-                </div>
+                        }
+                    </div>
+                }
             </div>
         )
     }

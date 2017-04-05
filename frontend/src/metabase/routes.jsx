@@ -7,7 +7,7 @@ import { Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
-import { refreshCurrentUser } from "metabase/redux/user";
+import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
@@ -80,7 +80,16 @@ const UserIsAuthenticated = UserAuthWrapper({
     failureRedirectPath: '/auth/login',
     authSelector: state => state.currentUser,
     wrapperDisplayName: 'UserIsAuthenticated',
-    redirectAction: routerActions.replace,
+    redirectAction: (location) =>
+        // HACK: workaround for redux-auth-wrapper not including hash
+        // https://github.com/mjrussell/redux-auth-wrapper/issues/121
+        routerActions.replace({
+            ...location,
+            query: {
+                ...location.query,
+                redirect: location.query.redirect + (window.location.hash || "")
+            }
+        })
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -122,7 +131,7 @@ export const getRoutes = (store) =>
 
         {/* APP */}
         <Route onEnter={async (nextState, replace, done) => {
-            await store.dispatch(refreshCurrentUser());
+            await store.dispatch(loadCurrentUser());
             done();
         }}>
             {/* AUTH */}
@@ -143,11 +152,11 @@ export const getRoutes = (store) =>
                 <Route path="/" component={HomepageApp} />
 
                 {/* DASHBOARD */}
-                <Route path="/dash/:dashboardId" component={DashboardApp} />
+                <Route path="/dashboard/:dashboardId" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
-                <Route path="/card/:cardId" component={QueryBuilder} />
-                <Route path="/q" component={QueryBuilder} />
+                <Route path="/question" component={QueryBuilder} />
+                <Route path="/question/:cardId" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
                 <Route path="/questions">
@@ -254,13 +263,13 @@ export const getRoutes = (store) =>
                 <IndexRedirect to="/_internal/list" />
             </Route>
 
+            {/* DEPRECATED */}
+            <Redirect from="/q" to="/question" />
+            <Redirect from="/card/:cardId" to="/question/:cardId" />
+            <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+
             {/* MISC */}
             <Route path="/unauthorized" component={Unauthorized} />
             <Route path="/*" component={NotFound} />
-
-            {/* LEGACY */}
-            <Redirect from="/card" to="/questions" />
-            <Redirect from="/card/:cardId/:serializedCard" to="/questions/:cardId#:serializedCard" />
-            <Redirect from="/q/:serializedCard" to="/q#:serializedCard" />
         </Route>
     </Route>

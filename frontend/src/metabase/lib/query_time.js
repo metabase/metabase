@@ -2,6 +2,7 @@ import moment from "moment";
 import inflection from "inflection";
 
 import { mbqlEq } from "metabase/lib/query/util";
+import { formatTimeWithUnit } from "metabase/lib/formatting";
 
 export function computeFilterTimeRange(filter) {
     let expandedFilter;
@@ -48,16 +49,16 @@ export function expandTimeIntervalFilter(filter) {
         n = 1;
     }
 
-    field = ["datetime_field", field, "as", unit];
+    field = ["datetime-field", field, "as", unit];
 
     if (n < -1) {
-        return ["BETWEEN", field, ["relative_datetime", n-1, unit], ["relative_datetime", -1, unit]];
+        return ["BETWEEN", field, ["relative-datetime", n-1, unit], ["relative-datetime", -1, unit]];
     } else if (n > 1) {
-        return ["BETWEEN", field, ["relative_datetime", 1, unit], ["relative_datetime", n, unit]];
+        return ["BETWEEN", field, ["relative-datetime", 1, unit], ["relative-datetime", n, unit]];
     } else if (n === 0) {
-        return ["=", field, ["relative_datetime", "current"]];
+        return ["=", field, ["relative-datetime", "current"]];
     } else {
-        return ["=", field, ["relative_datetime", n, unit]];
+        return ["=", field, ["relative-datetime", n, unit]];
     }
 }
 
@@ -110,12 +111,14 @@ export function generateTimeIntervalDescription(n, unit) {
 export function generateTimeValueDescription(value, bucketing) {
     if (typeof value === "string") {
         let m = moment(value);
-        if(m.hours() || m.minutes()) {
+        if (bucketing) {
+            return formatTimeWithUnit(value, bucketing);
+        } else if (m.hours() || m.minutes()) {
             return m.format("MMMM D, YYYY hh:mm a");
         } else {
             return m.format("MMMM D, YYYY");
         }
-    } else if (Array.isArray(value) && value[0] === "relative_datetime") {
+    } else if (Array.isArray(value) && mbqlEq(value[0], "relative-datetime")) {
         let n = value[1];
         let unit = value[2];
 
@@ -149,7 +152,7 @@ export function formatBucketing(bucketing) {
 export function absolute(date) {
     if (typeof date === "string") {
         return moment(date);
-    } else if (Array.isArray(date) && date[0] === "relative_datetime") {
+    } else if (Array.isArray(date) && mbqlEq(date[0], "relative-datetime")) {
         return moment().add(date[1], date[2]);
     } else {
         console.warn("Unknown datetime format", date);
@@ -158,9 +161,9 @@ export function absolute(date) {
 
 export function parseFieldBucketing(field, defaultUnit = null) {
     if (Array.isArray(field)) {
-        if (field[0] === "datetime_field") {
+        if (mbqlEq(field[0], "datetime-field")) {
             return field[3];
-        } if (field[0] === "fk->" || field[0] === "field-id") {
+        } if (mbqlEq(field[0], "fk->") || mbqlEq(field[0], "field-id")) {
             return defaultUnit;
         } else {
             console.warn("Unknown field format", field);
@@ -169,13 +172,22 @@ export function parseFieldBucketing(field, defaultUnit = null) {
     return defaultUnit;
 }
 
+// returns field with "datetime-field" removed
 export function parseFieldTarget(field) {
+    if (mbqlEq(field[0], "datetime-field")) {
+        return field[1];
+    } else {
+        return field;
+    }
+}
+
+export function parseFieldTargetId(field) {
     if (Number.isInteger(field)) return field;
 
     if (Array.isArray(field)) {
-        if (field[0] === "field-id")       return field[1];
-        if (field[0] === "fk->")           return field[1];
-        if (field[0] === "datetime_field") return parseFieldTarget(field[1]);
+        if (mbqlEq(field[0], "field-id"))       return field[1];
+        if (mbqlEq(field[0], "fk->"))           return field[1];
+        if (mbqlEq(field[0], "datetime-field")) return parseFieldTargetId(field[1]);
     }
 
     console.warn("Unknown field format", field);

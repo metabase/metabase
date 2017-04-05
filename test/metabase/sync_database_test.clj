@@ -1,17 +1,23 @@
 (ns metabase.sync-database-test
-  (:require [expectations :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
+            [expectations :refer :all]
             (toucan [db :as db]
                     [hydrate :refer [hydrate]])
             [toucan.util.test :as tt]
-            [metabase.driver :as driver]
+            (metabase [db :as mdb]
+                      [driver :as driver])
+            [metabase.driver.generic-sql :as sql]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [raw-table :refer [RawTable]]
                              [table :refer [Table]])
             [metabase.sync-database :refer :all]
-            (metabase.test [data :refer :all]
-                           [util :refer [resolve-private-vars] :as tu])
+            metabase.sync-database.analyze
+            [metabase.test.data :refer :all]
+            [metabase.test.data.interface :as i]
+            [metabase.test.util :refer [resolve-private-vars] :as tu]
             [metabase.util :as u]))
 
 (def ^:private ^:const sync-test-tables
@@ -317,3 +323,31 @@
      ;; 3. Now re-sync the table and make sure the value is back
      (do (sync-table! @venues-table)
          (get-field-values))]))
+
+
+;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.analyze/low-cardinality-threshold` (currently 300) (#3215) --------------------
+(expect
+  false
+  (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
+    (binding [mdb/*allow-potentailly-unsafe-connections* true]
+      (tt/with-temp Database [db {:engine :h2, :details details}]
+        (let [driver       (driver/engine->driver :h2)
+              spec         (sql/connection-details->spec driver details)
+              exec!        #(doseq [statement %]
+                              (println (jdbc/execute! spec [statement])))
+              insert-range #(str "INSERT INTO blueberries_consumed (num) VALUES "
+                                 (str/join ", " (for [n %]
+                                                  (str "(" n ")"))))]
+          ;; create the `blueberries_consumed` table and insert a 100 values
+          (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
+                  (insert-range (range 100))])
+          (sync-database! db, :full-sync? true)
+          (let [table-id (db/select-one-id Table :db_id (u/get-id db))
+                field-id (db/select-one-id Field :table_id table-id)]
+            ;; field values should exist...
+            (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
+                       100))
+            ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
+            (exec! [(insert-range (range 100 (+ 100 @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold))))])
+            (sync-database! db, :full-sync? true)
+            (db/exists? FieldValues :field_id field-id)))))))
