@@ -15,8 +15,9 @@ import { duration, formatNumber } from "metabase/lib/formatting";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/visualizations/lib/settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
-import Utils from "metabase/lib/utils";
 
+import Utils from "metabase/lib/utils";
+import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { getModeDrills } from "metabase/qb/lib/modes"
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
@@ -273,8 +274,7 @@ export default class Visualization extends Component<*, Props, State> {
         }
 
         if (!error) {
-            // Many aggregations result in [[null]] if there are no rows to aggregate after filters
-            noResults = getIn(series, [0, "data", "rows", "length"]) === 0 || _.isEqual(getIn(series, [0, "data", "rows"]), [[null]]);
+            noResults = series[0] && series[0].data && datasetContainsNoResults(series[0].data);
         }
 
         let extra = (

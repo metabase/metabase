@@ -1,18 +1,17 @@
 /* eslint "react/prop-types": "warn" */
 
-import _ from 'underscore';
-
 import React, { PropTypes } from "react";
 import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import { datasetContainsNoResults } from "metabase/lib/dataset";
 
 const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result, ...props}) => {
-    // Many aggregations result in [[null]] if there are no rows to aggregate after filters
-    const resultIsEmpty = result.data.rows.length === 0 || _.isEqual(result.data.rows, [[null]])
+    const noResults = datasetContainsNoResults(result.data);
+
     if (isObjectDetail) {
         return <QueryVisualizationObjectDetailTable data={result.data} {...props} />
-    } else if (resultIsEmpty) {
+    } else if (noResults) {
         // successful query but there were 0 rows returned with the result
         return <VisualizationErrorMessage
                   type='noRows'
