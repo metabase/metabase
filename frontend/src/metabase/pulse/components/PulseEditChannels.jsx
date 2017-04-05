@@ -152,7 +152,7 @@ export default class PulseEditChannels extends Component {
                         <span className="h4 text-bold mr1">{field.displayName}</span>
                         { field.type === "select" ?
                             <Select
-                                className="h4 text-bold"
+                                className="h4 text-bold bg-white"
                                 value={channel.details[field.name]}
                                 options={field.options}
                                 optionNameFn={o => o}
