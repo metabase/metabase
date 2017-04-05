@@ -51,7 +51,7 @@ export default class Dashboard extends Component {
         fetchDashboard: PropTypes.func.isRequired,
         fetchRevisions: PropTypes.func.isRequired,
         revertToRevision: PropTypes.func.isRequired,
-        saveDashboard: PropTypes.func.isRequired,
+        saveEditedDashboard: PropTypes.func.isRequired,
         setDashboardAttributes: PropTypes.func.isRequired,
         setEditingDashboard: PropTypes.func.isRequired,
 

@@ -2,17 +2,14 @@ import React, { Component, PropTypes } from 'react';
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper.jsx';
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
 import Modal from "metabase/components/Modal.jsx";
-import ConstrainToScreen from "metabase/components/ConstrainToScreen";
 
-import _ from "underscore";
-import cx from "classnames";
+// import _ from "underscore";
+// import cx from "classnames";
 
-import { createDashboard, fetchDashboards } from "metabase/dashboard/dashboard";
+import { createDashboard, fetchDashboards } from "../dashboards";
 import { getDashboards } from "../selectors";
 
 const mapStateToProps = (state, props) => ({

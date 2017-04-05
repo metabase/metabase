@@ -22,10 +22,7 @@ import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.j
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 import { clearRequestState } from "metabase/redux/requests";
-import {
-    updateDashboard,
-    createDashboard
-} from 'metabase/dashboard/dashboard';
+import { updateDashboardReferenceFields, createDashboard } from 'metabase/dashboards/dashboards';
 
 import {
     updateSetting
@@ -114,7 +111,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
     push,
-    updateDashboard,
+    updateDashboardReferenceFields,
     createDashboard,
     updateSetting,
     clearRequestState,

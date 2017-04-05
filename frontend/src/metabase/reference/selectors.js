@@ -697,7 +697,7 @@ export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaE
 
 export const getGuide = (state, props) => state.reference.guide;
 
-export const getDashboards = (state, props) => state.dashboard.dashboardListing &&
-    resourceListToMap(state.dashboard.dashboardListing);
+export const getDashboards = (state, props) => state.dashboards.dashboardListing &&
+    resourceListToMap(state.dashboards.dashboardListing);
 
 export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;
