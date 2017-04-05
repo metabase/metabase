@@ -52,8 +52,8 @@
         creds-error
 
         #"(?s)^0000202B:.*"
-        {:errors {:ldap-user-base  "User or group search base does not exist or is unreadable"}
-                  :ldap-group-base "User or group search base does not exist or is unreadable"}
+        {:errors {:ldap-user-base  "User or group search base does not exist or is unreadable"
+                  :ldap-group-base "User or group search base does not exist or is unreadable"}}
 
         #"^User search base does not exist .*"
         {:errors {:ldap-user-base "User search base does not exist or is unreadable"}}
