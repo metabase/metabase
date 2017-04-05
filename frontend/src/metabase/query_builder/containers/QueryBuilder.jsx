@@ -154,9 +154,9 @@ export default class QueryBuilder extends Component {
 
         if (nextProps.location.action === "POP" && getURL(nextProps.location) !== getURL(this.props.location)) {
             this.props.popState(nextProps.location);
-        } else if (this.props.location.query.tutorial === undefined && nextProps.location.query.tutorial !== undefined) {
+        } else if (this.props.location.hash !== "#?tutorial" && nextProps.location.hash === "#?tutorial") {
             this.props.initializeQB(nextProps.location, nextProps.params);
-        } else if (getURL(nextProps.location) === "/q" && getURL(this.props.location) !== "/q") {
+        } else if (getURL(nextProps.location) === "/question" && getURL(this.props.location) !== "/question") {
             this.props.initializeQB(nextProps.location, nextProps.params);
         }
     }

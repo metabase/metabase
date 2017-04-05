@@ -2,7 +2,9 @@ import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import pure from "recompose/pure";
 import cx from "classnames";
+
 import Icon from "metabase/components/Icon"
+import * as Urls from "metabase/lib/urls";
 
 import {
     getQuestionUrl,
@@ -21,7 +23,7 @@ const GuideDetail = ({
     const title = entity.display_name || entity.name;
     const { caveats, points_of_interest } = entity;
     const typeToLink = {
-        dashboard: `/dash/${entity.id}`,
+        dashboard: Urls.dashboard(entity.id),
         metric: getQuestionUrl({
             dbId: tables[entity.table_id] && tables[entity.table_id].db_id,
             tableId: entity.table_id,

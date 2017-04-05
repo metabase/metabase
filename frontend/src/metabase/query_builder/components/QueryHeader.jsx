@@ -23,7 +23,7 @@ import { CardApi, RevisionApi } from "metabase/services";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
