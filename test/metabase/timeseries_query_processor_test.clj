@@ -45,7 +45,7 @@
 
 (defn- data [results]
   (when-let [data (or (:data results)
-                      (println (u/pprint-to-str results)))]
+                      (println (u/pprint-to-str results)))] ; DEBUG
     (-> data
         (select-keys [:columns :rows])
         (update :rows vec))))

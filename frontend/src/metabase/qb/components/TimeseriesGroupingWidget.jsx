@@ -20,14 +20,14 @@ import type {
 type Props = {
     card: CardObject,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    runQueryFn: () => void
+    runQuery: () => void
 };
 
 export default class TimeseriesGroupingWidget extends Component<*, Props, *> {
     _popover: ?any;
 
     render() {
-        const { card, setDatasetQuery, runQueryFn } = this.props;
+        const { card, setDatasetQuery, runQuery } = this.props;
         if (Card.isStructured(card)) {
             const query = Card.getQuery(card);
             const breakouts = query && Query.getBreakouts(query);
@@ -62,7 +62,7 @@ export default class TimeseriesGroupingWidget extends Component<*, Props, *> {
                                     ...card.dataset_query,
                                     query
                                 });
-                                runQueryFn();
+                                runQuery();
                                 if (this._popover) {
                                     this._popover.close();
                                 }

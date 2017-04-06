@@ -92,10 +92,10 @@
   [session-id]
   (when (and session-id (init-status/complete?))
     (when-let [session (or (session-with-id session-id)
-                           (println "no matching session with ID") ; NOCOMMIT
+                           (println "no matching session with ID") ; DEBUG
                            )]
       (if (session-expired? session)
-        (println (format "session-is-expired! %d min / %d min" (session-age-minutes session) (config/config-int :max-session-age))) ; NOCOMMIT
+        (printf "session-is-expired! %d min / %d min\n" (session-age-minutes session) (config/config-int :max-session-age)) ; DEBUG
         {:metabase-user-id (:user_id session)
          :is-superuser?    (:is_superuser session)}))))
 

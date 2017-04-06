@@ -34,7 +34,7 @@ type Props = {
     card: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    runQueryFn: () => void
+    runQuery: () => void
 };
 
 type State = {
@@ -90,7 +90,7 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
             card,
             tableMetadata,
             setDatasetQuery,
-            runQueryFn
+            runQuery
         } = this.props;
         const { filter, filterIndex, currentFilter } = this.state;
         let currentDescription;
@@ -148,7 +148,7 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                                     ...card.dataset_query,
                                     query
                                 });
-                                runQueryFn();
+                                runQuery();
                             }
                             if (this._popover) {
                                 this._popover.close();

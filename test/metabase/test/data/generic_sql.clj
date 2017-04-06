@@ -13,7 +13,8 @@
                                 [interface :as i])
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
-  (:import clojure.lang.Keyword
+  (:import java.sql.SQLException
+           clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
                                          TableDefinition)))
@@ -218,7 +219,7 @@
                                           :quoting             (sql/quote-style driver)
                                           :allow-dashed-names? true)))]
     (try (jdbc/execute! spec sql+args)
-         (catch java.sql.SQLException e
+         (catch SQLException e
            (println (u/format-color 'red "INSERT FAILED: \n%s\n" sql+args))
            (jdbc/print-sql-exception-chain e)))))
 
@@ -249,15 +250,15 @@
       (let [sql (s/replace sql #";+" ";")]
         (try
           (jdbc/execute! (database->spec driver context dbdef) [sql] {:transaction? false, :multi? true})
-          (catch java.sql.SQLException e
+          (catch SQLException e
             (println "Error executing SQL:" sql)
-            (println (format "Caught SQLException:\n%s"
-                             (with-out-str (jdbc/print-sql-exception-chain e))))
+            (printf "Caught SQLException:\n%s\n"
+                    (with-out-str (jdbc/print-sql-exception-chain e)))
             (throw e))
           (catch Throwable e
             (println "Error executing SQL:" sql)
-            (println (format "Caught Exception: %s %s\n%s" (class e) (.getMessage e)
-                             (with-out-str (.printStackTrace e))))
+            (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
+                    (with-out-str (.printStackTrace e)))
             (throw e)))))))
 
 

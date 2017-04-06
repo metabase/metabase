@@ -26,7 +26,7 @@ export default class MetricPane extends Component {
         metric: PropTypes.object.isRequired,
         query: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };

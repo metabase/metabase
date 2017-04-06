@@ -90,7 +90,7 @@ export default class NativeQueryEditor extends Component {
         nativeDatabases: PropTypes.array.isRequired,
         datasetQuery: PropTypes.object.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
         isOpen: PropTypes.bool,
@@ -163,10 +163,10 @@ export default class NativeQueryEditor extends Component {
                 const selectedText = this._editor.getSelectedText();
                 if (selectedText) {
                     const temporaryCard = assocIn(card, ["dataset_query", "native", "query"], selectedText);
-                    this.props.runQueryFn(temporaryCard, false, null, true);
+                    this.props.runQuery(temporaryCard, { shouldUpdateUrl: false });
                 }
             } else {
-                this.props.runQueryFn();
+                this.props.runQuery();
             }
         }
     }
