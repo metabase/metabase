@@ -3,7 +3,7 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 import SidebarSection from "./SidebarSection.jsx";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import { normal } from "metabase/lib/colors";
 

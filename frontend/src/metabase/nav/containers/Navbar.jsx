@@ -10,6 +10,8 @@ import LogoIcon from "metabase/components/LogoIcon.jsx";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
+import * as Urls from "metabase/lib/urls";
+
 import { getPath, getContext, getUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
@@ -136,7 +138,7 @@ export default class Navbar extends Component {
                         <MainNavLink to="/reference/guide" name="Data Reference" eventName="DataReference" />
                     </li>
                     <li className="pl3">
-                        <Link to="/q" data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.navButton} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">New <span className="hide sm-show">Question</span></Link>
+                        <Link to="/q" data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">New <span className="hide sm-show">Question</span></Link>
                     </li>
                     <li className="flex-align-right transition-background">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>
