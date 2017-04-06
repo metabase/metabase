@@ -3,15 +3,14 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 
-import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import FilterWidget from "metabase/components/FilterWidget"
 
 import S from "../components/List.css";
 
 import List from "../components/List";
-import SearchHeader from "../components/SearchHeader";
+import SearchHeader from "metabase/components/SearchHeader";
 import ActionHeader from "../components/ActionHeader";
 
 import _ from "underscore";
@@ -56,37 +55,37 @@ const mapDispatchToProps = {
 
 const SECTIONS = [
     {
-        section: 'all',
+        id: 'all',
         name: 'All questions',
         icon: 'all',
         empty: 'No questions have been saved yet.',
     },
     {
-        section: 'fav',
+        id: 'fav',
         name: 'Favorites',
         icon: 'star',
         empty: 'You haven\'t favorited any questions yet.',
     },
     {
-        section: 'recent',
+        id: 'recent',
         name: 'Recently viewed',
         icon: 'recents',
         empty: 'You haven\'t viewed any questions recently.',
     },
     {
-        section: 'mine',
+        id: 'mine',
         name: 'Saved by me',
         icon: 'mine',
         empty:  'You haven\'t saved any questions yet.'
     },
     {
-        section: 'popular',
+        id: 'popular',
         name: 'Most popular',
         icon: 'popular',
         empty: 'The most viewed questions across your company will show up here.',
     },
     {
-        section: 'archived',
+        id: 'archived',
         name: "Archive",
         icon: 'archive',
         empty: 'If you no longer need a question, you can archive it.'
@@ -158,7 +157,7 @@ export default class EntityList extends Component {
     }
 
     getSection () {
-        return _.findWhere(SECTIONS, { section: this.props.entityQuery && this.props.entityQuery.f || "all" }) || DEFAULT_SECTION;
+        return _.findWhere(SECTIONS, { id: this.props.entityQuery && this.props.entityQuery.f || "all" }) || DEFAULT_SECTION;
     }
 
     render() {
@@ -201,9 +200,10 @@ export default class EntityList extends Component {
                             null
                       }
                       { showEntityFilterWidget && entityIds.length > 0 &&
-                          <EntityFilterWidget
-                            section={section}
-                            onChange={onChangeSection}
+                          <FilterWidget
+                              items={SECTIONS.filter(item => item.id !== "archived")}
+                              activeItem={section}
+                              onChange={(item) => onChangeSection(item.id)}
                           />
                       }
                     </div>
@@ -221,62 +221,11 @@ export default class EntityList extends Component {
                         />
                     :
                         <div className={S.empty}>
-                            <EmptyState message={section.section === "all" && this.props.defaultEmptyState ? this.props.defaultEmptyState : section.empty} icon={section.icon} />
+                            <EmptyState message={section.id === "all" && this.props.defaultEmptyState ? this.props.defaultEmptyState : section.empty} icon={section.icon} />
                         </div>
                 }
                 </LoadingAndErrorWrapper>
             </div>
         );
-    }
-}
-
-class EntityFilterWidget extends Component {
-    static propTypes = {
-        section: PropTypes.object.isRequired,
-        onChange: PropTypes.func.isRequired,
-    }
-    render() {
-        const { section, onChange } = this.props;
-        return (
-            <PopoverWithTrigger
-                ref={p => this.popover = p}
-                triggerClasses="block ml-auto flex-no-shrink"
-                targetOffsetY={10}
-                triggerElement={
-                    <div className="ml2 flex align-center text-brand">
-                        <span className="text-bold">{section && section.name}</span>
-                        <Icon
-                            ref={i => this.icon = i}
-                            className="ml1"
-                            name="chevrondown"
-                            width="12"
-                            height="12"
-                        />
-                    </div>
-                }
-                target={() => this.icon}
-            >
-                <ol className="text-brand mt2 mb1">
-                    { SECTIONS.filter(item => item.section !== "archived").map((item, index) =>
-                        <li
-                            key={index}
-                            className="cursor-pointer flex align-center brand-hover px2 py1 mb1"
-                            onClick={() => {
-                                onChange(item.section);
-                                this.popover.close();
-                            }}
-                        >
-                            <Icon
-                                className="mr1 text-light-blue"
-                                name={item.icon}
-                            />
-                            <h4 className="List-item-title">
-                                {item.name}
-                            </h4>
-                        </li>
-                    ) }
-                </ol>
-            </PopoverWithTrigger>
-        )
     }
 }
