@@ -143,7 +143,7 @@ export const tryUpdateGuide = async (formFields, props) => {
         endEditing,
         setError,
         resetForm,
-        updateDashboardReferenceFields,
+        updateDashboard,
         updateMetric,
         updateSegment,
         updateTable,
@@ -215,7 +215,7 @@ export const tryUpdateGuide = async (formFields, props) => {
         const updatingDashboards = updateNewEntities({
                 entities: dashboards,
                 formFields: [formFields.most_important_dashboard],
-                updateEntity: updateDashboardReferenceFields
+                updateEntity: updateDashboard
             })
             .concat(updateOldEntities({
                 newEntityIds: formFields.most_important_dashboard ?
@@ -224,7 +224,7 @@ export const tryUpdateGuide = async (formFields, props) => {
                     [guide.most_important_dashboard] :
                     [],
                 entities: dashboards,
-                updateEntity: updateDashboardReferenceFields
+                updateEntity: updateDashboard
             }));
 
         const updatingMetrics = updateNewEntities({

@@ -10,6 +10,9 @@ export type Dashboard = {
     id: DashboardId,
     name: string,
     description: ?string,
+    caveats?: string,
+    points_of_interest?: string,
+    show_in_getting_started?: boolean,
     // incomplete
     parameters: Array<Parameter>
 }
@@ -19,9 +22,9 @@ export type DashboardWithCards = {
     id: DashboardId,
     name: string,
     description: ?string,
+    ordered_cards: Array<DashCard>,
     // incomplete
     parameters: Array<Parameter>,
-    ordered_cards: Array<DashCard>,
 };
 
 export type DashCardId = number;
@@ -36,7 +39,6 @@ export type DashCard = {
     series: Array<Card>,
 
     // incomplete
-
     parameter_mappings: Array<ParameterMapping>,
     visualization_settings: VisualizationSettings,
 

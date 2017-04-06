@@ -3,7 +3,10 @@
 import { handleActions, createAction, combineReducers, createThunkAction } from "metabase/lib/redux";
 import { DashboardApi } from "metabase/services";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import moment from 'moment';
 
+import * as Urls from "metabase/lib/urls";
+import { push } from "react-router-redux";
 import type { Dashboard } from "metabase/meta/types/Dashboard";
 
 export const FETCH_DASHBOARDS = "metabase/dashboards/FETCH_DASHBOARDS";
@@ -12,16 +15,35 @@ export const DELETE_DASHBOARD = "metabase/dashboards/DELETE_DASHBOARD";
 export const SAVE_DASHBOARD = "metabase/dashboards/SAVE_DASHBOARD";
 export const UPDATE_DASHBOARD = "metabase/dashboards/UPDATE_DASHBOARD";
 
-export const fetchDashboards = createAction(FETCH_DASHBOARDS, () =>
-    DashboardApi.list({ f: "all" })
+export const fetchDashboards = createThunkAction(FETCH_DASHBOARDS, () =>
+    async function(dispatch, getState) {
+        const dashboards = DashboardApi.list({f: "all"})
+
+        for (const dashboard of dashboards) {
+            dashboard.updated_at = moment(dashboard.updated_at);
+        }
+
+        return dashboards;
+    }
 );
 
-export const createDashboard = createAction(CREATE_DASHBOARD, (newDashboard) => {
-    MetabaseAnalytics.trackEvent("Dashboard", "Create");
-    return DashboardApi.create(newDashboard);
-});
+type CreateDashboardOpts = {
+    redirect?: boolean
+}
+export const createDashboard = createThunkAction(CREATE_DASHBOARD, (dashboard: Dashboard, { redirect }: CreateDashboardOpts) =>
+    async (dispatch, getState) => {
+        MetabaseAnalytics.trackEvent("Dashboard", "Create");
+        const createdDashboard: Dashboard = await DashboardApi.create(dashboard);
 
-export const updateDashboardReferenceFields = createThunkAction(UPDATE_DASHBOARD, (dashboard) =>
+        if (redirect) {
+            await push(Urls.dashboard(createdDashboard.id));
+        }
+
+        return createdDashboard;
+    }
+);
+
+export const updateDashboard = createThunkAction(UPDATE_DASHBOARD, (dashboard: Dashboard) =>
     async (dispatch, getState) => {
         const {
             id,
@@ -58,7 +80,7 @@ export const deleteDashboard = createAction(DELETE_DASHBOARD, async (dashId) => 
 });
 
 export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashboard: Dashboard) {
-    return async function(dispatch, getState) {
+    return async function(dispatch, getState): Promise<Dashboard> {
         let { id, name, description, parameters } = dashboard
         MetabaseAnalytics.trackEvent("Dashboard", "Update");
         return await DashboardApi.update({ id, name, description, parameters });

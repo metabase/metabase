@@ -36,7 +36,6 @@ export default class DashboardList extends Component {
 
         return (
             <ol className="flex flex-wrap">
-
                 { dashboards.map(dash => <DashboardListItem dashboard={dash}/>)}
             </ol>
         );
