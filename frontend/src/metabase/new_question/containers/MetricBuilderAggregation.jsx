@@ -22,11 +22,6 @@ import {
     setTip
 } from "../actions";
 
-const aggCategories = [
-    { name: "Basics", key: "basics" },
-    { name: "Saved metrics", key: "saved" },
-    { name: "Custom expression", key: "custom" }
-];
 
 const mapStateToProps = state => ({
     table: getSelectedTableMetadata(state),
@@ -101,16 +96,6 @@ class AggBasics extends Component {
     }
 }
 
-const SavedAggregations = ({ aggregations, onClick }) => (
-    <div>
-        {aggregations.map(aggregation => (
-            <li key={aggregation.id} onClick={() => onClick(aggregation)}>
-                {aggregation.name}
-            </li>
-        ))}
-    </div>
-);
-
 class CustomAggregation extends Component {
     constructor() {
         super();
@@ -121,18 +106,14 @@ class CustomAggregation extends Component {
     render() {
         const { table, onClick } = this.props;
         return (
-            <div>
-                <ExpressionEditorTextfield
-                    tableMetadata={table}
-                    expression={null}
-                    onChange={aggregation => this.setState({ aggregation })}
-                    onError={error => this.setState({ error })}
-                    startRule="aggregation"
-                />
-                <button onClick={() => onClick(this.state.aggregation)}>
-                    Next
-                </button>
-            </div>
+            <ExpressionEditorTextfield
+                tableMetadata={table}
+                expression={this.props.expression}
+                onChange={aggregation => this.setState({ aggregation })}
+                onError={error => this.setState({ error })}
+                startRule="aggregation"
+                placeholder={this.props.placeholder}
+            />
         );
     }
 }
@@ -141,75 +122,48 @@ class CustomAggregation extends Component {
 class MetricBuilderAggregation extends Component {
     constructor(props) {
         super(props);
-        this.state = {
-            aggCategory: "basics"
-        };
         this.tip = props.tip;
+        this.state = {
+            expression: null
+        }
     }
 
-    renderAggregationOptions = () => {
+    render() {
         const {
             table,
             selectAndAdvance,
             setAggregation,
             selectMetric
         } = this.props;
-        switch (this.state.aggCategory) {
-            case "saved":
-                return (
-                    <SavedAggregations
-                        aggregations={this.props.savedAggregations}
-                        onClick={metric => {
-                            selectAndAdvance(() => selectMetric(metric));
-                        }}
-                    />
-                );
-            case "custom":
-                return (
-                    <CustomAggregation
-                        table={table}
-                        onClick={aggregation =>
-                            selectAndAdvance(() => setAggregation(aggregation))}
-                    />
-                );
-            default:
-                return (
-                    <AggBasics
-                        table={table}
-                        setTip={this.props.setTip}
-                        clearTip={() => this.props.setTip(this.tip)}
-                        onClick={aggregation =>
-                            selectAndAdvance(() => setAggregation(aggregation))}
-                    />
-                );
-        }
-    };
-
-    render() {
-        const { table } = this.props;
         return (
             <div>
-                <h3>What do you want to know about {table.display_name}?</h3>
-                <ol>
-                    {aggCategories.map(({ name, key }) => (
-                        <li
-                            key={key}
-                            style={{
-                                borderBottom: `2px solid transparent`,
-                                borderColor: key === this.state.aggCategory
-                                    ? normal.green
-                                    : "transparent",
-                                display: "inline-block",
-                                padding: "1em 2em",
-                                cursor: "pointer"
-                            }}
-                            onClick={() => this.setState({ aggCategory: key })}
-                        >
-                            {name}
-                        </li>
-                    ))}
-                </ol>
-                {this.renderAggregationOptions()}
+                <div className="flex">
+                    <div className="flex-full">
+                        <CustomAggregation
+                            table={table}
+                            onClick={aggregation =>
+                                    selectAndAdvance(() => setAggregation(aggregation))}
+                            expression={this.state.expression}
+                            placeholder={`What do you want to know about ${table.display_name}?`}
+                        />
+                    </div>
+                    <button
+                        className="Button Button--primary"
+                        onClick={() =>
+                            selectAndAdvance(() => setAggregation(this.state.expression))
+                        }
+                    >
+                        Next
+                    </button>
+                </div>
+                <AggBasics
+                    table={table}
+                    setTip={this.props.setTip}
+                    clearTip={() => this.props.setTip(this.tip)}
+                    onClick={aggregation =>
+                        this.setState({ expression: aggregation })
+                    }
+                />
             </div>
         );
     }
