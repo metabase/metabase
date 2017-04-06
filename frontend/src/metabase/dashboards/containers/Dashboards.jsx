@@ -1,10 +1,18 @@
 import React, { Component, PropTypes } from 'react';
 import { connect } from "react-redux";
-import { Link } from "react-router";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
+
+import WhatsADashboard from "../components/WhatsADashboard";
+import DashboardList from "../components/DashboardList";
+
+import TitleAndDescription from "metabase/components/TitleAndDescription";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import Modal from "metabase/components/Modal.jsx";
+
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+import Icon from "metabase/components/Icon.jsx";
 
 // import _ from "underscore";
 // import cx from "classnames";
@@ -104,49 +112,32 @@ export default class Dashboards extends Component {
         if (simulateEmpty) dashboards = [];
 
         return (
-            <div>
+            <LoadingAndErrorWrapper loading={!dashboards} className="relative mx4">
                 { modalOpen ? this.renderCreateDashboardModal() : null }
-                <div>
-                    { dashboards.length === 0 ?
-                        <div>
-                            <div>
-                                <div style={this.styles.dashIcon} />
-                            </div>
-                            <div>You don’t have any dashboards yet.</div>
-                            <div>Dashboards group visualizations for frequent questions in a single
-                                handy place.
-                            </div>
-                            <div>
-                                <a onClick={this.toggleModal}>Create
-                                    your first dashboard</a>
+                <div className="flex align-center pt4 pb2">
+                    <TitleAndDescription title={ "Dashboards" } />
+                    <div className="flex align-center ml-auto">
+                        <div
+                            className="link flex-align-right px4 cursor-pointer"
+                            onClick={this.toggleModal}
+                        >
+                            <div
+                                className="mt1 flex align-center absolute"
+                                style={ {right: 40} }
+                            >
+                                <Icon name="add" size={16}/>
+                                <h3 className="ml1">Add to new dashboard</h3>
                             </div>
                         </div>
-                        :
-                        <ul>
-                            { dashboards.map(dash =>
-                                <li key={dash.id}>
-                                    <Link to={"/dash/" + dash.id}
-                                          data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dash.id}>
-                                        <div>
-                                            {dash.name}
-                                        </div>
-                                        { dash.description ?
-                                            <div>
-                                                {dash.description}
-                                            </div>
-                                            : null }
-                                    </Link>
-                                </li>
-                            )}
-                            <li>
-                                <a data-metabase-event={"Navbar;Dashboards;Create Dashboard"}
-                                    onClick={this.toggleModal}>
-                                    Create a new dashboard</a>
-                            </li>
-                        </ul>
-                    }
+                    </div>
                 </div>
-            </div>
+                { dashboards.length === 0 ?
+                    <WhatsADashboard button={
+                        <a onClick={this.toggleModal} className="Button Button--primary">Create a dashboard</a>
+                    }/>
+                    : <DashboardList dashboards={dashboards}/>
+                }
+            </LoadingAndErrorWrapper>
         );
     }
 }

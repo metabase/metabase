@@ -10,8 +10,6 @@ import LogoIcon from "metabase/components/LogoIcon.jsx";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
-import * as Urls from "metabase/lib/urls";
-
 import { getPath, getContext, getUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
