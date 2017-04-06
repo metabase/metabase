@@ -37,6 +37,7 @@ For more information check out [metabase.com](http://www.metabase.com)
 - CrateDB
 - Oracle
 - Vertica
+- Presto
 
 Don't see your favorite database? File an issue to let us know.
 
