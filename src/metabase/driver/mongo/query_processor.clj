@@ -391,7 +391,7 @@
 (def ^:private fn-name->decoder
   {:ISODate (fn [arg]
               (DateTime. arg))
-   :ObjectId (fn [arg]
+   :ObjectId (fn [^String arg]
                (ObjectId. arg))})
 
 (defn- form->encoded-fn-name
