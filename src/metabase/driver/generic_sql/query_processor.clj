@@ -151,7 +151,7 @@
 
 (defn- apply-expression-aggregation [driver honeysql-form expression]
   (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)
-                                 (hx/escape-dots (annotate/aggregation-name expression))]))
+                                 (hx/escape-dots (driver/format-custom-field-name driver (annotate/aggregation-name expression)))]))
 
 (defn- apply-single-aggregation [driver honeysql-form {:keys [aggregation-type field], :as aggregation}]
   (h/merge-select honeysql-form [(aggregation->honeysql driver aggregation-type field)

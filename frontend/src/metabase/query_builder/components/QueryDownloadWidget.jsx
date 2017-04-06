@@ -7,7 +7,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 
 import FieldSet from "metabase/components/FieldSet.jsx";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";

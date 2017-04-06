@@ -428,9 +428,10 @@
   (generic-sql/quote-name datasets/*driver* identifier))
 
 (defn- checkins-identifier []
-  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery we will just hackily return the correct identifier here
-  (if (= datasets/*engine* :bigquery)
-    "[test_data.checkins]"
+  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and Presto we will just hackily return the correct identifier here
+  (case datasets/*engine*
+    :bigquery "[test_data.checkins]"
+    :presto   "\"default\".\"checkins\""
     (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
       (str (when (seq schema)
              (str (quote-name schema) \.))
@@ -527,3 +528,22 @@
                            :native     {:query         "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE {{x}}",
                                         :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}},
                            :parameters [{:type "category", :target ["variable" ["template-tag" "x"]]}]})))
+
+;; make sure that you can use the same parameter multiple times (#4659)
+(expect
+  {:query         "SELECT count(*) FROM products WHERE title LIKE ? AND subtitle LIKE ?"
+   :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}
+   :params        ["%Toucan%" "%Toucan%"]}
+  (:native (expand-params {:driver     (driver/engine->driver :h2)
+                           :native     {:query         "SELECT count(*) FROM products WHERE title LIKE {{x}} AND subtitle LIKE {{x}}",
+                                        :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}},
+                           :parameters [{:type "category", :target ["variable" ["template-tag" "x"]]}]})))
+
+(expect
+  {:query         "SELECT * FROM ORDERS WHERE true  AND ID = ? OR USER_ID = ?"
+   :template_tags {:id {:name "id", :display_name "ID", :type "text"}}
+   :params        ["2" "2"]}
+  (:native (expand-params {:driver     (driver/engine->driver :h2)
+                           :native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
+                                        :template_tags {:id {:name "id", :display_name "ID", :type "text"}}}
+                           :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]})))

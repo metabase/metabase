@@ -151,11 +151,11 @@ export const getRoutes = (store) =>
                 <Route path="/" component={HomepageApp} />
 
                 {/* DASHBOARD */}
-                <Route path="/dash/:dashboardId" component={DashboardApp} />
+                <Route path="/dashboard/:dashboardId" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
-                <Route path="/card/:cardId" component={QueryBuilder} />
-                <Route path="/q" component={QueryBuilder} />
+                <Route path="/question" component={QueryBuilder} />
+                <Route path="/question/:cardId" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
                 <Route path="/questions">
@@ -262,13 +262,13 @@ export const getRoutes = (store) =>
                 <IndexRedirect to="/_internal/list" />
             </Route>
 
+            {/* DEPRECATED */}
+            <Redirect from="/q" to="/question" />
+            <Redirect from="/card/:cardId" to="/question/:cardId" />
+            <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+
             {/* MISC */}
             <Route path="/unauthorized" component={Unauthorized} />
             <Route path="/*" component={NotFound} />
-
-            {/* LEGACY */}
-            <Redirect from="/card" to="/questions" />
-            <Redirect from="/card/:cardId/:serializedCard" to="/questions/:cardId#:serializedCard" />
-            <Redirect from="/q/:serializedCard" to="/q#:serializedCard" />
         </Route>
     </Route>

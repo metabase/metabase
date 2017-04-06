@@ -5,7 +5,7 @@ import styles from "./Legend.css";
 import Icon from "metabase/components/Icon.jsx";
 import LegendItem from "./LegendItem.jsx";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 
@@ -65,7 +65,7 @@ export default class LegendHeader extends Component {
                         key={index}
                         title={s.card.name}
                         description={description}
-                        href={linkToCard && s.card.id && Urls.card(s.card.id)}
+                        href={linkToCard && s.card.id && Urls.question(s.card.id)}
                         color={colors[index % colors.length]}
                         showDot={showDots}
                         showTitle={showTitles}

@@ -19,6 +19,7 @@ import QuestionEmbedWidget from "../containers/QuestionEmbedWidget";
 import { formatNumber, inflect, duration } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
 import MetabaseSettings from "metabase/lib/settings";
+import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -223,5 +224,5 @@ export default class QueryVisualization extends Component {
 const VisualizationEmptyState = ({showTutorialLink}) =>
     <div className="flex full layout-centered text-grey-1 flex-column">
         <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-        { showTutorialLink && <Link to="/q#?tutorial" className="link cursor-pointer my2">How do I use this thing?</Link> }
+        { showTutorialLink && <Link to={Urls.question(null, "?tutorial")} className="link cursor-pointer my2">How do I use this thing?</Link> }
     </div>
