@@ -887,7 +887,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, {
         if (card.id != null && !cardIsDirty) {
             CardApi.query({
                 cardId: card.id,
-                parameters: card.dataset_query.parameters,
+                parameters: datasetQuery.parameters,
                 ignore_cache: ignoreCache
             }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
