@@ -9,6 +9,7 @@ var webpackPostcssTools = require('webpack-postcss-tools');
 
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
+var HtmlWebpackHarddiskPlugin = require('html-webpack-harddisk-plugin');
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
 var BannerWebpackPlugin = require('banner-webpack-plugin');
 
@@ -27,17 +28,15 @@ function hasArg(arg) {
 var SRC_PATH = __dirname + '/frontend/src/metabase';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
+// default NODE_ENV to development
+var NODE_ENV = process.env["NODE_ENV"] || "development";
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-var isWatching = hasArg("-w") || hasArg("--watch");
-if (isWatching) {
-    console.warn("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries");
+var IS_WATCHING = hasArg("-w") || hasArg("--watch");
+if (IS_WATCHING) {
+    process.stderr.write("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries\n");
 }
-
-// default NODE_ENV to development
-var NODE_ENV = process.env["NODE_ENV"] || "development";
-process.stderr.write("webpack env: " + NODE_ENV + "\n");
 
 // Babel:
 var BABEL_CONFIG = {
@@ -159,19 +158,25 @@ var config = module.exports = {
             filename: '../../index.html',
             chunks: ["app-main", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
-            inject: 'head'
+            inject: 'head',
+            alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../public.html',
             chunks: ["app-public", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
-            inject: 'head'
+            inject: 'head',
+            alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../embed.html',
             chunks: ["app-embed", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
-            inject: 'head'
+            inject: 'head',
+            alwaysWriteToDisk: true,
+        }),
+        new HtmlWebpackHarddiskPlugin({
+            outputPath: __dirname + '/resources/frontend_client/app/dist'
         }),
         new webpack.DefinePlugin({
             'process.env': {
