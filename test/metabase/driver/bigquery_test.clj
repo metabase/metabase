@@ -2,6 +2,7 @@
   (:require metabase.driver.bigquery
             [metabase.models.database :as database]
             [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qptest]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
                                 [interface :refer [def-database-definition]])))
@@ -29,3 +30,14 @@
                                          :type     :native
                                          :database (data/id)}))
                [:cols :columns]))
+
+;; make sure that the bigquery driver can handle named columns with characters that aren't allowed in BQ itself
+(expect-with-engine :bigquery
+  {:rows    [[113]]
+   :columns ["User_ID_Plus_Venue_ID"]}
+  (qptest/rows+column-names (qp/process-query {:database (data/id)
+                                               :type     "query"
+                                               :query    {:source_table (data/id :checkins)
+                                                          :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
+                                                                                              ["field-id" (data/id :checkins :venue_id)]]]
+                                                                                  "User ID Plus Venue ID"]]}})))
