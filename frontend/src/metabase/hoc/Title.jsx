@@ -4,15 +4,34 @@ import _ from "underscore";
 
 const componentStack = [];
 
+let SEPARATOR = " · ";
+let HIERARCHICAL = true;
+let BASE_NAME = null;
+
+export const setSeparator = (separator) => SEPARATOR = separator;
+export const setHierarchical = (hierarchical) => HIERARCHICAL = hierarchical;
+export const setBaseName = (baseName) => BASE_NAME = baseName;
+
 const updateDocumentTitle = _.debounce(() => {
-    // update with the top-most title
-    for (let i = componentStack.length - 1; i >= 0; i--) {
-        const title = componentStack[i]._documentTitle;
-        if (title) {
-            if (document.title !== title) {
-                document.title = title;
+    if (HIERARCHICAL) {
+        document.title = componentStack
+            .map(component => component._documentTitle)
+            .filter(title => title)
+            .reverse()
+            .join(SEPARATOR);
+    } else {
+        // update with the top-most title
+        for (let i = componentStack.length - 1; i >= 0; i--) {
+            let title = componentStack[i]._documentTitle;
+            if (title) {
+                if (BASE_NAME) {
+                    title += SEPARATOR + BASE_NAME;
+                }
+                if (document.title !== title) {
+                    document.title = title;
+                }
+                break;
             }
-            break;
         }
     }
 })
@@ -59,9 +78,9 @@ import { Route as _Route } from "react-router";
 // react-router Route wrapper that adds a `title` property
 export class Route extends _Route {
     static createRouteFromReactElement(element) {
-        if (element.props.component && element.props.title) {
+        if (element.props.title) {
             element = React.cloneElement(element, {
-                component: title(element.props.title)(element.props.component)
+                component: title(element.props.title)(element.props.component || (({ children }) => children))
             });
         }
         return _Route.createRouteFromReactElement(element);

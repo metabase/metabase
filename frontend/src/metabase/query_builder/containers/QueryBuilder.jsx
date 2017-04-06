@@ -126,7 +126,7 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ card }) => (card && card.name) ? `${card.name} | Metabase` : `Metabase`)
+@title(({ card }) => (card && card.name) || "Question")
 export default class QueryBuilder extends Component {
 
     constructor(props, context) {
