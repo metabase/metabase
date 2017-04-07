@@ -144,7 +144,7 @@ export default class PublicQuestion extends Component<*, Props, State> {
                 className="relative spread"
                 name={card && card.name}
                 description={card && card.description}
-                parameters={card && card.parameters}
+                parameters={card && getParameters(card)}
                 actionButtons={actionButtons}
                 parameterValues={parameterValues}
                 setParameterValue={this.setParameterValue}
