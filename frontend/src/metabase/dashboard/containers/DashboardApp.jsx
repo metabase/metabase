@@ -9,7 +9,7 @@ import Dashboard from "../components/Dashboard.jsx";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 
-import { getIsEditing, getIsEditingParameter, getIsDirty, getDashboardComplete, getCardList, getRevisions, getCardData, getCardDurations, getDatabases, getEditingParameter, getParameterValues } from "../selectors";
+import { getIsEditing, getIsEditingParameter, getIsDirty, getDashboardComplete, getCardList, getRevisions, getCardData, getCardDurations, getDatabases, getEditingParameter, getParameters, getParameterValues } from "../selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as dashboardActions from "../dashboard";
@@ -27,6 +27,7 @@ const mapStateToProps = (state, props) => {
       cardDurations:        getCardDurations(state, props),
       databases:            getDatabases(state, props),
       editingParameter:     getEditingParameter(state, props),
+      parameters:           getParameters(state, props),
       parameterValues:      getParameterValues(state, props),
       addCardOnLoad:        props.location.query.add ? parseInt(props.location.query.add) : null
   }

@@ -44,6 +44,7 @@ export default class Dashboard extends Component {
 
         dashboard: PropTypes.object,
         cards: PropTypes.array,
+        parameters: PropTypes.array,
 
         addCardToDashboard: PropTypes.func.isRequired,
         deleteDashboard: PropTypes.func.isRequired,
@@ -219,13 +220,13 @@ export default class Dashboard extends Component {
     }
 
     render() {
-        let { dashboard, isEditing, editingParameter, parameterValues, location } = this.props;
+        let { dashboard, isEditing, editingParameter, parameters, parameterValues, location } = this.props;
         let { error, isFullscreen, isNightMode } = this.state;
         isNightMode = isNightMode && isFullscreen;
 
-        let parameters;
-        if (dashboard && dashboard.parameters && dashboard.parameters.length) {
-            parameters = (
+        let parametersWidget;
+        if (parameters && parameters.length > 0) {
+            parametersWidget = (
                 <Parameters
                     syncQueryString
 
@@ -233,7 +234,7 @@ export default class Dashboard extends Component {
                     isFullscreen={isFullscreen}
                     isNightMode={isNightMode}
 
-                    parameters={dashboard.parameters.map(p => ({ ...p, value: parameterValues[p.id] }))}
+                    parameters={parameters.map(p => ({ ...p, value: parameterValues[p.id] }))}
                     query={location.query}
 
                     editingParameter={editingParameter}
@@ -264,12 +265,12 @@ export default class Dashboard extends Component {
                             onEditingChange={this.setEditing}
                             setDashboardAttribute={this.setDashboardAttribute}
                             addParameter={this.props.addParameter}
-                            parameters={parameters}
+                            parameters={parametersWidget}
                         />
                     </header>
-                    {!isFullscreen && parameters &&
+                    {!isFullscreen && parametersWidget &&
                         <div className="wrapper flex flex-column align-start mt2 relative z2">
-                            {parameters}
+                            {parametersWidget}
                         </div>
                     }
                     <div className="wrapper">

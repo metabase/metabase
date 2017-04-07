@@ -3,7 +3,7 @@ import { createSelector } from "reselect";
 import _ from "underscore";
 
 import { getTemplateTags } from "metabase/meta/Card";
-import { getTemplateTagParameters } from "metabase/meta/Parameter";
+import { getTemplateTagParameters, getParameterTargetFieldId } from "metabase/meta/Parameter";
 
 import { isCardDirty, isCardRunnable } from "metabase/lib/card";
 import { parseFieldTargetId } from "metabase/lib/query_time";
@@ -159,11 +159,12 @@ export const getParameters = createSelector(
 );
 
 export const getParametersWithValues = createSelector(
-    [getParameters, getParameterValues],
-    (parameters, values) =>
+    [getParameters, getParameterValues, getCard],
+    (parameters, values, card) =>
         parameters.map(parameter => ({
             ...parameter,
-            value: values[parameter.id] != null ? values[parameter.id] : null
+            value: values[parameter.id] != null ? values[parameter.id] : null,
+            field_id: getParameterTargetFieldId(parameter.target, card.dataset_query)
         }))
 );
 

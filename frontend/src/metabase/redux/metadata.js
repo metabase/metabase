@@ -320,6 +320,26 @@ const tables = handleActions({
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) }
 }, {});
 
+const FETCH_FIELD_VALUES = "metabase/metadata/FETCH_FIELD_VALUES";
+export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(fieldId, reload) {
+    return async function(dispatch, getState) {
+        const requestStatePath = ["metadata", "fields", fieldId];
+        const existingStatePath = requestStatePath;
+        const getData = async () => {
+            return await MetabaseApi.field_values({ fieldId })
+        };
+
+        return await fetchData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
+            reload
+        });
+    };
+});
+
 const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
 export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
     return async function(dispatch, getState) {
@@ -349,12 +369,16 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
     };
 });
 
+import { FETCH_DASHBOARD } from "metabase/dashboard/dashboard";
+
 const fields = handleActions({
     [FETCH_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.fields }) },
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.fields }) },
     [UPDATE_FIELD]: { next: (state, { payload }) => payload },
+    [FETCH_FIELD_VALUES]: { next: (state, { payload: fieldValues }) =>
+        assocIn(state, [fieldValues.field_id, "values"], fieldValues) },
     // NOTE: from metabase/dashboard/dashboard
-    ["metabase/dashboard/FETCH_DASHBOARD"]: { next: (state, { payload }) => {
+    [FETCH_DASHBOARD]: { next: (state, { payload }) => {
         // extract field values from dashboard endpoint
         if (payload.entities && payload.entities.dashboard) {
             for (const dashboard of Object.values(payload.entities.dashboard)) {

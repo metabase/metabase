@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, {Component, PropTypes} from "react"
+import { connect } from "react-redux";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -26,6 +27,18 @@ const WIDGETS = {
     "date/all-options": DateAllOptionsWidget
 }
 
+import { fetchFieldValues } from "metabase/redux/metadata";
+import { getIn } from "icepick";
+
+const mapStateToProps = (state, props) => ({
+    values: getIn(state, ["metadata", "fields", props.parameter.field_id, "values", "values"]) || []
+})
+
+const mapDispatchToProps = {
+    fetchFieldValues
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class ParameterValueWidget extends Component {
 
     static propTypes = {
@@ -69,6 +82,22 @@ export default class ParameterValueWidget extends Component {
     }
 
     state = { isFocused: false };
+
+    componentWillMount() {
+        this.updateFieldValues(this.props);
+    }
+
+    componentWillReceiveProps(nextProps) {
+        if (nextProps.parameter.field_id != null && nextProps.parameter.field_id !== this.props.parameter.field_id) {
+            this.updateFieldValues(nextProps);
+        }
+    }
+
+    updateFieldValues(props) {
+        if (props.parameter.field_id != null) {
+            props.fetchFieldValues(props.parameter.field_id)
+        }
+    }
 
     render() {
         const {parameter, value, values, setValue, isEditing, placeholder, isFullscreen,

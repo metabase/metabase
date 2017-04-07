@@ -1,11 +1,16 @@
 /* @flow */
 
+import type { DatasetQuery } from "./types/Card";
 import type { TemplateTag } from "./types/Query";
-import type { Parameter, ParameterId } from "./types/Dashboard";
+import type { Parameter, ParameterId, ParameterTarget } from "./types/Dashboard";
+import type { FieldId } from "./types/Field";
 
 export type ParameterValues = {
     [id: ParameterId]: string
 };
+
+import Q from "metabase/lib/query";
+import { mbqlEq } from "metabase/lib/query/util";
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
 export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
@@ -30,4 +35,21 @@ export const getParametersBySlug = (parameters: Parameter[], parameterValues: Pa
         }
     }
     return result;
+}
+
+export function getParameterTargetFieldId(target: ?ParameterTarget, datasetQuery: DatasetQuery): ?FieldId {
+    if (target && target[0] === "dimension") {
+        let dimension = target[1];
+        if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
+            if (datasetQuery.type === "native") {
+                let templateTag = datasetQuery.native.template_tags[String(dimension[1])];
+                if (templateTag && templateTag.type === "dimension") {
+                    return Q.getFieldTargetId(templateTag.dimension);
+                }
+            }
+        } else {
+            return Q.getFieldTargetId(dimension);
+        }
+    }
+    return null;
 }

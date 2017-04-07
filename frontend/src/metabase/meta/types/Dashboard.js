@@ -52,19 +52,19 @@ export type Parameter = {
 export type VariableTarget = ["template-tag", string];
 export type DimensionTarget = ["template-tag", string] | ConcreteField
 
-export type ParameterMappingTarget =
+export type ParameterTarget =
     ["variable", VariableTarget] |
     ["dimension", DimensionTarget];
 
 export type ParameterMappingOption = {
     name: string,
-    target: ParameterMappingTarget,
+    target: ParameterTarget,
 };
 
 export type ParameterMapping = {
     card_id: CardId,
     parameter_id: ParameterId,
-    target: ParameterMappingTarget
+    target: ParameterTarget
 };
 
 export type ParameterOption = {
@@ -75,7 +75,7 @@ export type ParameterOption = {
 
 export type ParameterInstance = {
     type: ParameterType,
-    target: ParameterMappingTarget,
+    target: ParameterTarget,
     value: string
 };
 

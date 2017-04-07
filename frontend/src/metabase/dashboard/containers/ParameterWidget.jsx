@@ -1,5 +1,4 @@
 import React, {Component, PropTypes} from 'react';
-import {connect} from "react-redux";
 
 import ParameterValueWidget from "../components/parameters/ParameterValueWidget.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -10,29 +9,11 @@ import _ from "underscore";
 
 import FieldSet from "../../components/FieldSet";
 
-import {getMappingsByParameter} from "../selectors";
-
-const makeMapStateToProps = () => {
-    const mapStateToProps = (state, props) => ({
-        mappingsByParameter: getMappingsByParameter(state, props)
-    });
-    return mapStateToProps;
-}
-
-const mapDispatchToProps = {};
-
-
-@connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterWidget extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            isEditingName: false,
-            isFocused: false
-        };
-
-        this.focusChanged = this.focusChanged.bind(this)
-    }
+    state = {
+        isEditingName: false,
+        isFocused: false
+    };
 
     static propTypes = {
         parameter: PropTypes.object
@@ -42,28 +23,14 @@ export default class ParameterWidget extends Component {
         parameter: null,
     }
 
-    getValues() {
-        const {parameter, mappingsByParameter} = this.props;
-        return _.chain(mappingsByParameter[parameter.id])
-            .map(_.values)
-            .flatten()
-            .map(m => m.values || [])
-            .flatten()
-            .sortBy(_.identity)
-            .uniq(true)
-            .value();
-    }
-
     renderPopover(value, setValue, placeholder, isFullscreen) {
         const {parameter, editingParameter} = this.props;
         const isEditingParameter = !!(editingParameter && editingParameter.id === parameter.id);
-        const values = this.getValues();
         return (
             <ParameterValueWidget
                 parameter={parameter}
                 name={name}
                 value={value}
-                values={values}
                 setValue={setValue}
                 isEditing={isEditingParameter}
                 placeholder={placeholder}
@@ -73,7 +40,7 @@ export default class ParameterWidget extends Component {
         );
     }
 
-    focusChanged(isFocused) {
+    focusChanged = (isFocused) => {
         this.setState({isFocused})
     }
 
