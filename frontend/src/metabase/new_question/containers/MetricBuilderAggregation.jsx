@@ -135,6 +135,7 @@ class MetricBuilderAggregation extends Component {
             setAggregation,
             selectMetric
         } = this.props;
+        const { expression } = this.state
         return (
             <div>
                 <div className="flex">
@@ -143,7 +144,7 @@ class MetricBuilderAggregation extends Component {
                             table={table}
                             onClick={aggregation =>
                                     selectAndAdvance(() => setAggregation(aggregation))}
-                            expression={this.state.expression}
+                            expression={expression}
                             placeholder={`What do you want to know about ${table.display_name}?`}
                         />
                     </div>
@@ -156,14 +157,16 @@ class MetricBuilderAggregation extends Component {
                         Next
                     </button>
                 </div>
-                <AggBasics
-                    table={table}
-                    setTip={this.props.setTip}
-                    clearTip={() => this.props.setTip(this.tip)}
-                    onClick={aggregation =>
-                        this.setState({ expression: aggregation })
-                    }
-                />
+                { !expression && (
+                    <AggBasics
+                        table={table}
+                        setTip={this.props.setTip}
+                        clearTip={() => this.props.setTip(this.tip)}
+                        onClick={aggregation =>
+                            this.setState({ expression: aggregation })
+                        }
+                    />
+                )}
             </div>
         );
     }
