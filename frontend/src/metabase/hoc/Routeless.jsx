@@ -41,13 +41,22 @@ export default (ComposedComponent) => class extends Component {
         // if the state previously was the saved one and is now not, then we probably
         // hit the back button, so close the wrapped component
         if (location.state === this._state && nextLocation.state !== this._state) {
-            this.props.onClose();
+            // close in a timeout in case it will be closed anyway and the URL changes.
+            // alternatively may be able to tighten up the logic above
+            this._timeout = setTimeout(() => {
+                this.props.onClose();
+            }, 100);
         }
     }
 
     componentWillUnmount() {
         const location = this.props._routeless_location;
         const goBack = this.props._routeless_goBack;
+
+        if (this._timeout != null) {
+            clearTimeout(this._timeout);
+        }
+
         // if we unmount (e.x. hit the close button which calls onClose directly) and still have the
         // same state then go back to the original state
         // NOTE: ideally we would remove the current state from the history so the forward
