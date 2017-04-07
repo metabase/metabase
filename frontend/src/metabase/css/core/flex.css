@@ -16,6 +16,14 @@
     flex-shrink: 0;
 }
 
+.flex-retain-width {
+    /* W3C spec says:
+     * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
+     * fixed-size element). To change this, set the min-width or min-height property.
+     */
+    min-width: 0;
+}
+
 .align-center, :local(.align-center) {
     align-items: center;
 }
