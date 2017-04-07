@@ -1,4 +1,5 @@
 # API Documentation for Metabase v0.23.0-snapshot
+When invoking the REST API endpoints that require authentication, a sessionId must be passed in either as a cookie ("metabase.SESSION_ID") or as an HTTP header ("x-metabase-session").
 
 ## `GET /api/activity/`
 
