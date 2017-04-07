@@ -17,11 +17,11 @@ type DashboardListItemType = {
 }
 
 const enhance = withState('hover', 'setHover', false)
-const DashboardListItem = enhance(({ dashboard, hover, setHover }: DashboardListItemType) =>
+const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListItemType) =>
     <li key={dashboard.id} className="Grid-cell flex-retain-width">
-        <Link o={Urls.dashboard(dashboard.id)}
+        <Link to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
-              className="block border-box p2 bg-white bg-brand-hover rounded hover-parent hover--display"
+              className="flex align-center border-box p2 bg-white bg-brand-hover rounded hover-parent hover--display no-decoration"
               style={{
                   border: "1px solid rgba(220,225,228,0.50)",
                   boxShadow: "0 1px 3px 0 rgba(220,220,220,0.50)",
@@ -29,15 +29,14 @@ const DashboardListItem = enhance(({ dashboard, hover, setHover }: DashboardList
               }}
               onMouseEnter={() => setHover(true)}
               onMouseLeave={() => setHover(false)}>
-            <div className="flex align-center">
-                <Icon name="dashboard" className={cx({"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
-                <div className={cx("flex-full flex-retain-width", {"text-white": hover})}>
-                    <h4 className="text-ellipsis text-nowrap overflow-hidden">{dashboard.name}</h4>
-                    <div className="text-small text-capitalize">
-                        {dashboard.created_at}
-                    </div>
-
+            <Icon name="dashboard"
+                  className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
+            <div className={cx("flex-full flex-retain-width", {"text-white": hover})}>
+                <h4 className="text-ellipsis text-nowrap overflow-hidden">{dashboard.name}</h4>
+                <div className="text-small text-capitalize">
+                    {dashboard.created_at}
                 </div>
+
             </div>
         </Link>
     </li>
