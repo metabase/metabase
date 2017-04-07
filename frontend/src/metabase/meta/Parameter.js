@@ -53,3 +53,26 @@ export function getParameterTargetFieldId(target: ?ParameterTarget, datasetQuery
     }
     return null;
 }
+
+import { parameterOptionsForField, createParameter, setParameterName, setParameterDefaultValue } from "./Dashboard";
+import Field from "metabase/meta/metadata/Field";
+import Query from "metabase/lib/query";
+
+export function getParameterForFilter(filter, parameters, tableMetadata): ?Parameter {
+    let fieldTarget = Query.getFieldTarget(filter[1], tableMetadata);
+    if (fieldTarget && fieldTarget.field) {
+        const options = parameterOptionsForField(new Field(fieldTarget.field));
+        console.log("options", options)
+        if (options.length > 0) {
+            let parameter = createParameter(options[0], parameters);
+            parameter = setParameterName(parameter, fieldTarget.field.display_name);
+            if (typeof filter[2] === "string" || typeof filter[2] === "number") {
+                parameter = setParameterDefaultValue(parameter, filter[2]);
+            }
+            return {
+                ...parameter,
+                target: ["field-id", fieldTarget.field.id]
+            }
+        }
+    }
+}

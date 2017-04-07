@@ -11,6 +11,8 @@ import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
+import * as Card from "metabase/meta/Card";
+
 export const getUiControls      = state => state.qb.uiControls;
 
 export const getCard            = state => state.qb.card;
@@ -139,23 +141,9 @@ export const getMode = createSelector(
     (card, tableMetadata) => getMode_(card, tableMetadata)
 )
 
-export const getImplicitParameters = createSelector(
-    [getCard],
-    (card) =>
-        getTemplateTagParameters(getTemplateTags(card))
-);
-
-export const getModeParameters = createSelector(
-    [getLastRunCard, getTableMetadata, getMode],
-    (card, tableMetadata, mode) =>
-        (card && tableMetadata && mode && mode.getModeParameters) ?
-            mode.getModeParameters(card, tableMetadata) :
-            []
-);
-
 export const getParameters = createSelector(
-    [getModeParameters, getImplicitParameters],
-    (modeParameters, implicitParameters) => [...modeParameters, ...implicitParameters]
+    [getCard],
+    (card) => Card.getParameters(card)
 );
 
 export const getParametersWithValues = createSelector(

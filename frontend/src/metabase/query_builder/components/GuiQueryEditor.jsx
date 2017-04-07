@@ -10,6 +10,7 @@ import FilterPopover from './filters/FilterPopover.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import Parameters from "metabase/parameters/components/Parameters";
 
 import Query from "metabase/lib/query";
 
@@ -93,6 +94,7 @@ export default class GuiQueryEditor extends Component {
                         tableMetadata={this.props.tableMetadata}
                         removeFilter={this.props.removeQueryFilter}
                         updateFilter={this.props.updateQueryFilter}
+                        onPromoteFilterToParameter={this.props.onPromoteFilterToParameter}
                     />
                 );
             }
@@ -327,6 +329,21 @@ export default class GuiQueryEditor extends Component {
         }
     }
 
+    renderParameters() {
+        const { parameters, location, setParameterValue } = this.props;
+        if (parameters.length > 0) {
+            return (
+                <Parameters
+                    parameters={parameters}
+                    query={location.query}
+                    setParameterValue={setParameterValue}
+                    syncQueryString
+                    isQB
+                />
+            )
+        }
+    }
+
     render() {
         const { datasetQuery, databases } = this.props;
         const readOnly = datasetQuery.database != null && !_.findWhere(databases, { id: datasetQuery.database });
@@ -344,6 +361,7 @@ export default class GuiQueryEditor extends Component {
                     {this.renderViewSection()}
                     {this.renderGroupedBySection()}
                     <div className="flex-full"></div>
+                    {this.renderParameters()}
                     {this.props.children}
                     <ExtendedOptions
                         {...this.props}

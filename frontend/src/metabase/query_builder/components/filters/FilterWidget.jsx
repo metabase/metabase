@@ -5,6 +5,7 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 import FieldName from '../FieldName.jsx';
 import Popover from "metabase/components/Popover.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 import FilterPopover from "./FilterPopover.jsx";
 
 import Query from "metabase/lib/query";
@@ -152,9 +153,9 @@ export default class FilterWidget extends Component<*, Props, State> {
     }
 
     render() {
-        const { filter, index, removeFilter } = this.props;
+        const { filter, index, removeFilter, onPromoteFilterToParameter} = this.props;
         return (
-            <div className={cx("Query-filter p1 pl2", { "selected": this.state.isOpen })}>
+            <div className={cx("Query-filter p1 pl2 relative hover-parent hover--visibility", { "selected": this.state.isOpen })}>
                 <div className="flex justify-center">
                     {filter[0] === "SEGMENT" ?
                         this.renderSegmentFilter()
@@ -163,6 +164,16 @@ export default class FilterWidget extends Component<*, Props, State> {
                     }
                     {this.renderPopover()}
                 </div>
+                { onPromoteFilterToParameter &&
+                    <Tooltip tooltip="Turn this filter into a parameter">
+                        <Icon
+                            name="funneladd"
+                            size={12}
+                            className="absolute top right hover-child text-grey-2 text-grey-4-hover cursor-pointer mt1 mr2"
+                            onClick={() => onPromoteFilterToParameter(index)}
+                        />
+                    </Tooltip>
+                }
                 { removeFilter &&
                     <a className="text-grey-2 no-decoration px1 flex align-center" onClick={() => removeFilter(index)}>
                         <Icon name='close' size={14} />

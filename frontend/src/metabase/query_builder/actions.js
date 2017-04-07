@@ -1102,6 +1102,28 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
     };
 });
 
+import { updateIn } from "icepick";
+import { getParameterForFilter } from "metabase/meta/Parameter"
+
+export const PROMOTE_FILTER_TO_PARAMETER = "metabase/query_builder/PROMOTE_FILTER_TO_PARAMETER";
+export const onPromoteFilterToParameter = createThunkAction(PROMOTE_FILTER_TO_PARAMETER + "x", (index) =>
+    async (dispatch, getState) => {
+        let { card, tableMetadata } = getState().qb;
+        let datasetQuery = card.dataset_query;
+        let parameters = card.parameters || [];
+
+        let filter = Query.getFilters(datasetQuery.query)[index];
+        datasetQuery = updateIn(datasetQuery, ["query"], query => Query.removeFilter(query, index));
+
+        let parameter = getParameterForFilter(filter, parameters, tableMetadata);
+        if (parameter) {
+            parameters = [...parameters, parameter];
+        }
+
+        await dispatch(setDatasetQuery(datasetQuery));
+        await dispatch(setCardAttribute("parameters", parameters))
+    }
+);
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;

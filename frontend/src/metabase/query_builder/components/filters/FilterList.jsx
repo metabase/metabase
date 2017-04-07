@@ -62,6 +62,7 @@ export default class FilterList extends Component<*, Props, State> {
                         removeFilter={this.props.removeFilter}
                         updateFilter={this.props.updateFilter}
                         maxDisplayValues={this.props.maxDisplayValues}
+                        onPromoteFilterToParameter={this.props.onPromoteFilterToParameter}
                     />
                 )}
             </div>
