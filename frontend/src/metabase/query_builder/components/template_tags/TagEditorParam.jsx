@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 
 import Toggle from "metabase/components/Toggle.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
-import ParameterValueWidget from "metabase/dashboard/components/parameters/ParameterValueWidget.jsx";
+import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
 import Field from "metabase/meta/metadata/Field";

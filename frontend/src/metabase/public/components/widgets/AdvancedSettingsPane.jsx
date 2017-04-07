@@ -4,7 +4,7 @@ import React from "react";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import Parameters from "metabase/dashboard/containers/Parameters";
+import Parameters from "metabase/parameters/components/Parameters";
 import Select, { Option } from "metabase/components/Select";
 
 import DisplayOptionsPane from "./DisplayOptionsPane";

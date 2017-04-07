@@ -13,7 +13,7 @@ import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
-import ParametersPopover from "./parameters/ParametersPopover.jsx";
+import ParametersPopover from "./ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";

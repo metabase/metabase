@@ -3,7 +3,7 @@
 import React, { Component, PropTypes } from "react";
 import { withRouter } from "react-router"; import { IFRAMED } from "metabase/lib/dom";
 
-import Parameters from "metabase/dashboard/containers/Parameters";
+import Parameters from "metabase/parameters/components/Parameters";
 import LogoBadge from "./LogoBadge";
 
 import querystring from "querystring";

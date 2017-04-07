@@ -325,9 +325,7 @@ export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(f
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "fields", fieldId];
         const existingStatePath = requestStatePath;
-        const getData = async () => {
-            return await MetabaseApi.field_values({ fieldId })
-        };
+        const getData = () => MetabaseApi.field_values({ fieldId })
 
         return await fetchData({
             dispatch,
@@ -376,7 +374,7 @@ const fields = handleActions({
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.fields }) },
     [UPDATE_FIELD]: { next: (state, { payload }) => payload },
     [FETCH_FIELD_VALUES]: { next: (state, { payload: fieldValues }) =>
-        assocIn(state, [fieldValues.field_id, "values"], fieldValues) },
+        fieldValues ? assocIn(state, [fieldValues.field_id, "values"], fieldValues) : state },
     // NOTE: from metabase/dashboard/dashboard
     [FETCH_DASHBOARD]: { next: (state, { payload }) => {
         // extract field values from dashboard endpoint

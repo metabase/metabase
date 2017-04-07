@@ -5,7 +5,7 @@ import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import Parameters from "../containers/Parameters.jsx";
+import Parameters from "metabase/parameters/components/Parameters.jsx";
 
 import screenfull from "screenfull";
 

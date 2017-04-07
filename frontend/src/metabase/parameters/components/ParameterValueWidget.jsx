@@ -14,7 +14,7 @@ import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget.jsx";
 import CategoryWidget from "./widgets/CategoryWidget.jsx";
 import TextWidget from "./widgets/TextWidget.jsx";
 
-import S from "../../containers/ParameterWidget.css";
+import S from "./ParameterWidget.css";
 
 import cx from "classnames";
 
@@ -28,10 +28,10 @@ const WIDGETS = {
 }
 
 import { fetchFieldValues } from "metabase/redux/metadata";
-import { getIn } from "icepick";
+import { getParameterFieldValues } from "metabase/selectors/metadata";
 
 const mapStateToProps = (state, props) => ({
-    values: getIn(state, ["metadata", "fields", props.parameter.field_id, "values", "values"]) || []
+    values: getParameterFieldValues(state, props),
 })
 
 const mapDispatchToProps = {

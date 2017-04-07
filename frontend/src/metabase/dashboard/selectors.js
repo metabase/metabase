@@ -116,13 +116,12 @@ export const getMappingsByParameter = createSelector(
                 for (const value of values) {
                     countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
                 }
-                const fieldTarget = field && field.target();
                 let augmentedMapping: AugmentedParameterMapping = {
                     ...mapping,
                     parameter_id: mapping.parameter_id,
                     dashcard_id: dashcard.id,
                     card_id: mapping.card_id,
-                    field_id: field && (fieldTarget ? fieldTarget.id : field.id),
+                    field_id: fieldId,
                     values
                 };
                 mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, dashcard.id, mapping.card_id], augmentedMapping);
@@ -149,18 +148,19 @@ export const getMappingsByParameter = createSelector(
 
 export const getParameters = createSelector(
     [getDashboard, getMappingsByParameter],
-    (dashboard, mappingsByParameter) => (dashboard && dashboard.parameters || []).map(parameter => {
-        let ids = _.chain(mappingsByParameter[parameter.id])
-            .map(_.values)
-            .flatten()
-            .map(m => m.field_id)
-            .uniq()
-            .value();
-        return {
-            ...parameter,
-            field_id: ids.length === 1 ? ids[0] : null
-        }
-    })
+    (dashboard, mappingsByParameter) =>
+        (dashboard && dashboard.parameters || []).map(parameter => {
+            const fieldIds = _.chain(mappingsByParameter[parameter.id])
+                .map(_.values)
+                .flatten()
+                .map(m => m.field_id)
+                .uniq()
+                .value();
+            return {
+                ...parameter,
+                field_id: fieldIds.length === 1 ? fieldIds[0] : null
+            }
+        })
 )
 
 export const makeGetParameterMappingOptions = () => {

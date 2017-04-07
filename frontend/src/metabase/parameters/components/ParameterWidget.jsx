@@ -1,6 +1,6 @@
 import React, {Component, PropTypes} from 'react';
 
-import ParameterValueWidget from "../components/parameters/ParameterValueWidget.jsx";
+import ParameterValueWidget from "./ParameterValueWidget.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import S from "./ParameterWidget.css";
