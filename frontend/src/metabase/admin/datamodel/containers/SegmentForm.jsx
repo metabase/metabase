@@ -40,11 +40,11 @@ import cx from "classnames";
 },
 segmentFormSelectors)
 export default class SegmentForm extends Component {
-    updatePreviewSummary(query) {
+    updatePreviewSummary(datasetQuery) {
         this.props.updatePreviewSummary({
-            ...query,
+            ...datasetQuery,
             query: {
-                ...query.query,
+                ...datasetQuery.query,
                 aggregation: ["count"]
             }
         })

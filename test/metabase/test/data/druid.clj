@@ -111,7 +111,7 @@
     (println "STATUS URL: " (str indexer-endpoint "/" task "/status"))
     (loop [remaining-seconds indexer-timeout-seconds]
       (let [status (get-in (GET status-url) [:status :status])]
-        (println (format "%s (%d seconds elapsed)" status (- indexer-timeout-seconds remaining-seconds)))
+        (printf "%s (%d seconds elapsed)\n" status (- indexer-timeout-seconds remaining-seconds))
         (when (not= status "SUCCESS")
           (when (<= remaining-seconds 0)
             (throw (Exception. (str "Failed to finish indexing druid data after " indexer-timeout-seconds " seconds!"))))

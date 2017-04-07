@@ -40,16 +40,16 @@
 
 (def ^:private ^:const now (hsql/call :current_timestamp 3))
 
-(defn- crate-spec
+(defn- connection-details->spec
   [{:keys [hosts]
-    :as   opts}]
+    :as   details}]
   (merge {:classname   "io.crate.client.jdbc.CrateDriver" ; must be in classpath
           :subprotocol "crate"
           :subname     (str "//" hosts "/")}
-         (dissoc opts :hosts)))
+         (dissoc details :hosts)))
 
 (defn- can-connect? [details]
-  (let [connection-spec (crate-spec details)]
+  (let [connection-spec (connection-details->spec details)]
     (= 1 (first (vals (first (jdbc/query connection-spec ["select 1"])))))))
 
 (defn- string-length-fn [field-key]
@@ -71,7 +71,7 @@
           :features       (comp (u/rpartial disj :foreign-keys) sql/features)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:connection-details->spec  (u/drop-first-arg crate-spec)
+         {:connection-details->spec  (u/drop-first-arg connection-details->spec)
           :column->base-type         (u/drop-first-arg column->base-type)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :date                      crate-util/date

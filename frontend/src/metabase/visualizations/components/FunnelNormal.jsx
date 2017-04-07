@@ -1,12 +1,10 @@
 /* @flow */
 
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import cx from "classnames";
 import styles from "./FunnelNormal.css";
 
-import ChartTooltip from "metabase/visualizations/components/ChartTooltip.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
@@ -15,7 +13,7 @@ import { normal } from "metabase/lib/colors";
 
 const DEFAULT_COLORS = Object.values(normal);
 
-import type { VisualizationProps, HoverData, HoverObject } from "metabase/visualizations";
+import type { VisualizationProps, HoverObject, ClickObject } from "metabase/meta/types/Visualization";
 
 type StepInfo = {
     value: number,
@@ -25,17 +23,18 @@ type StepInfo = {
         endBottom: number,
         endTop: number
     },
-    tooltip?: HoverData
+    hovered?: HoverObject,
+    clicked?: ClickObject,
 };
 
 export default class Funnel extends Component<*, VisualizationProps, *> {
     render() {
-        const { className, series, gridSize, hovered, onHoverChange } = this.props;
+        const { className, series, gridSize, hovered, onHoverChange, onVisualizationClick, visualizationIsClickable } = this.props;
 
         const dimensionIndex = 0;
         const metricIndex = 1;
         const cols = series[0].data.cols;
-        // $FlowFixMe: doesn't like intersection type
+        // $FlowFixMe
         const rows = series.map(s => s.data.rows[0]);
 
         const funnelSmallSize = gridSize && (gridSize.width < 7 || gridSize.height <= 5);
@@ -62,26 +61,40 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
 
             infos[rowIndex + 1] = {
                 value: row[metricIndex],
+
                 graph: {
                     startBottom: infos[rowIndex].graph.endBottom,
                     startTop: infos[rowIndex].graph.endTop,
                     endTop: 0.5 + ((remaining / infos[0].value) / 2),
                     endBottom: 0.5 - ((remaining / infos[0].value) / 2),
                 },
-                tooltip: [
-                    {
-                        key: 'Step',
-                        value: formatDimension(row[dimensionIndex]),
-                    },
-                    {
-                        key: getFriendlyName(cols[metricIndex]),
-                        value: formatMetric(row[metricIndex]),
-                    },
-                    {
-                        key: 'Retained',
-                        value: formatPercent(row[metricIndex] / infos[0].value),
-                    },
-                ],
+
+                hovered: {
+                    index: rowIndex,
+                    data: [
+                        {
+                            key: 'Step',
+                            value: formatDimension(row[dimensionIndex]),
+                        },
+                        {
+                            key: getFriendlyName(cols[metricIndex]),
+                            value: formatMetric(row[metricIndex]),
+                        },
+                        {
+                            key: 'Retained',
+                            value: formatPercent(row[metricIndex] / infos[0].value),
+                        },
+                    ]
+                },
+
+                clicked: {
+                    value: row[metricIndex],
+                    column: cols[metricIndex],
+                    dimensions: [{
+                        value: row[dimensionIndex],
+                        column: cols[dimensionIndex],
+                    }]
+                }
             };
         });
 
@@ -89,6 +102,8 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         infos = infos.slice(1);
 
         let initial = infos[0];
+
+        const isClickable = visualizationIsClickable(infos[0].clicked);
 
         return (
             <div className={cx(className, styles.Funnel, 'flex', {
@@ -112,11 +127,13 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                     <div key={index} className={cx(styles.FunnelStep, 'flex flex-column')}>
                         <Ellipsified className={styles.Head}>{formatDimension(rows[index + 1][dimensionIndex])}</Ellipsified>
                         <GraphSection
+                            className={cx({ "cursor-pointer": isClickable })}
                             index={index}
                             info={info}
                             infos={infos}
                             hovered={hovered}
                             onHoverChange={onHoverChange}
+                            onVisualizationClick={isClickable ? onVisualizationClick : null}
                         />
                         <div className={styles.Infos}>
                             <div className={styles.Title}>{formatPercent(info.value / initial.value)}</div>
@@ -124,8 +141,6 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                         </div>
                     </div>
                 )}
-                {/* Display tooltips following mouse */}
-                <ChartTooltip series={series} hovered={hovered} />
             </div>
         );
     }
@@ -136,24 +151,39 @@ const GraphSection = (
         info,
         infos,
         hovered,
-        onHoverChange
+        onHoverChange,
+        onVisualizationClick,
+        className,
     }: {
+        className?: string,
         index: number,
         info: StepInfo,
         infos: StepInfo[],
         hovered: ?HoverObject,
+        onVisualizationClick: ?((clicked: ?ClickObject) => void),
         onHoverChange: (hovered: ?HoverObject) => void
     }
 ) => {
     return (
         <svg
-            className={styles.Graph}
-            onMouseMove={event => onHoverChange({
-                index: index,
-                event: event.nativeEvent,
-                data: info.tooltip
-            })}
-            onMouseLeave={() => onHoverChange(null)}
+            className={cx(className, styles.Graph)}
+            onMouseMove={e => {
+                if (onHoverChange && info.hovered) {
+                    onHoverChange({
+                        ...info.hovered,
+                        event: e.nativeEvent
+                    })
+                }
+            }}
+            onMouseLeave={() => onHoverChange && onHoverChange(null)}
+            onClick={e => {
+                if (onVisualizationClick && info.clicked) {
+                    onVisualizationClick({
+                        ...info.clicked,
+                        event: e.nativeEvent
+                    })
+                }
+            }}
             viewBox="0 0 1 1"
             preserveAspectRatio="none"
         >

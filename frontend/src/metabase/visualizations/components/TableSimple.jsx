@@ -14,7 +14,7 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 type Props = VisualizationProps & {
     height: number,

@@ -19,9 +19,9 @@
 (defn- api-call-was-successful? {:style/indent 0} [response]
   (when (and (string? response)
              (not= response "You don't have permissions to do that."))
-    (println "users in db:" (db/select-field :email 'User)) ; NOCOMMIT
     (println "RESPONSE:" response)) ; DEBUG
-  (not= response "You don't have permissions to do that."))
+  (and (not= response "You don't have permissions to do that.")
+       (not= response "Unauthenticated")))
 
 (defn- can-run-query? [username]
   (api-call-was-successful? ((test-users/user->client username) :post (format "card/%d/query" (u/get-id *card:db2-count-of-venues*)))))
@@ -52,6 +52,7 @@
 (perms-test/expect-with-test-data
   true
   (tt/with-temp Collection [collection]
+    (println "[In the occasionally failing test]") ; DEBUG
     (set-card-collection! collection)
     (permissions/grant-collection-read-permissions! (group/all-users) collection)
     (can-run-query? :rasta)))

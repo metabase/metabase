@@ -22,7 +22,6 @@ import type { FieldFilter, ConcreteField, ExpressionClause } from "metabase/meta
 import type { TableMetadata, FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
-    isNew?: bool,
     filter?: FieldFilter,
     onCommitFilter: () => void,
     onClose: () => void,
@@ -43,12 +42,11 @@ export default class FilterPopover extends Component<*, Props, State> {
 
         this.state = {
             // $FlowFixMe
-            filter: (props.isNew ? [] : props.filter)
+            filter: props.filter || []
         };
     }
 
     static propTypes = {
-        isNew: PropTypes.bool,
         filter: PropTypes.array,
         onCommitFilter: PropTypes.func.isRequired,
         onClose: PropTypes.func.isRequired,
@@ -273,10 +271,9 @@ export default class FilterPopover extends Component<*, Props, State> {
                     </div>
                     { isDate(field) ?
                         <DatePicker
+                            className="mt1 border-top"
                             filter={filter}
                             onFilterChange={this.setFilter}
-                            onOperatorChange={this.setOperator}
-                            tableMetadata={this.props.tableMetadata}
                         />
                     :
                         <div>
@@ -294,7 +291,7 @@ export default class FilterPopover extends Component<*, Props, State> {
                             className={cx("Button Button--purple full", { "disabled": !this.isValid() })}
                             onClick={() => this.commitFilter(this.state.filter)}
                         >
-                            {this.props.isNew ? "Add filter" : "Update filter"}
+                            {!this.props.filter ? "Add filter" : "Update filter"}
                         </button>
                     </div>
                 </div>
@@ -302,11 +299,3 @@ export default class FilterPopover extends Component<*, Props, State> {
         }
     }
 }
-
-FilterPopover.propTypes = {
-    tableMetadata: PropTypes.object.isRequired,
-    isNew: PropTypes.bool,
-    filter: PropTypes.array,
-    onCommitFilter: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired
-};

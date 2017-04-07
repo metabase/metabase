@@ -46,7 +46,6 @@
                              [pulse-card :refer [PulseCard]]
                              [pulse-channel :refer [PulseChannel]]
                              [pulse-channel-recipient :refer [PulseChannelRecipient]]
-                             [query-execution :refer [QueryExecution]]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]]
                              [revision :refer [Revision]]
@@ -89,7 +88,6 @@
    DashboardCard
    DashboardCardSeries
    Activity
-   QueryExecution
    Pulse
    PulseCard
    PulseChannel

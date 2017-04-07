@@ -9,6 +9,7 @@ import DateRangeWidget from "./widgets/DateRangeWidget.jsx";
 import DateRelativeWidget from "./widgets/DateRelativeWidget.jsx";
 import DateMonthYearWidget from "./widgets/DateMonthYearWidget.jsx";
 import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget.jsx";
+import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget.jsx";
 import CategoryWidget from "./widgets/CategoryWidget.jsx";
 import TextWidget from "./widgets/TextWidget.jsx";
 
@@ -22,6 +23,7 @@ const WIDGETS = {
     "date/relative": DateRelativeWidget,
     "date/month-year": DateMonthYearWidget,
     "date/quarter-year": DateQuarterYearWidget,
+    "date/all-options": DateAllOptionsWidget
 }
 
 export default class ParameterValueWidget extends Component {

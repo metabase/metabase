@@ -92,9 +92,14 @@
   (hsql/call :cast x (hsql/raw (name c))))
 
 (defn format
-  "SQL `FORMAT` function."
+  "SQL `format` function."
   [format-str expr]
   (hsql/call :format expr (literal format-str)))
+
+(defn round
+  "SQL `round` function."
+  [x decimal-places]
+  (hsql/call :round x decimal-places))
 
 (defn ->date                     "CAST X to a `date`."                     [x] (cast :date x))
 (defn ->datetime                 "CAST X to a `datetime`."                 [x] (cast :datetime x))

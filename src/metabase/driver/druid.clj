@@ -7,6 +7,7 @@
             [metabase.driver.druid.query-processor :as qp]
             (metabase.models [field :as field]
                              [table :as table])
+            [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u]))
 
 ;;; ### Request helper fns
@@ -138,6 +139,15 @@
                          (field-values-lazy-seq details table-name field-name total-items-fetched paging-identifiers)))))))
 
 
+(defn- analyze-table
+  "Implementation of `analyze-table` for Druid driver."
+  [driver table new-table-ids]
+  ((analyze/make-analyze-table driver
+     :field-avg-length-fn   (constantly 0) ; TODO implement this?
+     :field-percent-urls-fn (constantly 0)
+     :calculate-row-count?  false) driver table new-table-ids))
+
+
 ;;; ### DruidrDriver Class Definition
 
 (defrecord DruidDriver []
@@ -148,6 +158,7 @@
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
          {:can-connect?          (u/drop-first-arg can-connect?)
+          :analyze-table         analyze-table
           :describe-database     (u/drop-first-arg describe-database)
           :describe-table        (u/drop-first-arg describe-table)
           :details-fields        (constantly [{:name         "host"

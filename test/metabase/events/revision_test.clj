@@ -41,6 +41,7 @@
    :made_public_by_id      nil
    :name                   (:name card)
    :public_uuid            nil
+   :cache_ttl              nil
    :query_type             "query"
    :table_id               (id :categories)
    :visualization_settings {}})

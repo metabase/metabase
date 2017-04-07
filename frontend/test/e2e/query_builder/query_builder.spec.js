@@ -15,7 +15,7 @@ describeE2E("query_builder", () => {
     describe("tables", () => {
         it("should allow users to create pivot tables", async () => {
             // load the query builder and screenshot blank
-            await d.get("/q");
+            await d.get("/question");
             await d.screenshot("screenshots/qb-initial.png");
 
             // pick the orders table (assumes database is already selected, i.e. there's only 1 database)
@@ -56,7 +56,7 @@ describeE2E("query_builder", () => {
 
     describe("charts", () => {
         xit("should allow users to create line charts", async () => {
-            await d.get("/q");
+            await d.get("/question");
 
             // select orders table
             await d.select("#TablePicker .List-item:first-child>a").wait().click();
@@ -106,7 +106,7 @@ describeE2E("query_builder", () => {
 
         xit("should allow users to create bar charts", async () => {
             // load line chart
-            await d.get("/card/2");
+            await d.get("/question/2");
 
             // dismiss saved questions modal
             await d.select(".Modal .Button.Button--primary").wait().click();

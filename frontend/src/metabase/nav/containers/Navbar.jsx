@@ -11,6 +11,8 @@ import LogoIcon from "metabase/components/LogoIcon.jsx";
 import DashboardsDropdown from "metabase/nav/containers/DashboardsDropdown.jsx";
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
+import * as Urls from "metabase/lib/urls";
+
 import { getPath, getContext, getUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
@@ -115,7 +117,13 @@ export default class Navbar extends Component {
                     </li>
                     <li className="pl3">
                         <DashboardsDropdown {...this.props}>
-                            <a data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"} style={this.styles.navButton} className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}>
+                            <a
+                                data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"}
+                                style={this.styles.navButton}
+                                className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {
+                                    "NavItem--selected": this.isActive("/dashboard/")
+                                })}
+                            >
                                 <span className="NavDropdown-button-layer">
                                     Dashboards
                                     <Icon className="ml1" name={'chevrondown'} size={8}></Icon>
@@ -133,7 +141,7 @@ export default class Navbar extends Component {
                         <Link to="/reference/guide" data-metabase-event={"Navbar;DataReference"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background")} activeClassName="NavItem--selected">Data Reference</Link>
                     </li>
                     <li className="pl3">
-                        <Link to="/q" data-metabase-event={"Navbar;New Question"} style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">New <span className="hide sm-show">Question</span></Link>
+                        <Link to={Urls.question()} data-metabase-event={"Navbar;New Question"} style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">New <span className="hide sm-show">Question</span></Link>
                     </li>
                     <li className="flex-align-right transition-background">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>

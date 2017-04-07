@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 54
+      author: tlrobinson
+      changes:
+        - addColumn:
+            tableName: pulse
+            remarks: 'Skip a scheduled Pulse if none of its questions have any results'
+            columns:
+              - column:
+                  name: skip_if_empty
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

@@ -2,7 +2,7 @@
     "rules": {
         "strict": [2, "never"],
         "no-undef": 2,
-        "no-unused-vars": [1, {"vars": "all", "args": "none", "varsIgnorePattern": "React|PropTypes|Component"}],
+        "no-unused-vars": [1, {"vars": "all", "args": "none", "varsIgnorePattern": "^(React|PropTypes|Component)$"}],
         "import/no-commonjs": 1,
         "quotes": 0,
         "camelcase": 0,

@@ -390,7 +390,9 @@
     (cond
       (or (= aggregation :rows)
           (contains? #{:pin_map :state :country} (:display card))) nil
-      (zero? row-count)                                            :empty
+      (or (zero? row-count)
+          ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+          (= [[nil]] (-> data :rows)))                             :empty
       (and (= col-count 1)
            (= row-count 1))                                        :scalar
       (and (= col-count 2)

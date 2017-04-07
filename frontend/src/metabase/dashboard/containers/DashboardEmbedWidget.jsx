@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import { createPublicLink, deletePublicLink, updateEnableEmbedding, updateEmbeddingParams } from "../dashboard";
 

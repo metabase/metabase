@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -27,14 +26,19 @@ export default class LegendItem extends Component {
     };
 
     render() {
-        const { title, href, color, showDot, showTitle, isMuted, showTooltip, showDotTooltip, onMouseEnter, onMouseLeave, className, description } = this.props;
+        const { title, href, color, showDot, showTitle, isMuted, showTooltip, showDotTooltip, onMouseEnter, onMouseLeave, className, description, onClick } = this.props;
         return (
             <LegendLink
                 href={href}
-                className={cx(className, "LegendItem", "no-decoration flex align-center fullscreen-normal-text fullscreen-night-text", { mr1: showTitle, muted: isMuted })}
+                className={cx(className, "LegendItem", "no-decoration flex align-center fullscreen-normal-text fullscreen-night-text", {
+                    mr1: showTitle,
+                    muted: isMuted,
+                    "cursor-pointer": onClick
+                })}
                 style={{ overflowX: "hidden", flex: "0 1 auto" }}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
+                onClick={onClick}
             >
                 { showDot &&
                     <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
