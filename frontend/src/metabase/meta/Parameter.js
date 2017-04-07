@@ -30,7 +30,7 @@ export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
 export const getParametersBySlug = (parameters: Parameter[], parameterValues: ParameterValues): {[key:string]: string} => {
     let result = {};
     for (const parameter of parameters) {
-        if (parameterValues[parameter.id] !== undefined) {
+        if (parameterValues[parameter.id] != undefined) {
             result[parameter.slug] = parameterValues[parameter.id];
         }
     }

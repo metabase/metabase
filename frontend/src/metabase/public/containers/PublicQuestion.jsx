@@ -9,11 +9,10 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
 
-import { getParametersBySlug } from "metabase/meta/Parameter";
-
 import type { Card } from "metabase/meta/types/Card";
 import type { Dataset } from "metabase/meta/types/Dataset";
 
+import { getParametersBySlug } from "metabase/meta/Parameter";
 import { getParameters, applyParameters } from "metabase/meta/Card";
 
 import { PublicApi, EmbedApi } from "metabase/services";
