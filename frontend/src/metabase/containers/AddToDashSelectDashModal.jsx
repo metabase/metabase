@@ -10,12 +10,12 @@ import SortableItemList from 'metabase/components/SortableItemList.jsx';
 import * as Urls from "metabase/lib/urls";
 
 import * as dashboardsActions from 'metabase/dashboards/dashboards';
-import { getDashboards } from 'metabase/dashboards/selectors';
+import { getDashboardListing } from 'metabase/dashboards/selectors';
 
 import type { Dashboard } from 'metabase/meta/types/Dashboard'
 import type { Card } from 'metabase/meta/types/Card'
 const mapStateToProps = (state) => ({
-    dashboards: getDashboards(state)
+    dashboards: getDashboardListing(state)
 });
 
 const mapDispatchToProps = {

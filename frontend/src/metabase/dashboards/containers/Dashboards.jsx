@@ -2,6 +2,7 @@
 
 import React, {Component, PropTypes} from 'react';
 import {connect} from "react-redux";
+import _ from 'underscore';
 
 import type { Dashboard } from "metabase/meta/types/Dashboard";
 
@@ -15,11 +16,11 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon.jsx";
 
 import * as dashboardsActions from "../dashboards";
-import {getDashboards} from "../selectors";
+import {getDashboardListing} from "../selectors";
 import SearchHeader from "../../components/SearchHeader";
 
 const mapStateToProps = (state, props) => ({
-    dashboards: getDashboards(state)
+    dashboards: getDashboardListing(state)
 });
 
 const mapDispatchToProps = dashboardsActions;
@@ -72,22 +73,37 @@ export default class Dashboards extends Component {
         );
     }
 
+    getFilteredDashboards = () => {
+        const {searchText} = this.state;
+        const {dashboards} = this.props;
+
+        if (searchText === "") {
+            return dashboards;
+        } else {
+            return dashboards.filter(({name, description}) =>
+                name.includes(searchText) || (description && description.includes(searchText))
+            );
+        }
+    }
+
     render() {
-        let {dashboards} = this.props;
-        let {modalOpen, searchText} = this.state;
+        let {modalOpen} = this.state;
+
+        const isLoading = this.props.dashboards == null
+        const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
+        const filteredDashboards = isLoading ? [] : this.getFilteredDashboards();
 
         // FIXME Remove these development flags prior to reviews and merge
-        const simulateEmpty = false;
-        if (simulateEmpty) dashboards = [];
+        // const noDashboardsCreated = true;
 
         return (
-            <LoadingAndErrorWrapper loading={!dashboards} className="relative mx4">
+            <LoadingAndErrorWrapper loading={isLoading} className="relative mx4">
                 { modalOpen ? this.renderCreateDashboardModal() : null }
                 <TitleAndDescription title="Dashboards" className="pt4 pb1"/>
                 <div className="flex align-center pb1">
                     <SearchHeader
-                        searchText={searchText}
-                        setSearchText={(text) => this.setState({searchText})}
+                        searchText={this.state.searchText}
+                        setSearchText={(searchText) => this.setState({searchText})}
                     />
                     <div
                         className="link flex-align-right px4 cursor-pointer"
@@ -99,11 +115,11 @@ export default class Dashboards extends Component {
                         </div>
                     </div>
                 </div>
-                { dashboards.length === 0 ?
+                { noDashboardsCreated ?
                     <WhatsADashboard button={
                         <a onClick={this.toggleModal} className="Button Button--primary">Create a dashboard</a>
                     }/>
-                    : <DashboardList dashboards={dashboards}/>
+                    : <DashboardList dashboards={filteredDashboards}/>
                 }
             </LoadingAndErrorWrapper>
         );

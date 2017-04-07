@@ -15,6 +15,11 @@ export const DELETE_DASHBOARD = "metabase/dashboards/DELETE_DASHBOARD";
 export const SAVE_DASHBOARD = "metabase/dashboards/SAVE_DASHBOARD";
 export const UPDATE_DASHBOARD = "metabase/dashboards/UPDATE_DASHBOARD";
 
+/**
+ * Actions that retrieve/update the basic information of dashboards
+ * `dashboards.dashboardListing` holds an array of all dashboards without cards
+ */
+
 export const fetchDashboards = createThunkAction(FETCH_DASHBOARDS, () =>
     async function(dispatch, getState) {
         const dashboards = await DashboardApi.list({f: "all"})
@@ -94,6 +99,11 @@ const dashboardListing = handleActions({
     [SAVE_DASHBOARD]:   (state, { payload }) => state.map(d => d.id === payload.id ? payload : d),
     [UPDATE_DASHBOARD]: (state, { payload }) => state.map(d => d.id === payload.id ? payload : d),
 }, []);
+
+/**
+ * Actions that retrieve/update the basic information of dashboards
+ * `dashboard.dashboardListing` holds an array of all dashboards without cards
+ */
 
 export default combineReducers({
     dashboardListing
