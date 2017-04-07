@@ -72,7 +72,7 @@ export default class HistoryModal extends Component {
         var { revisions } = this.props;
         return (
             <ModalContent
-                title="Change History"
+                title="Revision history"
                 onClose={() => this.props.onClose()}
             >
                 <LoadingAndErrorWrapper loading={!revisions} error={this.state.error}>
