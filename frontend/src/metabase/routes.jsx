@@ -152,10 +152,10 @@ export const getRoutes = (store) =>
                 <Route path="/" component={HomepageApp} />
 
                 {/* DASHBOARD LIST */}
-                <Route path="/dashboards" component={Dashboards} />
+                <Route path="/dashboard" component={Dashboards} />
 
                 {/* INDIVIDUAL DASHBOARDS */}
-                <Route path="/dash/:dashboardId" component={DashboardApp} />
+                <Route path="/dashboard/:dashboardId" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
                 <Route path="/question" component={QueryBuilder} />

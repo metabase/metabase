@@ -1,59 +1,67 @@
+/* @flow  */
+
 import React, { Component, PropTypes } from "react";
+import {connect} from "react-redux";
 
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
 import Icon from 'metabase/components/Icon.jsx';
 import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from 'metabase/components/SortableItemList.jsx';
-
 import * as Urls from "metabase/lib/urls";
-import { DashboardApi } from "metabase/services";
 
-import moment from 'moment';
+import * as dashboardsActions from 'metabase/dashboards/dashboards';
+import { getDashboards } from 'metabase/dashboards/selectors';
 
+import type { Dashboard } from 'metabase/meta/types/Dashboard'
+import type { Card } from 'metabase/meta/types/Card'
+const mapStateToProps = (state) => ({
+    dashboards: getDashboards(state)
+});
+
+const mapDispatchToProps = {
+    fetchDashboards: dashboardsActions.fetchDashboards,
+    createDashboard: dashboardsActions.createDashboard
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class AddToDashSelectDashModal extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.addToDashboard = this.addToDashboard.bind(this);
-        this.createDashboard = this.createDashboard.bind(this);
-        this.loadDashboardList();
-
-        this.state = {
-            dashboards: null,
-            shouldCreateDashboard: false
-        };
-    }
-
-    static propTypes = {
-        card: PropTypes.object.isRequired,
-        onClose: PropTypes.func.isRequired,
-        onChangeLocation: PropTypes.func.isRequired
+    state = {
+        shouldCreateDashboard: false
     };
 
-    async loadDashboardList() {
-        // TODO: reduxify
-        var dashboards = await DashboardApi.list({ f: "all" });
-        for (var dashboard of dashboards) {
-            dashboard.updated_at = moment(dashboard.updated_at);
-        }
-        this.setState({ dashboards });
+    props: {
+        card: Card,
+        onClose: () => void,
+        onChangeLocation: (string) => void,
+        // via connect:
+        dashboards: Dashboard[],
+        fetchDashboards: () => any,
+        createDashboard: (Dashboard) => any
+    };
+
+    componentWillMount() {
+        this.props.fetchDashboards();
+
     }
 
-    addToDashboard(dashboard) {
+    addToDashboard = (dashboard: Dashboard) => {
         // we send the user over to the chosen dashboard in edit mode with the current card added
         this.props.onChangeLocation(Urls.dashboard(dashboard.id)+"?add="+this.props.card.id);
     }
 
-    async createDashboard(newDashboard) {
-        // TODO: reduxify
-        let dashboard = await DashboardApi.create(newDashboard);
-        // this.props.notifyDashboardCreatedFn(dashboard);
-        this.addToDashboard(dashboard);
+    createDashboard = async(newDashboard: Dashboard) => {
+        try {
+            const action = await this.props.createDashboard(newDashboard, {});
+            this.addToDashboard(action.payload);
+        } catch (e) {
+            console.log("createDashboard failed", e);
+        }
     }
 
     render() {
-        if (!this.state.dashboards) {
+        if (!this.props.dashboards) {
             return null;
-        } else if (this.state.dashboards.length === 0 || this.state.shouldCreateDashboard === true) {
+        } else if (this.props.dashboards.length === 0 || this.state.shouldCreateDashboard === true) {
             return <CreateDashboardModal createDashboardFn={this.createDashboard} onClose={this.props.onClose} />
         } else {
             return (
@@ -76,7 +84,7 @@ export default class AddToDashSelectDashModal extends Component {
                         </div>
                     </div>
                     <SortableItemList
-                        items={this.state.dashboards}
+                        items={this.props.dashboards}
                         onClickItemFn={this.addToDashboard}
                     />
                 </div>

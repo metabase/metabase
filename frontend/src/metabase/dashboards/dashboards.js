@@ -17,7 +17,7 @@ export const UPDATE_DASHBOARD = "metabase/dashboards/UPDATE_DASHBOARD";
 
 export const fetchDashboards = createThunkAction(FETCH_DASHBOARDS, () =>
     async function(dispatch, getState) {
-        const dashboards = DashboardApi.list({f: "all"})
+        const dashboards = await DashboardApi.list({f: "all"})
 
         for (const dashboard of dashboards) {
             dashboard.updated_at = moment(dashboard.updated_at);
@@ -36,7 +36,7 @@ export const createDashboard = createThunkAction(CREATE_DASHBOARD, (dashboard: D
         const createdDashboard: Dashboard = await DashboardApi.create(dashboard);
 
         if (redirect) {
-            await push(Urls.dashboard(createdDashboard.id));
+            push(Urls.dashboard(createdDashboard.id));
         }
 
         return createdDashboard;

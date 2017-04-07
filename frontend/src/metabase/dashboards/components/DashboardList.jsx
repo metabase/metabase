@@ -1,6 +1,7 @@
 import React, {Component, PropTypes} from "react";
 import {Link} from "react-router";
 
+import * as Urls from "metabase/lib/urls";
 const LIST_ITEM_CLASSES = "relative block p4 hover-parent hover--visibility cursor-pointer text-centered transition-background";
 
 const DashboardListItem = ({dashboard}) =>
@@ -12,7 +13,7 @@ const DashboardListItem = ({dashboard}) =>
                  borderRadius: 10,
                  backgroundColor: '#fafafa'
              }}>
-            <Link to={"/dash/" + dashboard.id}
+            <Link to={Urls.dashboard(dashboard.id)}
                   data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}>
                 <div>
                     {dashboard.name}
