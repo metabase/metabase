@@ -35,11 +35,13 @@ export default class ParameterWidget extends Component {
     }
 
     static propTypes = {
-        parameter: PropTypes.object
+        parameter: PropTypes.object,
+        commitImmediately: PropTypes.object
     };
 
     static defaultProps = {
         parameter: null,
+        commitImmediately: false
     }
 
     getValues() {
@@ -55,7 +57,7 @@ export default class ParameterWidget extends Component {
     }
 
     renderPopover(value, setValue, placeholder, isFullscreen) {
-        const {parameter, editingParameter} = this.props;
+        const {parameter, editingParameter, commitImmediately} = this.props;
         const isEditingParameter = !!(editingParameter && editingParameter.id === parameter.id);
         const values = this.getValues();
         return (
@@ -69,6 +71,7 @@ export default class ParameterWidget extends Component {
                 placeholder={placeholder}
                 focusChanged={this.focusChanged}
                 isFullscreen={isFullscreen}
+                commitImmediately={commitImmediately}
             />
         );
     }
