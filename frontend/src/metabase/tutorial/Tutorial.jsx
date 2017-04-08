@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Modal from "metabase/components/Modal.jsx";
 import Popover from "metabase/components/Popover.jsx";

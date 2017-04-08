@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Calendar from "metabase/components/Calendar.jsx";
 import moment from "moment";

@@ -1,6 +1,7 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";

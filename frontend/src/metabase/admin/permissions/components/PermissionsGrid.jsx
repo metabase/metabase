@@ -1,6 +1,7 @@
 /* eslint-disable react/display-name */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { Link } from "react-router";
 

@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import AccordianList from "metabase/components/AccordianList.jsx";
 import FieldList from './FieldList.jsx';

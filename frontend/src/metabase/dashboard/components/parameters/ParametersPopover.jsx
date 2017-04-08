@@ -1,5 +1,6 @@
 /* @flow */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
 import type { ParameterOption } from "metabase/meta/types/Dashboard";
