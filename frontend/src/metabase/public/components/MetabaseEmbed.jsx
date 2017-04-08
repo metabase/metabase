@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import querystring from "querystring";
 import _ from "underscore";

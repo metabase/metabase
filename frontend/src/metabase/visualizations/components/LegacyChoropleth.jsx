@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import d3 from "d3";

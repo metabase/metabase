@@ -1,7 +1,6 @@
 /* @flow weak */
 
 import React, { Component, Element } from "react";
-import PropTypes from "prop-types";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";

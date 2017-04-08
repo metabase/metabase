@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import PulseListItem from "./PulseListItem.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";

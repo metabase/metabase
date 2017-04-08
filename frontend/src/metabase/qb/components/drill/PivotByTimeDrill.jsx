@@ -1,8 +1,5 @@
 /* @flow */
 
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-
 import PivotByTimeAction from "../actions/PivotByTimeAction";
 
 import type {

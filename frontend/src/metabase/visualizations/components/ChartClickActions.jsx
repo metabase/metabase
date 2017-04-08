@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import Button from "metabase/components/Button";
 import Popover from "metabase/components/Popover";

@@ -1,7 +1,6 @@
 /* @flow weak */
 
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React from "react";
 
 import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';

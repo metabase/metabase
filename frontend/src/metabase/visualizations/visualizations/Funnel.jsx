@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 

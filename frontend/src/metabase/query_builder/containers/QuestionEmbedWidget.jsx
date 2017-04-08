@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";

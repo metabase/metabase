@@ -1,7 +1,6 @@
 /* @flow */
 
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React from "react";
 
 import FieldList from "metabase/query_builder/components/FieldList.jsx";
 

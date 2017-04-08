@@ -1,4 +1,4 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 // FIXME: using pure seems to mess with redux form updates
 // import pure from "recompose/pure";

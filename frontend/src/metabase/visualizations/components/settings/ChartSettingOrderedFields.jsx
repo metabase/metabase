@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import CheckBox from "metabase/components/CheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";

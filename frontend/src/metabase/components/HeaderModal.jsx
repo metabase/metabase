@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import BodyComponent from "metabase/components/BodyComponent";
 import cx from "classnames";

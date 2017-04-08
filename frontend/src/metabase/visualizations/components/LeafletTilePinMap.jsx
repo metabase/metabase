@@ -1,5 +1,3 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import LeafletMap from "./LeafletMap.jsx";
 import L from "leaflet";

@@ -1,7 +1,5 @@
 /* @flow */
 
-import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { lineRenderer } from "../lib/LineAreaBarRenderer";

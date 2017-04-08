@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";

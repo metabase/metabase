@@ -1,7 +1,6 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import ChoroplethMap from "../components/ChoroplethMap.jsx";
 import PinMap from "../components/PinMap.jsx";
