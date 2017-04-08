@@ -487,7 +487,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     />
                                 </div>
                             ]}
-                            { Object.keys(metrics) > 0  && (
+                            { Object.keys(metrics).length > 0  && (
                                     <div className="my4 pt4">
                                         <SectionHeader trim={guide.important_metrics.length === 0}>
                                             { guide.important_metrics && guide.important_metrics.length > 0 ? 'Numbers that we pay attention to' : 'Metrics' }
@@ -521,7 +521,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                 Metrics are important numbers your company cares about. They often represent a core indicator of how the business is performing.
                                             </GuideText>
                                         }
-                                        <div className="mt4">
+                                        <div>
                                             <Link className="Button Button--primary" to={'/reference/metrics'}>
                                                 See all metrics
                                             </Link>
@@ -532,56 +532,53 @@ export default class ReferenceGettingStartedGuide extends Component {
 
                             <div className="mt4 pt4">
                                 <SectionHeader trim={(!has(guide.important_segments) && !has(guide.important_tables))}>
-                                    { Object.keys(segments) > 0 ? 'Segments and tables' : 'Tables' }
+                                    { Object.keys(segments).length > 0 ? 'Segments and tables' : 'Tables' }
                                 </SectionHeader>
-                                { has(guide.important_segments) || has(guide.important_tables) ? [
-                                        <div className="mt2">
-                                            { guide.important_segments.map((segmentId) =>
-                                                <GuideDetail
-                                                    key={segmentId}
-                                                    type="segment"
-                                                    entity={segments[segmentId]}
-                                                    tables={tables}
-                                                />
-                                            )}
-                                            { guide.important_tables.map((tableId) =>
-                                                <GuideDetail
-                                                    key={tableId}
-                                                    type="table"
-                                                    entity={tables[tableId]}
-                                                    tables={tables}
-                                                />
-                                            )}
-                                        </div>
-                                    ] : (
-                                        <div>
-                                            <GuideText>
-                                                { Object.keys(segments) > 0 ? (
-                                                    <span>
-                                                        Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>
-                                                    </span>
-                                                ) : "Tables are the building blocks of your company's data."
-                                                }
-                                            </GuideText>
-                                            <div>
-                                                { Object.keys(segments) > 0 && (
-                                                    <Link className="Button Button--purple mr2" to={'/reference/segments'}>
-                                                        See all segments
-                                                    </Link>
-                                                )}
-                                                <Link
-                                                    className={cx(
-                                                        { 'text-purple text-bold no-decoration text-underline-hover' : Object.keys(segments) > 0 },
-                                                        { 'Button Button--purple' : Object.keys(segments) === 0 }
-                                                    )}
-                                                    to={'/reference/databases'}
-                                                >
-                                                    See all tables
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    )
+                                { has(guide.important_segments) || has(guide.important_tables) ?
+                                    <div className="my2">
+                                        { guide.important_segments.map((segmentId) =>
+                                            <GuideDetail
+                                                key={segmentId}
+                                                type="segment"
+                                                entity={segments[segmentId]}
+                                                tables={tables}
+                                            />
+                                        )}
+                                        { guide.important_tables.map((tableId) =>
+                                            <GuideDetail
+                                                key={tableId}
+                                                type="table"
+                                                entity={tables[tableId]}
+                                                tables={tables}
+                                            />
+                                        )}
+                                    </div>
+                                :
+                                    <GuideText>
+                                        { Object.keys(segments).length > 0 ? (
+                                            <span>
+                                                Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>
+                                            </span>
+                                        ) : "Tables are the building blocks of your company's data."
+                                        }
+                                    </GuideText>
                                 }
+                                <div>
+                                    { Object.keys(segments).length > 0 && (
+                                        <Link className="Button Button--purple mr2" to={'/reference/segments'}>
+                                            See all segments
+                                        </Link>
+                                    )}
+                                    <Link
+                                        className={cx(
+                                            { 'text-purple text-bold no-decoration text-underline-hover' : Object.keys(segments).length > 0 },
+                                            { 'Button Button--purple' : Object.keys(segments).length === 0 }
+                                        )}
+                                        to={'/reference/databases'}
+                                    >
+                                        See all tables
+                                    </Link>
+                                </div>
                             </div>
 
                             <div className="mt4 pt4">
