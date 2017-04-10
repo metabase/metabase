@@ -32,9 +32,12 @@ const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListIt
               onMouseLeave={() => setHover(false)}>
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
-            <div className={cx("flex-full flex-retain-width", {"text-white": hover})}>
-                <h4 className="text-ellipsis text-nowrap overflow-hidden text-brand" style={{marginBottom: "0.2em"}}>{dashboard.name}</h4>
-                <div className="text-small text-uppercase text-grey-3 text-bold">
+            <div className={cx("flex-full flex-retain-width")}>
+                <h4 className={cx("text-ellipsis text-nowrap overflow-hidden text-brand", {"text-white": hover})}
+                    style={{marginBottom: "0.2em"}}>
+                    {dashboard.name}
+                </h4>
+                <div className={cx("text-small text-uppercase text-bold", {"text-grey-3": !hover}, {"text-grey-2": hover})}>
                     {/* NOTE: Could these time formats be centrally stored somewhere? */}
                     {moment(dashboard.created_at).format('MMM D, YYYY')}
                 </div>

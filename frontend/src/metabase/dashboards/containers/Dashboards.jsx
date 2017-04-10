@@ -87,14 +87,11 @@ export default class Dashboards extends Component {
         let {modalOpen, searchText} = this.state;
 
         const isLoading = this.props.dashboards == null
-        // const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
+        const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
         const filteredDashboards = isLoading ? [] : this.getFilteredDashboards();
         const noSearchResults = searchText !== "" && filteredDashboards.length === 0;
 
-        // FIXME Remove these development flags prior to reviews and merge
-        const noDashboardsCreated = true;
-
-        const hasCenteredContent = noDashboardsCreated || noSearchResults;
+        const hasCenteredContent = noDashboardsCreated;
 
         return (
             <LoadingAndErrorWrapper
@@ -104,12 +101,14 @@ export default class Dashboards extends Component {
                 { modalOpen ? this.renderCreateDashboardModal() : null }
                 { noDashboardsCreated ?
                     <div className="mt2">
-                        <EmptyState message={<div>Put the charts and graphs you look at<br/>frequently in a single, handy place.</div>}
-                                    image="/app/img/dashboard_illustration"
-                                    action="Create a dashboard"
-                                    onActionClick={this.showCreateDashboard}
-                                    className="mt2"
-                                    logoClassName="mln2"
+                        <EmptyState
+                            message={<div>Put the charts and graphs you look at<br/>frequently in a single, handy place.
+                            </div>}
+                            image="/app/img/dashboard_illustration"
+                            action="Create a dashboard"
+                            onActionClick={this.showCreateDashboard}
+                            className="mt2"
+                            imageClassName="mln2"
                         />
                     </div>
                     : <div>
@@ -128,11 +127,16 @@ export default class Dashboards extends Component {
                         </div>
                         { noSearchResults ?
                             <EmptyState
-                                message="Put the charts and graphs you look at frequently in a single, handy place."
+                                message={
+                                    <div className="mt4">
+                                        <h3 className="text-grey-5">No results found</h3>
+                                        <p className="text-grey-4">Try adjusting your filter to find what you’re looking for.</p>
+                                    </div>
+                                }
                                 image="/app/img/empty_dashboard"
                                 action="Create a dashboard"
-                                onActionClick={this.showCreateDashboard}
                                 className="mt2"
+                                imageClassName="mln2"
                             />
                             : <DashboardList dashboards={filteredDashboards}/>
                         }
