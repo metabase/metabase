@@ -22,7 +22,7 @@ import { createHistory } from 'history'
 import { push, syncHistoryWithStore } from 'react-router-redux';
 
 // remove trailing slash
-const BASENAME = window.MetabaseBasename.replace(/\/+$/, "");
+const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
 api.basename = BASENAME;
 

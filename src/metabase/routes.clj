@@ -11,6 +11,8 @@
             [metabase.util :as u]
             [metabase.util.embed :as embed]))
 
+(defn- base-href []
+  (str (.getPath (clojure.java.io/as-url (public-settings/site-url))) "/"))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
@@ -18,6 +20,7 @@
                                           (throw (Exception. (str "Cannot find './resources/frontend_client/" entry ".html'. Did you remember to build the Metabase frontend?")))))
                                {:bootstrap_json (json/generate-string (public-settings/public-settings))
                                 :uri            (json/generate-string uri)
+                                :base_href      (json/generate-string (base-href))
                                 :embed_code     (when embeddable? (embed/head uri))})
         (slurp (io/resource "frontend_client/init.html")))
       resp/response
