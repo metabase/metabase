@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
 import { Motion, spring, presets } from "react-motion";
 
 import Icon from "metabase/components/Icon";

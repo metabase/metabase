@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import TooltipPopover from "metabase/components/TooltipPopover.jsx"
 import Value from "metabase/components/Value.jsx";

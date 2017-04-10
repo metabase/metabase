@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
 
 import LeafletMap from "./LeafletMap.jsx";

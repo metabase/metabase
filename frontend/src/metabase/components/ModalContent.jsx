@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { MODAL_CHILD_CONTEXT_TYPES } from "./Modal";
 import Icon from "metabase/components/Icon.jsx";

@@ -1,6 +1,7 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
 import FieldName from '../FieldName.jsx';

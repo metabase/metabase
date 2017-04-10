@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
