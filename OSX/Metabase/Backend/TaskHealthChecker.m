@@ -9,10 +9,10 @@
 #import "TaskHealthChecker.h"
 
 /// Check out health every this many seconds
-static const CGFloat HealthCheckIntervalSeconds = 1.2f;
+static const CGFloat HealthCheckIntervalSeconds = 2.0f;
 
 /// This number should be lower than HealthCheckIntervalSeconds so requests don't end up piling up
-static const CGFloat HealthCheckRequestTimeout = 0.25f;
+static const CGFloat HealthCheckRequestTimeout = 1.75f;
 
 /// After this many seconds of being unhealthy, consider the task timed out so it can be killed
 static const CFTimeInterval TimeoutIntervalSeconds = 60.0f;
