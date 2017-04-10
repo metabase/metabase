@@ -12,7 +12,7 @@ jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 describeE2E("auth/login", () => {
     let sessionId;
 
-    describe("has no cookie", () => {
+    fdescribe("has no cookie", () => {
         beforeEach(async () => {
             await driver.get(`${server.host}/`);
             await driver.manage().deleteAllCookies();
