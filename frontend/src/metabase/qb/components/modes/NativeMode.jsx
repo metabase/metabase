@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import type { QueryMode } from "metabase/meta/types/Visualization";
 
 const NativeMode: QueryMode = {

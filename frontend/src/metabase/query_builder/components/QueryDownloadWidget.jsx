@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";

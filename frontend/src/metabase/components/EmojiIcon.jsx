@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
 import { emoji } from "metabase/lib/emoji";
 

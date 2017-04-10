@@ -1,6 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 /*eslint-disable react/no-danger */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";

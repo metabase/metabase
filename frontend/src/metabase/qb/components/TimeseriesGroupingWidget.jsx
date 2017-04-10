@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import TimeGroupingPopover
     from "metabase/query_builder/components/TimeGroupingPopover";

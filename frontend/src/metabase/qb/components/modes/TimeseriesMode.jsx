@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import TimeseriesGroupingWidget
     from "metabase/qb/components/TimeseriesGroupingWidget";
