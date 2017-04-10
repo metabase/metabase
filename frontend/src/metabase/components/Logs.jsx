@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import fetch from 'isomorphic-fetch';
+
+import { UtilApi } from "metabase/services";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -32,7 +33,7 @@ export default class Logs extends Component {
 
     componentWillMount() {
         this.timer = setInterval(async () => {
-            let response = await fetch("/api/util/logs", { credentials: 'same-origin' });
+            let response = await UtilApi.logs();
             let logs = await response.json()
             this.setState({ logs: logs.reverse() })
         }, 1000);

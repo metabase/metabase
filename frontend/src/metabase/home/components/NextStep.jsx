@@ -13,7 +13,7 @@ export default class NextStep extends Component {
     }
 
     async componentWillMount() {
-        const sections = await SetupApi.admin_checklist();
+        const sections = await SetupApi.admin_checklist(null, { noEvent: true });
         for (let section of sections) {
             for (let task of section.tasks) {
                 if (task.is_next_step) {

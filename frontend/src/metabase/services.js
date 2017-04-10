@@ -225,6 +225,11 @@ export const UserApi = {
 export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
     random_token:                GET("/api/util/random_token"),
+    logs:                        GET("/api/util/logs"),
+};
+
+export const GeoJSONApi = {
+    get:                         GET("/api/geojson/:id"),
 };
 
 global.services = exports;

@@ -4,15 +4,32 @@ import querystring from "querystring";
 
 import EventEmitter from "events";
 
-type ParamsMap = { [key:string]: any };
 type TransformFn = (o: any) => any;
+
+type Options = {
+    noEvent?: boolean,
+    transformResponse?: TransformFn,
+    cancelled?: Promise<any>
+}
+type Data = {
+    [key:string]: any
+};
+
+const DEFAULT_OPTIONS: Options = {
+    noEvent: false,
+    transformResponse: (o) => o
+}
 
 class Api extends EventEmitter {
     basename: "";
 
-    constructor(...args) {
-        super(...args);
+    GET:    (t: string, o?: Options|TransformFn) => (d?: Data, o?: Options) => Promise<any>;
+    POST:   (t: string, o?: Options|TransformFn) => (d?: Data, o?: Options) => Promise<any>;
+    PUT:    (t: string, o?: Options|TransformFn) => (d?: Data, o?: Options) => Promise<any>;
+    DELETE: (t: string, o?: Options|TransformFn) => (d?: Data, o?: Options) => Promise<any>;
 
+    constructor() {
+        super();
         this.GET = this._makeMethod("GET").bind(this);
         this.DELETE = this._makeMethod("DELETE").bind(this);
         this.POST = this._makeMethod("POST", true).bind(this);
@@ -22,17 +39,16 @@ class Api extends EventEmitter {
     _makeMethod(method: string, hasBody: boolean = false) {
         return (
             urlTemplate: string,
-            params: ParamsMap|TransformFn = {},
-            transformResponse: TransformFn = (o) => o
+            methodOptions?: Options|TransformFn = {}
         ) => {
-            if (typeof params === "function") {
-                transformResponse = params;
-                params = {};
+            if (typeof options === "function") {
+                methodOptions = { transformResponse: methodOptions };
             }
             return (
-                data?: { [key:string]: any },
-                options?: { [key:string]: any } = {}
+                data?: Data,
+                invocationOptions?: Options = {}
             ): Promise<any> => {
+                const options = { ...DEFAULT_OPTIONS, ...methodOptions, ...invocationOptions };
                 let url = urlTemplate;
                 data = { ...data };
                 for (let tag of (url.match(/:\w+/g) || [])) {
@@ -72,14 +88,16 @@ class Api extends EventEmitter {
                             let body = xhr.responseText;
                             try { body = JSON.parse(body); } catch (e) {}
                             if (xhr.status >= 200 && xhr.status <= 299) {
-                                resolve(transformResponse(body, { data }));
+                                resolve(options.transformResponse(body, { data }));
                             } else {
                                 reject({
                                     status: xhr.status,
                                     data: body
                                 });
                             }
-                            this.emit(xhr.status, url);
+                            if (!options.noEvent) {
+                                this.emit(xhr.status, url);
+                            }
                         }
                     }
                     xhr.send(body);

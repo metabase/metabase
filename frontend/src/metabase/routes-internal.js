@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Route } from "react-router";
+import { Route, Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -9,8 +9,8 @@ const SIZES = [12, 16];
 
 const ListApp = () =>
     <ul>
-        <li><a href="/_internal/icons">Icons</a></li>
-        <li><a href="/_internal/embed?url=">Embed</a></li>
+        <li><Link to="_internal/icons">Icons</Link></li>
+        <li><Link to="_internal/colors">Colors</Link></li>
     </ul>
 
 class IconsApp extends Component {
@@ -58,44 +58,6 @@ class IconsApp extends Component {
     }
 }
 
-import Toggle from "metabase/components/Toggle";
-import MetabaseEmbed from "metabase/public/components/MetabaseEmbed";
-import querystring from "querystring";
-
-class EmbedTestApp extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            bordered: true
-        }
-    }
-    render() {
-        const { location, params } = this.props;
-        let options = querystring.stringify({ bordered: this.state.bordered });
-        if (options) {
-            options = "#" + options;
-        }
-        const url = `${window.location.origin}/public/${params.type}/${params.uuid}${location.search}${options}`;
-        return (
-            <div className="bg-brand flex-full px4 pb4 flex flex-column">
-                <div className="p1 py2 flex align-center text-white text-bold">
-                    <span className="mr1">Bordered:</span>
-                    <Toggle value={this.state.bordered} onChange={value => this.setState({ bordered: value })} />
-                    <input
-                        className="ml2 input flex-full"
-                        style={{ textAlign: "left", direction: "rtl" }}
-                        value={url}
-                    />
-                </div>
-                <MetabaseEmbed
-                    className="flex-full"
-                    url={url}
-                />
-            </div>
-        );
-    }
-}
-
 // eslint-disable-next-line import/no-commonjs
 let colorStyles = require("!style!css?modules!postcss!metabase/css/core/colors.css");
 
@@ -116,6 +78,5 @@ export default (
         <Route path="list" component={ListApp} />
         <Route path="icons" component={IconsApp} />
         <Route path="colors" component={ColorsApp} />
-        <Route path="embed/:type/:uuid" component={EmbedTestApp} />
     </Route>
 );
