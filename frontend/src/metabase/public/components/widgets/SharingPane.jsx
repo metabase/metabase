@@ -106,7 +106,7 @@ export default class SharingPane extends Component<*, Props, State> {
                 <div className={cx("mb4 flex align-center", { disabled: !resource.public_uuid })}>
                     <RetinaImage
                         width={98}
-                        src="/app/img/simple_embed.png"
+                        src="app/assets/img/simple_embed.png"
                         forceOriginalDimensions={false}
                     />
                     <div className="ml2 flex-full">
@@ -122,7 +122,7 @@ export default class SharingPane extends Component<*, Props, State> {
                     >
                         <RetinaImage
                             width={100}
-                            src="/app/img/secure_embed.png"
+                            src="app/assets/img/secure_embed.png"
                             forceOriginalDimensions={false}
                         />
                         <div className="ml2 flex-full">

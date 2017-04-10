@@ -47,12 +47,12 @@
 
 (def ^:private ^:const builtin-geojson
   {:us_states       {:name        "United States"
-                     :url         "/app/charts/us-states.json"
+                     :url         "app/assets/geojson/us-states.json"
                      :region_key  "name"
                      :region_name "name"
                      :builtin     true}
    :world_countries {:name        "World"
-                     :url         "/app/charts/world.json"
+                     :url         "app/assets/geojson/world.json"
                      :region_key  "ISO_A2"
                      :region_name "NAME"
                      :builtin     true}})

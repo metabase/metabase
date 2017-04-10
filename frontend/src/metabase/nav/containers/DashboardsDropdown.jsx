@@ -39,7 +39,7 @@ export default class DashboardsDropdown extends Component {
             dashIcon: {
                 width: '105px',
                 height: '90px',
-                backgroundImage: 'url("/app/components/icons/assets/dash_empty_state.svg")',
+                backgroundImage: 'url("app/assets/img/dash_empty_state.svg")',
                 backgroundRepeat: 'no-repeat'
             }
         }

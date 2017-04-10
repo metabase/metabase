@@ -3,7 +3,7 @@
 }
 
 .CheckBg {
-    background-image: url('/app/components/icons/assets/header_rect.svg');
+    background-image: url('../assets/img/header_rect.svg');
     background-repeat: repeat;
 }
 

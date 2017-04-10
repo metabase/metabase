@@ -69,6 +69,7 @@ var CSS_CONFIG = {
         "[hash:base64:5]",
     restructuring: false,
     compatibility: true,
+    url: false, // disabled because we need to use relative url()
     importLoaders: 1
 }
 
