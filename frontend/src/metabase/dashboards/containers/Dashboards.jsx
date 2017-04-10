@@ -2,11 +2,10 @@
 
 import React, {Component, PropTypes} from 'react';
 import {connect} from "react-redux";
-import _ from 'underscore';
+import cx from "classnames";
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
-import WhatsADashboard from "../components/WhatsADashboard";
 import DashboardList from "../components/DashboardList";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
@@ -14,10 +13,11 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import Modal from "metabase/components/Modal.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon.jsx";
+import SearchHeader from "metabase/components/SearchHeader";
+import EmptyState from "metabase/components/EmptyState";
 
 import * as dashboardsActions from "../dashboards";
 import {getDashboardListing} from "../selectors";
-import SearchHeader from "../../components/SearchHeader";
 
 const mapStateToProps = (state, props) => ({
     dashboards: getDashboardListing(state)
@@ -84,36 +84,60 @@ export default class Dashboards extends Component {
     }
 
     render() {
-        let {modalOpen} = this.state;
+        let {modalOpen, searchText} = this.state;
 
         const isLoading = this.props.dashboards == null
-        const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
+        // const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
         const filteredDashboards = isLoading ? [] : this.getFilteredDashboards();
+        const noSearchResults = searchText !== "" && filteredDashboards.length === 0;
 
         // FIXME Remove these development flags prior to reviews and merge
-        // const noDashboardsCreated = true;
+        const noDashboardsCreated = true;
+
+        const hasCenteredContent = noDashboardsCreated || noSearchResults;
 
         return (
-            <LoadingAndErrorWrapper loading={isLoading} className="relative mx4">
+            <LoadingAndErrorWrapper
+                loading={isLoading}
+                className={cx("relative mx4", {"flex-full flex align-center justify-center": hasCenteredContent})}
+            >
                 { modalOpen ? this.renderCreateDashboardModal() : null }
-                <div className="flex align-center pt4 pb1">
-                    <TitleAndDescription title="Dashboards"/>
-                    <Icon name="add"
-                          className="flex-align-right px4 cursor-pointer text-grey-5 text-brand-hover"
-                          size={20}
-                          onClick={this.showCreateDashboard}/>
-                </div>
-                <div className="flex align-center pb1">
-                    <SearchHeader
-                        searchText={this.state.searchText}
-                        setSearchText={(searchText) => this.setState({searchText})}
-                    />
-                </div>
                 { noDashboardsCreated ?
-                    <WhatsADashboard button={
-                        <a onClick={this.showCreateDashboard} className="Button Button--primary">Create a dashboard</a>
-                    }/>
-                    : <DashboardList dashboards={filteredDashboards}/>
+                    <div className="mt2">
+                        <EmptyState message={<div>Put the charts and graphs you look at<br/>frequently in a single, handy place.</div>}
+                                    image="/app/img/dashboard_illustration"
+                                    action="Create a dashboard"
+                                    onActionClick={this.showCreateDashboard}
+                                    className="mt2"
+                                    logoClassName="mln2"
+                        />
+                    </div>
+                    : <div>
+                        <div className="flex align-center pt4 pb1">
+                            <TitleAndDescription title="Dashboards"/>
+                            <Icon name="add"
+                                  className="flex-align-right px4 cursor-pointer text-grey-5 text-brand-hover"
+                                  size={20}
+                                  onClick={this.showCreateDashboard}/>
+                        </div>
+                        <div className="flex align-center pb1">
+                            <SearchHeader
+                                searchText={searchText}
+                                setSearchText={(text) => this.setState({searchText: text})}
+                            />
+                        </div>
+                        { noSearchResults ?
+                            <EmptyState
+                                message="Put the charts and graphs you look at frequently in a single, handy place."
+                                image="/app/img/empty_dashboard"
+                                action="Create a dashboard"
+                                onActionClick={this.showCreateDashboard}
+                                className="mt2"
+                            />
+                            : <DashboardList dashboards={filteredDashboards}/>
+                        }
+                    </div>
+
                 }
             </LoadingAndErrorWrapper>
         );

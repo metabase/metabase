@@ -4,6 +4,7 @@ import React, {Component, PropTypes} from "react";
 import {Link} from "react-router";
 import {withState} from "recompose";
 import cx from "classnames";
+import moment from "moment";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -32,11 +33,11 @@ const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListIt
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
             <div className={cx("flex-full flex-retain-width", {"text-white": hover})}>
-                <h4 className="text-ellipsis text-nowrap overflow-hidden">{dashboard.name}</h4>
-                <div className="text-small text-capitalize">
-                    {dashboard.created_at}
+                <h4 className="text-ellipsis text-nowrap overflow-hidden text-brand" style={{marginBottom: "0.2em"}}>{dashboard.name}</h4>
+                <div className="text-small text-uppercase text-grey-3 text-bold">
+                    {/* NOTE: Could these time formats be centrally stored somewhere? */}
+                    {moment(dashboard.created_at).format('MMM D, YYYY')}
                 </div>
-
             </div>
         </Link>
     </li>
@@ -51,7 +52,7 @@ export default class DashboardList extends Component {
         const {dashboards} = this.props;
 
         return (
-            <ol className="Grid Grid--guttersXl Grid--1of3">
+            <ol className="Grid Grid--guttersXl Grid--1of2 large-Grid--1of3">
                 { dashboards.map(dash => <DashboardListItem dashboard={dash}/>)}
             </ol>
         );
