@@ -11,8 +11,25 @@
 
         <title>Metabase</title>
 
+        <base href="/" />
         <script type="text/javascript">
-         window.MetabaseBootstrap = {{{bootstrap_json}}};
+            (function() {
+                window.MetabaseBootstrap = {{{bootstrap_json}}};
+                // THIS IS PROBABLY VULNERABLE TO XSS
+                // Add trailing slashes
+                var backendPathname = {{{uri}}}.replace(/\/*$/, "/");
+                // e.x. "/questions/"
+                var frontendPathname = window.location.pathname.replace(/\/*$/, "/");
+                // e.x. "/metabase/questions/"
+                if (backendPathname === frontendPathname.slice(-backendPathname.length)) {
+                    // Remove the backend pathname from the end of the frontend pathname
+                    window.MetabaseBasename = frontendPathname.slice(0, -backendPathname.length) + "/";
+                    // e.x. "/metabase/"
+                } else {
+                    window.MetabaseBasename = "/";
+                }
+                document.getElementsByTagName("base")[0].href = window.MetabaseBasename;
+            })();
         </script>
     </head>
 

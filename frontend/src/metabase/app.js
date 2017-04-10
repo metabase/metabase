@@ -17,8 +17,18 @@ import { getStore } from './store'
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { setErrorPage } from "metabase/redux/app";
 
-import { Router, browserHistory } from "react-router";
-import { push, syncHistoryWithStore } from 'react-router-redux'
+import { Router, useRouterHistory } from "react-router";
+import { createHistory } from 'history'
+import { push, syncHistoryWithStore } from 'react-router-redux';
+
+// remove trailing slash
+const BASENAME = window.MetabaseBasename.replace(/\/+$/, "");
+
+api.basename = BASENAME;
+
+const browserHistory = useRouterHistory(createHistory)({
+    basename: BASENAME
+});
 
 // we shouldn't redirect these URLs because we want to handle them differently
 const WHITELIST_FORBIDDEN_URLS = [

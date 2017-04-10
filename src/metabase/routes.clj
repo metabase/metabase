@@ -17,6 +17,7 @@
         (stencil/render-string (slurp (or (io/resource (str "frontend_client/" entry ".html"))
                                           (throw (Exception. (str "Cannot find './resources/frontend_client/" entry ".html'. Did you remember to build the Metabase frontend?")))))
                                {:bootstrap_json (json/generate-string (public-settings/public-settings))
+                                :uri            (json/generate-string uri)
                                 :embed_code     (when embeddable? (embed/head uri))})
         (slurp (io/resource "frontend_client/init.html")))
       resp/response
