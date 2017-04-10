@@ -50,7 +50,7 @@ static const CFTimeInterval TimeoutIntervalSeconds = 60.0f;
 	
 	[self resetTimeout];
 	
-	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
 		self.healthCheckTimer = [NSTimer timerWithTimeInterval:HealthCheckIntervalSeconds target:self selector:@selector(checkHealth) userInfo:nil repeats:YES];
 		self.healthCheckTimer.tolerance = HealthCheckIntervalSeconds / 2.0f;
 		[[NSRunLoop mainRunLoop] addTimer:self.healthCheckTimer forMode:NSRunLoopCommonModes];
@@ -91,8 +91,9 @@ static const CFTimeInterval TimeoutIntervalSeconds = 60.0f;
 }
 
 - (void)checkHealth {
+	// run the health check on the high-priorty GCD queue because it's imperative that it complete so we can get an accurate picture of Mac App health
 	__weak TaskHealthChecker *weakSelf = self;
-	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), ^{
+	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
 		[weakSelf checkHealth:^(BOOL healthy) {
 			if (!healthy) NSLog(@"😷");
 			if (healthy && !weakSelf.healthy) NSLog(@"✅");
