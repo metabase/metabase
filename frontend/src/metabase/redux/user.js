@@ -3,6 +3,7 @@
 import { createAction, handleActions, createThunkAction } from "metabase/lib/redux";
 
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
+import { LOGOUT } from "metabase/auth/auth";
 
 import { UserApi } from "metabase/services";
 
@@ -28,8 +29,8 @@ export const CLEAR_CURRENT_USER = "metabase/user/CLEAR_CURRENT_USER"
 export const clearCurrentUser = createAction(CLEAR_CURRENT_USER)
 
 export const currentUser = handleActions({
+    [LOGOUT]: { next: (state, { payload }) => null },
     [CLEAR_CURRENT_USER]: { next: (state, payload) => null },
     [REFRESH_CURRENT_USER]: { next: (state, { payload }) => payload },
-    [CLEAR_CURRENT_USER]: { next: (state, { payload }) => null },
     [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({ ...state, is_qbnewb: false }) },
 }, null);
