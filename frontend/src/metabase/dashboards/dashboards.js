@@ -41,7 +41,8 @@ export const createDashboard = createThunkAction(CREATE_DASHBOARD, (dashboard: D
         const createdDashboard: Dashboard = await DashboardApi.create(dashboard);
 
         if (redirect) {
-            push(Urls.dashboard(createdDashboard.id));
+            console.log ('should redirect', Urls.dashboard(createdDashboard.id));
+            dispatch(push(Urls.dashboard(createdDashboard.id)));
         }
 
         return createdDashboard;
