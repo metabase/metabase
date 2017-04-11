@@ -10,7 +10,7 @@ import { reduxForm } from "redux-form";
 
 import { normal } from "metabase/lib/colors";
 
-@reduxForm({
+const formConfig = {
     form: 'collection',
     fields: ['id', 'name', 'description', 'color'],
     validate: (values) => {
@@ -31,8 +31,9 @@ import { normal } from "metabase/lib/colors";
         // pick a random color to start so everything isn't blue all the time
         color: normal[Math.floor(Math.random() * normal.length)]
     }
-})
-export default class CollectionEditorForm extends Component {
+}
+
+export class CollectionEditorForm extends Component {
     render() {
         const { fields, handleSubmit, invalid, onClose } = this.props;
         return (
@@ -41,12 +42,14 @@ export default class CollectionEditorForm extends Component {
                 form
                 title={fields.id.value != null ? fields.name.value : "New collection"}
                 footer={[
-                    <Button className="mr1" onClick={onClose}>
-                        Cancel
-                    </Button>,
-                    <Button primary disabled={invalid} onClick={handleSubmit}>
-                        { fields.id.value != null ? "Update" : "Create" }
-                    </Button>
+                    <div ref={(ref) => { this.footerRef = ref}}>
+                        <Button className="mr1" onClick={onClose}>
+                            Cancel
+                        </Button>
+                        <Button primary disabled={invalid} onClick={handleSubmit}>
+                            { fields.id.value != null ? "Update" : "Create" }
+                        </Button>
+                    </div>
                 ]}
                 onClose={onClose}
             >
@@ -83,3 +86,5 @@ export default class CollectionEditorForm extends Component {
         )
     }
 }
+
+export default reduxForm(formConfig)(CollectionEditorForm)

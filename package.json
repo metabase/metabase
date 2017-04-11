@@ -106,6 +106,7 @@
     "html-webpack-harddisk-plugin": "^0.1.0",
     "html-webpack-plugin": "^2.14.0",
     "husky": "^0.13.2",
+    "identity-obj-proxy": "^3.0.0",
     "image-diff": "^1.6.3",
     "imports-loader": "^0.7.0",
     "jasmine": "^2.4.1",
@@ -177,6 +178,9 @@
     "testPathIgnorePatterns": [
       "<rootDir>/frontend/test/"
     ],
+    "moduleNameMapper": {
+      "\\.(css|less)$": "identity-obj-proxy"
+    },
     "modulePaths": [
       "<rootDir>/frontend/src"
     ]
