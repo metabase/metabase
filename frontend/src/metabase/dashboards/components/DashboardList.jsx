@@ -19,7 +19,7 @@ type DashboardListItemType = {
 
 const enhance = withState('hover', 'setHover', false)
 const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListItemType) =>
-    <li key={dashboard.id} className="Grid-cell flex-retain-width">
+    <li className="Grid-cell flex-retain-width">
         <Link to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
               className="flex align-center border-box p2 bg-white bg-brand-hover rounded hover-parent hover--display no-decoration"
@@ -54,9 +54,10 @@ export default class DashboardList extends Component {
     render() {
         const {dashboards} = this.props;
 
+        console.log('daash:', dashboards)
         return (
             <ol className="Grid Grid--guttersXl Grid--1of2 large-Grid--1of3">
-                { dashboards.map(dash => <DashboardListItem dashboard={dash}/>)}
+                { dashboards.map(dash => <DashboardListItem key={dash.id} dashboard={dash}/>)}
             </ol>
         );
     }

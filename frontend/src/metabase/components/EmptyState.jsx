@@ -1,12 +1,11 @@
 /* @flow */
 import React, {PropTypes} from "react";
 import {Link} from "react-router";
-import cx from "classnames";
 
 /*
  * EmptyState is a component that can
  *   1) introduce a new section of Metabase to a user, and encourages the user to take an action
-  *  2) indicate an empty result after an user-triggered search/query
+  *  2) indicate an empty result after a user-triggered search/query
  */
 
 
