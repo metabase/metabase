@@ -514,6 +514,22 @@
   "Not found."
   ((user->client :rasta) :get 404 "card/" :collection :some_fake_collection_slug))
 
+;; Make sure GET /api/card?collection=<slug> still works with Collections with URL-encoded Slugs (#4535)
+(expect
+  []
+  (tt/with-temp Collection [collection {:name "Obsługa klienta"}]
+    (do
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :get 200 "card/" :collection "obs%C5%82uga_klienta"))))
+
+;; ...even if the slug isn't passed in URL-encoded
+(expect
+  []
+  (tt/with-temp Collection [collection {:name "Obsługa klienta"}]
+    (do
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :get 200 "card/" :collection "obsługa_klienta"))))
+
 
 ;;; ------------------------------------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------------------------------------
 
