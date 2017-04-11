@@ -21,6 +21,23 @@
   (intern 'honeysql.format 'quote-fns
           (assoc quote-fns :h2 (comp s/upper-case ansi-quote-fn))))
 
+(defn- str-insert
+  "Insert c in string s at index i."
+  [s c i]
+  (str c (subs s 0 i) c (subs s i)))
+
+(defn- crate-column-identifier
+  [^CharSequence s]
+  (let [idx (s/index-of s "[")]
+    (if (nil? idx)
+      (str \" s \")
+      (str-insert s "\"" idx))))
+
+;; `:crate` quote style that correctly quotes nested column identifiers
+(let [quote-fns     @(resolve 'honeysql.format/quote-fns)]
+  (->> (assoc quote-fns :crate crate-column-identifier)
+       (intern 'honeysql.format 'quote-fns)))
+
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
 (defmethod hformat/fn-handler "extract" [_ unit expr]
