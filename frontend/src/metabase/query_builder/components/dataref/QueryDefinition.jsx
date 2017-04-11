@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import FilterList from "../filters/FilterList.jsx";
 import AggregationWidget from "../AggregationWidget.jsx";

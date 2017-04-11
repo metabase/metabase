@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { Link } from "react-router";
 import styles from "./Scalar.css";
 
@@ -8,7 +8,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 import { isNumber } from "metabase/lib/schema_metadata";
@@ -195,7 +195,7 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
                 <div className={styles.Title + " flex align-center"}>
                     <Ellipsified tooltip={card.name}>
                         { linkToCard ?
-                          <Link to={Urls.card(card.id)} className="no-decoration fullscreen-normal-text fullscreen-night-text">{settings["card.title"]}</Link>
+                          <Link to={Urls.question(card.id)} className="no-decoration fullscreen-normal-text fullscreen-night-text">{settings["card.title"]}</Link>
                           :
                           <span className="fullscreen-normal-text fullscreen-night-text">{settings["card.title"]}</span>
                         }

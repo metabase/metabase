@@ -379,31 +379,63 @@
                     v)}))))
 
 
-;;; ------------------------------------------------------------ Handling ISODate(...) forms ------------------------------------------------------------
-;; In Mongo it's fairly common use ISODate(...) forms in queries, which unfortunately are not valid JSON,
+;;; ------------------------------------------------------------ Handling ISODate(...) and ObjectId(...) forms ------------------------------------------------------------
+;; In Mongo it's fairly common use ISODate(...) or ObjectId(...) forms in queries, which unfortunately are not valid JSON,
 ;; and thus cannot be parsed by Cheshire. But we are clever so we will:
 ;;
 ;; 1) Convert forms like ISODate(...) to valid JSON forms like ["___ISODate", ...]
 ;; 2) Parse Normally
-;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates
+;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates, and [:___ObjectId ...] to BSON IDs
 
-(defn- encoded-iso-date? [form]
-  (and (vector? form)
-       (= (first form) "___ISODate")))
+;; add more fn handlers here as needed
+(def ^:private fn-name->decoder
+  {:ISODate (fn [arg]
+              (DateTime. arg))
+   :ObjectId (fn [^String arg]
+               (ObjectId. arg))})
 
-(defn- maybe-decode-iso-date-fncall [form]
-  (if (encoded-iso-date? form)
-    (DateTime. (second form))
+(defn- form->encoded-fn-name
+  "If FORM is an encoded fn call form return the key representing the fn call that was encoded.
+   If it doesn't represent an encoded fn, return `nil`.
+
+     (form->encoded-fn-name [:___ObjectId \"583327789137b2700a1621fb\"]) -> :ObjectId"
+  [form]
+  (when (vector? form)
+    (when (u/string-or-keyword? (first form))
+      (when-let [[_ k] (re-matches #"^___(\w+$)" (name (first form)))]
+        (let [k (keyword k)]
+          (when (contains? fn-name->decoder k)
+            k))))))
+
+(defn- maybe-decode-fncall [form]
+  (if-let [fn-name (form->encoded-fn-name form)]
+    ((fn-name->decoder fn-name) (second form))
     form))
 
-(defn- decode-iso-date-fncalls [query]
-  (walk/postwalk maybe-decode-iso-date-fncall query))
+(defn- decode-fncalls [query]
+  (walk/postwalk maybe-decode-fncall query))
 
-(defn- encode-iso-date-fncalls
-  "Replace occurances of `ISODate(...)` function calls (invalid JSON, but legal in Mongo)
-   with legal JSON forms like `[:___ISODate ...]` that we can decode later."
+(defn- encode-fncalls-for-fn
+  "Walk QUERY-STRING and replace fncalls to fn with FN-NAME with encoded forms that can be parsed as valid JSON.
+
+     (encode-fncalls-for-fn \"ObjectId\" \"{\\\"$match\\\":ObjectId(\\\"583327789137b2700a1621fb\\\")}\")
+     ;; -> \"{\\\"$match\\\":[\\\"___ObjectId\\\", \\\"583327789137b2700a1621fb\\\"]}\""
+  [fn-name query-string]
+  (s/replace query-string
+             (re-pattern (format "%s\\(([^)]+)\\)" (name fn-name)))
+             (format "[\"___%s\", $1]" (name fn-name))))
+
+(defn- encode-fncalls
+  "Replace occurances of `ISODate(...)` and similary function calls (invalid JSON, but legal in Mongo)
+   with legal JSON forms like `[:___ISODate ...]` that we can decode later.
+
+   Walks QUERY-STRING and encodes all the various fncalls we support."
   [query-string]
-  (s/replace query-string #"ISODate\(([^)]+)\)" "[\"___ISODate\", $1]"))
+  (loop [query-string query-string, [fn-name & more] (keys fn-name->decoder)]
+    (if-not fn-name
+      query-string
+      (recur (encode-fncalls-for-fn fn-name query-string)
+             more))))
 
 
 ;;; ------------------------------------------------------------ Query Execution ------------------------------------------------------------
@@ -427,7 +459,7 @@
          (string? collection)
          (map? database)]}
   (let [query   (if (string? query)
-                  (decode-iso-date-fncalls (json/parse-string (encode-iso-date-fncalls query) keyword))
+                  (decode-fncalls (json/parse-string (encode-fncalls query) keyword))
                   query)
         results (mc/aggregate *mongo-connection* collection query
                               :allow-disk-use true)

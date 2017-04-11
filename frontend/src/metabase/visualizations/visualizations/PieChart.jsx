@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 
@@ -184,8 +184,8 @@ export default class PieChart extends Component<*, Props, *> {
 
         let value, title;
         if (hovered && hovered.index != null && slices[hovered.index] !== otherSlice) {
-            title = slices[hovered.index].key;
-            value = slices[hovered.index].value;
+            title = formatDimension(slices[hovered.index].key);
+            value = formatMetric(slices[hovered.index].value);
         } else {
             title = "Total";
             value = formatMetric(total);

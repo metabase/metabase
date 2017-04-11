@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { findDOMNode } from "react-dom";
 import { Link } from "react-router";
 import { connect } from "react-redux";

@@ -1,7 +1,7 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
 import { Link } from "react-router";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import Color from "color";
 import cx from "classnames";

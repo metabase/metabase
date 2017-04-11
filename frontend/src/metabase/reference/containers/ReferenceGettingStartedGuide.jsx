@@ -1,13 +1,16 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from 'react-redux';
 import { push } from 'react-router-redux';
 import { reduxForm } from "redux-form";
+
 import { assoc } from "icepick";
 import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import * as Urls from "metabase/lib/urls";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
@@ -225,7 +228,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             createDashboardFn={async (newDashboard) => {
                                 try {
                                     const action = await createDashboard(newDashboard, true);
-                                    push(`/dash/${action.payload.id}`);
+                                    push(Urls.dashboard(action.payload.id));
                                 }
                                 catch(error) {
                                     console.error(error);
@@ -632,4 +635,4 @@ const AdminInstructions = ({ children }) => // eslint-disable-line react/prop-ty
     </div>
 
 const SectionHeader = ({ trim, children }) => // eslint-disable-line react/prop-types
-    <h2 className={cx('text-dark text-measure', {  "mb0" : trim }, { "mb4" : !trim })}>{children}</h2> 
+    <h2 className={cx('text-dark text-measure', {  "mb0" : trim }, { "mb4" : !trim })}>{children}</h2>

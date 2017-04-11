@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
 const SidebarLayout = ({ className, style, sidebar, children }) =>
     <div className={className} style={{ ...style, display: "flex", flexDirection: "row"}}>

@@ -1,7 +1,12 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
+import Tooltip from "metabase/components/Tooltip";
+import Icon from "metabase/components/Icon";
+import ShrinkableList from "metabase/components/ShrinkableList";
+
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
@@ -12,12 +17,16 @@ import Warnings from "./Warnings.jsx";
 import QueryDownloadWidget from "./QueryDownloadWidget.jsx";
 import QuestionEmbedWidget from "../containers/QuestionEmbedWidget";
 
-import { formatNumber, inflect } from "metabase/lib/formatting";
+import { formatNumber, inflect, duration } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
 import MetabaseSettings from "metabase/lib/settings";
+import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
+import moment from "moment";
+
+const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
 export default class QueryVisualization extends Component {
     constructor(props, context) {
@@ -39,8 +48,8 @@ export default class QueryVisualization extends Component {
         cellClickedFn: PropTypes.func,
         isRunning: PropTypes.bool.isRequired,
         isRunnable: PropTypes.bool.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
-        cancelQueryFn: PropTypes.func
+        runQuery: PropTypes.func.isRequired,
+        cancelQuery: PropTypes.func
     };
 
     static defaultProps = {
@@ -62,44 +71,85 @@ export default class QueryVisualization extends Component {
         }
     }
 
-    queryIsDirty() {
-        // a query is considered dirty if ANY part of it has been changed
-        return (
-            !Utils.equals(this.props.card.dataset_query, this.state.lastRunDatasetQuery) ||
-            !Utils.equals(this.props.parameterValues, this.state.lastRunParameterValues)
-        );
-    }
-
     isChartDisplay(display) {
         return (display !== "table" && display !== "scalar");
     }
 
+    runQuery = () => {
+        this.props.runQuery(null, { ignoreCache: true });
+    }
+
     renderHeader() {
-        const { isObjectDetail, isRunnable, isRunning, isAdmin, card, result, runQueryFn, cancelQueryFn } = this.props;
-        const isDirty = this.queryIsDirty();
+        const { isObjectDetail, isRunnable, isRunning, isResultDirty, isAdmin, card, result, cancelQuery } = this.props;
         const isSaved = card.id != null;
+
+        let runButtonTooltip;
+        if (!isResultDirty && result && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
+            runButtonTooltip = `This question will take approximately ${duration(result.average_execution_time)} to refresh`;
+        }
+
+        const messages = [];
+        if (result && result.cached) {
+            messages.push({
+                icon: "clock",
+                message: (
+                    <div>
+                        Updated {moment(result.updated_at).fromNow()}
+                    </div>
+                )
+            })
+        }
+        if (result && result.data && !isObjectDetail && card.display === "table") {
+            messages.push({
+                icon: "table2",
+                message: (
+                    <div>
+                        { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
+                        <strong>{formatNumber(result.row_count)}</strong>
+                        { " " + inflect("row", result.data.rows.length) }
+                    </div>
+                )
+            })
+        }
+
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
         const isEmbeddingEnabled = MetabaseSettings.get("embedding");
         return (
-            <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
-                <span className="relative z4">
+            <div className="relative flex align-center flex-no-shrink mt2 mb1" style={{ minHeight: "2em" }}>
+                <div className="z4 flex-full">
                   { !isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
-                </span>
-                <div className="absolute flex layout-centered left right z3">
-                    <RunButton
-                        isRunnable={isRunnable}
-                        isDirty={isDirty}
-                        isRunning={isRunning}
-                        onRun={runQueryFn}
-                        onCancel={cancelQueryFn}
-                    />
                 </div>
-                <div className="absolute right z4 flex align-center" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
-                    { !isDirty && this.renderCount() }
+                <div className="z3">
+                    <Tooltip tooltip={runButtonTooltip}>
+                        <RunButton
+                            isRunnable={isRunnable}
+                            isDirty={isResultDirty}
+                            isRunning={isRunning}
+                            onRun={this.runQuery}
+                            onCancel={cancelQuery}
+                        />
+                    </Tooltip>
+                </div>
+                <div className="z4 flex-full flex align-center justify-end" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
+                    <ShrinkableList
+                        className="flex"
+                        items={messages}
+                        renderItem={(item) =>
+                            <div className="flex-no-shrink flex align-center mx2 h5 text-grey-4">
+                                <Icon className="mr1" name={item.icon} size={12} />
+                                {item.message}
+                            </div>
+                        }
+                        renderItemSmall={(item) =>
+                            <Tooltip tooltip={<div className="p1">{item.message}</div>}>
+                                <Icon className="mx1" name={item.icon} size={16} />
+                            </Tooltip>
+                        }
+                    />
                     { !isObjectDetail &&
-                        <Warnings warnings={this.state.warnings} className="mx2" size={18} />
+                        <Warnings warnings={this.state.warnings} className="mx1" size={18} />
                     }
-                    { !isDirty && result && !result.error ?
+                    { !isResultDirty && result && !result.error ?
                         <QueryDownloadWidget
                             className="mx1"
                             card={card}
@@ -118,19 +168,6 @@ export default class QueryVisualization extends Component {
                 </div>
             </div>
         );
-    }
-
-    renderCount() {
-        let { result, isObjectDetail, card } = this.props;
-        if (result && result.data && !isObjectDetail && card.display === "table") {
-            return (
-                <div>
-                    { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
-                    <b>{formatNumber(result.row_count)}</b>
-                    { " " + inflect("row", result.data.rows.length) }.
-                </div>
-            );
-        }
     }
 
     render() {
@@ -188,5 +225,5 @@ export default class QueryVisualization extends Component {
 const VisualizationEmptyState = ({showTutorialLink}) =>
     <div className="flex full layout-centered text-grey-1 flex-column">
         <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-        { showTutorialLink && <Link to="/q#?tutorial" className="link cursor-pointer my2">How do I use this thing?</Link> }
+        { showTutorialLink && <Link to={Urls.question(null, "?tutorial")} className="link cursor-pointer my2">How do I use this thing?</Link> }
     </div>

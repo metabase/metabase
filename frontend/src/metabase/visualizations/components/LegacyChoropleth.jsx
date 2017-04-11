@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import d3 from "d3";

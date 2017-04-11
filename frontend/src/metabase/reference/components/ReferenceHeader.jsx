@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
 import pure from "recompose/pure";

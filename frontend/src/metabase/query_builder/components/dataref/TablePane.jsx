@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import QueryButton from "metabase/components/QueryButton.jsx";
 import { createCard } from "metabase/lib/card";

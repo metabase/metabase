@@ -1,14 +1,19 @@
 (ns metabase.models.interface
   (:require [clojure.core.memoize :as memoize]
             [cheshire.core :as json]
+            [taoensso.nippy :as nippy]
             [toucan.models :as models]
             [metabase.config :as config]
             [metabase.util :as u]
-            [metabase.util.encryption :as encryption]))
+            [metabase.util.encryption :as encryption])
+  (:import java.sql.Blob))
 
 ;;; ------------------------------------------------------------ Toucan Extensions ------------------------------------------------------------
 
 (models/set-root-namespace! 'metabase.models)
+
+
+;;; types
 
 (defn- json-in [obj]
   (if (string? obj)
@@ -39,6 +44,24 @@
   :in  encrypted-json-in
   :out (comp cached-encrypted-json-out u/jdbc-clob->str))
 
+(defn compress
+  "Compress OBJ, returning a byte array."
+  [obj]
+  (nippy/freeze obj {:compressor nippy/snappy-compressor}))
+
+(defn decompress
+  "Decompress COMPRESSED-BYTES."
+  [compressed-bytes]
+  (if (instance? Blob compressed-bytes)
+    (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
+    (nippy/thaw compressed-bytes {:compressor nippy/snappy-compressor})))
+
+(models/add-type! :compressed
+  :in  compress
+  :out decompress)
+
+
+;;; properties
 
 (defn- add-created-at-timestamp [obj & _]
   (assoc obj :created_at (u/new-sql-timestamp)))
@@ -48,6 +71,11 @@
 
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)
+  :update add-updated-at-timestamp)
+
+;; like `timestamped?`, but for models that only have an `:updated_at` column
+(models/add-property! :updated-at-timestamped?
+  :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
 

@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import MetricsList from "./MetricsList.jsx";
 import ColumnsList from "./ColumnsList.jsx";

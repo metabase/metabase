@@ -1,11 +1,11 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import { createPublicLink, deletePublicLink, updateEnableEmbedding, updateEmbeddingParams } from "../dashboard";
 

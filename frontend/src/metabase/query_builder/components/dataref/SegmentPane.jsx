@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
@@ -27,7 +28,7 @@ export default class SegmentPane extends Component {
         segment: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
@@ -53,7 +54,7 @@ export default class SegmentPane extends Component {
         }
         Query.addFilter(datasetQuery.query, ["SEGMENT", this.props.segment.id]);
         this.props.setDatasetQuery(datasetQuery);
-        this.props.runQueryFn();
+        this.props.runQuery();
     }
 
     newCard() {

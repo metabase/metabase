@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -7,7 +8,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 
 import FieldSet from "metabase/components/FieldSet.jsx";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";
