@@ -14,7 +14,7 @@ const devToolsExtension = window.devToolsExtension ? window.devToolsExtension() 
 
 let middleware = [thunk, promise];
 if (DEBUG) {
-    middleware.push(logger());
+    middleware.push(logger);
 }
 
 export function getStore(reducers, history, intialState) {
