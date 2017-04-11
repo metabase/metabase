@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -79,13 +80,8 @@ class BrowserSelect extends Component {
             <PopoverWithTrigger
                 ref="popover"
                 className={className}
-                triggerElement={
-                    <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
-                        <span className="AdminSelect-content mr1">{selectedName}</span>
-                        <Icon className="AdminSelect-chevron flex-align-right" name="chevrondown" size={12} />
-                    </div>
-                }
-                triggerClasses={cx("AdminSelect", className)}
+                triggerElement={<SelectButton hasValue={!!value}>{selectedName}</SelectButton>}
+                triggerClasses={className}
                 verticalAttachments={["top"]}
                 isInitiallyOpen={isInitiallyOpen}
             >
@@ -116,6 +112,17 @@ class BrowserSelect extends Component {
         );
     }
 }
+
+export const SelectButton = ({ hasValue, children }) =>
+    <div className={"AdminSelect flex align-center " + (!hasValue ? " text-grey-3" : "")}>
+        <span className="AdminSelect-content mr1">{children}</span>
+        <Icon className="AdminSelect-chevron flex-align-right" name="chevrondown" size={12} />
+    </div>
+
+SelectButton.propTypes = {
+    hasValue: PropTypes.bool,
+    children: PropTypes.any,
+};
 
 export class Option extends Component {
     static propTypes = {

@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import { push, replace } from "react-router-redux";
 import { setRequestState } from "metabase/redux/requests";

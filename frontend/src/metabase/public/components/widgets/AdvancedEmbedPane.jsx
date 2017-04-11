@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import ToggleLarge from "metabase/components/ToggleLarge";
 import Button from "metabase/components/Button";

@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";

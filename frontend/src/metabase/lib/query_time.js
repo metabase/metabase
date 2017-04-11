@@ -2,6 +2,7 @@ import moment from "moment";
 import inflection from "inflection";
 
 import { mbqlEq } from "metabase/lib/query/util";
+import { formatTimeWithUnit } from "metabase/lib/formatting";
 
 export function computeFilterTimeRange(filter) {
     let expandedFilter;
@@ -110,7 +111,9 @@ export function generateTimeIntervalDescription(n, unit) {
 export function generateTimeValueDescription(value, bucketing) {
     if (typeof value === "string") {
         let m = moment(value);
-        if(m.hours() || m.minutes()) {
+        if (bucketing) {
+            return formatTimeWithUnit(value, bucketing);
+        } else if (m.hours() || m.minutes()) {
             return m.format("MMMM D, YYYY hh:mm a");
         } else {
             return m.format("MMMM D, YYYY");
@@ -169,13 +172,22 @@ export function parseFieldBucketing(field, defaultUnit = null) {
     return defaultUnit;
 }
 
+// returns field with "datetime-field" removed
 export function parseFieldTarget(field) {
+    if (mbqlEq(field[0], "datetime-field")) {
+        return field[1];
+    } else {
+        return field;
+    }
+}
+
+export function parseFieldTargetId(field) {
     if (Number.isInteger(field)) return field;
 
     if (Array.isArray(field)) {
         if (mbqlEq(field[0], "field-id"))       return field[1];
         if (mbqlEq(field[0], "fk->"))           return field[1];
-        if (mbqlEq(field[0], "datetime-field")) return parseFieldTarget(field[1]);
+        if (mbqlEq(field[0], "datetime-field")) return parseFieldTargetId(field[1]);
     }
 
     console.warn("Unknown field format", field);

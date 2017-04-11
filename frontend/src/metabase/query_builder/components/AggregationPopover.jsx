@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import AccordianList from "metabase/components/AccordianList.jsx";
 import FieldList from './FieldList.jsx';
@@ -33,11 +34,12 @@ export default class AggregationPopover extends Component {
     static propTypes = {
         isNew: PropTypes.bool,
         aggregation: PropTypes.array,
-        availableAggregations: PropTypes.array.isRequired,
         onCommitAggregation: PropTypes.func.isRequired,
         onClose: PropTypes.func.isRequired,
         tableMetadata: PropTypes.object.isRequired,
-        customFields: PropTypes.object
+        datasetQuery: PropTypes.object,
+        customFields: PropTypes.object,
+        availableAggregations: PropTypes.array,
     };
 
 
@@ -75,9 +77,20 @@ export default class AggregationPopover extends Component {
         });
     }
 
+    getAvailableAggregations() {
+        const { availableAggregations, tableMetadata } = this.props;
+        return availableAggregations || (tableMetadata && tableMetadata.aggregation_options)
+    }
+
+    getCustomFields() {
+        const { customFields, datasetQuery } = this.props;
+        return customFields || (datasetQuery && Query.getExpressions(datasetQuery.query));
+    }
+
     getAggregationFieldOptions(aggOperator) {
+        const availableAggregations = this.getAvailableAggregations();
         // NOTE: we don't use getAggregator() here because availableAggregations has the table.fields populated on the aggregation options
-        const aggOptions = this.props.availableAggregations.filter((o) => o.short === aggOperator);
+        const aggOptions = availableAggregations.filter((o) => o.short === aggOperator);
         if (aggOptions && aggOptions.length > 0) {
             return Query.getFieldOptions(this.props.tableMetadata.fields, true, aggOptions[0].validFieldsFilters[0])
         }
@@ -114,7 +127,11 @@ export default class AggregationPopover extends Component {
     }
 
     render() {
-        const { availableAggregations, tableMetadata } = this.props;
+        const { tableMetadata } = this.props;
+
+        const customFields = this.getCustomFields();
+        const availableAggregations = this.getAvailableAggregations();
+
         const { choosingField, editingAggregation } = this.state;
         const aggregation = NamedClause.getContent(this.state.aggregation);
 
@@ -182,7 +199,7 @@ export default class AggregationPopover extends Component {
                             startRule="aggregation"
                             expression={aggregation}
                             tableMetadata={tableMetadata}
-                            customFields={this.props.customFields}
+                            customFields={customFields}
                             onChange={(parsedExpression) => this.setState({
                                 aggregation: NamedClause.setContent(this.state.aggregation, parsedExpression),
                                 error: null
@@ -230,7 +247,7 @@ export default class AggregationPopover extends Component {
                         tableMetadata={tableMetadata}
                         field={fieldId}
                         fieldOptions={this.getAggregationFieldOptions(agg)}
-                        customFieldOptions={this.props.customFields}
+                        customFieldOptions={customFields}
                         onFieldChange={this.onPickField}
                         enableTimeGrouping={false}
                     />

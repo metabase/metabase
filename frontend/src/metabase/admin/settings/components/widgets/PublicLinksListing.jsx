@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -9,7 +9,7 @@ import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { CardApi, DashboardApi } from "metabase/services";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -161,7 +161,7 @@ export const PublicLinksQuestionListing = () =>
         load={CardApi.listPublic}
         revoke={CardApi.deletePublicLink}
         type='Public Card Listing'
-        getUrl={({ id }) => Urls.card(id)}
+        getUrl={({ id }) => Urls.question(id)}
         getPublicUrl={({ public_uuid }) => window.location.origin + Urls.publicCard(public_uuid)}
         noLinksMessage="No questions have been publicly shared yet."
     />;
@@ -177,7 +177,7 @@ export const EmbeddedDashboardListing = () =>
 export const EmbeddedQuestionListing = () =>
     <PublicLinksListing
         load={CardApi.listEmbeddable}
-        getUrl={({ id }) => Urls.card(id)}
+        getUrl={({ id }) => Urls.question(id)}
         type='Embedded Card Listing'
         noLinksMessage="No questions have been embedded yet."
     />;

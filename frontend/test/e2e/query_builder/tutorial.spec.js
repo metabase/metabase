@@ -24,7 +24,7 @@ describeE2E("tutorial", () => {
         await waitForElementAndClick(driver, ".Modal .Button.Button--primary");
         await waitForElementAndClick(driver, ".Modal .Button.Button--primary");
 
-        await waitForUrl(driver, `${server.host}/q`);
+        await waitForUrl(driver, `${server.host}/question`);
         await waitForElement(driver, ".Modal .Button.Button--primary");
         await screenshot(driver, "screenshots/setup-tutorial-qb.png");
         await waitForElementAndClick(driver, ".Modal .Button.Button--primary");

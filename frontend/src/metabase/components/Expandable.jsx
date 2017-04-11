@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 const Expandable = (ComposedComponent) => class extends Component {
     static displayName = "Expandable["+(ComposedComponent.displayName || ComposedComponent.name)+"]";

@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
@@ -48,7 +48,7 @@ const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
     const guide = getGuide(state, props);
     const fields = getFields(state, props);
-    
+
     const initialValues = {
         important_fields: guide && guide.metric_important_fields &&
             guide.metric_important_fields[entity.id] &&
@@ -308,7 +308,7 @@ export default class ReferenceEntity extends Component {
                                             .map(fieldId => metadataFields[fieldId])
                                             .reduce((map, field) => ({ ...map, [field.id]: field }), {})
                                         }
-                                        databaseId={table.db_id} 
+                                        databaseId={table.db_id}
                                         metric={entity}
                                         title={ guide && guide.metric_important_fields[entity.id] ?
                                             "Other fields you can group this metric by" :

@@ -1,7 +1,9 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 
 import MetabaseSettings from "metabase/lib/settings";
+import * as Urls from "metabase/lib/urls";
 
 export default class NewUserOnboardingModal extends Component {
     constructor(props, context) {
@@ -84,7 +86,7 @@ export default class NewUserOnboardingModal extends Component {
                             {this.renderStep()}
                             <span className="flex-align-right">
                                 <a className="text-underline-hover cursor-pointer mr3" onClick={() => (this.closeModal())}>skip for now</a>
-                                <Link to="/q#?tutorial" className="Button Button--primary">Let's do it!</Link>
+                                <Link to={Urls.question(null, "?tutorial")} className="Button Button--primary">Let's do it!</Link>
                             </span>
                         </div>
                     </div>

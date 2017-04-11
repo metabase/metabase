@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalContent from "metabase/components/ModalContent.jsx";

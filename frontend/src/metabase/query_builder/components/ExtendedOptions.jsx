@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -14,26 +15,16 @@ import Query from "metabase/lib/query";
 
 
 export default class ExtendedOptions extends Component {
-
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {
-            isOpen: false,
-            editExpression: null
-        };
-
-        _.bindAll(
-            this,
-            "setLimit", "addOrderBy", "updateOrderBy", "removeOrderBy"
-        );
-    }
+    state = {
+        isOpen: false,
+        editExpression: null
+    };
 
     static propTypes = {
         features: PropTypes.object.isRequired,
-        query: PropTypes.object.isRequired,
+        datasetQuery: PropTypes.object.isRequired,
         tableMetadata: PropTypes.object,
-        setQuery: PropTypes.func.isRequired
+        setDatasetQuery: PropTypes.func.isRequired
     };
 
     static defaultProps = {
@@ -41,41 +32,8 @@ export default class ExtendedOptions extends Component {
     };
 
 
-    setLimit(limit) {
-        if (limit) {
-            Query.updateLimit(this.props.query.query, limit);
-            MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
-        } else {
-            Query.clearLimit(this.props.query.query);
-            MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Limit');
-        }
-        this.props.setQuery(this.props.query);
-        this.setState({isOpen: false});
-    }
-
-    addOrderBy() {
-        Query.addOrderBy(this.props.query.query, [null, "ascending"]);
-        this.props.setQuery(this.props.query);
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'manual');
-    }
-
-    updateOrderBy(index, sort) {
-        Query.updateOrderBy(this.props.query.query, index, sort);
-        this.props.setQuery(this.props.query);
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'manual');
-    }
-
-    removeOrderBy(index) {
-        Query.removeOrderBy(this.props.query.query, index);
-        this.props.setQuery(this.props.query);
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Sort');
-    }
-
     setExpression(name, expression, previousName) {
-        let query = this.props.query.query;
+        const { datasetQuery: { query } } = this.props;
 
         if (!_.isEmpty(previousName)) {
             // remove old expression using original name.  this accounts for case where expression is renamed.
@@ -84,23 +42,23 @@ export default class ExtendedOptions extends Component {
 
         // now add the new expression to the query
         Query.setExpression(query, name, expression);
-        this.props.setQuery(this.props.query);
+        this.props.setDatasetQuery(this.props.datasetQuery);
         this.setState({editExpression: null});
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Expression', !_.isEmpty(previousName));
     }
 
     removeExpression(name) {
-        let scrubbedQuery = Query.removeExpression(this.props.query.query, name);
-        this.props.query.query = scrubbedQuery;
-        this.props.setQuery(this.props.query);
+        let scrubbedQuery = Query.removeExpression(this.props.datasetQuery.query, name);
+        this.props.datasetQuery.query = scrubbedQuery;
+        this.props.setDatasetQuery(this.props.datasetQuery);
         this.setState({editExpression: null});
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Expression');
     }
 
     renderSort() {
-        const { query: { query }, tableMetadata } = this.props;
+        const { datasetQuery: { query }, tableMetadata } = this.props;
 
         if (!this.props.features.limit) {
             return;
@@ -118,7 +76,7 @@ export default class ExtendedOptions extends Component {
                 if (Query.isExpressionField(sort[0])) {
                     usedExpressions[sort[0][1]] = true;
                 } else {
-                    usedFields[sort[0]] = true;
+                    usedFields[Query.getFieldTargetId(sort[0])] = true;
                 }
             }
 
@@ -136,8 +94,8 @@ export default class ExtendedOptions extends Component {
                         )
                     }
                     customFieldOptions={expressions}
-                    removeOrderBy={this.removeOrderBy.bind(null, index)}
-                    updateOrderBy={this.updateOrderBy.bind(null, index)}
+                    removeOrderBy={() => this.props.removeQueryOrderBy(index)}
+                    updateOrderBy={(orderBy) => this.props.updateQueryOrderBy(index, orderBy)}
                 />
             );
 
@@ -151,7 +109,7 @@ export default class ExtendedOptions extends Component {
             const remainingExpressions = Object.keys(_.omit(expressions, usedExpressions));
             if ((remainingFieldOptions.count > 0 || remainingExpressions.length > 1) &&
                 (sorts.length === 0 || sorts[sorts.length - 1][0] != null)) {
-                addSortButton = (<AddClauseButton text="Pick a field to sort by" onClick={this.addOrderBy} />);
+                addSortButton = (<AddClauseButton text="Pick a field to sort by" onClick={() => this.props.addQueryOrderBy([null, "ascending"])} />);
             }
         }
 
@@ -170,7 +128,7 @@ export default class ExtendedOptions extends Component {
         // if we aren't editing any expression then there is nothing to do
         if (!this.state.editExpression || !this.props.tableMetadata) return null;
 
-        const query = this.props.query.query,
+        const query = this.props.datasetQuery.query,
               expressions = Query.getExpressions(query),
               expression = expressions && expressions[this.state.editExpression],
               name = _.isString(this.state.editExpression) ? this.state.editExpression : "";
@@ -192,7 +150,7 @@ export default class ExtendedOptions extends Component {
     renderPopover() {
         if (!this.state.isOpen) return null;
 
-        const { features, query, tableMetadata } = this.props;
+        const { features, datasetQuery, tableMetadata } = this.props;
 
         return (
             <Popover onClose={() => this.setState({isOpen: false})}>
@@ -201,7 +159,7 @@ export default class ExtendedOptions extends Component {
 
                     {_.contains(tableMetadata.db.features, "expressions") ?
                         <Expressions
-                            expressions={query.query.expressions}
+                            expressions={datasetQuery.query.expressions}
                             tableMetadata={tableMetadata}
                             onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
                             onEditExpression={(name) => {
@@ -214,7 +172,10 @@ export default class ExtendedOptions extends Component {
                     { features.limit &&
                         <div>
                             <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Row limit</div>
-                            <LimitWidget limit={query.query.limit} onChange={this.setLimit} />
+                            <LimitWidget limit={datasetQuery.query.limit} onChange={(limit) => {
+                                this.props.updateQueryLimit(limit);
+                                this.setState({ isOpen: false })
+                            }} />
                         </div>
                     }
                 </div>

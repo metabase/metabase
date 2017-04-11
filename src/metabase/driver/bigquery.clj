@@ -382,6 +382,12 @@
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
 
+;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
+(defn- format-custom-field-name ^String [^String custom-field-name]
+  (s/join (take 128 (-> (s/trim custom-field-name)
+                        (s/replace #"[^\w\d_]" "_")
+                        (s/replace #"(^\d)" "_$1")))))
+
 
 (defrecord BigQueryDriver []
   clojure.lang.Named
@@ -407,46 +413,45 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table         analyze/generic-analyze-table
-          :can-connect?          (u/drop-first-arg can-connect?)
-          :date-interval         (u/drop-first-arg (comp prepare-value u/relative-date))
-          :describe-database     (u/drop-first-arg describe-database)
-          :describe-table        (u/drop-first-arg describe-table)
-          :details-fields        (constantly [{:name         "project-id"
-                                               :display-name "Project ID"
-                                               :placeholder  "praxis-beacon-120871"
-                                               :required     true}
-                                              {:name         "dataset-id"
-                                               :display-name "Dataset ID"
-                                               :placeholder  "toucanSightings"
-                                               :required     true}
-                                              {:name         "client-id"
-                                               :display-name "Client ID"
-                                               :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
-                                               :required     true}
-                                              {:name         "client-secret"
-                                               :display-name "Client Secret"
-                                               :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
-                                               :required     true}
-                                              {:name         "auth-code"
-                                               :display-name "Auth Code"
-                                               :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-                                               :required     true}])
-          :execute-query         (u/drop-first-arg execute-query)
+         {:analyze-table            analyze/generic-analyze-table
+          :can-connect?             (u/drop-first-arg can-connect?)
+          :date-interval            (u/drop-first-arg (comp prepare-value u/relative-date))
+          :describe-database        (u/drop-first-arg describe-database)
+          :describe-table           (u/drop-first-arg describe-table)
+          :details-fields           (constantly [{:name         "project-id"
+                                                  :display-name "Project ID"
+                                                  :placeholder  "praxis-beacon-120871"
+                                                  :required     true}
+                                                 {:name         "dataset-id"
+                                                  :display-name "Dataset ID"
+                                                  :placeholder  "toucanSightings"
+                                                  :required     true}
+                                                 {:name         "client-id"
+                                                  :display-name "Client ID"
+                                                  :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
+                                                  :required     true}
+                                                 {:name         "client-secret"
+                                                  :display-name "Client Secret"
+                                                  :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
+                                                  :required     true}
+                                                 {:name         "auth-code"
+                                                  :display-name "Auth Code"
+                                                  :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
+                                                  :required     true}])
+          :execute-query            (u/drop-first-arg execute-query)
           ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still allowed, which puts us in a weird position, however;
           ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
           ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
           ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
-          :features              (constantly (set/union #{:basic-aggregations
-                                                          :standard-deviation-aggregations
-                                                          :native-parameters
-                                                          ;; Expression aggregations *would* work, but BigQuery doesn't support the auto-generated column names. BQ column names
-                                                          ;; can only be alphanumeric or underscores. If we slugified the auto-generated column names, we could enable this feature.
-                                                          #_:expression-aggregations}
-                                                        (when-not config/is-test?
-                                                          ;; during unit tests don't treat bigquery as having FK support
-                                                          #{:foreign-keys})))
-          :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
-          :mbql->native          (u/drop-first-arg mbql->native)}))
+          :features                 (constantly (set/union #{:basic-aggregations
+                                                             :standard-deviation-aggregations
+                                                             :native-parameters
+                                                             :expression-aggregations}
+                                                           (when-not config/is-test?
+                                                             ;; during unit tests don't treat bigquery as having FK support
+                                                             #{:foreign-keys})))
+          :field-values-lazy-seq    (u/drop-first-arg field-values-lazy-seq)
+          :format-custom-field-name (u/drop-first-arg format-custom-field-name)
+          :mbql->native             (u/drop-first-arg mbql->native)}))
 
 (driver/register-driver! :bigquery driver)
