@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [compojure.core :refer [GET POST DELETE PUT]]
+            [ring.util.codec :as codec]
             [schema.core :as s]
             (toucan [db :as db]
                     [hydrate :refer [hydrate]])
@@ -133,8 +134,18 @@
 (defn- ^:deprecated card-has-label? [label-slug card]
   (contains? (set (map :slug (:labels card))) label-slug))
 
+(defn- collection-slug->id [collection-slug]
+  (when (seq collection-slug)
+    ;; special characters in the slugs are always URL-encoded when stored in the DB, e.g.
+    ;; "Obsługa klienta" becomes "obs%C5%82uga_klienta". But for some weird reason sometimes the slug is passed in like
+    ;; "obsługa_klientaa" (not URL-encoded) so go ahead and URL-encode the input as well so we can match either case
+    (check-404 (db/select-one-id Collection
+                 {:where [:or [:= :slug collection-slug]
+                          [:= :slug (codec/url-encode collection-slug)]]}))))
+
 ;; TODO - do we need to hydrate the cards' collections as well?
-(defn- cards-for-filter-option [filter-option model-id label collection]
+(defn- cards-for-filter-option [filter-option model-id label collection-slug]
+  (println "collection-slug:" collection-slug) ; NOCOMMIT
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
                   (hydrate :creator :collection)
                   hydrate-labels
@@ -142,11 +153,10 @@
     ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply label/collection filtering if applicable
     ;; COLLECTION can optionally be an empty string which is used to repre
     (filter (cond
-              collection  (let [collection-id (when (seq collection)
-                                                (check-404 (db/select-one-id Collection :slug collection)))]
-                            (comp (partial = collection-id) :collection_id))
-              (seq label) (partial card-has-label? label)
-              :else       identity)
+              collection-slug (let [collection-id (collection-slug->id collection-slug)]
+                                (comp (partial = collection-id) :collection_id))
+              (seq label)     (partial card-has-label? label)
+              :else           identity)
             cards)))
 
 
