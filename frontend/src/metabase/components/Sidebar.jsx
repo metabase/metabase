@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./Sidebar.css";
 

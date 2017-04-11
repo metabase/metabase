@@ -94,3 +94,14 @@
     (qputil/query-hash {:query :abc})
     (qputil/query-hash {:query :abc, :constraints nil})
     (qputil/query-hash {:query :abc, :constraints {}})))
+
+;; make sure two different natiev queries have different hashes!
+(expect
+  false
+  (array=
+    (qputil/query-hash {:database    2
+                        :type        "native"
+                        :native      {:query "SELECT pg_sleep(15), 1 AS one"}})
+    (qputil/query-hash {:database    2
+                        :type        "native"
+                        :native      {:query "SELECT pg_sleep(15), 2 AS two"}})))

@@ -1,5 +1,6 @@
 (ns metabase.api.card
   (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [compojure.core :refer [GET POST DELETE PUT]]
             [schema.core :as s]
@@ -18,10 +19,14 @@
                              [interface :as mi]
                              [label :refer [Label]]
                              [permissions :as perms]
+                             [query :as query]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
-            (metabase [query-processor :as qp]
-                      [util :as u])
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.cache :as cache]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [metabase.util.schema :as su])
   (:import java.util.UUID))
 
@@ -354,6 +359,26 @@
 
 ;;; ------------------------------------------------------------ Running a Query ------------------------------------------------------------
 
+(defn- query-magic-ttl
+  "Compute a 'magic' cache TTL time (in seconds) for QUERY by multipling its historic average execution times by the `query-caching-ttl-ratio`.
+   If the TTL is less than a second, this returns `nil` (i.e., the cache should not be utilized.)"
+  [query]
+  (when-let [average-duration (query/average-execution-time-ms (qputil/query-hash query))]
+    (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
+                                            1000.0)))]
+      (when-not (zero? ttl-seconds)
+        (log/info (format "Question's average execution duration is %d ms; using 'magic' TTL of %d seconds" average-duration ttl-seconds) (u/emoji "💾"))
+        ttl-seconds))))
+
+(defn- query-for-card [card parameters constraints]
+  (let [query (assoc (:dataset_query card)
+                :constraints constraints
+                :parameters  parameters)
+        ttl   (when (public-settings/enable-query-caching)
+                (or (:cache_ttl card)
+                    (query-magic-ttl query)))]
+    (assoc query :cache_ttl ttl)))
+
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
   {:style/indent 1}
@@ -362,9 +387,7 @@
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (read-check Card card-id)
-        query   (assoc (:dataset_query card)
-                  :parameters  parameters
-                  :constraints constraints)
+        query   (query-for-card card parameters constraints)
         options {:executed-by  *current-user-id*
                  :context      context
                  :card-id      card-id
@@ -374,26 +397,30 @@
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id, :as {{:keys [parameters]} :body}]
-  (run-query-for-card card-id, :parameters parameters))
+  [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
+  {ignore_cache (s/maybe s/Bool)}
+  (binding [cache/*ignore-cached-results* ignore_cache]
+    (run-query-for-card card-id, :parameters parameters)))
 
 (defendpoint POST "/:card-id/query/csv"
   "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card card-id
-                        :parameters  (json/parse-string parameters keyword)
-                        :constraints nil
-                        :context     :csv-download)))
+  (binding [cache/*ignore-cached-results* true]
+    (dataset-api/as-csv (run-query-for-card card-id
+                          :parameters  (json/parse-string parameters keyword)
+                          :constraints nil
+                          :context     :csv-download))))
 
 (defendpoint POST "/:card-id/query/json"
   "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card card-id
-                         :parameters  (json/parse-string parameters keyword)
-                         :constraints nil
-                         :context     :json-download)))
+  (binding [cache/*ignore-cached-results* true]
+    (dataset-api/as-json (run-query-for-card card-id
+                           :parameters  (json/parse-string parameters keyword)
+                           :constraints nil
+                           :context     :json-download))))
 
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------

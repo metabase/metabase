@@ -53,7 +53,7 @@
 
 
 (def ^:private Type
-  (s/enum :string :boolean :json))
+  (s/enum :string :boolean :json :integer))
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -152,6 +152,12 @@
   ^Boolean [setting-or-name]
   (string->boolean (get-string setting-or-name)))
 
+(defn get-integer
+  "Get integer value of (presumably `:integer`) SETTING-OR-NAME. This is the default getter for `:integer` settings."
+  ^Integer [setting-or-name]
+  (when-let [s (get-string setting-or-name)]
+    (Integer/parseInt s)))
+
 (defn get-json
   "Get the string value of SETTING-OR-NAME and parse it as JSON."
   [setting-or-name]
@@ -160,6 +166,7 @@
 (def ^:private default-getter-for-type
   {:string  get-string
    :boolean get-boolean
+   :integer get-integer
    :json    get-json})
 
 (defn get
@@ -220,6 +227,15 @@
                                    false "false"
                                    nil   nil))))
 
+(defn set-integer!
+  "Set the value of integer SETTING-OR-NAME."
+  [setting-or-name new-value]
+  (set-string! setting-or-name (when new-value
+                                 (assert (or (integer? new-value)
+                                             (and (string? new-value)
+                                                  (re-matches #"^\d+$" new-value))))
+                                 (str new-value))))
+
 (defn set-json!
   "Serialize NEW-VALUE for SETTING-OR-NAME as a JSON string and save it."
   [setting-or-name new-value]
@@ -229,6 +245,7 @@
 (def ^:private default-setter-for-type
   {:string  set-string!
    :boolean set-boolean!
+   :integer set-integer!
    :json    set-json!})
 
 (defn set!
@@ -316,7 +333,7 @@
    You may optionally pass any of the OPTIONS below:
 
    *  `:default` - The default value of the setting. (default: `nil`)
-   *  `:type` - `:string` (default), `:boolean`, or `:json`. Non-`:string` settings have special default getters and setters that automatically coerce values to the correct types.
+   *  `:type` - `:string` (default), `:boolean`, `:integer`, or `:json`. Non-`:string` settings have special default getters and setters that automatically coerce values to the correct types.
    *  `:internal?` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
                      returned by the corresponding endpoints). Default: `false`
    *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.

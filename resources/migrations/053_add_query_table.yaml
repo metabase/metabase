@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: 53
+      author: camsaul
+      changes:
+        - createTable:
+            tableName: query
+            remarks: 'Information (such as average execution time) for different queries that have been previously ran.'
+            columns:
+              - column:
+                  name: query_hash
+                  type: binary(32)
+                  remarks: 'The hash of the query dictionary. (This is a 256-bit SHA3 hash of the query dict.)'
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: average_execution_time
+                  type: int
+                  remarks: 'Average execution time for the query, round to nearest number of milliseconds. This is updated as a rolling average.'
+                  constraints:
+                    nullable: false

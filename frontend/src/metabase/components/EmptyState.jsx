@@ -1,5 +1,5 @@
 /* @flow */
-import React, {PropTypes} from "react";
+import React from "react";
 import {Link} from "react-router";
 
 /*
@@ -7,7 +7,6 @@ import {Link} from "react-router";
  *   1) introduce a new section of Metabase to a user, and encourages the user to take an action
   *  2) indicate an empty result after a user-triggered search/query
  */
-
 
 import Icon from "metabase/components/Icon.jsx";
 

@@ -52,22 +52,23 @@
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
 (expect
   [;; API call response
-   {:data         {:rows    [[1000]]
-                   :columns ["count"]
-                   :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
-                              :description nil, :target nil, :extra_info {}, :source "aggregation"}]
-                   :native_form true}
-    :row_count    1
-    :status       "completed"
-    :context      "ad-hoc"
-    :json_query   (-> (wrap-inner-query
-                        (query checkins
-                          (ql/aggregation (ql/count))))
-                      (assoc :type "query")
-                      (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
-                      (assoc :constraints default-query-constraints))
-    :started_at   true
-    :running_time true}
+   {:data                   {:rows    [[1000]]
+                             :columns ["count"]
+                             :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
+                                        :description nil, :target nil, :extra_info {}, :source "aggregation"}]
+                             :native_form true}
+    :row_count              1
+    :status                 "completed"
+    :context                "ad-hoc"
+    :json_query             (-> (wrap-inner-query
+                                  (query checkins
+                                    (ql/aggregation (ql/count))))
+                                (assoc :type "query")
+                                (assoc-in [:query :aggregation] [{:aggregation-type "count", :custom-name nil}])
+                                (assoc :constraints default-query-constraints))
+    :started_at             true
+    :running_time           true
+    :average_execution_time nil}
    ;; QueryExecution record in the DB
    {:hash         true
     :row_count    1

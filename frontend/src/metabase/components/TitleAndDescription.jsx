@@ -1,5 +1,5 @@
 /* @flow */
-import React, { PropTypes } from 'react';
+import React from 'react';
 import cx from "classnames";
 import pure from "recompose/pure";
 

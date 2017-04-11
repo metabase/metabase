@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import EmbedSelect from "./EmbedSelect";
 import CheckBox from "metabase/components/CheckBox";

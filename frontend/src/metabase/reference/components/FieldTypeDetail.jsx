@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import cx from "classnames";
 import { getIn } from "icepick";
 import pure from "recompose/pure";
