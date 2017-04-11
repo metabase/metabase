@@ -24,6 +24,7 @@ export default (ComposedComponent) => class extends Component {
     static displayName = "Routeless["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
 
     _state: any;
+    _timeout: any;
 
     componentWillMount() {
         const push = this.props._routeless_push;
@@ -41,7 +42,8 @@ export default (ComposedComponent) => class extends Component {
         // if the state previously was the saved one and is now not, then we probably
         // hit the back button, so close the wrapped component
         if (location.state === this._state && nextLocation.state !== this._state) {
-            // close in a timeout in case it will be closed anyway and the URL changes.
+            // perform this in a timeout because the component may be unmounted anyway, in which
+            // case calling onClose again may cause problems.
             // alternatively may be able to tighten up the logic above
             this._timeout = setTimeout(() => {
                 this.props.onClose();
