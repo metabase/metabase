@@ -255,11 +255,10 @@ export const getRoutes = (store) =>
                 getChildRoutes={(partialNextState, callback) =>
                     // $FlowFixMe: flow doesn't know about require.ensure
                     require.ensure([], (require) => {
-                        callback(null, [require('./routes-internal').default])
+                        callback(null, [require("metabase/internal/routes").default])
                     })
                 }
             >
-                <IndexRedirect to="/_internal/list" />
             </Route>
 
             {/* DEPRECATED */}
