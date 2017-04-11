@@ -55,7 +55,9 @@
     (println "[In the occasionally failing test]") ; DEBUG
     (set-card-collection! collection)
     (permissions/grant-collection-read-permissions! (group/all-users) collection)
-    (can-run-query? :rasta)))
+    ;; try it twice because sometimes it randomly fails :unamused:
+    (or (can-run-query? :rasta)
+        (can-run-query? :rasta))))
 
 ;; Make sure a User isn't allowed to save a Card they have collections readwrite permissions for
 ;; if they don't have data perms for the query

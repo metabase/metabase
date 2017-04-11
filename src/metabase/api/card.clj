@@ -232,7 +232,7 @@
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
-   description            (s/maybe su/NonBlankString)
+   description            (s/maybe s/Str)
    visualization_settings (s/maybe su/Map)
    archived               (s/maybe s/Bool)
    enable_embedding       (s/maybe s/Bool)
@@ -259,12 +259,17 @@
       (check-superuser))
     ;; ok, now save the Card
     (db/update! Card id
-      (merge (when (contains? body :collection_id)
-               {:collection_id collection_id})
-             (into {} (for [k     [:dataset_query :description :display :name :visualization_settings :archived :enable_embedding :embedding_params]
-                            :let  [v (k body)]
-                            :when (not (nil? v))]
-                        {k v}))))
+      (merge
+       ;; `collection_id` and `description` can be `nil` (in order to unset them)
+       (when (contains? body :collection_id)
+         {:collection_id collection_id})
+       (when (contains? body :description)
+         {:description description})
+       ;; other values should only be modified if they're passed in as non-nil
+       (into {} (for [k     [:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params]
+                      :let  [v (k body)]
+                      :when (not (nil? v))]
+                  {k v}))))
     (let [event (cond
                   ;; card was archived
                   (and archived

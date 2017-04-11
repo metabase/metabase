@@ -247,6 +247,20 @@
        (set-archived! true)
        (set-archived! false)])))
 
+;; Can we clear the description of a Card? (#4738)
+(expect
+  nil
+  (with-temp-card [card {:description "What a nice Card"}]
+    ((user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:description nil})
+    (db/select-one-field :description Card :id (u/get-id card))))
+
+;; description should be blankable as well
+(expect
+  ""
+  (with-temp-card [card {:description "What a nice Card"}]
+    ((user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:description ""})
+    (db/select-one-field :description Card :id (u/get-id card))))
+
 ;; Can we update a card's embedding_params?
 (expect
   {:abc "enabled"}
