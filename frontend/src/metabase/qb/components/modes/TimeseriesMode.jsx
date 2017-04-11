@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import TimeseriesGroupingWidget
     from "metabase/qb/components/TimeseriesGroupingWidget";
@@ -29,7 +29,7 @@ type Props = {
     lastRunCard: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    runQueryFn: () => void
+    runQuery: () => void
 };
 
 export const TimeseriesModeFooter = (props: Props) => {

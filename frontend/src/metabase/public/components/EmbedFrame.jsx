@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { withRouter } from "react-router"; import { IFRAMED } from "metabase/lib/dom";
 
 import Parameters from "metabase/dashboard/containers/Parameters";

@@ -1,6 +1,7 @@
-import React, { Component, PropTypes } from "react";
-import { IndexRedirect } from 'react-router';
+
+import React from "react";
 import { Route } from "metabase/hoc/Title";
+import { IndexRedirect } from 'react-router';
 
 import DataPermissionsApp from "./containers/DataPermissionsApp.jsx";
 import DatabasesPermissionsApp from "./containers/DatabasesPermissionsApp.jsx";

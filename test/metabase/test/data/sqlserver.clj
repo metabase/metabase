@@ -102,7 +102,7 @@
       (with-redefs [+suffix identity]
         (doseq [db leftover-dbs]
           (u/ignore-exceptions
-            (println (format "Deleting leftover SQL Server DB '%s'..." db))
+            (printf "Deleting leftover SQL Server DB '%s'...\n" db)
             ;; Don't try to kill other connections to this DB with SET SINGLE_USER -- some other instance (eg CI) might be using it
             (jdbc/execute! connection-spec [(format "DROP DATABASE \"%s\";" db)])
             (println "[ok]")))))))
