@@ -25,8 +25,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = dashboardsActions;
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class Dashboards extends Component {
+export class Dashboards extends Component {
     props: {
         dashboards: Dashboard[],
         createDashboard: (Dashboard) => any,
@@ -115,7 +114,7 @@ export default class Dashboards extends Component {
                         <div className="flex align-center pt4 pb1">
                             <TitleAndDescription title="Dashboards"/>
                             <Icon name="add"
-                                  className="flex-align-right px4 cursor-pointer text-grey-5 text-brand-hover"
+                                  className="flex-align-right cursor-pointer text-grey-5 text-brand-hover"
                                   size={20}
                                   onClick={this.showCreateDashboard}/>
                         </div>
@@ -147,3 +146,5 @@ export default class Dashboards extends Component {
         );
     }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(Dashboards)

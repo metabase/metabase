@@ -54,7 +54,6 @@ export default class DashboardList extends Component {
     render() {
         const {dashboards} = this.props;
 
-        console.log('daash:', dashboards)
         return (
             <ol className="Grid Grid--guttersXl Grid--1of2 large-Grid--1of3">
                 { dashboards.map(dash => <DashboardListItem key={dash.id} dashboard={dash}/>)}

@@ -1,183 +1,77 @@
-exports[`Dashboards list view should render correctly with two dashboards 1`] = `
+exports[`Dashboards list view should render correctly in loading state 1`] = `
 <div
   className="relative mx4"
   style={undefined}>
-  <div>
+  <div
+    className="wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered bg-white">
     <div
-      className="flex align-center pt4 pb1">
+      className={undefined}>
       <div
-        className="flex align-center">
-        <h2
-          className="mr1">
-          Dashboards
-        </h2>
-      </div>
-      <svg
-        className="flex-align-right px4 cursor-pointer text-grey-5 text-brand-hover"
-        fill="currentcolor"
-        height={20}
-        name="add"
-        onClick={[Function]}
-        size={20}
-        viewBox="0 0 32 32"
-        width={20}>
-        <path
-          d="M19,13 L19,2 L14,2 L14,13 L2,13 L2,18 L14,18 L14,30 L19,30 L19,18 L30,18 L30,13 L19,13 Z" />
-      </svg>
+        className="LoadingSpinner"
+        style={
+          Object {
+            "borderWidth": 4,
+            "height": 32,
+            "width": 32,
+          }
+        } />
     </div>
-    <div
-      className="flex align-center pb1">
-      <div
-        className="searchHeader">
-        <svg
-          className="searchIcon"
-          fill="currentcolor"
-          height={18}
-          name="search"
-          size={18}
-          viewBox="0 0 32 32"
-          width={18}>
-          <path
-            d="M12 0 A12 12 0 0 0 0 12 A12 12 0 0 0 12 24 A12 12 0 0 0 18.5 22.25 L28 32 L32 28 L22.25 18.5 A12 12 0 0 0 24 12 A12 12 0 0 0 12 0 M12 4 A8 8 0 0 1 12 20 A8 8 0 0 1 12 4  " />
-        </svg>
-        <input
-          className="input searchBox"
-          onChange={[Function]}
-          placeholder="Filter this list..."
-          type="text"
-          value="" />
-      </div>
-    </div>
-    <ol
-      className="Grid Grid--guttersXl Grid--1of2 large-Grid--1of3">
-      <li
-        className="Grid-cell flex-retain-width">
-        <a
-          className="flex align-center border-box p2 bg-white bg-brand-hover rounded hover-parent hover--display no-decoration"
-          data-metabase-event="Navbar;Dashboards;Open Dashboard;3"
-          onClick={[Function]}
-          onMouseEnter={[Function]}
-          onMouseLeave={[Function]}
-          style={
-            Object {
-              "border": "1px solid rgba(220,225,228,0.50)",
-              "boxShadow": "0 1px 3px 0 rgba(220,220,220,0.50)",
-              "height": "80px",
-            }
-          }>
-          <svg
-            className="pr2 text-grey-1"
-            fill="currentcolor"
-            height={32}
-            name="dashboard"
-            size={32}
-            viewBox="0 0 32 32"
-            width={32}>
-            <path
-              d="M32,29 L32,4 L32,0 L0,0 L0,8 L28,8 L28,28 L4,28 L4,8 L0,8 L0,29.5 L0,32 L32,32 L32,29 Z M7.27272727,18.9090909 L17.4545455,18.9090909 L17.4545455,23.2727273 L7.27272727,23.2727273 L7.27272727,18.9090909 Z M7.27272727,12.0909091 L24.7272727,12.0909091 L24.7272727,16.4545455 L7.27272727,16.4545455 L7.27272727,12.0909091 Z M20.3636364,18.9090909 L24.7272727,18.9090909 L24.7272727,23.2727273 L20.3636364,23.2727273 L20.3636364,18.9090909 Z" />
-          </svg>
-          <div
-            className="flex-full flex-retain-width">
-            <h4
-              className="text-ellipsis text-nowrap overflow-hidden text-brand"
-              style={
-                Object {
-                  "marginBottom": "0.2em",
-                }
-              }>
-              Customer Feedback Analysis
-            </h4>
-            <div
-              className="text-small text-uppercase text-bold text-grey-3">
-              Mar 28, 2017
-            </div>
-          </div>
-        </a>
-      </li>
-      <li
-        className="Grid-cell flex-retain-width">
-        <a
-          className="flex align-center border-box p2 bg-white bg-brand-hover rounded hover-parent hover--display no-decoration"
-          data-metabase-event="Navbar;Dashboards;Open Dashboard;7"
-          onClick={[Function]}
-          onMouseEnter={[Function]}
-          onMouseLeave={[Function]}
-          style={
-            Object {
-              "border": "1px solid rgba(220,225,228,0.50)",
-              "boxShadow": "0 1px 3px 0 rgba(220,220,220,0.50)",
-              "height": "80px",
-            }
-          }>
-          <svg
-            className="pr2 text-grey-1"
-            fill="currentcolor"
-            height={32}
-            name="dashboard"
-            size={32}
-            viewBox="0 0 32 32"
-            width={32}>
-            <path
-              d="M32,29 L32,4 L32,0 L0,0 L0,8 L28,8 L28,28 L4,28 L4,8 L0,8 L0,29.5 L0,32 L32,32 L32,29 Z M7.27272727,18.9090909 L17.4545455,18.9090909 L17.4545455,23.2727273 L7.27272727,23.2727273 L7.27272727,18.9090909 Z M7.27272727,12.0909091 L24.7272727,12.0909091 L24.7272727,16.4545455 L7.27272727,16.4545455 L7.27272727,12.0909091 Z M20.3636364,18.9090909 L24.7272727,18.9090909 L24.7272727,23.2727273 L20.3636364,23.2727273 L20.3636364,18.9090909 Z" />
-          </svg>
-          <div
-            className="flex-full flex-retain-width">
-            <h4
-              className="text-ellipsis text-nowrap overflow-hidden text-brand"
-              style={
-                Object {
-                  "marginBottom": "0.2em",
-                }
-              }>
-              Kanban Breakdown Chart
-            </h4>
-            <div
-              className="text-small text-uppercase text-bold text-grey-3">
-              Apr 4, 2017
-            </div>
-          </div>
-        </a>
-      </li>
-    </ol>
+    <h2
+      className="text-normal text-grey-2 mt1">
+      Loading...
+    </h2>
   </div>
 </div>
 `;
 
-exports[`Dashboards list view should render correctly without dashboards 1`] = `
+exports[`Dashboards list view should render correctly with two dashboards 1`] = `
 <div
-  className="relative mx4 flex-full flex align-center justify-center"
+  className="relative mx4"
   style={undefined}>
   <div
-    className="mt2">
+    className="wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered bg-white">
     <div
-      className="text-centered text-brand-light my2">
-      <img
-        alt={
-          <div>
-            Put the charts and graphs you look at
-            <br />
-            frequently in a single, handy place.
-          </div>
-        }
-        className="mln2"
-        height="250px"
-        src="/app/img/dashboard_illustration.png"
-        srcSet="/app/img/dashboard_illustration@2x.png 2x" />
+      className={undefined}>
       <div
-        className="flex justify-center">
-        <div>
-          Put the charts and graphs you look at
-          <br />
-          frequently in a single, handy place.
-        </div>
-        }
-      </div>
-      <a
-        className="Button Button--primary mt3"
-        onClick={[Function]}>
-        Create a dashboard
-      </a>
+        className="LoadingSpinner"
+        style={
+          Object {
+            "borderWidth": 4,
+            "height": 32,
+            "width": 32,
+          }
+        } />
     </div>
+    <h2
+      className="text-normal text-grey-2 mt1">
+      Loading...
+    </h2>
+  </div>
+</div>
+`;
+
+exports[`Dashboards list view should render correctly with zero dashboards 1`] = `
+<div
+  className="relative mx4"
+  style={undefined}>
+  <div
+    className="wrapper py4 text-brand text-centered flex-full flex flex-column layout-centered bg-white">
+    <div
+      className={undefined}>
+      <div
+        className="LoadingSpinner"
+        style={
+          Object {
+            "borderWidth": 4,
+            "height": 32,
+            "width": 32,
+          }
+        } />
+    </div>
+    <h2
+      className="text-normal text-grey-2 mt1">
+      Loading...
+    </h2>
   </div>
 </div>
 `;
