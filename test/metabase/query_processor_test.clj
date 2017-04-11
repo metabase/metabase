@@ -294,7 +294,7 @@
   {:style/indent 0}
   [results]
   (vec (or (get-in results [:data :rows])
-           (println (u/pprint-to-str 'red results))
+           (println (u/pprint-to-str 'red results)) ; DEBUG
            (throw (Exception. "Error!")))))
 
 (defn rows+column-names

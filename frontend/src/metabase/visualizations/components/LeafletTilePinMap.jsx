@@ -1,4 +1,3 @@
-import React, { Component, PropTypes } from "react";
 
 import LeafletMap from "./LeafletMap.jsx";
 import L from "leaflet";

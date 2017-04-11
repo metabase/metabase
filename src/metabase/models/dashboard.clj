@@ -88,23 +88,24 @@
          :creator_id  user-id)
        (events/publish-event! :dashboard-create)))
 
+
+
 (defn update-dashboard!
   "Update a `Dashboard`"
-  [{:keys [id name description parameters caveats points_of_interest show_in_getting_started enable_embedding embedding_params], :as dashboard} user-id]
+  [dashboard user-id]
   {:pre [(map? dashboard)
-         (integer? id)
-         (u/maybe? u/sequence-of-maps? parameters)
+         (u/maybe? u/sequence-of-maps? (:parameters dashboard))
          (integer? user-id)]}
-  (db/update-non-nil-keys! Dashboard id
-    :description             description
-    :name                    name
-    :parameters              parameters
-    :caveats                 caveats
-    :points_of_interest      points_of_interest
-    :enable_embedding        enable_embedding
-    :embedding_params        embedding_params
-    :show_in_getting_started show_in_getting_started)
-  (u/prog1 (Dashboard id)
+  (db/update! Dashboard (u/get-id dashboard)
+    (merge
+     ;; description is allowed to be `nil`
+     (when (contains? dashboard :description)
+       {:description (:description dashboard)})
+     ;; only set everything else if its non-nil
+     (into {} (for [k     [:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params]
+                    :when (k dashboard)]
+                {k (k dashboard)}))))
+  (u/prog1 (Dashboard (u/get-id dashboard))
     (events/publish-event! :dashboard-update (assoc <> :actor_id user-id))))
 
 

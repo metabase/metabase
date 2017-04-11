@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import { isCategory, isAddress } from "metabase/lib/schema_metadata";
 
 import PivotByAction from "./PivotByAction";

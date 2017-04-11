@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
 import { Route, IndexRedirect } from 'react-router';
 
 import DataPermissionsApp from "./containers/DataPermissionsApp.jsx";

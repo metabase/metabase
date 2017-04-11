@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
@@ -28,7 +29,7 @@ export default class FieldPane extends Component {
         field: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
@@ -63,7 +64,7 @@ export default class FieldPane extends Component {
         }
         Query.addBreakout(datasetQuery.query, this.props.field.id);
         this.props.setDatasetQuery(datasetQuery);
-        this.props.runQueryFn();
+        this.props.runQuery();
     }
 
     newCard() {

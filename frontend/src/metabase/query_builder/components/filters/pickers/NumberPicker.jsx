@@ -1,6 +1,7 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import TextPicker from "./TextPicker.jsx";
 
@@ -23,7 +24,13 @@ export default class NumberPicker extends Component<*, Props, State> {
     constructor(props: Props) {
         super(props);
         this.state = {
-            stringValues: props.values.map(v => String(v || "")),
+            stringValues: props.values.map(v => {
+                if(typeof v === 'number') {
+                    return String(v)
+                } else {
+                    return String(v || "")
+                }
+            }),
             validations: this._validate(props.values)
         }
     }

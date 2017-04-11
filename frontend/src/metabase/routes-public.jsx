@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import { Route } from 'react-router';
 

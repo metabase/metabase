@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Select, { Option } from "metabase/components/Select";
 import CopyButton from "metabase/components/CopyButton";

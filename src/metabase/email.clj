@@ -6,7 +6,8 @@
             [metabase.util :as u])
   (:import javax.mail.Session))
 
-;; ## CONFIG
+;;; CONFIG
+;; TODO - smtp-port should be switched to type :integer
 
 (defsetting email-from-address  "Email address you want to use as the sender of Metabase." :default "notifications@metabase.com")
 (defsetting email-smtp-host     "The address of the SMTP server that handles your emails.")

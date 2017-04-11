@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Input from "metabase/components/Input.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";

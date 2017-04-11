@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import TooltipPopover from "./TooltipPopover.jsx";
@@ -14,7 +15,7 @@ export default class Tooltip extends Component {
     }
 
     static propTypes = {
-        tooltip: PropTypes.node.isRequired,
+        tooltip: PropTypes.node,
         children: PropTypes.element.isRequired,
         isEnabled: PropTypes.bool,
         verticalAttachments: PropTypes.array,

@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple.jsx";

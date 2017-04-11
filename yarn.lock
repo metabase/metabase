@@ -3213,7 +3213,7 @@ fb-watchman@^1.8.0, fb-watchman@^1.9.0:
   dependencies:
     bser "1.0.2"
 
-fbjs@^0.8.1, fbjs@^0.8.4, fbjs@^0.8.8:
+fbjs@^0.8.1, fbjs@^0.8.4, fbjs@^0.8.8, fbjs@^0.8.9:
   version "0.8.9"
   resolved "https://registry.yarnpkg.com/fbjs/-/fbjs-0.8.9.tgz#180247fbd347dcc9004517b904f865400a0c8f14"
   dependencies:
@@ -6532,6 +6532,18 @@ promise@^7.1.1:
   dependencies:
     asap "~2.0.3"
 
+prop-types@15.5.0-alpha.0:
+  version "15.5.0-alpha.0"
+  resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.5.0-alpha.0.tgz#a342108678256db125eee3d1ae2f889af3531bd7"
+  dependencies:
+    fbjs "^0.8.9"
+
+prop-types@^15.5.4, prop-types@~15.5.0:
+  version "15.5.4"
+  resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.5.4.tgz#2ed3692716a5060f8cc020946d8238e7419d92c0"
+  dependencies:
+    fbjs "^0.8.9"
+
 proxy-addr@~1.1.3:
   version "1.1.3"
   resolved "https://registry.yarnpkg.com/proxy-addr/-/proxy-addr-1.1.3.tgz#dc97502f5722e888467b3fa2297a7b1ff47df074"
@@ -6699,13 +6711,14 @@ react-docgen@^2.12.1:
     node-dir "^0.1.10"
     recast "^0.11.5"
 
-react-dom@^15.2.1:
-  version "15.4.2"
-  resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-15.4.2.tgz#015363f05b0a1fd52ae9efdd3a0060d90695208f"
+react-dom@15.5.0:
+  version "15.5.0"
+  resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-15.5.0.tgz#86a8d6dcde388473815039de3840706e1f28f697"
   dependencies:
-    fbjs "^0.8.1"
+    fbjs "^0.8.9"
     loose-envify "^1.1.0"
     object-assign "^4.1.0"
+    prop-types "~15.5.0"
 
 react-draggable@^2.1.0, react-draggable@^2.2.3:
   version "2.2.3"
@@ -6860,13 +6873,14 @@ react-virtualized@^8.6.0:
     dom-helpers "^2.4.0 || ^3.0.0"
     loose-envify "^1.3.0"
 
-react@^15.2.1:
-  version "15.4.2"
-  resolved "https://registry.yarnpkg.com/react/-/react-15.4.2.tgz#41f7991b26185392ba9bae96c8889e7e018397ef"
+react@15.5.0:
+  version "15.5.0"
+  resolved "https://registry.yarnpkg.com/react/-/react-15.5.0.tgz#1f8e4b492dcfbf77479eb4fdfc48da425002e505"
   dependencies:
-    fbjs "^0.8.4"
+    fbjs "^0.8.9"
     loose-envify "^1.1.0"
     object-assign "^4.1.0"
+    prop-types "15.5.0-alpha.0"
 
 read-cache@^1.0.0:
   version "1.0.0"

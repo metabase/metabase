@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import ChoroplethMap from "../components/ChoroplethMap.jsx";
 import PinMap from "../components/PinMap.jsx";

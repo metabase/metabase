@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import DatePicker
     from "metabase/query_builder/components/filters/pickers/DatePicker";
@@ -34,7 +34,7 @@ type Props = {
     card: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    runQueryFn: () => void
+    runQuery: () => void
 };
 
 type State = {
@@ -90,7 +90,7 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
             card,
             tableMetadata,
             setDatasetQuery,
-            runQueryFn
+            runQuery
         } = this.props;
         const { filter, filterIndex, currentFilter } = this.state;
         let currentDescription;
@@ -148,13 +148,15 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                                     ...card.dataset_query,
                                     query
                                 });
-                                runQueryFn();
+                                runQuery();
                             }
                             if (this._popover) {
                                 this._popover.close();
                             }
                         }}
-                    >Apply</Button>
+                    >
+                        Apply
+                    </Button>
                 </div>
             </PopoverWithTrigger>
         );

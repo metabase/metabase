@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import SaveStatus from "metabase/components/SaveStatus.jsx";
 import Toggle from "metabase/components/Toggle.jsx";

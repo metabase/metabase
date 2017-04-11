@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";

@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
@@ -29,7 +29,7 @@ export default class EmbedWidget extends Component<*, Props, *> {
                 ref={m => this._modal = m}
                 full
                 triggerElement={
-                    <Tooltip tooltip={`Sharing and Embedding`}>
+                    <Tooltip tooltip={`Sharing and embedding`}>
                         <Icon name="share" onClick={() => MetabaseAnalytics.trackEvent("Sharing / Embedding", resourceType, "Sharing Link Clicked") } />
                     </Tooltip>
                 }

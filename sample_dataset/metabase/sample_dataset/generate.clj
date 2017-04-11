@@ -253,7 +253,7 @@
           (= (count (:products %)) products)
           (every? keyword? (keys %))
           (every? sequential? (vals %))]}
-  (println (format "Generating random data: %d people, %d products..." people products))
+  (printf "Generating random data: %d people, %d products...\n" people products)
   (let [products (mapv product-add-reviews (create-randoms products random-product))
         people   (mapv (partial person-add-orders products) (create-randoms people random-person))]
     {:people   (mapv #(dissoc % :orders) people)
@@ -416,6 +416,6 @@
 
 (defn -main [& [filename]]
   (let [filename (or filename sample-dataset-filename)]
-    (println (format "Writing sample dataset to %s..." filename))
+    (printf "Writing sample dataset to %s...\n" filename)
     (create-h2-db filename)
     (System/exit 0)))
