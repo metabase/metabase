@@ -1,25 +1,11 @@
-{
-  "databaseChangeLog": [
-    {
-      "changeSet": {
-        "id": "9",
-        "author": "tlrobinson",
-        "changes": [
-          {
-            "addColumn": {
-              "tableName": "metabase_table",
-              "columns": [
-                {
-                  "column": {
-                    "name": "visibility_type",
-                    "type": "varchar(254)"
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      }
-    }
-  ]
-}
+databaseChangeLog:
+- changeSet:
+    author: tlrobinson
+    changes:
+    - addColumn:
+        columns:
+        - column:
+            name: visibility_type
+            type: varchar(254)
+        tableName: metabase_table
+    id: '9'

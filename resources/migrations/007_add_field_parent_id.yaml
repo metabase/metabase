@@ -1,30 +1,15 @@
-{
-    "databaseChangeLog": [
-        {
-            "changeSet": {
-                "id": "7",
-                "author": "cammsaul",
-                "changes": [
-                    {
-                        "addColumn": {
-                            "tableName": "metabase_field",
-                            "columns": [
-                                {
-                                    "column": {
-                                        "name": "parent_id",
-                                        "type": "int",
-                                        "constraints": {
-                                            "nullable": true,
-                                            "references": "metabase_field(id)",
-                                            "foreignKeyName": "fk_field_parent_ref_field_id"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    ]
-}
+databaseChangeLog:
+- changeSet:
+    author: cammsaul
+    changes:
+    - addColumn:
+        columns:
+        - column:
+            constraints:
+              foreignKeyName: fk_field_parent_ref_field_id
+              nullable: true
+              references: metabase_field(id)
+            name: parent_id
+            type: int
+        tableName: metabase_field
+    id: '7'

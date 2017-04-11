@@ -1,25 +1,11 @@
-{
-  "databaseChangeLog": [
-    {
-      "changeSet": {
-        "id": "5",
-        "author": "agilliland",
-        "changes": [
-          {
-            "addColumn": {
-              "tableName": "core_organization",
-              "columns": [
-                {
-                  "column": {
-                    "name": "report_timezone",
-                    "type": "varchar(254)"
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      }
-    }
-  ]
-}
+databaseChangeLog:
+- changeSet:
+    author: agilliland
+    changes:
+    - addColumn:
+        columns:
+        - column:
+            name: report_timezone
+            type: varchar(254)
+        tableName: core_organization
+    id: '5'

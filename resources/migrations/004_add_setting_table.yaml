@@ -1,38 +1,19 @@
-{
-    "databaseChangeLog": [
-        {
-            "changeSet": {
-                "id": "4",
-                "author": "cammsaul",
-                "changes": [
-                    {
-                        "createTable": {
-                            "tableName": "setting",
-                            "columns": [
-                                {
-                                    "column": {
-                                        "name": "key",
-                                        "type": "varchar(254)",
-                                        "constraints": {
-                                            "primaryKey": true,
-                                            "nullable": false
-                                        }
-                                    }
-                                },
-                                {
-                                    "column": {
-                                        "name": "value",
-                                        "type": "varchar(254)",
-                                        "constraints": {
-                                            "nullable": false
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    ]
-}
+databaseChangeLog:
+- changeSet:
+    author: cammsaul
+    changes:
+    - createTable:
+        columns:
+        - column:
+            constraints:
+              nullable: false
+              primaryKey: true
+            name: key
+            type: varchar(254)
+        - column:
+            constraints:
+              nullable: false
+            name: value
+            type: varchar(254)
+        tableName: setting
+    id: '4'
