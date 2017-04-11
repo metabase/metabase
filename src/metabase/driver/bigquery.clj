@@ -77,7 +77,8 @@
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
-  (boolean (describe-database {:details details-map})))
+  ;; check whether we can connect by just fetching the first page of tables for the database. If that succeeds we're g2g
+  (boolean (list-tables {:details details-map})))
 
 
 (defn- ^Table get-table
