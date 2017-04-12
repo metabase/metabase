@@ -25,7 +25,7 @@ export default class RunButton extends Component {
             buttonText = <div className="flex align-center"><Icon className="mr1" name="refresh" />Refresh</div>;
         }
         let actionFn = isRunning ? onCancel : onRun;
-        let classes = cx("Button Button--medium circular RunButton", {
+        let classes = cx("Button Button--medium circular RunButton ml-auto mr-auto block", {
             "RunButton--hidden": !buttonText,
             "Button--primary": isDirty,
             "text-grey-2": !isDirty,
