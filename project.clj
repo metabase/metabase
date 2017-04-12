@@ -35,11 +35,22 @@
                                org.slf4j/slf4j-api
                                log4j]]
                  [javax.validation/validation-api "1.1.0.Final"]      ; Fix DRILL-5383
-                 [org.apache.hive/hive-jdbc "1.2.1"
+                 [org.spark-project.hive/hive-jdbc "1.2.1.spark2"
                   :exclusions [org.mortbay.jetty/jetty
                                org.eclipse.jetty.aggregate/jetty-all
                                org.codehaus.jackson/jackson-xc]
                   :classifier "standalone"]
+                 ;; [org.apache.hive/hive-jdbc "1.2.1"
+                 ;;  :exclusions [org.mortbay.jetty/jetty
+                 ;;               org.eclipse.jetty.aggregate/jetty-all
+                 ;;               org.codehaus.jackson/jackson-xc]
+                 ;;  :classifier "standalone"]
+                 ;; [org.apache.hive/hive-jdbc "2.1.1"
+                 ;;  :exclusions [org.mortbay.jetty/jetty
+                 ;;               org.eclipse.jetty.aggregate/jetty-all
+                 ;;               org.codehaus.jackson/jackson-xc
+                 ;;               org.eclipse.jetty.orbit/javax.servlet]
+                 ;;  :classifier "standalone"]
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.4.1"                                    ; HTTP client
                   :exclusions [commons-codec
