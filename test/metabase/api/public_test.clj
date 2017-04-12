@@ -83,10 +83,23 @@
 
 ;; Check that we can fetch a PublicCard
 (expect
-  #{:dataset_query :description :display :id :name :visualization_settings}
+  #{:dataset_query :description :display :id :name :visualization_settings :param_values}
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
+
+(defn- x []
+  (metabase.test.data.datasets/with-engine :postgres
+    (tt/with-temp Card [card (merge (shared-obj)
+                                    {:dataset_query {:query         "SELECT COUNT(*) FROM venues LEFT JOIN categories ON venues.category_id = categories.id WHERE {{category}}"
+                                                     :collection    "CATEGORIES"
+                                                     :template_tags {:category {:name         "category"
+                                                                                :display_name "Category"
+                                                                                :type         "dimension"
+                                                                                :dimension    ["field-id" (data/id :categories :id)]
+                                                                                :widget_type  "category"
+                                                                                :required     true}}}})]
+      (http/client :get 200 (str "public/card/" (:uuid card))))))
 
 
 ;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON and CSV versions)  ------------------------------------------------------------
