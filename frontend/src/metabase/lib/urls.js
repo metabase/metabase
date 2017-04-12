@@ -15,6 +15,10 @@ export function question(cardId, cardOrHash = "") {
         : `/question${cardOrHash}`;
 }
 
+export function newQuestion() {
+    return '/new'
+}
+
 export function dashboard(dashboardId) {
     return `/dashboard/${dashboardId}`;
 }
