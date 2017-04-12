@@ -44,6 +44,7 @@
     "react-copy-to-clipboard": "^4.2.3",
     "react-dom": "15.5.0",
     "react-draggable": "^2.2.3",
+    "react-element-to-jsx-string": "^6.3.0",
     "react-height": "^2.1.1",
     "react-motion": "^0.4.5",
     "react-redux": "^5.0.1",
@@ -73,7 +74,6 @@
     "z-index": "0.0.1"
   },
   "devDependencies": {
-    "@kadira/storybook": "^2.35.2",
     "@slack/client": "^3.5.4",
     "babel-cli": "^6.11.4",
     "babel-core": "^6.20.0",
@@ -158,7 +158,6 @@
     "build-watch": "webpack --watch",
     "build-hot": "NODE_ENV=hot webpack-dev-server --progress",
     "start": "yarn run build && lein ring server",
-    "storybook": "start-storybook -p 9001",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --tab-width 4 --write 'frontend/src/metabase/qb/**/*.js*' 'frontend/src/metabase/new_question/**/*.js*'",
