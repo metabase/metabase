@@ -105,7 +105,6 @@
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^0.1.0",
     "html-webpack-plugin": "^2.14.0",
-    "husky": "^0.13.2",
     "image-diff": "^1.6.3",
     "imports-loader": "^0.7.0",
     "jasmine": "^2.4.1",
