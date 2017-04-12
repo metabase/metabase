@@ -74,7 +74,7 @@ export default class CategoryWidget extends Component<*, Props, State> {
 
         return (
             <div style={{ maxWidth: 200 }}>
-                { values.length > 10 && regex &&
+                { values.length > 10 &&
                   <div className="p1">
                       <ListSearchField
                           onChange={this.updateSearchText}
