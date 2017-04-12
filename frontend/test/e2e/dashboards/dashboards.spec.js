@@ -52,7 +52,19 @@ describeE2E("dashboards/dashboards", () => {
             // Should search from both title and description
             await waitForElementAndSendKeys(driver, "input[type='text']", "usual response times");
             await waitForElementAndClick(driver, ".Grid-cell > a");
-            await waitForUrl(driver, `${server.host}/dashboard/1`)
+            await waitForUrl(driver, `${server.host}/dashboard/1`);
+
+            // Remove the created dashboards to prevent clashes with other tests
+            const removeCurrentDash = async () => {
+                await waitForElementAndClick(driver, "svg[name='pencil'] > path");
+                await waitForElementAndClick(driver, ".EditHeader .flex-align-right a:nth-of-type(2)");
+                await waitForElementAndClick(driver, ".Button.Button--danger");
+            }
+
+            await removeCurrentDash();
+            // Should return to dashboard page where only one dash left
+            await waitForElementAndClick(driver, ".Grid-cell > a");
+            await removeCurrentDash();
         });
 
     });
