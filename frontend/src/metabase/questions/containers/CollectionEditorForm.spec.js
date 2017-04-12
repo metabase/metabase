@@ -1,8 +1,7 @@
 import React from 'react';
+import { shallow } from 'enzyme';
 
-import { mount, ReactWrapper } from 'enzyme';
-
-import { CollectionEditorForm } from './CollectionEditorForm'
+import { CollectionEditorFormActions } from './CollectionEditorForm'
 
 const FORM_FIELDS = {
     id: { value: 4 },
@@ -10,33 +9,26 @@ const FORM_FIELDS = {
 }
 
 describe('CollectionEditorForm', () => {
-    describe('actions', () => {
+
+    describe('CollectionEditorFormActions', () => {
         it('should have a "create" primary action if no collection exists', () => {
             const fields = { ...FORM_FIELDS, id: '' }
-            const form = new ReactWrapper(
-                mount(
-                    <CollectionEditorForm
-                        fields={fields}
-                    />
-                ).instance().footerRef,
-                true
+            const form = shallow(
+                <CollectionEditorFormActions
+                    fields={fields}
+                />
             )
-
-            const text = form.find('button.Button--primary').text()
-            expect(text).toEqual('Create')
+            expect(form.contains("Create")).toBe(true)
         })
 
         it('should have an "update" primary action if no collection exists', () => {
-            const form = new ReactWrapper(
-                mount(
-                    <CollectionEditorForm
-                        fields={FORM_FIELDS}
-                    />
-                ).instance().footerRef,
-                true
+            const form = shallow(
+                <CollectionEditorFormActions
+                    fields={FORM_FIELDS}
+                />
             )
-
-            const text = form.find('button.Button--primary').text()
-            expect(text).toEqual('Update')
+            expect(form.contains("Update")).toBe(true)
         })
-    }) })
+    })
+
+})

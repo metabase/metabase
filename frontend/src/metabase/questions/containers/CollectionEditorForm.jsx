@@ -33,24 +33,25 @@ const formConfig = {
     }
 }
 
+export const CollectionEditorFormActions = ({ handleSubmit, invalid, onClose, fields}) =>
+    <div>
+        <Button className="mr1" onClick={onClose}>
+            Cancel
+        </Button>
+        <Button primary disabled={invalid} onClick={handleSubmit}>
+            { fields.id.value != null ? "Update" : "Create" }
+        </Button>
+    </div>
+
 export class CollectionEditorForm extends Component {
     render() {
-        const { fields, handleSubmit, invalid, onClose } = this.props;
+        const { fields, onClose } = this.props;
         return (
             <Modal
                 inline
                 form
                 title={fields.id.value != null ? fields.name.value : "New collection"}
-                footer={[
-                    <div ref={(ref) => { this.footerRef = ref}}>
-                        <Button className="mr1" onClick={onClose}>
-                            Cancel
-                        </Button>
-                        <Button primary disabled={invalid} onClick={handleSubmit}>
-                            { fields.id.value != null ? "Update" : "Create" }
-                        </Button>
-                    </div>
-                ]}
+                footer={<CollectionEditorFormActions {...this.props} />}
                 onClose={onClose}
             >
                 <div className="NewForm ml-auto mr-auto mt4 pt2" style={{ width: 540 }}>
