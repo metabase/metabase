@@ -77,7 +77,8 @@
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
-  (boolean (describe-database {:details details-map})))
+  ;; check whether we can connect by just fetching the first page of tables for the database. If that succeeds we're g2g
+  (boolean (list-tables {:details details-map})))
 
 
 (defn- ^Table get-table
@@ -358,13 +359,71 @@
 ;; ORDER BY [sad_toucan_incidents.incidents.timestamp] ASC
 ;; LIMIT 10
 
-(defn- field->identitfier [field]
+(defn- deduplicate-aliases
+  "Given a sequence of aliases, return a sequence where duplicate aliases have been appropriately suffixed.
+
+     (deduplicate-aliases [\"sum\" \"count\" \"sum\" \"avg\" \"sum\" \"min\"])
+     ;; -> [\"sum\" \"count\" \"sum_2\" \"avg\" \"sum_3\" \"min\"]"
+  [aliases]
+  (loop [acc [], alias->use-count {}, [alias & more, :as aliases] aliases]
+    (let [use-count (get alias->use-count alias)]
+      (cond
+        (empty? aliases) acc
+        (not alias)      (recur (conj acc alias) alias->use-count more)
+        (not use-count)  (recur (conj acc alias) (assoc alias->use-count alias 1) more)
+        :else            (let [new-count (inc use-count)
+                               new-alias (str alias "_" new-count)]
+                           (recur (conj acc new-alias) (assoc alias->use-count alias new-count, new-alias 1) more))))))
+
+(defn- select-subclauses->aliases
+  "Return a vector of aliases used in HoneySQL SELECT-SUBCLAUSES.
+   (For clauses that aren't aliased, `nil` is returned as a placeholder)."
+  [select-subclauses]
+  (for [subclause select-subclauses]
+    (when (and (vector? subclause)
+               (= 2 (count subclause)))
+      (second subclause))))
+
+(defn update-select-subclause-aliases
+  "Given a vector of HoneySQL SELECT-SUBCLAUSES and a vector of equal length of NEW-ALIASES,
+   return a new vector with combining the original `SELECT` subclauses with the new aliases.
+
+   Subclauses that are not aliased are not modified; they are given a placeholder of `nil` in the NEW-ALIASES vector.
+
+     (update-select-subclause-aliases [[:user_id \"user_id\"] :venue_id]
+                                      [\"user_id_2\" nil])
+     ;; -> [[:user_id \"user_id_2\"] :venue_id]"
+  [select-subclauses new-aliases]
+  (for [[subclause new-alias] (partition 2 (interleave select-subclauses new-aliases))]
+    (if-not new-alias
+      subclause
+      [(first subclause) new-alias])))
+
+(defn- deduplicate-select-aliases
+  "Replace duplicate aliases in SELECT-SUBCLAUSES with appropriately suffixed aliases.
+
+   BigQuery doesn't allow duplicate aliases in `SELECT` statements; a statement like `SELECT sum(x) AS sum, sum(y) AS sum` is invalid. (See #4089)
+   To work around this, we'll modify the HoneySQL aliases to make sure the same one isn't used twice by suffixing duplicates appropriately.
+   (We'll generate SQL like `SELECT sum(x) AS sum, sum(y) AS sum_2` instead.)"
+  [select-subclauses]
+  (let [aliases (select-subclauses->aliases select-subclauses)
+        deduped (deduplicate-aliases aliases)]
+    (update-select-subclause-aliases select-subclauses deduped)))
+
+(defn- apply-aggregation
+  "BigQuery's implementation of `apply-aggregation` just hands off to the normal Generic SQL implementation, but calls `deduplicate-select-aliases` on the results."
+  [driver honeysql-form query]
+  (-> (sqlqp/apply-aggregation driver honeysql-form query)
+      (update :select deduplicate-select-aliases)))
+
+
+(defn- field->breakout-identifier [field]
   (hsql/raw (str \[ (field->alias field) \])))
 
 (defn- apply-breakout [honeysql-form {breakout-fields :breakout, fields-fields :fields}]
   (-> honeysql-form
       ;; Group by all the breakout fields
-      ((partial apply h/group)  (map field->identitfier breakout-fields))
+      ((partial apply h/group)  (map field->breakout-identifier breakout-fields))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
       ((partial apply h/merge-select) (for [field breakout-fields
                                             :when (not (contains? (set fields-fields) field))]
@@ -372,9 +431,9 @@
 
 (defn- apply-order-by [honeysql-form {subclauses :order-by}]
   (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(field->identitfier field) (case direction
-                                                                                      :ascending  :asc
-                                                                                      :descending :desc)])]
+    (let [honeysql-form (h/merge-order-by honeysql-form [(field->breakout-identifier field) (case direction
+                                                                                              :ascending  :asc
+                                                                                              :descending :desc)])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -398,7 +457,8 @@
 (u/strict-extend BigQueryDriver
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:apply-breakout            (u/drop-first-arg apply-breakout)
+         {:apply-aggregation         apply-aggregation
+          :apply-breakout            (u/drop-first-arg apply-breakout)
           :apply-order-by            (u/drop-first-arg apply-order-by)
           :column->base-type         (constantly nil)                           ; these two are actually not applicable
           :connection-details->spec  (constantly nil)                           ; since we don't use JDBC

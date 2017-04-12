@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import title from "metabase/hoc/Title";
 
 import Dashboard from "../components/Dashboard.jsx";
 
@@ -40,6 +41,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ dashboard }) => dashboard && dashboard.name)
 export default class DashboardApp extends Component {
     render() {
         return <Dashboard {...this.props} />;

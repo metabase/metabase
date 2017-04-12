@@ -247,6 +247,20 @@
        (set-archived! true)
        (set-archived! false)])))
 
+;; Can we clear the description of a Card? (#4738)
+(expect
+  nil
+  (with-temp-card [card {:description "What a nice Card"}]
+    ((user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:description nil})
+    (db/select-one-field :description Card :id (u/get-id card))))
+
+;; description should be blankable as well
+(expect
+  ""
+  (with-temp-card [card {:description "What a nice Card"}]
+    ((user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:description ""})
+    (db/select-one-field :description Card :id (u/get-id card))))
+
 ;; Can we update a card's embedding_params?
 (expect
   {:abc "enabled"}
@@ -513,6 +527,22 @@
 (expect
   "Not found."
   ((user->client :rasta) :get 404 "card/" :collection :some_fake_collection_slug))
+
+;; Make sure GET /api/card?collection=<slug> still works with Collections with URL-encoded Slugs (#4535)
+(expect
+  []
+  (tt/with-temp Collection [collection {:name "Obsługa klienta"}]
+    (do
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :get 200 "card/" :collection "obs%C5%82uga_klienta"))))
+
+;; ...even if the slug isn't passed in URL-encoded
+(expect
+  []
+  (tt/with-temp Collection [collection {:name "Obsługa klienta"}]
+    (do
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      ((user->client :rasta) :get 200 "card/" :collection "obsługa_klienta"))))
 
 
 ;;; ------------------------------------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------------------------------------
