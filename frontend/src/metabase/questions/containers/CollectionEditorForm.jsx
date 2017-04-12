@@ -51,6 +51,13 @@ export const CollectionEditorFormActions = ({ handleSubmit, invalid, onClose, fi
     </div>
 
 export class CollectionEditorForm extends Component {
+    props: {
+        fields: Object,
+        onClose: Function,
+        invalid: Boolean,
+        handleSubmit: Function,
+    }
+
     render() {
         const { fields, onClose } = this.props;
         return (
