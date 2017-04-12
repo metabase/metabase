@@ -154,7 +154,9 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                                 this._popover.close();
                             }
                         }}
-                    >Apply</Button>
+                    >
+                        Apply
+                    </Button>
                 </div>
             </PopoverWithTrigger>
         );
