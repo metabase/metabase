@@ -23,7 +23,11 @@ const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListIt
     <li className="Grid-cell flex-retain-width" style={{maxWidth: "550px"}}>
         <Link to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
-              className="flex align-center border-box p2 bg-white bg-brand-hover rounded no-decoration transition-background"
+              className={cx(
+                  "flex align-center border-box p2 rounded no-decoration transition-background",
+                  {"bg-white": !hover},
+                  {"bg-brand": hover}
+              )}
               style={{
                   border: "1px solid rgba(220,225,228,0.50)",
                   boxShadow: "0 1px 3px 0 rgba(220,220,220,0.50)",
@@ -38,7 +42,8 @@ const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListIt
                     style={{marginBottom: "0.2em"}}>
                     <Ellipsified>{dashboard.name}</Ellipsified>
                 </h4>
-                <div className={cx("text-smaller text-uppercase text-bold", {"text-grey-3": !hover}, {"text-grey-2": hover})}>
+                <div
+                    className={cx("text-smaller text-uppercase text-bold", {"text-grey-3": !hover}, {"text-grey-2": hover})}>
                     {/* NOTE: Could these time formats be centrally stored somewhere? */}
                     {moment(dashboard.created_at).format('MMM D, YYYY')}
                 </div>
