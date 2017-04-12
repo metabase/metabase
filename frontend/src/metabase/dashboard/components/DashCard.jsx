@@ -110,7 +110,7 @@ export default class DashCard extends Component {
 
         return (
             <div
-                className={"Card bordered rounded flex flex-column hover-parent hover--visibility" + cx({
+                className={cx("Card bordered rounded flex flex-column hover-parent hover--visibility", {
                     "Card--recent": dashcard.isAdded,
                     "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
