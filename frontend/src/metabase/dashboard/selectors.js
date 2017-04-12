@@ -146,10 +146,12 @@ export const getMappingsByParameter = createSelector(
     }
 );
 
+/** Returns the dashboard's parameters objects, with field_id added, if appropriate */
 export const getParameters = createSelector(
     [getDashboard, getMappingsByParameter],
     (dashboard, mappingsByParameter) =>
         (dashboard && dashboard.parameters || []).map(parameter => {
+            // get the unique list of field IDs these mappings reference
             const fieldIds = _.chain(mappingsByParameter[parameter.id])
                 .map(_.values)
                 .flatten()

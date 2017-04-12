@@ -49,7 +49,6 @@ export default class Field extends Base {
     isFK()        { return isFK(this.special_type); }
 
     values(): Array<string> {
-        // https://github.com/metabase/metabase/issues/3417
         return getFieldValues(this._object)
     }
 

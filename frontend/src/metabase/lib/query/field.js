@@ -46,6 +46,7 @@ export function isAggregateField(field: FieldReference): boolean {
     return Array.isArray(field) && mbqlEq(field[0], "aggregation");
 }
 
+// Metadata field "values" type is inconsistent
 // https://github.com/metabase/metabase/issues/3417
 export function getFieldValues(field: ?Field): any[] {
     const values = field && field.values;
