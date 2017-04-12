@@ -7,7 +7,7 @@ import { fetchMetrics } from "metabase/redux/metadata";
 
 import Button from "metabase/components/Button";
 
-import Text from "../components/Text";
+import Text from "metabase/components/Text";
 
 import { getMetricsForCurrentFlow } from "../selectors";
 
@@ -21,6 +21,18 @@ const mapDispatchToProps = {
     selectMetric,
     selectAndAdvance
 };
+
+const SURFACE_BORDER_COLOR = "#DCE1E4";
+const Surface = ({ children }) => (
+    <div
+        className={cxs({
+            backgroundColor: "#fff",
+            border: `1px solid ${SURFACE_BORDER_COLOR}`
+        })}
+    >
+        {children}
+    </div>
+);
 
 @connect(mapStateToProps, mapDispatchToProps)
 class MetricLanding extends Component {
@@ -36,7 +48,7 @@ class MetricLanding extends Component {
         } = this.props;
         return (
             <div>
-                <div className={cxs({ display: "flex", alignItems: 'center'})}>
+                <div className={cxs({ display: "flex", alignItems: "center" })}>
                     <h3>Existing metrics</h3>
                     <Button
                         className="ml-auto"
@@ -46,20 +58,22 @@ class MetricLanding extends Component {
                         A fresh metric
                     </Button>
                 </div>
-                <ol className="bg-white bordered rounded mt3">
-                    {metrics.map(metric => (
-                        <li
-                            className="border-bottom py2 px3"
-                            onClick={() =>
-                                selectAndAdvance(() =>
-                                    selectMetric(metric))}
-                            key={metric.id}
-                        >
-                            <h2 className="link">{metric.name}</h2>
-                            <Text>{metric.description}</Text>
-                        </li>
-                    ))}
-                </ol>
+                <Surface>
+                    <ol>
+                        {metrics.map(metric => (
+                            <li
+                                className="border-bottom py2 px3"
+                                onClick={() =>
+                                    selectAndAdvance(() =>
+                                        selectMetric(metric))}
+                                key={metric.id}
+                            >
+                                <h2 className="link">{metric.name}</h2>
+                                <Text>{metric.description}</Text>
+                            </li>
+                        ))}
+                    </ol>
+                </Surface>
             </div>
         );
     }

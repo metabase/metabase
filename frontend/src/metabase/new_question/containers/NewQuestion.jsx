@@ -6,14 +6,19 @@ import { fetchDatabasesWithMetadata } from "metabase/redux/metadata";
 
 import Icon from "metabase/components/Icon";
 
-import Text from "../components/Text";
+import Text from "metabase/components/Text";
 import Tip from "../components/Tip";
 import Title from "../components/Title";
 import { Sidebar } from "../components/Layout";
 
 import { back, resetNewQuestionFlow } from "../actions";
 
-import { getSubtitle, getBack, getCurrentStepTip, getCurrentStepComponent } from "../selectors";
+import {
+    getSubtitle,
+    getBack,
+    getCurrentStepTip,
+    getCurrentStepComponent
+} from "../selectors";
 
 const mapStateToProps = state => ({
     advance: state.newQuestion.advance,
@@ -40,23 +45,25 @@ class NewQuestion extends Component {
         const { back, goBack, component, tip, title, subtitle } = this.props;
         const CurrentStep = component;
         return (
-            <div className="relative full-height" style={{ backgroundColor: '#FBFCFC' }}>
+            <div
+                className="relative full-height"
+                style={{ backgroundColor: "#FBFCFC" }}
+            >
                 <div
                     className={cxs({
-                        backgroundColor: '#fff',
                         display: "flex",
                         alignItems: "center",
-                        borderBottom: '1px solid #DCE1E4',
-                        paddingTop: '2em',
-                        paddingBottom: '2em',
+                        paddingTop: "2em",
+                        paddingBottom: "2em"
                     })}
                 >
-                    <div className="wrapper flex align-center">
+                    <div className="flex align-center">
                         {back &&
                             <div
                                 className={cxs({
                                     borderRadius: 99,
                                     border: "1px solid #93A1AB",
+                                    backgroundColor: "#fff",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
@@ -71,23 +78,20 @@ class NewQuestion extends Component {
                             >
                                 <Icon name="chevronleft" />
                             </div>}
-                        <div>
-                            <Title>{title}</Title>
-                            {subtitle && <Text>{subtitle}</Text>}
-                        </div>
                     </div>
                 </div>
 
-                <div className="wrapper">
                 <div className="flex mt4">
-                        <div className={cxs({ flex: 1 })}>
+                    {tip &&
+                        <Sidebar>
+                            <Title>{title}</Title>
+                            {subtitle && <Text>{subtitle}</Text>}
+                            <Tip tip={tip} />
+                        </Sidebar>}
+                    <div className={cxs({ flex: 1 })}>
+                        <div style={{ maxWidth: 640 }}>
                             <CurrentStep />
                         </div>
-
-                        {tip &&
-                            <Sidebar>
-                                <Tip tip={tip} />
-                            </Sidebar>}
                     </div>
                 </div>
             </div>
