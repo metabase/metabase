@@ -1,6 +1,5 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
-import {Provider} from 'react-redux';
 
 import {Dashboards} from './Dashboards';
 import {noDashboardsList, twoDashboardsList} from './Dashboards.spec.data';
@@ -19,6 +18,11 @@ function setupDashboards(dashboards) {
         component
     }
 }
+
+// Don't render Ellipsified as Tooltip class that it is using causes trouble
+// (ReactDOM.findDOMNode not supported by react-test-renderer)
+jest.mock('metabase/components/Ellipsified', () => () => null )
+
 describe('Dashboards list view', () => {
     it('should render correctly in loading state', () => {
         const {component} = setupDashboards(null);

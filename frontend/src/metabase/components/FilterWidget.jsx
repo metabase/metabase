@@ -3,7 +3,7 @@
 // An UI element that is normally right-aligned and showing a currently selected filter together with chevron.
 // Clicking the element will trigger a popover showing all available filter options.
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "./PopoverWithTrigger";
 

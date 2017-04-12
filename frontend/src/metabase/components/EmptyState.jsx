@@ -19,7 +19,7 @@ type EmptyStateProps = {
     action?: string,
     link?: string,
     onActionClick?: () => void,
-    smallDescription: boolean
+    smallDescription?: boolean
 }
 
 const EmptyState = ({title, message, icon, image, imageClassName, action, link, onActionClick, smallDescription = false}: EmptyStateProps) =>

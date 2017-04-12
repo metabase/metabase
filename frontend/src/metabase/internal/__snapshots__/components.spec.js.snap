@@ -379,7 +379,7 @@ exports[`StackedCheckBox should render "on" correctly 1`] = `
 
 exports[`Toggle should render "off" correctly 1`] = `
 <a
-  className="no-decoration "
+  className="toggle no-decoration "
   onClick={null}
   style={
     Object {
@@ -390,7 +390,7 @@ exports[`Toggle should render "off" correctly 1`] = `
 
 exports[`Toggle should render "on" correctly 1`] = `
 <a
-  className="no-decoration undefined "
+  className="toggle no-decoration selected "
   onClick={null}
   style={
     Object {

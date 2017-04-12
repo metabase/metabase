@@ -1,6 +1,4 @@
-
 import {
-    screenshot,
     describeE2E,
     ensureLoggedIn
 } from "../support/utils";
