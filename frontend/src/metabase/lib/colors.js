@@ -1,3 +1,4 @@
+// @flow
 export const normal = {
     blue: '#509EE3',
     green: '#9CC177',
@@ -57,3 +58,8 @@ export const harmony = [
     '#c1a877',
     '#f95c67',
 ]
+
+export const getRandomColor = (family: Object) => {
+    const colors = Object.values(family)
+    return colors[Math.floor(Math.random() * colors.length)]
+}

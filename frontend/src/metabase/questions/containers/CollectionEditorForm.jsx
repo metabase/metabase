@@ -8,7 +8,7 @@ import Modal from "metabase/components/Modal";
 
 import { reduxForm } from "redux-form";
 
-import { normal } from "metabase/lib/colors";
+import { normal, getRandomColor } from "metabase/lib/colors";
 
 const formConfig = {
     form: 'collection',
@@ -29,9 +29,16 @@ const formConfig = {
         name: "",
         description: "",
         // pick a random color to start so everything isn't blue all the time
-        color: normal[Math.floor(Math.random() * normal.length)]
+        color: getRandomColor(normal)
     }
 }
+
+export const getFormTitle = ({ id, name }) =>
+    id.value ? name.value : "New collection"
+
+export const getActionText = ({ id }) =>
+    id.value ? "Update": "Create"
+
 
 export const CollectionEditorFormActions = ({ handleSubmit, invalid, onClose, fields}) =>
     <div>
@@ -39,7 +46,7 @@ export const CollectionEditorFormActions = ({ handleSubmit, invalid, onClose, fi
             Cancel
         </Button>
         <Button primary disabled={invalid} onClick={handleSubmit}>
-            { fields.id.value != null ? "Update" : "Create" }
+            { getActionText(fields) }
         </Button>
     </div>
 
@@ -50,7 +57,7 @@ export class CollectionEditorForm extends Component {
             <Modal
                 inline
                 form
-                title={fields.id.value != null ? fields.name.value : "New collection"}
+                title={getFormTitle(fields)}
                 footer={<CollectionEditorFormActions {...this.props} />}
                 onClose={onClose}
             >
