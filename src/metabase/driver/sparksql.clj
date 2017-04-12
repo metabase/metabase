@@ -50,7 +50,6 @@
                  (merge (sql/IDriverSQLDefaultsMixin)
                         {:date-interval (u/drop-first-arg hive/date-interval)
                          :describe-database hive/describe-database
-                         ;;:analyze-table hive/analyze-table
                          :describe-table hive/describe-table
                          :describe-table-fks hive/describe-table-fks
                          :details-fields (constantly [{:name "host"

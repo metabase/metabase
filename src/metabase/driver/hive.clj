@@ -175,6 +175,16 @@
       dbspec/hive
       (sql/handle-additional-options details)))
 
+(defn features
+  "Default implementation of `IDriver` `features` for SQL drivers."
+  [driver]
+  #{:basic-aggregations
+    ;;:standard-deviation-aggregations
+    ;;:expressions
+    ;;:expression-aggregations
+    :native-parameters
+    })
+
 (defrecord HiveDriver []
   clojure.lang.Named
   (getName [_] "Hive"))
@@ -207,6 +217,7 @@
                                                        :placeholder "*******"}
                                                       ])
                          :execute-query execute-query
+                         :features features
                          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
                  sql/ISQLDriver
                  (merge (sql/ISQLDriverDefaultsMixin)
