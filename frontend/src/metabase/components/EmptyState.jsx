@@ -1,7 +1,7 @@
 /* @flow */
 import React from "react";
 import {Link} from "react-router";
-
+import cx from "classnames";
 /*
  * EmptyState is a component that can
  *   1) introduce a new section of Metabase to a user, and encourages the user to take an action
@@ -18,11 +18,12 @@ type EmptyStateProps = {
     imageClassName?: string,
     action?: string,
     link?: string,
-    onActionClick?: () => void
+    onActionClick?: () => void,
+    smallDescription: boolean
 }
 
-const EmptyState = ({title, message, icon, image, imageClassName, action, link, onActionClick}: EmptyStateProps) =>
-    <div className="text-centered text-brand-light my2" style={{width: "350px"}}>
+const EmptyState = ({title, message, icon, image, imageClassName, action, link, onActionClick, smallDescription = false}: EmptyStateProps) =>
+    <div className="text-centered text-brand-light my2" style={smallDescription ? {} : {width: "350px"}}>
         { title &&
         <h2 className="text-brand mb4">{title}</h2>
         }
@@ -35,7 +36,7 @@ const EmptyState = ({title, message, icon, image, imageClassName, action, link, 
         }
         <div className="flex justify-center">
             {
-                <h2 className="text-grey-2 text-normal mt2 mb4" style={{lineHeight: "1.5em"}}>{message}</h2>
+                <h2 className={cx("text-grey-2 text-normal mt2 mb4", {"text-paragraph": smallDescription})} style={{lineHeight: "1.5em"}}>{message}</h2>
             }
         </div>
         { action && link &&

@@ -135,6 +135,7 @@ export class Dashboards extends Component {
                                     image="/app/img/empty_dashboard"
                                     action="Create a dashboard"
                                     imageClassName="mln2"
+                                    smallDescription
                                 />
                             </div>
                             : <DashboardList dashboards={filteredDashboards}/>
