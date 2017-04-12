@@ -20,12 +20,12 @@
    ["Houston"      11]
    ["Irvine"       11]
    ["Lakeland"     11]]
-  (->> (data/dataset tupac-sightings
-         (data/run-query sightings
-           (ql/aggregation (ql/count))
-           (ql/breakout $city_id->cities.name)
-           (ql/order-by (ql/desc (ql/aggregate-field 0)))
-           (ql/limit 10)))
+  (->> (data/dataset tupac_sightings
+                     (data/run-query sightings
+                                     (ql/aggregation (ql/count))
+                                     (ql/breakout $city_id->cities.name)
+                                     (ql/order-by (ql/desc (ql/aggregate-field 0)))
+                                     (ql/limit 10)))
        rows (format-rows-by [str int])))
 
 
@@ -34,10 +34,10 @@
 ;; Test that we can filter on an FK field
 (datasets/expect-with-engines (engines-that-support :foreign-keys)
   [[60]]
-  (->> (data/dataset tupac-sightings
-         (data/run-query sightings
-           (ql/aggregation (ql/count))
-           (ql/filter (ql/= $category_id->categories.id 8))))
+  (->> (data/dataset tupac_sightings
+                     (data/run-query sightings
+                                     (ql/aggregation (ql/count))
+                                     (ql/filter (ql/= $category_id->categories.id 8))))
        rows (format-rows-by [int])))
 
 
@@ -55,11 +55,11 @@
    [996 "At a Restaurant"]
    [897 "Wearing a Biggie Shirt"]
    [499 "In the Expa Office"]]
-  (->> (data/dataset tupac-sightings
-         (data/run-query sightings
-           (ql/fields $id $category_id->categories.name)
-           (ql/order-by (ql/desc $timestamp))
-           (ql/limit 10)))
+  (->> (data/dataset tupac_sightings
+                     (data/run-query sightings
+                                     (ql/fields $id $category_id->categories.name)
+                                     (ql/order-by (ql/desc $timestamp))
+                                     (ql/limit 10)))
        rows (format-rows-by [int str])))
 
 
@@ -80,12 +80,12 @@
    [2 11 524]
    [2 13  77]
    [2 13 202]]
-  (->> (data/dataset tupac-sightings
-         (data/run-query sightings
-           (ql/order-by (ql/asc $city_id->cities.name)
-                        (ql/desc $category_id->categories.name)
-                        (ql/asc $id))
-           (ql/limit 10)))
+  (->> (data/dataset tupac_sightings
+                     (data/run-query sightings
+                                     (ql/order-by (ql/asc $city_id->cities.name)
+                                                  (ql/desc $category_id->categories.name)
+                                                  (ql/asc $id))
+                                     (ql/limit 10)))
        rows (map butlast) (map reverse) (format-rows-by [int int int]))) ; drop timestamps. reverse ordering to make the results columns order match order_by
 
 
@@ -93,12 +93,12 @@
 (datasets/expect-with-engines (engines-that-dont-support :foreign-keys)
   {:status :failed
    :error "foreign-keys is not supported by this driver."}
-  (select-keys (data/dataset tupac-sightings
-                 (data/run-query sightings
-                   (ql/order-by (ql/asc $city_id->cities.name)
-                                (ql/desc $category_id->categories.name)
-                                (ql/asc $id))
-                   (ql/limit 10)))
+  (select-keys (data/dataset tupac_sightings
+                             (data/run-query sightings
+                                             (ql/order-by (ql/asc $city_id->cities.name)
+                                                          (ql/desc $category_id->categories.name)
+                                                          (ql/asc $id))
+                                             (ql/limit 10)))
                [:status :error]))
 
 
@@ -123,9 +123,9 @@
    ["Lucky Pigeon"     2]
    ["Peter Pelican"    5]
    ["Ronald Raven"     1]]
-  (data/dataset avian-singles
-    (format-rows-by [str int]
-      (rows (data/run-query messages
-              (ql/aggregation (ql/count))
-              (ql/breakout $sender_id->users.name)
-              (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan")))))))
+  (data/dataset avian_singles
+                (format-rows-by [str int]
+                                (rows (data/run-query messages
+                                                      (ql/aggregation (ql/count))
+                                                      (ql/breakout $sender_id->users.name)
+                                                      (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan")))))))

@@ -16,11 +16,11 @@
     x))
 
 (defn- sad-toucan-incidents-with-bucketing [unit]
-  (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+  (->> (data/with-db (data/get-or-create-database! defs/sad_toucan_incidents)
          (data/run-query incidents
-           (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp unit))
-           (ql/limit 10)))
+                         (ql/aggregation (ql/count))
+                         (ql/breakout (ql/datetime-field $timestamp unit))
+                         (ql/limit 10)))
        rows (format-rows-by [->long-if-number int])))
 
 (expect-with-non-timeseries-dbs
@@ -275,7 +275,7 @@
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (i/create-database-definition (str "a-checkin-every-" interval-seconds "-seconds")
+  (i/create-database-definition (str "a_checkin_every_" interval-seconds "_seconds")
     ["checkins"
      [{:field-name "timestamp"
        :base-type  :type/DateTime}]
@@ -283,7 +283,7 @@
             ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
             ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
             [(u/prog1 (driver/date-interval *driver* :second (* i interval-seconds))
-               (assert <>))]))]))
+                      (assert <>))]))]))
 
 (def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))
 (def ^:private checkins:4-per-hour   (partial database-def-with-timestamps (* 60 15)))
