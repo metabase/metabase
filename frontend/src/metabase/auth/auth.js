@@ -15,7 +15,8 @@ import { SessionApi } from "metabase/services";
 
 
 // login
-export const login = createThunkAction("AUTH_LOGIN", function(credentials, redirectUrl) {
+export const LOGIN = "metabase/auth/LOGIN";
+export const login = createThunkAction(LOGIN, function(credentials, redirectUrl) {
     return async function(dispatch, getState) {
 
         if (!MetabaseUtils.validEmail(credentials.email)) {
@@ -41,7 +42,8 @@ export const login = createThunkAction("AUTH_LOGIN", function(credentials, redir
 
 
 // login Google
-export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googleUser, redirectUrl) {
+export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
+export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(googleUser, redirectUrl) {
     return async function(dispatch, getState) {
         try {
             let newSession = await SessionApi.createWithGoogleAuth({
@@ -70,7 +72,8 @@ export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googl
 });
 
 // logout
-export const logout = createThunkAction("AUTH_LOGOUT", function() {
+export const LOGOUT = "metabase/auth/LOGOUT";
+export const logout = createThunkAction(LOGOUT, function() {
     return function(dispatch, getState) {
         // TODO: as part of a logout we want to clear out any saved state that we have about anything
 
@@ -86,7 +89,8 @@ export const logout = createThunkAction("AUTH_LOGOUT", function() {
 });
 
 // passwordReset
-export const passwordReset = createThunkAction("AUTH_PASSWORD_RESET", function(token, credentials) {
+export const PASSWORD_RESET = "metabase/auth/PASSWORD_RESET"
+export const passwordReset = createThunkAction(PASSWORD_RESET, function(token, credentials) {
     return async function(dispatch, getState) {
 
         if (credentials.password !== credentials.password2) {
@@ -123,16 +127,17 @@ export const passwordReset = createThunkAction("AUTH_PASSWORD_RESET", function(t
 // reducers
 
 const loginError = handleActions({
-    ["AUTH_LOGIN"]: { next: (state, { payload }) => payload ? payload : null },
-    ["AUTH_LOGIN_GOOGLE"]: { next: (state, { payload }) => payload ? payload : null }
+    [LOGIN]: { next: (state, { payload }) => payload ? payload : null },
+    [LOGIN_GOOGLE]: { next: (state, { payload }) => payload ? payload : null }
 }, null);
 
+
 const resetSuccess = handleActions({
-    ["AUTH_PASSWORD_RESET"]: { next: (state, { payload }) => payload.success }
+    [PASSWORD_RESET]: { next: (state, { payload }) => payload.success }
 }, false);
 
 const resetError = handleActions({
-    ["AUTH_PASSWORD_RESET"]: { next: (state, { payload }) => payload.error }
+    [PASSWORD_RESET]: { next: (state, { payload }) => payload.error }
 }, null);
 
 export default combineReducers({

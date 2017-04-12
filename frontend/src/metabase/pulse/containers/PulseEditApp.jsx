@@ -3,6 +3,8 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
+import title from "metabase/hoc/Title";
+
 import PulseEdit from "../components/PulseEdit.jsx";
 
 import { editPulseSelectors } from "../selectors";
@@ -39,6 +41,7 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ pulse }) => pulse && pulse.name)
 export default class PulseEditApp extends Component {
     render() {
         return (
