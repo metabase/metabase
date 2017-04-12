@@ -112,10 +112,11 @@ export class Dashboards extends Component {
                     : <div>
                         <div className="flex align-center pt4 pb1">
                             <TitleAndDescription title="Dashboards"/>
-                            <Icon name="add"
-                                  className="flex-align-right cursor-pointer text-grey-5 text-brand-hover"
-                                  size={20}
-                                  onClick={this.showCreateDashboard}/>
+                            <div className="flex-align-right cursor-pointer text-grey-5 text-brand-hover">
+                                <Icon name="add"
+                                      size={20}
+                                      onClick={this.showCreateDashboard}/>
+                            </div>
                         </div>
                         <div className="flex align-center pb1">
                             <SearchHeader
@@ -129,7 +130,8 @@ export class Dashboards extends Component {
                                     message={
                                         <div className="mt4">
                                             <h3 className="text-grey-5">No results found</h3>
-                                            <p className="text-grey-4">Try adjusting your filter to find what you’re looking for.</p>
+                                            <p className="text-grey-4">Try adjusting your filter to find what you’re
+                                                looking for.</p>
                                         </div>
                                     }
                                     image="/app/img/empty_dashboard"

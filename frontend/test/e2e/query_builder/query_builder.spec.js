@@ -87,7 +87,7 @@ describeE2E("query_builder", () => {
             await d.sleep(500);
             await d.select("#VisualizationPopover li:nth-child(3)").wait().click();
 
-            await screenshot(driver, "screenshots/qb-line-chart.png");
+            await d.screenshot("screenshots/qb-line-chart.png");
 
             // save question
             await d.select(".Header-buttonSection:first-child").wait().click();
@@ -127,7 +127,7 @@ describeE2E("query_builder", () => {
             await d.select(".Button.RunButton").wait().click();
             await d.select(".Loading").waitRemoved(20000);
 
-            await screenshot(driver, "screenshots/qb-bar-chart.png");
+            await d.screenshot("screenshots/qb-bar-chart.png");
 
             // save question
             await d.select(".Header-buttonSection:first-child").wait().click();
