@@ -377,6 +377,20 @@ exports[`StackedCheckBox should render "on" correctly 1`] = `
 </span>
 `;
 
+exports[`Surface should render "" correctly 1`] = `
+<div
+  className="bc-fff border-1px_solid_DCE1E4">
+  Hey look a card
+</div>
+`;
+
+exports[`Text should render "" correctly 1`] = `
+<p
+  className="fs-16px c-93A1AB lh-22px m-0">
+  Well hey look it here, this is some text. For reading and such
+</p>
+`;
+
 exports[`Toggle should render "off" correctly 1`] = `
 <a
   className="no-decoration "
