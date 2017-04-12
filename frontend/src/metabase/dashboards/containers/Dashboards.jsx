@@ -101,8 +101,7 @@ export class Dashboards extends Component {
                 { noDashboardsCreated ?
                     <div className="mt2">
                         <EmptyState
-                            message={<div>Put the charts and graphs you look at<br/>frequently in a single, handy place.
-                            </div>}
+                            message={<span>Put the charts and graphs you look at <br/>frequently in a single, handy place.</span>}
                             image="/app/img/dashboard_illustration"
                             action="Create a dashboard"
                             onActionClick={this.showCreateDashboard}
@@ -125,18 +124,19 @@ export class Dashboards extends Component {
                             />
                         </div>
                         { noSearchResults ?
-                            <EmptyState
-                                message={
-                                    <div className="mt4">
-                                        <h3 className="text-grey-5">No results found</h3>
-                                        <p className="text-grey-4">Try adjusting your filter to find what you’re looking for.</p>
-                                    </div>
-                                }
-                                image="/app/img/empty_dashboard"
-                                action="Create a dashboard"
-                                className="mt2"
-                                imageClassName="mln2"
-                            />
+                            <div className="flex justify-center">
+                                <EmptyState
+                                    message={
+                                        <div className="mt4">
+                                            <h3 className="text-grey-5">No results found</h3>
+                                            <p className="text-grey-4">Try adjusting your filter to find what you’re looking for.</p>
+                                        </div>
+                                    }
+                                    image="/app/img/empty_dashboard"
+                                    action="Create a dashboard"
+                                    imageClassName="mln2"
+                                />
+                            </div>
                             : <DashboardList dashboards={filteredDashboards}/>
                         }
                     </div>

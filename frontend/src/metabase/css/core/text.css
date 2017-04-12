@@ -96,6 +96,10 @@
     font-size: 0.875em;
 }
 
+.text-smaller {
+    font-size: 0.8em;
+}
+
 .text-current {
     color: currentColor;
 }

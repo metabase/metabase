@@ -5,7 +5,7 @@ import {Link} from "react-router";
 /*
  * EmptyState is a component that can
  *   1) introduce a new section of Metabase to a user, and encourages the user to take an action
-  *  2) indicate an empty result after a user-triggered search/query
+ *  2) indicate an empty result after a user-triggered search/query
  */
 
 import Icon from "metabase/components/Icon.jsx";
@@ -22,7 +22,7 @@ type EmptyStateProps = {
 }
 
 const EmptyState = ({title, message, icon, image, imageClassName, action, link, onActionClick}: EmptyStateProps) =>
-    <div className="text-centered text-brand-light my2">
+    <div className="text-centered text-brand-light my2" style={{width: "350px"}}>
         { title &&
         <h2 className="text-brand mb4">{title}</h2>
         }
@@ -30,22 +30,20 @@ const EmptyState = ({title, message, icon, image, imageClassName, action, link, 
         <Icon name={icon} size={40}/>
         }
         { image &&
-        <img src={`${image}.png`} height="250px" alt={message} srcSet={`${image}@2x.png 2x`} className={imageClassName}/>
+        <img src={`${image}.png`} width="300px" alt={message} srcSet={`${image}@2x.png 2x`}
+             className={imageClassName}/>
         }
         <div className="flex justify-center">
             {
-                (typeof message === 'string') ?
-                    <h3 className="text-grey-2 mt4" style={{lineHeight: "1.5em"}}>{message}</h3>
-                    : message
-            }
+                <h2 className="text-grey-2 text-normal mt2 mb4" style={{lineHeight: "1.5em"}}>{message}</h2>
             }
         </div>
         { action && link &&
-        <Link to={link} className="Button Button--primary mt3"
+        <Link to={link} className="Button Button--primary mt4"
               target={link.startsWith('http') ? "_blank" : ""}>{action}</Link>
         }
         { action && onActionClick &&
-        <a onClick={onActionClick} className="Button Button--primary mt3">{action}</a>
+        <a onClick={onActionClick} className="Button Button--primary mt4">{action}</a>
         }
     </div>
 
