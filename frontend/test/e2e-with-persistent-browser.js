@@ -4,7 +4,7 @@ const exec = require('child_process').exec
 const execSync = require('child_process').execSync
 const fs = require('fs');
 const webdriver = require('selenium-webdriver');
-const chrome = require('selenium-webdriver/chrome');
+
 // User input initialization
 const stdin = fs.openSync('/dev/stdin', 'rs');
 const buffer = Buffer.alloc(8);
@@ -15,21 +15,20 @@ process.chdir(__dirname + '/../..');
 const url = 'http://localhost:9515';
 const driverProcess = exec('chromedriver --port=9515');
 
-var options = new chrome.Options().
-    addExtensions("frontend/test/selector-picker-chrome-extension.crx");
-
 const driver = new webdriver.Builder()
-  .forBrowser('chrome')
-  .usingServer(url)
-  .setChromeOptions(options)
-  .build();
+    .forBrowser('chrome')
+    .usingServer(url)
+    .build();
 
-driver.getSession().then(function(session) {
+driver.getSession().then(function (session) {
     const id = session.getId()
     console.log('Launched persistent Webdriver session with session ID ' + id, url);
 
     function executeTest() {
-        if (process.argv.length >= 4 && process.argv[2] === '--exec-before') {
+        const hasCommandToExecuteBeforeReload =
+            process.argv.length >= 4 && process.argv[2] === '--exec-before'
+
+        if (hasCommandToExecuteBeforeReload) {
             console.log(execSync(process.argv[3]).toString())
         }
 
@@ -39,7 +38,7 @@ driver.getSession().then(function(session) {
         const testProcess = exec(cmd);
         testProcess.stdout.pipe(process.stdout);
         testProcess.stderr.pipe(process.stderr);
-        testProcess.on('exit', function() {
+        testProcess.on('exit', function () {
             console.log("Press <Enter> to rerun tests or <C-c> to quit.")
             fs.readSync(stdin, buffer, 0, 8);
             executeTest();
@@ -47,11 +46,12 @@ driver.getSession().then(function(session) {
     }
 
     executeTest();
-
 });
 
 process.on('SIGTERM', function () {
     console.log('Shutting down...')
-    driver.quit().then(function() { process.exit(0) });
+    driver.quit().then(function () {
+        process.exit(0)
+    });
     driverProcess.kill('SIGINT');
 });
