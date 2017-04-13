@@ -353,7 +353,7 @@
 
 
 ;;; ------------------------------------------------------------ Make sure that "crufty" tables are marked as such ------------------------------------------------------------
-(i/def-database-definition ^:const ^:private db-with-some-cruft
+(i/def-database-definition ^:const ^:private db_with_some_cruft
   ["acquired_toucans"
    [{:field-name "species",              :base-type :type/Text}
     {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]
@@ -371,6 +371,6 @@
 (expect
   #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft}
     {:name "ACQUIRED_TOUCANS",       :visibility_type nil}}
-  (data/dataset metabase.sync-database.sync-test/db-with-some-cruft
-    (set (for [table (db/select [Table :name :visibility_type], :db_id (data/id))]
-           (into {} table)))))
+  (data/dataset metabase.sync-database.sync-test/db_with_some_cruft
+                (set (for [table (db/select [Table :name :visibility_type], :db_id (data/id))]
+                       (into {} table)))))
