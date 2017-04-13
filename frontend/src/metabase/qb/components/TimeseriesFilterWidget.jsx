@@ -145,13 +145,11 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                                     query = Query.addFilter(query, filter);
                                 }
                                 // $FlowFixMe
-                                setDatasetQuery(
-                                    {
-                                        ...card.dataset_query,
-                                        query
-                                    },
-                                    { run: true }
-                                );
+                                const datasetQuery: DatasetQuery = {
+                                    ...card.dataset_query,
+                                    query
+                                };
+                                setDatasetQuery(datasetQuery, { run: true });
                             }
                             if (this._popover) {
                                 this._popover.close();
