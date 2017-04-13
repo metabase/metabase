@@ -95,7 +95,7 @@ const SECTIONS = [
                 display_name: "SMTP Security",
                 description: null,
                 type: "radio",
-                options: { none: "None", ssl: "SSL", tls: "TLS" },
+                options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
                 defaultValue: 'none'
             },
             {

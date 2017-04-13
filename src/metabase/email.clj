@@ -15,11 +15,11 @@
 (defsetting email-smtp-password "SMTP password.")
 (defsetting email-smtp-port     "The port your SMTP server uses for outgoing emails.")
 (defsetting email-smtp-security
-  "SMTP secure connection protocol. (tls, ssl, or none)"
+  "SMTP secure connection protocol. (tls, ssl, starttls, or none)"
   :default "none"
   :setter  (fn [new-value]
              (when-not (nil? new-value)
-               (assert (contains? #{"tls" "ssl" "none"} new-value)))
+               (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))
              (setting/set-string! :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
@@ -38,6 +38,8 @@
   (merge m (case (keyword ssl-setting)
              :tls {:tls true}
              :ssl {:ssl true}
+             :starttls {:starttls.enable true
+                        :starttls.required true}
              {})))
 
 (defn- smtp-settings []
@@ -100,12 +102,13 @@
   {:pre [(string? host)
          (integer? port)]}
   (try
-    (let [ssl?    (= security "ssl")
-          proto   (if ssl? "smtps" "smtp")
+    (let [ssl?      (= security "ssl")
+          starttls? (= security "starttls")
+          proto     (if ssl? "smtps" "smtp")
           details (-> details
                       (assoc :proto proto
                              :connectiontimeout "1000"
-                             :timeout "1000")
+                             :timeout "4000")
                       (add-ssl-settings security))
           session (doto (Session/getInstance (make-props sender details))
                     (.setDebug false))]
