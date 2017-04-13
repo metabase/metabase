@@ -133,10 +133,10 @@ const ItemTitle = ({ title, link, linkColorClass, linkHoverClass }) =>
     </h2>
 
 const ContextHeading = ({ children }) =>
-    <h3 className="mb1 text-grey-4">{ children }</h3>
+    <h3 className="my2 text-grey-4">{ children }</h3>
 
 const ContextContent = ({ empty, children }) =>
-    <p className={cx('m0 text-paragraph text-measure', { 'text-grey-3': empty })}>
+    <p className={cx('m0 text-paragraph text-measure text-pre-wrap', { 'text-grey-3': empty })}>
         { children }
     </p>
 

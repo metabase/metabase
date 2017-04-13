@@ -74,9 +74,9 @@
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding embedding_params], :as dashboard} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
-   show_in_getting_started (s/maybe su/NonBlankString)
+   caveats                 (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
+   show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
    parameters              (s/maybe [su/Map])}
