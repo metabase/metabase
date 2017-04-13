@@ -20,7 +20,6 @@
                 var configuredRoot = {{{base_href}}};
                 var actualRoot = "/";
 
-                // THIS IS PROBABLY VULNERABLE TO XSS
                 // Add trailing slashes
                 var backendPathname = {{{uri}}}.replace(/\/*$/, "/");
                 // e.x. "/questions/"
