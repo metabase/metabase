@@ -43,6 +43,7 @@
     "react-copy-to-clipboard": "^4.2.3",
     "react-dom": "^15.5.4",
     "react-draggable": "^2.2.3",
+    "react-element-to-jsx-string": "^6.3.0",
     "react-height": "^2.1.1",
     "react-motion": "^0.4.5",
     "react-redux": "^5.0.4",
@@ -72,7 +73,6 @@
     "z-index": "0.0.1"
   },
   "devDependencies": {
-    "@kadira/storybook": "^2.35.2",
     "@slack/client": "^3.5.4",
     "babel-cli": "^6.11.4",
     "babel-core": "^6.20.0",
@@ -105,7 +105,6 @@
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^0.1.0",
     "html-webpack-plugin": "^2.14.0",
-    "husky": "^0.13.2",
     "image-diff": "^1.6.3",
     "imports-loader": "^0.7.0",
     "jasmine": "^2.4.1",
