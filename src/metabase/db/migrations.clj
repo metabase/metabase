@@ -370,4 +370,4 @@
 ;; drop the legacy QueryExecution table now that we don't need it anymore
 (defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
   ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
-  (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s;" ((db/quote-fn) "query_queryexecution"))]))
+  (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s" ((db/quote-fn) "query_queryexecution"))]))

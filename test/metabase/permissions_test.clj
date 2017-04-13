@@ -130,7 +130,7 @@
      :table_id      (u/get-id table)
      :dataset_query {:database (u/get-id db)
                      :type     "native"
-                     :query    (format "SELECT count(*) FROM \"%s\";" (:name table))}}))
+                     :query    (format "SELECT count(*) FROM \"%s\"" (:name table))}}))
 
 
 (def ^:dynamic *card:db1-count-of-venues*)
@@ -456,7 +456,7 @@
   (let [results ((test-users/user->client username) :post "dataset"
                  {:database (u/get-id db)
                   :type     :native
-                  :native   {:query "SELECT COUNT(*) FROM VENUES;"}})]
+                  :native   {:query "SELECT COUNT(*) FROM VENUES"}})]
     (if (string? results)
       results
       (or (:error results)

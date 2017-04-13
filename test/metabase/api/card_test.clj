@@ -364,7 +364,7 @@
                   Table     [{table-id :id}    {:db_id database-id, :name "CATEGORIES"}]
                   Card      [card              {:dataset_query {:database database-id
                                                                 :type     :native
-                                                                :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
+                                                                :native   {:query "SELECT COUNT(*) FROM CATEGORIES"}}}]]
     ;; delete all permissions for this DB
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     (f database-id card)))
@@ -402,15 +402,15 @@
 
 (defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
   (tt/with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
-               Table     [{table-id :id}    {:db_id database-id, :name "VENUES"}]
-               Card      [card              {:dataset_query {:database database-id
-                                                             :type     :native
-                                                             :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
-                                                                        :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
-                                                                                                   :name         "category"
-                                                                                                   :display_name "Category"
-                                                                                                   :type         "number"
-                                                                                                   :required     true}}}}}]]
+                  Table     [{table-id :id}    {:db_id database-id, :name "VENUES"}]
+                  Card      [card              {:dataset_query {:database database-id
+                                                                :type     :native
+                                                                :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}}"
+                                                                           :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
+                                                                                                      :name         "category"
+                                                                                                      :display_name "Category"
+                                                                                                      :type         "number"
+                                                                                                      :required     true}}}}}]]
     (f database-id card)))
 
 (def ^:private ^:const ^String encoded-params
