@@ -19,15 +19,18 @@ import type {
 
 type Props = {
     card: CardObject,
-    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    runQuery: () => void
+    setDatasetQuery: (
+        datasetQuery: DatasetQuery,
+        options: { run: boolean }
+    ) => void
 };
 
 export default class TimeseriesGroupingWidget extends Component<*, Props, *> {
     _popover: ?any;
 
     render() {
-        const { card, setDatasetQuery, runQuery } = this.props;
+        const { card, setDatasetQuery } = this.props;
+
         if (Card.isStructured(card)) {
             const query = Card.getQuery(card);
             const breakouts = query && Query.getBreakouts(query);
@@ -58,11 +61,11 @@ export default class TimeseriesGroupingWidget extends Component<*, Props, *> {
                                     breakout
                                 );
                                 // $FlowFixMe
-                                setDatasetQuery({
+                                const datasetQuery: DatasetQuery = {
                                     ...card.dataset_query,
                                     query
-                                });
-                                runQuery();
+                                };
+                                setDatasetQuery(datasetQuery, { run: true });
                                 if (this._popover) {
                                     this._popover.close();
                                 }
