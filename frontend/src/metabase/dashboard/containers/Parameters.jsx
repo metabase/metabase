@@ -11,6 +11,7 @@ export default class Parameters extends Component {
     defaultProps = {
         syncQueryString: false,
         vertical: false,
+        commitImmediately: false
     }
 
     componentWillMount() {
@@ -62,7 +63,8 @@ export default class Parameters extends Component {
             editingParameter, setEditingParameter,
             isEditing, isFullscreen, isNightMode, isQB,
             setParameterName, setParameterValue, setParameterDefaultValue, removeParameter,
-            vertical
+            vertical,
+            commitImmediately
         } = this.props;
 
         const parameters = this._parametersWithValues();
@@ -88,6 +90,8 @@ export default class Parameters extends Component {
                         setValue={(value) => setParameterValue(parameter.id, value)}
                         setDefaultValue={(value) => setParameterDefaultValue(parameter.id, value)}
                         remove={() => removeParameter(parameter.id)}
+
+                        commitImmediately={commitImmediately}
                     />
                 ) }
             </div>

@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -17,6 +18,8 @@ import DataReference from "../components/dataref/DataReference.jsx";
 import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 import ActionsWidget from "../components/ActionsWidget.jsx";
+
+import title from "metabase/hoc/Title";
 
 import {
     getCard,
@@ -123,6 +126,7 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ card }) => (card && card.name) || "Question")
 export default class QueryBuilder extends Component {
 
     constructor(props, context) {
@@ -215,7 +219,7 @@ class LegacyQueryBuilder extends Component {
                         <QueryHeader {...this.props}/>
                     </div>
 
-                    <div id="react_qb_editor" className="z2">
+                    <div id="react_qb_editor" className="z2 hide sm-show">
                         { card && card.dataset_query && card.dataset_query.type === "native" ?
                             <NativeQueryEditor
                                 {...this.props}
@@ -241,7 +245,7 @@ class LegacyQueryBuilder extends Component {
                     }
                 </div>
 
-                <div className={cx("SideDrawer", { "SideDrawer--show": showDrawer })}>
+                <div className={cx("SideDrawer hide sm-show", { "SideDrawer--show": showDrawer })}>
                     { uiControls.isShowingDataReference &&
                         <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
