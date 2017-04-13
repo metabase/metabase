@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 

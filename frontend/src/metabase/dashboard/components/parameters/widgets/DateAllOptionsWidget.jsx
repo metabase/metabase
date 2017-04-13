@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, {Component, PropTypes} from "react";
+import React, {Component} from "react";
 import cx from "classnames";
 
 import DatePicker, {DATE_OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";

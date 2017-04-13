@@ -83,7 +83,7 @@
   (re-humanize-table-and-field-names!))
 
 (defsetting enable-advanced-humanization
-  "Metabase can attempt to transform your table and field names into more sensible human readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".
+  "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".
    This doesn’t work all that well if the names are in a language other than English, however. Do you want us to take a guess?"
   :type    :boolean
   :default true

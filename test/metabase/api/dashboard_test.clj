@@ -171,6 +171,19 @@
                                                                                          :points_of_interest      ""
                                                                                          :show_in_getting_started true}))))
 
+;; Can we clear the description of a Dashboard? (#4738)
+(expect
+  nil
+  (tt/with-temp Dashboard [dashboard {:description "What a nice Dashboard"}]
+    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description nil})
+    (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
+
+(expect
+  ""
+  (tt/with-temp Dashboard [dashboard {:description "What a nice Dashboard"}]
+    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description ""})
+    (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
+
 
 ;; ## DELETE /api/dashboard/:id
 (expect

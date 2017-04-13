@@ -98,6 +98,21 @@ If this happens, setting a few JVM options should fix your issue:
 
 Alternatively, you can upgrade to Java 8 instead, which will fix the issue as well.
 
+### Metabase fails to connect to H2 Database on Windows 10
+
+In some situations the Metabase JAR needs to be unblocked so it has permissions to create local files for the application database.
+
+On Windows 10, if you see an error message like
+
+    Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
+
+when running the JAR, you can unblock the file by right-clicking, clicking "Properties", and then clicking "Unblock".
+See Microsoft's documentation [here](https://blogs.msdn.microsoft.com/delay/p/unblockingdownloadedfile/) for more details on unblocking downloaded files.
+
+There are a few other reasons why Metabase might not be able to connect to your H2 DB. Metabase connects to the DB over a TCP port, and it's possible
+that something in your `ipconfig` configuration is blocking the H2 port. See the discussion [here](https://github.com/metabase/metabase/issues/1871) for
+details on how to resolve this issue.
+
 
 # Configuring the Metabase Application Database
 

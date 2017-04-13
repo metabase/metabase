@@ -1,7 +1,8 @@
 /*global ace*/
 /* eslint "react/prop-types": "warn" */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import "./NativeQueryEditor.css";
@@ -347,6 +348,7 @@ export default class NativeQueryEditor extends Component {
                             setParameterValue={setParameterValue}
                             syncQueryString
                             isQB
+                            commitImmediately
                         />
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
                             <span className="mx2">{toggleEditorText}</span>

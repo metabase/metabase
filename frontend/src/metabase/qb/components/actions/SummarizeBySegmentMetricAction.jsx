@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import AggregationPopover from "metabase/qb/components/gui/AggregationPopover";
 

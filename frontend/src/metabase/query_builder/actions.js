@@ -444,7 +444,7 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
 });
 
 export const NOTIFY_CARD_UPDATED = "metabase/qb/NOTIFY_CARD_UPDATED";
-export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (card) => {
+export const notifyCardUpdatedFn = createThunkAction(NOTIFY_CARD_UPDATED, (card) => {
     return (dispatch, getState) => {
         dispatch(updateUrl(card, { dirty: false }));
 

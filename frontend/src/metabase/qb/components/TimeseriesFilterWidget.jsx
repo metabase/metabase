@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import DatePicker
     from "metabase/query_builder/components/filters/pickers/DatePicker";
@@ -154,7 +154,9 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                                 this._popover.close();
                             }
                         }}
-                    >Apply</Button>
+                    >
+                        Apply
+                    </Button>
                 </div>
             </PopoverWithTrigger>
         );

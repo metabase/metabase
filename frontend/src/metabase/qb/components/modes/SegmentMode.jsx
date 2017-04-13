@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import { DEFAULT_ACTIONS } from "../actions";
 import { DEFAULT_DRILLS } from "../drill";
 

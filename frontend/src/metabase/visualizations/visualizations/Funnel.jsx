@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
@@ -51,14 +51,14 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         "funnel.dimension": {
             section: "Data",
             title: "Step",
-            ...dimensionSetting("pie.dimension"),
+            ...dimensionSetting("funnel.dimension"),
             dashboard: false,
             useRawSeries: true,
         },
         "funnel.metric": {
             section: "Data",
             title: "Measure",
-            ...metricSetting("pie.metric"),
+            ...metricSetting("funnel.metric"),
             dashboard: false,
             useRawSeries: true,
         },

@@ -73,7 +73,7 @@
    but to change the value of `enable_embedding` you must be a superuser."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding embedding_params], :as dashboard} :body}]
   {name                    (s/maybe su/NonBlankString)
-   description             (s/maybe su/NonBlankString)
+   description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
    points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)

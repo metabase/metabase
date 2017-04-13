@@ -1,7 +1,5 @@
 /* @flow weak */
 
-import { Component } from "react";
-
 import Scalar      from "./visualizations/Scalar.jsx";
 import Progress    from "./visualizations/Progress.jsx";
 import Table       from "./visualizations/Table.jsx";
