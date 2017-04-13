@@ -47,6 +47,7 @@ export default class EmbedFrame extends Component<*, Props, *> {
                     this.setState({ innerScroll: false })
                 }
             }
+            // $FlowFixMe: flow doesn't know about require.ensure
             require.ensure([], () => {
                 require("iframe-resizer/js/iframeResizer.contentWindow.js")
             });
