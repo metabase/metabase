@@ -34,8 +34,8 @@ import { assocIn, chain } from "icepick";
 const pivotSelection = {
     title: pivotTitle,
     component: PivotSelection,
-    tip: tips['metric']
-}
+    tip: tips["metric"]
+};
 
 const breakoutStep = {
     title: "How do you want to see this metric?",
@@ -48,7 +48,6 @@ const initialStep = {
         return `What would you like to see ${state.currentUser.first_name}?`;
     },
     component: QueryTypeList,
-    tip: tips["start"],
     back: false
 };
 
@@ -60,7 +59,7 @@ const metric = [
         component: MetricLanding,
         tip: tips["metric"],
         skip: {
-            resource: 'metrics',
+            resource: "metrics",
             resolve: metrics => metrics.length > 0
         }
     },
@@ -116,7 +115,7 @@ const geo = [
         component: MetricLanding,
         tip: tips["metric"],
         skip: {
-            resource: 'metrics',
+            resource: "metrics",
             resolve: metrics => metrics.length > 0
         }
     },
@@ -130,7 +129,7 @@ const pivot = [
         component: MetricLanding,
         tip: tips["metric"],
         skip: {
-            resource: 'metrics',
+            resource: "metrics",
             resolve: metrics => metrics.length > 0
         }
     },
@@ -201,9 +200,18 @@ export default function(state = initialState, { type, payload, error }) {
             return chain(state)
                 .assocIn(["card", "display"], setVizForFlow(state.flow.type))
                 .assocIn(["card", "dataset_query", "type"], "query")
-                .assocIn(["card", "dataset_query", "database"], payload.database_id)
-                .assocIn(["card", "dataset_query", "query", "source_table"], payload.table_id)
-                .assocIn(["card", "dataset_query", "query", "aggregation"], [["METRIC", payload.id]])
+                .assocIn(
+                    ["card", "dataset_query", "database"],
+                    payload.database_id
+                )
+                .assocIn(
+                    ["card", "dataset_query", "query", "source_table"],
+                    payload.table_id
+                )
+                .assocIn(
+                    ["card", "dataset_query", "query", "aggregation"],
+                    [["METRIC", payload.id]]
+                )
                 .value();
         case SELECT_METRIC_BREAKOUT:
             return {
@@ -266,7 +274,11 @@ export default function(state = initialState, { type, payload, error }) {
                 }
             };
         case SET_PIVOT_BREAKOUTS:
-            return assocIn(state, ["card", "dataset_query", "query", "breakout"], payload);
+            return assocIn(
+                state,
+                ["card", "dataset_query", "query", "breakout"],
+                payload
+            );
         case SET_AGGREGATION:
             return {
                 ...state,
@@ -282,9 +294,9 @@ export default function(state = initialState, { type, payload, error }) {
                 }
             };
         case ADD_BREAKOUT_STEP:
-            let step = breakoutStep
-            if(state.flow.type === 'pivot') {
-                step = pivotSelection
+            let step = breakoutStep;
+            if (state.flow.type === "pivot") {
+                step = pivotSelection;
             }
             return {
                 ...state,
@@ -302,10 +314,10 @@ export default function(state = initialState, { type, payload, error }) {
                 }
             };
         case SET_MAP:
-        return assocIn(state, ["card", "visualization_settings"], {
-            "map.region": payload,
-            "map.type": "region"
-        })
+            return assocIn(state, ["card", "visualization_settings"], {
+                "map.region": payload,
+                "map.type": "region"
+            });
         case SELECT_FLOW:
             return {
                 ...state,
