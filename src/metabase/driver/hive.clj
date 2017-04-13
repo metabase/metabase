@@ -9,10 +9,13 @@
    [metabase.db.spec :as dbspec]
    [metabase.driver :as driver]
    [metabase.driver.generic-sql :as sql]
+   [metabase.driver.generic-sql.util.unprepare :as unprepare]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.query-processor.util :as qputil]
-   ))
+   )
+  (:import
+   (java.util Date)))
 
 (def ^:const column->base-type
   "Map of Spark SQL (Hive) column types -> Field base types.
@@ -118,11 +121,39 @@
 (defn run-query-without-timezone [driver settings connection query]
   (run-query query connection))
 
+(defprotocol ^:private IUnprepare
+  (^:private unprepare-arg ^String [this]))
+
+(extend-protocol IUnprepare
+  nil     (unprepare-arg [this] "NULL")
+  String  (unprepare-arg [this] (str \' (s/replace this "'" "\\\\'") \')) ; escape single-quotes
+  Boolean (unprepare-arg [this] (if this "TRUE" "FALSE"))
+  Number  (unprepare-arg [this] (str this))
+  Date    (unprepare-arg [this] (first (hsql/format
+                                        (hsql/call :from_unixtime
+                                                   (hx/literal (u/date->iso-8601 this))
+                                                   (hx/literal "YYYY-MM-dd\\\\'T\\\\'HH:mm:ss.SSS\\\\'Z\\\\'"))))))
+
+(defn unprepare
+  "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement."
+  ^String [[sql & args]]
+  (loop [sql sql, [arg & more-args, :as args] args]
+    (if-not (seq args)
+      sql
+      (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-arg arg))
+             more-args))))
+
 ;; we need this because transactions are not supported in Hive 1.2.1
+;; bound variables are not support in Spark SQL (maybe not Hive either, haven't checked)
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native, :as outer-query}]
-  (let [query (assoc query :remark (qputil/query->remark outer-query))]
+  (let [query (-> (assoc query :remark (qputil/query->remark outer-query))
+                  (assoc :query (if (seq (:params query))
+                                  (unprepare (cons (:query query) (:params query)))
+                                  (:query query)))
+                  (dissoc :params))]
+    (log/info "Unprepared hive query: " (prn-str query))
     (do-with-try-catch
      (fn []
        (let [db-connection (sql/db->jdbc-connection-spec database)]
@@ -133,12 +164,16 @@
              (set (for [result (jdbc/query {:connection conn} ["show tables"])]
                     {:name (:tablename result)
                      ;; setting schema to nil seems to work better than (:database result)
-                     :schema nil})))})
+                     ;; :schema nil
+                     :schema (:database result)
+                     })))})
 
 (defn describe-table [driver database table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
+    (log/info "asdf describe " (prn-str table))
     {:name (:name table)
-     :schema nil
+     ;; :schema nil
+     :schema (:schema table)
      :fields (set (for [result (jdbc/query {:connection conn}
                                            [(str "describe " (:name table))])]
                     {:name (:col_name result)
@@ -182,7 +217,7 @@
     ;;:standard-deviation-aggregations
     ;;:expressions
     ;;:expression-aggregations
-    :native-parameters
+    ;;:native-parameters
     })
 
 (defrecord HiveDriver []

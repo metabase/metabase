@@ -58,8 +58,8 @@
     "*Optional* Name of a PK field. Defaults to `\"id\"`.")
 
   (qualified-name-components [this, ^String database-name]
-                             [this, ^String database-name, ^String table-name]
-                             [this, ^String database-name, ^String table-name, ^String field-name]
+    [this, ^String database-name, ^String table-name]
+    [this, ^String database-name, ^String table-name, ^String field-name]
     "*Optional*. Return a vector of String names that can be used to refer to a database, table, or field.
      This is provided so drivers have the opportunity to inject things like schema names or even modify the names themselves.
 
@@ -71,8 +71,8 @@
     "*Optional*. Quote a name. Defaults to using double quotes.")
 
   (qualify+quote-name ^String [this, ^String database-name]
-                      ^String [this, ^String database-name, ^String table-name]
-                      ^String [this, ^String database-name, ^String table-name, ^String field-name]
+    ^String [this, ^String database-name, ^String table-name]
+    ^String [this, ^String database-name, ^String table-name, ^String field-name]
     "*Optional*. Qualify names and combine into a single, quoted name. By default, this combines the results of `qualified-name-components`
      and `quote-name`.
 
@@ -86,7 +86,7 @@
     "*Optional*. Load the rows for a specific table into a DB. `load-data-chunked` is the default implementation.")
 
   (execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
-    "*Optional*. Execute a string of raw SQL. Context is either `:server` or `:db`."))
+      "*Optional*. Execute a string of raw SQL. Context is either `:server` or `:db`."))
 
 
 (defn- default-create-db-sql [driver {:keys [database-name]}]
@@ -216,8 +216,8 @@
                         (h/values values))
         sql+args    (hx/unescape-dots (binding [hformat/*subquery?* false]
                                         (hsql/format hsql-form
-                                          :quoting             (sql/quote-style driver)
-                                          :allow-dashed-names? true)))]
+                                                     :quoting             (sql/quote-style driver)
+                                                     :allow-dashed-names? true)))]
     (try (jdbc/execute! spec sql+args)
          (catch SQLException e
            (println (u/format-color 'red "INSERT FAILED: \n%s\n" sql+args))
@@ -234,7 +234,7 @@
           rows       (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
-(def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn))
+(def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn load-data-add-ids))
 (def load-data-chunked!                "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
 (def load-data-one-at-a-time!          "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
 (def load-data-chunked-parallel!       "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
