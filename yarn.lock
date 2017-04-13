@@ -6126,6 +6126,12 @@ prop-types@^15.5.4, prop-types@~15.5.0:
   dependencies:
     fbjs "^0.8.9"
 
+prop-types@^15.5.6, prop-types@^15.5.7, prop-types@~15.5.7:
+  version "15.5.8"
+  resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.5.8.tgz#6b7b2e141083be38c8595aa51fc55775c7199394"
+  dependencies:
+    fbjs "^0.8.9"
+
 proxy-addr@~1.1.3:
   version "1.1.3"
   resolved "https://registry.yarnpkg.com/proxy-addr/-/proxy-addr-1.1.3.tgz#dc97502f5722e888467b3fa2297a7b1ff47df074"
@@ -6290,6 +6296,15 @@ react-dom@15.5.0:
     object-assign "^4.1.0"
     prop-types "~15.5.0"
 
+react-dom@^15.5.3:
+  version "15.5.4"
+  resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-15.5.4.tgz#ba0c28786fd52ed7e4f2135fe0288d462aef93da"
+  dependencies:
+    fbjs "^0.8.9"
+    loose-envify "^1.1.0"
+    object-assign "^4.1.0"
+    prop-types "~15.5.7"
+
 react-draggable@^2.1.0, react-draggable@^2.2.3:
   version "2.2.3"
   resolved "https://registry.yarnpkg.com/react-draggable/-/react-draggable-2.2.3.tgz#17628cb8aaefed639d38e0021b978a685d80b08b"
@@ -6351,14 +6366,17 @@ react-resizable@^1.0.1:
   dependencies:
     react-draggable "^2.1.0"
 
-react-retina-image@^2.0.0:
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/react-retina-image/-/react-retina-image-2.0.3.tgz#e53d97f3bb6e2bb845a3f42db0eabeb7c961ad1f"
+react-retina-image@^2.0.4:
+  version "2.0.4"
+  resolved "https://registry.yarnpkg.com/react-retina-image/-/react-retina-image-2.0.4.tgz#c47de4697f0fa6c5f6535992a9f14a6d6ca86c79"
   dependencies:
     array-equal "^1.0.0"
     image-exists "^1.1.0"
     is-retina "^1.0.3"
     object-assign "^4.1.0"
+    prop-types "^15.5.6"
+    react "^15.5.3"
+    react-dom "^15.5.3"
 
 react-router-redux@^4.0.8:
   version "4.0.8"
@@ -6406,6 +6424,15 @@ react@15.5.0:
     loose-envify "^1.1.0"
     object-assign "^4.1.0"
     prop-types "15.5.0-alpha.0"
+
+react@^15.5.3:
+  version "15.5.4"
+  resolved "https://registry.yarnpkg.com/react/-/react-15.5.4.tgz#fa83eb01506ab237cdc1c8c3b1cea8de012bf047"
+  dependencies:
+    fbjs "^0.8.9"
+    loose-envify "^1.1.0"
+    object-assign "^4.1.0"
+    prop-types "^15.5.7"
 
 read-cache@^1.0.0:
   version "1.0.0"
