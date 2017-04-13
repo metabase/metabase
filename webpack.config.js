@@ -137,8 +137,7 @@ var config = module.exports = {
             'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
             'd3':                   __dirname + '/node_modules/d3/d3.min.js',
             'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
-            'dc':                   __dirname + '/node_modules/dc/dc.min.js',
-            'humanize':             __dirname + '/node_modules/humanize-plus/dist/humanize.min.js'
+            'dc':                   __dirname + '/node_modules/dc/dc.min.js'
         }
     },
 

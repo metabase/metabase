@@ -28,6 +28,7 @@ export default class DashCard extends Component {
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         dashcardData: PropTypes.object.isRequired,
+        cardDurations: PropTypes.object.isRequired,
         parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
