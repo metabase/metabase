@@ -1,11 +1,14 @@
 (ns metabase.driver.bigquery-test
-  (:require metabase.driver.bigquery
+  (:require [expectations :refer :all]
+            metabase.driver.bigquery
             [metabase.models.database :as database]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :as qptest]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
-                                [interface :refer [def-database-definition]])))
+                                [interface :refer [def-database-definition]])
+            [metabase.test.util :as tu]))
 
 
 ;; Test native queries
@@ -35,9 +38,53 @@
 (expect-with-engine :bigquery
   {:rows    [[113]]
    :columns ["User_ID_Plus_Venue_ID"]}
-  (qptest/rows+column-names (qp/process-query {:database (data/id)
-                                               :type     "query"
-                                               :query    {:source_table (data/id :checkins)
-                                                          :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
-                                                                                              ["field-id" (data/id :checkins :venue_id)]]]
-                                                                                  "User ID Plus Venue ID"]]}})))
+  (qptest/rows+column-names
+    (qp/process-query {:database (data/id)
+                       :type     "query"
+                       :query    {:source_table (data/id :checkins)
+                                  :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
+                                                                      ["field-id" (data/id :checkins :venue_id)]]]
+                                                  "User ID Plus Venue ID"]]}})))
+
+;; make sure BigQuery can handle two aggregations with the same name (#4089)
+(tu/resolve-private-vars metabase.driver.bigquery
+  deduplicate-aliases update-select-subclause-aliases)
+
+(expect
+  ["sum" "count" "sum_2" "avg" "sum_3" "min"]
+  (deduplicate-aliases ["sum" "count" "sum" "avg" "sum" "min"]))
+
+(expect
+  ["sum" "count" "sum_2" "avg" "sum_2_2" "min"]
+  (deduplicate-aliases ["sum" "count" "sum" "avg" "sum_2" "min"]))
+
+(expect
+  ["sum" "count" nil "sum_2"]
+  (deduplicate-aliases ["sum" "count" nil "sum"]))
+
+(expect
+  [[:user_id "user_id_2"] :venue_id]
+  (update-select-subclause-aliases [[:user_id "user_id"] :venue_id]
+                                   ["user_id_2" nil]))
+
+
+(expect-with-engine :bigquery
+  {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
+  (qptest/rows+column-names
+    (qp/process-query {:database (data/id)
+                       :type     "query"
+                       :query    (-> {}
+                                     (ql/source-table (data/id :checkins))
+                                     (ql/aggregation (ql/sum (ql/field-id (data/id :checkins :user_id)))
+                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))))})))
+
+(expect-with-engine :bigquery
+  {:rows [[7929 7929 7929]], :columns ["sum" "sum_2" "sum_3"]}
+  (qptest/rows+column-names
+    (qp/process-query {:database (data/id)
+                       :type     "query"
+                       :query    (-> {}
+                                     (ql/source-table (data/id :checkins))
+                                     (ql/aggregation (ql/sum (ql/field-id (data/id :checkins :user_id)))
+                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))
+                                                     (ql/sum (ql/field-id (data/id :checkins :user_id)))))})))

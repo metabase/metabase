@@ -213,6 +213,9 @@ ICON_PATHS["horizontal_bar"] = {
     }
 };
 
+// $FlowFixMe
+ICON_PATHS["scalar"] = ICON_PATHS["number"];
+
 export function loadIcon(name) {
     var def = ICON_PATHS[name];
     if (!def) {

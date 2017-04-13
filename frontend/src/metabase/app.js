@@ -16,6 +16,7 @@ import { getStore } from './store'
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { setErrorPage } from "metabase/redux/app";
+import { clearCurrentUser } from "metabase/redux/user";
 
 import { Router, useRouterHistory } from "react-router";
 import { createHistory } from 'history'
@@ -74,6 +75,7 @@ function _init(reducers, getRoutes, callback) {
         if (url === "/api/user/current") {
             return
         }
+        store.dispatch(clearCurrentUser());
         store.dispatch(push("/auth/login"));
     });
 
