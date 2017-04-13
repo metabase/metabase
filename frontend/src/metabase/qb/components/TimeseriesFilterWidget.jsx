@@ -33,8 +33,10 @@ type Props = {
     className: string,
     card: CardObject,
     tableMetadata: TableMetadata,
-    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    runQuery: () => void
+    setDatasetQuery: (
+        datasetQuery: DatasetQuery,
+        options: { run: boolean }
+    ) => void
 };
 
 type State = {
@@ -89,8 +91,7 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
             className,
             card,
             tableMetadata,
-            setDatasetQuery,
-            runQuery
+            setDatasetQuery
         } = this.props;
         const { filter, filterIndex, currentFilter } = this.state;
         let currentDescription;
@@ -144,11 +145,13 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                                     query = Query.addFilter(query, filter);
                                 }
                                 // $FlowFixMe
-                                setDatasetQuery({
-                                    ...card.dataset_query,
-                                    query
-                                });
-                                runQuery();
+                                setDatasetQuery(
+                                    {
+                                        ...card.dataset_query,
+                                        query
+                                    },
+                                    { run: true }
+                                );
                             }
                             if (this._popover) {
                                 this._popover.close();
