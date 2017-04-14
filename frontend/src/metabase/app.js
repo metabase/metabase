@@ -72,7 +72,7 @@ function _init(reducers, getRoutes, callback) {
 
     // received a 401 response
     api.on("401", (url) => {
-        if (url === "/api/user/current") {
+        if (url.indexOf("/api/user/current") >= 0) {
             return
         }
         store.dispatch(clearCurrentUser());
