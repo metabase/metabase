@@ -15,8 +15,9 @@
 (defn- base-href []
   (str (.getPath (clojure.java.io/as-url (public-settings/site-url))) "/"))
 
-(defn- escape-script [text]
+(defn- escape-script
   "Escapes '</script' so it can be safely included in an inline <script> tag"
+  [text]
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
   (s/replace text #"</script" "</scr\\\\ipt"))
 
