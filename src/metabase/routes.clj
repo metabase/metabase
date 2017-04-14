@@ -1,5 +1,6 @@
 (ns metabase.routes
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [cheshire.core :as json]
             (compojure [core :refer [context defroutes GET]]
                        [route :as route])
@@ -11,14 +12,19 @@
             [metabase.util :as u]
             [metabase.util.embed :as embed]))
 
+(defn- load-file [path]
+  (slurp (or (io/resource path)
+             (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
+
+(defn- load-template [path variables]
+  (stencil/render-string (load-file path) variables))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
-        (stencil/render-string (slurp (or (io/resource (str "frontend_client/" entry ".html"))
-                                          (throw (Exception. (str "Cannot find './resources/frontend_client/" entry ".html'. Did you remember to build the Metabase frontend?")))))
-                               {:bootstrap_json (json/generate-string (public-settings/public-settings))
-                                :embed_code     (when embeddable? (embed/head uri))})
-        (slurp (io/resource "frontend_client/init.html")))
+        (load-template (str "frontend_client/" entry ".html")
+                       {:bootstrap_json (json/generate-string (public-settings/public-settings))
+                        :embed_code     (when embeddable? (embed/head uri))})
+        (load-file "frontend_client/init.html"))
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
 

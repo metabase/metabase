@@ -1,9 +1,0 @@
-databaseChangeLog:
-  - changeSet:
-      id: 23
-      author: agilliland
-      changes:
-        - modifyDataType:
-            tableName: metabase_table
-            columnName: rows
-            newDataType: BIGINT
