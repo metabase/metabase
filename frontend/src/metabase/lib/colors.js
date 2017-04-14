@@ -1,3 +1,9 @@
+// @flow
+
+type ColorName = string;
+type Color = string
+type ColorFamily = { [name: ColorName]: Color };
+
 export const normal = {
     blue: '#509EE3',
     green: '#9CC177',
@@ -57,3 +63,9 @@ export const harmony = [
     '#c1a877',
     '#f95c67',
 ]
+
+export const getRandomColor = (family: ColorFamily): Color => {
+    // $FlowFixMe: Object.values doesn't preserve the type :-/
+    const colors: Color[] = Object.values(family)
+    return colors[Math.floor(Math.random() * colors.length)]
+}
