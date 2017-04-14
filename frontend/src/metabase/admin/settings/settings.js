@@ -1,5 +1,5 @@
 
-import { createThunkAction } from "metabase/lib/redux";
+import { createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
 
 import { SettingsApi, EmailApi, SlackApi } from "metabase/services";
 
@@ -36,8 +36,9 @@ export const UPDATE_EMAIL_SETTINGS = "metabase/admin/settings/UPDATE_EMAIL_SETTI
 export const updateEmailSettings = createThunkAction(UPDATE_EMAIL_SETTINGS, function(settings) {
     return async function(dispatch, getState) {
         try {
-            await EmailApi.updateSettings(settings);
+            const result = await EmailApi.updateSettings(settings);
             await dispatch(refreshSiteSettings());
+            return result;
         } catch(error) {
             console.log("error updating email settings", settings, error);
             throw error;
@@ -75,4 +76,14 @@ export const reloadSettings = createThunkAction(RELOAD_SETTINGS, function() {
     return async function(dispatch, getState) {
         await dispatch(refreshSiteSettings());
     }
+});
+
+// REDUCERS
+
+export const warnings = handleActions({
+    [UPDATE_EMAIL_SETTINGS]: { next: (state, { payload }) => payload["with-corrections"] }
+}, {});
+
+export default combineReducers({
+    warnings
 });
