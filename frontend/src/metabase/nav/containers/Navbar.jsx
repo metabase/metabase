@@ -143,8 +143,7 @@ export default class Navbar extends Component {
                     </li>
                     <li className="pl3 hide sm-show">
                         <Link to={Urls.question()} data-metabase-event={"Navbar;New Question"} style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
-                            New
-                            <span>Question</span>
+                            New <span>Question</span>
                         </Link>
                     </li>
                     <li className="flex-align-right transition-background">
