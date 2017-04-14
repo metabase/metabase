@@ -1,89 +1,89 @@
-import React, { Component } from "react"
+import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import Icon from "metabase/components/Icon"
-import cx from 'classnames'
+import Icon from "metabase/components/Icon";
+import cx from "classnames";
 
-import {
-    isDate
-} from "metabase/lib/schema_metadata"
+import ResponsiveList from "metabase/components/ResponsiveList";
 
-import {
-    selectAndAdvance,
-    setPivotBreakouts,
-    setTip
-} from '../actions'
+import { isDate } from "metabase/lib/schema_metadata";
 
-import {
-    getBreakoutsForFlow,
-    getCurrentStepTip
-} from '../selectors'
+import { selectAndAdvance, setPivotBreakouts, setTip } from "../actions";
+
+import { getBreakoutsForFlow, getCurrentStepTip } from "../selectors";
 
 const mapStateToProps = state => ({
     fields: getBreakoutsForFlow(state),
     tip: getCurrentStepTip(state)
-})
+});
 
-const mapDispatchToProps = ({
+const mapDispatchToProps = {
     selectAndAdvance,
     setPivotBreakouts,
     setTip
-})
+};
 
-const SelectedBreakouts = ({ breakouts, remove }) =>
+const SelectedBreakouts = ({ breakouts, remove }) => (
     <ol>
-        { breakouts.map((breakout, index) =>
+        {breakouts.map((breakout, index) => (
             <li key={breakout.id} className="inline-block mr1">
                 <div
                     className="bg-brand p1 text-white rounded flex align-center"
                 >
                     {breakout.display_name}
-                    <Icon className="text-white" name="close" onClick={() => remove(index) } />
+                    <Icon
+                        className="text-white"
+                        name="close"
+                        onClick={() => remove(index)}
+                    />
                 </div>
             </li>
-        )}
+        ))}
     </ol>
-
+);
 
 @connect(mapStateToProps, mapDispatchToProps)
 class PivotSelection extends Component {
     constructor(props) {
-        super(props)
+        super(props);
         this.state = {
             breakouts: []
-        }
-        this.tip = this.props.tip
+        };
+        this.tip = this.props.tip;
     }
 
-    selectBreakout = (breakout) => {
-        if(this.state.breakouts.length === 2) {
-            return false
+    selectBreakout = breakout => {
+        if (this.state.breakouts.length === 2) {
+            return false;
         }
-        return this.setState({ breakouts: this.state.breakouts.concat([breakout]) })
-    }
+        return this.setState({
+            breakouts: this.state.breakouts.concat([breakout])
+        });
+    };
 
-    removeBreakout = (index) => {
-        return this.setState({ breakouts: this.state.breakouts.splice(index, 1) })
-    }
+    removeBreakout = index => {
+        return this.setState({
+            breakouts: this.state.breakouts.splice(index, 1)
+        });
+    };
 
     completeStep = () => {
-        const { setPivotBreakouts, selectAndAdvance } = this.props
+        const { setPivotBreakouts, selectAndAdvance } = this.props;
         const formattedBreakouts = this.state.breakouts.map(field => {
-            let x
-            console.log(field)
-            if(isDate(field)) {
-                x =["datetime-field", ["field-id", field.id], "as", "day"]
+            let x;
+            console.log(field);
+            if (isDate(field)) {
+                x = ["datetime-field", ["field-id", field.id], "as", "day"];
             } else {
-                x = ["field-id", field.id]
+                x = ["field-id", field.id];
             }
-            return x
-        })
-        return selectAndAdvance(() => setPivotBreakouts(formattedBreakouts))
-
-    }
-    render () {
-        const { fields } = this.props
-        const { breakouts } = this.state
+            return x;
+        });
+        return selectAndAdvance(() => setPivotBreakouts(formattedBreakouts));
+    };
+    render() {
+        const { fields } = this.props;
+        const { breakouts } = this.state;
         return (
             <div>
                 <div className="flex align-center">
@@ -92,18 +92,20 @@ class PivotSelection extends Component {
                         breakouts={breakouts}
                         remove={this.removeBreakout}
                     />
-                    { breakouts.length === 2 && (
+                    {breakouts.length === 2 &&
                         <button
                             className="ml-auto Button Button--primary"
                             onClick={() => this.completeStep()}
                         >
                             Next
-                        </button>
-                    )}
+                        </button>}
                 </div>
 
-                <div className="border-top">
-                    { fields.map(field =>
+                <ResponsiveList
+                    items={fields}
+                    onClick={field => this.selectBreakout(field)}
+                />
+                {/* fields.map(field =>
                         <div
                             key={field.id}
                             className={cx(
@@ -117,10 +119,9 @@ class PivotSelection extends Component {
                         >
                             {field.display_name}
                         </div>
-                    )}
-                </div>
+                    ) */}
             </div>
-        )
+        );
     }
 }
 

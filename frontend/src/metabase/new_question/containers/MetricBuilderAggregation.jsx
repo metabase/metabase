@@ -1,12 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import cxs from "cxs";
 
-import Card from "../components/Card";
-import Surface from "metabase/components/Surface";
 import ResponsiveList from "metabase/components/ResponsiveList";
-
-import { normal } from "metabase/lib/colors";
 
 import ExpressionEditorTextfield
     from "metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx";
@@ -17,12 +12,7 @@ import {
     getCurrentStep
 } from "../selectors";
 
-import {
-    selectAndAdvance,
-    setAggregation,
-    selectMetric,
-    setTip
-} from "../actions";
+import { selectAndAdvance, setAggregation, selectMetric } from "../actions";
 
 const mapStateToProps = state => ({
     table: getSelectedTableMetadata(state),
@@ -33,68 +23,47 @@ const mapStateToProps = state => ({
 const mapDispatchToProps = {
     selectAndAdvance,
     setAggregation,
-    selectMetric,
-    setTip
+    selectMetric
 };
 
 class AggBasics extends Component {
-    constructor() {
-        super();
-        this.state = {
-            fields: null
-        };
-    }
+    state = {
+        fields: null
+    };
+
     render() {
-        const { table, onClick, setTip, clearTip } = this.props;
+        const { table, onClick } = this.props;
         return (
             <div>
-                <ol
-                    className={cxs({
-                        display: this.state.fields ? "block" : "flex",
-                        flexWrap: "wrap"
-                    })}
-                >
-                    {this.state.fields
-                        ? this.state.fields.map(field => (
-                              <div
-                                  onClick={() =>
-                                      onClick([
-                                          this.state.option,
-                                          ["field-id", field.id]
-                                      ])}
-                              >
-                                  {field.display_name}
-                              </div>
-                          ))
-                        : Object.values(table.aggregation_options)
-                              .filter(
-                                  option => option.short !== "rows"
-                                  // raw data isn't a thing here
-                              )
-                              .map(option => (
-                                  <li
-                                      className={cxs({
-                                          flex: "0 1 25%",
-                                          padding: "1em"
-                                      })}
-                                      onClick={() => {
-                                          if (option.requiresField) {
-                                              this.setState({
-                                                  fields: option.fields[0],
-                                                  option: option.short
-                                              });
-                                          } else {
-                                              const aggregation = option.short;
-                                              onClick([aggregation]);
-                                          }
-                                      }}
-                                  >
-                                      <Card>
-                                          <h3>{option.name}</h3>
-                                      </Card>
-                                  </li>
-                              ))}
-                </ol>
+                {this.state.fields
+                    ? <ResponsiveList
+                          items={this.state.fields}
+                          onClick={field =>
+                              onClick([
+                                  this.state.option,
+                                  ["field-id", field.id]
+                              ])}
+                      />
+                    : <ResponsiveList
+                          items={Object.values(
+                              table.aggregation_options
+                          ).filter(
+                              option => option.short !== "rows"
+                              // raw data isn't a thing here
+                          )}
+                          onClick={option => {
+                              if (option.requiresField) {
+                                  this.setState({
+                                      fields: option.fields[0],
+                                      option: option.short
+                                  });
+                              } else {
+                                  const aggregation = option.short;
+                                  onClick([aggregation]);
+                              }
+                          }}
+                      />}
+
             </div>
         );
     }
@@ -167,8 +136,6 @@ class MetricBuilderAggregation extends Component {
                 {!expression &&
                     <AggBasics
                         table={table}
-                        setTip={this.props.setTip}
-                        clearTip={() => this.props.setTip(this.tip)}
                         onClick={aggregation =>
                             this.setState({ expression: aggregation })}
                     />}
@@ -177,4 +144,18 @@ class MetricBuilderAggregation extends Component {
     }
 }
 
+/*
+this.state.fields.map(field => (
+                              <div
+                                  onClick={() =>
+                                      onClick([
+                                          this.state.option,
+                                          ["field-id", field.id]
+                                      ])}
+                              >
+                                  {field.display_name}
+                              </div>
+                          ))
+
+*/
 export default MetricBuilderAggregation;

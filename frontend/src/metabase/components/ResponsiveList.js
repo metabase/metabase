@@ -107,7 +107,7 @@ class ResponsiveList extends Component {
                             card = (
                                 <Surface>
                                     <div className={cxs({ padding: '2em' })}>
-                                        <CardTitle>{item.name}</CardTitle>
+                                        <CardTitle>{ item.display_name ? item.display_name : item.name}</CardTitle>
                                         <Text>{item.description}</Text>
                                     </div>
                                 </Surface>
@@ -124,7 +124,7 @@ class ResponsiveList extends Component {
                         )
                     } else {
                         let list = [
-                            <CardTitle>{item.name}</CardTitle>,
+                            <CardTitle>{ item.display_name ? item.display_name : item.name}</CardTitle>,
                             <Text>{item.diescription}</Text>
                         ]
                         if(listDisplay) {
