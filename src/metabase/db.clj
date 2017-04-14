@@ -212,11 +212,12 @@
 
    see https://github.com/metabase/metabase/issues/3715"
   [conn]
-  (let [fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
-                         (empty? (jdbc/metadata-query (.getTables meta nil nil "DATABASECHANGELOG" (into-array String ["TABLE"])))))
-        query (if (= (db-type) :h2)
-                "UPDATE DATABASECHANGELOG SET FILENAME = ?"
-                "UPDATE databasechangelog SET filename = ?")]
+  (let [liquibases-table-name (if (= (db-type) :h2)
+                                "DATABASECHANGELOG"
+                                "databasechangelog")
+        fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
+                         (empty? (jdbc/metadata-query (.getTables meta nil nil liquibases-table-name (into-array String ["TABLE"])))))
+        query (format "UPDATE %s SET FILENAME = ?" liquibases-table-name)]
     (when-not fresh-install?
       (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
 
