@@ -20,22 +20,40 @@ const CardTitle =({ children }) =>
 class ResponsiveList extends Component {
 
     props = {
-        items: Array
+        items: Array,
+        cardDisplay: Function,
+        onClick: Function
+    }
+
+    constructor() {
+        super()
     }
 
     render () {
-        const { items } = this.props
+        const { items, cardDisplay, onClick } = this.props
         return (
             <ol className={cardStyle}>
-                { items.map(item => {
-                    return (
-                        <li className={cxs({ padding: '1em', flex: '0 50%' })}>
+                { items.map((item, index) => {
+                    let card
+                    if(cardDisplay) {
+                        card = cardDisplay(item)
+                    } else {
+                        card = (
                             <Surface>
                                 <div className={cxs({ padding: '2em' })}>
                                     <CardTitle>{item.name}</CardTitle>
                                     <Text>{item.description}</Text>
                                 </div>
                             </Surface>
+                        )
+                    }
+                    return (
+                        <li
+                            key={index}
+                            className={cxs({ padding: '1em', flex: '0 50%' })}
+                            onClick={() => onClick(item) }
+                        >
+                            { card }
                         </li>
                     )
                 })}

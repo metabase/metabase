@@ -18,6 +18,7 @@ import {
 import QueryTypeList from "./components/QueryTypeList";
 
 import MetricLanding from "./containers/MetricLanding";
+import MetricTypeSelection from "./containers/MetricTypeSelection";
 import MetricBuilderDatabases from "./containers/MetricBuilderDatabases";
 import MetricBuilderSchemas from "./containers/MetricBuilderSchemas";
 import MetricBuilderTables from "./containers/MetricBuilderTables";
@@ -54,6 +55,11 @@ const initialStep = {
 const metricTitle = "Metrics";
 
 const metric = [
+    {
+        title: "Explore",
+        tip: tips["metric"],
+        component: MetricTypeSelection
+    },
     {
         title: "Pick a metric",
         component: MetricLanding,
