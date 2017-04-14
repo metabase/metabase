@@ -27,6 +27,7 @@ class MetricBuilderTables extends Component {
             <ResponsiveList
                 items={tables}
                 onClick={table => selectAndAdvance(() => setTable(table.id))}
+                listDisplay={table => <div>{table.display_name}</div>}
             />
         );
     }

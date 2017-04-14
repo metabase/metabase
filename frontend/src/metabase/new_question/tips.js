@@ -26,6 +26,10 @@ const tips = {
     breakout: {
         title: "Break it down",
         text: "It's often helpful to see a metric by one of its 'dimensions' to get a better sense of how it changes over time or based on a category. These are all the ways you can see the metric you selected."
+    },
+    lists: {
+        title: "Pick a list",
+        text: "Lists are lists of things that can be listed"
     }
 };
 

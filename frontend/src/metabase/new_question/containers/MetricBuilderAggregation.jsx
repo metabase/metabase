@@ -66,31 +66,34 @@ class AggBasics extends Component {
                                   {field.display_name}
                               </div>
                           ))
-                        : Object.values(
-                              table.aggregation_options
-                          ).map(option => (
-                              <li
-                                  className={cxs({
-                                      flex: "0 1 25%",
-                                      padding: "1em"
-                                  })}
-                                  onClick={() => {
-                                      if (option.requiresField) {
-                                          this.setState({
-                                              fields: option.fields[0],
-                                              option: option.short
-                                          });
-                                      } else {
-                                          const aggregation = option.short;
-                                          onClick([aggregation]);
-                                      }
-                                  }}
-                              >
-                                  <Card>
-                                      <h3>{option.name}</h3>
-                                  </Card>
-                              </li>
-                          ))}
+                        : Object.values(table.aggregation_options)
+                              .filter(
+                                  option => option.short !== "rows"
+                                  // raw data isn't a thing here
+                              )
+                              .map(option => (
+                                  <li
+                                      className={cxs({
+                                          flex: "0 1 25%",
+                                          padding: "1em"
+                                      })}
+                                      onClick={() => {
+                                          if (option.requiresField) {
+                                              this.setState({
+                                                  fields: option.fields[0],
+                                                  option: option.short
+                                              });
+                                          } else {
+                                              const aggregation = option.short;
+                                              onClick([aggregation]);
+                                          }
+                                      }}
+                                  >
+                                      <Card>
+                                          <h3>{option.name}</h3>
+                                      </Card>
+                                  </li>
+                              ))}
                 </ol>
             </div>
         );

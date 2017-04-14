@@ -34,34 +34,26 @@ const layout = cxs({
     height: 537
 });
 
-class Hoverable extends Component {
-    render() {
-        return this.props.children;
-    }
-}
-
 const QueryTypeCard = ({ name, subtitle }) => (
-    <Hoverable>
-        <Surface>
-            <div
-                className={cxs({
-                    textAlign: "center",
-                    padding: "4em",
-                    display: "flex",
-                    flexDirection: "column",
-                    height: "100%"
-                })}
-            >
-                <div className={cxs({ flex: "0 0 66.66%", height: "100%" })}>
-                    Illustration
-                </div>
-                <div className={cxs({ alignSelf: "flex-end" })}>
-                    <Title>{name}</Title>
-                    <Text>{subtitle}</Text>
-                </div>
+    <Surface>
+        <div
+            className={cxs({
+                textAlign: "center",
+                padding: "4em",
+                display: "flex",
+                flexDirection: "column",
+                height: "100%"
+            })}
+        >
+            <div className={cxs({ flex: "0 0 66.66%", height: "100%" })}>
+                Illustration
             </div>
-        </Surface>
-    </Hoverable>
+            <div className={cxs({ alignSelf: "flex-end" })}>
+                <Title>{name}</Title>
+                <Text>{subtitle}</Text>
+            </div>
+        </div>
+    </Surface>
 );
 
 @connect(() => ({}), {

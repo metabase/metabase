@@ -17,11 +17,21 @@ const cardStyle = cxs({
 const listStyle = cxs({
     background: '#fff',
     border: '1px solid #DCE1E4',
-    borderRadius: 4,
+    borderRadius: 6,
+})
+
+const listItemStyle = cxs({
+    color: normal.blue,
+    padding: '1em 2em',
+    ':hover': {
+        color: '#fff',
+        backgroundColor: normal.blue,
+        cursor: 'pointer'
+    }
 })
 
 const CardTitle =({ children }) =>
-    <h2 className={cxs({ color: normal.blue })}>
+    <h2>
         { children }
     </h2>
 
@@ -73,7 +83,7 @@ class ResponsiveList extends Component {
     }
 
     render () {
-        const { items, cardDisplay, onClick } = this.props
+        const { items, cardDisplay, listDisplay, onClick } = this.props
         return (
             <ol className={determineListStyle(items.length)}>
                 { items.length > 6 && (
@@ -113,14 +123,20 @@ class ResponsiveList extends Component {
                             </li>
                         )
                     } else {
+                        let list = [
+                            <CardTitle>{item.name}</CardTitle>,
+                            <Text>{item.diescription}</Text>
+                        ]
+                        if(listDisplay) {
+                            list = listDisplay(item)
+                        }
                         return (
                             <li
                                 key={index}
-                                className={cxs({ padding: '2em' })}
+                                className={listItemStyle}
                                 onClick={() => onClick(item) }
                             >
-                                <CardTitle>{item.name}</CardTitle>
-                                <Text>{item.diescription}</Text>
+                                { list }
                             </li>
                         )
                     }

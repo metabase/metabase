@@ -40,7 +40,7 @@ const BackButton = ({ goBack }) => (
     <div
         className={cxs({
             borderRadius: 99,
-            border: "1px solid #93A1AB",
+            border: "1px solid #DCE1E4",
             backgroundColor: "#fff",
             display: "flex",
             alignItems: "center",
@@ -97,7 +97,7 @@ class NewQuestion extends Component {
 
                     {tip &&
                         <Sidebar>
-                            <div className={cxs({ marginTop: "6em" })}>
+                            <div className={cxs({ marginTop: "46%" })}>
                                 <Tip tip={tip} />
                             </div>
                         </Sidebar>}
