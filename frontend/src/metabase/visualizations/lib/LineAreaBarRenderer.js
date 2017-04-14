@@ -954,7 +954,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
         datas.map(data => dataset.add(data));
 
         dimension = dataset.dimension(d => d[0]);
-        groups = datas.map((data, seriesIndex) => {
+        groups = datas.filter(data => data.length > 0).map((data, seriesIndex) => {
             let dim = crossfilter(data).dimension(d => d[0]);
             return data[0].slice(1).map((_, metricIndex) =>
                 reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
