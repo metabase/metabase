@@ -1,7 +1,7 @@
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment";
-import Humanize from "humanize";
+import Humanize from "humanize-plus";
 import React from "react";
 
 import ExternalLink from "metabase/components/ExternalLink.jsx";

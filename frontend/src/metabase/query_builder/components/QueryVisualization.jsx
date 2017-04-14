@@ -116,10 +116,10 @@ export default class QueryVisualization extends Component {
         const isEmbeddingEnabled = MetabaseSettings.get("embedding");
         return (
             <div className="relative flex align-center flex-no-shrink mt2 mb1" style={{ minHeight: "2em" }}>
-                <div className="z4 flex-full">
+                <div className="z4 flex-full hide sm-show">
                   { !isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
                 </div>
-                <div className="z3">
+                <div className="z3 full">
                     <Tooltip tooltip={runButtonTooltip}>
                         <RunButton
                             isRunnable={isRunnable}
@@ -151,7 +151,7 @@ export default class QueryVisualization extends Component {
                     }
                     { !isResultDirty && result && !result.error ?
                         <QueryDownloadWidget
-                            className="mx1"
+                            className="mx1 hide sm-show"
                             card={card}
                             result={result}
                         />
@@ -161,7 +161,7 @@ export default class QueryVisualization extends Component {
                         (isEmbeddingEnabled && isAdmin)
                     ) ?
                         <QuestionEmbedWidget
-                            className="mx1"
+                            className="mx1 hide sm-show"
                             card={card}
                         />
                     : null }

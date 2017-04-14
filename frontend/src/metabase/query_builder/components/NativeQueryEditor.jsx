@@ -348,6 +348,7 @@ export default class NativeQueryEditor extends Component {
                             setParameterValue={setParameterValue}
                             syncQueryString
                             isQB
+                            commitImmediately
                         />
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
                             <span className="mx2">{toggleEditorText}</span>

@@ -38,7 +38,7 @@ import cx from "classnames";
     },
     initialValues: { name: "", description: "", table_id: null, definition: { filter: [] }, revision_message: null }
 },
-segmentFormSelectors)
+(state, props) => segmentFormSelectors(state, props))
 export default class SegmentForm extends Component {
     updatePreviewSummary(datasetQuery) {
         this.props.updatePreviewSummary({

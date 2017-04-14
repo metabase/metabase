@@ -117,9 +117,6 @@ var config = module.exports = {
                 test: /\.css$/,
                 loader: ExtractTextPlugin.extract("style-loader", "css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader")
             }
-        ],
-        noParse: [
-            /node_modules\/(ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -128,17 +125,7 @@ var config = module.exports = {
         alias: {
             'metabase':             SRC_PATH,
             'style':                SRC_PATH + '/css/core/index.css',
-
             'ace':                  __dirname + '/node_modules/ace-builds/src-min-noconflict',
-
-            // misc
-            'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
-            'tether':               __dirname + '/node_modules/tether/dist/js/tether.min.js',
-            'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
-            'd3':                   __dirname + '/node_modules/d3/d3.min.js',
-            'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
-            'dc':                   __dirname + '/node_modules/dc/dc.min.js',
-            'humanize':             __dirname + '/node_modules/humanize-plus/dist/humanize.min.js'
         }
     },
 
@@ -227,6 +214,11 @@ if (NODE_ENV === "hot") {
         hot: true,
         inline: true,
         contentBase: "frontend"
+        // if webpack doesn't reload UI after code change in development
+        // watchOptions: {
+        //     aggregateTimeout: 300,
+        //     poll: 1000
+        // }
         // if you want to reduce stats noise
         // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     };

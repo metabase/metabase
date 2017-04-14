@@ -32,6 +32,28 @@ type Props = {
 
 @withRouter
 export default class EmbedFrame extends Component<*, Props, *> {
+    state = {
+        innerScroll: true
+    }
+
+    componentWillMount() {
+        if (window.iFrameResizer) {
+            console.error("iFrameResizer resizer already defined.")
+        } else {
+            window.iFrameResizer = {
+                autoResize: true,
+                heightCalculationMethod: "bodyScroll",
+                readyCallback: () => {
+                    this.setState({ innerScroll: false })
+                }
+            }
+            // $FlowFixMe: flow doesn't know about require.ensure
+            require.ensure([], () => {
+                require("iframe-resizer/js/iframeResizer.contentWindow.js")
+            });
+        }
+    }
+
     _getOptions() {
         let options = querystring.parse(window.location.hash.replace(/^#/, ""));
         for (var name in options) {
@@ -44,6 +66,8 @@ export default class EmbedFrame extends Component<*, Props, *> {
 
     render() {
         const { className, children, actionButtons, location, parameters, parameterValues, setParameterValue } = this.props;
+        const { innerScroll } = this.state;
+
         const footer = true;
 
         const { bordered, titled, theme } = this._getOptions();
@@ -52,10 +76,11 @@ export default class EmbedFrame extends Component<*, Props, *> {
 
         return (
             <div className={cx("EmbedFrame flex flex-column", className, {
+                "spread": innerScroll,
                 "bordered rounded shadowed": bordered,
                 [`Theme--${theme}`]: !!theme
             })}>
-                <div className="flex flex-column flex-full scroll-y relative">
+                <div className={cx("flex flex-column flex-full relative", { "scroll-y": innerScroll })}>
                     { name || (parameters && parameters.length > 0) ?
                         <div className="EmbedFrame-header flex align-center p1 sm-p2 lg-p3">
                             { name && (
