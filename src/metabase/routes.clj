@@ -1,6 +1,6 @@
 (ns metabase.routes
   (:require [clojure.java.io :as io]
-            [clojure.string :as str]
+            [clojure.string :as s]
             [cheshire.core :as json]
             (compojure [core :refer [context defroutes GET]]
                        [route :as route])
@@ -15,10 +15,10 @@
 (defn- base-href []
   (str (.getPath (clojure.java.io/as-url (public-settings/site-url))) "/"))
 
-(defn- escape-script [str]
+(defn- escape-script [text]
   "Escapes '</script' so it can be safely included in an inline <script> tag"
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
-  (str/replace str #"</script" "</scr\\\\ipt"))
+  (s/replace text #"</script" "</scr\\\\ipt"))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
