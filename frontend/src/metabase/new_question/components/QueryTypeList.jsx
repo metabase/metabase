@@ -12,7 +12,7 @@ const QUERY_TYPES = [
     {
         name: "Explore",
         subtitle: "See data as a map, over time,or pivoted to help you understand trends or changes.",
-        type: "metric"
+        type: "explore"
     },
     {
         name: "View lists",

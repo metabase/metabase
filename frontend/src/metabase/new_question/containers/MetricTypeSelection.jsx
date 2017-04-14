@@ -44,8 +44,11 @@ class MetricTypeSelection extends Component {
                             <div
                                 className={cxs({
                                     backgroundColor: metric.color,
-                                    flex: "0 80%",
-                                    height: "100%"
+                                    flex: 1,
+                                    height: "100%",
+                                    display: "flex",
+                                    alginItems: "center",
+                                    justifyContent: "center"
                                 })}
                             >
                                 thing

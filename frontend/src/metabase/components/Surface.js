@@ -10,7 +10,12 @@ const Surface = ({ children }) =>
         width: '100%',
         height: '100%',
         borderRadius: 6,
-        boxShadow: `0 1px 3px #DCE1E4`
+        boxShadow: `0 1px 3px #DCE1E4`,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        ':hover': {
+            boxShadow: `0 2px 10px #DCE1E4`,
+        }
     })}>
         { children }
     </div>

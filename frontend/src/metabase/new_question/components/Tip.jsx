@@ -1,6 +1,7 @@
 import cxs from "cxs";
 import React, { Component } from "react";
 
+import Title from "metabase/components/Title";
 import Text from "metabase/components/Text";
 
 class Tip extends Component {
@@ -8,9 +9,9 @@ class Tip extends Component {
         const { tip: { title, text } } = this.props;
         return (
             <div>
-                <h3 className={cxs({ marginBottom: "1em" })}>
+                <Title>
                     {title}
-                </h3>
+                </Title>
                 <Text>{text}</Text>
             </div>
         );

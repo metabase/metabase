@@ -39,30 +39,11 @@ class MetricBuilder extends Component {
             title
         } = this.props;
         return (
-            <div>
-                <h2>{title}</h2>
-                <ResponsiveList
-                    items={databases}
-                    onClick={() => selectAndAdvance(id => setDatabase(id))}
-                />
-                {/*
-                <ol className={cxs({ display: "flex", flexWrap: "wrap" })}>
-                    {databases.map(db => (
-                        <li
-                            className={cxs({ flex: "0 0 33.33%" })}
-                            key={db.id}
-                            onMouseEnter={() => setTip({
-                                title: db.name,
-                                text: db.description
-                            })}
-                            onMouseLeave={() => setTip(this.tip)}
-                        >
-                            <Card name={db.name} />
-                        </li>
-                    ))}
-                </ol>
-                */}
-            </div>
+            <ResponsiveList
+                items={databases}
+                onClick={database =>
+                    selectAndAdvance(() => setDatabase(database.id))}
+            />
         );
     }
 }

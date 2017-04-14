@@ -54,12 +54,16 @@ const initialStep = {
 
 const metricTitle = "Metrics";
 
-const metric = [
+const exploreTitle = "Explore";
+const explore = [
     {
         title: "Explore",
-        tip: tips["metric"],
+        tip: tips["explore"],
         component: MetricTypeSelection
-    },
+    }
+];
+
+const metric = [
     {
         title: "Pick a metric",
         component: MetricLanding,
@@ -157,7 +161,8 @@ const titles = {
     metric: metricTitle,
     pivot: pivotTitle,
     segment: segmentTitle,
-    timeseries: timeSeriesTitle
+    timeseries: timeSeriesTitle,
+    explore: exploreTitle
 };
 
 const flows = {
@@ -165,7 +170,8 @@ const flows = {
     geo,
     pivot,
     segment,
-    timeseries
+    timeseries,
+    explore
 };
 
 const setVizForFlow = flow => {

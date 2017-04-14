@@ -72,18 +72,42 @@ class NewQuestion extends Component {
                 className="relative full-height"
                 style={{ backgroundColor: "#F2F4F5" }}
             >
-                <div className="flex align-center">
-                    {back && <BackButton goBack={goBack} />}
+                <div
+                    className={cxs({
+                        display: "flex",
+                        marginTop: "2em",
+                        maxWidth: tip ? "80%" : null,
+                        marginLeft: tip ? "auto" : null,
+                        marginRight: tip ? "auto" : null
+                    })}
+                >
+                    <div className="flex align-center">
+                        {back && <BackButton goBack={goBack} />}
+                    </div>
                 </div>
+                <div
+                    className={cxs({
+                        display: "flex",
+                        marginTop: "2em",
+                        maxWidth: tip ? "80%" : null,
+                        marginLeft: tip ? "auto" : null,
+                        marginRight: tip ? "auto" : null
+                    })}
+                >
 
-                <div className="flex mt4">
                     {tip &&
                         <Sidebar>
-                            <Title>{title}</Title>
-                            {subtitle && <Text>{subtitle}</Text>}
-                            <Tip tip={tip} />
+                            <div className={cxs({ marginTop: "6em" })}>
+                                <Tip tip={tip} />
+                            </div>
                         </Sidebar>}
-                    <div className={cxs({ flex: 1, height: "100%" })}>
+                    <div
+                        className={cxs({
+                            flex: 1,
+                            height: "100%",
+                            marginLeft: "4em"
+                        })}
+                    >
                         <CurrentStep />
                     </div>
                 </div>
