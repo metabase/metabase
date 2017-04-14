@@ -5,8 +5,10 @@ import { SettingsApi, EmailApi, SlackApi } from "metabase/services";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
-// initializeSettings
-export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", function() {
+// ACITON TYPES AND ACTION CREATORS
+
+export const INITIALIZE_SETTINGS = "metabase/admin/settings/INITIALIZE_SETTINGS";
+export const initializeSettings = createThunkAction(INITIALIZE_SETTINGS, function() {
     return async function(dispatch, getState) {
         try {
             await dispatch(refreshSiteSettings());
@@ -17,8 +19,8 @@ export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", funct
     };
 });
 
-// updateSetting
-export const updateSetting = createThunkAction("UPDATE_SETTING", function(setting) {
+export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
+export const updateSetting = createThunkAction(UPDATE_SETTING, function(setting) {
     return async function(dispatch, getState) {
         try {
             await SettingsApi.put(setting);
@@ -30,8 +32,8 @@ export const updateSetting = createThunkAction("UPDATE_SETTING", function(settin
     };
 });
 
-// updateEmailSettings
-export const updateEmailSettings = createThunkAction("UPDATE_EMAIL_SETTINGS", function(settings) {
+export const UPDATE_EMAIL_SETTINGS = "metabase/admin/settings/UPDATE_EMAIL_SETTINGS";
+export const updateEmailSettings = createThunkAction(UPDATE_EMAIL_SETTINGS, function(settings) {
     return async function(dispatch, getState) {
         try {
             await EmailApi.updateSettings(settings);
@@ -43,8 +45,8 @@ export const updateEmailSettings = createThunkAction("UPDATE_EMAIL_SETTINGS", fu
     };
 });
 
-// sendTestEmail
-export const sendTestEmail = createThunkAction("SEND_TEST_EMAIL", function() {
+export const SEND_TEST_EMAIL = "metabase/admin/settings/SEND_TEST_EMAIL";
+export const sendTestEmail = createThunkAction(SEND_TEST_EMAIL, function() {
     return async function(dispatch, getState) {
         try {
             await EmailApi.sendTest();
@@ -55,8 +57,8 @@ export const sendTestEmail = createThunkAction("SEND_TEST_EMAIL", function() {
     };
 });
 
-// updateSlackSettings
-export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", function(settings) {
+export const UPDATE_SLACK_SETTINGS = "metabase/admin/settings/UPDATE_SLACK_SETTINGS";
+export const updateSlackSettings = createThunkAction(UPDATE_SLACK_SETTINGS, function(settings) {
     return async function(dispatch, getState) {
         try {
             await SlackApi.updateSettings(settings);
@@ -68,7 +70,8 @@ export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", fu
     };
 }, {});
 
-export const reloadSettings = createThunkAction("RELOAD_SETTINGS", function() {
+export const RELOAD_SETTINGS = "metabase/admin/settings/RELOAD_SETTINGS";
+export const reloadSettings = createThunkAction(RELOAD_SETTINGS, function() {
     return async function(dispatch, getState) {
         await dispatch(refreshSiteSettings());
     }

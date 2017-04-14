@@ -7,9 +7,11 @@ import databases from "metabase/admin/databases/database";
 import datamodel from "metabase/admin/datamodel/datamodel";
 import permissions from "metabase/admin/permissions/permissions";
 
-export default {
+import { combineReducers } from "metabase/lib/redux";
+
+export default combineReducers({
     databases,
-    datamodel: datamodel,
+    datamodel,
     people,
     permissions,
-};
+})
