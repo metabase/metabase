@@ -8,6 +8,8 @@ import { setTip, selectAndAdvance, setDatabase } from "../actions";
 
 import { getDatabases } from "metabase/selectors/metadata";
 
+import ResponsiveList from "metabase/components/ResponsiveList";
+
 const mapStateToProps = state => ({
     databases: getDatabases(state),
     title: state.newQuestion.currentStep.title,
@@ -39,6 +41,11 @@ class MetricBuilder extends Component {
         return (
             <div>
                 <h2>{title}</h2>
+                <ResponsiveList
+                    items={databases}
+                    onClick={() => selectAndAdvance(id => setDatabase(id))}
+                />
+                {/*
                 <ol className={cxs({ display: "flex", flexWrap: "wrap" })}>
                     {databases.map(db => (
                         <li
@@ -49,13 +56,12 @@ class MetricBuilder extends Component {
                                 text: db.description
                             })}
                             onMouseLeave={() => setTip(this.tip)}
-                            onClick={() =>
-                                selectAndAdvance(() => setDatabase(db.id))}
                         >
                             <Card name={db.name} />
                         </li>
                     ))}
                 </ol>
+                */}
             </div>
         );
     }

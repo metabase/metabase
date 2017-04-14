@@ -8,7 +8,9 @@ const Surface = ({ children }) =>
         backgroundColor: '#fff',
         border: `1px solid ${SURFACE_BORDER_COLOR}`,
         width: '100%',
-        height: '100%'
+        height: '100%',
+        borderRadius: 6,
+        boxShadow: `0 1px 3px #DCE1E4`
     })}>
         { children }
     </div>

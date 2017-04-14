@@ -14,22 +14,54 @@ const QUERY_TYPES = [
         subtitle: "See data as a map, over time,or pivoted to help you understand trends or changes.",
         type: "metric"
     },
-    { name: "Segment or table", subtitle: "", type: "segment" },
-    { name: "SQL", type: "sql", icon: "sql" }
+    {
+        name: "View lists",
+        subtitle: "Explore tables and see what’s going on underneath your charts.",
+        type: "segment"
+    },
+    {
+        name: "Write SQL",
+        type: "sql",
+        icon: "sql",
+        subtitle: "Use SQL or other native languages for data prep or manipulation."
+    }
 ];
 
 const layout = cxs({
     flex: "0 0 33.33%",
     paddingLeft: "4em",
-    paddingright: "4em",
+    paddingRight: "4em",
     height: 537
 });
 
+class Hoverable extends Component {
+    render() {
+        return this.props.children;
+    }
+}
+
 const QueryTypeCard = ({ name, subtitle }) => (
-    <Surface>
-        <Title>{name}</Title>
-        <Text>{subtitle}</Text>
-    </Surface>
+    <Hoverable>
+        <Surface>
+            <div
+                className={cxs({
+                    textAlign: "center",
+                    padding: "4em",
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%"
+                })}
+            >
+                <div className={cxs({ flex: "0 0 66.66%", height: "100%" })}>
+                    Illustration
+                </div>
+                <div className={cxs({ alignSelf: "flex-end" })}>
+                    <Title>{name}</Title>
+                    <Text>{subtitle}</Text>
+                </div>
+            </div>
+        </Surface>
+    </Hoverable>
 );
 
 @connect(() => ({}), {
@@ -54,7 +86,7 @@ class QueryTypeList extends Component {
                         <li
                             key={type.type}
                             onClick={() =>
-                                selectAndAdvance(() => selectFlow(type))}
+                                selectAndAdvance(() => selectFlow(type.type))}
                             className={layout}
                         >
                             <QueryTypeCard {...type} />
