@@ -40,7 +40,7 @@ import cx from "classnames";
         return errors;
     }
 },
-metricFormSelectors)
+(state, props) => metricFormSelectors(state, props))
 export default class MetricForm extends Component {
     updatePreviewSummary(datasetQuery) {
         this.props.updatePreviewSummary({

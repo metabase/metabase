@@ -95,8 +95,10 @@ export default class HomepageApp extends Component {
                         </div>
                     </div>
                     <div className="Layout-sidebar flex-no-shrink hide sm-show">
-                      <NextStep />
-                      <RecentViews {...this.props} />
+                        <div>
+                            <NextStep />
+                            <RecentViews {...this.props} />
+                        </div>
                     </div>
                 </div>
             </div>
