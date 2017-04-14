@@ -3,6 +3,8 @@ import { connect } from "react-redux";
 import cxs from "cxs";
 
 import Card from "../components/Card";
+import Surface from "metabase/components/Surface";
+import ResponsiveList from "metabase/components/ResponsiveList";
 
 import { normal } from "metabase/lib/colors";
 
@@ -21,7 +23,6 @@ import {
     selectMetric,
     setTip
 } from "../actions";
-
 
 const mapStateToProps = state => ({
     table: getSelectedTableMetadata(state),
@@ -125,7 +126,7 @@ class MetricBuilderAggregation extends Component {
         this.tip = props.tip;
         this.state = {
             expression: null
-        }
+        };
     }
 
     render() {
@@ -135,7 +136,7 @@ class MetricBuilderAggregation extends Component {
             setAggregation,
             selectMetric
         } = this.props;
-        const { expression } = this.state
+        const { expression } = this.state;
         return (
             <div>
                 <div className="flex">
@@ -143,30 +144,31 @@ class MetricBuilderAggregation extends Component {
                         <CustomAggregation
                             table={table}
                             onClick={aggregation =>
-                                    selectAndAdvance(() => setAggregation(aggregation))}
+                                selectAndAdvance(() =>
+                                    setAggregation(aggregation))}
                             expression={expression}
-                            placeholder={`What do you want to know about ${table.display_name}?`}
+                            placeholder={
+                                `What do you want to know about ${table.display_name}?`
+                            }
                         />
                     </div>
                     <button
                         className="Button Button--primary"
                         onClick={() =>
-                            selectAndAdvance(() => setAggregation(this.state.expression))
-                        }
+                            selectAndAdvance(() =>
+                                setAggregation(this.state.expression))}
                     >
                         Next
                     </button>
                 </div>
-                { !expression && (
+                {!expression &&
                     <AggBasics
                         table={table}
                         setTip={this.props.setTip}
                         clearTip={() => this.props.setTip(this.tip)}
                         onClick={aggregation =>
-                            this.setState({ expression: aggregation })
-                        }
-                    />
-                )}
+                            this.setState({ expression: aggregation })}
+                    />}
             </div>
         );
     }

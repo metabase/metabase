@@ -9,6 +9,8 @@ import Button from "metabase/components/Button";
 
 import Text from "metabase/components/Text";
 
+import ResponsiveList from "metabase/components/ResponsiveList";
+
 import { getMetricsForCurrentFlow } from "../selectors";
 
 const mapStateToProps = state => ({
@@ -48,32 +50,14 @@ class MetricLanding extends Component {
         } = this.props;
         return (
             <div>
-                <div className={cxs({ display: "flex", alignItems: "center" })}>
-                    <h3>Existing metrics</h3>
-                    <Button
-                        className="ml-auto"
-                        onClick={() => newMetric()}
-                        primary
-                    >
-                        A fresh metric
-                    </Button>
-                </div>
-                <Surface>
-                    <ol>
-                        {metrics.map(metric => (
-                            <li
-                                className="border-bottom py2 px3"
-                                onClick={() =>
-                                    selectAndAdvance(() =>
-                                        selectMetric(metric))}
-                                key={metric.id}
-                            >
-                                <h2 className="link">{metric.name}</h2>
-                                <Text>{metric.description}</Text>
-                            </li>
-                        ))}
-                    </ol>
-                </Surface>
+                <Button className="ml-auto" onClick={() => newMetric()} primary>
+                    A fresh metric
+                </Button>
+                <ResponsiveList
+                    items={metrics}
+                    onClick={metric =>
+                        selectAndAdvance(() => selectMetric(metric))}
+                />
             </div>
         );
     }
