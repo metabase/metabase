@@ -1,11 +1,12 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import moment from "moment";
 
 import visualizations from "metabase/visualizations";
 import { isQueryable } from "metabase/lib/table";
+import * as Urls from "metabase/lib/urls";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -58,7 +59,7 @@ const createListItem = (entity, index, section) =>
             }
             url={section.type !== 'questions' ?
                 `${section.id}/${entity.id}` :
-                `/card/${entity.id}`
+                Urls.question(entity.id)
             }
             icon={section.type === 'questions' ?
                 visualizations.get(entity.display).iconName :

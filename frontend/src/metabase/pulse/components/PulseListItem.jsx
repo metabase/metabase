@@ -1,11 +1,12 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { Link } from "react-router";
 
 import cx from "classnames";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import PulseListChannel from "./PulseListChannel.jsx";
 
 export default class PulseListItem extends Component {
@@ -43,7 +44,7 @@ export default class PulseListItem extends Component {
                 <ol className="mb2 px4 flex flex-wrap">
                     { pulse.cards.map((card, index) =>
                         <li key={index} className="mr1 mb1">
-                            <Link to={Urls.card(card.id)} className="Button">
+                            <Link to={Urls.question(card.id)} className="Button">
                                 {card.name}
                             </Link>
                         </li>

@@ -2,7 +2,7 @@
 import { createAction, createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
 import { reset } from 'redux-form';
 import { replace } from "react-router-redux";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 

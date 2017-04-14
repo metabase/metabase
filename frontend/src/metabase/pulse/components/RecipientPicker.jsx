@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -154,7 +155,7 @@ export default class RecipientPicker extends Component {
         let { recipients } = this.props;
 
         return (
-            <ul className={cx("px1 pb1 bordered rounded flex flex-wrap", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
+            <ul className={cx("px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
                 {recipients.map((recipient, index) =>
                     <li key={index} className="mr1 py1 pl1 mt1 rounded bg-grey-1">
                         <span className="h4 text-bold">{recipient.common_name || recipient.email}</span>
@@ -163,12 +164,11 @@ export default class RecipientPicker extends Component {
                         </a>
                     </li>
                 )}
-                <li className="flex-full mr1 py1 pl1 mt1" style={{ "minWidth": " 100px" }}>
+                <li className="flex-full mr1 py1 pl1 mt1 bg-white" style={{ "minWidth": " 100px" }}>
                     <input
                         ref="input"
                         type="text"
                         className="full h4 text-bold text-default no-focus borderless"
-                        style={{"backgroundColor": "transparent"}}
                         placeholder={recipients.length === 0 ? "Enter email addresses you'd like this data to go to" : null}
                         value={this.state.inputValue}
                         autoFocus={this.state.focused}

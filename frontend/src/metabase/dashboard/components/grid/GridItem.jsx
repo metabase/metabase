@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import { DraggableCore } from "react-draggable";
 import { Resizable } from "react-resizable";

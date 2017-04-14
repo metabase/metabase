@@ -178,7 +178,7 @@ var STYLE_SHEET = (function() {
     return style.sheet;
 })();
 
-export function addCSSRule(selector, rules, index) {
+export function addCSSRule(selector, rules, index = 0) {
     if("insertRule" in STYLE_SHEET) {
         STYLE_SHEET.insertRule(selector + "{" + rules + "}", index);
     }

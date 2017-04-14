@@ -1,7 +1,8 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
+
 import cx from "classnames";
 import { titleCase } from "humanize-plus";
 
@@ -14,7 +15,8 @@ type Operator = {
 type Props = {
     operator: string,
     operators: Operator[],
-    onOperatorChange: (o: Operator) => void
+    onOperatorChange: (o: Operator) => void,
+    hideTimeSelectors?: bool
 }
 
 type State = {

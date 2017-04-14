@@ -6,14 +6,20 @@ import { fetchDatabasesWithMetadata } from "metabase/redux/metadata";
 
 import Icon from "metabase/components/Icon";
 
-import Text from "../components/Text";
+import Text from "metabase/components/Text";
+import Title from "metabase/components/Title";
+
 import Tip from "../components/Tip";
-import Title from "../components/Title";
 import { Sidebar } from "../components/Layout";
 
 import { back, resetNewQuestionFlow } from "../actions";
 
-import { getSubtitle, getBack, getCurrentStepTip, getCurrentStepComponent } from "../selectors";
+import {
+    getSubtitle,
+    getBack,
+    getCurrentStepTip,
+    getCurrentStepComponent
+} from "../selectors";
 
 const mapStateToProps = state => ({
     advance: state.newQuestion.advance,
@@ -30,6 +36,28 @@ const mapDispatchToProps = {
     resetNewQuestionFlow
 };
 
+const BackButton = ({ goBack }) => (
+    <div
+        className={cxs({
+            borderRadius: 99,
+            border: "1px solid #DCE1E4",
+            backgroundColor: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 52,
+            height: 52,
+            marginRight: "1em",
+            ":hover": {
+                cursor: "pointer"
+            }
+        })}
+        onClick={() => goBack()}
+    >
+        <Icon name="chevronleft" />
+    </div>
+);
+
 @connect(mapStateToProps, mapDispatchToProps)
 class NewQuestion extends Component {
     componentDidMount() {
@@ -40,54 +68,47 @@ class NewQuestion extends Component {
         const { back, goBack, component, tip, title, subtitle } = this.props;
         const CurrentStep = component;
         return (
-            <div className="relative full-height" style={{ backgroundColor: '#FBFCFC' }}>
+            <div
+                className="relative full-height"
+                style={{ backgroundColor: "#F2F4F5" }}
+            >
                 <div
                     className={cxs({
-                        backgroundColor: '#fff',
                         display: "flex",
-                        alignItems: "center",
-                        borderBottom: '1px solid #DCE1E4',
-                        paddingTop: '2em',
-                        paddingBottom: '2em',
+                        marginTop: "2em",
+                        maxWidth: tip ? "80%" : null,
+                        marginLeft: tip ? "auto" : null,
+                        marginRight: tip ? "auto" : null
                     })}
                 >
-                    <div className="wrapper flex align-center">
-                        {back &&
-                            <div
-                                className={cxs({
-                                    borderRadius: 99,
-                                    border: "1px solid #93A1AB",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    width: 52,
-                                    height: 52,
-                                    marginRight: "1em",
-                                    ":hover": {
-                                        cursor: "pointer"
-                                    }
-                                })}
-                                onClick={() => goBack()}
-                            >
-                                <Icon name="chevronleft" />
-                            </div>}
-                        <div>
-                            <Title>{title}</Title>
-                            {subtitle && <Text>{subtitle}</Text>}
-                        </div>
+                    <div className="flex align-center">
+                        {back && <BackButton goBack={goBack} />}
                     </div>
                 </div>
+                <div
+                    className={cxs({
+                        display: "flex",
+                        marginTop: "2em",
+                        maxWidth: tip ? "80%" : null,
+                        marginLeft: tip ? "auto" : null,
+                        marginRight: tip ? "auto" : null
+                    })}
+                >
 
-                <div className="wrapper">
-                <div className="flex mt4">
-                        <div className={cxs({ flex: 1 })}>
-                            <CurrentStep />
-                        </div>
-
-                        {tip &&
-                            <Sidebar>
+                    {tip &&
+                        <Sidebar>
+                            <div className={cxs({ marginTop: "46%" })}>
                                 <Tip tip={tip} />
-                            </Sidebar>}
+                            </div>
+                        </Sidebar>}
+                    <div
+                        className={cxs({
+                            flex: 1,
+                            height: "100%",
+                            marginLeft: "4em"
+                        })}
+                    >
+                        <CurrentStep />
                     </div>
                 </div>
             </div>

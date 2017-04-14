@@ -1,9 +1,7 @@
+/* @flow weak */
+
 import Q from "metabase/lib/query"; // legacy query lib
-import {
-    isDate,
-    isAddress,
-    isCategory,
-} from "metabase/lib/schema_metadata";
+import { isDate, isAddress, isCategory } from "metabase/lib/schema_metadata";
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
 
@@ -15,11 +13,19 @@ import PivotMode from "../components/modes/PivotMode";
 import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
 
-type QueryBuilderMode = {
-    name: string
-};
+import type { Card as CardObject } from "metabase/meta/types/Card";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type {
+    QueryMode,
+    ClickAction,
+    ClickActionProps,
+    ClickObject
+} from "metabase/meta/types/Visualization";
 
-export function getMode(card, tableMetadata): QueryBuilderMode {
+export function getMode(
+    card: CardObject,
+    tableMetadata: ?TableMetadata
+): ?QueryMode {
     if (!card) {
         return null;
     }
@@ -27,12 +33,13 @@ export function getMode(card, tableMetadata): QueryBuilderMode {
     if (Card.isNative(card)) {
         return NativeMode;
     }
-    if (Card.isStructured(card)) {
+
+    const query = Card.getQuery(card);
+    if (Card.isStructured(card) && query) {
         if (!tableMetadata) {
             return null;
         }
 
-        const query = Card.getQuery(card);
         const aggregations = Query.getAggregations(query);
         const breakouts = Query.getBreakouts(query);
 
@@ -72,3 +79,32 @@ export function getMode(card, tableMetadata): QueryBuilderMode {
 
     return DefaultMode;
 }
+
+export const getModeActions = (
+    mode: ?QueryMode,
+    card: ?CardObject,
+    tableMetadata: ?TableMetadata
+): ClickAction[] => {
+    if (mode && card && tableMetadata) {
+        const props: ClickActionProps = { card, tableMetadata };
+        return mode.actions
+            .map(actionCreator => actionCreator(props))
+            .filter(action => action);
+    }
+    return [];
+};
+
+export const getModeDrills = (
+    mode: ?QueryMode,
+    card: ?CardObject,
+    tableMetadata: ?TableMetadata,
+    clicked: ?ClickObject
+): ClickAction[] => {
+    if (mode && card && tableMetadata && clicked) {
+        const props: ClickActionProps = { card, tableMetadata, clicked };
+        return mode.drills
+            .map(actionCreator => actionCreator(props))
+            .filter(action => action);
+    }
+    return [];
+};

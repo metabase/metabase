@@ -1,10 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import cxs from "cxs";
 
-import Card from "../components/Card";
-
-import { normal } from "metabase/lib/colors";
+import ResponsiveList from "metabase/components/ResponsiveList";
 
 import ExpressionEditorTextfield
     from "metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx";
@@ -15,13 +12,7 @@ import {
     getCurrentStep
 } from "../selectors";
 
-import {
-    selectAndAdvance,
-    setAggregation,
-    selectMetric,
-    setTip
-} from "../actions";
-
+import { selectAndAdvance, setAggregation, selectMetric } from "../actions";
 
 const mapStateToProps = state => ({
     table: getSelectedTableMetadata(state),
@@ -32,65 +23,47 @@ const mapStateToProps = state => ({
 const mapDispatchToProps = {
     selectAndAdvance,
     setAggregation,
-    selectMetric,
-    setTip
+    selectMetric
 };
 
 class AggBasics extends Component {
-    constructor() {
-        super();
-        this.state = {
-            fields: null
-        };
-    }
+    state = {
+        fields: null
+    };
+
     render() {
-        const { table, onClick, setTip, clearTip } = this.props;
+        const { table, onClick } = this.props;
         return (
             <div>
-                <ol
-                    className={cxs({
-                        display: this.state.fields ? "block" : "flex",
-                        flexWrap: "wrap"
-                    })}
-                >
-                    {this.state.fields
-                        ? this.state.fields.map(field => (
-                              <div
-                                  onClick={() =>
-                                      onClick([
-                                          this.state.option,
-                                          ["field-id", field.id]
-                                      ])}
-                              >
-                                  {field.display_name}
-                              </div>
-                          ))
-                        : Object.values(
+                {this.state.fields
+                    ? <ResponsiveList
+                          items={this.state.fields}
+                          onClick={field =>
+                              onClick([
+                                  this.state.option,
+                                  ["field-id", field.id]
+                              ])}
+                      />
+                    : <ResponsiveList
+                          items={Object.values(
                               table.aggregation_options
-                          ).map(option => (
-                              <li
-                                  className={cxs({
-                                      flex: "0 1 25%",
-                                      padding: "1em"
-                                  })}
-                                  onClick={() => {
-                                      if (option.requiresField) {
-                                          this.setState({
-                                              fields: option.fields[0],
-                                              option: option.short
-                                          });
-                                      } else {
-                                          const aggregation = option.short;
-                                          onClick([aggregation]);
-                                      }
-                                  }}
-                              >
-                                  <Card>
-                                      <h3>{option.name}</h3>
-                                  </Card>
-                              </li>
-                          ))}
-                </ol>
+                          ).filter(
+                              option => option.short !== "rows"
+                              // raw data isn't a thing here
+                          )}
+                          onClick={option => {
+                              if (option.requiresField) {
+                                  this.setState({
+                                      fields: option.fields[0],
+                                      option: option.short
+                                  });
+                              } else {
+                                  const aggregation = option.short;
+                                  onClick([aggregation]);
+                              }
+                          }}
+                      />}
+
             </div>
         );
     }
@@ -125,7 +98,7 @@ class MetricBuilderAggregation extends Component {
         this.tip = props.tip;
         this.state = {
             expression: null
-        }
+        };
     }
 
     render() {
@@ -135,6 +108,7 @@ class MetricBuilderAggregation extends Component {
             setAggregation,
             selectMetric
         } = this.props;
+        const { expression } = this.state;
         return (
             <div>
                 <div className="flex">
@@ -142,31 +116,46 @@ class MetricBuilderAggregation extends Component {
                         <CustomAggregation
                             table={table}
                             onClick={aggregation =>
-                                    selectAndAdvance(() => setAggregation(aggregation))}
-                            expression={this.state.expression}
-                            placeholder={`What do you want to know about ${table.display_name}?`}
+                                selectAndAdvance(() =>
+                                    setAggregation(aggregation))}
+                            expression={expression}
+                            placeholder={
+                                `What do you want to know about ${table.display_name}?`
+                            }
                         />
                     </div>
                     <button
                         className="Button Button--primary"
                         onClick={() =>
-                            selectAndAdvance(() => setAggregation(this.state.expression))
-                        }
+                            selectAndAdvance(() =>
+                                setAggregation(this.state.expression))}
                     >
                         Next
                     </button>
                 </div>
-                <AggBasics
-                    table={table}
-                    setTip={this.props.setTip}
-                    clearTip={() => this.props.setTip(this.tip)}
-                    onClick={aggregation =>
-                        this.setState({ expression: aggregation })
-                    }
-                />
+                {!expression &&
+                    <AggBasics
+                        table={table}
+                        onClick={aggregation =>
+                            this.setState({ expression: aggregation })}
+                    />}
             </div>
         );
     }
 }
 
+/*
+this.state.fields.map(field => (
+                              <div
+                                  onClick={() =>
+                                      onClick([
+                                          this.state.option,
+                                          ["field-id", field.id]
+                                      ])}
+                              >
+                                  {field.display_name}
+                              </div>
+                          ))
+
+*/
 export default MetricBuilderAggregation;

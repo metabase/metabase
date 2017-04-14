@@ -1,7 +1,8 @@
 /* @flow */
 /* eslint "react/prop-types": "warn" */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 
@@ -73,7 +74,7 @@ export default class CategoryWidget extends Component<*, Props, State> {
 
         return (
             <div style={{ maxWidth: 200 }}>
-                { values.length > 10 && regex &&
+                { values.length > 10 &&
                   <div className="p1">
                       <ListSearchField
                           onChange={this.updateSearchText}

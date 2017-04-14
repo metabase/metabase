@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.23.0-snapshot
+# API Documentation for Metabase v0.24.0-snapshot
 
 ## `GET /api/activity/`
 
@@ -150,6 +150,8 @@ Run the query associated with a Card.
 
 *  **`parameters`** 
 
+*  **`ignore_cache`** value may be nil, or if non-nil, value must be a boolean.
+
 
 ## `POST /api/card/:card-id/query/csv`
 
@@ -193,7 +195,7 @@ Update a `Card`.
 
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
@@ -420,7 +422,7 @@ Update a `Dashboard`.
 
 *  **`points_of_interest`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -587,7 +589,7 @@ You must be a superuser to do this.
 
 ## `POST /api/dataset/`
 
-Execute an MQL query and retrieve the results as JSON.
+Execute a query and retrieve the results in the usual format.
 
 ##### PARAMS:
 
@@ -1286,6 +1288,8 @@ Create a new `Pulse`.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
 
+*  **`skip_if_empty`** value must be a boolean.
+
 
 ## `POST /api/pulse/test`
 
@@ -1298,6 +1302,8 @@ Test send an unsaved pulse.
 *  **`cards`** value must be an array. Each value must be a map. The array cannot be empty.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
+
+*  **`skip_if_empty`** value must be a boolean.
 
 
 ## `PUT /api/pulse/:id`
@@ -1313,6 +1319,8 @@ Update a `Pulse` with ID.
 *  **`cards`** value must be an array. Each value must be a map. The array cannot be empty.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
+
+*  **`skip_if_empty`** value must be a boolean.
 
 
 ## `GET /api/revision/`
@@ -1482,8 +1490,6 @@ Send a reset email when user has forgotten their password.
 
 *  **`remote-address`** 
 
-*  **`request`** 
-
 
 ## `POST /api/session/google_auth`
 
@@ -1560,8 +1566,6 @@ Special endpoint for creating the first user during setup.
 *  **`email`** value must be a valid email address.
 
 *  **`first_name`** value must be a non-blank string.
-
-*  **`request`** 
 
 *  **`password`** Insufficient password strength
 
@@ -1786,7 +1790,7 @@ Update a user's password.
 
 ## `PUT /api/user/:id/qbnewb`
 
-Indicate that a user has been informed about the vast intricacies of 'the' QueryBuilder.
+Indicate that a user has been informed about the vast intricacies of 'the' Query Builder.
 
 ##### PARAMS:
 

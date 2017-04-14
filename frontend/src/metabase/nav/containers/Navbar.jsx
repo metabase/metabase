@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from 'react';
+import React, { Component } from 'react';
+import PropTypes from "prop-types";
 import cx from "classnames";
 
 import { connect } from "react-redux";
@@ -10,6 +11,8 @@ import LogoIcon from "metabase/components/LogoIcon.jsx";
 
 import DashboardsDropdown from "metabase/nav/containers/DashboardsDropdown.jsx";
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
+
+import * as Urls from "metabase/lib/urls";
 
 import { getPath, getContext, getUser } from "../selectors";
 
@@ -107,15 +110,21 @@ export default class Navbar extends Component {
     renderMainNav() {
         return (
             <nav className={cx("Nav CheckBg CheckBg-offset relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
-                <ul className="pl4 pr1 flex align-center">
+                <ul className="ml2 sm-pl4 pr1 flex align-center">
                     <li>
                         <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background p1">
                             <LogoIcon dark={true}></LogoIcon>
                         </Link>
                     </li>
-                    <li className="pl3">
+                    <li className="pl3 hide sm-show">
                         <DashboardsDropdown {...this.props}>
-                            <a data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"} style={this.styles.navButton} className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}>
+                            <a
+                                data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"}
+                                style={this.styles.navButton}
+                                className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {
+                                    "NavItem--selected": this.isActive("/dashboard/")
+                                })}
+                            >
                                 <span className="NavDropdown-button-layer">
                                     Dashboards
                                     <Icon className="ml1" name={'chevrondown'} size={8}></Icon>
@@ -123,17 +132,20 @@ export default class Navbar extends Component {
                             </a>
                         </DashboardsDropdown>
                     </li>
-                    <li className="pl1">
+                    <li className="pl1 hide sm-show">
                         <Link to="/questions" data-metabase-event={"Navbar;Questions"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background")} activeClassName="NavItem--selected">Questions</Link>
                     </li>
-                    <li className="pl1">
+                    <li className="pl1 hide sm-show">
                         <Link to="/pulse" data-metabase-event={"Navbar;Pulses"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background")} activeClassName="NavItem--selected">Pulses</Link>
                     </li>
-                    <li className="pl1">
+                    <li className="pl1 hide sm-show">
                         <Link to="/reference/guide" data-metabase-event={"Navbar;DataReference"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background")} activeClassName="NavItem--selected">Data Reference</Link>
                     </li>
-                    <li className="pl3">
-                        <Link to="/new" data-metabase-event={"Navbar;New Question"} style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">New <span className="hide sm-show">Question</span></Link>
+                    <li className="pl3 hide sm-show">
+                        <Link to={Urls.newQuestion()} data-metabase-event={"Navbar;New Question"} style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
+                            New
+                            <span>Question</span>
+                        </Link>
                     </li>
                     <li className="flex-align-right transition-background">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>

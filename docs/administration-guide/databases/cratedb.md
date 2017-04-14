@@ -16,3 +16,7 @@ Starting in v0.18.0 Metabase provides a driver for connecting to CrateDB directl
 3. Click the `Save` button. Done.
 
 Metabase will now begin inspecting your CrateDB Dataset and finding any tables and fields to build up a sense for the schema. Give it a little bit of time to do its work and then you're all set to start querying.
+
+### Known limitations
+
+* Columns/Fields of type `object_array` are deactivated and not exposed. However, their nested fields are listed and also supported for queries.

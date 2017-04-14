@@ -1,11 +1,12 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
 import Icon from 'metabase/components/Icon.jsx';
 import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from 'metabase/components/SortableItemList.jsx';
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { DashboardApi } from "metabase/services";
 
 import moment from 'moment';

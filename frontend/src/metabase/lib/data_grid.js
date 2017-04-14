@@ -37,16 +37,19 @@ export function pivot(data) {
         normalColValues.sort();
     }
 
-
     // make sure that the first element in the pivoted column list is null which makes room for the label of the other column
     pivotColValues.unshift(data.cols[normalCol].display_name);
 
     // start with an empty grid that we'll fill with the appropriate values
-    var pivotedRows = [];
-    var emptyRow = Array.apply(null, Array(pivotColValues.length)).map(function() { return null; });
-    for (var i=0; i < normalColValues.length; i++) {
-        pivotedRows.push(_.clone(emptyRow));
-    }
+    const pivotedRows = normalColValues.map((normalColValues, index) => {
+        const row = pivotColValues.map(() => null);
+        // for onVisualizationClick:
+        row._dimension = {
+            value: normalColValues,
+            column: data.cols[normalCol]
+        };
+        return row;
+    })
 
     // fill it up with the data
     for (var j=0; j < data.rows.length; j++) {
@@ -59,14 +62,20 @@ export function pivot(data) {
     }
 
     // provide some column metadata to maintain consistency
-    var cols = pivotColValues.map(function(val, idx) {
+    const cols = pivotColValues.map(function(value, idx) {
         if (idx === 0) {
             // first column is always the coldef of the normal column
             return data.cols[normalCol];
         }
 
         var colDef = _.clone(data.cols[cellCol]);
-        colDef['name'] = colDef['display_name'] = formatValue(val, { column: data.cols[pivotCol] }) || "";
+        colDef.name = colDef.display_name = formatValue(value, { column: data.cols[pivotCol] }) || "";
+        // for onVisualizationClick:
+        colDef._dimension = {
+            value: value,
+            column: data.cols[pivotCol]
+        };
+        // delete colDef.id
         return colDef;
     });
 

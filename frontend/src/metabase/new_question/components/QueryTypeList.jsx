@@ -1,107 +1,87 @@
 import cxs from "cxs";
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import Icon from "metabase/components/Icon"
 
-import { normal } from "metabase/lib/colors";
+import Text from "metabase/components/Text";
+import Title from "metabase/components/Title";
+import Surface from "metabase/components/Surface";
+
 import { selectAndAdvance, selectFlow } from "../actions";
 
-const queryTypes = [
-    { name: "A metric", type: "metric", color: normal.blue, icon: 'ruler' },
-    { name: "A metric on a map", type: "geo", color: normal.green, icon: 'location' },
-    { name: "Pivot a metric", type: "pivot", color: normal.yellow },
-    { name: "A metric on a timeseries", type: "timeseries", color: normal.red, icon: 'line' }
+const QUERY_TYPES = [
+    {
+        name: "Explore",
+        subtitle: "See data as a map, over time,or pivoted to help you understand trends or changes.",
+        type: "explore"
+    },
+    {
+        name: "View lists",
+        subtitle: "Explore tables and see what’s going on underneath your charts.",
+        type: "segment"
+    },
+    {
+        name: "Write SQL",
+        type: "sql",
+        icon: "sql",
+        subtitle: "Use SQL or other native languages for data prep or manipulation."
+    }
 ];
-const otherTypes = [
-    { name: "Segment or table", type: "segment", icon: 'table' },
-    { name: "SQL", type: "sql", icon: 'sql' }
-];
+
+const layout = cxs({
+    flex: "0 0 33.33%",
+    paddingLeft: "4em",
+    paddingRight: "4em",
+    height: 537
+});
+
+const QueryTypeCard = ({ name, subtitle }) => (
+    <Surface>
+        <div
+            className={cxs({
+                textAlign: "center",
+                padding: "4em",
+                display: "flex",
+                flexDirection: "column",
+                height: "100%"
+            })}
+        >
+            <div className={cxs({ flex: "0 0 66.66%", height: "100%" })}>
+                Illustration
+            </div>
+            <div className={cxs({ alignSelf: "flex-end" })}>
+                <Title>{name}</Title>
+                <Text>{subtitle}</Text>
+            </div>
+        </div>
+    </Surface>
+);
 
 @connect(() => ({}), {
     selectFlow: flowType => selectFlow(flowType),
-    selectAndAdvance,
+    selectAndAdvance
 })
 class QueryTypeList extends Component {
     render() {
         const { selectFlow, selectAndAdvance } = this.props;
-
-        const cardStyle = (index) => cxs({
-            paddingTop: '2em',
-            paddingBottom: '2em',
-            display: "flex",
-            alignItems: "center",
-            flexDirection: 'column',
-            justifyContent: "center",
-            backgroundColor: '#fff',
-            borderBottom:  index > 1 ? 'none' : '1px solid #DCE1E4',
-            borderLeft: (index + 1) % 2 === 0 ? '1px solid #DCE1E4' : 'none',
-        })
-
         return (
             <div
                 className={cxs({
                     display: "flex",
-                    marginTop: '2em'
+                    height: "100%",
+                    maxWidth: 1650,
+                    marginLeft: "auto",
+                    marginRight: "auto"
                 })}
             >
-                <ol
-                    className={cxs({
-                        display: "flex",
-                        flex: "0 0 66.66%",
-                        flexWrap: "wrap",
-                        backgroundColor: '#fff',
-                        border: '1px solid #DCE1E4',
-                        borderRadius: 6
-                    })}
-                >
-                    {queryTypes.map((type, index) => (
+                <ol className={cxs({ display: "flex", width: "100%" })}>
+                    {QUERY_TYPES.map(type => (
                         <li
-                            className={cxs({ flex: "0 0 50%" })}
                             key={type.type}
                             onClick={() =>
-                                selectAndAdvance(() =>
-                                    selectFlow(type.type)
-                                )
-                            }
+                                selectAndAdvance(() => selectFlow(type.type))}
+                            className={layout}
                         >
-                            <div
-                                className={cardStyle(index)}
-                            >
-                                <Icon
-                                    name={type.icon}
-                                    className="my4"
-                                    style={{ color: type.color}}
-                                    size={64}
-                                />
-                                <h3>{type.name}</h3>
-                            </div>
-                        </li>
-                    ))}
-                </ol>
-                <ol
-                    className={cxs({
-                        marginLeft: "1em",
-                        paddingLeft: "1em",
-                        flex: "0 0 33.33%"
-                    })}
-                >
-                    {otherTypes.map((type, index) => (
-                        <li
-                            className={cxs({ flex: "0 0 33.33%" })}
-                            key={type.type}
-                            onClick={() => this.props.selectFlow(type.type)}
-                        >
-                            <div
-                                className={cardStyle()}
-                            >
-                                <Icon
-                                    name={type.icon}
-                                    className="my4"
-                                    style={{ color: type.color}}
-                                    size={64}
-                                />
-                                <h3>{type.name}</h3>
-                            </div>
+                            <QueryTypeCard {...type} />
                         </li>
                     ))}
                 </ol>

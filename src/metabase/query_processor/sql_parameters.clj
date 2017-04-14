@@ -199,13 +199,13 @@
       (->replacement-snippet-info \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"))
 
 
-(defn- relative-date-param-type? [param-type] (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative"} param-type))
+(defn- relative-date-param-type? [param-type] (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative" "date/all-options"} param-type))
 (defn- date-param-type?          [param-type] (str/starts-with? param-type "date/"))
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private ^:always-validate relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
-  (->replacement-snippet-info (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value *timezone*)))) ; TODO - get timezone from query dict
+  (->replacement-snippet-info (map->DateRange ((resolve 'metabase.query-processor.parameters/date-string->range) value *timezone*)))) ; TODO - get timezone from query dict
 
 (s/defn ^:private ^:always-validate dimension-value->equals-clause-sql :- ParamSnippetInfo
   [value]
@@ -243,13 +243,13 @@
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
 
 (extend-protocol ISQLParamSubstituion
-  nil         (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Object      (->replacement-snippet-info [this] (honeysql->replacement-snippet-info (str this)))
-  Number      (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Boolean     (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  Keyword     (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  SqlCall     (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
-  NoValue     (->replacement-snippet-info [_]    {:replacement-snippet ""})
+  nil     (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
+  Object  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info (str this)))
+  Number  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
+  Boolean (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
+  Keyword (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
+  SqlCall (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
+  NoValue (->replacement-snippet-info [_]    {:replacement-snippet ""})
 
   Date
   (->replacement-snippet-info [{:keys [s]}]
@@ -257,9 +257,11 @@
 
   DateRange
   (->replacement-snippet-info [{:keys [start end]}]
-    (if (= start end)
-      {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
-      {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
+    (cond
+      (= start end) {:replacement-snippet "= ?",             :prepared-statement-args [(u/->Timestamp start)]}
+      (nil? start)  {:replacement-snippet "< ?",             :prepared-statement-args [(u/->Timestamp end)]}
+      (nil? end)    {:replacement-snippet "> ?",             :prepared-statement-args [(u/->Timestamp start)]}
+      :else         {:replacement-snippet "BETWEEN ? AND ?", :prepared-statement-args [(u/->Timestamp start) (u/->Timestamp end)]}))
 
   ;; TODO - clean this up if possible!
   Dimension
@@ -343,19 +345,25 @@
 (s/defn ^:private ^:always-validate handle-optional-snippet :- ParamSnippetInfo
   "Create the approprate `:replacement-snippet` for PARAM, combining the value of REPLACEMENT-SNIPPET from the Param->SQL Substitution phase
    with the OPTIONAL-SNIPPET, if any."
-  [{:keys [variable-snippet optional-snippet replacement-snippet], :as snippet-info} :- ParamSnippetInfo]
+  [{:keys [variable-snippet optional-snippet replacement-snippet prepared-statement-args], :as snippet-info} :- ParamSnippetInfo]
   (assoc snippet-info
-    :replacement-snippet (cond
-                           (not optional-snippet)    replacement-snippet                                                 ; if there is no optional-snippet return replacement as-is
-                           (seq replacement-snippet) (str/replace optional-snippet variable-snippet replacement-snippet) ; if replacement-snippet is non blank splice into optional-snippet
-                           :else                     "")))                                                               ; otherwise return blank replacement (i.e. for NoValue)
+    :replacement-snippet     (cond
+                               (not optional-snippet)    replacement-snippet                                                 ; if there is no optional-snippet return replacement as-is
+                               (seq replacement-snippet) (str/replace optional-snippet variable-snippet replacement-snippet) ; if replacement-snippet is non blank splice into optional-snippet
+                               :else                     "")                                                                 ; otherwise return blank replacement (i.e. for NoValue)
+    ;; for every thime the `variable-snippet` occurs in the `optional-snippet` we need to supply an additional set of `prepared-statment-args`
+    ;; e.g. [[ AND ID = {{id}} OR USER_ID = {{id}} ]] should have *2* sets of the prepared statement args for {{id}} since it occurs twice
+    :prepared-statement-args (if-let [occurances (u/occurances-of-substring optional-snippet variable-snippet)]
+                               (apply concat (repeat occurances prepared-statement-args))
+                               prepared-statement-args)))
 
 (s/defn ^:private ^:always-validate add-replacement-snippet-info :- [ParamSnippetInfo]
   "Add `:replacement-snippet` and `:prepared-statement-args` info to the maps in PARAMS-SNIPPETS-INFO by looking at PARAM-KEY->VALUE
    and using the Param->SQL substituion functions."
   [params-snippets-info :- [ParamSnippetInfo], param-key->value :- ParamValues]
   (for [snippet-info params-snippets-info]
-    (handle-optional-snippet (merge snippet-info (s/validate ParamSnippetInfo (->replacement-snippet-info (snippet-value snippet-info param-key->value)))))))
+    (handle-optional-snippet (merge snippet-info
+                                    (s/validate ParamSnippetInfo (->replacement-snippet-info (snippet-value snippet-info param-key->value)))))))
 
 
 

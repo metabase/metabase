@@ -1,6 +1,6 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
-import Humanize from 'humanize';
+import Humanize from "humanize-plus";
 
 export default class ExpandableString extends Component {
     constructor(props, context) {

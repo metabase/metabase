@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -141,7 +141,6 @@ export default class PublicQuestion extends Component<*, Props, State> {
 
         return (
             <EmbedFrame
-                className="relative spread"
                 name={card && card.name}
                 description={card && card.description}
                 parameters={card && card.parameters}

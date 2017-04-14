@@ -1,6 +1,6 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import { formatValue } from "metabase/lib/formatting";
@@ -15,7 +15,7 @@ import cx from "classnames";
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
 
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 export default class Progress extends Component<*, VisualizationProps, *> {
     static uiName = "Progress";
@@ -102,7 +102,7 @@ export default class Progress extends Component<*, VisualizationProps, *> {
     }
 
     render() {
-        const { series: [{ data: { rows } }], settings } = this.props;
+        const { series: [{ data: { rows, cols } }], settings, onVisualizationClick, visualizationIsClickable } = this.props;
         const value: number = rows[0][0];
         const goal = settings["progress.goal"] || 0;
 
@@ -123,6 +123,12 @@ export default class Progress extends Component<*, VisualizationProps, *> {
         } else if (value > goal) {
             barMessage = "Goal exceeded";
         }
+
+        const clicked = {
+            value: value,
+            column: cols[0]
+        };
+        const isClickable = visualizationIsClickable(clicked);
 
         return (
             <div className={cx(this.props.className, "flex layout-centered")}>
@@ -154,11 +160,16 @@ export default class Progress extends Component<*, VisualizationProps, *> {
                             }}
                         />
                     </div>
-                    <div ref="bar" className="relative" style={{
-                        backgroundColor: restColor,
-                        borderRadius: BORDER_RADIUS,
-                        overflow: "hidden"
-                    }}>
+                    <div
+                        ref="bar"
+                        className={cx("relative", { "cursor-pointer": isClickable })}
+                        style={{
+                            backgroundColor: restColor,
+                            borderRadius: BORDER_RADIUS,
+                            overflow: "hidden"
+                        }}
+                        onClick={isClickable && ((e) => onVisualizationClick({ ...clicked, event: e.nativeEvent }))}
+                    >
                         <div style={{
                                 backgroundColor: progressColor,
                                 width: (barPercent * 100) + "%",

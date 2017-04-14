@@ -18,6 +18,7 @@ import {
 import QueryTypeList from "./components/QueryTypeList";
 
 import MetricLanding from "./containers/MetricLanding";
+import MetricTypeSelection from "./containers/MetricTypeSelection";
 import MetricBuilderDatabases from "./containers/MetricBuilderDatabases";
 import MetricBuilderSchemas from "./containers/MetricBuilderSchemas";
 import MetricBuilderTables from "./containers/MetricBuilderTables";
@@ -34,8 +35,8 @@ import { assocIn, chain } from "icepick";
 const pivotSelection = {
     title: pivotTitle,
     component: PivotSelection,
-    tip: tips['metric']
-}
+    tip: tips["metric"]
+};
 
 const breakoutStep = {
     title: "How do you want to see this metric?",
@@ -48,11 +49,19 @@ const initialStep = {
         return `What would you like to see ${state.currentUser.first_name}?`;
     },
     component: QueryTypeList,
-    tip: tips["start"],
     back: false
 };
 
 const metricTitle = "Metrics";
+
+const exploreTitle = "Explore";
+const explore = [
+    {
+        title: "Explore",
+        tip: tips["explore"],
+        component: MetricTypeSelection
+    }
+];
 
 const metric = [
     {
@@ -60,7 +69,7 @@ const metric = [
         component: MetricLanding,
         tip: tips["metric"],
         skip: {
-            resource: 'metrics',
+            resource: "metrics",
             resolve: metrics => metrics.length > 0
         }
     },
@@ -116,7 +125,7 @@ const geo = [
         component: MetricLanding,
         tip: tips["metric"],
         skip: {
-            resource: 'metrics',
+            resource: "metrics",
             resolve: metrics => metrics.length > 0
         }
     },
@@ -130,7 +139,7 @@ const pivot = [
         component: MetricLanding,
         tip: tips["metric"],
         skip: {
-            resource: 'metrics',
+            resource: "metrics",
             resolve: metrics => metrics.length > 0
         }
     },
@@ -152,7 +161,8 @@ const titles = {
     metric: metricTitle,
     pivot: pivotTitle,
     segment: segmentTitle,
-    timeseries: timeSeriesTitle
+    timeseries: timeSeriesTitle,
+    explore: exploreTitle
 };
 
 const flows = {
@@ -160,7 +170,8 @@ const flows = {
     geo,
     pivot,
     segment,
-    timeseries
+    timeseries,
+    explore
 };
 
 const setVizForFlow = flow => {
@@ -201,9 +212,18 @@ export default function(state = initialState, { type, payload, error }) {
             return chain(state)
                 .assocIn(["card", "display"], setVizForFlow(state.flow.type))
                 .assocIn(["card", "dataset_query", "type"], "query")
-                .assocIn(["card", "dataset_query", "database"], payload.database_id)
-                .assocIn(["card", "dataset_query", "query", "source_table"], payload.table_id)
-                .assocIn(["card", "dataset_query", "query", "aggregation"], [["METRIC", payload.id]])
+                .assocIn(
+                    ["card", "dataset_query", "database"],
+                    payload.database_id
+                )
+                .assocIn(
+                    ["card", "dataset_query", "query", "source_table"],
+                    payload.table_id
+                )
+                .assocIn(
+                    ["card", "dataset_query", "query", "aggregation"],
+                    [["METRIC", payload.id]]
+                )
                 .value();
         case SELECT_METRIC_BREAKOUT:
             return {
@@ -266,7 +286,11 @@ export default function(state = initialState, { type, payload, error }) {
                 }
             };
         case SET_PIVOT_BREAKOUTS:
-            return assocIn(state, ["card", "dataset_query", "query", "breakout"], payload);
+            return assocIn(
+                state,
+                ["card", "dataset_query", "query", "breakout"],
+                payload
+            );
         case SET_AGGREGATION:
             return {
                 ...state,
@@ -282,9 +306,9 @@ export default function(state = initialState, { type, payload, error }) {
                 }
             };
         case ADD_BREAKOUT_STEP:
-            let step = breakoutStep
-            if(state.flow.type === 'pivot') {
-                step = pivotSelection
+            let step = breakoutStep;
+            if (state.flow.type === "pivot") {
+                step = pivotSelection;
             }
             return {
                 ...state,
@@ -302,10 +326,10 @@ export default function(state = initialState, { type, payload, error }) {
                 }
             };
         case SET_MAP:
-        return assocIn(state, ["card", "visualization_settings"], {
-            "map.region": payload,
-            "map.type": "region"
-        })
+            return assocIn(state, ["card", "visualization_settings"], {
+                "map.region": payload,
+                "map.type": "region"
+            });
         case SELECT_FLOW:
             return {
                 ...state,

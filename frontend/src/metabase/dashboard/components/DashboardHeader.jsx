@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
@@ -146,7 +147,7 @@ export default class DashboardHeader extends Component {
             // Parameters
             buttons.push(
                 <span>
-                    <Tooltip tooltip="Add a Filter">
+                    <Tooltip tooltip="Add a filter">
                         <a
                           key="parameters"
                           className={cx("text-brand-hover", { "text-brand": this.state.modal == "parameters" })}
@@ -173,7 +174,7 @@ export default class DashboardHeader extends Component {
                     key="history"
                     ref="dashboardHistory"
                     triggerElement={
-                        <Tooltip tooltip="Revision History">
+                        <Tooltip tooltip="Revision history">
                             <span data-metabase-event={"Dashboard;Revisions"}>
                                 <Icon className="text-brand-hover" name="history" size={16} />
                             </span>
@@ -195,7 +196,7 @@ export default class DashboardHeader extends Component {
 
         if (!isFullscreen && !isEditing && canEdit) {
             buttons.push(
-                <Tooltip tooltip="Edit Dashboard">
+                <Tooltip tooltip="Edit dashboard">
                     <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
                         <Icon name="pencil" size={16} />
                     </a>
@@ -210,7 +211,7 @@ export default class DashboardHeader extends Component {
                     key="add"
                     ref="addQuestionModal"
                     triggerElement={
-                        <Tooltip tooltip="Add Card">
+                        <Tooltip tooltip="Add a question">
                             <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
                                 <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
                             </span>

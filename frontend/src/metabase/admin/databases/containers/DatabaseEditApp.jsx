@@ -1,6 +1,8 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import title from "metabase/hoc/Title";
 
 import MetabaseSettings from "metabase/lib/settings";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
@@ -40,6 +42,7 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
     static propTypes = {
         database: PropTypes.object,

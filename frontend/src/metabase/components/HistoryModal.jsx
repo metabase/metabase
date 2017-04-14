@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -72,7 +73,7 @@ export default class HistoryModal extends Component {
         var { revisions } = this.props;
         return (
             <ModalContent
-                title="Change History"
+                title="Revision history"
                 onClose={() => this.props.onClose()}
             >
                 <LoadingAndErrorWrapper loading={!revisions} error={this.state.error}>

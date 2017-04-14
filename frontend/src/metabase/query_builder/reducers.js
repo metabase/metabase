@@ -28,7 +28,7 @@ import {
     SET_QUERY_DATABASE,
     SET_QUERY_SOURCE_TABLE,
     SET_QUERY_MODE,
-    SET_QUERY,
+    SET_DATASET_QUERY,
     RUN_QUERY,
     CANCEL_QUERY,
     QUERY_COMPLETED,
@@ -49,7 +49,7 @@ export const uiControls = handleActions({
 
     [TOGGLE_DATA_REFERENCE]: { next: (state, { payload }) => ({ ...state, isShowingDataReference: !state.isShowingDataReference, isShowingTemplateTagsEditor: false }) },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor, isShowingDataReference: false }) },
-    [SET_QUERY]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: payload.openTemplateTagsEditor }) },
+    [SET_DATASET_QUERY]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: payload.openTemplateTagsEditor }) },
     [CLOSE_QB_TUTORIAL]: { next: (state, { payload }) => ({ ...state, isShowingTutorial: false }) },
     [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }) },
 
@@ -92,7 +92,7 @@ export const card = handleActions({
     [SET_QUERY_MODE]: { next: (state, { payload }) => payload },
     [SET_QUERY_DATABASE]: { next: (state, { payload }) => payload },
     [SET_QUERY_SOURCE_TABLE]: { next: (state, { payload }) => payload },
-    [SET_QUERY]: { next: (state, { payload }) => payload.card },
+    [SET_DATASET_QUERY]: { next: (state, { payload }) => payload.card },
 
     [QUERY_COMPLETED]: { next: (state, { payload }) => ({ ...state, display: payload.cardDisplay }) },
 
@@ -141,6 +141,11 @@ export const tableForeignKeyReferences = handleActions({
     [LOAD_OBJECT_DETAIL_FK_REFERENCES]: { next: (state, { payload }) => payload}
 }, null);
 
+export const lastRunCard = handleActions({
+    [RESET_QB]: { next: (state, { payload }) => null },
+    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.card },
+    [QUERY_ERRORED]: { next: (state, { payload }) => null },
+}, null);
 
 // the result of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResult = handleActions({
