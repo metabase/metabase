@@ -7,10 +7,11 @@
 
 import { getRoutes } from "./routes-embed.jsx";
 import reducers from './reducers-public';
+import rootEpic from './epics-public';
 
 import { IFRAMED } from "metabase/lib/dom";
 
-init(reducers, getRoutes, () => {
+init(reducers, rootEpic, getRoutes, () => {
     if (IFRAMED) {
         document.body.style.backgroundColor = "transparent";
     }

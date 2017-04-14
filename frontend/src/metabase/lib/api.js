@@ -3,6 +3,8 @@
 import querystring from "querystring";
 
 import EventEmitter from "events";
+import Rx from 'rxjs/Rx';
+import { defer } from "metabase/lib/promise";
 
 let events = new EventEmitter();
 
@@ -19,7 +21,8 @@ function makeMethod(method: string, hasBody: boolean = false) {
             transformResponse = params;
             params = {};
         }
-        return function(
+
+        function promiseMethod(
             data?: { [key:string]: any },
             options?: { [key:string]: any } = {}
         ): Promise<any> {
@@ -78,8 +81,33 @@ function makeMethod(method: string, hasBody: boolean = false) {
                     options.cancelled.then(() => xhr.abort());
                 }
             })
-
         }
+
+        function observableMethod(
+            data?: { [key:string]: any },
+            options?: { [key:string]: any } = {}
+        ): Promise<any> {
+            const cancelledDeferred = defer();
+            let done = false;
+            let dataPromise = promiseMethod(data, {
+                cancelled: cancelledDeferred.promise,
+                ...options
+            });
+            return Rx.Observable.from(dataPromise)
+                .do(() => {
+                    done = true
+                })
+                .finally(() => {
+                    if (!done) {
+                        cancelledDeferred.resolve()
+                    }
+                });
+        }
+
+        promiseMethod.$p = promiseMethod;
+        promiseMethod.$o = observableMethod;
+
+        return promiseMethod;
     }
 }
 

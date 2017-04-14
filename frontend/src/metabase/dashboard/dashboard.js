@@ -62,6 +62,7 @@ export const SAVE_DASHCARD = "metabase/dashboard/SAVE_DASHCARD";
 
 export const FETCH_DASHBOARD_CARD_DATA = "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
+export const FETCH_CARD_DATA_RESULT = "metabase/dashboard/FETCH_CARD_DATA_RESULT";
 export const FETCH_CARD_DURATION = "metabase/dashboard/FETCH_CARD_DURATION";
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
@@ -146,14 +147,6 @@ const updateDashcardId = createAction(UPDATE_DASHCARD_ID, (oldDashcardId, newDas
 
 export const clearCardData = createAction(CLEAR_CARD_DATA, (cardId, dashcardId) => ({ cardId, dashcardId }));
 
-export async function fetchDataOrError(dataPromise) {
-    try {
-        return await dataPromise;
-    }
-    catch (error) {
-        return { error };
-    }
-}
 
 export const fetchDashboardCardData = createThunkAction(FETCH_DASHBOARD_CARD_DATA, (options) =>
     async (dispatch, getState) => {
@@ -175,8 +168,8 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
         // shortcircuit and return a fake 403
         if (!card.dataset_query) {
             return {
-                dashcard_id: dashcard.id,
-                card_id: card.id,
+                dashcardId: dashcard.id,
+                cardId: card.id,
                 result: { error: { status: 403 }}
             };
         }
@@ -195,8 +188,8 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             // "constraints" is added by the backend, remove it when comparing
             if (lastResult && Utils.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)) {
                 return {
-                    dashcard_id: dashcard.id,
-                    card_id: card.id,
+                    dashcardId: dashcard.id,
+                    cardId: card.id,
                     result: lastResult
                 };
             }
@@ -207,40 +200,27 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             dispatch(clearCardData(card.id, dashcard.id));
         }
 
-        let result = null;
-
-        // start a timer that will fetch the expected card duration if the query takes too long
-        let slowCardTimer = setTimeout(() => {
-            if (result === null) {
-                dispatch(fetchCardDuration(card, datasetQuery));
-            }
-        }, DATASET_SLOW_TIMEOUT);
-
-        // make the actual request
         if (dashboardType === "public") {
-            result = await fetchDataOrError(PublicApi.dashboardCardQuery({
-                uuid: dashcard.dashboard_id,
+            return {
                 cardId: card.id,
-                parameters: datasetQuery.parameters ? JSON.stringify(datasetQuery.parameters) : undefined
-            }));
-        } else if (dashboardType === "embed") {
-            result = await fetchDataOrError(EmbedApi.dashboardCardQuery({
-                token: dashcard.dashboard_id,
                 dashcardId: dashcard.id,
+                uuid: dashcard.dashboard_id,
+                parameters: datasetQuery.parameters ? JSON.stringify(datasetQuery.parameters) : undefined
+            };
+        } else if (dashboardType === "embed") {
+            return {
                 cardId: card.id,
+                dashcardId: dashcard.id,
+                token: dashcard.dashboard_id,
                 ...getParametersBySlug(dashboard.parameters, parameterValues)
-            }));
+            };
         } else {
-            result = await fetchDataOrError(CardApi.query({cardId: card.id, parameters: datasetQuery.parameters}));
+            return {
+                cardId: card.id,
+                dashcardId: dashcard.id,
+                parameters: datasetQuery.parameters
+            };
         }
-
-        clearTimeout(slowCardTimer);
-
-        return {
-            dashcard_id: dashcard.id,
-            card_id: card.id,
-            result: result
-        };
     };
 });
 
@@ -640,8 +620,8 @@ const revisions = handleActions({
 const dashcardData = handleActions({
     // clear existing dashboard data when loading a dashboard
     [INITIALIZE]: { next: (state) => ({}) },
-    [FETCH_CARD_DATA]: { next: (state, { payload: { dashcard_id, card_id, result }}) =>
-        assocIn(state, [dashcard_id, card_id], result)
+    [FETCH_CARD_DATA_RESULT]: { next: (state, { payload: { dashcardId, cardId, result }}) =>
+        assocIn(state, [dashcardId, cardId], result)
     },
     [CLEAR_CARD_DATA]: { next: (state, { payload: { cardId, dashcardId }}) =>
         assocIn(state, [dashcardId, cardId])

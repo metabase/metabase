@@ -33,8 +33,8 @@ const WHITELIST_FORBIDDEN_URLS = [
     /api\/table\/\d+\/fks$/
 ];
 
-function _init(reducers, getRoutes, callback) {
-    const store = getStore(reducers, browserHistory);
+function _init(reducers, rootEpic, getRoutes, callback) {
+    const store = getStore(reducers, rootEpic, browserHistory);
     const routes = getRoutes(store);
     const history = syncHistoryWithStore(browserHistory, store);
 
