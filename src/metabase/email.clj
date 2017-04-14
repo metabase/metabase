@@ -87,23 +87,12 @@
       {:error   :ERROR
        :message (.getMessage e)})))
 
-
-(defn test-smtp-connection
-  "Test the connection to an SMTP server to determine if we can send emails.
-
-   Takes in a dictionary of properties such as:
-       {:host     \"localhost\"
-        :port     587
-        :user     \"bigbird\"
-        :pass     \"luckyme\"
-        :sender   \"foo@mycompany.com\"
-        :security \"tls\"}"
+(defn- run-smtp-test
   [{:keys [host port user pass sender security] :as details}]
   {:pre [(string? host)
          (integer? port)]}
   (try
     (let [ssl?      (= security "ssl")
-          starttls? (= security "starttls")
           proto     (if ssl? "smtps" "smtp")
           details (-> details
                       (assoc :proto proto
@@ -120,3 +109,37 @@
       (log/error "Error testing SMTP connection:" (.getMessage e))
       {:error   :ERROR
        :message (.getMessage e)})))
+
+(def ^:private email-security-order ["tls" "starttls" "ssl"])
+
+(defn- guess-smtp-security [details]
+  (loop [[security-type & more-to-try] email-security-order]
+    (when security-type
+      (let [test-result (run-smtp-test (assoc details :security security-type))]
+        (if (not= :ERROR (:error test-result))
+          (assoc test-result :security security-type)
+          (do
+            (Thread/sleep 500) ;; try not to get banned
+            (recur more-to-try)))))))
+
+(defn test-smtp-connection
+  "Test the connection to an SMTP server to determine if we can send emails.
+
+   Takes in a dictionary of properties such as:
+       {:host     \"localhost\"
+        :port     587
+        :user     \"bigbird\"
+        :pass     \"luckyme\"
+        :sender   \"foo@mycompany.com\"
+        :security \"tls\"}"
+  [details]
+  (let [inital-attempt (run-smtp-test details)
+        it-worked?     (= :SUCCESS (:error inital-attempt))
+        attempted-fix  (if (not it-worked?)
+                         (guess-smtp-security details))
+        we-fixed-it?     (= :SUCCESS (:error attempted-fix))]
+    (if it-worked?
+      inital-attempt
+      (if we-fixed-it?
+        attempted-fix
+        inital-attempt))))
