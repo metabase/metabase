@@ -175,9 +175,9 @@
   },
   "jest": {
     "moduleNameMapper": {
-      "\\.(css|less)$": "identity-obj-proxy",
+      "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
-      "^promise-loader": "<rootDir>/frontend/test/__mocks__/fileMock.js"
+      "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
     },
     "testPathIgnorePatterns": [
       "<rootDir>/frontend/test/"

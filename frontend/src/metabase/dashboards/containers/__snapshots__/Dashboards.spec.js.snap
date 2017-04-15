@@ -57,9 +57,9 @@ exports[`Dashboards list view should render correctly with two dashboards 1`] = 
     <div
       className="flex align-center pb1">
       <div
-        className="searchHeader">
+        className={undefined}>
         <svg
-          className="searchIcon"
+          className={undefined}
           fill="currentcolor"
           height={18}
           name="search"
@@ -70,7 +70,7 @@ exports[`Dashboards list view should render correctly with two dashboards 1`] = 
             d="M12 0 A12 12 0 0 0 0 12 A12 12 0 0 0 12 24 A12 12 0 0 0 18.5 22.25 L28 32 L32 28 L22.25 18.5 A12 12 0 0 0 24 12 A12 12 0 0 0 12 0 M12 4 A8 8 0 0 1 12 20 A8 8 0 0 1 12 4  " />
         </svg>
         <input
-          className="input searchBox"
+          className="input"
           onChange={[Function]}
           placeholder="Filter this list..."
           type="text"
