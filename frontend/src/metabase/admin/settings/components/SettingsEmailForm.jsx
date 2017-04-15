@@ -31,12 +31,19 @@ export default class SettingsEmailForm extends Component {
 
     componentWillMount() {
         // this gives us an opportunity to load up our formData with any existing values for elements
-        let formData = {};
-        this.props.elements.forEach(function(element) {
-            formData[element.key] = element.value;
-        });
+        this.updateFormData(this.props);
+    }
 
-        this.setState({formData});
+    componentWillReceiveProps(nextProps) {
+        this.updateFormData(nextProps);
+    }
+
+    updateFormData(props) {
+        let formData = {};
+        for (const element of props.elements) {
+            formData[element.key] = element.value;
+        }
+        this.setState({ formData });
     }
 
     componentDidMount() {
