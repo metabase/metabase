@@ -16,8 +16,11 @@ import Icon from "metabase/components/Icon.jsx";
 import SearchHeader from "metabase/components/SearchHeader";
 import EmptyState from "metabase/components/EmptyState";
 
+import {caseInsensitiveSearch} from "metabase/lib/string"
+
 import * as dashboardsActions from "../dashboards";
 import {getDashboardListing} from "../selectors";
+
 
 const mapStateToProps = (state, props) => ({
     dashboards: getDashboardListing(state)
@@ -77,7 +80,7 @@ export class Dashboards extends Component {
             return dashboards;
         } else {
             return dashboards.filter(({name, description}) =>
-                name.includes(searchText) || (description && description.includes(searchText))
+                caseInsensitiveSearch(name,searchText) || (description && caseInsensitiveSearch(description, searchText))
             );
         }
     }
