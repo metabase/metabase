@@ -8,6 +8,7 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
+import * as Urls from "metabase/lib/urls";
 
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
@@ -118,26 +119,28 @@ export default class Navbar extends Component {
     renderMainNav() {
         return (
             <nav className={cx("Nav CheckBg CheckBg-offset relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
-                <ul className="pl4 pr1 flex align-center">
+                <ul className="ml2 sm-pl4 pr1 flex align-center">
                     <li>
                         <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background p1">
                             <LogoIcon dark={true}></LogoIcon>
                         </Link>
                     </li>
-                    <li className="pl3">
+                    <li className="pl3 hide sm-show">
                         <MainNavLink to="/dashboard" name="Dashboards" eventName="Dashboards" />
                     </li>
-                    <li className="pl1">
+                    <li className="pl1 hide sm-show">
                         <MainNavLink to="/questions" name="Questions" eventName="Questions" />
                     </li>
-                    <li className="pl1">
+                    <li className="pl1 hide sm-show">
                         <MainNavLink to="/pulse" name="Pulses" eventName="Pulses" />
                     </li>
-                    <li className="pl1">
+                    <li className="pl1 hide sm-show">
                         <MainNavLink to="/reference/guide" name="Data Reference" eventName="DataReference" />
                     </li>
-                    <li className="pl3">
-                        <Link to="/q" data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">New <span className="hide sm-show">Question</span></Link>
+                    <li className="pl3 hide sm-show">
+                        <Link to={Urls.question()} data-metabase-event={"Navbar;New Question"} style={BUTTON_PADDING_STYLES.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">
+                            New <span>Question</span>
+                        </Link>
                     </li>
                     <li className="flex-align-right transition-background">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>

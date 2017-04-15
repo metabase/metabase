@@ -135,6 +135,10 @@
     font-family: Monaco, monospace;
 }
 
+.text-pre-wrap {
+  white-space: pre-wrap;
+}
+
 .text-measure {
     max-width: 620px;
 }

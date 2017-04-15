@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
-import { capitalize } from 'humanize'
+import { capitalize } from "humanize-plus"
 
 const propTypes = {
   provider: PropTypes.string.isRequired

@@ -1,8 +1,12 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
 exports[`Button should render "" correctly 1`] = `
 <button
-  className="Button ">
+  className="Button "
+>
   <div
-    className="flex layout-centered">
+    className="flex layout-centered"
+  >
     <div>
       Clickity click
     </div>
@@ -12,9 +16,11 @@ exports[`Button should render "" correctly 1`] = `
 
 exports[`Button should render "primary" correctly 1`] = `
 <button
-  className="Button Button--primary">
+  className="Button Button--primary"
+>
   <div
-    className="flex layout-centered">
+    className="flex layout-centered"
+  >
     <div>
       Clickity click
     </div>
@@ -24,9 +30,11 @@ exports[`Button should render "primary" correctly 1`] = `
 
 exports[`Button should render "with an icon" correctly 1`] = `
 <button
-  className="Button ">
+  className="Button "
+>
   <div
-    className="flex layout-centered">
+    className="flex layout-centered"
+  >
     <svg
       className="mr1"
       fill="currentcolor"
@@ -34,9 +42,11 @@ exports[`Button should render "with an icon" correctly 1`] = `
       name="star"
       size={14}
       viewBox="0 0 32 32"
-      width={14}>
+      width={14}
+    >
       <path
-        d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11" />
+        d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11"
+      />
     </svg>
     <div>
       Clickity click
@@ -49,7 +59,8 @@ exports[`CheckBox should render "off" correctly 1`] = `
 <div
   className="cursor-pointer"
   onClick={[Function]}
-  style={undefined}>
+  style={undefined}
+>
   <div
     style={
       Object {
@@ -62,7 +73,8 @@ exports[`CheckBox should render "off" correctly 1`] = `
         "justifyContent": "center",
         "width": 16,
       }
-    } />
+    }
+  />
 </div>
 `;
 
@@ -74,7 +86,8 @@ exports[`CheckBox should render "on inverted" correctly 1`] = `
     Object {
       "color": "#509EE3",
     }
-  }>
+  }
+>
   <div
     style={
       Object {
@@ -87,7 +100,8 @@ exports[`CheckBox should render "on inverted" correctly 1`] = `
         "justifyContent": "center",
         "width": 16,
       }
-    }>
+    }
+  >
     <svg
       className="Icon Icon-check"
       fill="currentcolor"
@@ -100,9 +114,11 @@ exports[`CheckBox should render "on inverted" correctly 1`] = `
         }
       }
       viewBox="0 0 32 32"
-      width={12}>
+      width={12}
+    >
       <path
-        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z " />
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
     </svg>
   </div>
 </div>
@@ -112,7 +128,8 @@ exports[`CheckBox should render "on" correctly 1`] = `
 <div
   className="cursor-pointer"
   onClick={[Function]}
-  style={undefined}>
+  style={undefined}
+>
   <div
     style={
       Object {
@@ -125,7 +142,8 @@ exports[`CheckBox should render "on" correctly 1`] = `
         "justifyContent": "center",
         "width": 16,
       }
-    }>
+    }
+  >
     <svg
       className="Icon Icon-check"
       fill="currentcolor"
@@ -138,9 +156,11 @@ exports[`CheckBox should render "on" correctly 1`] = `
         }
       }
       viewBox="0 0 32 32"
-      width={12}>
+      width={12}
+    >
       <path
-        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z " />
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
     </svg>
   </div>
 </div>
@@ -153,7 +173,8 @@ exports[`StackedCheckBox should render "off" correctly 1`] = `
     Object {
       "position": "relative",
     }
-  }>
+  }
+>
   <div
     className="cursor-pointer"
     onClick={[Function]}
@@ -164,7 +185,8 @@ exports[`StackedCheckBox should render "off" correctly 1`] = `
         "top": -3,
         "zIndex": -1,
       }
-    }>
+    }
+  >
     <div
       style={
         Object {
@@ -177,12 +199,14 @@ exports[`StackedCheckBox should render "off" correctly 1`] = `
           "justifyContent": "center",
           "width": 16,
         }
-      } />
+      }
+    />
   </div>
   <div
     className="cursor-pointer"
     onClick={[Function]}
-    style={Object {}}>
+    style={Object {}}
+  >
     <div
       style={
         Object {
@@ -195,7 +219,8 @@ exports[`StackedCheckBox should render "off" correctly 1`] = `
           "justifyContent": "center",
           "width": 16,
         }
-      } />
+      }
+    />
   </div>
 </span>
 `;
@@ -208,7 +233,8 @@ exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
       "color": "#509EE3",
       "position": "relative",
     }
-  }>
+  }
+>
   <div
     className="cursor-pointer"
     onClick={[Function]}
@@ -219,7 +245,8 @@ exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
         "top": -3,
         "zIndex": -1,
       }
-    }>
+    }
+  >
     <div
       style={
         Object {
@@ -232,7 +259,8 @@ exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
           "justifyContent": "center",
           "width": 16,
         }
-      }>
+      }
+    >
       <svg
         className="Icon Icon-check"
         fill="currentcolor"
@@ -245,16 +273,19 @@ exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
           }
         }
         viewBox="0 0 32 32"
-        width={12}>
+        width={12}
+      >
         <path
-          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z " />
+          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+        />
       </svg>
     </div>
   </div>
   <div
     className="cursor-pointer"
     onClick={[Function]}
-    style={Object {}}>
+    style={Object {}}
+  >
     <div
       style={
         Object {
@@ -267,7 +298,8 @@ exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
           "justifyContent": "center",
           "width": 16,
         }
-      }>
+      }
+    >
       <svg
         className="Icon Icon-check"
         fill="currentcolor"
@@ -280,9 +312,11 @@ exports[`StackedCheckBox should render "on inverted" correctly 1`] = `
           }
         }
         viewBox="0 0 32 32"
-        width={12}>
+        width={12}
+      >
         <path
-          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z " />
+          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+        />
       </svg>
     </div>
   </div>
@@ -296,7 +330,8 @@ exports[`StackedCheckBox should render "on" correctly 1`] = `
     Object {
       "position": "relative",
     }
-  }>
+  }
+>
   <div
     className="cursor-pointer"
     onClick={[Function]}
@@ -307,7 +342,8 @@ exports[`StackedCheckBox should render "on" correctly 1`] = `
         "top": -3,
         "zIndex": -1,
       }
-    }>
+    }
+  >
     <div
       style={
         Object {
@@ -320,7 +356,8 @@ exports[`StackedCheckBox should render "on" correctly 1`] = `
           "justifyContent": "center",
           "width": 16,
         }
-      }>
+      }
+    >
       <svg
         className="Icon Icon-check"
         fill="currentcolor"
@@ -333,16 +370,19 @@ exports[`StackedCheckBox should render "on" correctly 1`] = `
           }
         }
         viewBox="0 0 32 32"
-        width={12}>
+        width={12}
+      >
         <path
-          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z " />
+          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+        />
       </svg>
     </div>
   </div>
   <div
     className="cursor-pointer"
     onClick={[Function]}
-    style={Object {}}>
+    style={Object {}}
+  >
     <div
       style={
         Object {
@@ -355,7 +395,8 @@ exports[`StackedCheckBox should render "on" correctly 1`] = `
           "justifyContent": "center",
           "width": 16,
         }
-      }>
+      }
+    >
       <svg
         className="Icon Icon-check"
         fill="currentcolor"
@@ -368,9 +409,11 @@ exports[`StackedCheckBox should render "on" correctly 1`] = `
           }
         }
         viewBox="0 0 32 32"
-        width={12}>
+        width={12}
+      >
         <path
-          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z " />
+          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+        />
       </svg>
     </div>
   </div>
@@ -385,7 +428,8 @@ exports[`Toggle should render "off" correctly 1`] = `
     Object {
       "color": null,
     }
-  } />
+  }
+/>
 `;
 
 exports[`Toggle should render "on" correctly 1`] = `
@@ -396,5 +440,6 @@ exports[`Toggle should render "on" correctly 1`] = `
     Object {
       "color": null,
     }
-  } />
+  }
+/>
 `;

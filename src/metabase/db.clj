@@ -203,6 +203,24 @@
          ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
+(defn consolidate-liquibase-changesets
+  "Consolidate all previous DB migrations so they came from single file.
+   Previous migrations where stored in many small files which added seconds
+   per file to the startup time because liquibase was checking the jar
+   signature for each file. This function is required to correct the liquibase
+   tables to reflect that these migrations where moved to a single file.
+
+   see https://github.com/metabase/metabase/issues/3715"
+  [conn]
+  (let [liquibases-table-name (if (= (db-type) :h2)
+                                "DATABASECHANGELOG"
+                                "databasechangelog")
+        fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
+                         (empty? (jdbc/metadata-query (.getTables meta nil nil liquibases-table-name (into-array String ["TABLE"])))))
+        query (format "UPDATE %s SET FILENAME = ?" liquibases-table-name)]
+    (when-not fresh-install?
+      (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
+
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run migrate up`):
 
@@ -229,6 +247,7 @@
      (log/info "Setting up Liquibase...")
      (try
        (let [liquibase (conn->liquibase conn)]
+         (consolidate-liquibase-changesets conn)
          (log/info "Liquibase is ready.")
          (case direction
            :up            (migrate-up-if-needed! conn liquibase)

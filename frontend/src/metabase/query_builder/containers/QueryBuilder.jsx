@@ -219,7 +219,7 @@ class LegacyQueryBuilder extends Component {
                         <QueryHeader {...this.props}/>
                     </div>
 
-                    <div id="react_qb_editor" className="z2">
+                    <div id="react_qb_editor" className="z2 hide sm-show">
                         { card && card.dataset_query && card.dataset_query.type === "native" ?
                             <NativeQueryEditor
                                 {...this.props}
@@ -245,7 +245,7 @@ class LegacyQueryBuilder extends Component {
                     }
                 </div>
 
-                <div className={cx("SideDrawer", { "SideDrawer--show": showDrawer })}>
+                <div className={cx("SideDrawer hide sm-show", { "SideDrawer--show": showDrawer })}>
                     { uiControls.isShowingDataReference &&
                         <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }

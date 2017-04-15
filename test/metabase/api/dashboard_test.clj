@@ -159,6 +159,18 @@
                                                                                                :creator_id   (user->id :trashbird)})
                               (Dashboard dashboard-id)])))
 
+;; allow "caveats" and "points_of_interest" to be empty strings, and "show_in_getting_started" should be a boolean
+(expect
+  (merge dashboard-defaults {:name        "Test Dashboard"
+                             :creator_id  (user->id :rasta)
+                             :caveats                 ""
+                             :points_of_interest      ""
+                             :show_in_getting_started true})
+  (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+    (dashboard-response ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:caveats                 ""
+                                                                                         :points_of_interest      ""
+                                                                                         :show_in_getting_started true}))))
+
 ;; Can we clear the description of a Dashboard? (#4738)
 (expect
   nil
