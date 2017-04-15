@@ -141,7 +141,6 @@ export default class PublicQuestion extends Component<*, Props, State> {
 
         return (
             <EmbedFrame
-                className="relative spread"
                 name={card && card.name}
                 description={card && card.description}
                 parameters={card && card.parameters}

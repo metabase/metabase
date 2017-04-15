@@ -56,6 +56,13 @@ If you wish to have a parameter locked down to prevent your embedding applicatio
 
 ![Locked parameters](images/embedding/06-locked.png)
 
+### Resizing Dashboards to fit their content
+Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automatically sized vertically to fit their contents you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
+```
+<script src="http://metabase.example.com/app/iframeResizer.js"></script>
+<iframe src="http://metabase.example.com/embed/dashboard/TOKEN" onload="iFrameResize({}, this)"></iframe>
+```
+
 ### Reference applications
 To see concrete examples of how to embed Metabase in applications under a number of common frameworks, check out our [reference implementations](https://github.com/metabase/embedding-reference-apps) on Github.
 

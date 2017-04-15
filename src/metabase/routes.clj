@@ -15,21 +15,26 @@
 (defn- base-href []
   (str (.getPath (clojure.java.io/as-url (public-settings/site-url))) "/"))
 
-(defn- escape-script
-  "Escapes '</script' so it can be safely included in an inline <script> tag"
-  [text]
+(defn- escape-script [text]
+  ;; Escapes '</script' so it can be safely included in an inline <script> tag
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
   (s/replace text #"</script" "</scr\\\\ipt"))
 
+(defn- load-file [path]
+  (slurp (or (io/resource path)
+             (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
+
+(defn- load-template [path variables]
+  (stencil/render-string (load-file path) variables))
+
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
-        (stencil/render-string (slurp (or (io/resource (str "frontend_client/" entry ".html"))
-                                          (throw (Exception. (str "Cannot find './resources/frontend_client/" entry ".html'. Did you remember to build the Metabase frontend?")))))
-                               {:bootstrap_json (escape-script (json/generate-string (public-settings/public-settings)))
-                                :uri            (escape-script (json/generate-string uri))
-                                :base_href      (escape-script (json/generate-string (base-href)))
-                                :embed_code     (when embeddable? (embed/head uri))})
-        (slurp (io/resource "frontend_client/init.html")))
+        (load-template (str "frontend_client/" entry ".html")
+                       {:bootstrap_json (escape-script (json/generate-string (public-settings/public-settings)))
+                        :uri            (escape-script (json/generate-string uri))
+                        :base_href      (escape-script (json/generate-string (base-href)))
+                        :embed_code     (when embeddable? (embed/head uri))})
+        (load-file "frontend_client/init.html"))
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
 

@@ -28,7 +28,7 @@ const html = ({ iframeUrl }) =>
     width="800"
     height="600"
     allowtransparency
-/>`
+></iframe>`
 
 const jsx = ({ iframeUrl }) =>
 `<iframe
