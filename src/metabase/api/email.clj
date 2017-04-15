@@ -55,7 +55,9 @@
         #".*"
         {:message "Sorry, something went wrong.  Please try again."}))))
 
-(defn humanize-email-corrections [corrections]
+(defn humanize-email-corrections
+  "formats warnings when security settings are autocorrected"
+  [corrections]
   (into {}
         (mapv (fn [[k v]]
                 [k (format "%s was autocorrected to %s"

@@ -88,6 +88,8 @@
        :message (.getMessage e)})))
 
 (defn- run-smtp-test
+  "tests an SMTP configuration by attempting to connect and authenticate
+   if an authenticated method is passed in :security."
   [{:keys [host port user pass sender security] :as details}]
   {:pre [(string? host)
          (integer? port)]}
@@ -112,14 +114,19 @@
 
 (def ^:private email-security-order ["tls" "starttls" "ssl"])
 
-(defn- guess-smtp-security [details]
-  (loop [[security-type & more-to-try] email-security-order]
-    (when security-type
+(defn- guess-smtp-security
+  "Attempts to use each of the security methods in security order with the same set of credentials.
+   This is used only when the initial connection attempt fails, so it won't overwrite a functioning
+   configuration. If this uses something other than the provided method, a warning gets printed on
+   the config page"
+  [details]
+  (loop [[security-type & more-to-try] email-security-order] ;; make sure this is not lazy, or chunking
+    (when security-type                                      ;; can cause some servers to block requests
       (let [test-result (run-smtp-test (assoc details :security security-type))]
         (if (not= :ERROR (:error test-result))
           (assoc test-result :security security-type)
           (do
-            (Thread/sleep 500) ;; try not to get banned
+            (Thread/sleep 500) ;; try not to get banned from outlook.com
             (recur more-to-try)))))))
 
 (defn test-smtp-connection
