@@ -1,7 +1,6 @@
 
 import React, { Component } from 'react';
 import PropTypes from "prop-types";
-import { connect } from "react-redux";
 
 import ParameterValueWidget from "./ParameterValueWidget.jsx";
 import Icon from "metabase/components/Icon.jsx";

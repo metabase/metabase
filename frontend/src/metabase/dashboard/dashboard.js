@@ -18,7 +18,7 @@ import Utils from "metabase/lib/utils";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
-import { fetchDatabaseMetadata } from "metabase/redux/metadata";
+import { addParamValues, fetchDatabaseMetadata } from "metabase/redux/metadata";
 
 import { DashboardApi, MetabaseApi, CardApi, RevisionApi, PublicApi, EmbedApi } from "metabase/services";
 
@@ -305,6 +305,10 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId
                 .map(card => card.dataset_query.database)
                 .uniq()
                 .each((dbId) => dispatch(fetchDatabaseMetadata(dbId)));
+        }
+
+        if (dashboard.param_values) {
+            dispatch(addParamValues(dashboard.param_values));
         }
 
         return {

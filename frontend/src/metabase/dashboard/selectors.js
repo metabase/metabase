@@ -10,7 +10,8 @@ import { getParameterTargetFieldId } from "metabase/meta/Parameter";
 import Metadata from "metabase/meta/metadata/Metadata";
 
 import type { CardId, Card } from "metabase/meta/types/Card";
-import type { ParameterId, DashCardId, ParameterMappingUIOption, Parameter, ParameterMapping } from "metabase/meta/types/Dashboard";
+import type { DashCardId } from "metabase/meta/types/Dashboard";
+import type { ParameterId, Parameter, ParameterMapping, ParameterMappingUIOption } from "metabase/meta/types/Parameter";
 
 export type AugmentedParameterMapping = ParameterMapping & {
     dashcard_id: DashCardId,

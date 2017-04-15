@@ -3,7 +3,7 @@
 import type { TableId } from "./Table";
 import type { FieldId } from "./Field";
 import type { SegmentId } from "./Segment";
-import type { ParameterType } from "./Dashboard";
+import type { ParameterType } from "./Parameter";
 
 export type MetricId = number;
 

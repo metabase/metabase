@@ -16,7 +16,8 @@ import { getDashboardComplete, getCardData, getCardDurations, getParameters, get
 
 import * as dashboardActions from "metabase/dashboard/dashboard";
 
-import type { Dashboard, Parameter } from "metabase/meta/types/Dashboard";
+import type { Dashboard } from "metabase/meta/types/Dashboard";
+import type { Parameter } from "metabase/meta/types/Parameter";
 
 import _ from "underscore";
 

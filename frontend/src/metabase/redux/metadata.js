@@ -1,6 +1,7 @@
 import {
     handleActions,
     combineReducers,
+    createAction,
     createThunkAction,
     resourceListToMap,
     fetchData,
@@ -367,7 +368,8 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
     };
 });
 
-import { FETCH_DASHBOARD } from "metabase/dashboard/dashboard";
+export const ADD_PARAM_VALUES = "metabase/metadata/ADD_PARAM_VALUES";
+export const addParamValues = createAction(ADD_PARAM_VALUES);
 
 const fields = handleActions({
     [FETCH_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.fields }) },
@@ -375,17 +377,9 @@ const fields = handleActions({
     [UPDATE_FIELD]: { next: (state, { payload }) => payload },
     [FETCH_FIELD_VALUES]: { next: (state, { payload: fieldValues }) =>
         fieldValues ? assocIn(state, [fieldValues.field_id, "values"], fieldValues) : state },
-    // NOTE: from metabase/dashboard/dashboard
-    [FETCH_DASHBOARD]: { next: (state, { payload }) => {
-        // extract field values from dashboard endpoint
-        if (payload.entities && payload.entities.dashboard) {
-            for (const dashboard of Object.values(payload.entities.dashboard)) {
-                if (dashboard.param_values) {
-                    for (const fieldValues of Object.values(dashboard.param_values)) {
-                        state = assocIn(state, [fieldValues.field_id, "values"], fieldValues);
-                    }
-                }
-            }
+    [ADD_PARAM_VALUES]: { next: (state, { payload: paramValues }) => {
+        for (const fieldValues of Object.values(paramValues)) {
+            state = assocIn(state, [fieldValues.field_id, "values"], fieldValues);
         }
         return state;
     }}

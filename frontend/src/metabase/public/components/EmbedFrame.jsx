@@ -16,7 +16,7 @@ const DEFAULT_OPTIONS = {
     titled: true
 }
 
-import type { Parameter } from "metabase/meta/types/Dashboard";
+import type { Parameter } from "metabase/meta/types/Parameter";
 
 type Props = {
     className?: string,

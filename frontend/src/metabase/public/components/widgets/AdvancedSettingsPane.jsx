@@ -17,7 +17,7 @@ const getIconForParameter = (parameter) =>
     "unknown";
 
 import type { EmbedType, EmbeddableResource, EmbeddingParams, DisplayOptions } from "./EmbedModalContent";
-import type { Parameter, ParameterId } from "metabase/meta/types/Dashboard";
+import type { Parameter, ParameterId } from "metabase/meta/types/Parameter";
 
 type Props = {
     className?: string,

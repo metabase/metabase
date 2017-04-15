@@ -1,8 +1,7 @@
 /* @flow */
 
 import type { Card, CardId, VisualizationSettings } from "./Card";
-
-import type { ConcreteField } from "./Query";
+import type { Parameter, ParameterMapping } from "./Parameter";
 
 export type DashboardId = number;
 
@@ -36,54 +35,3 @@ export type DashCard = {
     sizeY: number,
     sizeX: number
 };
-
-export type ParameterId = string;
-
-export type ParameterType = string;
-
-export type Parameter = {
-    id: ParameterId,
-    name: string,
-    type: ParameterType,
-    slug: string,
-    default?: string
-};
-
-export type VariableTarget = ["template-tag", string];
-export type DimensionTarget = ["template-tag", string] | ConcreteField
-
-export type ParameterTarget =
-    ["variable", VariableTarget] |
-    ["dimension", DimensionTarget];
-
-export type ParameterMappingOption = {
-    name: string,
-    target: ParameterTarget,
-};
-
-export type ParameterMapping = {
-    card_id: CardId,
-    parameter_id: ParameterId,
-    target: ParameterTarget
-};
-
-export type ParameterOption = {
-    name: string,
-    description?: string,
-    type: ParameterType
-};
-
-export type ParameterInstance = {
-    type: ParameterType,
-    target: ParameterTarget,
-    value: string
-};
-
-
-
-export type ParameterMappingUIOption = ParameterMappingOption & {
-    icon: ?string,
-    sectionName: string,
-    isFk?: boolean,
-    isVariable?: boolean,
-}

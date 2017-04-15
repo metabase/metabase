@@ -6,7 +6,7 @@ import type Field from "./metadata/Field";
 import type { FieldId } from "./types/Field";
 import type { TemplateTag } from "./types/Query";
 import type { Card } from "./types/Card";
-import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, DimensionTarget, VariableTarget } from "./types/Dashboard";
+import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, DimensionTarget, VariableTarget } from "./types/Parameter";
 
 import { getTemplateTags } from "./Card";
 

@@ -14,7 +14,7 @@ import { getSignedPreviewUrl, getUnsignedPreviewUrl, getSignedToken } from "meta
 import { getSiteUrl, getEmbeddingSecretKey, getIsPublicSharingEnabled, getIsApplicationEmbeddingEnabled } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import type { Parameter, ParameterId } from "metabase/meta/types/Dashboard";
+import type { Parameter, ParameterId } from "metabase/meta/types/Parameter";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 

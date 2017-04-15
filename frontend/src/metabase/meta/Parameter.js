@@ -2,12 +2,8 @@
 
 import type { DatasetQuery } from "./types/Card";
 import type { TemplateTag } from "./types/Query";
-import type { Parameter, ParameterId, ParameterTarget } from "./types/Dashboard";
+import type { Parameter, ParameterTarget, ParameterValues } from "./types/Parameter";
 import type { FieldId } from "./types/Field";
-
-export type ParameterValues = {
-    [id: ParameterId]: string
-};
 
 import Q from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
