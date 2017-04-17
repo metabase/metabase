@@ -151,6 +151,7 @@
     "test": "karma start frontend/test/karma.conf.js --single-run",
     "test-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
     "test-e2e": "JASMINE_CONFIG_PATH=./frontend/test/e2e/support/jasmine.json jasmine",
+    "test-e2e-dev": "./frontend/test/e2e-with-persistent-browser.js",
     "test-e2e-sauce": "USE_SAUCE=true yarn run test-e2e",
     "build": "webpack --bail",
     "build-watch": "webpack --watch",
@@ -178,9 +179,13 @@
     "modulePaths": [
       "<rootDir>/frontend/src"
     ],
+    "setupFiles": [
+      "<rootDir>/frontend/test/metabase-bootstrap.js"
+    ],
     "moduleNameMapper": {
       "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/__mocks__/fileMock.js",
-      "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js"
+      "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
+      "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
     }
   }
 }

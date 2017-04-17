@@ -7,7 +7,7 @@ import { combineReducers } from 'redux';
 import commonReducers from "./reducers-common";
 
 /* admin */
-import adminReducers from "./reducers-admin";
+import admin from "metabase/admin/admin";
 
 /* setup */
 import * as setup from "metabase/setup/reducers";
@@ -48,6 +48,5 @@ export default {
     reference,
     setup: combineReducers(setup),
     user: combineReducers(user),
-
-    ...adminReducers
+    admin
 };

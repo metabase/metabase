@@ -15,11 +15,11 @@
 (defsetting email-smtp-password "SMTP password.")
 (defsetting email-smtp-port     "The port your SMTP server uses for outgoing emails.")
 (defsetting email-smtp-security
-  "SMTP secure connection protocol. (tls, ssl, or none)"
+  "SMTP secure connection protocol. (tls, ssl, starttls, or none)"
   :default "none"
   :setter  (fn [new-value]
              (when-not (nil? new-value)
-               (assert (contains? #{"tls" "ssl" "none"} new-value)))
+               (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))
              (setting/set-string! :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
@@ -38,6 +38,8 @@
   (merge m (case (keyword ssl-setting)
              :tls {:tls true}
              :ssl {:ssl true}
+             :starttls {:starttls.enable true
+                        :starttls.required true}
              {})))
 
 (defn- smtp-settings []
@@ -85,27 +87,19 @@
       {:error   :ERROR
        :message (.getMessage e)})))
 
-
-(defn test-smtp-connection
-  "Test the connection to an SMTP server to determine if we can send emails.
-
-   Takes in a dictionary of properties such as:
-       {:host     \"localhost\"
-        :port     587
-        :user     \"bigbird\"
-        :pass     \"luckyme\"
-        :sender   \"foo@mycompany.com\"
-        :security \"tls\"}"
+(defn- run-smtp-test
+  "tests an SMTP configuration by attempting to connect and authenticate
+   if an authenticated method is passed in :security."
   [{:keys [host port user pass sender security] :as details}]
   {:pre [(string? host)
          (integer? port)]}
   (try
-    (let [ssl?    (= security "ssl")
-          proto   (if ssl? "smtps" "smtp")
+    (let [ssl?      (= security "ssl")
+          proto     (if ssl? "smtps" "smtp")
           details (-> details
                       (assoc :proto proto
                              :connectiontimeout "1000"
-                             :timeout "1000")
+                             :timeout "4000")
                       (add-ssl-settings security))
           session (doto (Session/getInstance (make-props sender details))
                     (.setDebug false))]
@@ -117,3 +111,42 @@
       (log/error "Error testing SMTP connection:" (.getMessage e))
       {:error   :ERROR
        :message (.getMessage e)})))
+
+(def ^:private email-security-order ["tls" "starttls" "ssl"])
+
+(defn- guess-smtp-security
+  "Attempts to use each of the security methods in security order with the same set of credentials.
+   This is used only when the initial connection attempt fails, so it won't overwrite a functioning
+   configuration. If this uses something other than the provided method, a warning gets printed on
+   the config page"
+  [details]
+  (loop [[security-type & more-to-try] email-security-order] ;; make sure this is not lazy, or chunking
+    (when security-type                                      ;; can cause some servers to block requests
+      (let [test-result (run-smtp-test (assoc details :security security-type))]
+        (if (not= :ERROR (:error test-result))
+          (assoc test-result :security security-type)
+          (do
+            (Thread/sleep 500) ;; try not to get banned from outlook.com
+            (recur more-to-try)))))))
+
+(defn test-smtp-connection
+  "Test the connection to an SMTP server to determine if we can send emails.
+
+   Takes in a dictionary of properties such as:
+       {:host     \"localhost\"
+        :port     587
+        :user     \"bigbird\"
+        :pass     \"luckyme\"
+        :sender   \"foo@mycompany.com\"
+        :security \"tls\"}"
+  [details]
+  (let [inital-attempt (run-smtp-test details)
+        it-worked?     (= :SUCCESS (:error inital-attempt))
+        attempted-fix  (if (not it-worked?)
+                         (guess-smtp-security details))
+        we-fixed-it?     (= :SUCCESS (:error attempted-fix))]
+    (if it-worked?
+      inital-attempt
+      (if we-fixed-it?
+        attempted-fix
+        inital-attempt))))
