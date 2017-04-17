@@ -1,5 +1,6 @@
 import cxs from "cxs";
 import React, { Component } from "react";
+import RetinaImage from "react-retina-image";
 import { connect } from "react-redux";
 
 import Text from "metabase/components/Text";
@@ -12,18 +13,29 @@ const QUERY_TYPES = [
     {
         name: "Explore",
         subtitle: "See data as a map, over time,or pivoted to help you understand trends or changes.",
-        type: "explore"
+        type: "explore",
+        illustration: {
+            src: "explore.svg",
+            width: 200
+        }
     },
     {
         name: "View lists",
         subtitle: "Explore tables and see what’s going on underneath your charts.",
-        type: "segment"
+        type: "segment",
+        illustration: {
+            src: "lists.svg",
+            width: 220
+        }
     },
     {
         name: "Write SQL",
         type: "sql",
-        icon: "sql",
-        subtitle: "Use SQL or other native languages for data prep or manipulation."
+        subtitle: "Use SQL or other native languages for data prep or manipulation.",
+        illustration: {
+            src: "explore.svg",
+            width: 200
+        }
     }
 ];
 
@@ -34,7 +46,7 @@ const layout = cxs({
     height: 537
 });
 
-const QueryTypeCard = ({ name, subtitle }) => (
+const QueryTypeCard = ({ name, subtitle, illustration }) => (
     <Surface>
         <div
             className={cxs({
@@ -46,7 +58,7 @@ const QueryTypeCard = ({ name, subtitle }) => (
             })}
         >
             <div className={cxs({ flex: "0 0 66.66%", height: "100%" })}>
-                Illustration
+                <RetinaImage src={`/app/img/${illustration.src}`} />
             </div>
             <div className={cxs({ alignSelf: "flex-end" })}>
                 <Title>{name}</Title>
