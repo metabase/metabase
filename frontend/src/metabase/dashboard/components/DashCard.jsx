@@ -28,6 +28,7 @@ export default class DashCard extends Component {
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         dashcardData: PropTypes.object.isRequired,
+        cardDurations: PropTypes.object.isRequired,
         parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
@@ -110,7 +111,7 @@ export default class DashCard extends Component {
 
         return (
             <div
-                className={"Card bordered rounded flex flex-column hover-parent hover--visibility" + cx({
+                className={cx("Card bordered rounded flex flex-column hover-parent hover--visibility", {
                     "Card--recent": dashcard.isAdded,
                     "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
