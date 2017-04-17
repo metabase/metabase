@@ -41,14 +41,15 @@ class Api extends EventEmitter {
             urlTemplate: string,
             methodOptions?: Options|TransformFn = {}
         ) => {
-            if (typeof options === "function") {
+            if (typeof methodOptions === "function") {
                 methodOptions = { transformResponse: methodOptions };
             }
+            const defaultOptions = { ...DEFAULT_OPTIONS, ...methodOptions };
             return (
                 data?: Data,
                 invocationOptions?: Options = {}
             ): Promise<any> => {
-                const options = { ...DEFAULT_OPTIONS, ...methodOptions, ...invocationOptions };
+                const options: Options = { ...defaultOptions, ...invocationOptions };
                 let url = urlTemplate;
                 data = { ...data };
                 for (let tag of (url.match(/:\w+/g) || [])) {
@@ -88,7 +89,10 @@ class Api extends EventEmitter {
                             let body = xhr.responseText;
                             try { body = JSON.parse(body); } catch (e) {}
                             if (xhr.status >= 200 && xhr.status <= 299) {
-                                resolve(options.transformResponse(body, { data }));
+                                if (options.transformResponse) {
+                                    body = options.transformResponse(body, { data });
+                                }
+                                resolve(body);
                             } else {
                                 reject({
                                     status: xhr.status,
