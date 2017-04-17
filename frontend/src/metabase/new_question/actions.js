@@ -14,7 +14,7 @@ import {
 
 import { getMode } from "metabase/qb/lib/modes";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 export const ADVANCE_STEP = "ADVANCE_STEP";
 export const advanceStep = createAction(ADVANCE_STEP);
@@ -39,10 +39,8 @@ export const newMetric = createThunkAction(
 );
 
 export const SEND_TO_QB = "SEND_TO_QB";
-export const sendToQB = createThunkAction(
-    SEND_TO_QB,
-    query => dispatch => dispatch(push(`/q#${serializeCardForUrl(query)}`))
-);
+export const sendToQB = createThunkAction(SEND_TO_QB, card =>
+    dispatch => dispatch(push(Urls.question(null, card))));
 
 export const CHECK_FLOW_COMPLETION = "CHECK_FLOW_COMPLETION";
 export const checkFlowCompletion = createThunkAction(
@@ -92,7 +90,7 @@ export const selectAndAdvance = createThunkAction(
                 const { resource, resolve } = nextStep.skip;
                 const resourcesForStep = getResource(resource, state);
 
-                console.log('resources?', resourcesForStep)
+                console.log("resources?", resourcesForStep);
 
                 /*
                 if(!nextStep.skip.resolve(resourcesForStep)) {
@@ -130,7 +128,7 @@ export const setDatabase = createAction(SET_DATABASE, databaseId => {
 });
 
 export const SET_PIVOT_BREAKOUTS = "SET_PIVOT_BREAKOUTS";
-export const setPivotBreakouts = createAction(SET_PIVOT_BREAKOUTS)
+export const setPivotBreakouts = createAction(SET_PIVOT_BREAKOUTS);
 
 export const SELECT_METRIC_BREAKOUT = "SELECT_METRIC_BREAKOUT";
 export const selectMetricBreakout = createAction(
