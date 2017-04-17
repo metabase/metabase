@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 // FIXME: using pure seems to mess with redux form updates
 // import pure from "recompose/pure";
 import cx from "classnames";
@@ -60,7 +61,7 @@ const GuideDetailEditor = ({
             </div>
             <div className="py2">
                 { entities ?
-                    <Select 
+                    <Select
                         value={entities[formField.id.value]}
                         options={Object.values(entities)}
                         disabledOptionIds={selectedIds}
@@ -83,7 +84,7 @@ const GuideDetailEditor = ({
                         className={cx(selectClasses, 'inline-block', 'rounded', 'text-bold')}
                         triggerIconSize={12}
                         includeTables={true}
-                        query={{
+                        datasetQuery={{
                             query: {
                                 source_table: formField.type.value === 'table' &&
                                     Number.parseInt(formField.id.value)
@@ -99,7 +100,7 @@ const GuideDetailEditor = ({
                         databases={
                             Object.values(databases)
                                 .map(database => ({
-                                    ...database, 
+                                    ...database,
                                     tables: database.tables.map(tableId => tables[tableId])
                                 }))
                         }
@@ -110,7 +111,7 @@ const GuideDetailEditor = ({
                             .map(idTypePair => idTypePair[0])
                         }
                         setSourceTableFn={(tableId) => {
-                            const table = tables[tableId]; 
+                            const table = tables[tableId];
                             formField.id.onChange(table.id);
                             formField.type.onChange('table');
                             formField.points_of_interest.onChange(table.points_of_interest || '');
@@ -122,7 +123,7 @@ const GuideDetailEditor = ({
                             .map(idTypePair => idTypePair[0])
                         }
                         setSourceSegmentFn={(segmentId) => {
-                            const segment = segments[segmentId]; 
+                            const segment = segments[segmentId];
                             formField.id.onChange(segment.id);
                             formField.type.onChange('segment');
                             formField.points_of_interest.onChange(segment.points_of_interest || '');
@@ -147,10 +148,10 @@ const GuideDetailEditor = ({
                 <EditLabel>
                     { type === 'dashboard' ?
                             `Why is this dashboard the most important?` :
-                            `What is useful or interesting about this ${type}?` 
+                            `What is useful or interesting about this ${type}?`
                     }
                 </EditLabel>
-                <textarea 
+                <textarea
                     className={S.guideDetailEditorTextarea}
                     placeholder="Write something helpful here"
                     {...formField.points_of_interest}
@@ -162,17 +163,17 @@ const GuideDetailEditor = ({
                 <EditLabel>
                     { type === 'dashboard' ?
                             `Is there anything users of this dashboard should be aware of?` :
-                            `Anything users should be aware of about this ${type}?` 
+                            `Anything users should be aware of about this ${type}?`
                     }
-                </EditLabel>           
-                <textarea 
-                    className={S.guideDetailEditorTextarea} 
+                </EditLabel>
+                <textarea
+                    className={S.guideDetailEditorTextarea}
                     placeholder="Write something helpful here"
                     {...formField.caveats}
                     disabled={disabled}
                 />
             </div>
-            { type === 'metric' && 
+            { type === 'metric' &&
                 <div className={cx('mb2', { 'disabled' : disabled })}>
                     <EditLabel key="metricFieldsLabel">
                         Which 2-3 fields do you usually group this metric by?

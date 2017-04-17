@@ -43,8 +43,8 @@ export function isNative(card: Card): bool {
 
 export function canRun(card: Card): bool {
     if (card.dataset_query.type === "query") {
-        const query : StructuredQuery = card.dataset_query.query;
-        return query && query.source_table != undefined && Query.hasValidAggregation(query);
+        const query = getQuery(card);
+        return query != null && query.source_table != undefined && Query.hasValidAggregation(query);
     } else if (card.dataset_query.type === "native") {
         const native : NativeQuery = card.dataset_query.native;
         return native && card.dataset_query.database != undefined && native.query !== "";
@@ -68,6 +68,10 @@ export function getTemplateTags(card: ?Card): Array<TemplateTag> {
 }
 
 export function getParameters(card: ?Card): Parameter[] {
+    if (card && card.parameters) {
+        return card.parameters;
+    }
+
     const tags: TemplateTag[] = getTemplateTags(card);
     return getTemplateTagParameters(tags);
 }
@@ -86,29 +90,25 @@ export function applyParameters(
     datasetQuery.parameters = [];
     for (const parameter of parameters || []) {
         let value = parameterValues[parameter.id];
+        if (value == null) {
+            continue;
+        }
 
-        // dashboards
         const mapping = _.findWhere(parameterMappings, { card_id: card.id, parameter_id: parameter.id });
-        if (value != null && mapping) {
+        if (mapping) {
+            // mapped target, e.x. on a dashboard
             datasetQuery.parameters.push({
                 type: parameter.type,
                 target: mapping.target,
                 value: value
             });
-        }
-
-        // SQL parameters
-        if (datasetQuery.type === "native") {
-            let tag = _.findWhere(datasetQuery.native.template_tags, { id: parameter.id });
-            if (tag) {
-                datasetQuery.parameters.push({
-                    type: parameter.type,
-                    target: tag.type === "dimension" ?
-                        ["dimension", ["template-tag", tag.name]]:
-                        ["variable", ["template-tag", tag.name]],
-                    value: value
-                });
-            }
+        } else if (parameter.target) {
+            // inline target, e.x. on a card
+            datasetQuery.parameters.push({
+                type: parameter.type,
+                target: parameter.target,
+                value: value
+            });
         }
     }
 

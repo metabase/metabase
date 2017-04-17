@@ -1,9 +1,11 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, {Component} from "react";
+import PropTypes from "prop-types";
+import AutosizeTextarea from 'react-textarea-autosize';
 
-import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
+import _ from "underscore";
 
 type Props = {
     values: Array<string|null>,
@@ -27,65 +29,62 @@ export default class TextPicker extends Component<*, Props, *> {
     static defaultProps = {
         validations: [],
         placeholder: "Enter desired text"
+    };
+
+    constructor(props: Props) {
+        super(props);
+        this.state = {
+            fieldString: props.values.join(', ')
+        };
     }
 
-    addValue() {
-        let values = this.props.values.slice();
-        values.push(null);
-        this.props.onValuesChange(values);
-    }
+    setValue(fieldString: ?string) {
+        if (fieldString != null) {
+            // Only strip newlines from field string to not interfere with copy-pasting
+            const newLineRegex = /\r?\n|\r/g;
+            const newFieldString = fieldString.replace(newLineRegex,'');
+            this.setState({fieldString: newFieldString});
 
-    removeValue(index: number) {
-        let values = this.props.values.slice();
-        values.splice(index, 1);
-        this.props.onValuesChange(values);
-    }
-
-    setValue(index: number, value: string|null) {
-        let values = this.props.values.slice();
-        values[index] = value;
-        this.props.onValuesChange(values);
+            // Construct the values array for real-time validation
+            // Trim values to prevent confusing problems with leading/trailing whitespaces
+            const newValues = newFieldString.split(',').map((v) => v.trim()).filter((v) => v !== "");
+            this.props.onValuesChange(newValues);
+        } else {
+            this.props.onValuesChange([]);
+        }
     }
 
     render() {
-        let { values, validations, multi, onCommit } = this.props;
+        let {validations, multi, onCommit} = this.props;
+        const hasInvalidValues = _.some(validations, (v) => v === false);
+
+        const commitOnEnter = (e) => {
+            if (e.key === "Enter" && onCommit) {
+                onCommit();
+            }
+        };
 
         return (
             <div>
-                <ul>
-                    {values.map((value, index) =>
-                        <li
-                            className="FilterInput px1 pt1 relative"
-                            key={index}
-                        >
-                            <input
-                                className={cx("input block full border-purple", { "border-error": validations[index] === false })}
-                                type="text"
-                                value={value}
-                                onChange={(e) => this.setValue(index, e.target.value)}
-                                onKeyPress={(e) => {
-                                    if (e.key === "Enter" && onCommit) {
-                                        onCommit();
-                                    }
-                                }}
-                                placeholder={this.props.placeholder}
-                                autoFocus={true}
-                            />
-                            { index > 0 ?
-                                <span className="FilterRemove-field absolute top right">
-                                    <Icon name="close" className="cursor-pointer text-white" size={12} onClick={() => this.removeValue(index)}/>
-                                </span>
-                            : null }
-                        </li>
-                    )}
-                </ul>
+                <div className="FilterInput px1 pt1 relative">
+                    <AutosizeTextarea
+                        className={cx("input block full border-purple", { "border-error": hasInvalidValues })}
+                        type="text"
+                        value={this.state.fieldString}
+                        onChange={(e) => this.setValue(e.target.value)}
+                        onKeyPress={commitOnEnter}
+                        placeholder={this.props.placeholder}
+                        autoFocus={true}
+                        style={{resize: "none"}}
+                        maxRows={8}
+                    />
+                </div>
+
                 { multi ?
-                    <div className="p1">
-                        { values[values.length - 1] != null ?
-                            <a className="text-underline cursor-pointer" onClick={() => this.addValue()}>Add another value</a>
-                        : null }
+                    <div className="p1 text-small">
+                        You can enter multiple values separated by commas
                     </div>
-                : null }
+                    : null }
             </div>
         );
     }

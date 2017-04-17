@@ -9,7 +9,9 @@ var webpackPostcssTools = require('webpack-postcss-tools');
 
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
+var HtmlWebpackHarddiskPlugin = require('html-webpack-harddisk-plugin');
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
+var BannerWebpackPlugin = require('banner-webpack-plugin');
 
 var _ = require('underscore');
 var glob = require('glob');
@@ -26,17 +28,15 @@ function hasArg(arg) {
 var SRC_PATH = __dirname + '/frontend/src/metabase';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
+// default NODE_ENV to development
+var NODE_ENV = process.env["NODE_ENV"] || "development";
 
 // Need to scan the CSS files for variable and custom media used across files
 // NOTE: this requires "webpack -w" (watch mode) to be restarted when variables change :(
-var isWatching = hasArg("-w") || hasArg("--watch");
-if (isWatching) {
-    console.warn("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries");
+var IS_WATCHING = hasArg("-w") || hasArg("--watch");
+if (IS_WATCHING) {
+    process.stderr.write("Warning: in webpack watch mode you must restart webpack if you change any CSS variables or custom media queries\n");
 }
-
-// default NODE_ENV to development
-var NODE_ENV = process.env["NODE_ENV"] || "development";
-process.stderr.write("webpack env: " + NODE_ENV + "\n");
 
 // Babel:
 var BABEL_CONFIG = {
@@ -78,8 +78,9 @@ var config = module.exports = {
     // output a bundle for the app JS and a bundle for styles
     // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
     entry: {
-        app_main: './app-main.js',
-        app_public: './app-public.js',
+        "app-main": './app-main.js',
+        "app-public": './app-public.js',
+        "app-embed": './app-embed.js',
         styles: './css/index.css',
     },
 
@@ -116,9 +117,6 @@ var config = module.exports = {
                 test: /\.css$/,
                 loader: ExtractTextPlugin.extract("style-loader", "css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader")
             }
-        ],
-        noParse: [
-            /node_modules\/(ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -127,30 +125,7 @@ var config = module.exports = {
         alias: {
             'metabase':             SRC_PATH,
             'style':                SRC_PATH + '/css/core/index.css',
-
-            // ace
-            'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
-            'ace/ext-language_tools':__dirname+ '/node_modules/ace-builds/src-min-noconflict/ext-language_tools.js',
-
-            'ace/mode-sql':         __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sql.js',
-            'ace/mode-mysql':       __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-mysql.js',
-            'ace/mode-pgsql':       __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-pgsql.js',
-            'ace/mode-sqlserver':   __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sqlserver.js',
-            'ace/mode-json':        __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-json.js',
-
-            'ace/snippets/sql':     __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sql.js',
-            'ace/snippets/mysql':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/mysql.js',
-            'ace/snippets/pgsql':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/pgsql.js',
-            'ace/snippets/sqlserver':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sqlserver.js',
-            'ace/snippets/json':    __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/json.js',
-            // misc
-            'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
-            'tether':               __dirname + '/node_modules/tether/dist/js/tether.min.js',
-            'underscore':           __dirname + '/node_modules/underscore/underscore-min.js',
-            'd3':                   __dirname + '/node_modules/d3/d3.min.js',
-            'crossfilter':          __dirname + '/node_modules/crossfilter/index.js',
-            'dc':                   __dirname + '/node_modules/dc/dc.min.js',
-            'humanize':             __dirname + '/node_modules/humanize-plus/dist/humanize.min.js'
+            'ace':                  __dirname + '/node_modules/ace-builds/src-min-noconflict',
         }
     },
 
@@ -158,7 +133,8 @@ var config = module.exports = {
         new UnusedFilesWebpackPlugin({
             globOptions: {
                 ignore: [
-                    "**/types/*.js"
+                    "**/types/*.js",
+                    "**/*.spec.*"
                 ]
             }
         }),
@@ -167,21 +143,46 @@ var config = module.exports = {
         new ExtractTextPlugin('[name].bundle.css?[contenthash]'),
         new HtmlWebpackPlugin({
             filename: '../../index.html',
-            chunks: ["app_main", "styles"],
+            chunks: ["app-main", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
-            inject: 'head'
+            inject: 'head',
+            alwaysWriteToDisk: true,
         }),
         new HtmlWebpackPlugin({
             filename: '../../public.html',
-            chunks: ["app_public", "styles"],
+            chunks: ["app-public", "styles"],
             template: __dirname + '/resources/frontend_client/index_template.html',
-            inject: 'head'
+            inject: 'head',
+            alwaysWriteToDisk: true,
+        }),
+        new HtmlWebpackPlugin({
+            filename: '../../embed.html',
+            chunks: ["app-embed", "styles"],
+            template: __dirname + '/resources/frontend_client/index_template.html',
+            inject: 'head',
+            alwaysWriteToDisk: true,
+        }),
+        new HtmlWebpackHarddiskPlugin({
+            outputPath: __dirname + '/resources/frontend_client/app/dist'
         }),
         new webpack.DefinePlugin({
             'process.env': {
                 NODE_ENV: JSON.stringify(NODE_ENV)
             }
-        })
+        }),
+        new BannerWebpackPlugin({
+            chunks: {
+                'app-main': {
+                    beforeContent: "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
+                },
+                'app-public': {
+                    beforeContent: "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
+                },
+                'app-embed': {
+                    beforeContent: "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE-EMBEDDING.txt', which is part of this source code package.\n */\n",
+                },
+            }
+        }),
     ],
 
     postcss: function (webpack) {
@@ -213,6 +214,13 @@ if (NODE_ENV === "hot") {
         hot: true,
         inline: true,
         contentBase: "frontend"
+        // if webpack doesn't reload UI after code change in development
+        // watchOptions: {
+        //     aggregateTimeout: 300,
+        //     poll: 1000
+        // }
+        // if you want to reduce stats noise
+        // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     };
 
     config.plugins.unshift(

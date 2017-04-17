@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
@@ -11,6 +12,8 @@ import Icon from "metabase/components/Icon.jsx";
 
 import DashCardParameterMapper from "../components/parameters/DashCardParameterMapper.jsx";
 
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -22,16 +25,6 @@ const HEADER_ACTION_STYLE = {
 };
 
 export default class DashCard extends Component {
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {
-            error: null
-        };
-
-        _.bindAll(this, "updateVisibility");
-    }
-
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         dashcardData: PropTypes.object.isRequired,
@@ -59,7 +52,7 @@ export default class DashCard extends Component {
         window.removeEventListener("scroll", this.updateVisibility, false);
     }
 
-    updateVisibility() {
+    updateVisibility = () => {
         const { isFullscreen } = this.props;
         const element = ReactDOM.findDOMNode(this);
         if (element) {
@@ -106,14 +99,18 @@ export default class DashCard extends Component {
         if (_.any(errors, e => e && e.status === 403)) {
             errorMessage = ERROR_MESSAGE_PERMISSION;
             errorIcon = "key";
-        } else if (errors.length > 0 || this.state.error) {
-            errorMessage = ERROR_MESSAGE_GENERIC;
+        } else if (errors.length > 0) {
+            if (IS_EMBED_PREVIEW) {
+                errorMessage = errors[0] && errors[0].data || ERROR_MESSAGE_GENERIC;
+            } else {
+                errorMessage = ERROR_MESSAGE_GENERIC;
+            }
             errorIcon = "warning";
         }
 
         return (
             <div
-                className={"Card bordered rounded flex flex-column " + cx({
+                className={"Card bordered rounded flex flex-column hover-parent hover--visibility" + cx({
                     "Card--recent": dashcard.isAdded,
                     "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
@@ -126,7 +123,8 @@ export default class DashCard extends Component {
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
                     series={series}
-                    isDashboard={true}
+                    showTitle
+                    isDashboard
                     isEditing={isEditing}
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing && !isEditingParameter ?

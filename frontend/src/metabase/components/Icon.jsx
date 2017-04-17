@@ -1,6 +1,7 @@
 /*eslint-disable react/no-danger */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import RetinaImage from "react-retina-image";
 
 import { loadIcon } from 'metabase/icon_paths';

@@ -142,32 +142,32 @@ describe('Query', () => {
             expect(query.order_by).toEqual([[["fk->", 1, 2], "ascending"]]);
         });
 
-        it('should not remove sort clauses with datetime_fields on fields appearing in breakout', () => {
+        it('should not remove sort clauses with datetime-fields on fields appearing in breakout', () => {
             let query = {
                 source_table: 0,
                 aggregation: ["count"],
-                breakout: [["datetime_field", 1, "as", "week"]],
+                breakout: [["datetime-field", 1, "as", "week"]],
                 filter: [],
                 order_by: [
-                    [["datetime_field", 1, "as", "week"], "ascending"]
+                    [["datetime-field", 1, "as", "week"], "ascending"]
                 ]
             };
             Query.cleanQuery(query);
-            expect(query.order_by).toEqual([[["datetime_field", 1, "as", "week"], "ascending"]]);
+            expect(query.order_by).toEqual([[["datetime-field", 1, "as", "week"], "ascending"]]);
         });
 
-        it('should replace order_by clauses with the exact matching datetime_fields version in the breakout', () => {
+        it('should replace order_by clauses with the exact matching datetime-fields version in the breakout', () => {
             let query = {
                 source_table: 0,
                 aggregation: ["count"],
-                breakout: [["datetime_field", 1, "as", "week"]],
+                breakout: [["datetime-field", 1, "as", "week"]],
                 filter: [],
                 order_by: [
                     [1, "ascending"]
                 ]
             };
             Query.cleanQuery(query);
-            expect(query.order_by).toEqual([[["datetime_field", 1, "as", "week"], "ascending"]]);
+            expect(query.order_by).toEqual([[["datetime-field", 1, "as", "week"], "ascending"]]);
         });
 
         it('should replace order_by clauses with the exact matching fk-> version in the breakout', () => {
@@ -248,14 +248,14 @@ describe('Query', () => {
             expect(target.path).toEqual([]);
             expect(target.unit).toEqual(undefined);
         });
-        it('should return unit object for old-style datetime_field', () => {
+        it('should return unit object for old-style datetime-field', () => {
             let target = Query.getFieldTarget(["datetime-field", 1, "as", "day"], table1);
             expect(target.table).toEqual(table1);
             expect(target.field).toEqual(field1);
             expect(target.path).toEqual([]);
             expect(target.unit).toEqual("day");
         });
-        it('should return unit object for new-style datetime_field', () => {
+        it('should return unit object for new-style datetime-field', () => {
             let target = Query.getFieldTarget(["datetime-field", 1, "as", "day"], table1);
             expect(target.table).toEqual(table1);
             expect(target.field).toEqual(field1);

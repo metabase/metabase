@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { Link } from "react-router";
 
 import FormLabel from "../components/FormLabel.jsx";
@@ -40,14 +40,14 @@ import cx from "classnames";
         return errors;
     }
 },
-metricFormSelectors)
+(state, props) => metricFormSelectors(state, props))
 export default class MetricForm extends Component {
-    updatePreviewSummary(query) {
+    updatePreviewSummary(datasetQuery) {
         this.props.updatePreviewSummary({
-            ...query,
+            ...datasetQuery,
             query: {
                 aggregation: ["count"],
-                ...query.query,
+                ...datasetQuery.query,
             }
         })
     }

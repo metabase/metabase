@@ -19,6 +19,7 @@
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
   (:import java.io.StringWriter
            java.sql.Connection
+           java.util.Properties
            com.mchange.v2.c3p0.ComboPooledDataSource
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
@@ -202,6 +203,24 @@
          ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
+(defn consolidate-liquibase-changesets
+  "Consolidate all previous DB migrations so they came from single file.
+   Previous migrations where stored in many small files which added seconds
+   per file to the startup time because liquibase was checking the jar
+   signature for each file. This function is required to correct the liquibase
+   tables to reflect that these migrations where moved to a single file.
+
+   see https://github.com/metabase/metabase/issues/3715"
+  [conn]
+  (let [liquibases-table-name (if (= (db-type) :h2)
+                                "DATABASECHANGELOG"
+                                "databasechangelog")
+        fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
+                         (empty? (jdbc/metadata-query (.getTables meta nil nil liquibases-table-name (into-array String ["TABLE"])))))
+        query (format "UPDATE %s SET FILENAME = ?" liquibases-table-name)]
+    (when-not fresh-install?
+      (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
+
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run migrate up`):
 
@@ -228,6 +247,7 @@
      (log/info "Setting up Liquibase...")
      (try
        (let [liquibase (conn->liquibase conn)]
+         (consolidate-liquibase-changesets conn)
          (log/info "Liquibase is ready.")
          (case direction
            :up            (migrate-up-if-needed! conn liquibase)
@@ -268,7 +288,7 @@
                  (.setTestConnectionOnCheckin      false)
                  (.setTestConnectionOnCheckout     false)
                  (.setPreferredTestQuery           nil)
-                 (.setProperties                   (u/prog1 (java.util.Properties.)
+                 (.setProperties                   (u/prog1 (Properties.)
                                                      (doseq [[k v] (dissoc spec :classname :subprotocol :subname :naming :delimiters :alias-delimiter
                                                                                 :excess-timeout :minimum-pool-size :idle-connection-test-period)]
                                                        (.setProperty <> (name k) (str v))))))})
@@ -288,6 +308,11 @@
 
 (def ^:private setup-db-has-been-called?
   (atom false))
+
+(defn db-is-setup?
+  "True if the Metabase DB is setup and ready."
+  ^Boolean []
+  @setup-db-has-been-called?)
 
 (def ^:dynamic *allow-potentailly-unsafe-connections*
   "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists, etc.
@@ -360,11 +385,11 @@
   [& {:keys [db-details auto-migrate]
       :or   {db-details   @db-connection-details
              auto-migrate true}}]
-  (reset! setup-db-has-been-called? true)
   (verify-db-connection db-details)
   (run-schema-migrations! auto-migrate db-details)
   (create-connection-pool! (jdbc-details db-details))
-  (run-data-migrations!))
+  (run-data-migrations!)
+  (reset! setup-db-has-been-called? true))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."

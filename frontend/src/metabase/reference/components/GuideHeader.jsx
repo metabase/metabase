@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import pure from "recompose/pure";
 
 import EditButton from "metabase/reference/components/EditButton.jsx";

@@ -1,5 +1,5 @@
-import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
@@ -228,7 +228,7 @@ export default class Dashboard extends Component {
         if (dashboard && dashboard.parameters && dashboard.parameters.length) {
             parameters = (
                 <Parameters
-                    className="ml1"
+                    syncQueryString
 
                     isEditing={isEditing}
                     isFullscreen={isFullscreen}
@@ -269,7 +269,7 @@ export default class Dashboard extends Component {
                         />
                     </header>
                     {!isFullscreen && parameters &&
-                        <div className="wrapper flex flex-column align-start mt1">
+                        <div className="wrapper flex flex-column align-start mt2 relative z2">
                             {parameters}
                         </div>
                     }

@@ -3,9 +3,17 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 
 import { slugify } from "metabase/lib/formatting";
-
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
-import { PublicLinksDashboardListing, PublicLinksQuestionListing } from "./components/widgets/PublicLinksListing.jsx";
+import {
+    PublicLinksDashboardListing,
+    PublicLinksQuestionListing,
+    EmbeddedQuestionListing,
+    EmbeddedDashboardListing
+} from "./components/widgets/PublicLinksListing.jsx";
+import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
+import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+
+import { UtilApi } from "metabase/services";
 
 const SECTIONS = [
     {
@@ -21,7 +29,7 @@ const SECTIONS = [
                 type: "string"
             },
             {
-                key: "-site-url",
+                key: "site-url",
                 display_name: "Site URL",
                 type: "string"
             },
@@ -78,7 +86,7 @@ const SECTIONS = [
                 key: "email-smtp-port",
                 display_name: "SMTP Port",
                 placeholder: "587",
-                type: "string",
+                type: "number",
                 required: true,
                 validations: [["integer", "That's not a valid port number"]]
             },
@@ -87,7 +95,7 @@ const SECTIONS = [
                 display_name: "SMTP Security",
                 description: null,
                 type: "radio",
-                options: { none: "None", ssl: "SSL", tls: "TLS" },
+                options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
                 defaultValue: 'none'
             },
             {
@@ -128,7 +136,7 @@ const SECTIONS = [
             },
             {
                 key: "metabot-enabled",
-                display_name: "Metabot",
+                display_name: "MetaBot",
                 type: "boolean",
                 // TODO: why do we have "defaultValue" in addition to "default" in the backend?
                 defaultValue: false,
@@ -167,7 +175,7 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Public Links",
+        name: "Public Sharing",
         settings: [
             {
                 key: "enable-public-sharing",
@@ -187,13 +195,90 @@ const SECTIONS = [
                 getHidden: (settings) => !settings["enable-public-sharing"]
             }
         ]
+    },
+    {
+        name: "Embedding in other Applications",
+        settings: [
+            {
+                key: "enable-embedding",
+                description: null,
+                widget: EmbeddingLegalese,
+                getHidden: (settings) => settings["enable-embedding"],
+                onChanged: async (oldValue, newValue, settingsValues, onChange) => {
+                    if (!oldValue && newValue && !settingsValues["embedding-secret-key"]) {
+                        let result = await UtilApi.random_token();
+                        await onChange("embedding-secret-key", result.token);
+                    }
+                }
+            },
+            {
+                key: "enable-embedding",
+                display_name: "Enable Embedding Metabase in other Applications",
+                type: "boolean",
+                getHidden: (settings) => !settings["enable-embedding"]
+            },
+            {
+                key: "embedding-secret-key",
+                display_name: "Embedding secret key",
+                widget: SecretKeyWidget,
+                getHidden: (settings) => !settings["enable-embedding"]
+            },
+            {
+                key: "-embedded-dashboards",
+                display_name: "Embedded Dashboards",
+                widget: EmbeddedDashboardListing,
+                getHidden: (settings) => !settings["enable-embedding"]
+            },
+            {
+                key: "-embedded-questions",
+                display_name: "Embedded Questions",
+                widget: EmbeddedQuestionListing,
+                getHidden: (settings) => !settings["enable-embedding"]
+            }
+        ]
+    },
+    {
+        name: "Caching",
+        settings: [
+            {
+                key: "enable-query-caching",
+                display_name: "Enable Caching",
+                type: "boolean"
+            },
+            {
+                key: "query-caching-min-ttl",
+                display_name: "Minimum Query Duration",
+                type: "number",
+                getHidden: (settings) => !settings["enable-query-caching"]
+            },
+            {
+                key: "query-caching-ttl-ratio",
+                display_name: "Cache Time-To-Live (TTL)",
+                type: "number",
+                getHidden: (settings) => !settings["enable-query-caching"]
+            },
+            {
+                key: "query-caching-max-kb",
+                display_name: "Max Cache Entry Size",
+                type: "number",
+                getHidden: (settings) => !settings["enable-query-caching"]
+            }
+        ]
     }
 ];
 for (const section of SECTIONS) {
     section.slug = slugify(section.name);
 }
 
-export const getSettings = state => state.settings.settings;
+export const getSettings = createSelector(
+    state => state.settings.settings,
+    state => state.admin.settings.warnings,
+    (settings, warnings) =>
+        settings.map(setting => warnings[setting.key] ?
+            { ...setting, warning: warnings[setting.key] } :
+            setting
+        )
+)
 
 export const getSettingValues = createSelector(
     getSettings,

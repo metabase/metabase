@@ -16,6 +16,7 @@ import { getStore } from './store'
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { setErrorPage } from "metabase/redux/app";
+import { clearCurrentUser } from "metabase/redux/user";
 
 import { Router, browserHistory } from "react-router";
 import { push, syncHistoryWithStore } from 'react-router-redux'
@@ -60,7 +61,11 @@ function _init(reducers, getRoutes, callback) {
     });
 
     // received a 401 response
-    api.on("401", () => {
+    api.on("401", (url) => {
+        if (url === "/api/user/current") {
+            return
+        }
+        store.dispatch(clearCurrentUser());
         store.dispatch(push("/auth/login"));
     });
 

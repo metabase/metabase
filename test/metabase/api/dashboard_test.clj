@@ -87,15 +87,17 @@
                                                     :parameters "abc"}))
 
 (def ^:private ^:const dashboard-defaults
-  {:description             nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :parameters              []
-   :updated_at              true
+  {:caveats                 nil
    :created_at              true ; assuming you call dashboard-response on the results
+   :description             nil
+   :embedding_params        nil
+   :enable_embedding        false
+   :made_public_by_id       nil
+   :parameters              []
+   :points_of_interest      nil
    :public_uuid             nil
-   :made_public_by_id       nil})
+   :show_in_getting_started false
+   :updated_at              true})
 
 (expect
   (merge dashboard-defaults
@@ -156,6 +158,31 @@
                                                                                                ;; these things should fail to update
                                                                                                :creator_id   (user->id :trashbird)})
                               (Dashboard dashboard-id)])))
+
+;; allow "caveats" and "points_of_interest" to be empty strings, and "show_in_getting_started" should be a boolean
+(expect
+  (merge dashboard-defaults {:name        "Test Dashboard"
+                             :creator_id  (user->id :rasta)
+                             :caveats                 ""
+                             :points_of_interest      ""
+                             :show_in_getting_started true})
+  (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+    (dashboard-response ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:caveats                 ""
+                                                                                         :points_of_interest      ""
+                                                                                         :show_in_getting_started true}))))
+
+;; Can we clear the description of a Dashboard? (#4738)
+(expect
+  nil
+  (tt/with-temp Dashboard [dashboard {:description "What a nice Dashboard"}]
+    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description nil})
+    (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
+
+(expect
+  ""
+  (tt/with-temp Dashboard [dashboard {:description "What a nice Dashboard"}]
+    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description ""})
+    (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
 
 
 ;; ## DELETE /api/dashboard/:id
@@ -512,3 +539,11 @@
     (tt/with-temp Dashboard [dashboard (shared-dashboard)]
       (for [dash ((user->client :crowberto) :get 200 "dashboard/public")]
         (m/map-vals boolean (select-keys dash [:name :id :public_uuid]))))))
+
+;; Test that we can fetch a list of embeddable-accessible dashboards
+(expect
+  [{:name true, :id true}]
+  (tu/with-temporary-setting-values [enable-embedding true]
+    (tt/with-temp Dashboard [dashboard {:enable_embedding true}]
+      (for [dash ((user->client :crowberto) :get 200 "dashboard/embeddable")]
+        (m/map-vals boolean (select-keys dash [:name :id]))))))

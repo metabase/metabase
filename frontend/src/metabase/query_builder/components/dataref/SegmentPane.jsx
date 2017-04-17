@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
@@ -25,10 +26,10 @@ export default class SegmentPane extends Component {
 
     static propTypes = {
         segment: PropTypes.object.isRequired,
-        query: PropTypes.object,
+        datasetQuery: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
+        setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
 
@@ -46,14 +47,14 @@ export default class SegmentPane extends Component {
     }
 
     filterBy() {
-        let query = this.props.query;
+        let { datasetQuery } = this.props;
         // Add an aggregation so both aggregation and filter popovers aren't visible
-        if (!Query.hasValidAggregation(query.query)) {
-            Query.clearAggregations(query.query);
+        if (!Query.hasValidAggregation(datasetQuery.query)) {
+            Query.clearAggregations(datasetQuery.query);
         }
-        Query.addFilter(query.query, ["SEGMENT", this.props.segment.id]);
-        this.props.setQueryFn(query);
-        this.props.runQueryFn();
+        Query.addFilter(datasetQuery.query, ["SEGMENT", this.props.segment.id]);
+        this.props.setDatasetQuery(datasetQuery);
+        this.props.runQuery();
     }
 
     newCard() {
@@ -77,7 +78,7 @@ export default class SegmentPane extends Component {
     }
 
     render() {
-        let { segment, query } = this.props;
+        let { segment, datasetQuery } = this.props;
         let { error, table } = this.state;
 
         let segmentName = segment.name;
@@ -85,12 +86,12 @@ export default class SegmentPane extends Component {
         let useForCurrentQuestion = [];
         let usefulQuestions = [];
 
-        if (query.query && query.query.source_table === segment.table_id && !_.findWhere(Query.getFilters(query.query), { [0]: "SEGMENT", [1]: segment.id })) {
+        if (datasetQuery.query && datasetQuery.query.source_table === segment.table_id && !_.findWhere(Query.getFilters(datasetQuery.query), { [0]: "SEGMENT", [1]: segment.id })) {
             useForCurrentQuestion.push(<UseForButton title={"Filter by " + segmentName} onClick={this.filterBy} />);
         }
 
-        usefulQuestions.push(<QueryButton icon="illustration-icon-scalar" text={"Number of " + segmentName} onClick={this.setQueryCountFilteredBy} />);
-        usefulQuestions.push(<QueryButton icon="illustration-icon-table" text={"See all " + segmentName} onClick={this.setQueryFilteredBy} />);
+        usefulQuestions.push(<QueryButton icon="number" text={"Number of " + segmentName} onClick={this.setQueryCountFilteredBy} />);
+        usefulQuestions.push(<QueryButton icon="table" text={"See all " + segmentName} onClick={this.setQueryFilteredBy} />);
 
         return (
             <DetailPane

@@ -9,15 +9,15 @@
   [email-address]
   (let [user-id (or (db/select-one-id 'User, :email email-address)
                     (throw (Exception. (format "No user found with email address '%s'. Please check the spelling and try again." email-address))))]
-    (user/set-user-password-reset-token! user-id)))
+    (user/set-password-reset-token! user-id)))
 
 (defn -main
   [email-address]
   (mdb/setup-db!)
-  (println (format "Resetting password for %s..." email-address))
+  (printf "Resetting password for %s...\n" email-address)
   (try
-    (println (format "OK [[[%s]]]" (set-reset-token! email-address)))
+    (printf "OK [[[%s]]]\n" (set-reset-token! email-address))
     (System/exit 0)
     (catch Throwable e
-      (println (format "FAIL [[[%s]]]" (.getMessage e)))
+      (printf "FAIL [[[%s]]]\n" (.getMessage e))
       (System/exit -1))))

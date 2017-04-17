@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { Link } from "react-router";
 
 import FormLabel from "../components/FormLabel.jsx";
@@ -38,13 +38,13 @@ import cx from "classnames";
     },
     initialValues: { name: "", description: "", table_id: null, definition: { filter: [] }, revision_message: null }
 },
-segmentFormSelectors)
+(state, props) => segmentFormSelectors(state, props))
 export default class SegmentForm extends Component {
-    updatePreviewSummary(query) {
+    updatePreviewSummary(datasetQuery) {
         this.props.updatePreviewSummary({
-            ...query,
+            ...datasetQuery,
             query: {
-                ...query.query,
+                ...datasetQuery.query,
                 aggregation: ["count"]
             }
         })

@@ -1,5 +1,7 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { Link } from "react-router";
+
+import * as Urls from "metabase/lib/urls";
 
 export default class NotFound extends Component {
     render() {
@@ -11,7 +13,7 @@ export default class NotFound extends Component {
                     <p className="h4">You might've been tricked by a ninja, but in all likelihood, you were just given a bad link.</p>
                     <p className="h4 my4">You can always:</p>
                     <div className="flex align-center">
-                        <Link to="/q" className="Button Button--primary">
+                        <Link to={Urls.question()} className="Button Button--primary">
                             <div className="p1">Ask a new question.</div>
                         </Link>
                         <span className="mx2">or</span>

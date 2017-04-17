@@ -1,0 +1,3583 @@
+databaseChangeLog:
+  - changeSet:
+      id: '1'
+      author: agilliland
+      changes:
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+                unique: true
+              name: slug
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              name: description
+              type: text
+          - column:
+              name: logo_url
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: inherits
+              type: boolean
+          tableName: core_organization
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+                unique: true
+              name: email
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: first_name
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: last_name
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: password
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              defaultValue: default
+              name: password_salt
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: date_joined
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: true
+              name: last_login
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: is_staff
+              type: boolean
+          - column:
+              constraints:
+                nullable: false
+              name: is_superuser
+              type: boolean
+          - column:
+              constraints:
+                nullable: false
+              name: is_active
+              type: boolean
+          - column:
+              name: reset_token
+              type: varchar(254)
+          - column:
+              name: reset_triggered
+              type: BIGINT
+          tableName: core_user
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: admin
+              type: boolean
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_userorgperm_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: user_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_userorgperm_ref_organization_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_organization(id)
+              name: organization_id
+              type: int
+          tableName: core_userorgperm
+      - addUniqueConstraint:
+          columnNames: user_id, organization_id
+          constraintName: idx_unique_user_id_organization_id
+          tableName: core_userorgperm
+      - createIndex:
+          columns:
+          - column:
+              name: user_id
+              type: int
+          indexName: idx_userorgperm_user_id
+          tableName: core_userorgperm
+      - createIndex:
+          columns:
+          - column:
+              name: organization_id
+              type: int
+          indexName: idx_userorgperm_organization_id
+          tableName: core_userorgperm
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: url
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: timestamp
+              type: DATETIME
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_permissionviolation_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: user_id
+              type: int
+          tableName: core_permissionsviolation
+      - createIndex:
+          columns:
+          - column:
+              name: user_id
+              type: int
+          indexName: idx_permissionsviolation_user_id
+          tableName: core_permissionsviolation
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              name: description
+              type: text
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_database_ref_organization_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_organization(id)
+              name: organization_id
+              type: int
+          - column:
+              name: details
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: engine
+              type: varchar(254)
+          tableName: metabase_database
+      - createIndex:
+          columns:
+          - column:
+              name: organization_id
+          indexName: idx_database_organization_id
+          tableName: metabase_database
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              name: rows
+              type: int
+          - column:
+              name: description
+              type: text
+          - column:
+              name: entity_name
+              type: varchar(254)
+          - column:
+              name: entity_type
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: active
+              type: boolean
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_table_ref_database_id
+                initiallyDeferred: false
+                nullable: false
+                references: metabase_database(id)
+              name: db_id
+              type: int
+          tableName: metabase_table
+      - createIndex:
+          columns:
+          - column:
+              name: db_id
+          indexName: idx_table_db_id
+          tableName: metabase_table
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: base_type
+              type: varchar(255)
+          - column:
+              name: special_type
+              type: varchar(255)
+          - column:
+              constraints:
+                nullable: false
+              name: active
+              type: boolean
+          - column:
+              name: description
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: preview_display
+              type: boolean
+          - column:
+              constraints:
+                nullable: false
+              name: position
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_field_ref_table_id
+                initiallyDeferred: false
+                nullable: false
+                references: metabase_table(id)
+              name: table_id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: field_type
+              type: varchar(254)
+          tableName: metabase_field
+      - createIndex:
+          columns:
+          - column:
+              name: table_id
+          indexName: idx_field_table_id
+          tableName: metabase_field
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: relationship
+              type: varchar(254)
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_foreignkey_dest_ref_field_id
+                initiallyDeferred: false
+                nullable: false
+                references: metabase_field(id)
+              name: destination_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_foreignkey_origin_ref_field_id
+                initiallyDeferred: false
+                nullable: false
+                references: metabase_field(id)
+              name: origin_id
+              type: int
+          tableName: metabase_foreignkey
+      - createIndex:
+          columns:
+          - column:
+              name: destination_id
+          indexName: idx_foreignkey_destination_id
+          tableName: metabase_foreignkey
+      - createIndex:
+          columns:
+          - column:
+              name: origin_id
+          indexName: idx_foreignkey_origin_id
+          tableName: metabase_foreignkey
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              name: values
+              type: text
+          - column:
+              name: human_readable_values
+              type: text
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_fieldvalues_ref_field_id
+                initiallyDeferred: false
+                nullable: false
+                references: metabase_field(id)
+              name: field_id
+              type: int
+          tableName: metabase_fieldvalues
+      - createIndex:
+          columns:
+          - column:
+              name: field_id
+          indexName: idx_fieldvalues_field_id
+          tableName: metabase_fieldvalues
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_tablesegment_ref_table_id
+                initiallyDeferred: false
+                nullable: false
+                references: metabase_table(id)
+              name: table_id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: filter_clause
+              type: text
+          tableName: metabase_tablesegment
+      - createIndex:
+          columns:
+          - column:
+              name: table_id
+          indexName: idx_tablesegment_table_id
+          tableName: metabase_tablesegment
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: type
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: details
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: version
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: public_perms
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_query_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: creator_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_query_ref_database_id
+                initiallyDeferred: false
+                nullable: false
+                references: metabase_database(id)
+              name: database_id
+              type: int
+          tableName: query_query
+      - createIndex:
+          columns:
+          - column:
+              name: creator_id
+          indexName: idx_query_creator_id
+          tableName: query_query
+      - createIndex:
+          columns:
+          - column:
+              name: database_id
+          indexName: idx_query_database_id
+          tableName: query_query
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+                unique: true
+              name: uuid
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: version
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: json_query
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: raw_query
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: status
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: started_at
+              type: DATETIME
+          - column:
+              name: finished_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: running_time
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: error
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: result_file
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: result_rows
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: result_data
+              type: text
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_queryexecution_ref_query_id
+                initiallyDeferred: false
+                nullable: true
+                references: query_query(id)
+              name: query_id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: additional_info
+              type: text
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_queryexecution_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: executor_id
+              type: int
+          tableName: query_queryexecution
+      - createIndex:
+          columns:
+          - column:
+              name: query_id
+          indexName: idx_queryexecution_query_id
+          tableName: query_queryexecution
+      - createIndex:
+          columns:
+          - column:
+              name: executor_id
+          indexName: idx_queryexecution_executor_id
+          tableName: query_queryexecution
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              name: description
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: display
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: public_perms
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: dataset_query
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: visualization_settings
+              type: text
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_card_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: creator_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_card_ref_organization_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_organization(id)
+              name: organization_id
+              type: int
+          tableName: report_card
+      - createIndex:
+          columns:
+          - column:
+              name: creator_id
+          indexName: idx_card_creator_id
+          tableName: report_card
+      - createIndex:
+          columns:
+          - column:
+              name: organization_id
+          indexName: idx_card_organization_id
+          tableName: report_card
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_cardfavorite_ref_card_id
+                initiallyDeferred: false
+                nullable: false
+                references: report_card(id)
+              name: card_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_cardfavorite_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: owner_id
+              type: int
+          tableName: report_cardfavorite
+      - addUniqueConstraint:
+          columnNames: card_id, owner_id
+          constraintName: idx_unique_cardfavorite_card_id_owner_id
+          tableName: report_cardfavorite
+      - createIndex:
+          columns:
+          - column:
+              name: card_id
+          indexName: idx_cardfavorite_card_id
+          tableName: report_cardfavorite
+      - createIndex:
+          columns:
+          - column:
+              name: owner_id
+          indexName: idx_cardfavorite_owner_id
+          tableName: report_cardfavorite
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              name: description
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: public_perms
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_dashboard_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: creator_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_dashboard_ref_organization_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_organization(id)
+              name: organization_id
+              type: int
+          tableName: report_dashboard
+      - createIndex:
+          columns:
+          - column:
+              name: creator_id
+          indexName: idx_dashboard_creator_id
+          tableName: report_dashboard
+      - createIndex:
+          columns:
+          - column:
+              name: organization_id
+          indexName: idx_dashboard_organization_id
+          tableName: report_dashboard
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: sizeX
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: sizeY
+              type: int
+          - column:
+              name: row
+              type: int
+          - column:
+              name: col
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_dashboardcard_ref_card_id
+                initiallyDeferred: false
+                nullable: false
+                references: report_card(id)
+              name: card_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_dashboardcard_ref_dashboard_id
+                initiallyDeferred: false
+                nullable: false
+                references: report_dashboard(id)
+              name: dashboard_id
+              type: int
+          tableName: report_dashboardcard
+      - createIndex:
+          columns:
+          - column:
+              name: card_id
+          indexName: idx_dashboardcard_card_id
+          tableName: report_dashboardcard
+      - createIndex:
+          columns:
+          - column:
+              name: dashboard_id
+          indexName: idx_dashboardcard_dashboard_id
+          tableName: report_dashboardcard
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_dashboardsubscription_ref_dashboard_id
+                initiallyDeferred: false
+                nullable: false
+                references: report_dashboard(id)
+              name: dashboard_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_dashboardsubscription_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: user_id
+              type: int
+          tableName: report_dashboardsubscription
+      - addUniqueConstraint:
+          columnNames: dashboard_id, user_id
+          constraintName: idx_uniq_dashsubscrip_dashboard_id_user_id
+          tableName: report_dashboardsubscription
+      - createIndex:
+          columns:
+          - column:
+              name: dashboard_id
+          indexName: idx_dashboardsubscription_dashboard_id
+          tableName: report_dashboardsubscription
+      - createIndex:
+          columns:
+          - column:
+              name: user_id
+          indexName: idx_dashboardsubscription_user_id
+          tableName: report_dashboardsubscription
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: name
+              type: varchar(254)
+          - column:
+              name: description
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: public_perms
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: mode
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: version
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: dataset_query
+              type: text
+          - column:
+              name: email_addresses
+              type: text
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_emailreport_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: creator_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_emailreport_ref_organization_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_organization(id)
+              name: organization_id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: schedule
+              type: text
+          tableName: report_emailreport
+      - createIndex:
+          columns:
+          - column:
+              name: creator_id
+          indexName: idx_emailreport_creator_id
+          tableName: report_emailreport
+      - createIndex:
+          columns:
+          - column:
+              name: organization_id
+          indexName: idx_emailreport_organization_id
+          tableName: report_emailreport
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_emailreport_recipients_ref_emailreport_id
+                initiallyDeferred: false
+                nullable: false
+                references: report_emailreport(id)
+              name: emailreport_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_emailreport_recipients_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: user_id
+              type: int
+          tableName: report_emailreport_recipients
+      - addUniqueConstraint:
+          columnNames: emailreport_id, user_id
+          constraintName: idx_uniq_emailreportrecip_emailreport_id_user_id
+          tableName: report_emailreport_recipients
+      - createIndex:
+          columns:
+          - column:
+              name: emailreport_id
+          indexName: idx_emailreport_recipients_emailreport_id
+          tableName: report_emailreport_recipients
+      - createIndex:
+          columns:
+          - column:
+              name: user_id
+          indexName: idx_emailreport_recipients_user_id
+          tableName: report_emailreport_recipients
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: details
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: status
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              name: started_at
+              type: DATETIME
+          - column:
+              name: finished_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: error
+              type: text
+          - column:
+              constraints:
+                nullable: false
+              name: sent_email
+              type: text
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_emailreportexecutions_ref_organization_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_organization(id)
+              name: organization_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_emailreportexecutions_ref_report_id
+                initiallyDeferred: false
+                nullable: true
+                references: report_emailreport(id)
+              name: report_id
+              type: int
+          tableName: report_emailreportexecutions
+      - createIndex:
+          columns:
+          - column:
+              name: organization_id
+          indexName: idx_emailreportexecutions_organization_id
+          tableName: report_emailreportexecutions
+      - createIndex:
+          columns:
+          - column:
+              name: report_id
+          indexName: idx_emailreportexecutions_report_id
+          tableName: report_emailreportexecutions
+      - createTable:
+          columns:
+          - column:
+              autoIncrement: true
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: updated_at
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: start
+              type: DATETIME
+          - column:
+              constraints:
+                nullable: false
+              name: end
+              type: DATETIME
+          - column:
+              name: title
+              type: TEXT
+          - column:
+              constraints:
+                nullable: false
+              name: body
+              type: TEXT
+          - column:
+              constraints:
+                nullable: false
+              name: annotation_type
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: edit_count
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: object_type_id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: object_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_annotation_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: author_id
+              type: int
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_annotation_ref_organization_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_organization(id)
+              name: organization_id
+              type: int
+          tableName: annotation_annotation
+      - createIndex:
+          columns:
+          - column:
+              name: author_id
+          indexName: idx_annotation_author_id
+          tableName: annotation_annotation
+      - createIndex:
+          columns:
+          - column:
+              name: organization_id
+          indexName: idx_annotation_organization_id
+          tableName: annotation_annotation
+      - createIndex:
+          columns:
+          - column:
+              name: object_type_id
+          indexName: idx_annotation_object_type_id
+          tableName: annotation_annotation
+      - createIndex:
+          columns:
+          - column:
+              name: object_id
+          indexName: idx_annotation_object_id
+          tableName: annotation_annotation
+      - modifySql:
+          dbms: postgresql
+          replace:
+            replace: WITHOUT
+            with: WITH
+  - changeSet:
+      id: '2'
+      author: agilliland
+      changes:
+      - createTable:
+          columns:
+          - column:
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: id
+              type: varchar(254)
+          - column:
+              constraints:
+                deferrable: false
+                foreignKeyName: fk_session_ref_user_id
+                initiallyDeferred: false
+                nullable: false
+                references: core_user(id)
+              name: user_id
+              type: int
+          - column:
+              constraints:
+                nullable: false
+              name: created_at
+              type: DATETIME
+          tableName: core_session
+      - modifySql:
+          dbms: postgresql
+          replace:
+            replace: WITHOUT
+            with: WITH
+  - changeSet:
+      id: '4'
+      author: cammsaul
+      changes:
+      - createTable:
+          columns:
+          - column:
+              constraints:
+                nullable: false
+                primaryKey: true
+              name: key
+              type: varchar(254)
+          - column:
+              constraints:
+                nullable: false
+              name: value
+              type: varchar(254)
+          tableName: setting
+  - changeSet:
+      id: '5'
+      author: agilliland
+      changes:
+      - addColumn:
+          columns:
+          - column:
+              name: report_timezone
+              type: varchar(254)
+          tableName: core_organization
+  - changeSet:
+      id: '6'
+      author: agilliland
+      changes:
+      - dropNotNullConstraint:
+          columnDataType: int
+          columnName: organization_id
+          tableName: metabase_database
+      - dropForeignKeyConstraint:
+          baseTableName: metabase_database
+          constraintName: fk_database_ref_organization_id
+      - dropNotNullConstraint:
+          columnDataType: int
+          columnName: organization_id
+          tableName: report_card
+      - dropForeignKeyConstraint:
+          baseTableName: report_card
+          constraintName: fk_card_ref_organization_id
+      - dropNotNullConstraint:
+          columnDataType: int
+          columnName: organization_id
+          tableName: report_dashboard
+      - dropForeignKeyConstraint:
+          baseTableName: report_dashboard
+          constraintName: fk_dashboard_ref_organization_id
+      - dropNotNullConstraint:
+          columnDataType: int
+          columnName: organization_id
+          tableName: report_emailreport
+      - dropForeignKeyConstraint:
+          baseTableName: report_emailreport
+          constraintName: fk_emailreport_ref_organization_id
+      - dropNotNullConstraint:
+          columnDataType: int
+          columnName: organization_id
+          tableName: report_emailreportexecutions
+      - dropForeignKeyConstraint:
+          baseTableName: report_emailreportexecutions
+          constraintName: fk_emailreportexecutions_ref_organization_id
+      - dropNotNullConstraint:
+          columnDataType: int
+          columnName: organization_id
+          tableName: annotation_annotation
+      - dropForeignKeyConstraint:
+          baseTableName: annotation_annotation
+          constraintName: fk_annotation_ref_organization_id
+  - changeSet:
+      id: '7'
+      author: cammsaul
+      changes:
+      - addColumn:
+          columns:
+          - column:
+              constraints:
+                foreignKeyName: fk_field_parent_ref_field_id
+                nullable: true
+                references: metabase_field(id)
+              name: parent_id
+              type: int
+          tableName: metabase_field
+  - changeSet:
+      id: '8'
+      author: tlrobinson
+      changes:
+      - addColumn:
+          columns:
+          - column:
+              name: display_name
+              type: varchar(254)
+          tableName: metabase_table
+      - addColumn:
+          columns:
+          - column:
+              name: display_name
+              type: varchar(254)
+          tableName: metabase_field
+  - changeSet:
+      id: '9'
+      author: tlrobinson
+      changes:
+      - addColumn:
+          columns:
+          - column:
+              name: visibility_type
+              type: varchar(254)
+          tableName: metabase_table
+  - changeSet:
+      id: 10
+      author: cammsaul
+      changes:
+        - createTable:
+            tableName: revision
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_revision_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: object
+                  type: varchar
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_reversion
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: revision
+            indexName: idx_revision_model_model_id
+            columns:
+              column:
+                name: model
+              column:
+                name: model_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+        - modifySql:
+            dbms: mysql
+            replace:
+              replace: object VARCHAR
+              with: object TEXT
+  - changeSet:
+      id: 11
+      author: agilliland
+      changes:
+        - sql:
+            sql: update report_dashboard set public_perms = 2 where public_perms = 1
+  - changeSet:
+      id: 12
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: metabase_database(id)
+                    foreignKeyName: fk_report_card_ref_database_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: metabase_table(id)
+                    foreignKeyName: fk_report_card_ref_table_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: query_type
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: 13
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: activity
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: core_user(id)
+                    foreignKeyName: fk_activity_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: custom_id
+                  type: varchar(48)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: details
+                  type: varchar
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: activity
+            indexName: idx_activity_timestamp
+            columns:
+              column:
+                name: timestamp
+        - createIndex:
+            tableName: activity
+            indexName: idx_activity_user_id
+            columns:
+              column:
+                name: user_id
+        - createIndex:
+            tableName: activity
+            indexName: idx_activity_custom_id
+            columns:
+              column:
+                name: custom_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+        - modifySql:
+            dbms: mysql
+            replace:
+              replace: details VARCHAR
+              with: details TEXT
+  - changeSet:
+      id: 14
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: view_log
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: core_user(id)
+                    foreignKeyName: fk_view_log_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: view_log
+            indexName: idx_view_log_user_id
+            columns:
+              column:
+                name: user_id
+        - createIndex:
+            tableName: view_log
+            indexName: idx_view_log_timestamp
+            columns:
+              column:
+                name: model_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+  - changeSet:
+      id: 15
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: is_creation
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 16
+      author: agilliland
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: last_login
+            columnDataType: DATETIME
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+  - changeSet:
+      id: 17
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_sample
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: update metabase_database set is_sample = true where name = 'Sample Dataset'
+  - changeSet:
+      id: 18
+      author: camsaul
+      validCheckSum: 7:07d501a6e52c14691f7f895d137e565f
+      validCheckSum: 7:329d897d44ba9893fdafc9ce7e876d73
+      changes:
+        - createTable:
+            tableName: data_migrations
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR(254)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: data_migrations
+            indexName: idx_data_migrations_id
+            columns:
+              column:
+                name: id
+  - changeSet:
+      id: 19
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: schema
+                  type: VARCHAR(256)
+  - changeSet:
+      id: 20
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: pulse
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_pulse_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: public_perms
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: pulse
+            indexName: idx_pulse_creator_id
+            columns:
+              column:
+                name: creator_id
+        - createTable:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: pulse_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: pulse(id)
+                    foreignKeyName: fk_pulse_card_ref_pulse_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: card_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_pulse_card_ref_card_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: position
+                  type: int
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: pulse_card
+            indexName: idx_pulse_card_pulse_id
+            columns:
+              column:
+                name: pulse_id
+        - createIndex:
+            tableName: pulse_card
+            indexName: idx_pulse_card_card_id
+            columns:
+              column:
+                name: card_id
+        - createTable:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: pulse_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: pulse(id)
+                    foreignKeyName: fk_pulse_channel_ref_pulse_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: channel_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule_hour
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: schedule_day
+                  type: varchar(64)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: pulse_channel
+            indexName: idx_pulse_channel_pulse_id
+            columns:
+              column:
+                name: pulse_id
+        - createIndex:
+            tableName: pulse_channel
+            indexName: idx_pulse_channel_schedule_type
+            columns:
+              column:
+                name: schedule_type
+        - createTable:
+            tableName: pulse_channel_recipient
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: pulse_channel_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: pulse_channel(id)
+                    foreignKeyName: fk_pulse_channel_recipient_ref_pulse_channel_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_pulse_channel_recipient_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+  - changeSet:
+      id: 21
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: segment
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_table(id)
+                    foreignKeyName: fk_segment_ref_table_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_segment_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: is_active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: definition
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: segment
+            indexName: idx_segment_creator_id
+            columns:
+              column:
+                name: creator_id
+        - createIndex:
+            tableName: segment
+            indexName: idx_segment_table_id
+            columns:
+              column:
+                name: table_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+  - changeSet:
+      id: 22
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: revision
+            columns:
+              - column:
+                  name: message
+                  type: text
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: 23
+      author: agilliland
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: rows
+            newDataType: BIGINT
+  - changeSet:
+      id: 24
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: dependency
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model
+            columns:
+              column:
+                name: model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model_id
+            columns:
+              column:
+                name: model_id
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_model
+            columns:
+              column:
+                name: dependent_on_model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_id
+            columns:
+              column:
+                name: dependent_on_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+  - changeSet:
+      id: 25
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: metric
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_table(id)
+                    foreignKeyName: fk_metric_ref_table_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_metric_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: is_active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: definition
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: metric
+            indexName: idx_metric_creator_id
+            columns:
+              column:
+                name: creator_id
+        - createIndex:
+            tableName: metric
+            indexName: idx_metric_table_id
+            columns:
+              column:
+                name: table_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+  - changeSet:
+      id: 26
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_full_sync
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: update metabase_database set is_full_sync = true
+  - changeSet:
+      id: 27
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: dashboardcard_series
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: dashboardcard_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_dashboardcard(id)
+                    foreignKeyName: fk_dashboardcard_series_ref_dashboardcard_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: card_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_dashboardcard_series_ref_card_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: position
+                  type: int
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: dashboardcard_series
+            indexName: idx_dashboardcard_series_dashboardcard_id
+            columns:
+              column:
+                name: dashboardcard_id
+        - createIndex:
+            tableName: dashboardcard_series
+            indexName: idx_dashboardcard_series_card_id
+            columns:
+              column:
+                name: card_id
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+  - changeSet:
+      id: 28
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_qbnewb
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 29
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: schedule_frame
+                  type: varchar(32)
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: 30
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: visibility_type
+                  type: varchar(32)
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addNotNullConstraint:
+            columnDataType: varchar(32)
+            columnName: visibility_type
+            defaultNullValue: unset
+            tableName: metabase_field
+  - changeSet:
+      id: 31
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fk_target_field_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: 32
+      author: camsaul
+      changes:
+        ######################################## label table ########################################
+        - createTable:
+            tableName: label
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: slug
+                  type: VARCHAR(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: icon
+                  type: VARCHAR(128)
+        - createIndex:
+            tableName: label
+            indexName: idx_label_slug
+            columns:
+              column:
+                name: slug
+        ######################################## card_label table ########################################
+        - createTable:
+            tableName: card_label
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_card_label_ref_card_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: label_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: label(id)
+                    foreignKeyName: fk_card_label_ref_label_id
+                    deferrable: false
+                    initiallyDeferred: false
+        - addUniqueConstraint:
+            tableName: card_label
+            columnNames: card_id, label_id
+            constraintName: unique_card_label_card_id_label_id
+        - createIndex:
+            tableName: card_label
+            indexName: idx_card_label_card_id
+            columns:
+              column:
+                name: card_id
+        - createIndex:
+            tableName: card_label
+            indexName: idx_card_label_label_id
+            columns:
+              column:
+                name: label_id
+        ######################################## add archived column to report_card ########################################
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 32
+      author: agilliland
+      changes:
+        - createTable:
+            tableName: raw_table
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_database(id)
+                    foreignKeyName: fk_rawtable_ref_database
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: active
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schema
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: raw_table
+            indexName: idx_rawtable_database_id
+            columns:
+              column:
+                name: database_id
+        - addUniqueConstraint:
+            tableName: raw_table
+            columnNames: database_id, schema, name
+            constraintName: uniq_raw_table_db_schema_name
+        - createTable:
+            tableName: raw_column
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: raw_table_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: raw_table(id)
+                    foreignKeyName: fk_rawcolumn_tableid_ref_rawtable
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: active
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: column_type
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: is_pk
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fk_target_column_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: raw_column(id)
+                    foreignKeyName: fk_rawcolumn_fktarget_ref_rawcolumn
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: details
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: raw_column
+            indexName: idx_rawcolumn_raw_table_id
+            columns:
+              column:
+                name: raw_table_id
+        - addUniqueConstraint:
+            tableName: raw_column
+            columnNames: raw_table_id, name
+            constraintName: uniq_raw_column_table_name
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: raw_table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: raw_column_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: last_analyzed
+                  type: DATETIME
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - modifySql:
+            dbms: postgresql
+            replace:
+              replace: WITHOUT
+              with: WITH
+  - changeSet:
+      id: 34
+      author: tlrobinson
+      changes:
+        ######################################## add enabled column to pulse_channel ########################################
+        - addColumn:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: enabled
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 35
+      author: agilliland
+      changes:
+        - modifyDataType:
+            tableName: setting
+            columnName: value
+            newDataType: TEXT
+        - addNotNullContstraint:
+            tableName: setting
+            columnNames: value
+  - changeSet:
+      id: 36
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: parameters
+                  type: text
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addNotNullConstraint:
+            columnDataType: text
+            columnName: parameters
+            defaultNullValue: '[]'
+            tableName: report_dashboard
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: parameter_mappings
+                  type: text
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addNotNullConstraint:
+            columnDataType: text
+            columnName: parameter_mappings
+            defaultNullValue: '[]'
+            tableName: report_dashboardcard
+  - changeSet:
+      id: 37
+      author: tlrobinson
+      changes:
+        - addColumn:
+            tableName: query_queryexecution
+            columns:
+              - column:
+                  name: query_hash
+                  type: int
+                  constraints:
+                    nullable: true
+        - addNotNullConstraint:
+            tableName: query_queryexecution
+            columnName: query_hash
+            columnDataType: int
+            defaultNullValue: 0
+        - createIndex:
+            tableName: query_queryexecution
+            indexName: idx_query_queryexecution_query_hash
+            columns:
+              column:
+                name: query_hash
+        - createIndex:
+            tableName: query_queryexecution
+            indexName: idx_query_queryexecution_started_at
+            columns:
+              column:
+                name: started_at
+  - changeSet:
+      id: 38
+      author: camsaul
+      changes:
+        ######################################## Add "points_of_interest" metadata column to various models ########################################
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        ######################################## Add "caveats" metadata column to various models ########################################
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        ######################################## Add "how_is_this_calculated" to metric ########################################
+        - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: how_is_this_calculated
+                  type: text
+        ######################################## Add "most important dashboard" (0 or 1 dashboards) ########################################
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: show_in_getting_started
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_show_in_getting_started
+            columns:
+              column:
+                name: show_in_getting_started
+        ######################################## Add "most important metrics" (0+ metrics) ########################################
+        - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: show_in_getting_started
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: metric
+            indexName: idx_metric_show_in_getting_started
+            columns:
+              column:
+                name: show_in_getting_started
+        ######################################## Add "most important tables (0+ tables) ########################################
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: show_in_getting_started
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_show_in_getting_started
+            columns:
+              column:
+                name: show_in_getting_started
+        ######################################## Add "most important segments" (0+ segments) ########################################
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: show_in_getting_started
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: segment
+            indexName: idx_segment_show_in_getting_started
+            columns:
+              column:
+                name: show_in_getting_started
+        ######################################## Add "metric_important_field" table ########################################
+        - createTable:
+            tableName: metric_important_field
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metric_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metric(id)
+                    foreignKeyName: fk_metric_important_field_metric_id
+              - column:
+                  name: field_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_field(id)
+                    foreignKeyName: fk_metric_important_field_metabase_field_id
+        - addUniqueConstraint:
+            tableName: metric_important_field
+            columnNames: metric_id, field_id
+            constraintName: unique_metric_important_field_metric_id_field_id
+        - createIndex:
+            tableName: metric_important_field
+            indexName: idx_metric_important_field_metric_id
+            columns:
+              column:
+                name: metric_id
+        - createIndex:
+            tableName: metric_important_field
+            indexName: idx_metric_important_field_field_id
+            columns:
+              column:
+                name: field_id
+  - changeSet:
+      id: 39
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: google_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 40
+      author: camsaul
+      changes:
+        ############################################################ add PermissionsGroup table ############################################################
+        - createTable:
+            tableName: permissions_group
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              # TODO - it would be nice to make this a case-insensitive unique constraint / index?
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: unique_permissions_group_name
+        - createIndex:
+            tableName: permissions_group
+            indexName: idx_permissions_group_name
+            columns:
+              column:
+                name: name
+        ############################################################ add PermissionsGroupMembership table ############################################################
+        - createTable:
+            tableName: permissions_group_membership
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_permissions_group_membership_user_id
+              - column:
+                  name: group_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: permissions_group(id)
+                    foreignKeyName: fk_permissions_group_group_id
+        - addUniqueConstraint:
+            tableName: permissions_group_membership
+            columnNames: user_id, group_id
+            constraintName: unique_permissions_group_membership_user_id_group_id
+        # for things like all users in a given group
+        - createIndex:
+            tableName: permissions_group_membership
+            indexName: idx_permissions_group_membership_group_id
+            columns:
+              column:
+                name: group_id
+        # for things like all groups a user belongs to
+        - createIndex:
+            tableName: permissions_group_membership
+            indexName: idx_permissions_group_membership_user_id
+            columns:
+              column:
+                name: user_id
+        # for things like is given user a member of a given group (TODO - not sure we need this)
+        - createIndex:
+            tableName: permissions_group_membership
+            indexName: idx_permissions_group_membership_group_id_user_id
+            columns:
+              column:
+                name: group_id
+              column:
+                name: user_id
+        ############################################################ add Permissions table ############################################################
+        - createTable:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: object
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: permissions_group(id)
+                    foreignKeyName: fk_permissions_group_id
+        - createIndex:
+            tableName: permissions
+            indexName: idx_permissions_group_id
+            columns:
+              column:
+                name: group_id
+        - createIndex:
+            tableName: permissions
+            indexName: idx_permissions_object
+            columns:
+              column:
+                name: object
+        - createIndex:
+            tableName: permissions
+            indexName: idx_permissions_group_id_object
+            columns:
+              column:
+                name: group_id
+              column:
+                name: object
+        - addUniqueConstraint:
+            tableName: permissions
+            columnNames: group_id, object
+        ############################################################ Tweaks to metabase_table ############################################################
+        # Modify the length of metabase_table.schema from 256 -> 254
+        # It turns out MySQL InnoDB indecies have to be 767 bytes or less (at least for older versions of MySQL)
+        # and 'utf8' text columns can use up to 3 bytes per character in MySQL -- see http://stackoverflow.com/a/22515986/1198455
+        # So 256 * 3 = 768 bytes (too large to index / add unique constraints)
+        # Drop this to 254; 254 * 3 = 762, which should give us room to index it along with a 4-byte integer as well if need be
+        # Hoping this doesn't break anyone's existing databases. Hopefully there aren't any schemas that are 255 or 256 bytes long out there; any longer
+        # and it would have already broke; any shorter and there's not problem.
+        # Anyway, better to break it now than to leave it as-is and have and break permissions where the columns have to be 254 characters wide
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: schema
+            newDataType: varchar(254)
+        # Add index: this is for doing things like getting all the tables that belong to a given schema
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_db_id_schema
+            columns:
+              column:
+                name: db_id
+              column:
+                name: schema
+  - changeSet:
+      id: 41
+      author: camsaul
+      changes:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: field_type
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: active
+            defaultValueBoolean: true
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: preview_display
+            defaultValueBoolean: true
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: position
+            defaultValueNumeric: 0
+        - addDefaultValue:
+            tableName: metabase_field
+            columnName: visibility_type
+            defaultValue: "normal"
+  - changeSet:
+      id: 42
+      author: camsaul
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_queryexecution
+            constraintName: fk_queryexecution_ref_query_id
+        - dropColumn:
+            tableName: query_queryexecution
+            columnName: query_id
+        - dropColumn:
+            tableName: core_user
+            columnName: is_staff
+        - dropColumn:
+            tableName: metabase_database
+            columnName: organization_id
+        - dropColumn:
+            tableName: report_card
+            columnName: organization_id
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: organization_id
+        - dropTable:
+            tableName: annotation_annotation
+        - dropTable:
+            tableName: core_permissionsviolation
+        - dropTable:
+            tableName: core_userorgperm
+        - dropTable:
+            tableName: core_organization
+        - dropTable:
+            tableName: metabase_foreignkey
+        - dropTable:
+            tableName: metabase_tablesegment
+        - dropTable:
+            tableName: query_query
+        - dropTable:
+            tableName: report_dashboardsubscription
+        - dropTable:
+            tableName: report_emailreport_recipients
+        - dropTable:
+            tableName: report_emailreportexecutions
+        - dropTable:
+            tableName: report_emailreport
+  - changeSet:
+      id: 43
+      author: camsaul
+      validCheckSum: 7:b20750a949504e93efced32877a4488f
+      validCheckSum: 7:dbc18c8ca697fc335869f0ed0eb5f4cb
+      changes:
+        - createTable:
+            tableName: permissions_revision
+            remarks: 'Used to keep track of changes made to permissions.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: text
+                  remarks: 'Serialized JSON of the permissions before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: text
+                  remarks: 'Serialized JSON of the permissions after the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_permissions_revision_user_id
+              - column:
+                  name: created_at
+                  type: datetime
+                  remarks: 'The timestamp of when these changes were made.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: text
+                  remarks: 'Optional remarks explaining why these changes were made.'
+  - changeSet:
+      id: 44
+      author: camsaul
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: public_perms
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: public_perms
+        - dropColumn:
+            tableName: pulse
+            columnName: public_perms
+  - changeSet:
+      id: 45
+      author: tlrobinson
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: visualization_settings
+                  type: text
+        - addNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: visualization_settings
+            columnDataType: text
+            defaultNullValue: '{}'
+  - changeSet:
+      id: 46
+      author: camsaul
+      changes:
+        - addNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: row
+            columnDataType: integer
+            defaultNullValue: 0
+        - addNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: col
+            columnDataType: integer
+            defaultNullValue: 0
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: row
+            defaultValueNumeric: 0
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: col
+            defaultValueNumeric: 0
+  - changeSet:
+      id: 47
+      author: camsaul
+      changes:
+        ######################################## collection table ########################################
+        - createTable:
+            tableName: collection
+            remarks: 'Collections are an optional way to organize Cards and handle permissions for them.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: text
+                  remarks: 'The unique, user-facing name of this Collection.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: slug
+                  type: varchar(254)
+                  remarks: 'URL-friendly, sluggified, indexed version of name.'
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: text
+                  remarks: 'Optional description for this Collection.'
+              - column:
+                  name: color
+                  type: char(7)
+                  remarks: 'Seven-character hex color for this Collection, including the preceding hash sign.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  remarks: 'Whether this Collection has been archived and should be hidden from users.'
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: collection
+            indexName: idx_collection_slug
+            columns:
+              column:
+                name: slug
+        ######################################## add collection_id to report_card ########################################
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: 'Optional ID of Collection this Card belongs to.'
+                  constraints:
+                    references: collection(id)
+                    foreignKeyName: fk_card_collection_id
+        - createIndex:
+            tableName: report_card
+            indexName: idx_card_collection_id
+            columns:
+              column:
+                name: collection_id
+  - changeSet:
+      id: 48
+      author: camsaul
+      changes:
+        - createTable:
+            tableName: collection_revision
+            remarks: 'Used to keep track of changes made to collections.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: text
+                  remarks: 'Serialized JSON of the collections graph before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: text
+                  remarks: 'Serialized JSON of the collections graph after the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_collection_revision_user_id
+              - column:
+                  name: created_at
+                  type: datetime
+                  remarks: 'The timestamp of when these changes were made.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: text
+                  remarks: 'Optional remarks explaining why these changes were made.'
+  - changeSet:
+      id: 49
+      author: camsaul
+      changes:
+        ######################################## Card public_uuid & indecies ########################################
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: 'Unique UUID used to in publically-accessible links to this Card.'
+                  constraints:
+                    unique: true
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: 'The ID of the User who first publically shared this Card.'
+                  constraints:
+                    references: core_user(id)
+                    foreignKeyName: fk_card_made_public_by_id
+        - createIndex:
+            tableName: report_card
+            indexName: idx_card_public_uuid
+            columns:
+              column:
+                name: public_uuid
+        ######################################## Dashboard public_uuid & indecies ########################################
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: 'Unique UUID used to in publically-accessible links to this Dashboard.'
+                  constraints:
+                    unique: true
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: 'The ID of the User who first publically shared this Dashboard.'
+                  constraints:
+                    references: core_user(id)
+                    foreignKeyName: fk_dashboard_made_public_by_id
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_dashboard_public_uuid
+            columns:
+              column:
+                name: public_uuid
+        ######################################## make query_queryexecution.executor_id nullable ########################################
+        - dropNotNullConstraint:
+            tableName: query_queryexecution
+            columnName: executor_id
+            columnDataType: int
+  - changeSet:
+      id: 50
+      author: camsaul
+      changes:
+        ######################################## new Card columns ########################################
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: enable_embedding
+                  type: boolean
+                  remarks: 'Is this Card allowed to be embedded in different websites (using a signed JWT)?'
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding_params
+                  type: text
+                  remarks: 'Serialized JSON containing information about required parameters that must be supplied when embedding this Card.'
+          ######################################## new Card columns ########################################
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: enable_embedding
+                  type: boolean
+                  remarks: 'Is this Dashboard allowed to be embedded in different websites (using a signed JWT)?'
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: embedding_params
+                  type: text
+                  remarks: 'Serialized JSON containing information about required parameters that must be supplied when embedding this Dashboard.'
+  - changeSet:
+      id: 51
+      author: camsaul
+      changes:
+        - createTable:
+            tableName: query_execution
+            remarks: 'A log of executed queries, used for calculating historic execution times, auditing, and other purposes.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: hash
+                  type: binary(32)
+                  remarks: 'The hash of the query dictionary. This is a 256-bit SHA3 hash of the query.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: datetime
+                  remarks: 'Timestamp of when this query started running.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: running_time
+                  type: integer
+                  remarks: 'The time, in milliseconds, this query took to complete.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result_rows
+                  type: integer
+                  remarks: 'Number of rows in the query results.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: native
+                  type: boolean
+                  remarks: 'Whether the query was a native query, as opposed to an MBQL one (e.g., created with the GUI).'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: context
+                  type: varchar(32)
+                  remarks: 'Short string specifying how this query was executed, e.g. in a Dashboard or Pulse.'
+              - column:
+                  name: error
+                  type: text
+                  remarks: 'Error message returned by failed query, if any.'
+              # The following columns are foreign keys, but we don't keep FK constraints on them for a few reasons:
+              # - We don't want to keep indexes on these columns since they wouldn't be generally useful and for size and performance reasons
+              # - If a related object (e.g. a Dashboard) is deleted, we don't want to delete the related entries in the QueryExecution log.
+              #   We could do something like make the constraint ON DELETE SET NULL, but that would require a full table scan to handle;
+              #   If the QueryExecution log became tens of millions of rows large it would take a very long time to scan and update records
+              - column:
+                  name: executor_id
+                  type: integer
+                  remarks: 'The ID of the User who triggered this query execution, if any.'
+              - column:
+                  name: card_id
+                  type: integer
+                  remarks: 'The ID of the Card (Question) associated with this query execution, if any.'
+              - column:
+                  name: dashboard_id
+                  type: integer
+                  remarks: 'The ID of the Dashboard associated with this query execution, if any.'
+              - column:
+                  name: pulse_id
+                  type: integer
+                  remarks: 'The ID of the Pulse associated with this query execution, if any.'
+        # For things like auditing recently executed queries
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_started_at
+            columns:
+              column:
+                name: started_at
+        # For things like seeing the 10 most recent executions of a certain query
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_query_hash_started_at
+            columns:
+              column:
+                name: query_hash
+              column:
+                name: started_at
+  - property:
+        name: blob.type
+        value: blob
+        dbms: mysql,h2
+  - property:
+      name: blob.type
+      value: bytea
+      dbms: postgresql
+  - changeSet:
+      id: 52
+      author: camsaul
+      changes:
+        - createTable:
+            tableName: query_cache
+            remarks: 'Cached results of queries are stored here when using the DB-based query cache.'
+            columns:
+              - column:
+                  name: query_hash
+                  type: binary(32)
+                  remarks: 'The hash of the query dictionary. (This is a 256-bit SHA3 hash of the query dict).'
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: datetime
+                  remarks: 'The timestamp of when these query results were last refreshed.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: results
+                  type: ${blob.type}
+                  remarks: 'Cached, compressed results of running the query with the given hash.'
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: query_cache
+            indexName: idx_query_cache_updated_at
+            columns:
+              column:
+                name: updated_at
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: cache_ttl
+                  type: int
+                  remarks: 'The maximum time, in seconds, to return cached results for this Card rather than running a new query.'
+  - changeSet:
+      id: 53
+      author: camsaul
+      changes:
+        - createTable:
+            tableName: query
+            remarks: 'Information (such as average execution time) for different queries that have been previously ran.'
+            columns:
+              - column:
+                  name: query_hash
+                  type: binary(32)
+                  remarks: 'The hash of the query dictionary. (This is a 256-bit SHA3 hash of the query dict.)'
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: average_execution_time
+                  type: int
+                  remarks: 'Average execution time for the query, round to nearest number of milliseconds. This is updated as a rolling average.'
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 54
+      author: tlrobinson
+      changes:
+        - addColumn:
+            tableName: pulse
+            remarks: 'Skip a scheduled Pulse if none of its questions have any results'
+            columns:
+              - column:
+                  name: skip_if_empty
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

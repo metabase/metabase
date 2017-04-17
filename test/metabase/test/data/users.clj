@@ -3,12 +3,14 @@
   ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
             [toucan.db :as db]
-            [metabase.core :as core]
+            [metabase.config :as config]
+            [metabase.core.initialization-status :as init-status]
             [metabase.http-client :as http]
             (metabase.models [permissions-group :as perms-group]
                              [user :refer [User]])
             [metabase.util :as u]
-            [metabase.test.util :refer [random-name]]))
+            [metabase.test.util :refer [random-name]])
+  (:import clojure.lang.ExceptionInfo))
 
 ;;; ------------------------------------------------------------ User Definitions ------------------------------------------------------------
 
@@ -46,16 +48,31 @@
 
 ;;; ------------------------------------------------------------ Test User Fns ------------------------------------------------------------
 
+(defn- wait-for-initiailization
+  "Wait up to MAX-WAIT-SECONDS (default: 30) for Metabase to finish initializing.
+   (Sometimes it can take Metabase a while to reload during live development with `lein ring server`.)"
+  ([]
+   (wait-for-initiailization 30))
+  ([max-wait-seconds]
+   ;; only need to wait when running unit tests. When doing REPL dev and using the test users we're probably
+   ;; the server is probably a separate process (`lein ring server`)
+   (when config/is-test?
+     (when-not (init-status/complete?)
+       (when (<= max-wait-seconds 0)
+         (throw (Exception. "Metabase still hasn't finished initializing.")))
+       (printf "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)...\n" max-wait-seconds)
+       (Thread/sleep 1000)
+       (recur (dec max-wait-seconds))))))
+
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
   [& {:keys [email first last password superuser active]
       :or {superuser false
            active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
-  (when-not (core/initialized?)
-    (println "Metabase is not yet initialized, waiting 5 seconds...")
-    (Thread/sleep 5000))
+  (wait-for-initiailization)
   (or (User :email email)
+      (println "Creating test user:" email) ; DEBUG
       (db/insert! User
         :email        email
         :first_name   first
@@ -108,7 +125,7 @@
     (fn [id]
       (@m id))))
 
-(def ^:private tokens (atom {}))
+(defonce ^:private tokens (atom {}))
 
 (defn- username->token [username]
   (or (@tokens username)
@@ -119,18 +136,15 @@
 (defn- client-fn [username & args]
   (try
     (apply http/client (username->token username) args)
-    (catch Throwable e
+    (catch ExceptionInfo e
       (let [{:keys [status-code]} (ex-data e)]
         (when-not (= status-code 401)
           (throw e))
         ;; If we got a 401 unauthenticated clear the tokens cache + recur
+        (printf "Got 401 (Unauthenticated) for %s. Clearing cached auth tokens and retrying request.\n" username) ; DEBUG
         (reset! tokens {})
         (apply client-fn username args)))))
 
-;; TODO - does it make sense just to make this a non-higher-order function? Or a group of functions, e.g.
-;; (GET :rasta 200 "field/10/values")
-;; vs.
-;; ((user->client :rasta) :get 200 "field/10/values")
 (defn user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
    In addition, it forces lazy creation of the User if needed.
@@ -145,4 +159,4 @@
   "Delete all users besides the 4 persistent test users.
    This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to remove this. (TODO)"
   []
-  (db/delete! 'User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))
+  (db/delete! User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))

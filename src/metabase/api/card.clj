@@ -1,7 +1,9 @@
 (ns metabase.api.card
   (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [compojure.core :refer [GET POST DELETE PUT]]
+            [ring.util.codec :as codec]
             [schema.core :as s]
             (toucan [db :as db]
                     [hydrate :refer [hydrate]])
@@ -18,10 +20,14 @@
                              [interface :as mi]
                              [label :refer [Label]]
                              [permissions :as perms]
+                             [query :as query]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
-            (metabase [query-processor :as qp]
-                      [util :as u])
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.cache :as cache]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util :as u]
             [metabase.util.schema :as su])
   (:import java.util.UUID))
 
@@ -128,8 +134,18 @@
 (defn- ^:deprecated card-has-label? [label-slug card]
   (contains? (set (map :slug (:labels card))) label-slug))
 
+(defn- collection-slug->id [collection-slug]
+  (when (seq collection-slug)
+    ;; special characters in the slugs are always URL-encoded when stored in the DB, e.g.
+    ;; "Obsługa klienta" becomes "obs%C5%82uga_klienta". But for some weird reason sometimes the slug is passed in like
+    ;; "obsługa_klientaa" (not URL-encoded) so go ahead and URL-encode the input as well so we can match either case
+    (check-404 (db/select-one-id Collection
+                 {:where [:or [:= :slug collection-slug]
+                          [:= :slug (codec/url-encode collection-slug)]]}))))
+
 ;; TODO - do we need to hydrate the cards' collections as well?
-(defn- cards-for-filter-option [filter-option model-id label collection]
+(defn- cards-for-filter-option [filter-option model-id label collection-slug]
+  (println "collection-slug:" collection-slug) ; NOCOMMIT
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
                   (hydrate :creator :collection)
                   hydrate-labels
@@ -137,11 +153,10 @@
     ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply label/collection filtering if applicable
     ;; COLLECTION can optionally be an empty string which is used to repre
     (filter (cond
-              collection  (let [collection-id (when (seq collection)
-                                                (check-404 (db/select-one-id Collection :slug collection)))]
-                            (comp (partial = collection-id) :collection_id))
-              (seq label) (partial card-has-label? label)
-              :else       identity)
+              collection-slug (let [collection-id (collection-slug->id collection-slug)]
+                                (comp (partial = collection-id) :collection_id))
+              (seq label)     (partial card-has-label? label)
+              :else           identity)
             cards)))
 
 
@@ -220,15 +235,18 @@
   {:pre [(map? query)]}
   (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set query :read))))
 
+;; TODO - This endpoint desperately needs to be broken out into smaller, bite-sized chunks
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id], :as body} :body}]
+  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params], :as body} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
-   description            (s/maybe su/NonBlankString)
+   description            (s/maybe s/Str)
    visualization_settings (s/maybe su/Map)
    archived               (s/maybe s/Bool)
+   enable_embedding       (s/maybe s/Bool)
+   embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)}
   (let [card (write-check Card id)]
     ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
@@ -242,15 +260,26 @@
     (when (and (false? archived)
                (:archived card))
       (check-data-permissions-for-query (:dataset_query card)))
+    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
+    (when (or (and (not (nil? enable_embedding))
+                   (not= enable_embedding (:enable_embedding card)))
+              (and embedding_params
+                   (not= embedding_params (:embedding_params card))))
+      (check-embedding-enabled)
+      (check-superuser))
     ;; ok, now save the Card
     (db/update! Card id
-      (merge (when (contains? body :collection_id)   {:collection_id          collection_id})
-             (when-not (nil? dataset_query)          {:dataset_query          dataset_query})
-             (when-not (nil? description)            {:description            description})
-             (when-not (nil? display)                {:display                display})
-             (when-not (nil? name)                   {:name                   name})
-             (when-not (nil? visualization_settings) {:visualization_settings visualization_settings})
-             (when-not (nil? archived)               {:archived               archived})))
+      (merge
+       ;; `collection_id` and `description` can be `nil` (in order to unset them)
+       (when (contains? body :collection_id)
+         {:collection_id collection_id})
+       (when (contains? body :description)
+         {:description description})
+       ;; other values should only be modified if they're passed in as non-nil
+       (into {} (for [k     [:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params]
+                      :let  [v (k body)]
+                      :when (not (nil? v))]
+                  {k v}))))
     (let [event (cond
                   ;; card was archived
                   (and archived
@@ -345,36 +374,68 @@
 
 ;;; ------------------------------------------------------------ Running a Query ------------------------------------------------------------
 
+(defn- query-magic-ttl
+  "Compute a 'magic' cache TTL time (in seconds) for QUERY by multipling its historic average execution times by the `query-caching-ttl-ratio`.
+   If the TTL is less than a second, this returns `nil` (i.e., the cache should not be utilized.)"
+  [query]
+  (when-let [average-duration (query/average-execution-time-ms (qputil/query-hash query))]
+    (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
+                                            1000.0)))]
+      (when-not (zero? ttl-seconds)
+        (log/info (format "Question's average execution duration is %d ms; using 'magic' TTL of %d seconds" average-duration ttl-seconds) (u/emoji "💾"))
+        ttl-seconds))))
+
+(defn- query-for-card [card parameters constraints]
+  (let [query (assoc (:dataset_query card)
+                :constraints constraints
+                :parameters  parameters)
+        ttl   (when (public-settings/enable-query-caching)
+                (or (:cache_ttl card)
+                    (query-magic-ttl query)))]
+    (assoc query :cache_ttl ttl)))
+
 (defn run-query-for-card
   "Run the query for Card with PARAMETERS and CONSTRAINTS, and return results in the usual format."
-  [card-id & {:keys [parameters constraints]
-              :or   {constraints dataset-api/default-query-constraints}}]
+  {:style/indent 1}
+  [card-id & {:keys [parameters constraints context dashboard-id]
+              :or   {constraints dataset-api/default-query-constraints
+                     context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (read-check Card card-id)
-        query   (assoc (:dataset_query card)
-                  :parameters  parameters
-                  :constraints constraints)
-        options {:executed-by *current-user-id*
-                 :card-id     card-id}]
+        query   (query-for-card card parameters constraints)
+        options {:executed-by  *current-user-id*
+                 :context      context
+                 :card-id      card-id
+                 :dashboard-id dashboard-id}]
     (check-not-archived card)
     (qp/dataset-query query options)))
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters]} :body}]
-  (run-query-for-card card-id, :parameters parameters))
+  [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
+  {ignore_cache (s/maybe s/Bool)}
+  (binding [cache/*ignore-cached-results* ignore_cache]
+    (run-query-for-card card-id, :parameters parameters)))
 
 (defendpoint POST "/:card-id/query/csv"
   "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+  (binding [cache/*ignore-cached-results* true]
+    (dataset-api/as-csv (run-query-for-card card-id
+                          :parameters  (json/parse-string parameters keyword)
+                          :constraints nil
+                          :context     :csv-download))))
 
 (defendpoint POST "/:card-id/query/json"
   "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]
   {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card card-id, :parameters (json/parse-string parameters keyword), :constraints nil)))
+  (binding [cache/*ignore-cached-results* true]
+    (dataset-api/as-json (run-query-for-card card-id
+                           :parameters  (json/parse-string parameters keyword)
+                           :constraints nil
+                           :context     :json-download))))
 
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
@@ -410,6 +471,13 @@
   (check-superuser)
   (check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+(defendpoint GET "/embeddable"
+  "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints and a signed JWT."
+  []
+  (check-superuser)
+  (check-embedding-enabled)
+  (db/select [Card :name :id], :enable_embedding true, :archived false))
 
 
 (define-routes)

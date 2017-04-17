@@ -1,5 +1,5 @@
-import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
+import React from "react";
+import PropTypes from "prop-types";
 
 import Button from "metabase/components/Button.jsx";
 

@@ -1,5 +1,5 @@
-import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import GridLayout from "./grid/GridLayout.jsx";
 import DashCard from "./DashCard.jsx";
