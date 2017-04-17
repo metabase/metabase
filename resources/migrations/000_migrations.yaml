@@ -3581,3 +3581,16 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 55
+      author: wwwiiilll
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: ldap_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
