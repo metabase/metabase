@@ -17,11 +17,11 @@
   true)
 
 (defn- valid-json-resource?
-  "Does this RELATIVE-PATH point to a valid local JSON resource? (RELATIVE-PATH is something like \"app/charts/us-states.json\".)"
+  "Does this RELATIVE-PATH point to a valid local JSON resource? (RELATIVE-PATH is something like \"app/assets/geojson/us-states.json\".)"
   [relative-path]
   (when-let [^java.net.URI uri (u/ignore-exceptions (java.net.URI. relative-path))]
     (when-not (.isAbsolute uri)
-      (valid-json? (io/resource (str "frontend_client" uri))))))
+      (valid-json? (io/resource (str "frontend_client/" uri))))))
 
 (defn- valid-json-url?
   "Is URL a valid HTTP URL and does it point to valid JSON?"

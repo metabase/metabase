@@ -31,7 +31,7 @@
 
 ;;; test valid-json-resource?
 (expect
-  (valid-json-resource? "/app/charts/us-states.json"))
+  (valid-json-resource? "app/assets/geojson/us-states.json"))
 
 
 ;;; test the CustomGeoJSON schema
