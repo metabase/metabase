@@ -195,10 +195,12 @@ export default class EntityList extends Component {
                                 labels={labels}
                             />
                         : showSearchHeader ?
-                            <SearchHeader
-                                searchText={searchText}
-                                setSearchText={setSearchText}
-                            />
+                                <div style={{marginLeft: "10px"}}>
+                                    <SearchHeader
+                                        searchText={searchText}
+                                        setSearchText={setSearchText}
+                                    />
+                                </div>
                         :
                             null
                       }
