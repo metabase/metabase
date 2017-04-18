@@ -32,6 +32,8 @@ import tips from "./tips";
 
 import { assocIn, chain } from "icepick";
 
+import { createCard } from "metabase/lib/card";
+
 const pivotSelection = {
     title: pivotTitle,
     component: PivotSelection,
@@ -175,6 +177,7 @@ const flows = {
 };
 
 const setVizForFlow = flow => {
+    console.log("flow", flow);
     switch (flow) {
         case "timeseries":
             return "line";
@@ -192,7 +195,7 @@ const initialState = {
     currentStep: initialStep,
     flow: { title: "Start with..." },
     currentStepIndex: 0,
-    card: {}
+    card: createCard()
 };
 
 export default function(state = initialState, { type, payload, error }) {
