@@ -10,29 +10,13 @@ import { Provider } from 'react-redux'
 import MetabaseAnalytics, { registerAnalyticsClickListener } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import api from "metabase/lib/api";
-
 import { getStore } from './store'
 
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { setErrorPage } from "metabase/redux/app";
-import { clearCurrentUser } from "metabase/redux/user";
 
 import { Router, browserHistory } from "react-router";
-import { push, syncHistoryWithStore } from 'react-router-redux'
+import { syncHistoryWithStore } from 'react-router-redux'
 
-// we shouldn't redirect these URLs because we want to handle them differently
-const WHITELIST_FORBIDDEN_URLS = [
-    // on dashboards, we show permission errors for individual cards we don't have access to
-    /api\/card\/\d+\/query$/,
-    // metadata endpoints should not cause redirects
-    // we should gracefully handle cases where we don't have access to metadata
-    /api\/database\/\d+\/metadata$/,
-    /api\/database\/\d+\/fields/,
-    /api\/field\/\d+\/values/,
-    /api\/table\/\d+\/query_metadata$/,
-    /api\/table\/\d+\/fks$/
-];
 
 function _init(reducers, getRoutes, callback) {
     const store = getStore(reducers, browserHistory);
@@ -59,27 +43,6 @@ function _init(reducers, getRoutes, callback) {
     // enable / disable GA based on opt-out of anonymous tracking
     MetabaseSettings.on("anon_tracking_enabled", () => {
         window['ga-disable-' + MetabaseSettings.get('ga_code')] = MetabaseSettings.isTrackingEnabled() ? null : true;
-    });
-
-    // received a 401 response
-    api.on("401", (url) => {
-        if (url === "/api/user/current") {
-            return
-        }
-        store.dispatch(clearCurrentUser());
-        store.dispatch(push("/auth/login"));
-    });
-
-    // received a 403 response
-    api.on("403", (url) => {
-        if (url) {
-            for (const regex of WHITELIST_FORBIDDEN_URLS) {
-                if (regex.test(url)) {
-                    return;
-                }
-            }
-        }
-        store.dispatch(setErrorPage({ status: 403 }));
     });
 
     if (callback) {
