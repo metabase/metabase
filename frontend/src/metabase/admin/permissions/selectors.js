@@ -27,14 +27,14 @@ import {
     diffPermissions,
 } from "metabase/lib/permissions";
 
-const getPermissions = (state) => state.permissions.permissions;
-const getOriginalPermissions = (state) => state.permissions.originalPermissions;
+const getPermissions = (state) => state.admin.permissions.permissions;
+const getOriginalPermissions = (state) => state.admin.permissions.originalPermissions;
 
 const getDatabaseId = (state, props) => props.params.databaseId ? parseInt(props.params.databaseId) : null
 const getSchemaName = (state, props) => props.params.schemaName
 
 const getMetadata = createSelector(
-    [(state) => state.permissions.databases],
+    [(state) => state.admin.permissions.databases],
     (databases) => databases && new Metadata(databases)
 );
 
@@ -53,7 +53,7 @@ function getTooltipForGroup(group) {
 }
 
 export const getGroups = createSelector(
-    (state) => state.permissions.groups,
+    (state) => state.admin.permissions.groups,
     (groups) => {
         let orderedGroups = groups ? [...groups] : [];
         for (let groupFilter of SPECIAL_GROUP_FILTERS) {
@@ -75,7 +75,7 @@ export const getIsDirty = createSelector(
         JSON.stringify(permissions) !== JSON.stringify(originalPermissions)
 )
 
-export const getSaveError = (state) => state.permissions.saveError;
+export const getSaveError = (state) => state.admin.permissions.saveError;
 
 
 // these are all the permission levels ordered by level of access
@@ -418,7 +418,7 @@ export const getDatabasesPermissionsGrid = createSelector(
     }
 );
 
-const getCollections = (state) => state.permissions.collections;
+const getCollections = (state) => state.admin.permissions.collections;
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>
     getIn(permissions, [groupId, collectionId])
 
