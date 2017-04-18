@@ -5,7 +5,7 @@ import { createSelector } from 'reselect';
 
 
 // Database List
-export const databases         = state => state.databases.databases;
+export const databases         = state => state.admin.databases.databases;
 
 export const getDatabasesSorted = createSelector(
     [databases],
@@ -19,5 +19,5 @@ export const hasSampleDataset = createSelector(
 
 
 // Database Edit
-export const getEditingDatabase   = state => state.databases.editingDatabase;
-export const getFormState         = state => state.databases.formState;
+export const getEditingDatabase   = state => state.admin.databases.editingDatabase;
+export const getFormState         = state => state.admin.databases.formState;

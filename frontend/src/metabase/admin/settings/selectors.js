@@ -95,7 +95,7 @@ const SECTIONS = [
                 display_name: "SMTP Security",
                 description: null,
                 type: "radio",
-                options: { none: "None", ssl: "SSL", tls: "TLS" },
+                options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
                 defaultValue: 'none'
             },
             {
@@ -270,7 +270,15 @@ for (const section of SECTIONS) {
     section.slug = slugify(section.name);
 }
 
-export const getSettings = state => state.settings.settings;
+export const getSettings = createSelector(
+    state => state.settings.settings,
+    state => state.admin.settings.warnings,
+    (settings, warnings) =>
+        settings.map(setting => warnings[setting.key] ?
+            { ...setting, warning: warnings[setting.key] } :
+            setting
+        )
+)
 
 export const getSettingValues = createSelector(
     getSettings,
