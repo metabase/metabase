@@ -59,7 +59,7 @@ export default class AddToDashSelectDashModal extends Component {
     }
 
     render() {
-        if (!this.props.dashboards) {
+        if (this.props.dashboards === null) {
             return null;
         } else if (this.props.dashboards.length === 0 || this.state.shouldCreateDashboard === true) {
             return <CreateDashboardModal createDashboardFn={this.createDashboard} onClose={this.props.onClose} />

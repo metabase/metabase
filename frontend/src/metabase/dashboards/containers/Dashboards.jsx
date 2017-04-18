@@ -88,17 +88,15 @@ export class Dashboards extends Component {
     render() {
         let {modalOpen, searchText} = this.state;
 
-        const isLoading = this.props.dashboards == null
+        const isLoading = this.props.dashboards === null
         const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
         const filteredDashboards = isLoading ? [] : this.getFilteredDashboards();
         const noSearchResults = searchText !== "" && filteredDashboards.length === 0;
 
-        const hasCenteredContent = noDashboardsCreated;
-
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading}
-                className={cx("relative mx4", {"flex-full flex align-center justify-center": hasCenteredContent})}
+                className={cx("relative mx4", {"flex-full flex align-center justify-center": noDashboardsCreated})}
             >
                 { modalOpen ? this.renderCreateDashboardModal() : null }
                 { noDashboardsCreated ?

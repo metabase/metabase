@@ -66,7 +66,7 @@ const mapStateToProps = (state, props) => {
     const initialValues = guide && {
         things_to_know: guide.things_to_know || null,
         contact: guide.contact || {name: null, email: null},
-        most_important_dashboard: guide.most_important_dashboard !== null ?
+        most_important_dashboard: dashboards !== null && guide.most_important_dashboard !== null ?
             dashboards[guide.most_important_dashboard] :
             {},
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ?

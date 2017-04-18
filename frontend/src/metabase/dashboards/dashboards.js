@@ -94,16 +94,11 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashboar
 
 const dashboardListing = handleActions({
     [FETCH_DASHBOARDS]: (state, { payload }) => payload,
-    [CREATE_DASHBOARD]: (state, { payload }) => state.concat(payload),
-    [DELETE_DASHBOARD]: (state, { payload }) => state.filter(d => d.id !== payload),
-    [SAVE_DASHBOARD]:   (state, { payload }) => state.map(d => d.id === payload.id ? payload : d),
-    [UPDATE_DASHBOARD]: (state, { payload }) => state.map(d => d.id === payload.id ? payload : d),
-}, []);
-
-/**
- * Actions that retrieve/update the basic information of dashboards
- * `dashboard.dashboardListing` holds an array of all dashboards without cards
- */
+    [CREATE_DASHBOARD]: (state, { payload }) => (state || []).concat(payload),
+    [DELETE_DASHBOARD]: (state, { payload }) => (state || []).filter(d => d.id !== payload),
+    [SAVE_DASHBOARD]:   (state, { payload }) => (state || []).map(d => d.id === payload.id ? payload : d),
+    [UPDATE_DASHBOARD]: (state, { payload }) => (state || []).map(d => d.id === payload.id ? payload : d),
+}, null);
 
 export default combineReducers({
     dashboardListing
