@@ -48,7 +48,7 @@ fi
 # this is to avoid running creating non-root DB files at the root of the filesystem
 # while still making them easy to find for DB export when migrating from H2 to other application DBs
 
-db_file=/app/metabase.db
+db_file=${MB_DB_FILE:-/app/metabase.db}
 db_alias=/metabase.db
 export MB_DB_FILE=$db_file
 chown metabase:metabase /app
