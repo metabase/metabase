@@ -4,7 +4,7 @@ import {Link} from "react-router";
 import cx from "classnames";
 /*
  * EmptyState is a component that can
- *   1) introduce a new section of Metabase to a user, and encourages the user to take an action
+ *  1) introduce a new section of Metabase to a user and encourage the user to take an action
  *  2) indicate an empty result after a user-triggered search/query
  */
 
@@ -35,9 +35,8 @@ const EmptyState = ({title, message, icon, image, imageClassName, action, link, 
              className={imageClassName}/>
         }
         <div className="flex justify-center">
-            {
-                <h2 className={cx("text-grey-2 text-normal mt2 mb4", {"text-paragraph": smallDescription})} style={{lineHeight: "1.5em"}}>{message}</h2>
-            }
+            <h2 className={cx("text-grey-2 text-normal mt2 mb4", {"text-paragraph": smallDescription})}
+                style={{lineHeight: "1.5em"}}>{message}</h2>
         </div>
         { action && link &&
         <Link to={link} className="Button Button--primary mt4"
