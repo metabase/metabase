@@ -6,7 +6,7 @@ import {
     card,
     tableMetadata,
     clickedCategoryHeader
-} from "./__support__/fixtures";
+} from "../__support__/fixtures";
 
 describe("CountByColumnDrill", () => {
     it("should not be valid for top level actions", () => {
@@ -27,6 +27,7 @@ describe("CountByColumnDrill", () => {
             tableMetadata,
             clicked: clickedCategoryHeader
         });
+        expect(actions).toHaveLength(1);
         const newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
             aggregation: [["count"]],

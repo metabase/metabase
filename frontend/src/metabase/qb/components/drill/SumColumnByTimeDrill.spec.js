@@ -6,7 +6,7 @@ import {
     card,
     tableMetadata,
     clickedFloatHeader
-} from "./__support__/fixtures";
+} from "../__support__/fixtures";
 
 describe("SumColumnByTimeDrill", () => {
     it("should not be valid for top level actions", () => {
@@ -21,21 +21,13 @@ describe("SumColumnByTimeDrill", () => {
             })
         ).toHaveLength(0);
     });
-    it("should be valid for click on numeric column header", () => {
-        expect(
-            SumColumnByTimeDrill({
-                card,
-                tableMetadata,
-                clicked: clickedFloatHeader
-            })
-        ).toHaveLength(1);
-    });
     it("should be return correct new card", () => {
         const actions = SumColumnByTimeDrill({
             card,
             tableMetadata,
             clicked: clickedFloatHeader
         });
+        expect(actions).toHaveLength(1);
         const newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
             aggregation: [["sum", ["field-id", 1]]],

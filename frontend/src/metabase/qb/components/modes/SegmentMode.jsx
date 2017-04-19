@@ -5,6 +5,7 @@ import { DEFAULT_DRILLS } from "../drill";
 
 import SummarizeBySegmentMetricAction
     from "../actions/SummarizeBySegmentMetricAction";
+import CommonMetricsAction from "../actions/CommonMetricsAction";
 import SummarizeColumnDrill from "../drill/SummarizeColumnDrill";
 import SumColumnByTimeDrill from "../drill/SumColumnByTimeDrill";
 import CountByColumnDrill from "../drill/CountByColumnDrill";
@@ -16,6 +17,7 @@ const SegmentMode: QueryMode = {
     name: "segment",
     actions: [
         ...DEFAULT_ACTIONS,
+        CommonMetricsAction,
         SummarizeBySegmentMetricAction
         // commenting this out until we sort out viz settings in QB2
         // PlotSegmentField

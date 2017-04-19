@@ -135,7 +135,7 @@ var config = module.exports = {
                 ignore: [
                     "**/types/*.js",
                     "**/*.spec.*",
-                    "**/__support__/**"
+                    "**/__support__/*.js"
                 ]
             }
         }),

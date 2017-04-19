@@ -8,7 +8,7 @@ import {
     clickedFloatValue,
     clickedPKValue,
     clickedFKValue
-} from "./__support__/fixtures";
+} from "../__support__/fixtures";
 
 describe("ObjectDetailDrill", () => {
     it("should not be valid non-PK cells", () => {
@@ -26,6 +26,7 @@ describe("ObjectDetailDrill", () => {
             tableMetadata,
             clicked: clickedPKValue
         });
+        expect(actions).toHaveLength(1);
         const newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
             source_table: 10,
@@ -39,6 +40,7 @@ describe("ObjectDetailDrill", () => {
             tableMetadata,
             clicked: clickedFKValue
         });
+        expect(actions).toHaveLength(1);
         const newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
             source_table: 20,
