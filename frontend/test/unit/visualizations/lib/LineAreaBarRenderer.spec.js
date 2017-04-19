@@ -4,7 +4,7 @@ import { formatValue } from "metabase/lib/formatting";
 
 import d3 from "d3";
 
-import { DateTimeColumn, NumberColumn } from "../../support/visualizations";
+import { DateTimeColumn, NumberColumn, StringColumn } from "../../support/visualizations";
 
 let formatTz = (offset) => (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00"
 
@@ -118,7 +118,7 @@ describe("LineAreaBarRenderer", () => {
         });
 
         // A simple check to ensure that lines are rendered as expected
-        expect(qs("svg .line")).toBeDefined()
+        expect(qs("svg .line")).not.toBe(null);
 
         // First value is not empty
         renderTimeseriesLine({
@@ -128,7 +128,7 @@ describe("LineAreaBarRenderer", () => {
             unit: "hour"
         });
 
-        expect(qs("svg .line")).toBeDefined()
+        expect(qs("svg .line")).not.toBe(null);
 
         // A more creative combination of cards
         renderTimeseriesLine({
@@ -137,8 +137,37 @@ describe("LineAreaBarRenderer", () => {
             ],
             unit: "hour"
         });
+        expect(qs("svg .line")).not.toBe(null);
 
-        expect(qs("svg .line")).toBeDefined()
+        // Same scenarios for bar visualizations
+        renderScalarBar({
+            scalars: [
+                ["Non-empty value", 15],
+                ["Empty value", null]
+            ]
+        })
+        expect(qs("svg .bar")).not.toBe(null);
+
+        renderScalarBar({
+            scalars: [
+                ["Empty value", null],
+                ["Non-empty value", 25]
+            ]
+        })
+        expect(qs("svg .bar")).not.toBe(null);
+
+        renderScalarBar({
+            scalars: [
+                ["Empty value", null],
+                ["Non-empty value", 15],
+                ["2nd empty value", null],
+                ["2nd non-empty value", 35],
+                ["3rd empty value", null],
+                ["4rd empty value", null],
+                ["3rd non-empty value", 0],
+            ]
+        })
+        expect(qs("svg .bar")).not.toBe(null);
     });
 
     // querySelector shortcut
@@ -161,6 +190,27 @@ describe("LineAreaBarRenderer", () => {
                 "graph.x_axis.scale": "timeseries",
                 "graph.x_axis.axis_enabled": true,
                 "graph.colors": ["#000000"]
+            },
+            onHoverChange
+        });
+    }
+
+    const renderScalarBar = ({ scalars, onHoverChange, unit }) => {
+        lineAreaBarRenderer(element, {
+            chartType: "bar",
+            series: scalars.map((scalar) => ({
+                data: {
+                    "cols" : [StringColumn(), NumberColumn()],
+                    "rows" : [scalar]
+                }
+            })),
+            settings: {
+                "bar.scalar_series": true,
+                "funnel.type": "bar",
+                "graph.colors": ["#509ee3", "#9cc177", "#a989c5", "#ef8c8c"],
+                "graph.x_axis.axis_enabled": true,
+                "graph.x_axis.scale": "ordinal",
+                "graph.x_axis._is_numeric": false
             },
             onHoverChange
         });
