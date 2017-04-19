@@ -26,10 +26,12 @@ describe("LineAreaBarRenderer", () => {
 
     it("should display numeric year in X-axis and tooltip correctly", (done) => {
         renderTimeseriesLine({
-            rows: [
-                [2015, 1],
-                [2016, 2],
-                [2017, 3]
+            rowsOfSeries: [
+                [
+                    [2015, 1],
+                    [2016, 2],
+                    [2017, 3]
+                ]
             ],
             unit: "year",
             onHoverChange: (hover) => {
@@ -53,8 +55,9 @@ describe("LineAreaBarRenderer", () => {
                 ["2016-10-03T20:00:00.000" + tz, 1],
                 ["2016-10-03T21:00:00.000" + tz, 1],
             ];
+
             renderTimeseriesLine({
-                rows,
+                rowsOfSeries: [rows],
                 unit: "hour",
                 onHoverChange: (hover) => {
                     let expected = rows.map(row => formatValue(row[0], { column: DateTimeColumn({ unit: "hour" }) }));
@@ -78,7 +81,7 @@ describe("LineAreaBarRenderer", () => {
             ["2016-01-01T04:00:00.000" + tz, 1]
         ];
         renderTimeseriesLine({
-            rows,
+            rowsOfSeries: [rows],
             unit: "hour",
             onHoverChange: (hover) => {
                 expect(formatValue(rows[0][0], { column: DateTimeColumn({ unit: "hour" }) })).toEqual(
@@ -99,6 +102,45 @@ describe("LineAreaBarRenderer", () => {
         dispatchUIEvent(qs("svg .dot"), "mousemove");
     });
 
+    it("should render normally if the card contains values but some of them are empty but at least one has a value", () => {
+        const rowsOfNonemptyCard = [
+            [2015, 1],
+            [2016, 2],
+            [2017, 3]
+        ]
+
+        // First value is empty
+        renderTimeseriesLine({
+            rowsOfSeries: [
+                [], rowsOfNonemptyCard, [], []
+            ],
+            unit: "hour"
+        });
+
+        // A simple check to ensure that lines are rendered as expected
+        expect(qs("svg .line")).toBeDefined()
+
+        // First value is not empty
+        renderTimeseriesLine({
+            rowsOfSeries: [
+                rowsOfNonemptyCard, [], [], []
+            ],
+            unit: "hour"
+        });
+
+        expect(qs("svg .line")).toBeDefined()
+
+        // A more creative combination of cards
+        renderTimeseriesLine({
+            rowsOfSeries: [
+                [], rowsOfNonemptyCard, [], [], rowsOfNonemptyCard, [], rowsOfNonemptyCard
+            ],
+            unit: "hour"
+        });
+
+        expect(qs("svg .line")).toBeDefined()
+    });
+
     // querySelector shortcut
     const qs = (selector) => element.querySelector(selector);
 
@@ -106,15 +148,15 @@ describe("LineAreaBarRenderer", () => {
     const qsa = (selector) => [...element.querySelectorAll(selector)];
 
     // helper for timeseries line charts
-    const renderTimeseriesLine = ({ rows, onHoverChange, unit }) => {
+    const renderTimeseriesLine = ({ rowsOfSeries, onHoverChange, unit }) => {
         lineAreaBarRenderer(element, {
             chartType: "line",
-            series: [{
+            series: rowsOfSeries.map((rows) => ({
                 data: {
                     "cols" : [DateTimeColumn({ unit }), NumberColumn()],
                     "rows" : rows
                 }
-            }],
+            })),
             settings: {
                 "graph.x_axis.scale": "timeseries",
                 "graph.x_axis.axis_enabled": true,
