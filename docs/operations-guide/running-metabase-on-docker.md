@@ -103,3 +103,12 @@ The DB contents will be left in a directory named metabase.db.
 Note that some older versions of metabase stored their db in a different default location.
 
     docker cp CONTAINER_ID:/metabase.db.mv.db metabase.db.mv.db
+    
+### Fixing OutOfMemoryErrors in some hosted environments
+
+On some hosts Metabase can fail to start with an error message like:
+
+    java.lang.OutOfMemoryError: Java heap space
+    
+If that happens, you'll need to set a JVM option to manually configure the maximum amount of memory the JVM uses for the heap. Refer
+to [these instructions](./start.md#metabase-fails-to-start-due-to-heap-space-outofmemoryerrors) for details on how to do that.
