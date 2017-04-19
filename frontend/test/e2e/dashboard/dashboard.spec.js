@@ -4,6 +4,7 @@ import {
 } from "../support/utils";
 
 import {createDashboardInEmptyState} from "../dashboards/dashboards.utils"
+import {removeCurrentDash} from "../dashboard/dashboard.utils"
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
@@ -36,6 +37,12 @@ describeE2E("dashboards/dashboards", () => {
             await d.select(":react(ParameterValueWidget)").wait().click();
             await d.select(":react(PredefinedRelativeDatePicker) button:contains(Yesterday)").wait().click();
             expect(await d.select(":react(ParameterValueWidget) .text-nowrap").wait().text()).toEqual("Yesterday");
+
+            await d.select(":react(HeaderModal) button:contains(Done)").wait().click();
+            // Wait until the header modal exit animation is finished
+            await d.sleep(1000);
+            // Remove the created dashboards to prevent clashes with other tests
+            await removeCurrentDash();
         });
 
     });
