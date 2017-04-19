@@ -41,7 +41,6 @@ export default class AddToDashSelectDashModal extends Component {
 
     componentWillMount() {
         this.props.fetchDashboards();
-
     }
 
     addToDashboard = (dashboard: Dashboard) => {
@@ -60,10 +59,11 @@ export default class AddToDashSelectDashModal extends Component {
 
     render() {
         if (this.props.dashboards === null) {
-            return null;
+            return <div></div>;
         } else if (this.props.dashboards.length === 0 || this.state.shouldCreateDashboard === true) {
             return <CreateDashboardModal createDashboardFn={this.createDashboard} onClose={this.props.onClose} />
         } else {
+            console.log('in this branch, confusing', this.state, this.props)
             return (
                 <ModalContent
                     id="AddToDashSelectDashModal"
