@@ -255,13 +255,10 @@ export default class ExpressionEditorTextfield extends Component {
                     onChange={(e) => this.onExpressionChange(e.target.value)}
                     onKeyDown={this.onInputKeyDown}
                     onBlur={this.onInputBlur}
-                    onFocus={(e) => this._triggerAutosuggest()}
                     onClick={this.onInputClick}
-                    autoFocus
                     parserInfo={this._getParserInfo()}
                 />
-                <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
-                { suggestions.length ?
+                { /* suggestions.length ?
                     <Popover
                         className="pb1 not-rounded border-dark"
                         hasArrow={false}
@@ -298,7 +295,7 @@ export default class ExpressionEditorTextfield extends Component {
                             }
                         </ul>
                     </Popover>
-                : null}
+                : null */}
             </div>
         );
     }

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="220px" height="175px" viewBox="0 0 220 175" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 43.1 (39012) - http://www.bohemiancoding.com/sketch -->
+    <title>lists</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="0" y="0" width="215" height="168" rx="8"></rect>
+        <filter x="-3.3%" y="-3.0%" width="106.5%" height="108.3%" filterUnits="objectBoundingBox" id="filter-2">
+            <feOffset dx="0" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feComposite in="shadowBlurOuter1" in2="SourceAlpha" operator="out" result="shadowBlurOuter1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0.862745098   0 0 0 0 0.882352941   0 0 0 0 0.894117647  0 0 0 1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="lists">
+            <g id="Group" transform="translate(3.000000, 3.000000)">
+                <g id="Rectangle-2-Copy-2">
+                    <use fill="black" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"></use>
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    <rect stroke="#DCE1E4" stroke-width="1" x="0.5" y="0.5" width="214" height="167" rx="8"></rect>
+                </g>
+                <path d="M18,23 L86,23 L86,28 L18,28 L18,23 Z M108,23 L146,23 L146,29 L108,29 L108,23 Z M181,23 L199,23 L199,29 L181,29 L181,23 Z" id="Combined-Shape" fill="#93A1AB"></path>
+                <path d="M18,43 L66,43 L66,52 L18,52 L18,43 Z M18,63 L75,63 L75,72 L18,72 L18,63 Z M18,83 L81,83 L81,92 L18,92 L18,83 Z M18,103 L71,103 L71,112 L18,112 L18,103 Z M18,123 L81,123 L81,132 L18,132 L18,123 Z M18,143 L81,143 L81,152 L18,152 L18,143 Z M118,42 L146,42 L146,51 L118,51 L118,42 Z M128,63 L146,63 L146,72 L128,72 L128,63 Z M119,83 L146,83 L146,92 L119,92 L119,83 Z M126,103 L146,103 L146,112 L126,112 L126,103 Z M136,123 L146,123 L146,132 L136,132 L136,123 Z M126,143 L146,143 L146,152 L126,152 L126,143 Z M181,42 L199,42 L199,51 L181,51 L181,42 Z M188,63 L198,63 L198,72 L188,72 L188,63 Z M182,83 L199,83 L199,92 L182,92 L182,83 Z M189,103 L199,103 L199,112 L189,112 L189,103 Z M191,123 L199,123 L199,132 L191,132 L191,123 Z M189,143 L199,143 L199,152 L189,152 L189,143 Z" id="Combined-Shape" fill="#DCE1E4"></path>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -69,6 +69,7 @@ export default class Map extends Component<*, VisualizationProps, *> {
             title: "Region map",
             widget: "select",
             getDefault: ([{ card, data: { cols }}]) => {
+                // legacy display types
                 switch (card.display) {
                     case "country":
                         return "world_countries";

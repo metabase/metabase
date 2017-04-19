@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="348px" height="237px" viewBox="0 0 348 237" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 43.1 (39012) - http://www.bohemiancoding.com/sketch -->
+    <title>explore</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <rect id="path-1" x="166.047395" y="25.0014532" width="165" height="138" rx="8"></rect>
+        <filter x="-4.2%" y="-3.6%" width="108.5%" height="110.1%" filterUnits="objectBoundingBox" id="filter-2">
+            <feOffset dx="0" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feComposite in="shadowBlurOuter1" in2="SourceAlpha" operator="out" result="shadowBlurOuter1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0.862745098   0 0 0 0 0.882352941   0 0 0 0 0.894117647  0 0 0 1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+        <rect id="path-3" x="116.402098" y="54.750153" width="165" height="138" rx="8"></rect>
+        <filter x="-4.2%" y="-3.6%" width="108.5%" height="110.1%" filterUnits="objectBoundingBox" id="filter-4">
+            <feOffset dx="0" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feComposite in="shadowBlurOuter1" in2="SourceAlpha" operator="out" result="shadowBlurOuter1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0.862745098   0 0 0 0 0.882352941   0 0 0 0 0.894117647  0 0 0 1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+        <rect id="path-5" x="24.6568178" y="34.8415471" width="165" height="138" rx="8"></rect>
+        <filter x="-4.2%" y="-3.6%" width="108.5%" height="110.1%" filterUnits="objectBoundingBox" id="filter-6">
+            <feOffset dx="0" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feComposite in="shadowBlurOuter1" in2="SourceAlpha" operator="out" result="shadowBlurOuter1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0.862745098   0 0 0 0 0.882352941   0 0 0 0 0.894117647  0 0 0 1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+        <rect id="path-7" x="85" y="92" width="165" height="138" rx="8"></rect>
+        <filter x="-4.2%" y="-3.6%" width="108.5%" height="110.1%" filterUnits="objectBoundingBox" id="filter-8">
+            <feOffset dx="0" dy="2" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feComposite in="shadowBlurOuter1" in2="SourceAlpha" operator="out" result="shadowBlurOuter1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0.862745098   0 0 0 0 0.882352941   0 0 0 0 0.894117647  0 0 0 1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+        <ellipse id="path-9" cx="121.5" cy="198.5" rx="3.5" ry="3.5"></ellipse>
+        <ellipse id="path-10" cx="150.5" cy="165.5" rx="3.5" ry="3.5"></ellipse>
+        <ellipse id="path-11" cx="187.5" cy="150.5" rx="3.5" ry="3.5"></ellipse>
+        <ellipse id="path-12" cx="214.5" cy="124.5" rx="3.5" ry="3.5"></ellipse>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="explore">
+            <g id="Group-13">
+                <g id="Rectangle-2-Copy" transform="translate(248.547395, 94.001453) rotate(15.000000) translate(-248.547395, -94.001453) ">
+                    <use fill="black" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"></use>
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    <rect stroke="#DCE1E4" stroke-width="1" x="166.547395" y="25.5014532" width="164" height="137" rx="8"></rect>
+                </g>
+                <g id="Rectangle-2-Copy-3" transform="translate(198.902098, 123.750153) rotate(23.000000) translate(-198.902098, -123.750153) ">
+                    <use fill="black" fill-opacity="1" filter="url(#filter-4)" xlink:href="#path-3"></use>
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-3"></use>
+                    <rect stroke="#DCE1E4" stroke-width="1" x="116.902098" y="55.250153" width="164" height="137" rx="8"></rect>
+                </g>
+                <g id="Rectangle-2-Copy-4" transform="translate(107.156818, 103.841547) rotate(-35.000000) translate(-107.156818, -103.841547) ">
+                    <use fill="black" fill-opacity="1" filter="url(#filter-6)" xlink:href="#path-5"></use>
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-5"></use>
+                    <rect stroke="#DCE1E4" stroke-width="1" x="25.1568178" y="35.3415471" width="164" height="137" rx="8"></rect>
+                </g>
+                <g id="Rectangle-2">
+                    <use fill="black" fill-opacity="1" filter="url(#filter-8)" xlink:href="#path-7"></use>
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-7"></use>
+                    <rect stroke="#DCE1E4" stroke-width="1" x="85.5" y="92.5" width="164" height="137" rx="8"></rect>
+                </g>
+                <ellipse id="Oval" stroke="#979797" fill="#D8D8D8" cx="121.5" cy="198.5" rx="4.5" ry="4.5"></ellipse>
+                <polyline id="Path-2" stroke="#509EE3" stroke-width="2" points="121 198.905273 150.417969 164.776367 187.490234 150.733398 214.882812 124"></polyline>
+                <g id="Oval-Copy">
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-9"></use>
+                    <ellipse stroke="#509EE3" stroke-width="2" cx="121.5" cy="198.5" rx="4.5" ry="4.5"></ellipse>
+                </g>
+                <g id="Oval-Copy-2">
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-10"></use>
+                    <ellipse stroke="#509EE3" stroke-width="2" cx="150.5" cy="165.5" rx="4.5" ry="4.5"></ellipse>
+                </g>
+                <g id="Oval-Copy-3">
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-11"></use>
+                    <ellipse stroke="#509EE3" stroke-width="2" cx="187.5" cy="150.5" rx="4.5" ry="4.5"></ellipse>
+                </g>
+                <g id="Oval-Copy-4">
+                    <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-12"></use>
+                    <ellipse stroke="#509EE3" stroke-width="2" cx="214.5" cy="124.5" rx="4.5" ry="4.5"></ellipse>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
