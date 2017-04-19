@@ -32,13 +32,20 @@ describeE2E("dashboards/dashboards", () => {
             // Test parameter filter creation
             await d.select(EDIT_DASHBOARD_SELECTOR).wait().click();
             await d.select(".Icon.Icon-funneladd").wait().click();
-            await d.select(":react(ParameterOptionsSection):contains(Time)").wait().click();
-            await d.select(":react(ParameterOptionItem):contains(Relative)").wait().click(); // Relative date
+
+            // TODO: After `annotate-react-dom` supports functional components in production builds, use this instead:
+            // `await d.select(":react(ParameterOptionsSection):contains(Time)").wait().click();`
+            await d.select(".PopoverBody--withArrow li > div:contains(Time)").wait().click();
+
+            // TODO: Replace when possible with `await d.select(":react(ParameterOptionItem):contains(Relative)").wait().click()`;
+            await d.select(".PopoverBody--withArrow li > div:contains(Relative)").wait().click(); // Relative date
+
             await d.select(":react(ParameterValueWidget)").wait().click();
             await d.select(":react(PredefinedRelativeDatePicker) button:contains(Yesterday)").wait().click();
             expect(await d.select(":react(ParameterValueWidget) .text-nowrap").wait().text()).toEqual("Yesterday");
 
-            await d.select(":react(HeaderModal) button:contains(Done)").wait().click();
+            // TODO: Replace when possible with `await d.select(":react(HeaderModal) button:contains(Done)").wait().click();`
+            await d.select(".absolute.top.left.right button:contains(Done)").wait().click();
             // Wait until the header modal exit animation is finished
             await d.sleep(1000);
             // Remove the created dashboards to prevent clashes with other tests
