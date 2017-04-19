@@ -4,7 +4,10 @@ import {
 } from "../support/utils";
 
 import {removeCurrentDash} from "../dashboard/dashboard.utils";
-import {createDashboardInEmptyState} from "../dashboards/dashboards.utils";
+import {
+    createDashboardInEmptyState, getLatestDashboardUrl,
+    incrementDashboardCount
+} from "../dashboards/dashboards.utils";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
@@ -48,6 +51,8 @@ describeE2E("query_builder", () => {
             await d.select("#QuestionSavedModal .Button.Button--primary").wait().click();
             await d.select("#CreateDashboardModal input[name='name']").wait().sendKeys("Main Dashboard");
             await d.select("#CreateDashboardModal .Button.Button--primary").wait().click().waitRemoved(); // wait for the modal to be removed
+            incrementDashboardCount();
+            await d.waitUrl(getLatestDashboardUrl() + "?add=1");
 
             // save dashboard
             await d.select(".EditHeader .Button.Button--primary").wait().click();

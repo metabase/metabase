@@ -1,3 +1,15 @@
+export var dashboardCount = 0
+export const incrementDashboardCount = () => {
+    dashboardCount += 1;
+}
+export const getLatestDashboardUrl = () => {
+    console.log(`/dashboard/${dashboardCount}`)
+    return `/dashboard/${dashboardCount}`
+}
+export const getPreviousDashboardUrl = (nFromLatest) => {
+    return `/dashboard/${dashboardCount - nFromLatest}`
+}
+
 export const createDashboardInEmptyState = async () => {
     await d.get("/dashboard");
 
@@ -7,6 +19,7 @@ export const createDashboardInEmptyState = async () => {
     await d.select("#CreateDashboardModal input[name='description']").wait().sendKeys("For seeing the usual response times, feedback topics, our response rate, how often customers are directed to our knowledge base instead of providing a customized response");
     await d.select("#CreateDashboardModal .Button--primary").wait().click();
 
-    // Make sure that the redirect was successful
-    await d.waitUrl("/dashboard/1");
+    incrementDashboardCount();
+    await d.waitUrl(getLatestDashboardUrl());
+
 }

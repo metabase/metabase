@@ -3,7 +3,10 @@ import {
     describeE2E
 } from "../support/utils";
 
-import {createDashboardInEmptyState} from "./dashboards.utils"
+import {
+    createDashboardInEmptyState, getLatestDashboardUrl, getPreviousDashboardUrl,
+    incrementDashboardCount
+} from "./dashboards.utils"
 import {removeCurrentDash} from "../dashboard/dashboard.utils"
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
@@ -23,7 +26,7 @@ describeE2E("dashboards/dashboards", () => {
             // Return to the dashboard list and re-enter the card through the list item
             await driver.get(`${server.host}/dashboard`);
             await d.select(".Grid-cell > a").wait().click();
-            await d.waitUrl(`${server.host}/dashboard/1`)
+            await d.waitUrl(getLatestDashboardUrl());
 
             // Create another one
             await d.get(`${server.host}/dashboard`);
@@ -31,7 +34,8 @@ describeE2E("dashboards/dashboards", () => {
             await d.select("#CreateDashboardModal input[name='name']").wait().sendKeys("Some Excessively Long Dashboard Title Just For Fun");
             await d.select("#CreateDashboardModal input[name='description']").wait().sendKeys("");
             await d.select("#CreateDashboardModal .Button--primary").wait().click();
-            await d.waitUrl(`${server.host}/dashboard/2`)
+            incrementDashboardCount();
+            await d.waitUrl(getLatestDashboardUrl());
 
             // Test filtering
             await d.get(`${server.host}/dashboard`);
@@ -41,7 +45,7 @@ describeE2E("dashboards/dashboards", () => {
             // Should search from both title and description
             await d.select("input[type='text']").wait().clear().sendKeys("usual response times");
             await d.select(".Grid-cell > a").wait().click();
-            await d.waitUrl(`${server.host}/dashboard/1`);
+            await d.waitUrl(getPreviousDashboardUrl(1));
 
             // Remove the created dashboards to prevent clashes with other tests
             await removeCurrentDash();
