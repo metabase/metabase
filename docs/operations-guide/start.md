@@ -109,7 +109,7 @@ environments, however, this doesn't always work perfectly. If Metabase fails to 
 
     java.lang.OutOfMemoryError: Java heap space
 
-You'll just need to set a JVM option too let it know explicitly how much memory it should use for the heap space:
+You'll just need to set a JVM option to let it know explicitly how much memory it should use for the heap space:
 
     java -Xmx2g -jar metabase.jar
 
