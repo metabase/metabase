@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -79,13 +80,8 @@ class BrowserSelect extends Component {
             <PopoverWithTrigger
                 ref="popover"
                 className={className}
-                triggerElement={
-                    <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
-                        <span className="mr1">{selectedName}</span>
-                        <Icon className="flex-align-right" name="chevrondown" size={12} />
-                    </div>
-                }
-                triggerClasses={cx("AdminSelect", className)}
+                triggerElement={<SelectButton hasValue={!!value}>{selectedName}</SelectButton>}
+                triggerClasses={className}
                 verticalAttachments={["top"]}
                 isInitiallyOpen={isInitiallyOpen}
             >
@@ -117,26 +113,51 @@ class BrowserSelect extends Component {
     }
 }
 
+export const SelectButton = ({ hasValue, children }) =>
+    <div className={"AdminSelect flex align-center " + (!hasValue ? " text-grey-3" : "")}>
+        <span className="AdminSelect-content mr1">{children}</span>
+        <Icon className="AdminSelect-chevron flex-align-right" name="chevrondown" size={12} />
+    </div>
+
+SelectButton.propTypes = {
+    hasValue: PropTypes.bool,
+    children: PropTypes.any,
+};
+
 export class Option extends Component {
     static propTypes = {
-        children: PropTypes.any,
-        selected: PropTypes.bool,
-        disabled: PropTypes.bool,
-        onClick: PropTypes.func
+        children:   PropTypes.any,
+        selected:   PropTypes.bool,
+        disabled:   PropTypes.bool,
+        onClick:    PropTypes.func,
+        icon:       PropTypes.string,
+        iconColor:  PropTypes.string,
+        iconSize:   PropTypes.number,
     };
 
     render() {
-        const { children, selected, disabled, onClick } = this.props;
+        const { children, selected, disabled, icon, iconColor, iconSize, onClick } = this.props;
         return (
             <div
                 onClick={onClick}
-                className={cx("ColumnarSelector-row flex no-decoration", {
+                className={cx("ColumnarSelector-row flex align-center cursor-pointer no-decoration relative", {
                     "ColumnarSelector-row--selected": selected,
                     "disabled": disabled
                 })}
             >
-                <Icon name="check"  size={14}/>
-                {children}
+                <Icon name="check" size={14} style={{ position: 'absolute' }} />
+                { icon &&
+                    <Icon
+                        name={icon}
+                        size={iconSize}
+                        style={{
+                            position: 'absolute',
+                            color: iconColor,
+                            visibility: !selected ? "visible" : "hidden"
+                        }}
+                    />
+                }
+                <span className="ml4">{children}</span>
             </div>
         );
     }
@@ -147,7 +168,7 @@ class LegacySelect extends Component {
         value: PropTypes.any,
         values: PropTypes.array,
         options: PropTypes.array.isRequired,
-        disabledOptionIds: PropTypes.array, 
+        disabledOptionIds: PropTypes.array,
         placeholder: PropTypes.string,
         emptyPlaceholder: PropTypes.string,
         onChange: PropTypes.func,
@@ -176,10 +197,10 @@ class LegacySelect extends Component {
     render() {
         const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, emptyPlaceholder, isInitiallyOpen, disabled } = this.props;
 
-        var selectedName = value ? 
-            optionNameFn(value) : 
-            options && options.length > 0 ? 
-                placeholder : 
+        var selectedName = value ?
+            optionNameFn(value) :
+            options && options.length > 0 ?
+                placeholder :
                 emptyPlaceholder;
 
         var triggerElement = (

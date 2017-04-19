@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Utils from "metabase/lib/utils";
 
@@ -147,7 +148,7 @@ export default class CustomGeoJSONWidget extends Component {
                     onDeleteMap={this._delete}
                 />
                 { this.state.map ?
-                    <Modal className="Modal Modal--wide">
+                    <Modal wide>
                         <div className="p4">
                             <EditMap
                                 map={this.state.map}

@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import RetinaImage from "react-retina-image";
 
@@ -10,9 +11,9 @@ export default class WhatsAPulse extends Component {
     render() {
         return (
             <div className="flex flex-column align-center px4">
-                <div className="h2 mb4 text-centered text-brand text-bold">
+                <h2 className="my4 text-brand">
                     Help everyone on your team stay in sync with your data.
-                </div>
+                </h2>
                 <div className="mx4">
                     <RetinaImage
                         width={574}
@@ -20,7 +21,7 @@ export default class WhatsAPulse extends Component {
                         forceOriginalDimensions={false}
                     />
                 </div>
-                <div className="h3 my3 text-centered  text-grey-2 text-bold" style={{maxWidth: "500px"}}>
+                <div className="h3 my3 text-centered text-grey-2 text-bold" style={{maxWidth: "500px"}}>
                     Pulses let you send data from Metabase to email or Slack on the schedule of your choice.
                 </div>
                 {this.props.button}

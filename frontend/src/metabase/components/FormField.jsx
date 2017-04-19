@@ -1,56 +1,49 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import cx from "classnames";
 
 export default class FormField extends Component {
     static propTypes = {
-        fieldName: PropTypes.string.isRequired,
+        // redux-form compatible:
+        name: PropTypes.string,
+        error: PropTypes.any,
+        visited: PropTypes.bool,
+        active: PropTypes.bool,
+
         displayName: PropTypes.string.isRequired,
-        showCharm: PropTypes.bool,
+
+        // legacy
+        fieldName: PropTypes.string,
         errors: PropTypes.object
     };
 
-    extractFieldError() {
+    getError() {
+        if (this.props.error && this.props.visited !== false && this.props.active !== true) {
+            return this.props.error;
+        }
+
+        // legacy
         if (this.props.errors &&
             this.props.errors.data.errors &&
             this.props.fieldName in this.props.errors.data.errors) {
             return this.props.errors.data.errors[this.props.fieldName];
-        } else {
-            return null;
         }
     }
 
     render() {
-        var fieldError = this.extractFieldError();
-
-        var fieldClasses = cx({
-            "Form-field": true,
-            "Form--fieldError": (fieldError !== null)
-        });
-
-        var fieldErrorMessage;
-        if (fieldError !== null) {
+        let fieldErrorMessage;
+        let fieldError = this.getError();
+        if (fieldError) {
             fieldErrorMessage = (
                 <span className="text-error mx1">{fieldError}</span>
             );
         }
 
-        var fieldLabel = (
-            <label className="Form-label">{this.props.displayName} {fieldErrorMessage}</label>
-        );
-
-        var formCharm;
-        if (this.props.showCharm) {
-            formCharm = (
-                <span className="Form-charm"></span>
-            );
-        }
-
         return (
-            <div className={fieldClasses}>
-                {fieldLabel}
+            <div className={cx("Form-field", { "Form--fieldError": fieldError })}>
+                <label className="Form-label" htmlFor={this.props.name}>{this.props.displayName} {fieldErrorMessage}</label>
                 {this.props.children}
-                {formCharm}
             </div>
         );
     }

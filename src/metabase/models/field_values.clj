@@ -1,19 +1,19 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [metabase.db :as db]
-            [metabase.models.interface :as i]
+            (toucan [db :as db]
+                    [models :as models])
             [metabase.util :as u]))
 
 ;; ## Entity + DB Multimethods
 
-(i/defentity FieldValues :metabase_fieldvalues)
+(models/defmodel FieldValues :metabase_fieldvalues)
 
 (u/strict-extend (class FieldValues)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped? (constantly true)
-          :types        (constantly {:human_readable_values :json, :values :json})
-          :post-select  (u/rpartial update :human_readable_values #(or % {}))}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:human_readable_values :json, :values :json})
+          :post-select (u/rpartial update :human_readable_values #(or % {}))}))
 
 ;; columns:
 ;; *  :id
@@ -54,15 +54,14 @@
   {:pre [(integer? field-id)
          (field-should-have-field-values? field)]}
   (if-let [field-values (FieldValues :field_id field-id)]
-    (db/update! FieldValues (:id field-values)
+    (db/update! FieldValues (u/get-id field-values)
       :values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field))
     (create-field-values! field)))
 
 (defn create-field-values-if-needed!
   "Create `FieldValues` for a `Field` if they *should* exist but don't already exist.
    Returns the existing or newly created `FieldValues` for `Field`."
-  {:arglists '([field]
-               [field human-readable-values])}
+  {:arglists '([field] [field human-readable-values])}
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
@@ -72,14 +71,13 @@
 (defn save-field-values!
   "Save the `FieldValues` for FIELD-ID, creating them if needed, otherwise updating them."
   [field-id values]
-  {:pre [(integer? field-id)
-         (coll? values)]}
+  {:pre [(integer? field-id) (coll? values)]}
   (if-let [field-values (FieldValues :field_id field-id)]
-    (db/update! FieldValues (:id field-values), :values values)
+    (db/update! FieldValues (u/get-id field-values), :values values)
     (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values!
   "Remove the `FieldValues` for FIELD-ID."
   [field-id]
   {:pre [(integer? field-id)]}
-  (db/cascade-delete! FieldValues :field_id field-id))
+  (db/delete! FieldValues :field_id field-id))

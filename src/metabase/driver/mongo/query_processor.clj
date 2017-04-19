@@ -6,18 +6,19 @@
             [clojure.walk :as walk]
             [cheshire.core :as json]
             (monger [collection :as mc]
+                    joda-time                ; apparently if this is loaded Monger can handle JodaTime dates (?)
                     [operators :refer :all])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
             (metabase.query-processor [annotate :as annotate]
-                                      [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
+                                      [interface :as i])
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
-           (com.mongodb CommandResult DB)
            clojure.lang.PersistentArrayMap
+           (com.mongodb CommandResult DB)
            org.bson.types.ObjectId
+           org.joda.time.DateTime
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
@@ -33,7 +34,7 @@
 (def ^:dynamic ^:private *query* nil)
 
 (defn- log-monger-form [form]
-  (when-not qp/*disable-qp-logging*
+  (when-not i/*disable-qp-logging*
     (log/debug (u/format-color 'green "\nMONGO AGGREGATION PIPELINE:\n%s\n"
                  (->> form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
@@ -66,7 +67,7 @@
 (defn- field->name
   "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
   ^String [^Field field, ^String separator]
-  (s/join separator (rest (qualified-name-components field))))
+  (s/join separator (rest (i/qualified-name-components field))))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -194,8 +195,8 @@
 
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field]}]
-    (->rvalue (map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
-                                   :field field}))))
+    (->rvalue (i/map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
+                                     :field field}))))
 
 
 ;;; ## CLAUSE APPLICATION
@@ -378,6 +379,67 @@
                     v)}))))
 
 
+;;; ------------------------------------------------------------ Handling ISODate(...) and ObjectId(...) forms ------------------------------------------------------------
+;; In Mongo it's fairly common use ISODate(...) or ObjectId(...) forms in queries, which unfortunately are not valid JSON,
+;; and thus cannot be parsed by Cheshire. But we are clever so we will:
+;;
+;; 1) Convert forms like ISODate(...) to valid JSON forms like ["___ISODate", ...]
+;; 2) Parse Normally
+;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates, and [:___ObjectId ...] to BSON IDs
+
+;; add more fn handlers here as needed
+(def ^:private fn-name->decoder
+  {:ISODate (fn [arg]
+              (DateTime. arg))
+   :ObjectId (fn [^String arg]
+               (ObjectId. arg))})
+
+(defn- form->encoded-fn-name
+  "If FORM is an encoded fn call form return the key representing the fn call that was encoded.
+   If it doesn't represent an encoded fn, return `nil`.
+
+     (form->encoded-fn-name [:___ObjectId \"583327789137b2700a1621fb\"]) -> :ObjectId"
+  [form]
+  (when (vector? form)
+    (when (u/string-or-keyword? (first form))
+      (when-let [[_ k] (re-matches #"^___(\w+$)" (name (first form)))]
+        (let [k (keyword k)]
+          (when (contains? fn-name->decoder k)
+            k))))))
+
+(defn- maybe-decode-fncall [form]
+  (if-let [fn-name (form->encoded-fn-name form)]
+    ((fn-name->decoder fn-name) (second form))
+    form))
+
+(defn- decode-fncalls [query]
+  (walk/postwalk maybe-decode-fncall query))
+
+(defn- encode-fncalls-for-fn
+  "Walk QUERY-STRING and replace fncalls to fn with FN-NAME with encoded forms that can be parsed as valid JSON.
+
+     (encode-fncalls-for-fn \"ObjectId\" \"{\\\"$match\\\":ObjectId(\\\"583327789137b2700a1621fb\\\")}\")
+     ;; -> \"{\\\"$match\\\":[\\\"___ObjectId\\\", \\\"583327789137b2700a1621fb\\\"]}\""
+  [fn-name query-string]
+  (s/replace query-string
+             (re-pattern (format "%s\\(([^)]+)\\)" (name fn-name)))
+             (format "[\"___%s\", $1]" (name fn-name))))
+
+(defn- encode-fncalls
+  "Replace occurances of `ISODate(...)` and similary function calls (invalid JSON, but legal in Mongo)
+   with legal JSON forms like `[:___ISODate ...]` that we can decode later.
+
+   Walks QUERY-STRING and encodes all the various fncalls we support."
+  [query-string]
+  (loop [query-string query-string, [fn-name & more] (keys fn-name->decoder)]
+    (if-not fn-name
+      query-string
+      (recur (encode-fncalls-for-fn fn-name query-string)
+             more))))
+
+
+;;; ------------------------------------------------------------ Query Execution ------------------------------------------------------------
+
 (defn mbql->native
   "Process and run an MBQL query."
   [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
@@ -397,7 +459,7 @@
          (string? collection)
          (map? database)]}
   (let [query   (if (string? query)
-                  (json/parse-string query keyword)
+                  (decode-fncalls (json/parse-string (encode-fncalls query) keyword))
                   query)
         results (mc/aggregate *mongo-connection* collection query
                               :allow-disk-use true)

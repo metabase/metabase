@@ -8,7 +8,7 @@
    The actual algorithm for advanced humanization is in `metabase.util.infer-spaces`."
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.setting :refer [defsetting], :as setting]
             [metabase.util.infer-spaces :refer [infer-spaces]]))
 
@@ -83,7 +83,7 @@
   (re-humanize-table-and-field-names!))
 
 (defsetting enable-advanced-humanization
-  "Metabase can attempt to transform your table and field names into more sensible human readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".
+  "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".
    This doesn’t work all that well if the names are in a language other than English, however. Do you want us to take a guess?"
   :type    :boolean
   :default true

@@ -1,7 +1,7 @@
 import _ from "underscore";
-import Query from "metabase/lib/query";
+import Query, { createQuery } from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
-import { createQuery } from "metabase/lib/query";
+import * as Urls from "metabase/lib/urls";
 
 import { CardApi } from "metabase/services";
 
@@ -25,10 +25,10 @@ export function startNewCard(type, databaseId, tableId) {
 }
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
+// TODO: move to redux
 export async function loadCard(cardId) {
     try {
-        let card = await CardApi.get({ "cardId": cardId });
-        return card && cleanCopyCard(card);
+        return await CardApi.get({ "cardId": cardId });
     } catch (error) {
         console.log("error loading card", error);
         throw error;
@@ -65,11 +65,11 @@ export function isCardRunnable(card, tableMetadata) {
     if (!card) {
         return false;
     }
-    const query = card.dataset_query;
-    if (query.query) {
-        return Query.canRun(query.query, tableMetadata);
+    const datasetQuery = card.dataset_query;
+    if (datasetQuery.query) {
+        return Query.canRun(datasetQuery.query, tableMetadata);
     } else {
-        return (query.database != undefined && query.native.query !== "");
+        return (datasetQuery.database != undefined && datasetQuery.native.query !== "");
     }
 }
 
@@ -112,16 +112,10 @@ export function b64url_to_utf8(b64url) {
 }
 
 export function urlForCardState(state, dirty) {
-    var url;
-    if (state.cardId) {
-        url = "/card/" + state.cardId;
-    } else {
-        url = "/q";
-    }
-    if (state.serializedCard && dirty) {
-        url += "#" + state.serializedCard;
-    }
-    return url;
+    return Urls.question(
+        state.cardId,
+        (state.serializedCard && dirty) ? state.serializedCard : ""
+    );
 }
 
 export function cleanCopyCard(card) {

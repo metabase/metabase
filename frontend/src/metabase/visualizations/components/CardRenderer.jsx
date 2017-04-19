@@ -1,6 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
@@ -8,7 +9,6 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import dc from "dc";
-import cx from "classnames";
 
 @ExplicitSize
 export default class CardRenderer extends Component {
@@ -78,7 +78,7 @@ export default class CardRenderer extends Component {
 
     render() {
         return (
-            <div className={cx(this.props.className, "Card-outer")}></div>
+            <div className={this.props.className}></div>
         );
     }
 }

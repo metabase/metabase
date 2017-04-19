@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import FormField from "metabase/components/form/FormField.jsx";
@@ -11,9 +12,10 @@ import MetabaseUtils from "metabase/lib/utils";
 import SelectButton from "metabase/components/SelectButton.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import Button from "metabase/components/Button.jsx";
+import { ModalFooter } from "metabase/components/ModalContent.jsx";
 
 import _ from "underscore";
-import cx from "classnames";
 
 import { isAdminGroup, canEditMembership } from "metabase/lib/groups";
 
@@ -121,6 +123,7 @@ export default class EditUserForm extends Component {
                         <FormField>
                             <FormLabel title="Permission Groups" offset={false}></FormLabel>
                             <PopoverWithTrigger
+                                sizeToFit
                                 triggerElement={
                                     <SelectButton>
                                         <GroupSummary groups={groups} selectedGroups={selectedGroups}/>
@@ -149,13 +152,14 @@ export default class EditUserForm extends Component {
                     : null }
                 </div>
 
-                <div className="Form-actions">
-                    <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
+                <ModalFooter>
+                    <Button type="button" onClick={this.cancel.bind(this)}>
+                        Cancel
+                    </Button>
+                    <Button primary disabled={!valid}>
                         { buttonText ? buttonText : "Save Changes" }
-                    </button>
-                    <span className="mx1">or</span>
-                    <a className="link text-bold" onClick={this.cancel.bind(this)}>Cancel</a>
-                </div>
+                    </Button>
+                </ModalFooter>
             </form>
         );
     }

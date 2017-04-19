@@ -31,28 +31,29 @@
       (setting/all)"
   (:refer-clojure :exclude [get])
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [environ.core :as env]
             [medley.core :as m]
             [schema.core :as s]
-            (metabase [db :as db]
-                      [events :as events])
-            [metabase.models.interface :as i]
+            (toucan [db :as db]
+                    [models :as models])
+            [metabase.events :as events]
             [metabase.util :as u]))
 
 
-(i/defentity Setting
+(models/defmodel Setting
   "The model that underlies `defsetting`."
   :setting)
 
 (u/strict-extend (class Setting)
-  i/IEntity
-  (merge i/IEntityDefaults
+  models/IModel
+  (merge models/IModelDefaults
          {:types (constantly {:value :clob})}))
 
 
 (def ^:private Type
-  (s/enum :string :boolean :json))
+  (s/enum :string :boolean :json :integer))
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -81,7 +82,7 @@
 ;; Cache is a 1:1 mapping of what's in the DB
 ;; Cached lookup time is ~60µs, compared to ~1800µs for DB lookup
 
-(def ^:private cache
+(defonce ^:private cache
   (atom nil))
 
 (defn- restore-cache-if-needed! []
@@ -151,6 +152,12 @@
   ^Boolean [setting-or-name]
   (string->boolean (get-string setting-or-name)))
 
+(defn get-integer
+  "Get integer value of (presumably `:integer`) SETTING-OR-NAME. This is the default getter for `:integer` settings."
+  ^Integer [setting-or-name]
+  (when-let [s (get-string setting-or-name)]
+    (Integer/parseInt s)))
+
 (defn get-json
   "Get the string value of SETTING-OR-NAME and parse it as JSON."
   [setting-or-name]
@@ -159,6 +166,7 @@
 (def ^:private default-getter-for-type
   {:string  get-string
    :boolean get-boolean
+   :integer get-integer
    :json    get-json})
 
 (defn get
@@ -170,6 +178,24 @@
 
 ;;; ------------------------------------------------------------ set! ------------------------------------------------------------
 
+(defn- update-setting! [setting-name new-value]
+  (db/update-where! Setting {:key setting-name}
+    :value new-value))
+
+(defn- set-new-setting!
+  "Insert a new row for a Setting with SETTING-NAME and SETTING-VALUE.
+   Takes care of resetting the cache if the insert fails for some reason."
+  [setting-name new-value]
+  (try (db/insert! Setting
+         :key   setting-name
+         :value new-value)
+       ;; if for some reason inserting the new value fails it almost certainly means the cache is out of date
+       ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
+       ;; existing value and log a warning
+       (catch Throwable e
+         (log/warn "Error INSERTing a new Setting:" (.getMessage e) "\nAssuming Setting already exists in DB and updating existing value.")
+         (update-setting! setting-name new-value))))
+
 (s/defn ^:always-validate set-string!
   "Set string value of SETTING-OR-NAME. A `nil` or empty NEW-VALUE can be passed to unset (i.e., delete) SETTING-OR-NAME."
   [setting-or-name, new-value :- (s/maybe s/Str)]
@@ -180,14 +206,11 @@
     (restore-cache-if-needed!)
     ;; write to DB
     (cond
-      (not new-value)                 (db/delete! Setting :key setting-name)
+      (not new-value)                 (db/simple-delete! Setting :key setting-name)
       ;; if there's a value in the cache then the row already exists in the DB; update that
-      (contains? @cache setting-name) (db/update-where! Setting {:key setting-name}
-                                        :value new-value)
+      (contains? @cache setting-name) (update-setting! setting-name new-value)
       ;; if there's nothing in the cache then the row doesn't exist, insert a new one
-      :else                           (db/insert! Setting
-                                        :key  setting-name
-                                        :value new-value))
+      :else                           (set-new-setting! setting-name new-value))
     ;; update cached value
     (if new-value
       (swap! cache assoc  setting-name new-value)
@@ -204,6 +227,15 @@
                                    false "false"
                                    nil   nil))))
 
+(defn set-integer!
+  "Set the value of integer SETTING-OR-NAME."
+  [setting-or-name new-value]
+  (set-string! setting-or-name (when new-value
+                                 (assert (or (integer? new-value)
+                                             (and (string? new-value)
+                                                  (re-matches #"^\d+$" new-value))))
+                                 (str new-value))))
+
 (defn set-json!
   "Serialize NEW-VALUE for SETTING-OR-NAME as a JSON string and save it."
   [setting-or-name new-value]
@@ -213,6 +245,7 @@
 (def ^:private default-setter-for-type
   {:string  set-string!
    :boolean set-boolean!
+   :integer set-integer!
    :json    set-json!})
 
 (defn set!
@@ -300,7 +333,7 @@
    You may optionally pass any of the OPTIONS below:
 
    *  `:default` - The default value of the setting. (default: `nil`)
-   *  `:type` - `:string` (default), `:boolean`, or `:json`. Non-`:string` settings have special default getters and setters that automatically coerce values to the correct types.
+   *  `:type` - `:string` (default), `:boolean`, `:integer`, or `:json`. Non-`:string` settings have special default getters and setters that automatically coerce values to the correct types.
    *  `:internal?` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
                      returned by the corresponding endpoints). Default: `false`
    *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.

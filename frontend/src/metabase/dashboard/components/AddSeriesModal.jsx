@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -212,8 +213,9 @@ export default class AddSeriesModal extends Component {
                         <Visualization
                             className="spread"
                             series={series}
-                            isDashboard={true}
-                            isMultiseries={true}
+                            showTitle
+                            isDashboard
+                            isMultiseries
                             onRemoveSeries={this.onRemoveSeries}
                         />
                         { this.state.state &&

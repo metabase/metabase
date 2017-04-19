@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
@@ -37,7 +37,7 @@ export default class SaveStatus extends Component {
         if (this.state.saving) {
             return (<div className="SaveStatus mx2 px2 border-right"><LoadingSpinner size={24} /></div>);
         } else if (this.state.error) {
-            return (<div className="SaveStatus mx2 px2 border-right text-error">Error: {this.state.error}</div>)
+            return (<div className="SaveStatus mx2 px2 border-right text-error">Error: {String(this.state.error.message || this.state.error)}</div>)
         } else if (this.state.recentlySavedTimeout != null) {
             return (
                 <div className="SaveStatus mx2 px2 border-right flex align-center text-success">
@@ -46,7 +46,7 @@ export default class SaveStatus extends Component {
                 </div>
             )
         } else {
-            return <span />;
+            return null;
         }
     }
 }

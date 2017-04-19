@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Modal from "metabase/components/Modal.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -202,7 +202,7 @@ export default class Tutorial extends Component {
         let step = this.props.steps[this.state.step];
 
         if (!step) {
-            return <span />;
+            return null;
         }
 
         const { missingTarget, pageFlagTarget, portalTarget, modalTarget } = this.getTargets(step);

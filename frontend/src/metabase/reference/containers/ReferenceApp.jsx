@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from 'react';
-import ReactDom from 'react-dom';
+import React, { Component } from 'react';
+import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
 import Sidebar from 'metabase/components/Sidebar.jsx';
@@ -23,12 +23,12 @@ import {
 } from '../utils';
 
 import {
-    selectSection as fetchQuestions
+    loadEntities
 } from 'metabase/questions/questions';
 
 import {
     fetchDashboards
-} from 'metabase/dashboard/dashboard';
+} from 'metabase/dashboards/dashboards';
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
@@ -40,7 +40,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-    fetchQuestions,
+    fetchQuestions: () => loadEntities("card", {}),
     fetchDashboards,
     ...metadataActions,
     ...actions

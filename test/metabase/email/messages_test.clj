@@ -12,9 +12,9 @@
     :subject "You're invited to join Metabase Test's Metabase",
     :body    [{:type "text/html; charset=utf-8"}]}]
   (with-fake-inbox
-    (send-new-user-email {:first_name "test" :email "test@test.com"}
-                         {:first_name "invitor" :email "invited_by@test.com"}
-                         "http://localhost/some/url")
+    (send-new-user-email! {:first_name "test" :email "test@test.com"}
+                          {:first_name "invitor" :email "invited_by@test.com"}
+                          "http://localhost/some/url")
     (-> (@inbox "test@test.com")
         (update-in [0 :body 0] dissoc :content))))
 
@@ -25,6 +25,6 @@
     :subject "[Metabase] Password Reset Request",
     :body    [{:type "text/html; charset=utf-8"}]}]
   (with-fake-inbox
-    (send-password-reset-email "test@test.com" (not :google-auth) "test.domain.com" "http://localhost/some/url")
+    (send-password-reset-email! "test@test.com" (not :google-auth) "test.domain.com" "http://localhost/some/url")
     (-> (@inbox "test@test.com")
         (update-in [0 :body 0] dissoc :content))))

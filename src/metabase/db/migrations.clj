@@ -1,41 +1,49 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them.
    These migrations are all ran once when Metabase is first launched, except when transferring data from an existing H2 database.
-   When data is transferred from an H2 database, migrations will already have been ran against that data; thus, all of these migrations
+   When data is transferred from an H2 database, migrations will already have been run against that data; thus, all of these migrations
    need to be repeatable, e.g.:
 
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
-  (:require [clojure.string :as s]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [schema.core :as s]
+            (toucan [db :as db]
+                    [models :as models])
             (metabase [config :as config]
-                      [db :as db]
                       [driver :as driver]
                       types)
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
+                             [card-label :refer [CardLabel]]
+                             [collection :refer [Collection], :as collection]
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
-                             [interface :refer [defentity]]
+                             [label :refer [Label]]
                              [permissions :refer [Permissions], :as perms]
                              [permissions-group :as perm-group]
                              [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
+                             [query-execution :refer [QueryExecution], :as query-execution]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]]
                              [table :refer [Table] :as table]
-                             [setting :as setting]
+                             [setting :refer [Setting], :as setting]
                              [user :refer [User]])
+            [metabase.public-settings :as public-settings]
+            [metabase.query-processor.util :as qputil]
             [metabase.util :as u]))
 
 ;;; # Migration Helpers
 
-(defentity DataMigrations :data_migrations)
+(models/defmodel DataMigrations :data_migrations)
 
 (defn- run-migration-if-needed!
   "Run migration defined by MIGRATION-VAR if needed.
-   RAN-MIGRATIONS is a set of migrations names that have already been ran.
+   RAN-MIGRATIONS is a set of migrations names that have already been run.
 
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
   [ran-migrations migration-var]
@@ -55,8 +63,7 @@
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
-;; TODO - shouldn't this be called `run-all!`?
-(defn run-all
+(defn run-all!
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
@@ -76,7 +83,7 @@
 ;; the values for `:database_id`, `:table_id`, and `:query_type` if possible.
 (defmigration ^{:author "agilliland", :added "0.12.0"} set-card-database-and-table-ids
   ;; only execute when `:database_id` column on all cards is `nil`
-  (when (zero? (db/select-one-count Card
+  (when (zero? (db/count Card
                  :database_id [:not= nil]))
     (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
       (when type
@@ -115,7 +122,7 @@
 ;; Remove old `database-sync` activity feed entries
 (defmigration ^{:author "agilliland", :added "0.13.0"} remove-database-sync-activity-entries
   (when-not (contains? activity-feed-topics :database-sync-begin)
-    (db/delete! Activity :topic "database-sync")))
+    (db/simple-delete! Activity :topic "database-sync")))
 
 
 ;; Migrate dashboards to the new grid
@@ -131,7 +138,7 @@
 
 ;; migrate data to new visibility_type column on field
 (defmigration ^{:author "agilliland",:added "0.16.0"} migrate-field-visibility-type
-  (when-not (zero? (db/select-one-count Field :visibility_type "unset"))
+  (when-not (zero? (db/count Field :visibility_type "unset"))
     ;; start by marking all inactive fields as :retired
     (db/update-where! Field {:visibility_type "unset"
                              :active          false}
@@ -151,7 +158,7 @@
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
 ;; TODO - this function is way to big and hard to read -- See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#break-up-larger-functions
 (defmigration ^{:author "agilliland",:added "0.17.0"} create-raw-tables
-  (when (zero? (db/select-one-count RawTable))
+  (when (zero? (db/count RawTable))
     (binding [db/*disable-db-logging* true]
       (db/transaction
        (doseq [{database-id :id, :keys [name engine]} (db/select Database)]
@@ -297,14 +304,14 @@
 (defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
-    (db/update-where! 'Field {:%lower.special_type (s/lower-case old-type)}
+    (db/update-where! 'Field {:%lower.special_type (str/lower-case old-type)}
       :special_type new-type)
     ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
     (db/update-where! 'Field {:special_type (name (keyword new-type))}
       :special_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
     ;; migrate things like :DateTimeField -> :type/DateTime
-    (db/update-where! 'Field {:%lower.base_type (s/lower-case old-type)}
+    (db/update-where! 'Field {:%lower.base_type (str/lower-case old-type)}
       :base_type new-type)
     ;; migrate things like :DateTime -> :type/DateTime
     (db/update-where! 'Field {:base_type (name (keyword new-type))}
@@ -316,3 +323,51 @@
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
     :special_type nil))
+
+;; Copy the value of the old setting `-site-url` to the new `site-url` if applicable.
+;; (`site-url` used to be stored internally as `-site-url`; this was confusing, see #4188 for details)
+;; This has the side effect of making sure the `site-url` has no trailing slashes (as part of the magic setter fn; this was fixed as part of #4123)
+(defmigration ^{:author "camsaul", :added "0.23.0"} copy-site-url-setting-and-remove-trailing-slashes
+  (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
+    (public-settings/site-url site-url)))
+
+
+;;; ------------------------------------------------------------ Migrating QueryExecutions ------------------------------------------------------------
+
+;; We're copying over data from the legacy `query_queryexecution` table to the new `query_execution` table; see #4522 and #4531 for details
+
+;; model definition for the old table to facilitate the data copying process
+(models/defmodel ^:private ^:deprecated LegacyQueryExecution :query_queryexecution)
+
+(u/strict-extend (class LegacyQueryExecution)
+  models/IModel
+  (merge models/IModelDefaults
+         {:default-fields (constantly [:executor_id :result_rows :started_at :json_query :error :running_time])
+          :types          (constantly {:json_query :json, :error :clob})}))
+
+(defn- LegacyQueryExecution->QueryExecution
+  "Convert a LegacyQueryExecution to a format suitable for insertion as a new-format QueryExecution."
+  [{query :json_query, :as query-execution}]
+  (-> (assoc query-execution
+        :hash   (qputil/query-hash query)
+        :native (not (qputil/mbql-query? query)))
+      ;; since error is nullable now remove the old blank error message strings
+      (update :error (fn [error-message]
+                       (when-not (str/blank? error-message)
+                         error-message)))
+      (dissoc :json_query)))
+
+;; Migrate entries from the old query execution table to the new one. This might take a few minutes
+(defmigration ^{:author "camsaul", :added "0.23.0"} migrate-query-executions
+  ;; migrate the most recent 100,000 entries
+  ;; make sure the DB doesn't get snippy by trying to insert too many records at once. Divide the INSERT statements into chunks of 1,000
+  (binding [query-execution/*validate-context* false]
+    (doseq [chunk (partition-all 1000 (db/select LegacyQueryExecution {:limit 100000, :order-by [[:id :desc]]}))]
+      (db/insert-many! QueryExecution
+        (for [query-execution chunk]
+          (LegacyQueryExecution->QueryExecution query-execution))))))
+
+;; drop the legacy QueryExecution table now that we don't need it anymore
+(defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
+  ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
+  (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s;" ((db/quote-fn) "query_queryexecution"))]))

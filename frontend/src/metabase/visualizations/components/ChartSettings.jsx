@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
@@ -6,7 +6,7 @@ import _ from "underscore";
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
-import { getSettingsWidgets } from "metabase/lib/visualization_settings";
+import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getVisualizationTransformed } from "metabase/visualizations";
 
@@ -142,6 +142,7 @@ class ChartSettings extends Component {
                                 className="spread"
                                 series={series}
                                 isEditing
+                                showTitle
                                 isDashboard
                                 showWarnings
                                 onUpdateVisualizationSettings={this.onChangeSettings}

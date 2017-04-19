@@ -1,3 +1,4 @@
+/* @flow weak */
 
 import L from "leaflet/dist/leaflet-src.js";
 import d3 from "d3";

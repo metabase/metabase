@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import S from "./EditLabels.css";
@@ -14,10 +15,10 @@ import * as colors from "metabase/lib/colors";
 
 const mapStateToProps = (state, props) => {
   return {
-      labels:           getLabels(state),
-      labelsLoading:    getLabelsLoading(state),
-      labelsError:      getLabelsError(state),
-      editingLabelId:   getEditingLabelId(state)
+      labels:           getLabels(state, props),
+      labelsLoading:    getLabelsLoading(state, props),
+      labelsError:      getLabelsError(state, props),
+      editingLabelId:   getEditingLabelId(state, props)
   }
 }
 
@@ -55,7 +56,11 @@ export default class EditLabels extends Component {
         return (
             <div className={S.editor} style={style}>
                 <div className="wrapper wrapper--trim">
-                    <div className={S.header}>Labels</div>
+                    <div className={S.header}>Add and edit labels</div>
+                    <div className="bordered border-error rounded p2 mb2">
+                        <h3 className="text-error mb1">Heads up!</h3>
+                        <div>In an upcoming release, Labels will be removed in favor of Collections.</div>
+                    </div>
                 </div>
                 <LabelEditorForm onSubmit={saveLabel} initialValues={{ icon: colors.normal.blue, name: "" }} submitButtonText={"Create Label"} className="wrapper wrapper--trim"/>
                 <LoadingAndErrorWrapper loading={labelsLoading} error={labelsError} noBackground noWrapper>

@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import ChartSettingColorPicker from "./ChartSettingColorPicker.jsx";
 
@@ -10,9 +10,15 @@ export default class ChartSettingColorsPicker extends Component {
                 { seriesTitles.map((title, index) =>
                     <ChartSettingColorPicker
                         key={index}
-                        value={value[index]}
-                        onChange={(color) => onChange([...value.slice(0, index), color, ...value.slice(index + 1)])}
+                        onChange={color =>
+                            onChange([
+                                ...value.slice(0, index),
+                                color,
+                                ...value.slice(index + 1)
+                            ])
+                        }
                         title={title}
+                        value={value[index]}
                     />
                 )}
             </div>

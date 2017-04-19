@@ -1,12 +1,12 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import CheckBox from "metabase/components/CheckBox.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import { Sortable } from "react-sortable";
+import { sortable } from "react-sortable";
 
 import cx from "classnames";
 
-@Sortable
+@sortable
 class OrderedFieldListItem extends Component {
   render() {
     return (

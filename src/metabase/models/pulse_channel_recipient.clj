@@ -1,4 +1,4 @@
 (ns metabase.models.pulse-channel-recipient
-  (:require [metabase.models.interface :as i]))
+  (:require [toucan.models :as models]))
 
-(i/defentity PulseChannelRecipient :pulse_channel_recipient)
+(models/defmodel PulseChannelRecipient :pulse_channel_recipient)

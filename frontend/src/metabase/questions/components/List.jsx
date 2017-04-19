@@ -1,22 +1,21 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
-import S from "../components/List.css";
+import S from "./List.css";
 import pure from "recompose/pure";
 
 import EntityItem from "../containers/EntityItem.jsx";
 
-const List = ({ entityType, entityIds, setItemSelected }) =>
+const List = ({ entityIds, ...props }) =>
     <ul className={S.list}>
         { entityIds.map(entityId =>
-            <EntityItem key={entityId} entityType={entityType} entityId={entityId} setItemSelected={setItemSelected} />
+            <EntityItem key={entityId} entityId={entityId} {...props} />
         )}
     </ul>
 
 List.propTypes = {
-    entityType:         PropTypes.string.isRequired,
     entityIds:          PropTypes.array.isRequired,
-    setItemSelected:    PropTypes.func.isRequired,
 };
 
 export default pure(List);

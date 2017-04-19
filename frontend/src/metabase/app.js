@@ -1,25 +1,40 @@
 /* @flow weak */
 
+import 'babel-polyfill';
+import 'number-to-locale-string';
+
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
-import { push } from "react-router-redux";
 
 import MetabaseAnalytics, { registerAnalyticsClickListener } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import api from "metabase/lib/api";
 
-import { getRoutes } from "./routes.jsx";
 import { getStore } from './store'
 
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { setErrorPage } from "metabase/redux/app";
+import { clearCurrentUser } from "metabase/redux/user";
 
 import { Router, browserHistory } from "react-router";
-import { syncHistoryWithStore } from 'react-router-redux'
+import { push, syncHistoryWithStore } from 'react-router-redux'
 
-function init() {
-    const store = getStore(browserHistory);
+// we shouldn't redirect these URLs because we want to handle them differently
+const WHITELIST_FORBIDDEN_URLS = [
+    // on dashboards, we show permission errors for individual cards we don't have access to
+    /api\/card\/\d+\/query$/,
+    // metadata endpoints should not cause redirects
+    // we should gracefully handle cases where we don't have access to metadata
+    /api\/database\/\d+\/metadata$/,
+    /api\/database\/\d+\/fields/,
+    /api\/table\/\d+\/query_metadata$/,
+    /api\/table\/\d+\/fks$/
+];
+
+function _init(reducers, getRoutes, callback) {
+    const store = getStore(reducers, browserHistory);
     const routes = getRoutes(store);
     const history = syncHistoryWithStore(browserHistory, store);
 
@@ -46,15 +61,14 @@ function init() {
     });
 
     // received a 401 response
-    api.on("401", () => {
+    api.on("401", (url) => {
+        if (url === "/api/user/current") {
+            return
+        }
+        store.dispatch(clearCurrentUser());
         store.dispatch(push("/auth/login"));
     });
 
-    // we shouldn't redirect these URLs because we want to handle them differently
-    let WHITELIST_FORBIDDEN_URLS = [
-        /api\/card\/\d+\/query$/,
-        /api\/database\/\d+\/metadata$/
-    ];
     // received a 403 response
     api.on("403", (url) => {
         if (url) {
@@ -64,12 +78,18 @@ function init() {
                 }
             }
         }
-        store.dispatch(push("/unauthorized"));
+        store.dispatch(setErrorPage({ status: 403 }));
     });
+
+    if (callback) {
+        callback(store);
+    }
 }
 
-if (document.readyState != 'loading') {
-    init();
-} else {
-    document.addEventListener('DOMContentLoaded', init);
+export function init(...args) {
+    if (document.readyState != 'loading') {
+        _init(...args);
+    } else {
+        document.addEventListener('DOMContentLoaded', () => _init(...args));
+    }
 }

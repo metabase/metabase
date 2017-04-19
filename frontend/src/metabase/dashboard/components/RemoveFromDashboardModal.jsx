@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -61,7 +62,7 @@ export default class RemoveFromDashboardModal extends Component {
         return (
             <ModalContent
                 title="Remove from Dashboard"
-                closeFn={() => this.props.onClose()}
+                onClose={() => this.props.onClose()}
             >
                 <div className="flex-full px4 pb3 text-grey-4">
                     <p>Are you sure you want to do this?</p>

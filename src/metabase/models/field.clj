@@ -2,7 +2,8 @@
   (:require (clojure [data :as d]
                      [string :as s])
             [metabase.config :as config]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
             metabase.types
             (metabase.models [field-values :refer [FieldValues]]
                              [humanization :as humanization]
@@ -25,7 +26,7 @@
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 
-(i/defentity Field :metabase_field)
+(models/defmodel Field :metabase_field)
 
 (defn- check-valid-types [{base-type :base_type, special-type :special_type}]
   (when base-type
@@ -44,10 +45,10 @@
   (u/prog1 field
     (check-valid-types field)))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! Field :parent_id id)
-  (db/cascade-delete! 'FieldValues :field_id id)
-  (db/cascade-delete! 'MetricImportantField :field_id id))
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! Field :parent_id id)
+  (db/delete! 'FieldValues :field_id id)
+  (db/delete! 'MetricImportantField :field_id id))
 
 ;; For the time being permissions to access a field are the same as permissions to access its parent table
 ;; TODO - this can be memoized because a Table's `:db_id` and `:schema` are guaranteed to never change, as is a Field's `:table_id`
@@ -57,19 +58,22 @@
     #{(perms/object-path database-id schema table-id)}))
 
 (u/strict-extend (class Field)
-  i/IEntity (merge i/IEntityDefaults
-                   {:hydration-keys     (constantly [:destination :field :origin])
-                    :types              (constantly {:base_type       :keyword
-                                                     :special_type    :keyword
-                                                     :visibility_type :keyword
-                                                     :description     :clob})
-                    :timestamped?       (constantly true)
-                    :perms-objects-set  perms-objects-set
-                    :can-read?          (partial i/current-user-has-full-permissions? :read)
-                    :can-write?         i/superuser?
-                    :pre-insert         pre-insert
-                    :pre-update         pre-update
-                    :pre-cascade-delete pre-cascade-delete}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:hydration-keys (constantly [:destination :field :origin])
+          :types          (constantly {:base_type       :keyword
+                                       :special_type    :keyword
+                                       :visibility_type :keyword
+                                       :description     :clob})
+          :properties     (constantly {:timestamped? true})
+          :pre-insert     pre-insert
+          :pre-update     pre-update
+          :pre-delete     pre-delete})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:perms-objects-set  perms-objects-set
+          :can-read?          (partial i/current-user-has-full-permissions? :read)
+          :can-write?         i/superuser?}))
 
 
 ;;; ------------------------------------------------------------ Hydration / Util Fns ------------------------------------------------------------

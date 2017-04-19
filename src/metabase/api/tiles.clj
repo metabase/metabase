@@ -92,7 +92,7 @@
         (.dispose graphics)))
     tile))
 
-(defn- tile->byte-array [^BufferedImage tile]
+(defn- tile->byte-array ^bytes [^BufferedImage tile]
   (let [output-stream (ByteArrayOutputStream.)]
     (try
       (when-not (ImageIO/write tile "png" output-stream) ; returns `true` if successful -- see JavaDoc
@@ -129,8 +129,7 @@
         lon-col-idx   (Integer/parseInt lon-col-idx)
         query         (json/parse-string query keyword)
         updated-query (update query :query (u/rpartial query-with-inside-filter lat-field-id lon-field-id x y zoom))
-        result        (qp/dataset-query updated-query {:executed-by   *current-user-id*
-                                                       :synchronously true})
+        result        (qp/dataset-query updated-query {:executed-by *current-user-id*, :context :map-tiles})
         points        (for [row (-> result :data :rows)]
                         [(nth row lat-col-idx) (nth row lon-col-idx)])]
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image

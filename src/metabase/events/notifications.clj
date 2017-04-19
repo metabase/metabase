@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as async]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
@@ -65,22 +65,22 @@
       ;; we end up with a list of lists, so flatten before returning
       (flatten deps-with-details))))
 
-(defn- send-notification-message [user-id object updated-by deps]
+(defn- send-notification-message! [user-id object updated-by deps]
   (let [recipient     (:email (User user-id))
         deps-by-model (group-by :model deps)]
-    (messages/send-notification-email recipient {:object       object
-                                                 :updated-by   updated-by
-                                                 :dependencies deps-by-model})))
+    (messages/send-notification-email! recipient {:object       object
+                                                   :updated-by   updated-by
+                                                   :dependencies deps-by-model})))
 
-(defn- send-notification [model object]
+(defn- send-notification! [model object]
   (when-let [deps (pull-dependencies model (:id object))]
     (let [deps-by-user (group-by :creator_id deps)
           updated-by   (User (events/object->user-id object))]
       ;; send a separate email to each user containing just affected items they created
       (doseq [user-id (keys deps-by-user)]
-        (send-notification-message user-id object updated-by (get deps-by-user user-id))))))
+        (send-notification-message! user-id object updated-by (get deps-by-user user-id))))))
 
-(defn process-notifications-event
+(defn- process-notifications-event!
   "Handle processing for a single event notification received on the notifications-channel"
   [notification-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
@@ -88,8 +88,8 @@
     (when-let [{topic :topic object :item} notification-event]
       ;; TODO: only if the definition changed??
       (case (events/topic->model topic)
-        "metric"  (send-notification "Metric" object)
-        "segment" (send-notification "Segment" object)))
+        "metric"  (send-notification! "Metric" object)
+        "segment" (send-notification! "Segment" object)))
     (catch Throwable e
       (log/warn (format "Failed to process notifications event. %s" (:topic notification-event)) e))))
 
@@ -101,4 +101,4 @@
 (defn events-init
   "Automatically called during startup; start event listener for notifications events."
   []
-  (events/start-event-listener! notifications-topics notifications-channel process-notifications-event))
+  (events/start-event-listener! notifications-topics notifications-channel process-notifications-event!))

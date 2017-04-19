@@ -4,7 +4,7 @@ import { mbqlEq } from "./util";
 
 import type { Field } from "metabase/meta/types/Query";
 
-// gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime_field cast.
+// gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime-field cast.
 export function getFieldTargetId(field: Field): ?FieldId {
     if (isRegularField(field)) {
         return field;

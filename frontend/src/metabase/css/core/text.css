@@ -68,6 +68,8 @@
 }
 .text-lowercase { text-transform: lowercase; }
 
+.text-capitalize { text-transform: capitalize; }
+
 /* text weight */
 .text-light  { font-weight: 300; }
 .text-normal { font-weight: 400; }
@@ -90,6 +92,14 @@
   line-height: 1.5em;
 }
 
+.text-small {
+    font-size: 0.875em;
+}
+
+.text-smaller {
+    font-size: 0.8em;
+}
+
 .text-current {
     color: currentColor;
 }
@@ -106,6 +116,10 @@
     text-overflow: ellipsis;
 }
 
+.text-nowrap {
+    white-space: nowrap;
+}
+
 .text-code {
     font-family: monospace;
     color: #8691AC;
@@ -119,6 +133,10 @@
 .text-monospace,
 :local(.text-monospace) {
     font-family: Monaco, monospace;
+}
+
+.text-pre-wrap {
+  white-space: pre-wrap;
 }
 
 .text-measure {

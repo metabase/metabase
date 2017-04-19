@@ -1,11 +1,15 @@
 (ns metabase.api.email
   "/api/email endpoints"
-  (:require [clojure.tools.logging :as log]
-            [clojure.set :as set]
-            [compojure.core :refer [GET PUT DELETE POST]]
+  (:require [clojure
+             [data :as data]
+             [set :as set]
+             [string :as string]]
+            [clojure.tools.logging :as log]
+            [compojure.core :refer [POST PUT]]
+            [metabase
+             [config :as config]
+             [email :as email]]
             [metabase.api.common :refer :all]
-            [metabase.config :as config]
-            [metabase.email :as email]
             [metabase.models.setting :as setting]
             [metabase.util.schema :as su]))
 
@@ -51,6 +55,16 @@
         #".*"
         {:message "Sorry, something went wrong.  Please try again."}))))
 
+(defn humanize-email-corrections
+  "formats warnings when security settings are autocorrected"
+  [corrections]
+  (into {}
+        (mapv (fn [[k v]]
+                [k (format "%s was autocorrected to %s"
+                           (name (mb-to-smtp-settings k))
+                           (string/upper-case v))])
+              corrections)))
+
 (defendpoint PUT "/"
   "Update multiple `Settings` values.  You must be a superuser to do this."
   [:as {settings :body}]
@@ -63,10 +77,15 @@
                          ;; in normal conditions, validate connection
                          (email/test-smtp-connection smtp-settings)
                          ;; for unit testing just respond with a success message
-                         {:error :SUCCESS})]
+                         {:error :SUCCESS})
+        tested-settings  (merge settings (select-keys response [:port :security]))
+        [_ corrections _] (data/diff settings tested-settings)
+        properly-named-corrections (set/rename-keys corrections (set/map-invert mb-to-smtp-settings))
+        corrected-settings (merge email-settings properly-named-corrections)]
     (if (= :SUCCESS (:error response))
       ;; test was good, save our settings
-      (setting/set-many! email-settings)
+      (assoc (setting/set-many! corrected-settings)
+        :with-corrections (humanize-email-corrections properly-named-corrections))
       ;; test failed, return response message
       {:status 500
        :body   (humanize-error-messages response)})))

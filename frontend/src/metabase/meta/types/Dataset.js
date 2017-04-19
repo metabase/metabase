@@ -11,18 +11,21 @@ export type Column = {
     name: ColumnName,
     display_name: string,
     base_type: string,
-    special_type: ?string
-}
+    special_type: ?string,
+    source?: "fields"|"aggregation"|"breakout"
+};
 
 export type ISO8601Times = string;
 export type Value = string|number|ISO8601Times|boolean|null|{};
 export type Row = Value[];
 
+export type DatasetData = {
+    cols: Column[],
+    columns: ColumnName[],
+    rows: Row[]
+};
+
 export type Dataset = {
-    data: {
-        cols: Column[],
-        columns: ColumnName[],
-        rows: Row[]
-    },
+    data: DatasetData,
     json_query: DatasetQuery
-}
+};

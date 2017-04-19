@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
@@ -36,7 +37,7 @@ export default class DeleteModalWithConfirm extends Component {
         return (
             <ModalContent
                 title={"Delete \"" + objectName + "\"?"}
-                closeFn={this.props.onClose}
+                onClose={this.props.onClose}
             >
             <div className="px4 pb4">
                 <ul>

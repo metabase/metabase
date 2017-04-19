@@ -1,7 +1,7 @@
 (ns metabase.public-settings
   (:require [clojure.string :as s]
-            (metabase [config :as config]
-                      [db :as db])
+            [toucan.db :as db]
+            [metabase.config :as config]
             (metabase.models [common :as common]
                              [setting :refer [defsetting], :as setting])
             [metabase.types :as types]
@@ -22,8 +22,14 @@
   "The name used for this instance of Metabase."
   :default "Metabase")
 
-(defsetting -site-url
-  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
+;; This value is *guaranteed* to never have a trailing slash :D
+;; It will also prepend `http://` to the URL if there's not protocol when it comes in
+(defsetting site-url
+  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
+  :setter (fn [new-value]
+            (setting/set-string! :site-url (when new-value
+                                             (cond->> (s/replace new-value #"/$" "")
+                                               (not (s/starts-with? new-value "http")) (str "http://"))))))
 
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")
@@ -37,21 +43,58 @@
   "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
   :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
-(defn site-url
-  "Fetch the site base URL that should be used for password reset emails, etc.
-   This strips off any trailing slashes that may have been added.
+(defsetting enable-public-sharing
+  "Enable admins to create publically viewable links (and embeddable iframes) for Questions and Dashboards?"
+  :type    :boolean
+  :default false)
 
-   The first time this function is called, we'll set the value of the setting `-site-url` with the value of
-   the ORIGIN header (falling back to HOST if needed, i.e. for unit tests) of some API request.
-   Subsequently, the site URL can only be changed via the admin page."
-  {:arglists '([request])}
-  [{{:strs [origin host]} :headers}]
-  {:pre  [(or origin host)]
-   :post [(string? %)]}
-  (or (some-> (-site-url)
-              (s/replace #"/$" "")) ; strip off trailing slash if one was included
-      (-site-url (or origin host))))
+(defsetting enable-embedding
+  "Allow admins to securely embed questions and dashboards within other applications?"
+  :type    :boolean
+  :default false)
 
+
+(defsetting enable-query-caching
+  "Enabling caching will save the results of queries that take a long time to run."
+  :type    :boolean
+  :default false)
+
+(defsetting query-caching-max-kb
+  "The maximum size of the cache per card, in kilobytes:"
+  ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
+  ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
+  ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
+  :type    :integer
+  :default 1000)
+
+(defsetting query-caching-max-ttl
+  "The absoulte maximum time to keep any cached query results, in seconds."
+  :type    :integer
+  :default (* 60 60 24 100)) ; 100 days
+
+(defsetting query-caching-min-ttl
+  "Metabase will cache all saved questions with an average query execution time longer than
+   this many seconds:"
+  :type    :integer
+  :default 60)
+
+(defsetting query-caching-ttl-ratio
+  "To determine how long each saved question's cached result should stick around, we take the
+   query's average execution time and multiply that by whatever you input here. So if a query
+   takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry
+   will persist for 20 minutes."
+  :type    :integer
+  :default 10)
+
+
+(defn remove-public-uuid-if-public-sharing-is-disabled
+  "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it won't work).
+   Intended for use as part of a `post-select` implementation for Cards and Dashboards."
+  [object]
+  (if (and (:public_uuid object)
+           (not (enable-public-sharing)))
+    (assoc object :public_uuid nil)
+    object))
 
 
 (defn- short-timezone-name*
@@ -68,20 +111,23 @@
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end application."
   []
-  {:ga_code               "UA-60817802-1"
-   :password_complexity   password/active-password-complexity
-   :timezones             common/timezones
-   :version               config/mb-version-info
-   :engines               ((resolve 'metabase.driver/available-drivers))
-   :setup_token           ((resolve 'metabase.setup/token-value))
+  {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
-   :site_name             (site-name)
-   :email_configured      ((resolve 'metabase.email/email-configured?))
-   :admin_email           (admin-email)
-   :report_timezone       (setting/get :report-timezone)
-   :timezone_short        (short-timezone-name (setting/get :report-timezone))
-   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
-   :google_auth_client_id (setting/get :google-auth-client-id)
-   :map_tile_server_url   (map-tile-server-url)
    :custom_geojson        (setting/get :custom-geojson)
-   :types                 (types/types->parents)})
+   :email_configured      ((resolve 'metabase.email/email-configured?))
+   :enable_query_caching  (enable-query-caching)
+   :engines               ((resolve 'metabase.driver/available-drivers))
+   :ga_code               "UA-60817802-1"
+   :google_auth_client_id (setting/get :google-auth-client-id)
+   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
+   :map_tile_server_url   (map-tile-server-url)
+   :password_complexity   password/active-password-complexity
+   :public_sharing        (enable-public-sharing)
+   :embedding             (enable-embedding)
+   :report_timezone       (setting/get :report-timezone)
+   :setup_token           ((resolve 'metabase.setup/token-value))
+   :site_name             (site-name)
+   :timezone_short        (short-timezone-name (setting/get :report-timezone))
+   :timezones             common/timezones
+   :types                 (types/types->parents)
+   :version               config/mb-version-info})

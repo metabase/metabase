@@ -1,5 +1,4 @@
-import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
+import React, { Component } from "react";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
@@ -10,13 +9,13 @@ import MetabaseSettings from "metabase/lib/settings";
 import { formatNumber } from "metabase/lib/formatting";
 
 import ChartWithLegend from "./ChartWithLegend.jsx";
-import ChartTooltip from "./ChartTooltip.jsx";
 import LegacyChoropleth from "./LegacyChoropleth.jsx";
 import LeafletChoropleth from "./LeafletChoropleth.jsx";
 
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
 import d3 from "d3";
+import ss from "simple-statistics";
 import _ from "underscore";
 
 // const HEAT_MAP_COLORS = [
@@ -66,7 +65,7 @@ export default class ChoroplethMap extends Component {
         return cols.length > 1 && isString(cols[0]);
     }
 
-    static checkRenderable(cols, rows) {
+    static checkRenderable([{ data: { cols, rows} }]) {
         if (cols.length < 2) { throw new MinColumnsError(2, cols.length); }
     }
 
@@ -119,7 +118,7 @@ export default class ChoroplethMap extends Component {
             );
         }
 
-        const { series, className, gridSize, hovered, onHoverChange, settings } = this.props;
+        const { series, className, gridSize, hovered, onHoverChange, onVisualizationClick, settings } = this.props;
         let { geoJson, minimalBounds } = this.state;
 
         // special case builtin maps to use legacy choropleth map
@@ -153,25 +152,47 @@ export default class ChoroplethMap extends Component {
         const getFeatureKey   = (feature) => String(feature.properties[keyProperty]).toLowerCase();
         const getFeatureValue = (feature) => valuesMap[getFeatureKey(feature)];
 
+        const heatMapColors = HEAT_MAP_COLORS.slice(0, Math.min(HEAT_MAP_COLORS.length, rows.length))
+
         const onHoverFeature = (hover) => {
             onHoverChange && onHoverChange(hover && {
-                index: HEAT_MAP_COLORS.indexOf(getColor(hover.feature)),
+                index: heatMapColors.indexOf(getColor(hover.feature)),
                 event: hover.event,
                 data: { key: getFeatureName(hover.feature), value: getFeatureValue(hover.feature)
             } })
         }
-
-        const valuesMap = {};
-        for (const row of rows) {
-            valuesMap[getRowKey(row)] = (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
+        const onClickFeature = (click) => {
+            const featureKey = getFeatureKey(click.feature);
+            const row = _.find(rows, row => getRowKey(row) === featureKey);
+            if (onVisualizationClick && row !== undefined) {
+                onVisualizationClick({
+                    value: row[metricIndex],
+                    column: cols[metricIndex],
+                    dimensions: [{
+                        value: row[dimensionIndex],
+                        column: cols[dimensionIndex]
+                    }],
+                    event: click.event
+                });
+            }
         }
 
-        var colorScale = d3.scale.quantize().domain(d3.extent(rows, d => d[1])).range(HEAT_MAP_COLORS);
+        const valuesMap = {};
+        const domain = []
+        for (const row of rows) {
+            valuesMap[getRowKey(row)] = (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
+            domain.push(getRowValue(row));
+        }
 
-        let legendColors = HEAT_MAP_COLORS.slice();
-        let legendTitles = HEAT_MAP_COLORS.map((color, index) => {
-            let [min, max] = colorScale.invertExtent(color);
-            return index === HEAT_MAP_COLORS.length - 1 ?
+        const groups = ss.ckmeans(domain, heatMapColors.length);
+
+        var colorScale = d3.scale.quantile().domain(groups.map((cluster) => cluster[0])).range(heatMapColors);
+
+        let legendColors = heatMapColors.slice();
+        let legendTitles = heatMapColors.map((color, index) => {
+            const min = groups[index][0];
+            const max = groups[index].slice(-1)[0];
+            return index === heatMapColors.length - 1 ?
                 formatNumber(min) + " +" :
                 formatNumber(min) + " - " + formatNumber(max)
         });
@@ -207,6 +228,7 @@ export default class ChoroplethMap extends Component {
                         geoJson={geoJson}
                         getColor={getColor}
                         onHoverFeature={onHoverFeature}
+                        onClickFeature={onClickFeature}
                         projection={projection}
                     />
                 :
@@ -215,10 +237,10 @@ export default class ChoroplethMap extends Component {
                         geoJson={geoJson}
                         getColor={getColor}
                         onHoverFeature={onHoverFeature}
+                        onClickFeature={onClickFeature}
                         minimalBounds={minimalBounds}
                     />
                 }
-                <ChartTooltip series={series} hovered={hovered} />
             </ChartWithLegend>
         );
     }

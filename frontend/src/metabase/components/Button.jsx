@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -13,6 +14,7 @@ const BUTTON_VARIANTS = [
     "primary",
     "warning",
     "cancel",
+    "success",
     "purple",
     "borderless"
 ];
@@ -21,7 +23,7 @@ const Button = ({ className, icon, children, ...props }) => {
     let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(variant => "Button--" + variant);
     return (
         <button
-            {..._.omit(props, ...variantClasses)}
+            {..._.omit(props, ...BUTTON_VARIANTS)}
             className={cx("Button", className, variantClasses)}
         >
             <div className="flex layout-centered">

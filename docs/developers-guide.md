@@ -1,9 +1,9 @@
 **This guide will teach you:**
 
-> * How to compile your own copy of Metabase
-> * How to set up a development environment
-> * How to run the Metabase Server
-> * How to contribute back to the Metabase project
+*  [How to compile your own copy of Metabase](#build-metabase)
+*  [How to set up a development environment](#development-environment)
+*  [How to run the Metabase Server](#development-server-quick-start)
+*  [How to contribute back to the Metabase project](#contributing)
 
 
 # Contributing
@@ -106,14 +106,25 @@ $ yarn run build-watch
 
 Run unit tests with
 
+    yarn run jest             # Jest
     yarn run test             # Karma
-    yarn run test-e2e         # Selenium Webdriver
 
 Run the linters and type checker with
 
     yarn run lint
     yarn run flow
 
+#### End-to-end tests
+
+End-to-end tests are written with [webschauffeur](https://github.com/metabase/webchauffeur) which is a wrapper around [`selenium-webdriver`](https://www.npmjs.com/package/selenium-webdriver).
+
+Run E2E tests once with
+
+    yarn run test-e2e
+
+or use a persistent browser session with
+
+    yarn run test-e2e-dev
 
 ## Backend development
 Leiningen and your REPL are the main development tools for the backend.  There are some directions below on how to setup your REPL for easier development.

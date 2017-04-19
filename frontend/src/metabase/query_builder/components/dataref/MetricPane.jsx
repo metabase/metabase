@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
@@ -26,8 +27,8 @@ export default class MetricPane extends Component {
         metric: PropTypes.object.isRequired,
         query: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
+        setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
 
@@ -65,7 +66,7 @@ export default class MetricPane extends Component {
         let useForCurrentQuestion = [];
         let usefulQuestions = [];
 
-        usefulQuestions.push(<QueryButton icon="illustration-icon-scalar" text={"See " + metricName} onClick={this.setQueryMetric} />);
+        usefulQuestions.push(<QueryButton icon="number" text={"See " + metricName} onClick={this.setQueryMetric} />);
 
         return (
             <DetailPane

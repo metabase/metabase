@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Modal from "metabase/components/Modal.jsx";
 
@@ -7,7 +7,7 @@ export default class SavedQuestionIntroModal extends Component {
 
     render() {
         return (
-            <Modal className="Modal Modal--small" isOpen={this.props.isShowingNewbModal}>
+            <Modal small isOpen={this.props.isShowingNewbModal}>
                 <div className="Modal-content Modal-content--small NewForm">
                     <div className="Modal-header Form-header">
                         <h2 className="pb2 text-dark">It's okay to play around with saved questions</h2>

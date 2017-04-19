@@ -1,8 +1,10 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./Labels.css";
 import color from 'color'
+import * as Urls from "metabase/lib/urls";
 
 import EmojiIcon from "metabase/components/EmojiIcon.jsx"
 
@@ -33,7 +35,7 @@ class Label extends Component {
     const { hovered } = this.state
     return (
       <Link
-        to={"/questions/label/"+slug}
+        to={Urls.label({ slug })}
         onMouseEnter={() => this.setState({ hovered: true })}
         onMouseLeave={() => this.setState({ hovered: false })}
       >
@@ -46,8 +48,8 @@ class Label extends Component {
               <span
                 className={S.label}
                 style={{
-                  backgroundColor: hovered ? color(icon).darken(0.1).hexString() : icon,
-                  boxShadow: `1px 1px 0 ${color(icon).darken(hovered ? 0.1 : 0.2).hexString()}`,
+                  backgroundColor: hovered ? color(icon).darken(0.1).hex() : icon,
+                  boxShadow: `1px 1px 0 ${color(icon).darken(hovered ? 0.1 : 0.2).hex()}`,
                   transition: 'background .3s ease-in-out'
                 }}
               >

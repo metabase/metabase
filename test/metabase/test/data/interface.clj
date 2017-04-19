@@ -30,8 +30,9 @@
 
 (defn escaped-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."
-  ^String [^DatabaseDefinition database-definition]
-  (str/replace (:database-name database-definition) #"\s+" "_"))
+  ^String [^DatabaseDefinition {:keys [database-name]}]
+  {:pre [(string? database-name)]}
+  (str/replace database-name #"\s+" "_"))
 
 (defn db-qualified-table-name
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.

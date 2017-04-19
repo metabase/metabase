@@ -1,8 +1,9 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [http-client :as http]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
+            (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
@@ -26,14 +27,15 @@
 
 (defn- pulse-details [pulse]
   (tu/match-$ pulse
-    {:id           $
-     :name         $
-     :created_at   $
-     :updated_at   $
-     :creator_id   $
-     :creator      (user-details (db/select-one 'User :id (:creator_id pulse)))
-     :cards        (map pulse-card-details (:cards pulse))
-     :channels     (map pulse-channel-details (:channels pulse))}))
+    {:id            $
+     :name          $
+     :created_at    $
+     :updated_at    $
+     :creator_id    $
+     :creator       (user-details (db/select-one 'User :id (:creator_id pulse)))
+     :cards         (map pulse-card-details (:cards pulse))
+     :channels      (map pulse-channel-details (:channels pulse))
+     :skip_if_empty $}))
 
 (defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
@@ -84,29 +86,31 @@
   (for [channel channels]
     (dissoc channel :id :pulse_id :created_at :updated_at)))
 
-(tu/expect-with-temp [Card [card1]
+(tt/expect-with-temp [Card [card1]
                       Card [card2]]
-  {:name         "A Pulse"
-   :creator_id   (user->id :rasta)
-   :creator      (user-details (fetch-user :rasta))
-   :created_at   true
-   :updated_at   true
-   :cards        (mapv pulse-card-details [card1 card2])
-   :channels     [{:enabled        true
-                   :channel_type   "email"
-                   :schedule_type  "daily"
-                   :schedule_hour  12
-                   :schedule_day   nil
-                   :schedule_frame nil
-                   :recipients     []}]}
-  (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name     "A Pulse"
-                                                                :cards    [{:id (:id card1)} {:id (:id card2)}]
-                                                                :channels [{:enabled       true
-                                                                            :channel_type  "email"
-                                                                            :schedule_type "daily"
-                                                                            :schedule_hour 12
-                                                                            :schedule_day  nil
-                                                                            :recipients    []}]}))
+  {:name          "A Pulse"
+   :creator_id    (user->id :rasta)
+   :creator       (user-details (fetch-user :rasta))
+   :created_at    true
+   :updated_at    true
+   :cards         (mapv pulse-card-details [card1 card2])
+   :channels      [{:enabled        true
+                    :channel_type   "email"
+                    :schedule_type  "daily"
+                    :schedule_hour  12
+                    :schedule_day   nil
+                    :schedule_frame nil
+                    :recipients     []}]
+   :skip_if_empty false}
+  (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
+                                                                :cards         [{:id (:id card1)} {:id (:id card2)}]
+                                                                :channels      [{:enabled       true
+                                                                                 :channel_type  "email"
+                                                                                 :schedule_type "daily"
+                                                                                 :schedule_hour 12
+                                                                                 :schedule_day  nil
+                                                                                 :recipients    []}]
+                                                                :skip_if_empty false}))
       (update :channels remove-extra-channels-fields)))
 
 
@@ -140,36 +144,38 @@
                                              :cards    [{:id 100} {:id 200}]
                                              :channels ["abc"]}))
 
-(tu/expect-with-temp [Pulse [pulse]
+(tt/expect-with-temp [Pulse [pulse]
                       Card  [card]]
-  {:name         "Updated Pulse"
-   :creator_id   (user->id :rasta)
-   :creator      (user-details (fetch-user :rasta))
-   :created_at   true
-   :updated_at   true
-   :cards        [(pulse-card-details card)]
-   :channels     [{:enabled       true
-                   :channel_type  "slack"
-                   :schedule_type "hourly"
-                   :schedule_hour nil
-                   :schedule_day  nil
-                   :schedule_frame nil
-                   :details       {:channels "#general"}
-                   :recipients    []}]}
-  (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse)) {:name     "Updated Pulse"
-                                                                                       :cards    [{:id (:id card)}]
-                                                                                       :channels [{:enabled       true
-                                                                                                   :channel_type  "slack"
-                                                                                                   :schedule_type "hourly"
-                                                                                                   :schedule_hour 12
-                                                                                                   :schedule_day  "mon"
-                                                                                                   :recipients    []
-                                                                                                   :details       {:channels "#general"}}]}))
+  {:name          "Updated Pulse"
+   :creator_id    (user->id :rasta)
+   :creator       (user-details (fetch-user :rasta))
+   :created_at    true
+   :updated_at    true
+   :cards         [(pulse-card-details card)]
+   :channels      [{:enabled       true
+                    :channel_type  "slack"
+                    :schedule_type "hourly"
+                    :schedule_hour nil
+                    :schedule_day  nil
+                    :schedule_frame nil
+                    :details       {:channels "#general"}
+                    :recipients    []}]
+   :skip_if_empty false}
+  (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse)) {:name          "Updated Pulse"
+                                                                                       :cards         [{:id (:id card)}]
+                                                                                       :channels      [{:enabled       true
+                                                                                                        :channel_type  "slack"
+                                                                                                        :schedule_type "hourly"
+                                                                                                        :schedule_hour 12
+                                                                                                        :schedule_day  "mon"
+                                                                                                        :recipients    []
+                                                                                                        :details       {:channels "#general"}}]
+                                                                                       :skip_if_empty false}))
       (update :channels remove-extra-channels-fields)))
 
 
 ;; ## DELETE /api/pulse/:id
-(tu/expect-with-temp [Pulse [pulse]]
+(tt/expect-with-temp [Pulse [pulse]]
   nil
   (do
     ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
@@ -177,16 +183,16 @@
 
 
 ;; ## GET /api/pulse -- should come back in alphabetical order
-(tu/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
+(tt/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
                       Pulse [pulse2 {:name "GHIJKL"}]]
   [(assoc (pulse-details pulse1) :read_only false)
    (assoc (pulse-details pulse2) :read_only false)]
-  (do (db/cascade-delete! Pulse :id [:not-in #{(:id pulse1)
+  (do (db/delete! Pulse :id [:not-in #{(:id pulse1)
                                                (:id pulse2)}]) ; delete anything else in DB just to be sure; this step may not be neccesary any more
       ((user->client :rasta) :get 200 "pulse")))
 
 
 ;; ## GET /api/pulse/:id
-(tu/expect-with-temp [Pulse [pulse]]
+(tt/expect-with-temp [Pulse [pulse]]
   (pulse-details pulse)
   ((user->client :rasta) :get 200 (str "pulse/" (:id pulse))))

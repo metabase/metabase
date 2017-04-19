@@ -2,7 +2,8 @@
   "A test suite around permissions. Nice!"
   (:require [clojure.string :as s]
             [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
@@ -23,8 +24,7 @@
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [clj-time.core :as t]))
+            [metabase.util :as u]))
 
 ;; 3 users:
 ;; crowberto, member of Admin, All Users
@@ -35,11 +35,11 @@
 ;;; ------------------------------------------------------------ Ops Group ------------------------------------------------------------
 
 ;; ops group is a group with only one member: lucky
-(def ^:private ^:dynamic *ops-group*)
+(def ^:dynamic *ops-group*)
 
 (defn- with-ops-group [f]
   (fn []
-    (tu/with-temp* [PermissionsGroup [group {:name "Operations"}]]
+    (tt/with-temp* [PermissionsGroup [group {:name "Operations"}]]
       ;; add lucky to Ops group
       (db/insert! PermissionsGroupMembership
         :group_id (u/get-id group)
@@ -51,14 +51,14 @@
 
 ;;; ------------------------------------------------------------ DBs, Tables, & Fields ------------------------------------------------------------
 
-(def ^:private db-details
+(def db-details
   (delay (db/select-one [Database :details :engine] :id (data/id))))
 
 (defn- test-db [db-name]
   (assoc (select-keys @db-details [:details :engine])
     :name db-name))
 
-(defn- table [db table-name]
+(defn table [db table-name]
   (db/select-one Table
     :%lower.name (s/lower-case (name table-name))
     :db_id       (u/get-id db)))
@@ -73,7 +73,7 @@
 
 (defn- with-db [db-name f]
   (fn []
-    (tu/with-temp Database [db (test-db db-name)]
+    (tt/with-temp Database [db (test-db db-name)]
       ;; syncing is slow as f**k so just manually insert the Tables
       (doseq [table-name ["venues" "users" "checkins"]]
         (db/insert! Table :db_id (u/get-id db), :active true, :name table-name))
@@ -84,8 +84,8 @@
       ;; ok !
       (f db))))
 
-(def ^:private ^:dynamic *db1*)
-(def ^:private ^:dynamic *db2*)
+(def ^:dynamic *db1*)
+(def ^:dynamic *db2*)
 
 (defn- all-db-ids []
   #{(u/get-id *db1*)
@@ -133,14 +133,14 @@
                      :query    (format "SELECT count(*) FROM \"%s\";" (:name table))}}))
 
 
-(def ^:private ^:dynamic *card:db1-count-of-venues*)
-(def ^:private ^:dynamic *card:db1-count-of-users*)
-(def ^:private ^:dynamic *card:db1-count-of-checkins*)
-(def ^:private ^:dynamic *card:db1-sql-count-of-users*)
-(def ^:private ^:dynamic *card:db2-count-of-venues*)
-(def ^:private ^:dynamic *card:db2-count-of-users*)
-(def ^:private ^:dynamic *card:db2-count-of-checkins*)
-(def ^:private ^:dynamic *card:db2-sql-count-of-users*)
+(def ^:dynamic *card:db1-count-of-venues*)
+(def ^:dynamic *card:db1-count-of-users*)
+(def ^:dynamic *card:db1-count-of-checkins*)
+(def ^:dynamic *card:db1-sql-count-of-users*)
+(def ^:dynamic *card:db2-count-of-venues*)    ; all-users (rasta) has no access to DB2
+(def ^:dynamic *card:db2-count-of-users*)     ; ops (lucky) has access to venues and reading SQL (deprecated)
+(def ^:dynamic *card:db2-count-of-checkins*)
+(def ^:dynamic *card:db2-sql-count-of-users*)
 
 (defn- all-cards []
   #{*card:db1-count-of-venues*
@@ -157,7 +157,7 @@
 
 (defn- with-cards [f]
   (fn []
-    (tu/with-temp* [Card [db1-count-of-venues    (count-card     *db1* :venues   "DB 1 Count of Venues")]
+    (tt/with-temp* [Card [db1-count-of-venues    (count-card     *db1* :venues   "DB 1 Count of Venues")]
                     Card [db1-count-of-users     (count-card     *db1* :users    "DB 1 Count of Users")]
                     Card [db1-count-of-checkins  (count-card     *db1* :checkins "DB 1 Count of Checkins")]
                     Card [db1-sql-count-of-users (sql-count-card *db1* :venues   "DB 1 SQL Count of Users")]
@@ -178,9 +178,9 @@
 
 ;;; ------------------------------------------------------------ Dashboards ------------------------------------------------------------
 
-(def ^:private ^:dynamic *dash:db1-all*)
-(def ^:private ^:dynamic *dash:db2-all*)
-(def ^:private ^:dynamic *dash:db2-public*)
+(def ^:dynamic *dash:db1-all*)
+(def ^:dynamic *dash:db2-all*)
+(def ^:dynamic *dash:db2-public*)
 
 (defn- all-dashboards []
   #{*dash:db1-all*
@@ -198,7 +198,7 @@
 
 (defn- with-dashboards [f]
   (fn []
-    (tu/with-temp* [Dashboard [db1-all    {:name "All DB 1"}]
+    (tt/with-temp* [Dashboard [db1-all    {:name "All DB 1"}]
                     Dashboard [db2-all    {:name "All DB 2"}]
                     Dashboard [db2-public {:name "Public DB 2"}]]
       (add-cards-to-dashboard! db1-all
@@ -221,11 +221,11 @@
 
 ;;; ------------------------------------------------------------ Pulses ------------------------------------------------------------
 
-(def ^:private ^:dynamic *pulse:all*)
-(def ^:private ^:dynamic *pulse:db1-all*)
-(def ^:private ^:dynamic *pulse:db2-all*)
-(def ^:private ^:dynamic *pulse:db2-public*)
-(def ^:private ^:dynamic *pulse:db2-restricted*)
+(def ^:dynamic *pulse:all*)
+(def ^:dynamic *pulse:db1-all*)
+(def ^:dynamic *pulse:db2-all*)
+(def ^:dynamic *pulse:db2-public*)
+(def ^:dynamic *pulse:db2-restricted*)
 
 (defn- all-pulse-ids []
   #{(u/get-id *pulse:all*)
@@ -254,7 +254,7 @@
 
 (defn- with-pulses [f]
   (fn []
-    (tu/with-temp* [Pulse [all            {:name "All of Everything"}]
+    (tt/with-temp* [Pulse [all            {:name "All of Everything"}]
                     Pulse [db1-all        {:name "All DB 1"}]
                     Pulse [db2-all        {:name "All DB 2"}]
                     Pulse [db2-public     {:name "Public DB 2"}]
@@ -300,9 +300,9 @@
 
 ;;; ------------------------------------------------------------ Metrics ------------------------------------------------------------
 
-(def ^:private ^:dynamic *metric:db1-venues-count*)
-(def ^:private ^:dynamic *metric:db2-venues-count*)
-(def ^:private ^:dynamic *metric:db2-users-count*)
+(def ^:dynamic *metric:db1-venues-count*)
+(def ^:dynamic *metric:db2-venues-count*)
+(def ^:dynamic *metric:db2-users-count*)
 
 (defn- all-metric-ids []
   #{(u/get-id *metric:db1-venues-count*)
@@ -319,7 +319,7 @@
 
 (defn- with-metrics [f]
   (fn []
-    (tu/with-temp* [Metric [db1-venues-count (count-metric "DB 1 Count of Venues" (table *db1* :venues))]
+    (tt/with-temp* [Metric [db1-venues-count (count-metric "DB 1 Count of Venues" (table *db1* :venues))]
                     Metric [db2-venues-count (count-metric "DB 2 Count of Venues" (table *db2* :venues))]
                     Metric [db2-users-count  (count-metric "DB 2 Count of Users"  (table *db2* :users))]]
       (binding [*metric:db1-venues-count* db1-venues-count
@@ -329,9 +329,9 @@
 
 ;;; ------------------------------------------------------------ Segments ------------------------------------------------------------
 
-(def ^:private ^:dynamic *segment:db1-expensive-venues*)
-(def ^:private ^:dynamic *segment:db2-expensive-venues*)
-(def ^:private ^:dynamic *segment:db2-todays-users*)
+(def ^:dynamic *segment:db1-expensive-venues*)
+(def ^:dynamic *segment:db2-expensive-venues*)
+(def ^:dynamic *segment:db2-todays-users*)
 
 (defn- all-segment-ids []
   #{(u/get-id *segment:db1-expensive-venues*)
@@ -358,7 +358,7 @@
 
 (defn- with-segments [f]
   (fn []
-    (tu/with-temp* [Segment [db1-expensive-venues (expensive-venues-segment "DB 1 Expensive Venues" (table *db1* :venues))]
+    (tt/with-temp* [Segment [db1-expensive-venues (expensive-venues-segment "DB 1 Expensive Venues" (table *db1* :venues))]
                     Segment [db2-expensive-venues (expensive-venues-segment "DB 2 Expensive Venues" (table *db2* :venues))]
                     Segment [db2-todays-users     (todays-users-segment     "DB 2 Today's Users"    (table *db2* :users))]]
       (binding [*segment:db1-expensive-venues* db1-expensive-venues
@@ -369,7 +369,7 @@
 ;;; ------------------------------------------------------------ with everything! ------------------------------------------------------------
 
 
-(defn- -do-with-test-data [f]
+(defn -do-with-test-data [f]
   (((comp with-ops-group
           with-db-2
           with-db-1
@@ -379,11 +379,11 @@
           with-metrics
           with-segments) f)))
 
-(defmacro ^:private with-test-data {:style/indent 0} [& body]
+(defmacro with-test-data {:style/indent 0} [& body]
   `(-do-with-test-data (fn []
                          ~@body)))
 
-(defmacro ^:private expect-with-test-data {:style/indent 0} [expected actual]
+(defmacro expect-with-test-data {:style/indent 0} [expected actual]
   `(expect
      ~expected
      (with-test-data
@@ -470,7 +470,7 @@
 ;; Only Admin should be able to ask SQL questions against DB 2. Error message is slightly different for Rasta & Lucky because Rasta has no permissions whatsoever for DB 2 while Lucky has partial perms
 (expect-with-test-data [[100]] (sql-query :crowberto *db2*))
 (expect-with-test-data "You don't have permissions to do that." (sql-query :rasta *db2*))
-(expect-with-test-data "You do not have permissions to run new native queries against database 'DB Two'." (sql-query :lucky *db2*))
+(expect-with-test-data #"You do not have read permissions for /db/\d+/native/\." (sql-query :lucky *db2*))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -679,9 +679,9 @@
 
 ;; admin should see all 3
 (expect-with-test-data
-  ["DB 1 Count of Venues"
-   "DB 2 Count of Venues"
-   "DB 2 Count of Users"]
+ ["DB 1 Count of Venues"
+  "DB 2 Count of Users"
+  "DB 2 Count of Venues"]
   (GET-metric :crowberto))
 
 ;; regular should only see metric for DB 1

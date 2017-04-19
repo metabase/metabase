@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 export default ComposedComponent => class extends Component {
@@ -32,6 +32,6 @@ export default ComposedComponent => class extends Component {
     }
 
     render() {
-        return <span />;
+        return null;
     }
 };

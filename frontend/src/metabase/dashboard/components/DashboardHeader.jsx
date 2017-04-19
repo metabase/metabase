@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
@@ -11,9 +12,12 @@ import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
 import ParametersPopover from "./parameters/ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
+
+import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 
@@ -30,6 +34,7 @@ export default class DashboardHeader extends Component {
     static propTypes = {
         dashboard: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
+        isEditable: PropTypes.bool.isRequired,
         isEditing: PropTypes.bool.isRequired,
         isFullscreen: PropTypes.bool.isRequired,
         isNightMode: PropTypes.bool.isRequired,
@@ -43,7 +48,7 @@ export default class DashboardHeader extends Component {
         fetchDashboard: PropTypes.func.isRequired,
         fetchRevisions: PropTypes.func.isRequired,
         revertToRevision: PropTypes.func.isRequired,
-        saveDashboard: PropTypes.func.isRequired,
+        saveDashboardAndCards: PropTypes.func.isRequired,
         setDashboardAttribute: PropTypes.func.isRequired,
         onEditingChange: PropTypes.func.isRequired,
         setRefreshPeriod: PropTypes.func.isRequired,
@@ -65,7 +70,7 @@ export default class DashboardHeader extends Component {
     }
 
     async onSave() {
-        await this.props.saveDashboard(this.props.dashboard.id);
+        await this.props.saveDashboardAndCards(this.props.dashboard.id);
         this.onDoneEditing();
     }
 
@@ -76,7 +81,7 @@ export default class DashboardHeader extends Component {
 
     async onDelete() {
         await this.props.deleteDashboard(this.props.dashboard.id);
-        this.props.onChangeLocation("/");
+        this.props.onChangeLocation("/dashboard");
     }
 
     // 1. fetch revisions
@@ -125,22 +130,24 @@ export default class DashboardHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { dashboard, parameters, isEditing, isFullscreen, isNightMode } = this.props;
+        const { dashboard, parameters, isEditing, isFullscreen, isNightMode, isEditable, isAdmin } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
-        const canEdit = !!dashboard;
+        const canEdit = isEditable && !!dashboard;
+
+        const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
+        const isEmbeddingEnabled = MetabaseSettings.get("embedding");
 
         const buttons = [];
 
         if (isFullscreen && parameters) {
-            buttons.push(...parameters);
+            buttons.push(parameters);
         }
 
         if (isEditing) {
-
             // Parameters
             buttons.push(
                 <span>
-                    <Tooltip tooltip="Add a Filter">
+                    <Tooltip tooltip="Add a filter">
                         <a
                           key="parameters"
                           className={cx("text-brand-hover", { "text-brand": this.state.modal == "parameters" })}
@@ -167,7 +174,7 @@ export default class DashboardHeader extends Component {
                     key="history"
                     ref="dashboardHistory"
                     triggerElement={
-                        <Tooltip tooltip="Revision History">
+                        <Tooltip tooltip="Revision history">
                             <span data-metabase-event={"Dashboard;Revisions"}>
                                 <Icon className="text-brand-hover" name="history" size={16} />
                             </span>
@@ -189,7 +196,7 @@ export default class DashboardHeader extends Component {
 
         if (!isFullscreen && !isEditing && canEdit) {
             buttons.push(
-                <Tooltip tooltip="Edit Dashboard">
+                <Tooltip tooltip="Edit dashboard">
                     <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
                         <Icon name="pencil" size={16} />
                     </a>
@@ -200,10 +207,11 @@ export default class DashboardHeader extends Component {
         if (!isFullscreen && canEdit) {
             buttons.push(
                 <ModalWithTrigger
+                    full
                     key="add"
                     ref="addQuestionModal"
                     triggerElement={
-                        <Tooltip tooltip="Add Card">
+                        <Tooltip tooltip="Add a question">
                             <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
                                 <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
                             </span>
@@ -220,6 +228,15 @@ export default class DashboardHeader extends Component {
                     />
                 </ModalWithTrigger>
             );
+        }
+
+        if (!isFullscreen && (
+            (isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
+            (isEmbeddingEnabled && isAdmin)
+        )) {
+            buttons.push(
+                <DashboardEmbedWidget dashboard={dashboard} />
+            )
         }
 
         if (!isEditing && !isEmpty) {
@@ -268,7 +285,7 @@ export default class DashboardHeader extends Component {
                 setItemAttributeFn={this.props.setDashboardAttribute}
                 headerModalMessage={this.props.isEditingParameter ?
                     "Select the field that should be filtered for each card" : null}
-                onHeaderModalDone={() => this.props.setEditingParameterId(null)}
+                onHeaderModalDone={() => this.props.setEditingParameter(null)}
             >
             </Header>
         );

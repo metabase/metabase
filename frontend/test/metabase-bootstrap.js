@@ -1,4 +1,5 @@
-import "metabase/vendor";
+import 'babel-polyfill';
+import 'number-to-locale-string';
 import "metabase/css/index.css";
 
 window.MetabaseBootstrap = {

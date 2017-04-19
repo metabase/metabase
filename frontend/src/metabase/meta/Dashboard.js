@@ -6,13 +6,14 @@ import type Field from "./metadata/Field";
 import type { FieldId } from "./types/Field";
 import type { TemplateTag } from "./types/Query";
 import type { Card } from "./types/Card";
-import type { ParameterOption, Parameter, ParameterMappingUIOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
+import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
 
 import { getTemplateTags } from "./Card";
 
 import { slugify, stripId } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { TYPE, isa } from "metabase/lib/types";
+import { mbqlEq } from "metabase/lib/query/util";
 
 import _ from "underscore";
 
@@ -41,6 +42,12 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
         type: "date/relative",
         name: "Relative Date",
         description: "Like \"the last 7 days\" or \"this month\""
+    },
+    {
+        type: "date/all-options",
+        name: "Date Filter",
+        menuName: "All Options",
+        description: "Contains all of the above"
     },
     {
         type: "location/city",
@@ -140,7 +147,7 @@ export function getCardDimensions(metadata: Metadata, card: Card, filter: FieldF
     } else if (card.dataset_query.type === "native") {
         let dimensions = [];
         for (const tag of getTemplateTags(card)) {
-            if (tag.type === "dimension" && Array.isArray(tag.dimension) && tag.dimension[0] === "field-id") {
+            if (tag.type === "dimension" && Array.isArray(tag.dimension) && mbqlEq(tag.dimension[0], "field-id")) {
                 const field = metadata.field(tag.dimension[1]);
                 if (field && filter(field)) {
                     let fieldDimension = getFieldDimension(field);
@@ -154,7 +161,7 @@ export function getCardDimensions(metadata: Metadata, card: Card, filter: FieldF
 }
 
 function getDimensionTargetFieldId(target: DimensionTarget): ?FieldId {
-    if (Array.isArray(target) && target[0] === "template-tag") {
+    if (Array.isArray(target) && mbqlEq(target[0], "template-tag")) {
         return null;
     } else {
         return Query.getFieldTargetId(target);
@@ -202,7 +209,7 @@ export function getCardVariables(metadata: Metadata, card: Card, filter: Templat
 export function getParameterMappingTargetField(metadata: Metadata, card: Card, target: ParameterMappingTarget): ?Field {
     if (target[0] === "dimension") {
         let dimension = target[1];
-        if (Array.isArray(dimension) && dimension[0] === "template-tag") {
+        if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
             if (card.dataset_query.type === "native") {
                 let templateTag = card.dataset_query.native.template_tags[String(dimension[1])];
                 if (templateTag && templateTag.type === "dimension") {
@@ -216,20 +223,28 @@ export function getParameterMappingTargetField(metadata: Metadata, card: Card, t
     return null;
 }
 
-function fieldFilterForParameter(parameter: Parameter): FieldFilter {
-    const [type] = parameter.type.split("/");
+function fieldFilterForParameter(parameter: Parameter) {
+    return fieldFilterForParameterType(parameter.type);
+}
+
+export function fieldFilterForParameterType(parameterType: ParameterType): FieldFilter {
+    const [type] = parameterType.split("/");
     switch (type) {
         case "date":        return (field: Field) => field.isDate();
         case "id":          return (field: Field) => field.isID();
         case "category":    return (field: Field) => field.isCategory();
     }
-    switch (parameter.type) {
+    switch (parameterType) {
         case "location/city":     return (field: Field) => isa(field.special_type, TYPE.City);
         case "location/state":    return (field: Field) => isa(field.special_type, TYPE.State);
         case "location/zip_code": return (field: Field) => isa(field.special_type, TYPE.ZipCode);
         case "location/country":  return (field: Field) => isa(field.special_type, TYPE.Country);
     }
     return (field: Field) => false;
+}
+
+export function parameterOptionsForField(field: Field): ParameterOption[] {
+    return PARAMETER_OPTIONS.filter(option => fieldFilterForParameterType(option.type)(field));
 }
 
 function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
@@ -291,6 +306,7 @@ export function createParameter(option: ParameterOption, parameters: Array<Param
     }
     let parameter = {
        name: "",
+       slug: "",
        id: Math.floor(Math.random()*Math.pow(2,32)).toString(16),
        type: option.type,
     };
@@ -298,10 +314,11 @@ export function createParameter(option: ParameterOption, parameters: Array<Param
 }
 
 export function setParameterName(parameter: Parameter, name: string): Parameter {
+    let slug = slugify(name);
     return {
         ...parameter,
         name: name,
-        slug: slugify(name)
+        slug: slug
     };
 }
 

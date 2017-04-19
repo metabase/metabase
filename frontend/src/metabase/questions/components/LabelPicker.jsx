@@ -1,9 +1,13 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
+import { Link } from "react-router";
+
 import S from "./LabelPicker.css";
 
 import LabelIcon from "metabase/components/LabelIcon.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import cx from "classnames";
 
@@ -44,6 +48,12 @@ const LabelPicker = ({ labels, count, item, setLabeled }) =>
                 )
             }) }
         </ul>
+        <div className={S.footer}>
+            <Link className="link" to="/labels">Add and edit labels</Link>
+            <Tooltip tooltip="In an upcoming release, Labels will be removed in favor of Collections.">
+                <Icon name="warning2" className="text-error float-right" />
+            </Tooltip>
+        </div>
     </div>
 
 LabelPicker.propTypes = {

@@ -1,7 +1,7 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [toucan.db :as db]
+            [metabase.driver :as driver]
             (metabase.driver [generic-sql :refer :all]
                              h2)
             (metabase.models [field :refer [Field]]
@@ -19,7 +19,7 @@
 (def ^:private generic-sql-engines
   (delay (set (for [engine datasets/all-valid-engines
                     :let   [driver (driver/engine->driver engine)]
-                    :when  (not= engine :bigquery)                                       ; bigquery doesn't use the generic sql implementations of things like `field-avg-length`
+                    :when  (not (contains? #{:bigquery :presto} engine))                 ; bigquery and presto don't use the generic sql implementations of things like `field-avg-length`
                     :when  (extends? ISQLDriver (class driver))]
                 (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
                     engine)))))
@@ -75,7 +75,7 @@
                {:id (id :venues :id)}
                {:id (id :venues :latitude)}
                {:id (id :venues :longitude)}
-               {:id (id :venues :name), :values nil}
+               {:id (id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (id :venues :name))}
                {:id (id :venues :price), :values [1 2 3 4]}]}
   (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
 

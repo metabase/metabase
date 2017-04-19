@@ -1,14 +1,15 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
   (:require [expectations :refer :all]
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
-                             [hydrate :refer [hydrate]]
                              [metric :refer [Metric], :as metric]
                              [revision :refer [Revision]]
                              [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase.test.data :refer :all, :as data]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]))
 
@@ -84,7 +85,7 @@
    :is_active               true
    :definition              {:database 21
                              :query    {:filter ["abc"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]]
     (metric-response ((user->client :crowberto) :post 200 "metric" {:name                    "A Metric"
                                                                     :description             "I did it!"
@@ -139,7 +140,7 @@
    :is_active               true
    :definition              {:database 2
                              :query    {:filter ["not" "the toucans you're looking for"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]} {:table_id table-id}]]
     (metric-response ((user->client :crowberto) :put 200 (format "metric/%d" id) {:id                      id
@@ -183,7 +184,7 @@
     :updated_at              true
     :is_active               false
     :definition              {}}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:table_id table-id}]]
     [((user->client :crowberto) :delete 200 (format "metric/%d" id) :revision_message "carryon")
@@ -210,7 +211,7 @@
    :updated_at              true
    :is_active               true
    :definition              {}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:creator_id  (user->id :crowberto)
                                             :table_id    table-id}]]
@@ -240,7 +241,7 @@
     :diff         {:name       {:after "b"}
                    :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:creator_id              (user->id :crowberto)
                                             :table_id                table-id
@@ -314,7 +315,7 @@
                     :definition  {:after {:database 123
                                           :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
      :description  nil}]]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{:keys [id]}      {:creator_id              (user->id :crowberto)
                                                :table_id                table-id
@@ -368,9 +369,10 @@
 
 ;;; GET /api/metric/
 
-(tu/expect-with-temp [Metric [metric-1]
-                      Metric [metric-2]
+(tt/expect-with-temp [Metric [metric-1 {:name "Metric A"}]
+                      Metric [metric-2 {:name "Metric B"}]
                       Metric [_        {:is_active false}]] ; inactive metrics shouldn't show up
-  (tu/mappify (hydrate [metric-1
-                        metric-2] :creator))
+  (tu/mappify (hydrate [(assoc metric-1 :database_id (data/id))
+                        (assoc metric-2 :database_id (data/id))]
+                       :creator))
   ((user->client :rasta) :get 200 "metric/"))

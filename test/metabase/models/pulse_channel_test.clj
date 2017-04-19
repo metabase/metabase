@@ -1,8 +1,9 @@
 (ns metabase.models.pulse-channel-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            (metabase.models [hydrate :refer :all]
-                             [pulse :refer :all]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
+            [toucan.util.test :as tt]
+            (metabase.models [pulse :refer :all]
                              [pulse-channel :refer :all]
                              [pulse-channel-recipient :refer :all])
             [metabase.test.data :refer :all]
@@ -129,7 +130,7 @@
    :recipients    [(user-details :crowberto)
                    {:email "foo@bar.com"}
                    (user-details :rasta)]}
-  (tu/with-temp Pulse [{:keys [id]}]
+  (tt/with-temp Pulse [{:keys [id]}]
     (create-channel-then-select! {:pulse_id      id
                                   :enabled       true
                                   :channel_type  :email
@@ -146,7 +147,7 @@
    :schedule_frame nil
    :recipients    []
    :details       {:something "random"}}
-  (tu/with-temp Pulse [{:keys [id]}]
+  (tt/with-temp Pulse [{:keys [id]}]
     (create-channel-then-select! {:pulse_id      id
                                   :enabled       true
                                   :channel_type  :slack
@@ -165,7 +166,7 @@
    :schedule_day  nil
    :schedule_frame nil
    :recipients    [{:email "foo@bar.com"}]}
-  (tu/with-temp* [Pulse        [{pulse-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id, :as channel} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id            channel-id
                                   :enabled       true
@@ -183,7 +184,7 @@
    :schedule_day  nil
    :schedule_frame :mid
    :recipients    [{:email "foo@bar.com"} (user-details :rasta)]}
-  (tu/with-temp* [Pulse        [{pulse-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id :as channel} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id             channel-id
                                   :enabled        true
@@ -203,7 +204,7 @@
    :schedule_day  "mon"
    :schedule_frame nil
    :recipients    [{:email "foo@bar.com"} (user-details :rasta)]}
-  (tu/with-temp* [Pulse        [{pulse-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id            channel-id
                                   :enabled       true
@@ -222,7 +223,7 @@
    :schedule_day  nil
    :schedule_frame nil
    :recipients    [(user-details :crowberto)]}
-  (tu/with-temp* [Pulse        [{pulse-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]]
     (update-recipients! channel-id [(user->id :rasta)])
     (update-channel-then-select! {:id            channel-id
@@ -243,7 +244,7 @@
    :schedule_frame nil
    :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
    :details       {:channel "#metabaserocks"}}
-  (tu/with-temp* [Pulse        [{pulse-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (update-channel-then-select! {:id            channel-id
                                   :enabled       true
@@ -261,7 +262,7 @@
    #{(user->id :crowberto)}
    #{(user->id :crowberto) (user->id :rasta)}
    #{(user->id :rasta) (user->id :trashbird)}]
-  (tu/with-temp* [Pulse        [{pulse-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (let [upd-recipients! (fn [recipients]
                             (update-recipients! channel-id recipients)
@@ -282,7 +283,7 @@
     {:schedule_type :hourly, :channel_type :slack}]
    [{:schedule_type :daily,  :channel_type :email}
     {:schedule_type :hourly, :channel_type :slack}]]
-  (tu/with-temp* [Pulse        [{pulse-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [_ {:pulse_id pulse-id}]
                   PulseChannel [_ {:pulse_id pulse-id, :channel_type :slack, :schedule_type :hourly}]
                   PulseChannel [_ {:pulse_id pulse-id, :channel_type :email, :schedule_type :hourly, :enabled false}]]
@@ -303,7 +304,7 @@
     {:schedule_type :hourly, :channel_type :slack}]
    [{:schedule_type :hourly, :channel_type :slack}
     {:schedule_type :weekly, :channel_type :email}]]
-  (tu/with-temp* [Pulse        [{pulse-1-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-1-id :id}]
                   Pulse        [{pulse-2-id :id}]
                   PulseChannel [_ {:pulse_id pulse-1-id, :enabled true, :channel_type :email, :schedule_type :daily}]
                   PulseChannel [_ {:pulse_id pulse-1-id, :enabled true, :channel_type :slack, :schedule_type :hourly}]
@@ -326,7 +327,7 @@
    []
    [{:schedule_type :monthly, :channel_type :slack}]
    [{:schedule_type :monthly, :channel_type :email}]]
-  (tu/with-temp* [Pulse        [{pulse-1-id :id}]
+  (tt/with-temp* [Pulse        [{pulse-1-id :id}]
                   Pulse        [{pulse-2-id :id}]
                   PulseChannel [_ {:pulse_id pulse-1-id, :channel_type :email, :schedule_type :monthly, :schedule_hour 12, :schedule_frame :first}]
                   PulseChannel [_ {:pulse_id pulse-1-id, :channel_type :slack, :schedule_type :monthly, :schedule_hour 12, :schedule_day "mon", :schedule_frame :first}]

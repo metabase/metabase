@@ -1,7 +1,7 @@
 (ns metabase.events.sync-database
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.events :as events]
             [metabase.models.database :refer [Database]]
             [metabase.sync-database :as sync-database]))

@@ -1,7 +1,7 @@
 (ns metabase.models.setting-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.setting :refer [defsetting Setting], :as setting]
             (metabase.test [data :refer :all]
                            [util :refer :all])))
@@ -238,3 +238,23 @@
   {:a 100, :b 200}
   (do (test-json-setting {:a 100, :b 200})
       (test-json-setting)))
+
+
+;;; make sure that if for some reason the cache gets out of sync it will reset so we can still set new settings values (#4178)
+
+(setting/defsetting ^:private toucan-name
+  "Name for the Metabase Toucan mascot.")
+
+(expect
+  "Banana Beak"
+  (do
+    ;; clear out any existing values of `toucan-name`
+    (db/simple-delete! setting/Setting {:key "toucan-name"})
+    ;; restore the cache
+    ((resolve 'metabase.models.setting/restore-cache-if-needed!))
+    ;; now set a value for the `toucan-name` setting the wrong way
+    (db/insert! setting/Setting {:key "toucan-name", :value "Rasta"})
+    ;; ok, now try to set the Setting the correct way
+    (toucan-name "Banana Beak")
+    ;; ok, make sure the setting was set
+    (toucan-name)))

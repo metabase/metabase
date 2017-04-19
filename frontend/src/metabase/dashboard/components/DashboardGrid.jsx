@@ -1,5 +1,5 @@
-import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import GridLayout from "./grid/GridLayout.jsx";
 import DashCard from "./DashCard.jsx";
@@ -59,11 +59,12 @@ export default class DashboardGrid extends Component {
     };
 
     static defaultProps = {
-        width: 0
+        width: 0,
+        isEditing: false,
+        isEditingParameter: false
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        console.log("shouldComponentUpdate", !_.isEqual(this.props, nextProps), !_.isEqual(this.state, nextState));
         return !(_.isEqual(this.props, nextProps) && _.isEqual(this.state, nextState));
     }
 
@@ -196,6 +197,7 @@ export default class DashboardGrid extends Component {
                 onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                 onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(this, dc.id)}
                 onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(this, dc.id)}
+                linkToCard={this.props.linkToCard}
             />
         )
     }

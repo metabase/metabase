@@ -4,16 +4,16 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST PUT DELETE]]
             [schema.core :as s]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             [metabase.api.common :refer :all]
             (metabase [config :as config]
-                      [db :as db]
                       [driver :as driver]
                       [events :as events])
             (metabase.models common
                              [database :refer [Database protected-password], :as database]
                              [field :refer [Field]]
-                             [hydrate :refer [hydrate]]
-                             [interface :as models]
+                             [interface :as mi]
                              [permissions :as perms]
                              [table :refer [Table]])
             (metabase [sample-data :as sample-data]
@@ -30,7 +30,7 @@
 
 
 (defn- add-tables [dbs]
-  (let [db-id->tables (group-by :db_id (filter models/can-read? (db/select Table
+  (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
                                                                   :active true
                                                                   :db_id  [:in (map :id dbs)]
                                                                   {:order-by [[:%lower.display_name :asc]]})))]
@@ -39,14 +39,14 @@
 
 (defn- add-native-perms-info [dbs]
   (for [db dbs]
-    (let [user-has-perms? (fn [f] (perms/set-has-full-permissions? @*current-user-permissions-set* (f (u/get-id db))))]
+    (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @*current-user-permissions-set* (path-fn (u/get-id db))))]
       (assoc db :native_permissions (cond
                                       (user-has-perms? perms/native-readwrite-path) :write
                                       (user-has-perms? perms/native-read-path)      :read
                                       :else                                         :none)))))
 
 (defn- dbs-list [include-tables?]
-  (when-let [dbs (seq (filter models/can-read? (db/select Database {:order-by [:%lower.name]})))]
+  (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name]})))]
     (add-native-perms-info (if-not include-tables?
                              dbs
                              (add-tables dbs)))))
@@ -73,10 +73,10 @@
       (hydrate [:tables [:fields :target :values] :segments :metrics])
       (update :tables   (fn [tables]
                           (for [table tables
-                                :when (models/can-read? table)]
+                                :when (mi/can-read? table)]
                             (-> table
-                                (update :segments (partial filter models/can-read?))
-                                (update :metrics  (partial filter models/can-read?))))))))
+                                (update :segments (partial filter mi/can-read?))
+                                (update :metrics  (partial filter mi/can-read?))))))))
 
 (defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
@@ -89,10 +89,12 @@
 
 (defn- autocomplete-tables [db-id prefix]
   (db/select [Table :id :db_id :schema :name]
-    :db_id       db-id
-    :active      true
-    :%lower.name [:like (str (str/lower-case prefix) "%")]
-    {:order-by [[:%lower.name :asc]]}))
+    {:where    [:and [:= :db_id db-id]
+                     [:= :active true]
+                     [:like :%lower.name (str (str/lower-case prefix) "%")]
+                     [:or [:= :visibility_type nil]
+                          [:not= :visibility_type "hidden"]]]
+     :order-by [[:%lower.name :asc]]}))
 
 (defn- autocomplete-fields [db-id prefix]
   (db/select [Field :name :base_type :special_type :id :table_id [:table.name :table_name]]
@@ -115,8 +117,8 @@
                          (str " " special_type)))])))
 
 (defn- autocomplete-suggestions [db-id prefix]
-  (let [tables (filter models/can-read? (autocomplete-tables db-id prefix))
-        fields (filter models/can-read? (autocomplete-fields db-id prefix))]
+  (let [tables (filter mi/can-read? (autocomplete-tables db-id prefix))
+        fields (filter mi/can-read? (autocomplete-fields db-id prefix))]
     (autocomplete-results tables fields)))
 
 (defendpoint GET "/:id/autocomplete_suggestions"
@@ -141,14 +143,16 @@
   "Get a list of all `Fields` in `Database`."
   [id]
   (read-check Database id)
-  (for [{:keys [id display_name table]} (filter models/can-read? (-> (db/select [Field :id :display_name :table_id]
-                                                                       :table_id        [:in (db/select-field :id Table, :db_id id)]
-                                                                       :visibility_type [:not-in ["sensitive" "retired"]])
-                                                                     (hydrate :table)))]
-    {:id         id
-     :name       display_name
-     :table_name (:display_name table)
-     :schema     (:schema table)}))
+  (for [{:keys [id display_name table base_type special_type]} (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :special_type]
+                                                                                                   :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                                                                                   :visibility_type [:not-in ["sensitive" "retired"]])
+                                                                                        (hydrate :table)))]
+    {:id           id
+     :name         display_name
+     :base_type    base_type
+     :special_type special_type
+     :table_name   (:display_name table)
+     :schema       (:schema table)}))
 
 
 ;;; ------------------------------------------------------------ GET /api/database/:id/idfields ------------------------------------------------------------
@@ -157,7 +161,7 @@
   "Get a list of all primary key `Fields` for `Database`."
   [id]
   (read-check Database id)
-  (sort-by (comp str/lower-case :name :table) (filter models/can-read? (-> (database/pk-fields {:id id})
+  (sort-by (comp str/lower-case :name :table) (filter mi/can-read? (-> (database/pk-fields {:id id})
                                                                          (hydrate :table)))))
 
 
@@ -273,8 +277,9 @@
   [id]
   (let-404 [db (Database id)]
     (write-check db)
-    (u/prog1 (db/cascade-delete! Database :id id)
-      (events/publish-event! :database-delete db))))
+    (db/delete! Database :id id)
+    (events/publish-event! :database-delete db))
+  generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ POST /api/database/:id/sync ------------------------------------------------------------

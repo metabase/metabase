@@ -1,10 +1,12 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import Input from "metabase/components/Input.jsx";
 import HeaderModal from "metabase/components/HeaderModal.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
 import EditBar from "metabase/components/EditBar.jsx";
+
+import { getScrollY } from "metabase/lib/dom";
 
 export default class Header extends Component {
     static defaultProps = {
@@ -29,7 +31,7 @@ export default class Header extends Component {
     componentDidUpdate() {
         if (this.refs.header) {
             const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
-            const headerHeight = rect.top + window.scrollY;
+            const headerHeight = rect.top + getScrollY();
             if (this.state.headerHeight !== headerHeight) {
                 this.setState({ headerHeight });
             }

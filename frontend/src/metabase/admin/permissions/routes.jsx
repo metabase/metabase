@@ -1,13 +1,15 @@
-import React, { Component, PropTypes } from "react";
-import { Route, IndexRedirect } from 'react-router';
 
-import PermissionsApp from "./containers/PermissionsApp.jsx";
+import React from "react";
+import { Route } from "metabase/hoc/Title";
+import { IndexRedirect } from 'react-router';
+
+import DataPermissionsApp from "./containers/DataPermissionsApp.jsx";
 import DatabasesPermissionsApp from "./containers/DatabasesPermissionsApp.jsx";
 import SchemasPermissionsApp from "./containers/SchemasPermissionsApp.jsx";
 import TablesPermissionsApp from "./containers/TablesPermissionsApp.jsx";
 
 const getRoutes = (store) =>
-    <Route path="permissions" component={PermissionsApp}>
+    <Route title="Permissions" path="permissions" component={DataPermissionsApp}>
         <IndexRedirect to="databases" />
         <Route path="databases" component={DatabasesPermissionsApp} />
         <Route path="databases/:databaseId/schemas" component={SchemasPermissionsApp} />

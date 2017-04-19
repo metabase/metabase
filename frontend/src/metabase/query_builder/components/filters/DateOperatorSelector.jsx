@@ -1,16 +1,37 @@
-import React, { Component, PropTypes } from "react";
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+/* @flow */
+
+import React, { Component } from "react";
+import PropTypes from "prop-types";
+
 import cx from "classnames";
 import { titleCase } from "humanize-plus";
 
 import Icon from "metabase/components/Icon";
 
-export default class DateOperatorSelector extends Component {
+type Operator = {
+    name: string
+}
+
+type Props = {
+    operator: string,
+    operators: Operator[],
+    onOperatorChange: (o: Operator) => void,
+    hideTimeSelectors?: bool
+}
+
+type State = {
+    expanded: bool
+};
+
+export default class DateOperatorSelector extends Component<*, Props, State> {
+    props: Props;
+    state: State;
+
     constructor() {
         super();
-        this.state = { expanded: false };
-
-        this.toggleExpanded = this.toggleExpanded.bind(this);
+        this.state = {
+            expanded: false
+        };
     }
 
     static propTypes = {
@@ -19,7 +40,7 @@ export default class DateOperatorSelector extends Component {
         onOperatorChange: PropTypes.func.isRequired
     };
 
-    toggleExpanded () {
+    toggleExpanded = () => {
         this.setState({ expanded: !this.state.expanded });
     }
 

@@ -7,11 +7,11 @@
             [compojure.core :refer [defroutes GET POST DELETE]]
             [schema.core :as s]
             [throttle.core :as throttle]
+            [toucan.db :as db]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
             [metabase.email.messages :as email]
             [metabase.events :as events]
-            (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!], :as user]
+            (metabase.models [user :refer [User], :as user]
                              [session :refer [Session]]
                              [setting :refer [defsetting]])
             [metabase.public-settings :as public-settings]
@@ -59,7 +59,8 @@
   [session_id]
   {session_id su/NonBlankString}
   (check-exists? Session session_id)
-  (db/cascade-delete! Session, :id session_id))
+  (db/delete! Session :id session_id)
+  generic-204-no-content)
 
 ;; Reset tokens:
 ;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
@@ -74,15 +75,15 @@
 
 (defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr, :as request}]
+  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr}]
   {email su/Email}
   (throttle/check (forgot-password-throttlers :ip-address) remote-address)
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email, :is_active true)]
-    (let [reset-token        (set-user-password-reset-token! user-id)
-          password-reset-url (str (public-settings/site-url request) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email email google-auth? server-name password-reset-url)
+    (let [reset-token        (user/set-password-reset-token! user-id)
+          password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
       (log/info password-reset-url))))
 
 
@@ -110,7 +111,11 @@
   {token    su/NonBlankString
    password su/ComplexPassword}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
-        (set-user-password! user-id password)
+        (user/set-password! user-id password)
+        ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
+        ;; Send all the active admins an email :D
+        (when-not (:last_login user)
+          (email/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
         {:success    true
          :session_id (create-session! user)})
@@ -171,7 +176,7 @@
   (check-autocreate-user-allowed-for-email email)
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
   ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
-  (user/create-user! first-name last-name email, :send-welcome false, :google-auth? true))
+  (user/create-new-google-auth-user! first-name last-name email))
 
 (defn- google-auth-fetch-or-create-user! [first-name last-name email]
   (if-let [user (or (db/select-one [User :id :last_login] :email email)

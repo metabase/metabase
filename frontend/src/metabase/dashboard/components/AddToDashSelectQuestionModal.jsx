@@ -1,9 +1,8 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
-import SortableItemList from "metabase/components/SortableItemList.jsx";
+import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
 
 
 export default class AddToDashSelectQuestionModal extends Component {
@@ -43,25 +42,11 @@ export default class AddToDashSelectQuestionModal extends Component {
     }
 
     render() {
-        var { error } = this.state;
-        if (this.props.cards && this.props.cards.length === 0) {
-            error = { message: "No cards have been saved." };
-        }
         return (
-            <ModalContent
-                title="Add Question to Dashboard"
-                closeFn={this.props.onClose}
-            >
-                <LoadingAndErrorWrapper loading={!this.props.cards} error={error} >
-                {() =>
-                    <SortableItemList
-                        items={this.props.cards}
-                        onClickItemFn={(card) => this.onAdd(card)}
-                        showIcons={true}
-                    />
-                }
-                </LoadingAndErrorWrapper>
-            </ModalContent>
-        );
+            <AddToDashboard
+                onAdd={(card) => this.onAdd(card)}
+                onClose={this.props.onClose}
+            />
+        )
     }
 }

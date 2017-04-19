@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :refer :all]

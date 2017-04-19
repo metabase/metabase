@@ -1,7 +1,9 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            (toucan [db :as db]
+                    [hydrate :as hydrate])
+            [toucan.util.test :as tt]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
@@ -30,7 +32,7 @@
     (try
       (f db)
       (finally
-        (db/cascade-delete! Database :id (:id db))))))
+        (db/delete! Database :id (:id db))))))
 
 (defmacro ^:private expect-with-temp-db-created-via-api {:style/indent 1} [[binding & [options]] expected actual]
   ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
@@ -91,7 +93,7 @@
      :description        nil
      :caveats            nil
      :points_of_interest nil
-     :features           (vec (driver/features (driver/engine->driver :postgres)))})
+     :features           (driver/features (driver/engine->driver :postgres))})
   (Database (:id db)))
 
 
@@ -143,7 +145,7 @@
 (defn- ^:deprecated delete-randomly-created-databases!
   "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
   [& {:keys [skip]}]
-  (db/cascade-delete! Database :id [:not-in (into (set skip)
+  (db/delete! Database :id [:not-in (into (set skip)
                                                   (for [engine datasets/all-valid-engines
                                                         :let   [id (datasets/when-testing-engine engine
                                                                      (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
@@ -251,7 +253,7 @@
                           :schema                  "PUBLIC"
                           :name                    "CATEGORIES"
                           :display_name            "Categories"
-                          :fields                  [(match-$ (Field (id :categories :id))
+                          :fields                  [(match-$ (hydrate/hydrate (Field (id :categories :id)) :values)
                                                       {:description        nil
                                                        :table_id           (id :categories)
                                                        :caveats            nil
@@ -272,8 +274,8 @@
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
-                                                       :values             []})
-                                                    (match-$ (Field (id :categories :name))
+                                                       :values             $})
+                                                    (match-$ (hydrate/hydrate (Field (id :categories :name)) :values)
                                                       {:description        nil
                                                        :table_id           (id :categories)
                                                        :caveats            nil
@@ -294,7 +296,7 @@
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
-                                                       :values             []})]
+                                                       :values             $})]
                           :segments                []
                           :metrics                 []
                           :rows                    75

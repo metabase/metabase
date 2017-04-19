@@ -1,12 +1,13 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isa, isFK, TYPE } from "metabase/lib/types";
 
-import i from 'icepick';
+import { getIn } from 'icepick';
 
 import S from "metabase/components/List.css";
 import F from "./Field.css";
@@ -66,7 +67,7 @@ const Field = ({
                             onChange={(type) => formField.special_type.onChange(type.id)}
                         /> :
                         <span>
-                            { i.getIn(
+                            { getIn(
                                     MetabaseCore.field_special_types_map,
                                     [field.special_type, 'name']
                                 ) || 'No field type'
@@ -100,7 +101,7 @@ const Field = ({
                         /> :
                         isFK(field.special_type) &&
                         <span>
-                            {i.getIn(foreignKeys, [field.fk_target_field_id, "name"])}
+                            {getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                         </span>
                     }
                 </div>

@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./Legend.css";
 
@@ -21,8 +21,12 @@ export default class LegendVertical extends Component {
     static defaultProps = {};
 
     componentDidUpdate() {
+        // Get the bounding rectangle of the chart widget to determine if
+        // legend items will overflow the widget area
         let size = ReactDOM.findDOMNode(this).getBoundingClientRect();
-        if (this.state.size && (size.width !== this.state.size.width || size.height !== this.state.size.height)) {
+
+        // only check the height. width may flucatuate depending on the browser causing an infinite loop
+        if (this.state.size && size.height !== this.state.size.height) {
             this.setState({ overflowCount: 0, size });
         } else if (this.state.overflowCount === 0) {
             let overflowCount = 0;
@@ -75,9 +79,13 @@ export default class LegendVertical extends Component {
                     </li>
                 )}
                 {overflowCount > 0 ?
-                    <li key="extra">
+                    <li key="extra" className="flex flex-no-shrink" >
                         <Tooltip tooltip={<LegendVertical className="p2" titles={extraItems} colors={extraColors} />}>
-                            <LegendItem className="inline-block" title={(overflowCount + 1) + " more"} color="gray" showTooltip={false} />
+                            <LegendItem
+                                title={(overflowCount + 1) + " more"}
+                                color="gray"
+                                showTooltip={false}
+                            />
                         </Tooltip>
                     </li>
                 : null }

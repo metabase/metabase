@@ -1,7 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             (monger [collection :as mc]
@@ -9,7 +8,7 @@
                     [conversion :as conv]
                     [db :as mdb]
                     [query :as mq])
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
@@ -77,20 +76,17 @@
       fields
       (recur more-keys (update fields k (partial update-field-attrs (k field-value)))))))
 
-(defn- safe-inc [n]
-  (inc (or n 0)))
-
 (defn- update-field-attrs [field-value field-def]
   (-> field-def
-      (update :count safe-inc)
+      (update :count u/safe-inc)
       (update :len #(if (string? field-value)
                       (+ (or % 0) (count field-value))
                       %))
       (update :types (fn [types]
-                       (update types (type field-value) safe-inc)))
+                       (update types (type field-value) u/safe-inc)))
       (update :special-types (fn [special-types]
                                (if-let [st (val->special-type field-value)]
-                                 (update special-types st safe-inc)
+                                 (update special-types st u/safe-inc)
                                  special-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)
@@ -116,7 +112,7 @@
 
 (defn- describe-database [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    {:tables (set (for [collection (set/difference (mdb/get-collection-names conn) #{"system.indexes"})]
+    {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
 (defn- describe-table [database table]

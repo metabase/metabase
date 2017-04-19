@@ -1,7 +1,9 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+
+import title from "metabase/hoc/Title";
 
 import PulseEdit from "../components/PulseEdit.jsx";
 
@@ -39,6 +41,7 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ pulse }) => pulse && pulse.name)
 export default class PulseEditApp extends Component {
     render() {
         return (

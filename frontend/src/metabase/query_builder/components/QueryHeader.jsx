@@ -1,9 +1,11 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
+import { Link } from "react-router";
 
 import QueryModeButton from "./QueryModeButton.jsx";
 
 import ActionButton from 'metabase/components/ActionButton.jsx';
-import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.jsx';
+import AddToDashSelectDashModal from 'metabase/containers/AddToDashSelectDashModal.jsx';
 import ButtonBar from "metabase/components/ButtonBar.jsx";
 import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.jsx';
 import HeaderBar from "metabase/components/HeaderBar.jsx";
@@ -12,14 +14,17 @@ import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
-import SaveQuestionModal from 'metabase/components/SaveQuestionModal.jsx';
 import Tooltip from "metabase/components/Tooltip.jsx";
+import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
+
+import SaveQuestionModal from 'metabase/containers/SaveQuestionModal.jsx';
 
 import { CardApi, RevisionApi } from "metabase/services";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
+import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -182,6 +187,8 @@ export default class QueryHeader extends Component {
         if (isNew && isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
+                    full
+                    form
                     key="save"
                     ref="saveModal"
                     triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
@@ -194,26 +201,28 @@ export default class QueryHeader extends Component {
                         addToDashboard={false}
                         saveFn={this.onSave}
                         createFn={this.onCreate}
-                        closeFn={() => this.refs.saveModal.toggle()}
+                        onClose={() => this.refs.saveModal.toggle()}
                     />
                 </ModalWithTrigger>
             ]);
         }
 
         // persistence buttons on saved cards
-        if (!isNew) {
+        if (!isNew && card.can_write) {
             if (!isEditing) {
                 if (this.state.recentlySaved) {
                     // existing card + not editing + recently saved = save confirmation
                     buttonSections.push([
-                        <button key="recentlySaved" className="cursor-pointer bg-white text-success text-strong text-uppercase">
+                        <button
+                            key="recentlySaved"
+                            className="cursor-pointer bg-white text-success text-strong text-uppercase"
+                        >
                             <span>
                                 <Icon name='check' size={12} />
                                 <span className="ml1">Saved</span>
                             </span>
                         </button>
                     ]);
-
                 } else {
                     // edit button
                     buttonSections.push([
@@ -251,21 +260,43 @@ export default class QueryHeader extends Component {
                     <Tooltip key="delete" tooltip="Delete">
                         <ModalWithTrigger
                             ref="deleteModal"
-                            triggerElement={<span className="text-brand-hover"><Icon name="trash" size={16} /></span>}
+                            triggerElement={
+                                <span className="text-brand-hover">
+                                    <Icon name="trash" size={16} />
+                                </span>
+                            }
                         >
                             <DeleteQuestionModal
                                 card={this.props.card}
                                 deleteCardFn={this.onDelete}
-                                closeFn={() => this.refs.deleteModal.toggle()}
+                                onClose={() => this.refs.deleteModal.toggle()}
                             />
                         </ModalWithTrigger>
                     </Tooltip>
+                ]);
+
+                buttonSections.push([
+                    <ModalWithTrigger
+                        ref="move"
+                        key="move"
+                        full
+                        triggerElement={
+                            <Tooltip tooltip="Move question">
+                                <Icon name="move" />
+                            </Tooltip>
+                        }
+                    >
+                        <MoveToCollection
+                            questionId={this.props.card.id}
+                            initialCollectionId={this.props.card && this.props.card.collection_id}
+                        />
+                    </ModalWithTrigger>
                 ]);
             }
         }
 
         // parameters
-        if (Query.isNative(this.props.query) && database && _.contains(database.features, "native-parameters")) {
+        if (Query.isNative(card && card.dataset_query) && database && _.contains(database.features, "native-parameters")) {
             const parametersButtonClasses = cx('transition-color', {
                 'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor
@@ -305,7 +336,7 @@ export default class QueryHeader extends Component {
                             addToDashboard={true}
                             saveFn={this.onSave}
                             createFn={this.onCreate}
-                            closeFn={() => this.refs.addToDashSaveModal.toggle()}
+                            onClose={() => this.refs.addToDashSaveModal.toggle()}
                         />
                     </ModalWithTrigger>
                 </Tooltip>
@@ -376,7 +407,7 @@ export default class QueryHeader extends Component {
 
     render() {
         return (
-            <div>
+            <div className="relative">
                 <HeaderBar
                     isEditing={this.props.isEditing}
                     name={this.props.isNew ? "New question" : this.props.card.name}
@@ -384,19 +415,29 @@ export default class QueryHeader extends Component {
                     breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
                     setItemAttributeFn={this.props.onSetCardAttribute}
+                    badge={this.props.card.collection &&
+                        <Link
+                            to={Urls.collection(this.props.card.collection)}
+                            className="text-uppercase flex align-center no-decoration"
+                            style={{ color: this.props.card.collection.color, fontSize: 12 }}
+                        >
+                            <Icon name="collection" size={12} style={{ marginRight: "0.5em" }} />
+                            {this.props.card.collection.name}
+                        </Link>
+                    }
                 />
 
-                <Modal className="Modal Modal--small" isOpen={this.state.modal === "saved"} onClose={this.onCloseModal}>
+                <Modal small isOpen={this.state.modal === "saved"} onClose={this.onCloseModal}>
                     <QuestionSavedModal
                         addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
-                        closeFn={this.onCloseModal}
+                        onClose={this.onCloseModal}
                     />
                 </Modal>
 
                 <Modal isOpen={this.state.modal === "add-to-dashboard"} onClose={this.onCloseModal}>
                     <AddToDashSelectDashModal
                         card={this.props.card}
-                        closeFn={this.onCloseModal}
+                        onClose={this.onCloseModal}
                         onChangeLocation={this.props.onChangeLocation}
                     />
                 </Modal>

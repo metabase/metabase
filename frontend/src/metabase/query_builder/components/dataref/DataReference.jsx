@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import MainPane from './MainPane.jsx';
 import TablePane from './TablePane.jsx';
@@ -25,16 +26,16 @@ export default class DataReference extends Component {
 
     static propTypes = {
         query: PropTypes.object.isRequired,
-        closeFn: PropTypes.func.isRequired,
-        runQueryFn: PropTypes.func.isRequired,
-        setQueryFn: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired,
+        runQuery: PropTypes.func.isRequired,
+        setDatasetQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func.isRequired,
         setDisplayFn: PropTypes.func.isRequired
     };
 
     close() {
-        this.props.closeFn();
+        this.props.onClose();
     }
 
     back() {

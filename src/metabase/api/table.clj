@@ -3,16 +3,17 @@
   (:require [compojure.core :refer [GET POST PUT]]
             [schema.core :as s]
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             [metabase.driver :as driver]
             (metabase.models [field :refer [Field]]
-                             [hydrate :refer :all]
-                             [interface :as models]
+                             [interface :as mi]
                              [table :refer [Table] :as table])
             [metabase.sync-database :as sync-database]
             [metabase.util.schema :as su]))
 
-(def ^:private TableEntityType
+;; TODO - I don't think this is used for anything any more
+(def ^:private ^:deprecated TableEntityType
   "Schema for a valid table entity type."
   (apply s/enum (map name table/entity-types)))
 
@@ -25,7 +26,7 @@
   []
   (for [table (-> (db/select Table, :active true, {:order-by [[:name :asc]]})
                   (hydrate :db))
-        :when (models/can-read? table)]
+        :when (mi/can-read? table)]
     ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf. TODO - should that be part of `post-select` instead?
     (update table :rows (fn [n]
                           (or n 0)))))
@@ -76,15 +77,14 @@
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
   (read-check Table id)
-  (let [field-ids (db/select-ids Field, :table_id id, :visibility_type [:not= "retired"])]
-    (when (seq field-ids)
-      (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids])]
-        ;; it's silly to be hydrating some of these tables/dbs
-        {:relationship   :Mt1
-         :origin_id      (:id origin-field)
-         :origin         (hydrate origin-field [:table :db])
-         :destination_id (:fk_target_field_id origin-field)
-         :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)}))))
+  (when-let [field-ids (seq (db/select-ids Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
+    (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids], :active true)]
+      ;; it's silly to be hydrating some of these tables/dbs
+      {:relationship   :Mt1
+       :origin_id      (:id origin-field)
+       :origin         (hydrate origin-field [:table :db])
+       :destination_id (:fk_target_field_id origin-field)
+       :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)})))
 
 
 (define-routes)

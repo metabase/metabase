@@ -1,16 +1,13 @@
 
 import { createAction } from "redux-actions";
 import { createThunkAction } from "metabase/lib/redux";
-import { normalize, Schema, arrayOf } from "normalizr";
+import { normalize, schema } from "normalizr";
 
 import { PulseApi, CardApi, UserApi } from "metabase/services";
 
-const card = new Schema('card');
-const pulse = new Schema('pulse');
-const user = new Schema('user');
-// pulse.define({
-//   cards: arrayOf(card)
-// });
+const card = new schema.Entity('card');
+const pulse = new schema.Entity('pulse');
+const user = new schema.Entity('user');
 
 export const FETCH_PULSES = 'FETCH_PULSES';
 export const SET_EDITING_PULSE = 'SET_EDITING_PULSE';
@@ -28,7 +25,7 @@ export const FETCH_PULSE_CARD_PREVIEW = 'FETCH_PULSE_CARD_PREVIEW';
 export const fetchPulses = createThunkAction(FETCH_PULSES, function() {
     return async function(dispatch, getState) {
         let pulses = await PulseApi.list();
-        return normalize(pulses, arrayOf(pulse));
+        return normalize(pulses, [pulse]);
     };
 });
 
@@ -43,7 +40,8 @@ export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(id)
         return {
             name: null,
             cards: [],
-            channels: []
+            channels: [],
+            skip_if_empty: false,
         }
     };
 });
@@ -83,7 +81,7 @@ export const testPulse = createThunkAction(TEST_PULSE, function(pulse) {
 export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "all") {
     return async function(dispatch, getState) {
         let cards = await CardApi.list({ f: filterMode });
-        return normalize(cards, arrayOf(card));
+        return normalize(cards, [card]);
     };
 });
 
@@ -91,7 +89,7 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(filterMode = "
 export const fetchUsers = createThunkAction(FETCH_USERS, function() {
     return async function(dispatch, getState) {
         let users = await UserApi.list();
-        return normalize(users, arrayOf(user));
+        return normalize(users, [user]);
     };
 });
 

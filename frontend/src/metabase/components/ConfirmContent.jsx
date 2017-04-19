@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
 
@@ -16,7 +16,7 @@ const ConfirmContent = ({
 }) =>
     <ModalContent
         title={title}
-        closeFn={() => { onCancel(); onClose(); }}
+        onClose={() => { onCancel(); onClose(); }}
     >
         <div className="mx4">{content}</div>
 

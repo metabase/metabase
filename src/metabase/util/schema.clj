@@ -14,12 +14,15 @@
   {:pre [(map? schema)]}
   (assoc schema :api-error-message api-error-message))
 
-(def ^:private existing-schema->api-error-message
+(defn- existing-schema->api-error-message
   "Error messages for various schemas already defined in `schema.core`.
    These are used as a fallback by API param validation if no value for `:api-error-message` is present."
-  {s/Int  "value must be an integer."
-   s/Str  "value must be a string."
-   s/Bool "value must be a boolean."})
+  [existing-schema]
+  (cond
+    (= existing-schema s/Int)                           "value must be an integer."
+    (= existing-schema s/Str)                           "value must be a string."
+    (= existing-schema s/Bool)                          "value must be a boolean."
+    (instance? java.util.regex.Pattern existing-schema) (format "value must be a string that matches the regex `%s`." existing-schema)))
 
 (defn api-error-message
   "Extract the API error messages attached to a schema, if any.
@@ -58,6 +61,7 @@
   (with-api-error-message (s/constrained s/Str (complement str/blank?) "Non-blank string")
     "value must be a non-blank string."))
 
+;; TODO - rename this to `PositiveInt`?
 (def IntGreaterThanZero
   "Schema representing an integer than must also be greater than zero."
   (with-api-error-message
@@ -115,3 +119,8 @@
   "Schema for a string that is valid serialized JSON."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (json/parse-string %)))
     "value must be a valid JSON string."))
+
+(def EmbeddingParams
+  "Schema for a valid map of embedding params."
+  (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
+    "value must be a valid embedding params map."))

@@ -22,6 +22,7 @@
   outline: none;
   border: 1px solid var(--input-border-active-color);
   transition: border .3s linear;
+  color: #222;
 }
 
 .input--borderless,

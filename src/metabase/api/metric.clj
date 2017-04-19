@@ -4,10 +4,10 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [schema.core :as s]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
             [metabase.api.common :refer :all]
-            [metabase.db :as db]
-            (metabase.models [hydrate :refer [hydrate]]
-                             [interface :as models]
+            (metabase.models [interface :as mi]
                              [metric :refer [Metric], :as metric]
                              [revision :as revision]
                              [table :refer [Table]])
@@ -31,12 +31,20 @@
   (check-superuser)
   (read-check (metric/retrieve-metric id)))
 
+(defn- add-db-ids
+  "Add `:database_id` fields to METRICS by looking them up from their `:table_id`."
+  [metrics]
+  (when (seq metrics)
+    (let [table-id->db-id (db/select-id->field :db_id Table, :id [:in (set (map :table_id metrics))])]
+      (for [metric metrics]
+        (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
 (defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
-  (filter models/can-read? (-> (db/select Metric, :is_active true)
-                               (hydrate :creator))))
+  (filter mi/can-read? (-> (db/select Metric, :is_active true, {:order-by [:%lower.name]})
+                           (hydrate :creator)
+                           add-db-ids)))
 
 
 (defendpoint PUT "/:id"
@@ -73,7 +81,7 @@
 
     ;; delete old fields as needed
     (when (seq fields-to-remove)
-      (db/delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
+      (db/simple-delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
     (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
                                              {:metric_id id, :field_id field-id}))
@@ -87,7 +95,7 @@
   (check-superuser)
   (write-check Metric id)
   (metric/delete-metric! id *current-user-id* revision_message)
-  {:success true})
+  {:success true}) ; TODO - why doesn't this return a 204 'No Content'?
 
 
 (defendpoint GET "/:id/revisions"

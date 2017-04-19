@@ -6,9 +6,9 @@
                      [string :as str])
             [clojure.tools.logging :as log]
             [schema.core :as s]
-            [metabase.db :as db]
+            [toucan.db :as db]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.interface :refer [*driver*], :as i]
+            [metabase.query-processor.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su])
   (:import (metabase.query_processor.interface AgFieldRef
@@ -109,7 +109,7 @@
      (relative-datetime -31 :day)"
   ([n]                (s/validate (s/eq :current) (normalize-token n))
                       (relative-datetime 0 nil))
-  ([n :- s/Int, unit] (i/map->RelativeDatetime {:amount n, :unit (if (zero? n)
+  ([n :- s/Int, unit] (i/map->RelativeDatetime {:amount n, :unit (if (nil? unit)
                                                                    :day                        ; give :unit a default value so we can simplify the schema a bit and require a :unit
                                                                    (normalize-token unit))})))
 
@@ -301,20 +301,19 @@
     (filter {} (time-interval (field-id 100) :current :day)) "
   [f n unit]
   (if-not (integer? n)
-    (let [n (normalize-token n)]
-      (case n
-        :current (recur f  0 unit)
-        :last    (recur f -1 unit)
-        :next    (recur f  1 unit)))
+    (case (normalize-token n)
+      :current (recur f  0 unit)
+      :last    (recur f -1 unit)
+      :next    (recur f  1 unit))
     (let [f (datetime-field f unit)]
       (cond
-        (core/= n  0) (= f (value f (relative-datetime :current)))
+        (core/= n  0) (= f (value f (relative-datetime  0 unit)))
         (core/= n -1) (= f (value f (relative-datetime -1 unit)))
         (core/= n  1) (= f (value f (relative-datetime  1 unit)))
-        (core/< n -1) (between f (value f (relative-datetime (dec n) unit))
-                                 (value f (relative-datetime      -1 unit)))
-        (core/> n  1) (between f (value f (relative-datetime       1 unit))
-                               (value f (relative-datetime (inc n) unit)))))))
+        (core/< n -1) (between f (value f (relative-datetime  n unit))
+                                 (value f (relative-datetime -1 unit)))
+        (core/> n  1) (between f (value f (relative-datetime  1 unit))
+                                 (value f (relative-datetime  n unit)))))))
 
 (s/defn ^:ql ^:always-validate filter
   "Filter the results returned by the query.
@@ -422,7 +421,15 @@
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
 (def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
 
-;;; EXPRESSION PARSING
+;;; Metric & Segment handlers
+
+;; These *do not* expand the normal Metric and Segment macros used in normal queries; that's handled in `metabase.query-processor.macros` before
+;; this namespace ever even sees the query. But since the GA driver's queries consist of custom `metric` and `segment` clauses we need to at least
+;; accept them without barfing so we can expand a query in order to check what permissions it requires.
+;; TODO - in the future, we should just make these functions expand Metric and Segment macros for consistency with the rest of the MBQL clauses
+(defn ^:ql metric  "Placeholder expansion function for GA metric clauses. (This does not expand normal Metric macros; that is done in `metabase.query-processor.macros`.)"   [& _])
+(defn ^:ql segment "Placeholder expansion function for GA segment clauses. (This does not expand normal Segment macros; that is done in `metabase.query-processor.macros`.)" [& _])
+
 
 ;;; # ------------------------------------------------------------ Expansion ------------------------------------------------------------
 
@@ -502,3 +509,14 @@
   `(-> {}
        ~@body
        expand-inner))
+
+
+;;; ------------------------------------------------------------ Other Helper Fns ------------------------------------------------------------
+
+(defn is-clause?
+  "Check to see whether CLAUSE is an instance of the clause named by normalized CLAUSE-KEYWORD.
+
+     (is-clause? :field-id [\"FIELD-ID\" 2000]) ; -> true"
+  [clause-keyword clause]
+  (core/and (sequential? clause)
+            (core/= (normalize-token (first clause)) clause-keyword)))

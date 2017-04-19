@@ -4,8 +4,8 @@
             [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
-            (metabase [db :as db]
-                      [task :as task])
+            [toucan.db :as db]
+            [metabase.task :as task]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.sync-database :as sync-database]))

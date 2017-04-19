@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -30,7 +31,7 @@ export default class RevisionMessageModal extends Component {
             <ModalWithTrigger ref="modal" triggerElement={children}>
                 <ModalContent
                     title="Reason for changes"
-                    closeFn={onClose}
+                    onClose={onClose}
                 >
                     <div className={S.modalBody}>
                         <textarea

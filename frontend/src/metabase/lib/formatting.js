@@ -1,7 +1,7 @@
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment";
-import Humanize from "humanize";
+import Humanize from "humanize-plus";
 import React from "react";
 
 import ExternalLink from "metabase/components/ExternalLink.jsx";
@@ -64,7 +64,7 @@ function formatMajorMinor(major, minor, options = {}) {
     }
 }
 
-function formatTimeWithUnit(value, unit, options = {}) {
+export function formatTimeWithUnit(value, unit, options = {}) {
     let m = parseTimestamp(value, unit);
     if (!m.isValid()) {
         return String(value);

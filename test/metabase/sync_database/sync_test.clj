@@ -1,9 +1,10 @@
 (ns metabase.sync-database.sync-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [hydrate :refer [hydrate]])
+            [toucan.util.test :as tt]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
-                             [hydrate :as hydrate]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]]
                              [table :refer [Table]])
@@ -19,7 +20,7 @@
   save-fks! save-table-fields!)
 
 (defn- get-tables [database-id]
-  (->> (hydrate/hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
+  (->> (hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
        (mapv tu/boolean-ids-and-timestamps)))
 
 
@@ -29,7 +30,7 @@
    [{:special_type :type/FK, :name "fk1", :fk_target_field_id true}]
    [{:special_type :type/FK, :name "fk1", :fk_target_field_id true}]
    [{:special_type :type/FK, :name "fk1", :fk_target_field_id true}]]
-  (tu/with-temp* [Database  [{database-id :id}]
+  (tt/with-temp* [Database  [{database-id :id}]
                   RawTable  [{raw-table-id1 :id, :as table}  {:database_id database-id, :name "fk_source"}]
                   RawColumn [{raw-fk1 :id}                   {:raw_table_id raw-table-id1, :name "fk1"}]
                   Table     [{t1 :id}                        {:db_id database-id, :raw_table_id raw-table-id1, :name "fk_source"}]
@@ -72,7 +73,7 @@
     :id true
     :fields [{:name "filming"
               :description "If the movie is currently being filmed."}]}]
-  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
     (let [raw-table-id (db/select-one-id RawTable, :database_id database-id, :name "movies")
@@ -82,7 +83,7 @@
                          :name         "movies"
                          :active       true)
           get-table    #(-> (db/select-one [Table :id :name :description], :id (:id table))
-                            (hydrate/hydrate :fields)
+                            (hydrate :fields)
                             (update :fields (fn [fields]
                                               (for [f fields
                                                     :when (= "filming" (:name f))]
@@ -161,7 +162,7 @@
                            :display_name "Rating"
                            :base_type    :type/Integer
                            :special_type :type/Category})]]
-  (tu/with-temp* [Database  [{database-id :id}]
+  (tt/with-temp* [Database  [{database-id :id}]
                   RawTable  [{raw-table-id :id, :as table} {:database_id database-id}]
                   RawColumn [{raw-column-id1 :id}          {:raw_table_id raw-table-id, :name "First", :is_pk true, :details {:base-type "type/Integer"}}]
                   RawColumn [{raw-column-id2 :id}          {:raw_table_id raw-table-id, :name "Second", :details {:base-type "type/Text"}}]
@@ -175,7 +176,7 @@
           first-sync     (do
                            (save-table-fields! tbl)
                            (get-fields))]
-      (tu/with-temp* [RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :details {:base-type "type/Integer"}}]]
+      (tt/with-temp* [RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :details {:base-type "type/Integer"}}]]
         ;; start with no fields
         [initial-fields
          ;; first sync will add all the fields
@@ -203,11 +204,11 @@
                                     :fields [])))]
     [moviedb/moviedb-tables-and-fields
      (mapv disabled-movies-table moviedb/moviedb-tables-and-fields)])
-  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
     (update-data-models-from-raw-tables! db)
-    (let [get-tables #(->> (hydrate/hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
+    (let [get-tables #(->> (hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
                            (mapv tu/boolean-ids-and-timestamps))]
       ;; here we go
       [(get-tables)
@@ -238,7 +239,7 @@
      [(-> (last moviedb/moviedb-tables-and-fields)
           (assoc :active false
                  :fields []))]])
-  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     (let [driver (moviedb/->MovieDbDriver)]
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
@@ -276,13 +277,13 @@
          (-> (last moviedb/moviedb-tables-and-fields)
              (assoc :active false
                     :fields [])))]
-  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     (let [driver (moviedb/->MovieDbDriver)]
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
 
       [;; first check that the raw tables stack up as expected
-       (->> (hydrate/hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
+       (->> (hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
             (mapv tu/boolean-ids-and-timestamps))
        ;; now lets run a sync and check what we got
        (do
@@ -329,16 +330,16 @@
   [schema-per-customer/schema-per-customer-raw-tables
    schema-per-customer/schema-per-customer-tables-and-fields
    schema-per-customer/schema-per-customer-tables-and-fields]
-  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :schema-per-customer}]]
+  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :schema-per-customer}]]
     (let [driver     (schema-per-customer/->SchemaPerCustomerDriver)
-          db-tables  #(->> (hydrate/hydrate (db/select Table, :db_id %, {:order-by [:id]}) :fields)
+          db-tables  #(->> (hydrate (db/select Table, :db_id %, {:order-by [:id]}) :fields)
                            (mapv resolve-fk-targets)
                            (mapv tu/boolean-ids-and-timestamps))]
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
 
       [;; first check that the raw tables stack up as expected
-       (->> (hydrate/hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
+       (->> (hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
             (mapv resolve-fk-targets)
             (mapv tu/boolean-ids-and-timestamps))
        ;; now lets run a sync and check what we got

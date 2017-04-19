@@ -1,9 +1,9 @@
 
 import { createSelector } from 'reselect';
 
-export const getPath = (state, props) => props.location.pathname;
+export { getUser } from "metabase/selectors/user";
 
-export const getUser = (state) => state.currentUser;
+export const getPath = (state, props) => props.location.pathname;
 
 export const getContext = createSelector(
     [getPath],
@@ -19,5 +19,3 @@ export const getContext = createSelector(
         :
             'main'
 );
-
-export const getDashboards = (state) => state.dashboard.dashboardListing;

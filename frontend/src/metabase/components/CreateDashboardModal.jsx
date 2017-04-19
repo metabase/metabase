@@ -1,9 +1,9 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
-
-import cx from "classnames";
+import Button from "metabase/components/Button.jsx";
 
 export default class CreateDashboardModal extends Component {
     constructor(props, context) {
@@ -21,7 +21,7 @@ export default class CreateDashboardModal extends Component {
 
     static propTypes = {
         createDashboardFn: PropTypes.func.isRequired,
-        closeFn: PropTypes.func
+        onClose: PropTypes.func
     };
 
     setName(event) {
@@ -72,45 +72,34 @@ export default class CreateDashboardModal extends Component {
 
         var formReady = (name !== null && name !== "");
 
-        var buttonClasses = cx({
-            "Button": true,
-            "Button--primary": formReady
-        });
-
-        var createButton = (
-            <button className={buttonClasses} disabled={!formReady}>
-                Create
-            </button>
-        );
-
         return (
             <ModalContent
                 id="CreateDashboardModal"
-                title="Create Dashboard"
-                closeFn={this.props.closeFn}
+                title="Create dashboard"
+                footer={[
+                    formError,
+                    <Button onClick={this.props.onClose}>Cancel</Button>,
+                    <Button primary={formReady} disabled={!formReady} onClick={this.createNewDash}>Create</Button>
+                ]}
+                onClose={this.props.onClose}
             >
                 <form className="Modal-form" onSubmit={this.createNewDash}>
                     <div className="Form-inputs">
                         <FormField
                             displayName="Name"
                             fieldName="name"
-                            errors={this.state.errors}>
-                            <input className="Form-input
-                            full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autoFocus />
+                            errors={this.state.errors}
+                        >
+                            <input className="Form-input full" name="name" placeholder="What is the name of your dashboard?" value={this.state.name} onChange={this.setName} autoFocus />
                         </FormField>
 
                         <FormField
                             displayName="Description"
                             fieldName="description"
-                            errors={this.state.errors}>
+                            errors={this.state.errors}
+                        >
                             <input className="Form-input full" name="description" placeholder="It's optional but oh, so helpful"  value={this.state.description} onChange={this.setDescription} />
                         </FormField>
-                    </div>
-
-                    <div className="Form-actions">
-                        {createButton}
-                        <span className="px1">or</span><a className="no-decoration text-brand text-bold" onClick={this.props.closeFn}>Cancel</a>
-                        {formError}
                     </div>
                 </form>
             </ModalContent>

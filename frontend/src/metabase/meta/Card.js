@@ -3,12 +3,14 @@
 import type { StructuredQuery, NativeQuery, TemplateTag } from "./types/Query";
 import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "./types/Card";
 import type { Parameter, ParameterId, ParameterMapping } from "metabase/meta/types/Dashboard";
+import { getTemplateTagParameters } from "metabase/meta/Parameter";
 
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
 }
 
 import Query from "metabase/lib/query";
+import Utils from "metabase/lib/utils";
 import _ from "underscore";
 
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
@@ -41,8 +43,8 @@ export function isNative(card: Card): bool {
 
 export function canRun(card: Card): bool {
     if (card.dataset_query.type === "query") {
-        const query : StructuredQuery = card.dataset_query.query;
-        return query && query.source_table != undefined && Query.hasValidAggregation(query);
+        const query = getQuery(card);
+        return query != null && query.source_table != undefined && Query.hasValidAggregation(query);
     } else if (card.dataset_query.type === "native") {
         const native : NativeQuery = card.dataset_query.native;
         return native && card.dataset_query.database != undefined && native.query !== "";
@@ -65,13 +67,22 @@ export function getTemplateTags(card: ?Card): Array<TemplateTag> {
         [];
 }
 
+export function getParameters(card: ?Card): Parameter[] {
+    if (card && card.parameters) {
+        return card.parameters;
+    }
+
+    const tags: TemplateTag[] = getTemplateTags(card);
+    return getTemplateTagParameters(tags);
+}
+
 export function applyParameters(
     card: Card,
-    parameters: Array<Parameter>,
+    parameters: Parameter[],
     parameterValues: { [key: ParameterId]: string } = {},
-    parameterMappings: Array<ParameterMapping> = []
+    parameterMappings: ParameterMapping[] = []
 ): DatasetQuery {
-    const datasetQuery = JSON.parse(JSON.stringify(card.dataset_query));
+    const datasetQuery = Utils.copy(card.dataset_query);
     // clean the query
     if (datasetQuery.type === "query") {
         datasetQuery.query = Query.cleanQuery(datasetQuery.query);
@@ -79,29 +90,25 @@ export function applyParameters(
     datasetQuery.parameters = [];
     for (const parameter of parameters || []) {
         let value = parameterValues[parameter.id];
+        if (value == null) {
+            continue;
+        }
 
-        // dashboards
         const mapping = _.findWhere(parameterMappings, { card_id: card.id, parameter_id: parameter.id });
-        if (value != null && mapping) {
+        if (mapping) {
+            // mapped target, e.x. on a dashboard
             datasetQuery.parameters.push({
                 type: parameter.type,
                 target: mapping.target,
                 value: value
             });
-        }
-
-        // SQL parameters
-        if (datasetQuery.type === "native") {
-            let tag = _.findWhere(datasetQuery.native.template_tags, { id: parameter.id });
-            if (tag) {
-                datasetQuery.parameters.push({
-                    type: parameter.type,
-                    target: tag.type === "dimension" ?
-                        ["dimension", ["template-tag", tag.name]]:
-                        ["variable", ["template-tag", tag.name]],
-                    value: value
-                });
-            }
+        } else if (parameter.target) {
+            // inline target, e.x. on a card
+            datasetQuery.parameters.push({
+                type: parameter.type,
+                target: parameter.target,
+                value: value
+            });
         }
     }
 

@@ -2,7 +2,9 @@
   (:require [clojure.string :as s]
             [cheshire.generate :refer [add-encoder encode-map]]
             [metabase.api.common :refer [*current-user*]]
-            [metabase.db :as db]
+            (toucan [db :as db]
+                    [models :as models])
+            [metabase.db :as mdb]
             (metabase.models [interface :as i]
                              [permissions, :as perms]
                              [permissions-group :as perm-group])
@@ -10,7 +12,7 @@
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 
-(i/defentity Database :metabase_database)
+(models/defmodel Database :metabase_database)
 
 (defn- post-insert [{database-id :id, :as database}]
   (u/prog1 database
@@ -21,15 +23,14 @@
 
 (defn- post-select [{:keys [engine] :as database}]
   (if-not engine database
-          (assoc database :features (or (when-let [driver ((resolve 'metabase.driver/engine->driver) engine)]
-                                          (seq ((resolve 'metabase.driver/features) driver)))
-                                        []))))
+          (assoc database :features (set (when-let [driver ((resolve 'metabase.driver/engine->driver) engine)]
+                                           ((resolve 'metabase.driver/features) driver))))))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'Card        :database_id id)
-  (db/cascade-delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
-  (db/cascade-delete! 'Table       :db_id       id)
-  (db/cascade-delete! 'RawTable    :database_id id))
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! 'Card        :database_id id)
+  (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
+  (db/delete! 'Table       :db_id       id)
+  (db/delete! 'RawTable    :database_id id))
 
 
 (defn- perms-objects-set [database _]
@@ -37,17 +38,19 @@
 
 
 (u/strict-extend (class Database)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:hydration-keys     (constantly [:database :db])
-          :types              (constantly {:details :json, :engine :keyword})
-          :timestamped?       (constantly true)
-          :perms-objects-set  perms-objects-set
+  models/IModel
+  (merge models/IModelDefaults
+         {:hydration-keys (constantly [:database :db])
+          :types          (constantly {:details :encrypted-json, :engine :keyword})
+          :properties     (constantly {:timestamped? true})
+          :post-insert    post-insert
+          :post-select    post-select
+          :pre-delete     pre-delete})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:perms-objects-set  perms-objects-set
           :can-read?          (partial i/current-user-has-partial-permissions? :read)
-          :can-write?         i/superuser?
-          :post-insert        post-insert
-          :post-select        post-select
-          :pre-cascade-delete pre-cascade-delete}))
+          :can-write?         i/superuser?}))
 
 
 ;;; ------------------------------------------------------------ Hydration / Util Fns ------------------------------------------------------------
@@ -70,7 +73,7 @@
   [{:keys [id]}]
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (db/select 'Field, :table_id [:in table-ids], :special_type (db/isa :type/PK)))))
+      (db/select 'Field, :table_id [:in table-ids], :special_type (mdb/isa :type/PK)))))
 
 (defn schema-exists?
   "Does DATABASE have any tables with SCHEMA?"

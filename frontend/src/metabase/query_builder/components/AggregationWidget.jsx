@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import AggregationPopover from "./AggregationPopover.jsx";
 import FieldName from './FieldName.jsx';
@@ -6,8 +7,7 @@ import Clearable from './Clearable.jsx';
 
 import Popover from "metabase/components/Popover.jsx";
 
-import Query from "metabase/lib/query";
-import { AggregationClause, NamedClause } from "metabase/lib/query";
+import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
 import { getAggregator } from "metabase/lib/schema_metadata";
 import { format } from "metabase/lib/expressions/formatter";
 

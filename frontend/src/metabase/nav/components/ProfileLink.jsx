@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from 'react';
+import React, { Component } from 'react';
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 
 import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
@@ -133,7 +134,7 @@ export default class ProfileLink extends Component {
                 : null }
 
                 { modalOpen === "about" ?
-                    <Modal className="Modal Modal--small" onClose={this.closeModal}>
+                    <Modal small onClose={this.closeModal}>
                         <div className="px4 pt4 pb2 text-centered relative">
                             <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={this.closeModal}>
                                 <Icon name={'close'} size={16} />
@@ -160,7 +161,7 @@ export default class ProfileLink extends Component {
                         </div>
                     </Modal>
                 : modalOpen === "logs" ?
-                    <Modal className="Modal Modal--wide" onClose={this.closeModal}>
+                    <Modal wide onClose={this.closeModal}>
                         <Logs onClose={this.closeModal} />
                     </Modal>
                 : null }

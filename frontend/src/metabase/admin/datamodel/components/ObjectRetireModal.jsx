@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
@@ -32,7 +32,7 @@ export default class ObjectRetireModal extends Component {
         return (
             <ModalContent
                 title={"Retire This " + capitalize(objectType)}
-                closeFn={this.props.onClose}
+                onClose={this.props.onClose}
             >
                 <form className="flex flex-column flex-full">
                     <div className="Form-inputs pb4">
