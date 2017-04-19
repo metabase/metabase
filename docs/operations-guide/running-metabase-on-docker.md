@@ -21,10 +21,36 @@ In its default configuration Metabase uses the local filesystem to run an H2 emb
 
 To persist your data outside of the container and make it available for use between container launches we can mount a local file path inside our container.
 
-    docker run -d -p 3000:3000 -v /tmp:/tmp -e "MB_DB_FILE=/tmp/metabase.db" --name metabase metabase/metabase
+    docker run -d -p 3000:3000 -v ~/metabase-data:/metabase-data -e "MB_DB_FILE=/metabase-data/metabase.db" --name metabase metabase/metabase
 
 Now when you launch your container we are telling Metabase to use the database file at `/tmp/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
 
+### Getting your config back if you stopped your container
+
+If you have previously run and configured your Metabase using the local Database and then stopped the container, your data will still be there unless you deleted the container with the `docker rm` command. To recover your previous configuration:
+
+1. Find the stopped container using the `docker ps -a` command.
+   It will look something like this:
+
+```
+    docker ps -a | grep metabase
+    ca072cd44a49        metabase/metabase        "/app/run_metabase.sh"   About an hour ago   Up About an hour          0.0.0.0:3000->3000/tcp   metabase
+    02e4dff057d2        262aa3d0f714             "/app/run_metabase.sh"   23 hours ago        Exited (0) 23 hours ago                            pedantic_hypatia
+    0d2170d4aa4a        262aa3d0f714             "/app/run_metabase.sh"   23 hours ago        Exited (0) 23 hours ago                            stoic_lumiere
+```
+   Once you have identified the stopped container with your configuration in it, save the container ID from the left most column for the next step.
+2. Use `docker commit` to create a new custom docker image from the stopped container containing your configuration.
+
+```
+     docker commit ca072cd44a49 mycompany/metabase-custom
+     sha256:9ff56186de4dd0b9bb2a37c977c3a4c9358647cde60a16f11f4c05bded1fe77a
+```
+3. Run your new image using `docker run` to get up and running again.
+```
+     docker run -d -p 3000:3000 --name metabase mycompany/metabase-custom
+     430bb02a37bb2471176e54ca323d0940c4e0ee210c3ab04262cb6576fe4ded6d
+```
+Hopefully you have your previously configured Metabase Installation back. If it's not the one you expected try a different stopped container and do these steps again.
 
 ### Using Postgres as the Metabase application database
 
@@ -63,6 +89,11 @@ Now that you’ve installed Metabase, it’s time to [set it up and connect it t
 
 ### Copying the application database
 
-If you forget to configure to the application database, it will be located at `/metabase.db.mv.db` in the container. You can copy it out of the container using the following command (replacing `CONTAINER_ID` with the actual container ID or `metabase` if you named the container):
+If you forgot to configure to the application database, it will be located at `/metabase.db/metabase.db.mv.db` in the container. You can copy this whole directory out of the container using the following command (replacing `CONTAINER_ID` with the actual container ID or name, `metabase` if you named the container):
+
+    docker cp CONTAINER_ID:/metabase.db ./
+
+The DB contents will be left in a directory named metabase.db.
+Note that some older versions of metabase stored their db in a different default location.
 
     docker cp CONTAINER_ID:/metabase.db.mv.db metabase.db.mv.db
