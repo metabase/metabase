@@ -161,7 +161,7 @@ export const drillRecord = (databaseId, tableId, fieldId, value) => {
     const newCard = startNewCard("query", databaseId, tableId);
     newCard.dataset_query.query = Query.addFilter(newCard.dataset_query.query, [
         "=",
-        fieldId,
+        ["field-id", fieldId],
         value
     ]);
     return newCard;

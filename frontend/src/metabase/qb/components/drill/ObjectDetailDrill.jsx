@@ -16,7 +16,7 @@ import type {
 
 export default (
     { card, tableMetadata, clicked }: ClickActionProps
-): ?ClickAction => {
+): ClickAction[] => {
     if (
         !clicked ||
         !clicked.column ||
@@ -24,7 +24,7 @@ export default (
         !(isFK(clicked.column.special_type) ||
             isPK(clicked.column.special_type))
     ) {
-        return;
+        return [];
     }
 
     const value = clicked.value;
@@ -39,20 +39,23 @@ export default (
     }
 
     if (!field || !table) {
-        return;
+        return [];
     }
 
-    return {
-        title: (
-            <span>
-                View this
-                {" "}
-                <span className="text-dark">
-                    {singularize(stripId(recordType))}
+    return [
+        {
+            title: (
+                <span>
+                    View this
+                    {" "}
+                    <span className="text-dark">
+                        {singularize(stripId(recordType))}
+                    </span>
                 </span>
-            </span>
-        ),
-        default: true,
-        card: () => drillRecord(tableMetadata.db_id, table.id, field.id, value)
-    };
+            ),
+            default: true,
+            card: () =>
+                drillRecord(tableMetadata.db_id, table.id, field.id, value)
+        }
+    ];
 };

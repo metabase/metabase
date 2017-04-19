@@ -146,10 +146,13 @@
     "dev": "yarn && concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn run build-hot'",
     "lint": "yarn run lint-eslint && yarn run lint-prettier",
     "lint-eslint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
-    "lint-prettier": "prettier --tab-width 4 -l 'frontend/src/metabase/qb/**/*.js*' 'frontend/src/metabase/new_question/**/*.js*' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
+    "lint-prettier": "prettier --tab-width 4 -l 'frontend/src/metabase/{qb,new_question}/**/*.js*' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
     "flow": "flow check",
-    "test": "karma start frontend/test/karma.conf.js --single-run",
-    "test-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
+    "test": "yarn run test-jest && yarn run test-karma",
+    "test-karma": "karma start frontend/test/karma.conf.js --single-run",
+    "test-karma-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
+    "test-jest": "jest",
+    "test-jest-watch": "jest --watch",
     "test-e2e": "JASMINE_CONFIG_PATH=./frontend/test/e2e/support/jasmine.json jasmine",
     "test-e2e-dev": "./frontend/test/e2e-with-persistent-browser.js",
     "test-e2e-sauce": "USE_SAUCE=true yarn run test-e2e",
@@ -159,15 +162,10 @@
     "start": "yarn run build && lein ring server",
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
-    "prettier": "prettier --tab-width 4 --write 'frontend/src/metabase/qb/**/*.js*' 'frontend/src/metabase/new_question/**/*.js*'",
-    "test-jest": "jest"
+    "prettier": "prettier --tab-width 4 --write 'frontend/src/metabase/{qb,new_question}/**/*.js*'"
   },
   "lint-staged": {
-    "frontend/src/metabase/qb/**/*.js*": [
-      "prettier --tab-width 4 --write",
-      "git add"
-    ],
-    "frontend/src/metabase/new_question/**/*.js*": [
+    "frontend/src/metabase/{qb,new_question}/**/*.js*": [
       "prettier --tab-width 4 --write",
       "git add"
     ]
