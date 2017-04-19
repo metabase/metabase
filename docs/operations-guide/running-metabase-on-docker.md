@@ -84,6 +84,12 @@ It's best to set your Java timezone to match the timezone you'd like all your re
 
 While running Metabase on docker you can use any of the custom settings from [Customizing the Metabase Jetty Webserver](./start.md#customizing-the-metabase-jetty-webserver) by setting environment variables on your docker run command.
 
+In addition to the standard custom settings there are two docker specific environment variables `MUID` and `MGID` which are used to set the user and group IDs used by metabase when running in a docker container. These settings make it possible to match file permissions when files, such as the application database, are shared between the host and the container.
+
+Here's how to use a database file, owned by your account, that is stored in your home directory:
+
+    docker run -d -v ~/my-metabase-db:/metabase.db --name metabase -e MB_DB_FILE=/metabase.db -e MUID=$UID -e MGID=$GID -p 3000:3000 metabase/metabase
+
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
 
 
