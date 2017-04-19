@@ -113,8 +113,7 @@ You'll just need to set a JVM option to let it know explicitly how much memory i
 
     java -Xmx2g -jar metabase.jar
 
-Adjust this number as appropriate for your shared hosting instance. Make sure to set the number lower than the total amount of RAM available on your instance, because Metabase
-isn't the only process that'll be running.
+Adjust this number as appropriate for your shared hosting instance. Make sure to set the number lower than the total amount of RAM available on your instance, because Metabase isn't the only process that'll be running. Generally, leaving 1-2 GB of RAM for these other processes should be enough; for example, you might set `-Xmx` to `1g` for an instance with 2 GB of RAM, `2g` for one with 4 GB of RAM, `6g` for an instance with 8 GB of RAM, and so forth. You may need to experment with these settings a bit to find the right number.
 
 As above, you can use the environment variable `JAVA_TOOL_OPTIONS` to set JVM args instead of passing them directly to `java`. This is useful when running the Docker image,
 for example.
