@@ -271,8 +271,9 @@ export const getRoutes = (store) =>
             </Route>
 
             {/* DEPRECATED */}
-            <Redirect from="/q" to="/question" />
-            <Redirect from="/card/:cardId" to="/question/:cardId" />
+            {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
+            <Route path="/q" onEnter={({ location }, replace) => replace({ pathname: "/question", hash: location.hash })} />
+            <Route path="/card/:cardId" onEnter={({ location, params }, replace) => replace({ pathname: `/question/${params.cardId}`, hash: location.hash })} />
             <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
 
             {/* MISC */}
