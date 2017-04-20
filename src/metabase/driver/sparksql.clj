@@ -13,6 +13,13 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.query-processor.util :as qputil]))
 
+(defn sparksql
+  "Create a database specification for a Spark SQL database. Opts should include
+  keys for :db, :user, and :password. You can also optionally set host and
+  port."
+  [opts]
+  (hive/hive opts))
+
 (defn- connection-details->spec [details]
   (-> details
       (update :port (fn [port]
@@ -20,7 +27,7 @@
                         (Integer/parseInt port)
                         port)))
       (set/rename-keys {:dbname :db})
-      dbspec/sparksql
+      sparksql
       (sql/handle-additional-options details)))
 
 (defn- humanize-connection-error-message [message]
@@ -50,7 +57,6 @@
                  (merge (sql/IDriverSQLDefaultsMixin)
                         {:date-interval (u/drop-first-arg hive/date-interval)
                          :describe-database hive/describe-database
-                         ;;:analyze-table hive/analyze-table
                          :describe-table hive/describe-table
                          :describe-table-fks hive/describe-table-fks
                          :details-fields (constantly [{:name "host"
@@ -78,19 +84,14 @@
                          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
                  sql/ISQLDriver
                  (merge (sql/ISQLDriverDefaultsMixin)
-                        {:column->base-type (u/drop-first-arg hive/column->base-type)
+                        {:apply-page (u/drop-first-arg hive/apply-page)
+                         :column->base-type (u/drop-first-arg hive/column->base-type)
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
                          :date (u/drop-first-arg hive/date)
+                         ;;:field->identifier (u/drop-first-arg hive/field->identifier)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly hive/now))
                          :string-length-fn (u/drop-first-arg hive/string-length-fn)
                          :unix-timestamp->timestamp (u/drop-first-arg hive/unix-timestamp->timestamp)}))
 
 (driver/register-driver! :sparksql (SparkSQLDriver.))
-
-(defn sparksql
-  "Create a database specification for a Spark SQL database. Opts should include
-  keys for :db, :user, and :password. You can also optionally set host and
-  port."
-  [opts]
-  (hive/hive opts))

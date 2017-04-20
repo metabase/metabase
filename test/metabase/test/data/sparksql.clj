@@ -29,27 +29,10 @@
           :user "admin"
           :password "admin"}))
 
-(defn default-create-table-sql [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [quot          (partial generic/quote-name driver)
-        pk-field-name (quot (generic/pk-field-name driver))]
-    (format "CREATE TABLE %s (%s, %s %s);"
-            (generic/qualify+quote-name driver database-name table-name)
-            (->> field-definitions
-                 (map (fn [{:keys [field-name base-type]}]
-                        (format "%s %s" (quot field-name) (if (map? base-type)
-                                                            (:native base-type)
-                                                            (generic/field-base-type->sql-type driver base-type)))))
-                 (interpose ", ")
-                 (apply str))
-            pk-field-name (generic/pk-sql-type driver)
-            pk-field-name)))
-
-(defn database->connection-details [context {:keys [database-name]}]
-  (merge {:host "localhost"
-          :port 10000
-          :db "default"
-          :user "admin"
-          :password "admin"}))
+(defn- qualified-name-components
+  ([db-name]                       [db-name])
+  ([db-name table-name]            [db-name table-name])
+  ([db-name table-name field-name] [table-name field-name]))
 
 (defn spark-quote-name [nm]
   (str \` nm \`))
@@ -60,9 +43,10 @@
                         {:add-fk-sql                (constantly nil)
                          :execute-sql!              generic/sequentially-execute-sql!
                          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-                         :create-table-sql          default-create-table-sql
+                         :create-table-sql          hive/default-create-table-sql
                          :load-data!                (hive/make-load-data-fn generic/load-data-add-ids)
                          :pk-sql-type               (constantly "INT")
+                         :qualified-name-components (u/drop-first-arg qualified-name-components)
                          :quote-name                (u/drop-first-arg spark-quote-name)})
                  i/IDatasetLoader
                  (merge generic/IDatasetLoaderMixin

@@ -34,6 +34,11 @@
 (defn hive-quote-name [nm]
   (str \` nm \`))
 
+(defn- default-qualified-name-components
+  ([_ db-name]                       [db-name])
+  ([_ db-name table-name]            [table-name])
+  ([_ db-name table-name field-name] [table-name field-name]))
+
 (defn- do-insert!
   "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
   [driver spec table-name row-or-rows]
@@ -52,7 +57,6 @@
                                          (hsql/format hsql-form
                                                       :quoting             (sql/quote-style driver)
                                                       :allow-dashed-names? false))))]
-    (log/info "hive spec is" (prn-str spec))
     (with-open [conn (jdbc/get-connection spec)]
       (try
         (do
@@ -66,7 +70,6 @@
   "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
-  (log/info "hive make-load-data-fn")
   (fn [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
     (let [spec       (generic/database->spec driver :db dbdef)
           table-name (apply hx/qualify-and-escape-dots (generic/qualified-name-components driver database-name table-name))

@@ -4,6 +4,7 @@
    (clojure [set :as set]
             [string :as s])
    [clojure.tools.logging :as log]
+   [toucan.db :as db]
    (honeysql [core :as hsql]
              [helpers :as h])
    [metabase.db.spec :as dbspec]
@@ -43,17 +44,19 @@
 (def ^:const now (hsql/raw "NOW()"))
 
 (defn unix-timestamp->timestamp [expr seconds-or-milliseconds]
-  (hsql/call :from_unixtime (case seconds-or-milliseconds
-                              :seconds      expr
-                              :milliseconds (hx// expr 1000))))
+  (hx/->timestamp
+   (hsql/call :from_unixtime (case seconds-or-milliseconds
+                               :seconds      expr
+                               :milliseconds (hx// expr 1000)))))
 
 (defn- date-format [format-str expr]
   (hsql/call :date_format expr (hx/literal format-str)))
 
 (defn- str-to-date [format-str expr]
-  (hsql/call :from_unixtime
-             (hsql/call :unix_timestamp
-                        expr (hx/literal format-str))))
+  (hx/->timestamp
+   (hsql/call :from_unixtime
+              (hsql/call :unix_timestamp
+                         expr (hx/literal format-str)))))
 
 (defn trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
@@ -95,6 +98,36 @@
 (defn string-length-fn [field-key]
   (hsql/call :length field-key))
 
+;; same as the normal one, except we don't include the schema name
+(defn qualified-name-components
+  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
+  [{field-name :name, table-id :table_id, parent-id :parent_id}]
+  (conj (vec (if-let [parent (metabase.models.field/Field parent-id)]
+               (qualified-name-components parent)
+               (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
+                 [table-name])))
+        field-name))
+
+(defn field->identifier [field]
+  (log/info "-asdf1" (prn-str field) " to " (apply hsql/qualify (qualified-name-components field)))
+  (apply hsql/qualify (qualified-name-components field)))
+
+;; copied from the Presto driver, except using mysql quoting style
+(defn apply-page [honeysql-query {{:keys [items page]} :page}]
+  (let [offset (* (dec page) items)]
+    (if (zero? offset)
+      ;; if there's no offset we can simply use limit
+      (h/limit honeysql-query items)
+      ;; if we need to do an offset we have to do nesting to generate a row number and where on that
+      (let [over-clause (format "row_number() OVER (%s)"
+                                (first (hsql/format (select-keys honeysql-query [:order-by])
+                                                    :allow-dashed-names? true
+                                                    :quoting :mysql)))]
+        (-> (apply h/select (map last (:select honeysql-query)))
+            (h/from (h/merge-select honeysql-query [(hsql/raw over-clause) :__rownum__]))
+            (h/where [:> :__rownum__ offset])
+            (h/limit items))))))
+
 ;; lots of copy-paste here. consider making some of those non-private instead.
 (defn- exception->nice-error-message ^String [^java.sql.SQLException e]
   (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
@@ -131,8 +164,9 @@
   Number  (unprepare-arg [this] (str this))
   Date    (unprepare-arg [this] (first (hsql/format
                                         (hsql/call :from_unixtime
-                                                   (hx/literal (u/date->iso-8601 this))
-                                                   (hx/literal "YYYY-MM-dd\\\\'T\\\\'HH:mm:ss.SSS\\\\'Z\\\\'"))))))
+                                                   (hsql/call :unix_timestamp
+                                                              (hx/literal (u/date->iso-8601 this))
+                                                              (hx/literal "yyyy-MM-dd\\\\'T\\\\'HH:mm:ss.SSS\\\\'Z\\\\'")))))))
 
 (defn unprepare
   "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement."
@@ -153,29 +187,25 @@
                                   (unprepare (cons (:query query) (:params query)))
                                   (:query query)))
                   (dissoc :params))]
-    (log/info "Unprepared hive query: " (prn-str query))
     (do-with-try-catch
      (fn []
        (let [db-connection (sql/db->jdbc-connection-spec database)]
          (run-query-without-timezone driver settings db-connection query))))))
 
 (defn describe-database [driver database]
+  (log/info "xyz-" (prn-str database) " details " (:details database))
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-             (set (for [result (jdbc/query {:connection conn} ["show tables"])]
+             (set (for [result (jdbc/query {:connection conn} [(str "show tables in `" (:name database) "`")])]
                     {:name (:tablename result)
-                     ;; setting schema to nil seems to work better than (:database result)
-                     ;; :schema nil
-                     :schema (:database result)
-                     })))})
+                     :schema (:database result)})))})
 
 (defn describe-table [driver database table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-    (log/info "asdf describe " (prn-str table))
     {:name (:name table)
-     ;; :schema nil
      :schema (:schema table)
      :fields (set (for [result (jdbc/query {:connection conn}
-                                           [(str "describe " (:name table))])]
+                                           [(str "describe `" (:schema table)
+                                                 "`.`" (:name table) "`")])]
                     {:name (:col_name result)
                      :base-type (column->base-type (keyword (:data_type result)))}))}))
 
@@ -200,6 +230,34 @@
     #".*" ; default
     message))
 
+(defn hive
+  "Create a database specification for a Hive database. Opts should include
+  keys for :db, :user, and :password. You can also optionally set host and
+  port."
+  [{:keys [host port db]
+    :or {host "localhost", port 10000, db ""}
+    :as opts}]
+  ;; This is a bit awkward. HiveDriver is a superclass of FixedHiveDriver,
+  ;; so its constructor will always be called first and register with the
+  ;; DriverManager.
+  ;; Doing the following within the constructor of FixedHiveDriver didn't seem
+  ;; to work, so we make sure FixedHiveDriver is returned for jdbc:hive2
+  ;; connections here by manually deregistering all other jdbc:hive2 drivers.
+  (loop []
+    (let [driver (try
+                   (java.sql.DriverManager/getDriver "jdbc:hive2://localhost:10000")
+                   (catch java.sql.SQLException e
+                     nil))]
+      (if driver
+        (when-not (instance? com.metabase.hive.jdbc.FixedHiveDriver driver)
+          (java.sql.DriverManager/deregisterDriver driver)
+          (recur))
+        (java.sql.DriverManager/registerDriver (com.metabase.hive.jdbc.FixedHiveDriver.)))))
+  (merge {:classname "com.metabase.hive.jdbc.FixedHiveDriver"
+          :subprotocol "hive2"
+          :subname (str "//" host ":" port "/")}
+         (dissoc opts :host :port)))
+
 (defn- connection-details->spec [details]
   (-> details
       (update :port (fn [port]
@@ -207,17 +265,17 @@
                         (Integer/parseInt port)
                         port)))
       (set/rename-keys {:dbname :db})
-      dbspec/hive
+      hive
       (sql/handle-additional-options details)))
 
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."
   [driver]
   #{:basic-aggregations
-    ;;:standard-deviation-aggregations
-    ;;:expressions
-    ;;:expression-aggregations
-    ;;:native-parameters
+    :standard-deviation-aggregations
+    :expressions
+    :expression-aggregations
+    :native-parameters
     })
 
 (defrecord HiveDriver []
@@ -256,40 +314,14 @@
                          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
                  sql/ISQLDriver
                  (merge (sql/ISQLDriverDefaultsMixin)
-                        {:column->base-type (u/drop-first-arg column->base-type)
+                        {:apply-page (u/drop-first-arg apply-page)
+                         :column->base-type (u/drop-first-arg column->base-type)
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
                          :date (u/drop-first-arg date)
+                         ;;:field->identifier (u/drop-first-arg field->identifier)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly now))
                          :string-length-fn (u/drop-first-arg string-length-fn)
                          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :hive (HiveDriver.))
-
-(defn hive
-  "Create a database specification for a Hive database. Opts should include
-  keys for :db, :user, and :password. You can also optionally set host and
-  port."
-  [{:keys [host port db]
-    :or {host "localhost", port 10000, db ""}
-    :as opts}]
-  ;; This is a bit awkward. HiveDriver is a superclass of FixedHiveDriver,
-  ;; so its constructor will always be called first and register with the
-  ;; DriverManager.
-  ;; Doing the following within the constructor of FixedHiveDriver didn't seem
-  ;; to work, so we make sure FixedHiveDriver is returned for jdbc:hive2
-  ;; connections here by manually deregistering all other jdbc:hive2 drivers.
-  (loop []
-    (let [driver (try
-                   (java.sql.DriverManager/getDriver "jdbc:hive2://localhost:10000")
-                   (catch java.sql.SQLException e
-                     nil))]
-      (if driver
-        (when-not (instance? com.metabase.hive.jdbc.FixedHiveDriver driver)
-          (java.sql.DriverManager/deregisterDriver driver)
-          (recur))
-        (java.sql.DriverManager/registerDriver (com.metabase.hive.jdbc.FixedHiveDriver.)))))
-  (merge {:classname "com.metabase.hive.jdbc.FixedHiveDriver"
-          :subprotocol "hive2"
-          :subname (str "//" host ":" port "/")}
-         (dissoc opts :host :port)))

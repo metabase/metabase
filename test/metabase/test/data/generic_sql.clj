@@ -234,7 +234,7 @@
           rows       (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
-(def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn load-data-add-ids))
+(def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn))
 (def load-data-chunked!                "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
 (def load-data-one-at-a-time!          "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
 (def load-data-chunked-parallel!       "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))

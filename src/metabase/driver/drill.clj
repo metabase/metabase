@@ -2,13 +2,13 @@
   (:require [clojure.java.jdbc :as jdbc]
             (clojure [set :as set]
                      [string :as s])
-            [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [helpers :as h])
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.hive :as hive]
+            [metabase.driver.bigquery :as bigquery]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.query-processor.util :as qputil])
@@ -25,7 +25,6 @@
    :BOOLEAN :type/Boolean
    :DATE :type/Date
    :DECIMAL :type/Decimal
-   ;; do we really need DEC and NUMERIC?
    :DEC :type/Decimal
    :NUMERIC :type/Decimal
    :FLOAT :type/Float
@@ -42,9 +41,20 @@
    (keyword "CHAR") :type/Text
    :VARCHAR :type/Text})
 
+(defn drill
+  "Create a database specification for a Drill cluster. Opts should include
+  :zookeeper-connect."
+  [{:keys [zookeeper-connect]
+    :or {zookeeper-connect "127.0.0.1:2181/drill"}
+    :as opts}]
+  (merge {:classname "org.apache.drill.jdbc.Driver" ; must be in classpath
+          :subprotocol "drill"
+          :subname (str "zk=" zookeeper-connect)}
+         (dissoc opts :zookeeper-connect)))
+
 (defn- connection-details->spec [details]
   (-> details
-      dbspec/drill
+      drill
       (sql/handle-additional-options details)))
 
 (defn- can-connect? [details]
@@ -62,31 +72,36 @@
 
 (defn date [unit expr]
   (case unit
-    :default expr
-    :minute (hsql/call :date_trunc_minute expr)
-    :minute-of-hour (hx/->integer (date-format "mm"))
-    :hour (hsql/call :date_trunc_hour expr)
-    :hour-of-day (hsql/call :extract "hour" expr)
-    :day (hsql/call :date_trunc_day expr)
+    :default (hx/->timestamp expr)
+    :minute (hsql/call :date_trunc_minute (hx/->timestamp expr))
+    :minute-of-hour (hx/->integer (date-format "mm" expr))
+    :hour (hsql/call :date_trunc_hour (hx/->timestamp expr))
+    :hour-of-day (hsql/call :extract "hour" (hx/->timestamp expr))
+    :day (hsql/call :date_trunc_day (hx/->timestamp expr))
     :day-of-week (hx/->integer (date-format "e"
-                                            (hx/+ expr
+                                            (hx/+ (hx/->timestamp expr)
                                                   (hsql/raw "interval '1' day"))))
-    :day-of-month (hsql/call :extract "day" expr)
-    :day-of-year (hx/->integer (date-format "D" expr))
-    :week (hx/- (hsql/call :date_trunc_week (hx/+ expr
+    :day-of-month (hsql/call :extract "day" (hx/->timestamp expr))
+    :day-of-year (hx/->integer (date-format "D" (hx/->timestamp expr)))
+    :week (hx/- (hsql/call :date_trunc_week (hx/+ (hx/->timestamp expr)
                                                   (hsql/raw "interval '1' day")))
                 (hsql/raw "interval '1' day"))
-    :week-of-year (hx/->integer (date-format "ww" expr))
-    :month (hsql/call :date_trunc_month expr)
-    :month-of-year (hx/->integer (date-format "MM" expr))
-    :quarter (hsql/call :date_trunc_quarter expr)
+    :week-of-year (hx/->integer (date-format "ww" (hx/->timestamp expr)))
+    :month (hsql/call :date_trunc_month (hx/->timestamp expr))
+    :month-of-year (hx/->integer (date-format "MM" (hx/->timestamp expr)))
+    :quarter (hx/+ (hsql/call :date_trunc_year (hx/->timestamp expr))
+                   (hx/* (hx// (hx/- (hsql/call :extract "month" (hx/->timestamp expr))
+                                     1)
+                               3)
+                         (hsql/raw "INTERVAL '3' MONTH")))
+    ;;:quarter (hsql/call :date_trunc_quarter (hx/->timestamp expr))
     :quarter-of-year (hx/->integer
                       (hsql/call :ceil
                                  (hx// (hsql/call :extract
                                                   "month"
-                                                  expr)
+                                                  (hx/->timestamp expr))
                                        3.0)))
-    :year (hsql/call :extract "year" expr)))
+    :year (hsql/call :extract "year" (hx/->timestamp expr))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -108,7 +123,7 @@
 
 (defn- describe-database [driver database]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-             (set (for [result (jdbc/query {:connection conn} ["select table_name, table_schema from INFORMATION_SCHEMA.`TABLES` where table_type='TABLE'"])]
+             (set (for [result (jdbc/query {:connection conn} ["select table_catalog, table_schema, table_name from INFORMATION_SCHEMA.`VIEWS` union select table_catalog, table_schema, table_name from INFORMATION_SCHEMA.`TABLES` where table_type='TABLE'"])]
                     {:name (:table_name result)
                      :schema (:table_schema result)})))})
 
@@ -185,19 +200,19 @@
                          :describe-database describe-database
                          :describe-table describe-table
                          :describe-table-fks hive/describe-table-fks
-                         :details-fields (constantly [{:name "cluster"
-                                                       :display-name "Cluster ID"
-                                                       :default "drillcluster"}
-                                                      {:name "zookeeper"
+                         :details-fields (constantly [{:name "zookeeper-connect"
                                                        :display-name "ZooKeeper connect string"
-                                                       :default "127.0.0.1:2181/drill"}])
+                                                       :default "127.0.0.1:2181/drill/cluster-id"}])
                          :execute-query execute-query
+                         :features hive/features
                          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
                  sql/ISQLDriver
                  (merge (sql/ISQLDriverDefaultsMixin)
-                        {:column->base-type (u/drop-first-arg hive/column->base-type)
+                        {:apply-aggregation bigquery/apply-aggregation
+                         :column->base-type column->base-type
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
                          :date (u/drop-first-arg date)
+                         :field->identifier (u/drop-first-arg hive/field->identifier)
                          :prepare-value (u/drop-first-arg prepare-value)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly hive/now))
@@ -205,14 +220,3 @@
                          :unix-timestamp->timestamp (u/drop-first-arg hive/unix-timestamp->timestamp)}))
 
 (driver/register-driver! :drill (DrillDriver.))
-
-(defn drill
-  "Create a database specification for a Drill cluster. Opts should include
-  keys for :cluster and :zookeeper."
-  [{:keys [cluster zookeeper]
-    :or {cluster "drillcluster", zookeeper "127.0.0.1:2181/drill"}
-    :as opts}]
-  (merge {:classname "org.apache.drill.jdbc.Driver" ; must be in classpath
-          :subprotocol "drill"
-          :subname (str "zk=" zookeeper "/" cluster)}
-         (dissoc opts :cluster :zookeeper)))
