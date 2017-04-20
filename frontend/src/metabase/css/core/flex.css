@@ -16,7 +16,7 @@
     flex-shrink: 0;
 }
 
-.flex-retain-width {
+.shrink-below-content-size {
     /* W3C spec says:
      * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
      * fixed-size element). To change this, set the min-width or min-height property.

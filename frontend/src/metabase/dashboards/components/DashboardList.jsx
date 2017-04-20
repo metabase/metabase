@@ -21,7 +21,7 @@ type DashboardListItemType = {
 
 const enhance = withState('hover', 'setHover', false)
 const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListItemType) =>
-    <li className="Grid-cell flex-retain-width" style={{maxWidth: "550px"}}>
+    <li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
         <Link to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
               className={cx(
@@ -38,7 +38,7 @@ const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListIt
               onMouseLeave={() => setHover(false)}>
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
-            <div className={cx("flex-full flex-retain-width")}>
+            <div className={cx("flex-full shrink-below-content-size")}>
                 <h4 className={cx("text-ellipsis text-nowrap overflow-hidden text-brand", {"text-white": hover})}
                     style={{marginBottom: "0.2em"}}>
                     <Ellipsified>{dashboard.name}</Ellipsified>
