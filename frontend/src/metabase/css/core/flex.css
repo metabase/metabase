@@ -16,6 +16,21 @@
     flex-shrink: 0;
 }
 
+/* The behavior of how `flex: <flex-grow>` sets flex-basis is inconsistent across
+ * browsers. Specifically:
+ * - On Chrome and FF it's set to `flex-basis: 0%`. That behaves equally as `height: 0%`.
+ *   It means that if the containing block has no explicit height, then `height: 0%` is computed as `height: auto`,
+ *   and element grows as its content grows. That is the most common scenario in Metabase codebase.
+ * - On older IEs it's set to `flex-basis: 0` which means that the initial main size of flex item zero.
+ *   It's also notable that `flex-basis: 0%` doesn't work correctly on IE.
+ *
+ *  As a solution, `flex-basis-auto` should always be used in conjunction with `flex-full` when it is
+ *  a desired behavior that the element grows with its contents.
+*/
+.flex-basis-auto {
+    flex-basis: auto;
+}
+
 .shrink-below-content-size {
     /* W3C spec says:
      * By default, flex items won’t shrink below their minimum content size (the length of the longest word or
@@ -135,7 +150,7 @@
 }
 
 .no-flex {
-    flex: 0;
+    flex: 0 1 0%;
 }
 
 @media screen and (--breakpoint-min-md) {
