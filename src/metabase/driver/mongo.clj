@@ -16,7 +16,8 @@
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.ssh :as ssh])
   (:import com.mongodb.DB))
 
 ;;; ## MongoDriver
@@ -165,57 +166,44 @@
 
 (u/strict-extend MongoDriver
   driver/IDriver
-  (merge driver/IDriverDefaultsMixin
-         {:analyze-table                     (u/drop-first-arg analyze-table)
-          :can-connect?                      (u/drop-first-arg can-connect?)
-          :describe-database                 (u/drop-first-arg describe-database)
-          :describe-table                    (u/drop-first-arg describe-table)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      27017}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "carrierPigeonDeliveries"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"}
-                                                          {:name         "pass"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "******"}
-                                                          {:name         "authdb"
-                                                           :display-name "Authentication Database"
-                                                           :placeholder  "Optional database to use when authenticating"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}
-                                                          {:name         "tunnel-host"
-                                                           :display-name "SSH tunnel host"
-                                                           :placeholder  "What username do you use to login to the SSH tunnel?"}
-                                                          {:name         "tunnel-port"
-                                                           :display-name "SSH tunnel port"
-                                                           :type         :integer
-                                                           :default      22}
-                                                          {:name         "tunnel-user"
-                                                           :display-name "SSH tunnel username"
-                                                           :placeholder  "What username do you use to login to the SSH tunnel?"}
-                                                          {:name         "tunnel-pass"
-                                                           :display-name "SSH tunnel password"
-                                                           :type         :password
-                                                           :placeholder  "******"}])
-          :execute-query                     (u/drop-first-arg qp/execute-query)
-          :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
-          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :mbql->native                      (u/drop-first-arg qp/mbql->native)
-          :process-query-in-context          (u/drop-first-arg process-query-in-context)
-          :sync-in-context                   (u/drop-first-arg sync-in-context)}))
+  (ssh/with-tunnel-config
+    (merge driver/IDriverDefaultsMixin
+           {:analyze-table                     (u/drop-first-arg analyze-table)
+            :can-connect?                      (u/drop-first-arg can-connect?)
+            :describe-database                 (u/drop-first-arg describe-database)
+            :describe-table                    (u/drop-first-arg describe-table)
+            :details-fields                    (constantly [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      27017}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "carrierPigeonDeliveries"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"}
+                                                            {:name         "pass"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "******"}
+                                                            {:name         "authdb"
+                                                             :display-name "Authentication Database"
+                                                             :placeholder  "Optional database to use when authenticating"}
+                                                            {:name         "ssl"
+                                                             :display-name "Use a secure connection (SSL)?"
+                                                             :type         :boolean
+                                                             :default      false}])
+            :execute-query                     (u/drop-first-arg qp/execute-query)
+            :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
+            :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
+            :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+            :mbql->native                      (u/drop-first-arg qp/mbql->native)
+            :process-query-in-context          (u/drop-first-arg process-query-in-context)
+            :sync-in-context                   (u/drop-first-arg sync-in-context)})))
 
 
 (driver/register-driver! :mongo (MongoDriver.))

@@ -1,11 +1,11 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
   (:require [clojure.tools.logging :as log]
+            [metabase.util.ssh :as ssh]
             (monger [core :as mg]
                     [credentials :as mcred])
             (metabase [driver :as driver]
-                      [util :as u]))
-  (:import com.jcraft.jsch.JSch))
+                      [util :as u])))
 
 (def ^:const ^:private connection-timeout-ms
   "Number of milliseconds to wait when attempting to establish a Mongo connection.
@@ -40,14 +40,6 @@
                                             [server-address options]
                                             [server-address options credentials]))
 
-(defn start-ssh-tunnel
-  [{:keys [tunnel-host tunnel-port tunnel-user tunnel-pass host port]}]
-  (let [session (.getSession (new com.jcraft.jsch.JSch) tunnel-user tunnel-host tunnel-port)]
-    (.setPassword session tunnel-pass)
-    (.setConfig session "StrictHostKeyChecking" "no")
-    (.connect session)
-    (.setPortForwardingL session 0 host port)))
-
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
@@ -66,9 +58,7 @@
         authdb           (if (seq authdb)
                            authdb
                            dbname)
-        port             (if (seq tunnel-host)
-                           (start-ssh-tunnel details)
-                           port)
+        port             (ssh/choose-port port details)
         host             (if (seq tunnel-host)
                            "127.0.0.1"
                            host)
@@ -83,7 +73,8 @@
     (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
     (try
       (binding [*mongo-connection* mongo-connection]
-        (f *mongo-connection*))
+        (ssh/with-ssh-tunnel* details
+          (f *mongo-connection*)))
       (finally
         (mg/disconnect conn)))))
 
