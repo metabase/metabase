@@ -40,6 +40,12 @@
     #"^Password can not be null when the authentication mechanism is unspecified$"
     (driver/connection-error-messages :password-required)
 
+    #"^com.jcraft.jsch.JSchException: Auth fail$"
+    (driver/connection-error-messages :ssh-tunnel-auth-fail)
+
+    #"j^ava.net.ConnectException: Connection refused (Connection refused)$"
+    (driver/connection-error-messages :ssh-tunnel-connection-fail)
+
     #".*"                               ; default
     message))
 

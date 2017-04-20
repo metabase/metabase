@@ -48,35 +48,32 @@
                   (string? database)            {:dbname database}
                   (:dbname (:details database)) (:details database) ; entire Database obj
                   (:dbname database)            database            ; connection details map only
-                  :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
-        {:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass]
-         :or   {port 27017, pass "", ssl false}} details
-        user             (when (seq user) ; ignore empty :user and :pass strings
-                           user)
-        pass             (when (seq pass)
-                           pass)
-        authdb           (if (seq authdb)
-                           authdb
-                           dbname)
-        port             (ssh/choose-port port details)
-        host             (if (seq tunnel-host)
-                           "127.0.0.1"
-                           host)
-        server-address   (mg/server-address host port)
-        credentials      (when user
-                           (mcred/create user authdb pass))
-        connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
-        conn             (if credentials
-                           (connect credentials)
-                           (connect))
-        mongo-connection (mg/get-db conn dbname)]
-    (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
-    (try
-      (binding [*mongo-connection* mongo-connection]
-        (ssh/with-ssh-tunnel* details
-          (f *mongo-connection*)))
-      (finally
-        (mg/disconnect conn)))))
+                  :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))]
+    (ssh/with-ssh-tunnel details
+      (fn [details]
+       (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass]
+              :or   {port 27017, pass "", ssl false}} details
+             user             (when (seq user) ; ignore empty :user and :pass strings
+                                user)
+             pass             (when (seq pass)
+                                pass)
+             authdb           (if (seq authdb)
+                                authdb
+                                dbname)
+             server-address   (mg/server-address host port)
+             credentials      (when user
+                                (mcred/create user authdb pass))
+             connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
+             conn             (if credentials
+                                (connect credentials)
+                                (connect))
+             mongo-connection (mg/get-db conn dbname)]
+         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
+         (try
+           (binding [*mongo-connection* mongo-connection]
+             (f *mongo-connection*))
+           (finally        (mg/disconnect conn)
+                           (log/debug (u/format-color 'cyan "<< CLOSED MONGODB CONNECTION >>")))))))))
 
 (defmacro with-mongo-connection
   "Open a new MongoDB connection to DATABASE-OR-CONNECTION-STRING, bind connection to BINDING, execute BODY, and close the connection.
