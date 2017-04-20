@@ -185,6 +185,17 @@ export const summarize = (card, aggregation, tableMetadata) => {
     return newCard;
 };
 
+export const breakout = (card, breakout, tableMetadata) => {
+    const newCard = startNewCard("query");
+    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query.query = Query.addBreakout(
+        newCard.dataset_query.query,
+        breakout
+    );
+    guessVisualization(newCard, tableMetadata);
+    return newCard;
+};
+
 export const pivot = (
     card: CardObject,
     breakout,

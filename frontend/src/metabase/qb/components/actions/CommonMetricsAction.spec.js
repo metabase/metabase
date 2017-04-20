@@ -6,7 +6,7 @@ import { card, tableMetadata } from "../__support__/fixtures";
 
 const mockMetric = {
     id: 123,
-    table_id: 234,
+    table_id: 10,
     name: "Mock Metric"
 };
 
@@ -41,7 +41,7 @@ describe("CommonMetricsAction", () => {
         expect(actions).toHaveLength(1);
         const newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: 234,
+            source_table: 10,
             aggregation: [["METRIC", 123]]
         });
         expect(newCard.display).toEqual("scalar");

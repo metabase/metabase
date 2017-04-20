@@ -57,7 +57,9 @@ export const tableMetadata = {
 export const card = {
     dataset_query: {
         type: "query",
-        query: {}
+        query: {
+            source_table: 10
+        }
     }
 };
 

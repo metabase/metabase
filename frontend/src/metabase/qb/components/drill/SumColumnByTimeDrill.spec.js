@@ -30,6 +30,7 @@ describe("SumColumnByTimeDrill", () => {
         expect(actions).toHaveLength(1);
         const newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
+            source_table: 10,
             aggregation: [["sum", ["field-id", 1]]],
             breakout: [["datetime-field", ["field-id", 3], "as", "day"]]
         });

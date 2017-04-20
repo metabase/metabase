@@ -30,6 +30,7 @@ describe("CountByColumnDrill", () => {
         expect(actions).toHaveLength(1);
         const newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
+            source_table: 10,
             aggregation: [["count"]],
             breakout: [["field-id", 2]]
         });
