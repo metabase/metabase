@@ -16,7 +16,10 @@ export function createThunkAction(actionType, actionThunkCreator) {
         return async function(dispatch, getState) {
             try {
                 let payload = await thunk(dispatch, getState);
-                dispatch({ type: actionType, payload });
+                let dispatchValue = { type: actionType, payload };
+                dispatch(dispatchValue);
+
+                return dispatchValue;
             } catch (error) {
                 dispatch({ type: actionType, payload: error, error: true });
                 throw error;

@@ -28,7 +28,7 @@ import {
 
 import {
     fetchDashboards
-} from 'metabase/dashboard/dashboard';
+} from 'metabase/dashboards/dashboards';
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),

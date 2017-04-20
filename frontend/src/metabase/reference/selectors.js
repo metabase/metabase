@@ -1,5 +1,6 @@
 import { createSelector } from 'reselect';
 import { assoc, getIn } from "icepick";
+import { getDashboardListing } from "../dashboards/selectors";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
 import {
@@ -14,6 +15,7 @@ import {
 } from "./utils";
 
 import _ from "underscore";
+
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
@@ -697,7 +699,6 @@ export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaE
 
 export const getGuide = (state, props) => state.reference.guide;
 
-export const getDashboards = (state, props) => state.dashboard.dashboardListing &&
-    resourceListToMap(state.dashboard.dashboardListing);
+export const getDashboards = (state, props) => getDashboardListing(state) && resourceListToMap(getDashboardListing(state));
 
 export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;
