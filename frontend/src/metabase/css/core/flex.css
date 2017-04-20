@@ -156,3 +156,10 @@
 @media screen and (--breakpoint-min-md) {
     .md-no-flex { flex: 0 !important; }
 }
+
+/* Contents of elements inside flex items might not be wrapped correctly on IE11,
+   set max-width manually to enforce wrapping
+*/
+.ie-wrap-content-fix {
+   max-width: 100%;
+}
