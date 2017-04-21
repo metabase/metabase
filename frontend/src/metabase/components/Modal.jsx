@@ -173,10 +173,7 @@ export class FullPageModal extends Component {
     }
 
     render() {
-        // NOTE Atte Keinänen 4/21/17
-        // IE11 requires some element to be rendered or otherwise componentWillUnmount will never be called
-        // I couldn't find an online reference of that issue
-        return <span className="fullpage-modal-render-placeholder"></span>;
+        return null;
     }
 }
 
