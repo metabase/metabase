@@ -7,7 +7,7 @@ import { combineReducers } from 'redux';
 import commonReducers from "./reducers-common";
 
 /* admin */
-import adminReducers from "./reducers-admin";
+import admin from "metabase/admin/admin";
 
 /* setup */
 import * as setup from "metabase/setup/reducers";
@@ -16,6 +16,7 @@ import * as setup from "metabase/setup/reducers";
 import * as user from "metabase/user/reducers";
 
 /* dashboards */
+import dashboards from "metabase/dashboards/dashboards";
 import dashboard from "metabase/dashboard/dashboard";
 import * as home from "metabase/home/reducers";
 
@@ -35,6 +36,7 @@ export default {
     ...commonReducers,
 
     // main app reducers
+    dashboards,
     dashboard,
     home: combineReducers(home),
     pulse: combineReducers(pulse),
@@ -45,6 +47,5 @@ export default {
     reference,
     setup: combineReducers(setup),
     user: combineReducers(user),
-
-    ...adminReducers
+    admin
 };

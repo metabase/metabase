@@ -113,9 +113,9 @@ Item.propTypes = {
     favorite:           PropTypes.bool.isRequired,
     archived:           PropTypes.bool.isRequired,
     icon:               PropTypes.string.isRequired,
-    setItemSelected:    PropTypes.func.isRequired,
-    setFavorited:       PropTypes.func.isRequired,
-    setArchived:        PropTypes.func.isRequired,
+    setItemSelected:    PropTypes.func,
+    setFavorited:       PropTypes.func,
+    setArchived:        PropTypes.func,
     onEntityClick:      PropTypes.func,
     showCollectionName: PropTypes.bool,
 };
@@ -156,7 +156,7 @@ ItemBody.propTypes = {
     favorite:           PropTypes.bool.isRequired,
     id:                 PropTypes.number.isRequired,
     name:               PropTypes.string.isRequired,
-    setFavorited:       PropTypes.func.isRequired,
+    setFavorited:       PropTypes.func,
 };
 
 const ItemCreated = pure(({ created, by }) =>

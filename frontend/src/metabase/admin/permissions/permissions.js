@@ -34,7 +34,7 @@ export const loadGroups = createAction(LOAD_GROUPS, () => PermissionsApi.groups(
 const LOAD_PERMISSIONS = "metabase/admin/permissions/LOAD_PERMISSIONS";
 export const loadPermissions = createThunkAction(LOAD_PERMISSIONS, () =>
     async (dispatch, getState) => {
-        const { load } = getState().permissions;
+        const { load } = getState().admin.permissions;
         return load();
     }
 );
@@ -56,7 +56,7 @@ const SAVE_PERMISSIONS = "metabase/admin/permissions/SAVE_PERMISSIONS";
 export const savePermissions = createThunkAction(SAVE_PERMISSIONS, () =>
     async (dispatch, getState) => {
         MetabaseAnalytics.trackEvent("Permissions", "save");
-        const { permissions, revision, save } = getState().permissions;
+        const { permissions, revision, save } = getState().admin.permissions;
         let result = await save({
             revision: revision,
             groups: permissions

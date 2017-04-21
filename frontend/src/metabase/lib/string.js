@@ -12,3 +12,7 @@ export function createMultiwordSearchRegex(input) {
 }
 
 export const countLines = (str) => str.split(/\n/g).length
+
+export function caseInsensitiveSearch(haystack, needle) {
+    return !needle || (haystack != null && haystack.toLowerCase().indexOf(needle.toLowerCase()) >= 0);
+}
