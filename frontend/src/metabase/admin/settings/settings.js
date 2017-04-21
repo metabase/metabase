@@ -71,7 +71,6 @@ export const updateSlackSettings = createThunkAction(UPDATE_SLACK_SETTINGS, func
     };
 }, {});
 
-// updateEmailSettings
 export const UPDATE_LDAP_SETTINGS = "metabase/admin/settings/UPDATE_LDAP_SETTINGS";
 export const updateLdapSettings = createThunkAction(UPDATE_LDAP_SETTINGS, function(settings) {
     return async function(dispatch, getState) {

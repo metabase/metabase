@@ -156,14 +156,28 @@ export default class SettingsLdapForm extends Component {
             let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
             let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
 
-            return (
-                <SettingsSetting
-                    key={element.key}
-                    setting={{ ...element, value }}
-                    updateSetting={this.handleChangeEvent.bind(this, element)}
-                    errorMessage={errorMessage}
-                />
-            );
+            if (element.key === "ldap-group-sync") {
+                return (
+                    <SettingsSetting
+                        key={element.key}
+                        setting={{ ...element, value }}
+                        updateSetting={this.handleChangeEvent.bind(this, element)}
+                        mappings={formData["ldap-group-mappings"]}
+                        errorMessage={errorMessage}
+                    />
+                );
+            } else if (element.key !== "ldap-group-mappings") {
+                return (
+                    <SettingsSetting
+                        key={element.key}
+                        setting={{ ...element, value }}
+                        updateSetting={this.handleChangeEvent.bind(this, element)}
+                        errorMessage={errorMessage}
+                    />
+                );
+            }
+
+            return null;
         });
 
         let saveSettingsButtonStates = {

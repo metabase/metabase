@@ -1,7 +1,12 @@
 (ns metabase.integrations.ldap
-  (:require [clojure.string :as s]
+  (:require [clojure.set :as set]
+            [clojure.string :as s]
             [clj-ldap.client :as ldap]
-            (metabase.models [setting :refer [defsetting], :as setting])))
+            [toucan.db :as db]
+            (metabase.models [permissions-group :refer [PermissionsGroup], :as group]
+                             [setting :refer [defsetting], :as setting]
+                             [user :refer [User], :as user])
+            [metabase.util :as u]))
 
 (defsetting ldap-enabled
   "Enable LDAP authentication."
@@ -102,6 +107,14 @@
   (with-open [conn (get-connection)]
     (apply f conn args)))
 
+(defn- ldap-groups->mb-group-ids [ldap-groups]
+  "Will translate a set of DNs to a set of MB group IDs using the configured mappings."
+  (-> (ldap-group-mappings)
+      (select-keys (map keyword ldap-groups))
+      (vals)
+      (flatten)
+      (set)))
+
 (defn- get-user-groups
   "Retrieve groups for a supplied DN."
   ([dn]
@@ -175,3 +188,20 @@
     (if (string? user-info)
       (ldap/bind? conn user-info password)
       (ldap/bind? conn (:dn user-info) password))))
+
+(defn fetch-or-create-user! [{:keys [first-name last-name email groups], :as user-info} password]
+  (let [user (or (db/select-one [User :id :last_login] :email email)
+             (user/create-new-ldap-auth-user! first-name last-name email password))]
+    (u/prog1 user
+      (user/set-password! (:id user) password)
+      (when (ldap-group-sync)
+        (let [special-ids #{(:id (group/admin)) (:id (group/all-users))}
+              current-ids (set (map :group_id (db/select ['PermissionsGroupMembership :group_id] :user_id (:id user))))
+              ldap-ids    (when-let [ids (seq (ldap-groups->mb-group-ids groups))]
+                            (set (map :id (db/select [PermissionsGroup :id] :id [:in ids]))))
+              to-remove   (set/difference current-ids ldap-ids special-ids)
+              to-add      (set/difference ldap-ids current-ids)]
+          (when (seq to-remove)
+            (db/delete! 'PermissionsGroupMembership :group_id [:in to-remove], :user_id (:id user)))
+          (doseq [id to-add]
+            (db/insert! 'PermissionsGroupMembership :group_id id, :user_id (:id user))))))))

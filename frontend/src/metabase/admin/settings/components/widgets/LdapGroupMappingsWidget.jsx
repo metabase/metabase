@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Button from "metabase/components/Button";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
@@ -64,9 +64,19 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
 
     _changeMapping = (dn: string) => (group, selected) => {
         if (selected) {
-            this.setState((prevState: State) => ({ mappings: { ...prevState.mappings, [dn]: [...prevState.mappings[dn], group.id] } }));
+            this.setState((prevState: State) => ({
+                mappings: {
+                    ...prevState.mappings,
+                    [dn]: [...prevState.mappings[dn], group.id]
+                }
+            }));
         } else {
-            this.setState((prevState: State) => ({ mappings: { ...prevState.mappings, [dn]: prevState.mappings[dn].filter(id => id !== group.id) } }));
+            this.setState((prevState: State) => ({
+                mappings: {
+                    ...prevState.mappings,
+                    [dn]: prevState.mappings[dn].filter(id => id !== group.id)
+                }
+            }));
         }
     }
 
@@ -91,7 +101,9 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
         return (
             <div className="flex align-center">
                 <SettingToggle {...this.props} />
-                <Button className="ml1" primary medium onClick={this._showEditModal}>Edit Mappings</Button>
+                <div className="flex align-center pt1">
+                    <Button className="ml1" medium onClick={this._showEditModal}>Edit Mappings</Button>
+                </div>
                 { showEditModal ? (
                     <Modal wide>
                         <div className="p4">
@@ -119,7 +131,7 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
                                             key={dn}
                                             dn={dn}
                                             groups={groups}
-                                            selectedIds={ids}
+                                            selectedGroups={ids}
                                             onChange={this._changeMapping(dn)}
                                             onDelete={this._deleteMapping(dn)}
                                         />
@@ -186,8 +198,8 @@ class AddMappingRow extends Component {
     }
 }
 
-const MappingGroupSelect = ({ groups, selectedIds = {}, onGroupChange }) => {
-    let selected = selectedIds.reduce((g, id) => ({ ...g, [id]: true }), {});
+const MappingGroupSelect = ({ groups, selectedGroups = {}, onGroupChange }) => {
+    let selected = selectedGroups.reduce((g, id) => ({ ...g, [id]: true }), {});
 
     if (!groups || groups.length === 0) {
         return <LoadingSpinner />;
@@ -212,14 +224,14 @@ const MappingGroupSelect = ({ groups, selectedIds = {}, onGroupChange }) => {
     );
 }
 
-const MappingRow = ({ dn, groups, selectedIds, onChange, onDelete }) => {
+const MappingRow = ({ dn, groups, selectedGroups, onChange, onDelete }) => {
     return (
         <tr>
             <td>{dn}</td>
             <td>
                 <MappingGroupSelect
                     groups={groups}
-                    selectedIds={selectedIds}
+                    selectedGroups={selectedGroups}
                     onGroupChange={onChange}
                 />
             </td>

@@ -239,6 +239,9 @@ const SECTIONS = [
                 display_name: "Group search base",
                 type: "string",
                 required: true
+            },
+            {
+                key: "ldap-group-mappings"
             }
         ]
     },

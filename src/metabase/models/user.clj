@@ -154,7 +154,6 @@
     ;; send an email to everyone including the site admin if that's set
     (email/send-user-joined-admin-notification-email! <>, :ldap-auth? true)))
 
-
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
