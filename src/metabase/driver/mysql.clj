@@ -6,7 +6,8 @@
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.ssh :as ssh]))
 
 ;;; # IMPLEMENTATION
 
@@ -150,31 +151,32 @@
 
 (u/strict-extend MySQLDriver
   driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     (u/drop-first-arg date-interval)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      3306}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "birds_of_the_word"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"
-                                                           :required     true}
-                                                          {:name         "password"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "*******"}
-                                                          {:name         "additional-options"
-                                                           :display-name "Additional JDBC connection string options"
-                                                           :placeholder  "tinyInt1isBit=false"}])
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
+  (ssh/with-tunnel-config
+    (merge (sql/IDriverSQLDefaultsMixin)
+           {:date-interval                     (u/drop-first-arg date-interval)
+            :details-fields                    (constantly [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      3306}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "birds_of_the_word"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"
+                                                             :required     true}
+                                                            {:name         "password"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "*******"}
+                                                            {:name         "additional-options"
+                                                             :display-name "Additional JDBC connection string options"
+                                                             :placeholder  "tinyInt1isBit=false"}])
+            :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)}))
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

@@ -9,7 +9,8 @@
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.ssh :as ssh])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
   (:import java.util.UUID
@@ -202,35 +203,36 @@
 
 (u/strict-extend PostgresDriver
   driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     (u/drop-first-arg date-interval)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      5432}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "birds_of_the_word"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"
-                                                           :required     true}
-                                                          {:name         "password"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "*******"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}
-                                                          {:name         "additional-options"
-                                                           :display-name "Additional JDBC connection string options"
-                                                           :placeholder  "prepareThreshold=0"}])
-          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
+  (ssh/with-tunnel-config
+    (merge (sql/IDriverSQLDefaultsMixin)
+           {:date-interval                     (u/drop-first-arg date-interval)
+            :details-fields                    (constantly [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      5432}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "birds_of_the_word"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"
+                                                             :required     true}
+                                                            {:name         "password"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "*******"}
+                                                            {:name         "ssl"
+                                                             :display-name "Use a secure connection (SSL)?"
+                                                             :type         :boolean
+                                                             :default      false}
+                                                            {:name         "additional-options"
+                                                             :display-name "Additional JDBC connection string options"
+                                                             :placeholder  "prepareThreshold=0"}])
+            :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)}))
 
   sql/ISQLDriver PostgresISQLDriverMixin)
 
