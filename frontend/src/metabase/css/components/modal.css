@@ -14,7 +14,7 @@
  * https://github.com/philipwalton/flexbugs/issues/157
  * Set margin to zero when using Flexbox in `WindowModal` component 
  */
-.Modal-backdrop > .Modal, .Modal-backdrop-dark > .Modal {
+.Modal-backdrop > .Modal, .Modal-backdrop--dark > .Modal {
   margin: 0;
 }
 
@@ -40,7 +40,7 @@
     background-color: rgba(255, 255, 255, 0.6);
 }
 
-.Modal-backdrop-dark {
+.Modal-backdrop--dark {
     background-color: rgba(75, 75, 75, 0.7);
 }
 
