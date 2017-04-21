@@ -102,73 +102,83 @@ describe("LineAreaBarRenderer", () => {
         dispatchUIEvent(qs("svg .dot"), "mousemove");
     });
 
-    it("should render normally if the card contains values but some of them are empty but at least one has a value", () => {
+    describe("should render correctly a compound line graph", () => {
         const rowsOfNonemptyCard = [
             [2015, 1],
             [2016, 2],
             [2017, 3]
         ]
 
-        // First value is empty
-        renderTimeseriesLine({
-            rowsOfSeries: [
-                [], rowsOfNonemptyCard, [], []
-            ],
-            unit: "hour"
+        it("when only second series is not empty", () => {
+            renderTimeseriesLine({
+                rowsOfSeries: [
+                    [], rowsOfNonemptyCard, [], []
+                ],
+                unit: "hour"
+            });
+
+            // A simple check to ensure that lines are rendered as expected
+            expect(qs("svg .line")).not.toBe(null);
         });
 
-        // A simple check to ensure that lines are rendered as expected
-        expect(qs("svg .line")).not.toBe(null);
+        it("when only first series is not empty", () => {
+            renderTimeseriesLine({
+                rowsOfSeries: [
+                    rowsOfNonemptyCard, [], [], []
+                ],
+                unit: "hour"
+            });
 
-        // First value is not empty
-        renderTimeseriesLine({
-            rowsOfSeries: [
-                rowsOfNonemptyCard, [], [], []
-            ],
-            unit: "hour"
+            expect(qs("svg .line")).not.toBe(null);
         });
 
-        expect(qs("svg .line")).not.toBe(null);
-
-        // A more creative combination of cards
-        renderTimeseriesLine({
-            rowsOfSeries: [
-                [], rowsOfNonemptyCard, [], [], rowsOfNonemptyCard, [], rowsOfNonemptyCard
-            ],
-            unit: "hour"
+        it("when there are many empty and nonempty values ", () => {
+            renderTimeseriesLine({
+                rowsOfSeries: [
+                    [], rowsOfNonemptyCard, [], [], rowsOfNonemptyCard, [], rowsOfNonemptyCard
+                ],
+                unit: "hour"
+            });
+            expect(qs("svg .line")).not.toBe(null);
         });
-        expect(qs("svg .line")).not.toBe(null);
+    })
 
-        // Same scenarios for bar visualizations
-        renderScalarBar({
-            scalars: [
-                ["Non-empty value", 15],
-                ["Empty value", null]
-            ]
-        })
-        expect(qs("svg .bar")).not.toBe(null);
+    describe("should render correctly a compound bar graph", () => {
+        it("when only second series is not empty", () => {
+            renderScalarBar({
+                scalars: [
+                    ["Non-empty value", null],
+                    ["Empty value", 25]
+                ]
+            })
+            expect(qs("svg .bar")).not.toBe(null);
+        });
 
-        renderScalarBar({
-            scalars: [
-                ["Empty value", null],
-                ["Non-empty value", 25]
-            ]
-        })
-        expect(qs("svg .bar")).not.toBe(null);
+        it("when only first series is not empty", () => {
+            renderScalarBar({
+                scalars: [
+                    ["Non-empty value", 15],
+                    ["Empty value", null]
+                ]
+            })
+            expect(qs("svg .bar")).not.toBe(null);
+        });
 
-        renderScalarBar({
-            scalars: [
-                ["Empty value", null],
-                ["Non-empty value", 15],
-                ["2nd empty value", null],
-                ["2nd non-empty value", 35],
-                ["3rd empty value", null],
-                ["4rd empty value", null],
-                ["3rd non-empty value", 0],
-            ]
-        })
-        expect(qs("svg .bar")).not.toBe(null);
-    });
+        it("when there are many empty and nonempty scalars", () => {
+            renderScalarBar({
+                scalars: [
+                    ["Empty value", null],
+                    ["Non-empty value", 15],
+                    ["2nd empty value", null],
+                    ["2nd non-empty value", 35],
+                    ["3rd empty value", null],
+                    ["4rd empty value", null],
+                    ["3rd non-empty value", 0],
+                ]
+            })
+            expect(qs("svg .bar")).not.toBe(null);
+        });
+    })
 
     // querySelector shortcut
     const qs = (selector) => element.querySelector(selector);
