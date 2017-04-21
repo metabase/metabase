@@ -24,6 +24,12 @@ const HEADER_ACTION_STYLE = {
     padding: 4
 };
 
+// const mapStateToProps = (state, props) => ({
+// })
+// const mapDispatchToProps = {
+// }
+//
+// @connect(mapStateToProps, mapDispatchToProps)
 export default class DashCard extends Component {
     static propTypes = {
         dashcard: PropTypes.object.isRequired,

@@ -11,6 +11,8 @@ import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
+import { getIn } from "icepick";
+
 export const getUiControls      = state => state.qb.uiControls;
 
 export const getCard            = state => state.qb.card;
@@ -33,6 +35,12 @@ export const getDatabaseId = createSelector(
     [getCard],
     (card) => card && card.dataset_query && card.dataset_query.database
 );
+
+export const getTableId = createSelector(
+    [getCard],
+    (card) => getIn(card, ["dataset_query", "query", "source_table"])
+);
+
 
 export const getDatabases                 = state => state.qb.databases;
 export const getTableForeignKeys          = state => state.qb.tableForeignKeys;
@@ -58,12 +66,11 @@ export const getNativeDatabases = createSelector(
         databases && databases.filter(db => db.native_permissions === "write")
 )
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 export const getTableMetadata = createSelector(
-    [state => state.qb.tableMetadata, getDatabases],
-    (tableMetadata, databases) => tableMetadata && {
-        ...tableMetadata,
-        db: _.findWhere(databases, { id: tableMetadata.db_id })
-    }
+    [getTableId, getMetadata],
+    (tableId, metadata) => metadata.tables[tableId]
 )
 
 export const getSampleDatasetId = createSelector(

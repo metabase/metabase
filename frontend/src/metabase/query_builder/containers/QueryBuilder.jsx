@@ -45,6 +45,8 @@ import {
     getMode,
 } from "../selectors";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
@@ -89,6 +91,7 @@ const mapStateToProps = (state, props) => {
         nativeDatabases:           getNativeDatabases(state),
         tables:                    getTables(state),
         tableMetadata:             getTableMetadata(state),
+        metadata:                  getMetadata(state),
         tableForeignKeys:          getTableForeignKeys(state),
         tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
