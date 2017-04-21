@@ -245,6 +245,9 @@ export default class TableInteractive extends Component<*, Props, State> {
         }
 
         const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+        const onClick = isClickable && ((e) => {
+            onVisualizationClick({ ...clicked, element: e.currentTarget, e: e.nativeEvent });
+        })
 
         return (
             <div
@@ -253,9 +256,8 @@ export default class TableInteractive extends Component<*, Props, State> {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
                     "cursor-pointer": isClickable
                 })}
-                onClick={isClickable && ((e) => {
-                    onVisualizationClick({ ...clicked, element: e.currentTarget });
-                })}
+                onClick={onClick}
+                onContextMenu={onClick}
             >
                 <Value className="link" value={value} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
             </div>
@@ -287,6 +289,10 @@ export default class TableInteractive extends Component<*, Props, State> {
         }
 
         const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+        const onClick = isClickable && ((e) => {
+            onVisualizationClick({ ...clicked, element: e.currentTarget, e: e.nativeEvent });
+        })
+
         const isSortable = isClickable && column.source;
 
         return (
@@ -300,9 +306,8 @@ export default class TableInteractive extends Component<*, Props, State> {
             >
                 <div
                     className={cx("cellData", { "cursor-pointer": isClickable })}
-                    onClick={isClickable && ((e) => {
-                        onVisualizationClick({ ...clicked, element: e.currentTarget });
-                    })}
+                    onClick={onClick}
+                    onContextMenu={onClick}
                 >
                     {columnTitle}
                     {isSortable &&

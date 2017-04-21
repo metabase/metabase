@@ -204,14 +204,22 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     handleVisualizationClick = (clicked: ClickObject) => {
+        const { onChangeCardAndRun } = this.props;
+
+        const clickActions = this.getClickActions(clicked);
+        const defaultClickActions = clickActions.filter(a => a.default);
+
+        const wasRightClick = clicked.e && clicked.e.type === "contextmenu";
+
+        if (wasRightClick && clickActions.length > 0) {
+            clicked.e.preventDefault();
+        }
+
         // needs to be delayed so we don't clear it when switching from one drill through to another
         setTimeout(() => {
-            const { onChangeCardAndRun } = this.props;
-            let clickActions = this.getClickActions(clicked);
-            // if there's a single drill action (without a popover) execute it immediately
-            if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
-                onChangeCardAndRun(clickActions[0].card());
-            } else {
+            if (!wasRightClick && defaultClickActions.length === 1 && defaultClickActions[0].card) {
+                onChangeCardAndRun(defaultClickActions[0].card());
+            } else if (clickActions.length > 0) {
                 this.setState({ clicked });
             }
         }, 100)
