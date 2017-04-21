@@ -139,20 +139,15 @@
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
   [{:keys [id engine details]}]
   (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
-  (let [ssh-tunnel-enabled? (ssh/use-ssh-tunnel? details)
-        [ssh-tunnel-connection tunnel-entrance-port] (when ssh-tunnel-enabled? (ssh/start-ssh-tunnel details))
-        details (assoc details :tunnel-entrance-port tunnel-entrance-port) ;; the input port is not known until the connection is opened
-        details (ssh/update-host-and-port details)
-        _ (log/errorf "\nafter:\n%s" (with-out-str (clojure.pprint/pprint details)))
-        spec (connection-details->spec (driver/engine->driver engine) details)
-        _ (log/errorf "\nspec:\n%s" (with-out-str (clojure.pprint/pprint spec)))]
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
+        spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
     (assoc (db/connection-pool (assoc spec
                                  :minimum-pool-size           1
                                  ;; prevent broken connections closed by dbs by testing them every 3 mins
                                  :idle-connection-test-period (* 3 60)
                                  ;; prevent overly large pools by condensing them when connections are idle for 15m+
                                  :excess-timeout              (* 15 60)))
-      :ssh-tunnel ssh-tunnel-connection)))
+      :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
 (defn- notify-database-updated
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under

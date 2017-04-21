@@ -11,14 +11,14 @@
                      (.setPassword tunnel-pass)
                      (.setConfig "StrictHostKeyChecking" "no")
                      (.connect default-ssh-timeout)
-                     (.setPortForwardingL #_0 (+ 2000 (rand-int 63538)) host port)) ;; TODO bug here, only works when ssh to db host
+                     (.setPortForwardingL 0 host port))
         input-port (some-> (.getPortForwardingL connection)
                            first
                            (clojure.string/split #":")
                            first
                            (Integer.))]
-   (assert (number? input-port))
-    (log/info (u/format-color 'cyan "creating ssh tunnel %s@%s:%s -L %s:%s:%s" tunnel-user host tunnel-port input-port host #_<-wrong port))
+    (assert (number? input-port))
+    (log/info (u/format-color 'cyan "creating ssh tunnel %s@%s:%s -L %s:%s:%s" tunnel-user tunnel-host tunnel-port input-port host port))
     [connection input-port]))
 
 (def ssh-tunnel-preferences
@@ -71,22 +71,32 @@
       :host (:tunnel-host database))
     database))
 
+(defn include-ssh-tunnel
+  "opens an ssh tunnel and adjusts the connection details appropriately"
+  [details]
+  (if (use-ssh-tunnel? details)
+    (let [[connection tunnel-entrance-port] (start-ssh-tunnel details)
+          details-with-tunnel (assoc details
+                                :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
+                                :tunnel-connection connection)
+          details-with-tunnel (update-host-and-port details-with-tunnel)]
+      details-with-tunnel)
+    details))
+
+
 (defn with-ssh-tunnel
   "Starts an SSH tunnel, runs the supplied function with the tunnel open, then closes it"
   [{:keys [host port tunnel-host tunnel-user tunnel-pass] :as details} f]
-  (log/errorf "\nbefore:\n%s\n" (with-out-str (clojure.pprint/pprint details)))
-  (let [enabled? (use-ssh-tunnel? details)
-        [connection tunnel-entrance-port] (when enabled? (start-ssh-tunnel details))
-        details (assoc details :tunnel-entrance-port tunnel-entrance-port) ;; the input port is not known until the connection is opened
-        details (update-host-and-port details)]
-    (log/errorf "\nafter:\n%s\n" (with-out-str (clojure.pprint/pprint details)))
-    (if enabled?
+  (if (use-ssh-tunnel? details)
+    (let [details-with-tunnel (include-ssh-tunnel details)]
+      (log/errorf "\nbefore:\n%s\n" (with-out-str (clojure.pprint/pprint details)))
+      (log/errorf "\nafter:\n%s\n" (with-out-str (clojure.pprint/pprint details-with-tunnel)))
       (try
-        (log/error (u/format-color 'cyan "<< OPENED NEW SSH TUNNEL >>")) ;;TODO chagne back to info
-        (f details)
+        (log/info (u/format-color 'cyan "<< OPENED SSH TUNNEL >>"))
+        (f details-with-tunnel)
         (catch Exception e
           (throw e))
         (finally
-          (when enabled? (.disconnect connection))
-          (log/error (u/format-color 'cyan "<< CLOSED NEW SSH TUNNEL >>"))))
-      (f details))))
+          (.disconnect (:tunnel-connection details-with-tunnel))
+          (log/info (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
+    (f details)))
