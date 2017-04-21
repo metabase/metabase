@@ -33,6 +33,10 @@ import { determineSeriesIndexFromElement } from "./tooltip";
 import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
+import { datasetContainsNoResults } from "metabase/lib/dataset";
+
+import type { Series } from "metabase/meta/types/Visualization"
+
 const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
@@ -103,11 +107,15 @@ function initChart(chart, element) {
 }
 
 function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
+    // find the first nonempty single series
+    // $FlowFixMe
+    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+
     // setup an x-axis where the dimension is a timeseries
-    let dimensionColumn = series[0].data.cols[0];
+    let dimensionColumn = firstSeries.data.cols[0];
 
     // get the data's timezone offset from the first row
-    let dataOffset = parseTimestamp(series[0].data.rows[0][0]).utcOffset() / 60;
+    let dataOffset = parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
 
     // compute the data interval
     let dataInterval = xInterval;
@@ -149,7 +157,10 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
 }
 
 function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval) {
-    const dimensionColumn = series[0].data.cols[0];
+    // find the first nonempty single series
+    // $FlowFixMe
+    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+    const dimensionColumn = firstSeries.data.cols[0];
 
     if (settings["graph.x_axis.labels_enabled"]) {
         chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn), X_LABEL_PADDING);
@@ -187,7 +198,11 @@ function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, 
 }
 
 function applyChartOrdinalXAxis(chart, settings, series, xValues) {
-    const dimensionColumn = series[0].data.cols[0];
+    // find the first nonempty single series
+    // $FlowFixMe
+    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+
+    const dimensionColumn = firstSeries.data.cols[0];
 
     if (settings["graph.x_axis.labels_enabled"]) {
         chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn), X_LABEL_PADDING);
@@ -812,10 +827,14 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
     const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
     const isOrdinal = !isTimeseries && !isQuantitative;
 
-    const isDimensionTimeseries = dimensionIsTimeseries(series[0].data);
-    const isDimensionNumeric = dimensionIsNumeric(series[0].data);
+    // find the first nonempty single series
+    // $FlowFixMe
+    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
 
-    if (series[0].data.cols.length < 2) {
+    const isDimensionTimeseries = dimensionIsTimeseries(firstSeries.data);
+    const isDimensionNumeric = dimensionIsNumeric(firstSeries.data);
+
+    if (firstSeries.data.cols.length < 2) {
         throw new Error("This chart type requires at least 2 columns.");
     }
 
@@ -955,7 +974,11 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
 
         dimension = dataset.dimension(d => d[0]);
         groups = datas.map((data, seriesIndex) => {
+            // If the value is empty, pass a dummy array to crossfilter
+            data = data.length > 0 ? data : [[null, null]];
+
             let dim = crossfilter(data).dimension(d => d[0]);
+
             return data[0].slice(1).map((_, metricIndex) =>
                 reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
             );
