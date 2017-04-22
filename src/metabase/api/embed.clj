@@ -279,6 +279,10 @@
   [token & query-params]
   (dataset-api/as-csv (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
 
+(api/defendpoint GET "/card/:token/query/xlsx"
+  "Like `GET /api/embed/card/query`, but returns the results as XLSX."
+  [token & query-params]
+  (dataset-api/as-xlsx (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
 
 (api/defendpoint GET "/card/:token/query/json"
   "Like `GET /api/embed/card/query`, but returns the results as JSOn."

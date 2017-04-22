@@ -87,6 +87,12 @@
   {parameters (s/maybe su/JSONString)}
   (dataset-api/as-csv (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
+(api/defendpoint GET "/card/:uuid/query/xlsx"
+  "Fetch a publically-accessible Card and return query results as XLSX. Does not require auth credentials. Public sharing must be enabled."
+  [uuid parameters]
+  {parameters (s/maybe su/JSONString)}
+  (dataset-api/as-xlsx (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
+
 
 ;;; ------------------------------------------------------------ Public Dashboards ------------------------------------------------------------
 

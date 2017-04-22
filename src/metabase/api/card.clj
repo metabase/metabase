@@ -427,6 +427,16 @@
                           :constraints nil
                           :context     :csv-download))))
 
+(defendpoint POST "/:card-id/query/xlsx"
+  "Run the query associated with a Card, and return its results as XLSX. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
+  [card-id parameters]
+  {parameters (s/maybe su/JSONString)}
+  (binding [cache/*ignore-cached-results* true]
+    (dataset-api/as-xlsx (run-query-for-card card-id
+                          :parameters  (json/parse-string parameters keyword)
+                          :constraints nil
+                          :context     :xlsx-download))))
+
 (defendpoint POST "/:card-id/query/json"
   "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id parameters]

@@ -3,6 +3,7 @@
   (:require [clojure.data.csv :as csv]
             [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.api.common :refer :all]
             (toucan [db :as db]
                     [hydrate :refer [hydrate]])
@@ -62,6 +63,24 @@
     {:status 500
      :body   (:error response)}))
 
+(defn as-xlsx
+  "Return an XLSX response containing the RESULTS of a query."
+  {:arglists '([results])}
+  [{{:keys [columns rows]} :data, :keys [status], :as response}]
+  (if (= status :completed)
+    ;; successful query, send XLSX file
+    {:status  200
+     :body    (let [wb (spreadsheet/create-workbook "Query result" (conj rows (mapv name columns)))
+                    ; note: byte array streams don't need to be closed
+                    out (java.io.ByteArrayOutputStream.)]
+                (spreadsheet/save-workbook! out wb)
+                (java.io.ByteArrayInputStream. (.toByteArray out)))
+     :headers {"Content-Type" "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=utf-8"
+               "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".xlsx\"")}}
+    ;; failed query, send error message
+    {:status 500
+     :body   (:error response)}))
+
 (defn as-json
   "Return a JSON response containing the RESULTS of a query."
   {:arglists '([results])}
@@ -83,6 +102,14 @@
   (let [query (json/parse-string query keyword)]
     (read-check Database (:database query))
     (as-csv (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :csv-download}))))
+
+(defendpoint POST "/xlsx"
+  "Execute a query and download the result data as an XLSX file."
+  [query]
+  {query su/JSONString}
+  (let [query (json/parse-string query keyword)]
+    (read-check Database (:database query))
+    (as-xlsx (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :xlsx-download}))))
 
 (defendpoint POST "/json"
   "Execute a query and download the result data as a JSON file."

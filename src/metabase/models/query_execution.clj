@@ -16,6 +16,7 @@
   "Schema for valid values of QueryExecution `:context`."
   (s/enum :ad-hoc
           :csv-download
+          :xlsx-download
           :dashboard
           :embedded-dashboard
           :embedded-question
