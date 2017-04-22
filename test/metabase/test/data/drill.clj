@@ -6,8 +6,7 @@
             [medley.core :as m]
             (metabase.driver [generic-sql :as sql])
             (metabase.test.data [generic-sql :as generic]
-                                [interface :as i]
-                                [hive :as hive])
+                                [interface :as i])
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [clojure.java.io :as io])

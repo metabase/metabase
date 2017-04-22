@@ -4,7 +4,6 @@
    (clojure [set :as set]
             [string :as s])
    [clojure.tools.logging :as log]
-   [toucan.db :as db]
    (honeysql [core :as hsql]
              [helpers :as h])
    [metabase.db.spec :as dbspec]
@@ -13,8 +12,7 @@
    [metabase.driver.generic-sql.util.unprepare :as unprepare]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.query-processor.util :as qputil]
-   )
+   [metabase.query-processor.util :as qputil])
   (:import
    (java.util Date)))
 
@@ -98,20 +96,6 @@
 (defn string-length-fn [field-key]
   (hsql/call :length field-key))
 
-;; same as the normal one, except we don't include the schema name
-(defn qualified-name-components
-  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
-  [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (metabase.models.field/Field parent-id)]
-               (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
-                 [table-name])))
-        field-name))
-
-(defn field->identifier [field]
-  (log/info "-asdf1" (prn-str field) " to " (apply hsql/qualify (qualified-name-components field)))
-  (apply hsql/qualify (qualified-name-components field)))
-
 ;; copied from the Presto driver, except using mysql quoting style
 (defn apply-page [honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
@@ -146,7 +130,6 @@
   [{sql :query, params :params, remark :remark} connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        _ (log/debug "Hive running query" statement)
         [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]
     {:rows    (or rows [])
      :columns columns}))
@@ -193,80 +176,23 @@
          (run-query-without-timezone driver settings db-connection query))))))
 
 (defn describe-database [driver database]
-  (log/info "xyz-" (prn-str database) " details " (:details database))
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-             (set (for [result (jdbc/query {:connection conn} [(str "show tables in `" (:name database) "`")])]
+             ;; arguably this should be "show tables in " (:name database)
+             (set (for [result (jdbc/query {:connection conn} [(str "show tables")])]
                     {:name (:tablename result)
-                     :schema (:database result)})))})
+                     :schema nil})))})
 
 (defn describe-table [driver database table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
     {:name (:name table)
-     :schema (:schema table)
+     :schema nil
      :fields (set (for [result (jdbc/query {:connection conn}
-                                           [(str "describe `" (:schema table)
-                                                 "`.`" (:name table) "`")])]
+                                           [(str "describe `" (:name table) "`")])]
                     {:name (:col_name result)
                      :base-type (column->base-type (keyword (:data_type result)))}))}))
 
 (defn describe-table-fks [driver database table]
   #{})
-
-(defn- humanize-connection-error-message [message]
-  (condp re-matches message
-    #"^FATAL: database \".*\" does not exist$"
-    (driver/connection-error-messages :database-name-incorrect)
-
-    #"^No suitable driver found for.*$"
-    (driver/connection-error-messages :invalid-hostname)
-
-    #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    (driver/connection-error-messages :cannot-connect-check-host-and-port)
-
-    #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
-    (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
-      (str (s/capitalize message) \.))
-
-    #".*" ; default
-    message))
-
-(defn hive
-  "Create a database specification for a Hive database. Opts should include
-  keys for :db, :user, and :password. You can also optionally set host and
-  port."
-  [{:keys [host port db]
-    :or {host "localhost", port 10000, db ""}
-    :as opts}]
-  ;; This is a bit awkward. HiveDriver is a superclass of FixedHiveDriver,
-  ;; so its constructor will always be called first and register with the
-  ;; DriverManager.
-  ;; Doing the following within the constructor of FixedHiveDriver didn't seem
-  ;; to work, so we make sure FixedHiveDriver is returned for jdbc:hive2
-  ;; connections here by manually deregistering all other jdbc:hive2 drivers.
-  (loop []
-    (let [driver (try
-                   (java.sql.DriverManager/getDriver "jdbc:hive2://localhost:10000")
-                   (catch java.sql.SQLException e
-                     nil))]
-      (if driver
-        (when-not (instance? com.metabase.hive.jdbc.FixedHiveDriver driver)
-          (java.sql.DriverManager/deregisterDriver driver)
-          (recur))
-        (java.sql.DriverManager/registerDriver (com.metabase.hive.jdbc.FixedHiveDriver.)))))
-  (merge {:classname "com.metabase.hive.jdbc.FixedHiveDriver"
-          :subprotocol "hive2"
-          :subname (str "//" host ":" port "/")}
-         (dissoc opts :host :port)))
-
-(defn- connection-details->spec [details]
-  (-> details
-      (update :port (fn [port]
-                      (if (string? port)
-                        (Integer/parseInt port)
-                        port)))
-      (set/rename-keys {:dbname :db})
-      hive
-      (sql/handle-additional-options details)))
 
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."
@@ -277,51 +203,3 @@
     :expression-aggregations
     :native-parameters
     })
-
-(defrecord HiveDriver []
-  clojure.lang.Named
-  (getName [_] "Hive"))
-
-(u/strict-extend HiveDriver
-                 driver/IDriver
-                 (merge (sql/IDriverSQLDefaultsMixin)
-                        {:date-interval (u/drop-first-arg date-interval)
-                         :describe-database describe-database
-                         :describe-table describe-table
-                         :describe-table-fks describe-table-fks
-                         :details-fields (constantly [{:name "host"
-                                                       :display-name "Host"
-                                                       :default "localhost"}
-                                                      {:name "port"
-                                                       :display-name "Port"
-                                                       :type :integer
-                                                       :default 10000}
-                                                      {:name "dbname"
-                                                       :display-name "Database name"
-                                                       :placeholder "default"
-                                                       :required true}
-                                                      {:name "user"
-                                                       :display-name "Database username"
-                                                       :placeholder "What username do you use to login to the database?"
-                                                       :required true}
-                                                      {:name "password"
-                                                       :display-name "Database password"
-                                                       :type :password
-                                                       :placeholder "*******"}
-                                                      ])
-                         :execute-query execute-query
-                         :features features
-                         :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
-                 sql/ISQLDriver
-                 (merge (sql/ISQLDriverDefaultsMixin)
-                        {:apply-page (u/drop-first-arg apply-page)
-                         :column->base-type (u/drop-first-arg column->base-type)
-                         :connection-details->spec (u/drop-first-arg connection-details->spec)
-                         :date (u/drop-first-arg date)
-                         ;;:field->identifier (u/drop-first-arg field->identifier)
-                         :quote-style (constantly :mysql)
-                         :current-datetime-fn (u/drop-first-arg (constantly now))
-                         :string-length-fn (u/drop-first-arg string-length-fn)
-                         :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
-
-(driver/register-driver! :hive (HiveDriver.))

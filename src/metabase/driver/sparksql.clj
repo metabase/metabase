@@ -2,7 +2,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             (clojure [set :as set]
                      [string :as s])
-            [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [helpers :as h])
             [metabase.db.spec :as dbspec]
@@ -17,8 +16,29 @@
   "Create a database specification for a Spark SQL database. Opts should include
   keys for :db, :user, and :password. You can also optionally set host and
   port."
-  [opts]
-  (hive/hive opts))
+  [{:keys [host port db]
+    :or {host "localhost", port 10000, db ""}
+    :as opts}]
+  ;; This is a bit awkward. HiveDriver is a superclass of FixedHiveDriver,
+  ;; so its constructor will always be called first and register with the
+  ;; DriverManager.
+  ;; Doing the following within the constructor of FixedHiveDriver didn't seem
+  ;; to work, so we make sure FixedHiveDriver is returned for jdbc:hive2
+  ;; connections here by manually deregistering all other jdbc:hive2 drivers.
+  (loop []
+    (let [driver (try
+                   (java.sql.DriverManager/getDriver "jdbc:hive2://localhost:10000")
+                   (catch java.sql.SQLException e
+                     nil))]
+      (if driver
+        (when-not (instance? com.metabase.hive.jdbc.FixedHiveDriver driver)
+          (java.sql.DriverManager/deregisterDriver driver)
+          (recur))
+        (java.sql.DriverManager/registerDriver (com.metabase.hive.jdbc.FixedHiveDriver.)))))
+  (merge {:classname "com.metabase.hive.jdbc.FixedHiveDriver"
+          :subprotocol "hive2"
+          :subname (str "//" host ":" port "/")}
+         (dissoc opts :host :port)))
 
 (defn- connection-details->spec [details]
   (-> details
@@ -88,7 +108,6 @@
                          :column->base-type (u/drop-first-arg hive/column->base-type)
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
                          :date (u/drop-first-arg hive/date)
-                         ;;:field->identifier (u/drop-first-arg hive/field->identifier)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly hive/now))
                          :string-length-fn (u/drop-first-arg hive/string-length-fn)

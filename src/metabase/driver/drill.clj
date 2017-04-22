@@ -11,7 +11,8 @@
             [metabase.driver.bigquery :as bigquery]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.query-processor.util :as qputil])
+            [metabase.query-processor.util :as qputil]
+            [toucan.db :as db])
   (:import
    (java.util Collections Date)
    (metabase.query_processor.interface DateTimeValue Value)))
@@ -123,7 +124,7 @@
 
 (defn- describe-database [driver database]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-             (set (for [result (jdbc/query {:connection conn} ["select table_catalog, table_schema, table_name from INFORMATION_SCHEMA.`VIEWS` union select table_catalog, table_schema, table_name from INFORMATION_SCHEMA.`TABLES` where table_type='TABLE'"])]
+             (set (for [result (jdbc/query {:connection conn} ["select table_schema, table_name from INFORMATION_SCHEMA.`VIEWS` union select table_schema, table_name from INFORMATION_SCHEMA.`TABLES` where table_type='TABLE'"])]
                     {:name (:table_name result)
                      :schema (:table_schema result)})))})
 
@@ -148,6 +149,18 @@
                                         (hsql/call :to_timestamp
                                                    (hx/literal (u/date->iso-8601 this))
                                                    (hx/literal "YYYY-MM-dd''T''HH:mm:ss.SSSZ"))))))
+
+(defn qualified-name-components
+  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
+  [{field-name :name, table-id :table_id, parent-id :parent_id}]
+  (conj (vec (if-let [parent (metabase.models.field/Field parent-id)]
+               (qualified-name-components parent)
+               (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
+                 [table-name])))
+        field-name))
+
+(defn field->identifier [field]
+  (apply hsql/qualify (qualified-name-components field)))
 
 (defn unprepare
   "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement."
@@ -212,7 +225,7 @@
                          :column->base-type column->base-type
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
                          :date (u/drop-first-arg date)
-                         :field->identifier (u/drop-first-arg hive/field->identifier)
+                         :field->identifier (u/drop-first-arg field->identifier)
                          :prepare-value (u/drop-first-arg prepare-value)
                          :quote-style (constantly :mysql)
                          :current-datetime-fn (u/drop-first-arg (constantly hive/now))

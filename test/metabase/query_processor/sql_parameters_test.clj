@@ -432,8 +432,6 @@
   (case datasets/*engine*
     :bigquery "[test_data.checkins]"
     :presto   "\"default\".\"checkins\""
-    :sparksql (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
-                (quote-name table-name))
     (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
       (str (when (seq schema)
              (str (quote-name schema) \.))
