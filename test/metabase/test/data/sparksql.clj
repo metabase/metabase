@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [environ.core :refer [env]]
             (metabase.driver [generic-sql :as sql]
-                             [hive :as hive-driver])
+                             [hive-like :as hive-like])
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
             [metabase.util :as u]
@@ -45,7 +45,7 @@
                         (sql/prepare-value driver {:value value})))
         hsql-form   (-> (h/insert-into (prepare-key table-name))
                         (h/values values))
-        sql+args    (hive-driver/unprepare
+        sql+args    (hive-like/unprepare
                      (hx/unescape-dots (binding [hformat/*subquery?* false]
                                          (hsql/format hsql-form
                                                       :quoting             (sql/quote-style driver)

@@ -7,7 +7,7 @@
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.hive :as hive]
+            [metabase.driver.hive-like :as hive-like]
             [metabase.driver.bigquery :as bigquery]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -68,7 +68,7 @@
 (defn- str-to-date [format-str expr]
   (hsql/call :to_timestamp expr (hx/literal format-str)))
 
-(defn trunc-with-format [format-str expr]
+(defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
 (defn date [unit expr]
@@ -150,6 +150,15 @@
                                                    (hx/literal (u/date->iso-8601 this))
                                                    (hx/literal "YYYY-MM-dd''T''HH:mm:ss.SSSZ"))))))
 
+(defn- unprepare
+  "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement."
+  ^String [[sql & args]]
+  (loop [sql sql, [arg & more-args, :as args] args]
+    (if-not (seq args)
+      sql
+      (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-arg arg))
+             more-args))))
+
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
@@ -162,14 +171,6 @@
 (defn field->identifier [field]
   (apply hsql/qualify (qualified-name-components field)))
 
-(defn unprepare
-  "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement."
-  ^String [[sql & args]]
-  (loop [sql sql, [arg & more-args, :as args] args]
-    (if-not (seq args)
-      sql
-      (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-arg arg))
-             more-args))))
 
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
@@ -179,10 +180,10 @@
                                   (unprepare (cons (:query query) (:params query)))
                                   (:query query)))
                   (dissoc :params))]
-    (hive/do-with-try-catch
+    (hive-like/do-with-try-catch
      (fn []
        (let [db-connection (sql/db->jdbc-connection-spec database)]
-         (hive/run-query-without-timezone driver settings db-connection query))))))
+         (hive-like/run-query-without-timezone driver settings db-connection query))))))
 
 ;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
@@ -209,15 +210,20 @@
                  driver/IDriver
                  (merge (sql/IDriverSQLDefaultsMixin)
                         {:can-connect? (u/drop-first-arg can-connect?)
-                         :date-interval (u/drop-first-arg hive/date-interval)
+                         :date-interval (u/drop-first-arg hive-like/date-interval)
                          :describe-database describe-database
                          :describe-table describe-table
-                         :describe-table-fks hive/describe-table-fks
+                         :describe-table-fks (constantly #{})
                          :details-fields (constantly [{:name "zookeeper-connect"
                                                        :display-name "ZooKeeper connect string"
                                                        :default "127.0.0.1:2181/drill/cluster-id"}])
                          :execute-query execute-query
-                         :features hive/features
+                         :features (constantly #{:basic-aggregations
+                                                 :standard-deviation-aggregations
+                                                 ;;:foreign-keys
+                                                 :expressions
+                                                 :expression-aggregations
+                                                 :native-parameters})
                          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
                  sql/ISQLDriver
                  (merge (sql/ISQLDriverDefaultsMixin)
@@ -228,8 +234,8 @@
                          :field->identifier (u/drop-first-arg field->identifier)
                          :prepare-value (u/drop-first-arg prepare-value)
                          :quote-style (constantly :mysql)
-                         :current-datetime-fn (u/drop-first-arg (constantly hive/now))
-                         :string-length-fn (u/drop-first-arg hive/string-length-fn)
-                         :unix-timestamp->timestamp (u/drop-first-arg hive/unix-timestamp->timestamp)}))
+                         :current-datetime-fn (u/drop-first-arg (constantly hive-like/now))
+                         :string-length-fn (u/drop-first-arg hive-like/string-length-fn)
+                         :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
 
 (driver/register-driver! :drill (DrillDriver.))

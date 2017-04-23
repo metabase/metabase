@@ -7,7 +7,7 @@
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.hive :as hive]
+            [metabase.driver.hive-like :as hive-like]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.query-processor.util :as qputil]))
@@ -68,6 +68,37 @@
     #".*" ; default
     message))
 
+(defn describe-database [driver database]
+  {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
+             ;; arguably this should be "show tables in " (:name database)
+             (set (for [result (jdbc/query {:connection conn} [(str "show tables")])]
+                    {:name (:tablename result)
+                     :schema nil})))})
+
+(defn describe-table [driver database table]
+  (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
+    {:name (:name table)
+     :schema nil
+     :fields (set (for [result (jdbc/query {:connection conn}
+                                           [(str "describe `" (:name table) "`")])]
+                    {:name (:col_name result)
+                     :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
+
+;; we need this because transactions are not supported in Hive 1.2.1
+;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
+(defn execute-query
+  "Process and run a native (raw SQL) QUERY."
+  [driver {:keys [database settings], query :native, :as outer-query}]
+  (let [query (-> (assoc query :remark (qputil/query->remark outer-query))
+                  (assoc :query (if (seq (:params query))
+                                  (hive-like/unprepare (cons (:query query) (:params query)))
+                                  (:query query)))
+                  (dissoc :params))]
+    (hive-like/do-with-try-catch
+     (fn []
+       (let [db-connection (sql/db->jdbc-connection-spec database)]
+         (hive-like/run-query-without-timezone driver settings db-connection query))))))
+
 (defrecord SparkSQLDriver []
   clojure.lang.Named
   (getName [_] "Spark SQL"))
@@ -75,10 +106,10 @@
 (u/strict-extend SparkSQLDriver
                  driver/IDriver
                  (merge (sql/IDriverSQLDefaultsMixin)
-                        {:date-interval (u/drop-first-arg hive/date-interval)
-                         :describe-database hive/describe-database
-                         :describe-table hive/describe-table
-                         :describe-table-fks hive/describe-table-fks
+                        {:date-interval (u/drop-first-arg hive-like/date-interval)
+                         :describe-database describe-database
+                         :describe-table describe-table
+                         :describe-table-fks (constantly #{})
                          :details-fields (constantly [{:name "host"
                                                        :display-name "Host"
                                                        :default "localhost"}
@@ -99,18 +130,23 @@
                                                        :type :password
                                                        :placeholder "*******"}
                                                       ])
-                         :execute-query hive/execute-query
-                         :features hive/features
+                         :execute-query execute-query
+                         :features (constantly #{:basic-aggregations
+                                                 :standard-deviation-aggregations
+                                                 ;;:foreign-keys
+                                                 :expressions
+                                                 :expression-aggregations
+                                                 :native-parameters})
                          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
                  sql/ISQLDriver
                  (merge (sql/ISQLDriverDefaultsMixin)
-                        {:apply-page (u/drop-first-arg hive/apply-page)
-                         :column->base-type (u/drop-first-arg hive/column->base-type)
+                        {:apply-page (u/drop-first-arg hive-like/apply-page)
+                         :column->base-type (u/drop-first-arg hive-like/column->base-type)
                          :connection-details->spec (u/drop-first-arg connection-details->spec)
-                         :date (u/drop-first-arg hive/date)
+                         :date (u/drop-first-arg hive-like/date)
                          :quote-style (constantly :mysql)
-                         :current-datetime-fn (u/drop-first-arg (constantly hive/now))
-                         :string-length-fn (u/drop-first-arg hive/string-length-fn)
-                         :unix-timestamp->timestamp (u/drop-first-arg hive/unix-timestamp->timestamp)}))
+                         :current-datetime-fn (u/drop-first-arg (constantly hive-like/now))
+                         :string-length-fn (u/drop-first-arg hive-like/string-length-fn)
+                         :unix-timestamp->timestamp (u/drop-first-arg hive-like/unix-timestamp->timestamp)}))
 
 (driver/register-driver! :sparksql (SparkSQLDriver.))

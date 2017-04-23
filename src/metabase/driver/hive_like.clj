@@ -1,4 +1,4 @@
-(ns metabase.driver.hive
+(ns metabase.driver.hive-like
   (:require
    [clojure.java.jdbc :as jdbc]
    (clojure [set :as set]
@@ -9,7 +9,6 @@
    [metabase.db.spec :as dbspec]
    [metabase.driver :as driver]
    [metabase.driver.generic-sql :as sql]
-   [metabase.driver.generic-sql.util.unprepare :as unprepare]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.query-processor.util :as qputil])
@@ -56,7 +55,7 @@
               (hsql/call :unix_timestamp
                          expr (hx/literal format-str)))))
 
-(defn trunc-with-format [format-str expr]
+(defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
 (defn date [unit expr]
@@ -159,47 +158,3 @@
       sql
       (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-arg arg))
              more-args))))
-
-;; we need this because transactions are not supported in Hive 1.2.1
-;; bound variables are not support in Spark SQL (maybe not Hive either, haven't checked)
-(defn execute-query
-  "Process and run a native (raw SQL) QUERY."
-  [driver {:keys [database settings], query :native, :as outer-query}]
-  (let [query (-> (assoc query :remark (qputil/query->remark outer-query))
-                  (assoc :query (if (seq (:params query))
-                                  (unprepare (cons (:query query) (:params query)))
-                                  (:query query)))
-                  (dissoc :params))]
-    (do-with-try-catch
-     (fn []
-       (let [db-connection (sql/db->jdbc-connection-spec database)]
-         (run-query-without-timezone driver settings db-connection query))))))
-
-(defn describe-database [driver database]
-  {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-             ;; arguably this should be "show tables in " (:name database)
-             (set (for [result (jdbc/query {:connection conn} [(str "show tables")])]
-                    {:name (:tablename result)
-                     :schema nil})))})
-
-(defn describe-table [driver database table]
-  (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-    {:name (:name table)
-     :schema nil
-     :fields (set (for [result (jdbc/query {:connection conn}
-                                           [(str "describe `" (:name table) "`")])]
-                    {:name (:col_name result)
-                     :base-type (column->base-type (keyword (:data_type result)))}))}))
-
-(defn describe-table-fks [driver database table]
-  #{})
-
-(defn features
-  "Default implementation of `IDriver` `features` for SQL drivers."
-  [driver]
-  #{:basic-aggregations
-    :standard-deviation-aggregations
-    :expressions
-    :expression-aggregations
-    :native-parameters
-    })
