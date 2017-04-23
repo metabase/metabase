@@ -351,27 +351,27 @@
 
 ;; ## PUT /api/table/:id
 (tt/expect-with-temp [Table [table {:rows 15}]]
-                     (merge (-> (table-defaults)
-                                (dissoc :segments :field_values :metrics)
-                                (assoc-in [:db :details] {:db "mem:test_data;USER=GUEST;PASSWORD=guest"}))
-                            (match-$ table
-                              {:description     "What a nice table!"
-                               :entity_type     "person"
-                               :visibility_type "hidden"
-                               :schema          $
-                               :name            $
-                               :rows            15
-                               :display_name    "Userz"
-                               :pk_field        (pk-field-id $$)
-                               :id              $
-                               :raw_table_id    $
-                               :created_at      $}))
-                     (do ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
-                                                                                              :entity_type     "person"
-                                                                                              :visibility_type "hidden"
-                                                                                              :description     "What a nice table!"})
-                         (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
-                                 :updated_at)))
+  (merge (-> (table-defaults)
+             (dissoc :segments :field_values :metrics)
+             (assoc-in [:db :details] {:db "mem:test_data;USER=GUEST;PASSWORD=guest"}))
+         (match-$ table
+           {:description     "What a nice table!"
+            :entity_type     "person"
+            :visibility_type "hidden"
+            :schema          $
+            :name            $
+            :rows            15
+            :display_name    "Userz"
+            :pk_field        (pk-field-id $$)
+            :id              $
+            :raw_table_id    $
+            :created_at      $}))
+  (do ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
+                                                                           :entity_type     "person"
+                                                                           :visibility_type "hidden"
+                                                                           :description     "What a nice table!"})
+      (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
+              :updated_at)))
 
 
 ;; ## GET /api/table/:id/fks

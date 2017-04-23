@@ -40,17 +40,6 @@
                                org.eclipse.jetty.aggregate/jetty-all
                                org.codehaus.jackson/jackson-xc]
                   :classifier "standalone"]
-                 ;; [org.apache.hive/hive-jdbc "1.2.1"
-                 ;;  :exclusions [org.mortbay.jetty/jetty
-                 ;;               org.eclipse.jetty.aggregate/jetty-all
-                 ;;               org.codehaus.jackson/jackson-xc]
-                 ;;  :classifier "standalone"]
-                 ;; [org.apache.hive/hive-jdbc "2.1.1"
-                 ;;  :exclusions [org.mortbay.jetty/jetty
-                 ;;               org.eclipse.jetty.aggregate/jetty-all
-                 ;;               org.codehaus.jackson/jackson-xc
-                 ;;               org.eclipse.jetty.orbit/javax.servlet]
-                 ;;  :classifier "standalone"]
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.4.1"                                    ; HTTP client
                   :exclusions [commons-codec
@@ -98,9 +87,8 @@
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
-                 [ring/ring-jetty-adapter "1.5.1"
-                  :exclusions [commons-io]
-                  ]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                 [ring/ring-jetty-adapter "1.5.1"                     ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                  :exclusions [commons-io]]
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.0.2"                                      ; Model layer, hydration, and DB utilities

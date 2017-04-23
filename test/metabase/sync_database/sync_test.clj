@@ -372,5 +372,5 @@
   #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft}
     {:name "ACQUIRED_TOUCANS",       :visibility_type nil}}
   (data/dataset metabase.sync-database.sync-test/db_with_some_cruft
-                (set (for [table (db/select [Table :name :visibility_type], :db_id (data/id))]
-                       (into {} table)))))
+    (set (for [table (db/select [Table :name :visibility_type], :db_id (data/id))]
+           (into {} table)))))

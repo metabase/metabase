@@ -122,4 +122,4 @@
     0.5714285714285714
     0.5)
   (dataset half_valid_urls
-           (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))
+    (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))

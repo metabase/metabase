@@ -38,12 +38,12 @@
 ;; Check that we're checking for non-nil values, not just logically true ones.
 ;; There's only one place (out of 3) that I don't like
 (expect-with-non-timeseries-dbs
- [[1]]
- (->> (data/dataset places_cam_likes
-                    (data/run-query places
-                                    (ql/aggregation (ql/count))
-                                    (ql/filter (ql/= $liked false))))
-      rows (format-rows-by [int])))
+  [[1]]
+  (->> (data/dataset places_cam_likes
+         (data/run-query places
+           (ql/aggregation (ql/count))
+           (ql/filter (ql/= $liked false))))
+       rows (format-rows-by [int])))
 
 (defn- ->bool [x] ; SQLite returns 0/1 for false/true;
   (condp = x      ; Redshift returns nil/true.
@@ -56,31 +56,31 @@
 
 ;;; filter = true
 (expect-with-non-timeseries-dbs
- [[1 "Tempest" true]
-  [2 "Bullit"  true]]
- (->> (data/dataset places_cam_likes
-                    (data/run-query places
-                                    (ql/filter (ql/= $liked true))
-                                    (ql/order-by (ql/asc $id))))
-      rows (format-rows-by [int str ->bool] :format-nil-values)))
+  [[1 "Tempest" true]
+   [2 "Bullit"  true]]
+  (->> (data/dataset places_cam_likes
+         (data/run-query places
+           (ql/filter (ql/= $liked true))
+           (ql/order-by (ql/asc $id))))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != false
 (expect-with-non-timeseries-dbs
- [[1 "Tempest" true]
-  [2 "Bullit"  true]]
- (->> (data/dataset places_cam_likes
-                    (data/run-query places
-                                    (ql/filter (ql/!= $liked false))
-                                    (ql/order-by (ql/asc $id))))
-      rows (format-rows-by [int str ->bool] :format-nil-values)))
+  [[1 "Tempest" true]
+   [2 "Bullit"  true]]
+  (->> (data/dataset places_cam_likes
+         (data/run-query places
+           (ql/filter (ql/!= $liked false))
+           (ql/order-by (ql/asc $id))))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != true
 (expect-with-non-timeseries-dbs
  [[3 "The Dentist" false]]
  (->> (data/dataset places_cam_likes
-                    (data/run-query places
-                                    (ql/filter (ql/!= $liked true))
-                                    (ql/order-by (ql/asc $id))))
+        (data/run-query places
+          (ql/filter (ql/!= $liked true))
+          (ql/order-by (ql/asc $id))))
       rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 

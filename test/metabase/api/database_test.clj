@@ -157,77 +157,77 @@
 ;; Test that we can get all the DBs (ordered by name)
 ;; Database details *should not* come back for Rasta since she's not a superuser
 (expect-with-temp-db-created-via-api [{db-id :id}]
-                                     (set (filter identity (conj (for [engine datasets/all-valid-engines]
-                                                                   (datasets/when-testing-engine engine
-                                                                     (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
-                                                                       {:created_at         $
-                                                                        :engine             (name $engine)
-                                                                        :id                 $
-                                                                        :updated_at         $
-                                                                        :name               "test_data"
-                                                                        :native_permissions "write"
-                                                                        :is_sample          false
-                                                                        :is_full_sync       true
-                                                                        :description        nil
-                                                                        :caveats            nil
-                                                                        :points_of_interest nil
-                                                                        :features           (map name (driver/features (driver/engine->driver engine)))})))
-                                                                 (match-$ (Database db-id)
-                                                                   {:created_at         $
-                                                                    :engine             "postgres"
-                                                                    :id                 $
-                                                                    :updated_at         $
-                                                                    :name               $
-                                                                    :native_permissions "write"
-                                                                    :is_sample          false
-                                                                    :is_full_sync       true
-                                                                    :description        nil
-                                                                    :caveats            nil
-                                                                    :points_of_interest nil
-                                                                    :features           (map name (driver/features (driver/engine->driver :postgres)))}))))
-                                     (do
-                                       (delete-randomly-created-databases! :skip [db-id])
-                                       (set ((user->client :rasta) :get 200 "database"))))
+  (set (filter identity (conj (for [engine datasets/all-valid-engines]
+                                (datasets/when-testing-engine engine
+                                  (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
+                                    {:created_at         $
+                                     :engine             (name $engine)
+                                     :id                 $
+                                     :updated_at         $
+                                     :name               "test_data"
+                                     :native_permissions "write"
+                                     :is_sample          false
+                                     :is_full_sync       true
+                                     :description        nil
+                                     :caveats            nil
+                                     :points_of_interest nil
+                                     :features           (map name (driver/features (driver/engine->driver engine)))})))
+                              (match-$ (Database db-id)
+                                {:created_at         $
+                                 :engine             "postgres"
+                                 :id                 $
+                                 :updated_at         $
+                                 :name               $
+                                 :native_permissions "write"
+                                 :is_sample          false
+                                 :is_full_sync       true
+                                 :description        nil
+                                 :caveats            nil
+                                 :points_of_interest nil
+                                 :features           (map name (driver/features (driver/engine->driver :postgres)))}))))
+  (do
+    (delete-randomly-created-databases! :skip [db-id])
+    (set ((user->client :rasta) :get 200 "database"))))
 
 
 
 ;; GET /api/databases (include tables)
 (expect-with-temp-db-created-via-api [{db-id :id}]
-                                     (set (cons (match-$ (Database db-id)
-                                                  {:created_at         $
-                                                   :engine             "postgres"
-                                                   :id                 $
-                                                   :updated_at         $
-                                                   :name               $
-                                                   :native_permissions "write"
-                                                   :is_sample          false
-                                                   :is_full_sync       true
-                                                   :description        nil
-                                                   :caveats            nil
-                                                   :points_of_interest nil
-                                                   :tables             []
-                                                   :features           (map name (driver/features (driver/engine->driver :postgres)))})
-                                                (filter identity (for [engine datasets/all-valid-engines]
-                                                                   (datasets/when-testing-engine engine
-                                                                     (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
-                                                                       (match-$ database
-                                                                         {:created_at         $
-                                                                          :engine             (name $engine)
-                                                                          :id                 $
-                                                                          :updated_at         $
-                                                                          :name               "test_data"
-                                                                          :native_permissions "write"
-                                                                          :is_sample          false
-                                                                          :is_full_sync       true
-                                                                          :description        nil
-                                                                          :caveats            nil
-                                                                          :points_of_interest nil
-                                                                          :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
-                                                                                                               (table-details table)))
-                                                                          :features           (map name (driver/features (driver/engine->driver engine)))})))))))
-                                     (do
-                                       (delete-randomly-created-databases! :skip [db-id])
-                                       (set ((user->client :rasta) :get 200 "database" :include_tables true))))
+  (set (cons (match-$ (Database db-id)
+               {:created_at         $
+                :engine             "postgres"
+                :id                 $
+                :updated_at         $
+                :name               $
+                :native_permissions "write"
+                :is_sample          false
+                :is_full_sync       true
+                :description        nil
+                :caveats            nil
+                :points_of_interest nil
+                :tables             []
+                :features           (map name (driver/features (driver/engine->driver :postgres)))})
+             (filter identity (for [engine datasets/all-valid-engines]
+                                (datasets/when-testing-engine engine
+                                  (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
+                                    (match-$ database
+                                      {:created_at         $
+                                       :engine             (name $engine)
+                                       :id                 $
+                                       :updated_at         $
+                                       :name               "test_data"
+                                       :native_permissions "write"
+                                       :is_sample          false
+                                       :is_full_sync       true
+                                       :description        nil
+                                       :caveats            nil
+                                       :points_of_interest nil
+                                       :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
+                                                                            (table-details table)))
+                                       :features           (map name (driver/features (driver/engine->driver engine)))})))))))
+  (do
+    (delete-randomly-created-databases! :skip [db-id])
+    (set ((user->client :rasta) :get 200 "database" :include_tables true))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values

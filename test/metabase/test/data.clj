@@ -241,8 +241,8 @@
    A given Database is only created once per run of the test suite, and is automatically destroyed at the conclusion of the suite."
   [[db-binding, ^DatabaseDefinition database-definition] & body]
   `(do-with-temp-db ~database-definition
-                    (fn [~db-binding]
-                      ~@body)))
+     (fn [~db-binding]
+       ~@body)))
 
 (defn resolve-dbdef [symb]
   @(or (resolve symb)
