@@ -220,7 +220,7 @@
                          :execute-query execute-query
                          :features (constantly #{:basic-aggregations
                                                  :standard-deviation-aggregations
-                                                 ;;:foreign-keys
+                                                 :foreign-keys
                                                  :expressions
                                                  :expression-aggregations
                                                  :native-parameters})
