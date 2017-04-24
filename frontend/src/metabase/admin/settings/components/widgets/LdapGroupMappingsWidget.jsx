@@ -92,7 +92,6 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
     }
 
     _saveClick = (e) => {
-        console.log(e);
         e.preventDefault();
         const { state: { mappings }, props: { updateMappings } } = this;
         SettingsApi.put({ key: "ldap-group-mappings", value: mappings }).then(() => {
@@ -111,12 +110,7 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
                     <Button className="ml1" medium onClick={this._showEditModal}>Edit Mappings</Button>
                 </div>
                 { showEditModal ? (
-                    <Modal wide
-                        footer={[
-                            <Button onClick={this._cancelClick}>Cancel</Button>,
-                            <Button primary onClick={this._saveClick}>Save</Button>
-                        ]}
-                    >
+                    <Modal wide>
                         <div className="p4">
                             <h2>Group Mappings</h2>
                             <Button className="float-right" primary onClick={this._showAddRow}>Create a mapping</Button>
@@ -149,6 +143,10 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
                                     ) }
                                 </tbody>
                             </table>
+                            <div className="py1">
+                                <Button borderless onClick={this._cancelClick}>Cancel</Button>,
+                                <Button primary className="ml2" onClick={this._saveClick}>Save</Button>
+                            </div>
                         </div>
                     </Modal>
                 ) : null }
@@ -166,23 +164,23 @@ class AddMappingRow extends Component {
     }
 
     _handleCancelClick = (e) => {
-        const { onCancel } = this.props;
         e.preventDefault();
-        this.setState({ value: '' });
+        const { onCancel } = this.props;
         onCancel && onCancel();
+        this.setState({ value: '' });
     }
 
     _handleAddClick = (e) => {
-        const { state: { value }, props: { onAdd } } = this;
         e.preventDefault();
+        const { onAdd } = this.props;
+        onAdd && onAdd(this.state.value);
         this.setState({ value: '' });
-        onAdd && onAdd(value);
     }
 
     render() {
-        const { state: { value }, props: { mappings } } = this;
+        const { value } = this.state;
 
-        let isValid = value && !mappings[value];
+        const isValid = value && this.props.mappings[value] === undefined;
 
         return (
             <tr>
@@ -194,7 +192,7 @@ class AddMappingRow extends Component {
                             value={value}
                             placeholder="cn=People,ou=Groups,dc=metabase,dc=com"
                             autoFocus
-                            onChange={(e) => this.setState({value: e.target.value})}
+                            onChange={(e) => this.setState({ value: e.target.value })}
                         />
                         <span className="link no-decoration cursor-pointer" onClick={this._handleCancelClick}>Cancel</span>
                         <Button className="ml2" primary={!!isValid} disabled={!isValid} onClick={this._handleAddClick}>Add</Button>
@@ -205,46 +203,54 @@ class AddMappingRow extends Component {
     }
 }
 
-const MappingGroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
-    let selected = selectedGroups.reduce((g, id) => ({ ...g, [id]: true }), {});
+class MappingGroupSelect extends Component {
+    render() {
+        const { groups, selectedGroups, onGroupChange } = this.props;
 
-    if (!groups || groups.length === 0) {
-        return <LoadingSpinner />;
+        if (!groups || groups.length === 0) {
+            return <LoadingSpinner />;
+        }
+
+        const selected = selectedGroups.reduce((g, id) => ({ ...g, [id]: true }), {});
+
+        return (
+            <PopoverWithTrigger
+                ref="popover"
+                triggerElement={
+                    <div className="flex align-center">
+                        <span className="mr1 text-grey-4">
+                            <GroupSummary groups={groups} selectedGroups={selected} />
+                        </span>
+                        <Icon className="text-grey-2" name="chevrondown"  size={10}/>
+                    </div>
+                }
+                triggerClasses="AdminSelectBorderless py1"
+                sizeToFit
+            >
+                <GroupSelect groups={groups} selectedGroups={selected} onGroupChange={onGroupChange} />
+            </PopoverWithTrigger>
+        );
     }
-
-    return (
-        <PopoverWithTrigger
-            ref="popover"
-            triggerElement={
-                <div className="flex align-center">
-                    <span className="mr1 text-grey-4">
-                        <GroupSummary groups={groups} selectedGroups={selected} />
-                    </span>
-                    <Icon className="text-grey-2" name="chevrondown"  size={10}/>
-                </div>
-            }
-            triggerClasses="AdminSelectBorderless py1"
-            sizeToFit
-        >
-            <GroupSelect groups={groups} selectedGroups={selected} onGroupChange={onGroupChange} />
-        </PopoverWithTrigger>
-    );
 }
 
-const MappingRow = ({ dn, groups, selectedGroups, onChange, onDelete }) => {
-    return (
-        <tr>
-            <td>{dn}</td>
-            <td>
-                <MappingGroupSelect
-                    groups={groups}
-                    selectedGroups={selectedGroups}
-                    onGroupChange={onChange}
-                />
-            </td>
-            <td className="Table-actions">
-                <Button warning onClick={onDelete}>Remove</Button>
-            </td>
-        </tr>
-    );
+class MappingRow extends Component {
+    render() {
+        const { dn, groups, selectedGroups, onChange, onDelete } = this.props;
+
+        return (
+            <tr>
+                <td>{dn}</td>
+                <td>
+                    <MappingGroupSelect
+                        groups={groups}
+                        selectedGroups={selectedGroups}
+                        onGroupChange={onChange}
+                    />
+                </td>
+                <td className="Table-actions">
+                    <Button warning onClick={onDelete}>Remove</Button>
+                </td>
+            </tr>
+        );
+    }
 }

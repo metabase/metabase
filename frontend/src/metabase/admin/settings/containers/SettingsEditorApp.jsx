@@ -143,7 +143,6 @@ export default class SettingsEditorApp extends Component {
                 <SettingsLdapForm
                     elements={activeSection.settings}
                     updateLdapSettings={this.props.updateLdapSettings}
-                    reloadSettings={this.props.reloadSettings}
                 />
             );
         } else {
