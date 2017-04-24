@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -9,9 +10,7 @@ export default class SettingsLdapForm extends Component {
 
     constructor(props, context) {
         super(props, context);
-
         this.state = {
-            dirty: false,
             formData: {},
             submitting: "default",
             valid: false,
@@ -27,12 +26,19 @@ export default class SettingsLdapForm extends Component {
 
     componentWillMount() {
         // this gives us an opportunity to load up our formData with any existing values for elements
-        let formData = {};
-        this.props.elements.forEach(function(element) {
-            formData[element.key] = element.value;
-        });
+        this.updateFormData(this.props);
+    }
 
-        this.setState({formData});
+    componentWillReceiveProps(nextProps) {
+        this.updateFormData(nextProps);
+    }
+
+    updateFormData(props) {
+        let formData = {};
+        for (const element of props.elements) {
+            formData[element.key] = element.value;
+        }
+        this.setState({ formData });
     }
 
     componentDidMount() {
@@ -72,6 +78,7 @@ export default class SettingsLdapForm extends Component {
         let valid = true,
             validationErrors = {};
 
+        // Validate form only if LDAP is enabled
         if (formData['ldap-enabled']) {
             elements.forEach(function(element) {
                 // Do not validate group-base if group sync is not enabled
@@ -97,10 +104,7 @@ export default class SettingsLdapForm extends Component {
     }
 
     handleChangeEvent(element, value, event) {
-        this.setState({
-            dirty: true,
-            formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value }
-        });
+        this.setState({ formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value } });
     }
 
     handleFormErrors(error) {
@@ -131,10 +135,7 @@ export default class SettingsLdapForm extends Component {
             });
 
             this.props.updateLdapSettings(formData).then(() => {
-                this.setState({
-                    dirty: false,
-                    submitting: "success"
-                });
+                this.setState({ submitting: "success" });
 
                 // show a confirmation for 3 seconds, then return to normal
                 setTimeout(() => this.setState({ submitting: "default" }), 3000);
@@ -156,17 +157,18 @@ export default class SettingsLdapForm extends Component {
             let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
             let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
 
-            if (element.key === "ldap-group-sync") {
+            if (element.key === 'ldap-group-sync') {
                 return (
                     <SettingsSetting
                         key={element.key}
                         setting={{ ...element, value }}
                         updateSetting={this.handleChangeEvent.bind(this, element)}
-                        mappings={formData["ldap-group-mappings"]}
+                        mappings={formData['ldap-group-mappings']}
+                        updateMappings={this.handleChangeEvent.bind(this, { key: 'ldap-group-mappings' })}
                         errorMessage={errorMessage}
                     />
                 );
-            } else if (element.key !== "ldap-group-mappings") {
+            } else if (element.key !== 'ldap-group-mappings') {
                 return (
                     <SettingsSetting
                         key={element.key}

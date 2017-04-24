@@ -8,6 +8,9 @@
                              [user :refer [User], :as user])
             [metabase.util :as u]))
 
+(def ^:private filter-placeholder
+  "{login}")
+
 (defsetting ldap-enabled
   "Enable LDAP authentication."
   :type    :boolean
@@ -42,15 +45,15 @@
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
-  "Attribute to use for the user's email. (i.e.: 'mail', 'email' or 'userPrincipalName')"
+  "Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipalName')"
   :default "mail")
 
 (defsetting ldap-attribute-firstname
-  "Attribute to use for the user's first name. (i.e.: 'givenName')"
+  "Attribute to use for the user's first name. (usually 'givenName')"
   :default "givenName")
 
 (defsetting ldap-attribute-lastname
-  "Attribute to use for the user's last name. (i.e.: 'sn')"
+  "Attribute to use for the user's last name. (usually 'sn')"
   :default "sn")
 
 (defsetting ldap-group-sync
@@ -59,11 +62,10 @@
   :default false)
 
 (defsetting ldap-group-base
-  "Search base for groups. (Will be searched recursively if the LDAP server does not provide a 'memberOf' property)")
+  "Search base for groups. (Will be searched recursively if the LDAP directory does not provide a 'memberOf' overlay attribute)")
 
 
 (defsetting ldap-group-mappings
-  ;; Not too sure about this
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
   "JSON containing LDAP to Metabase group mappings."
   :type    :json
@@ -144,14 +146,11 @@
       (if-let [_ (ldap/get conn user-base)]
         (if-let [_ (or (nil? group-base) (ldap/get conn group-base))]
           {:status :SUCCESS}
-          {:status  :ERROR
-           :message "Group search base does not exist or is unreadable"})
-        {:status  :ERROR
-         :message "User search base does not exist or is unreadable"}))
+          {:status  :ERROR, :message "Group search base does not exist or is unreadable"})
+        {:status  :ERROR, :message "User search base does not exist or is unreadable"}))
     (catch Exception e
       ;; ActiveDirectory annoyingly throws for every little thing
-      {:status  :ERROR
-       :message (.getMessage e)})))
+      {:status  :ERROR, :message (.getMessage e)})))
 
 (defn find-user
   "Gets user information for the supplied username."
@@ -162,7 +161,7 @@
           lname-attr (keyword (ldap-attribute-lastname))
           email-attr (keyword (ldap-attribute-email))]
       (when-let [[result] (ldap/search conn (ldap-user-base) {:scope      :sub
-                                                              :filter     (s/replace (ldap-user-filter) "{login}" (escape-value username))
+                                                              :filter     (s/replace (ldap-user-filter) filter-placeholder (escape-value username))
                                                               :attributes [:dn :distinguishedName fname-attr lname-attr email-attr :memberOf]
                                                               :size-limit 1})]
         (let [dn    (or (:dn result) (:distinguishedName result))
@@ -181,7 +180,7 @@
                :groups     groups})))))))
 
 (defn verify-password
-  "Verifies if the password supplied is valid for the supplied `user-info` (from `find-user`) or DN."
+  "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."
   ([user-info password]
     (with-connection verify-password user-info password))
   ([conn user-info password]
@@ -189,11 +188,14 @@
       (ldap/bind? conn user-info password)
       (ldap/bind? conn (:dn user-info) password))))
 
-(defn fetch-or-create-user! [{:keys [first-name last-name email groups], :as user-info} password]
+(defn fetch-or-create-user!
+  "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
+  [{:keys [first-name last-name email groups], :as user-info} password]
   (let [user (or (db/select-one [User :id :last_login] :email email)
              (user/create-new-ldap-auth-user! first-name last-name email password))]
     (u/prog1 user
-      (user/set-password! (:id user) password)
+      (when password
+        (user/set-password! (:id user) password))
       (when (ldap-group-sync)
         (let [special-ids #{(:id (group/admin)) (:id (group/all-users))}
               current-ids (set (map :group_id (db/select ['PermissionsGroupMembership :group_id] :user_id (:id user))))

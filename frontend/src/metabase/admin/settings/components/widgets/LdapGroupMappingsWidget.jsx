@@ -10,22 +10,24 @@ import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Modal from "metabase/components/Modal";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
-import { PermissionsApi } from "metabase/services";
+import { PermissionsApi, SettingsApi } from "metabase/services";
 
 import _ from "underscore";
 
 import SettingToggle from './SettingToggle';
 
 type Props = {
+    setting: any,
     updateSetting: (value: any) => void,
-    setting: any
+    mappings: { [string]: number[] },
+    updateMappings: (value: { [string]: number[] }) => void
 };
 
 type State = {
     showEditModal: boolean,
+    showAddRow: boolean,
     groups: Object[],
-    mappings: { [string]: number[] },
-    error: any
+    mappings: { [string]: number[] }
 };
 
 export default class LdapGroupMappingsWidget extends Component<*, Props, State> {
@@ -38,14 +40,13 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
             showEditModal: false,
             showAddRow: false,
             groups: [],
-            mappings: {},
-            error: null
+            mappings: {}
         };
     }
 
     _showEditModal = (e) => {
         e.preventDefault();
-        this.setState({ showEditModal: true });
+        this.setState({ mappings: this.props.mappings || {}, showEditModal: true });
         PermissionsApi.groups().then((groups) => this.setState({ groups }));
     }
 
@@ -91,8 +92,13 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
     }
 
     _saveClick = (e) => {
+        console.log(e);
         e.preventDefault();
-        this.setState({ showEditModal: false, showAddRow: false });
+        const { state: { mappings }, props: { updateMappings } } = this;
+        SettingsApi.put({ key: "ldap-group-mappings", value: mappings }).then(() => {
+            updateMappings && updateMappings(mappings);
+            this.setState({ showEditModal: false, showAddRow: false });
+        });
     }
 
     render() {
@@ -105,14 +111,19 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
                     <Button className="ml1" medium onClick={this._showEditModal}>Edit Mappings</Button>
                 </div>
                 { showEditModal ? (
-                    <Modal wide>
+                    <Modal wide
+                        footer={[
+                            <Button onClick={this._cancelClick}>Cancel</Button>,
+                            <Button primary onClick={this._saveClick}>Save</Button>
+                        ]}
+                    >
                         <div className="p4">
                             <h2>Group Mappings</h2>
                             <Button className="float-right" primary onClick={this._showAddRow}>Create a mapping</Button>
                             <p className="text-measure">
                                 Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
-                                directory server. Note however that membership to the Admin group can be granted through mappings, but will never be
-                                automatically revoked as a failsafe measure.
+                                directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a
+                                failsafe measure.
                             </p>
                             <table className="ContentTable">
                                 <thead>
@@ -138,10 +149,6 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
                                     ) }
                                 </tbody>
                             </table>
-                            <div className="py1">
-                                <Button borderless onClick={this._cancelClick}>Cancel</Button>
-                                <Button className="ml1" primary onClick={this._saveClick}>Save</Button>
-                            </div>
                         </div>
                     </Modal>
                 ) : null }
@@ -198,7 +205,7 @@ class AddMappingRow extends Component {
     }
 }
 
-const MappingGroupSelect = ({ groups, selectedGroups = {}, onGroupChange }) => {
+const MappingGroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
     let selected = selectedGroups.reduce((g, id) => ({ ...g, [id]: true }), {});
 
     if (!groups || groups.length === 0) {

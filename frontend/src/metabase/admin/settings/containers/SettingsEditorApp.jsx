@@ -141,9 +141,9 @@ export default class SettingsEditorApp extends Component {
         } else if (activeSection.name === "LDAP") {
             return (
                 <SettingsLdapForm
-                    ref="ldapForm"
                     elements={activeSection.settings}
                     updateLdapSettings={this.props.updateLdapSettings}
+                    reloadSettings={this.props.reloadSettings}
                 />
             );
         } else {
