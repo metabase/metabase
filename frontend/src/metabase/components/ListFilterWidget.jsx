@@ -13,7 +13,7 @@ type FilterWidgetItem = {
     icon: string
 }
 
-export default class FilterWidget extends Component {
+export default class ListFilterWidget extends Component {
     props: {
         items: FilterWidgetItem[],
         activeItem: FilterWidgetItem,
