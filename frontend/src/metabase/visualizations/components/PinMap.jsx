@@ -106,7 +106,7 @@ export default class PinMap extends Component<*, Props, State> {
         const { points, bounds } = this.state;//this._getPoints(this.props);
 
         return (
-            <div className={cx(className, "PinMap relative")} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
+            <div className={cx(className, "PinMap relative hover-parent hover--visibility")} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
                 { Map ?
                     <Map
                         {...this.props}
@@ -122,7 +122,7 @@ export default class PinMap extends Component<*, Props, State> {
                         onFiltering={(filtering) => this.setState({ filtering })}
                     />
                 : null }
-                <div className="absolute top right m1 z2 flex flex-column">
+                <div className="absolute top right m1 z2 flex flex-column hover-child">
                     { isEditing || !isDashboard ?
                         <div className={cx("PinMapUpdateButton Button Button--small mb1", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
                             Save as default view
@@ -139,7 +139,7 @@ export default class PinMap extends Component<*, Props, State> {
                                 }
                             }}
                         >
-                            { !this.state.filtering ? "Filter by rectange" : "Cancel filter" }
+                            { !this.state.filtering ? "Draw box to filter" : "Cancel filter" }
                         </div>
                     }
                 </div>

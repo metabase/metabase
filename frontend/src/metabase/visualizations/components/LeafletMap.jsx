@@ -20,7 +20,8 @@ export default class LeafletMap extends Component {
 
             const map = this.map = L.map(element, {
                 scrollWheelZoom: false,
-                minZoom: 2
+                minZoom: 2,
+                drawControlTooltips: false
             });
 
             const drawnItems = new L.FeatureGroup();
@@ -73,6 +74,7 @@ export default class LeafletMap extends Component {
                 ], settings["map.zoom"]);
             } else {
                 this.map.fitBounds(bounds);
+                this.map.setZoom(this.map.getBoundsZoom(bounds, true));
             }
         }
     }
