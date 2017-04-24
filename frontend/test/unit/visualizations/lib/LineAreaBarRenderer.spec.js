@@ -180,6 +180,49 @@ describe("LineAreaBarRenderer", () => {
         });
     })
 
+    describe('goals', () => {
+        it('should render a goal line', () => {
+            let rows = [
+                ["2016", 1],
+                ["2017", 2],
+            ];
+
+            renderTimeseriesLine({
+                rowsOfSeries: [rows],
+                settings: {
+                    "graph.show_goal": true,
+                    "graph.goal_value": 30
+                }
+            })
+
+            expect(qs('svg .goal .line')).not.toBe(null)
+            expect(qs('svg .goal text')).not.toBe(null)
+            expect(qs('svg .goal text').textContent).toEqual('Goal')
+        })
+
+        it('should render a goal tooltip with the proper value', (done) => {
+            let rows = [
+                ["2016", 1],
+                ["2017", 2],
+            ];
+
+            const goalValue = 30
+            renderTimeseriesLine({
+                rowsOfSeries: [rows],
+                settings: {
+                    "graph.show_goal": true,
+                    "graph.goal_value": goalValue
+                },
+                onHoverChange: (hover) => {
+                    expect(hover.data[0].value).toEqual(goalValue)
+                    done();
+                }
+            })
+            dispatchUIEvent(qs("svg .goal text"), "mouseenter");
+        })
+
+    })
+
     // querySelector shortcut
     const qs = (selector) => element.querySelector(selector);
 
@@ -187,7 +230,7 @@ describe("LineAreaBarRenderer", () => {
     const qsa = (selector) => [...element.querySelectorAll(selector)];
 
     // helper for timeseries line charts
-    const renderTimeseriesLine = ({ rowsOfSeries, onHoverChange, unit }) => {
+    const renderTimeseriesLine = ({ rowsOfSeries, onHoverChange, unit, settings }) => {
         lineAreaBarRenderer(element, {
             chartType: "line",
             series: rowsOfSeries.map((rows) => ({
@@ -199,7 +242,8 @@ describe("LineAreaBarRenderer", () => {
             settings: {
                 "graph.x_axis.scale": "timeseries",
                 "graph.x_axis.axis_enabled": true,
-                "graph.colors": ["#000000"]
+                "graph.colors": ["#000000"],
+                ...settings,
             },
             onHoverChange
         });
