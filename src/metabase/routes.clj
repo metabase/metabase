@@ -17,7 +17,7 @@
              (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
 
 (defn- load-template [path variables]
-  (stencil/render-string (load-file path) variables))
+  (stencil/render-string (load-file-at-path path) variables))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
