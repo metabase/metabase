@@ -1,5 +1,5 @@
-import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
@@ -52,7 +52,7 @@ export default class Dashboard extends Component {
         fetchDashboard: PropTypes.func.isRequired,
         fetchRevisions: PropTypes.func.isRequired,
         revertToRevision: PropTypes.func.isRequired,
-        saveDashboard: PropTypes.func.isRequired,
+        saveDashboardAndCards: PropTypes.func.isRequired,
         setDashboardAttributes: PropTypes.func.isRequired,
         setEditingDashboard: PropTypes.func.isRequired,
 

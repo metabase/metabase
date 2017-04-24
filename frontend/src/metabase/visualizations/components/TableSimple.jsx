@@ -1,6 +1,7 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import styles from "./Table.css";
 
@@ -14,7 +15,7 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { VisualizationProps } from "metabase/visualizations";
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 type Props = VisualizationProps & {
     height: number,

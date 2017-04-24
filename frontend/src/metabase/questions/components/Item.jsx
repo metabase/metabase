@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
 import pure from "recompose/pure";
@@ -14,7 +15,7 @@ import MoveToCollection from "../containers/MoveToCollection.jsx";
 import Labels from "./Labels.jsx";
 import CollectionBadge from "./CollectionBadge.jsx";
 
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 const ITEM_ICON_SIZE = 20;
 
@@ -112,9 +113,9 @@ Item.propTypes = {
     favorite:           PropTypes.bool.isRequired,
     archived:           PropTypes.bool.isRequired,
     icon:               PropTypes.string.isRequired,
-    setItemSelected:    PropTypes.func.isRequired,
-    setFavorited:       PropTypes.func.isRequired,
-    setArchived:        PropTypes.func.isRequired,
+    setItemSelected:    PropTypes.func,
+    setFavorited:       PropTypes.func,
+    setArchived:        PropTypes.func,
     onEntityClick:      PropTypes.func,
     showCollectionName: PropTypes.bool,
 };
@@ -122,7 +123,7 @@ Item.propTypes = {
 const ItemBody = pure(({ entity, id, name, description, labels, favorite, collection, setFavorited, onEntityClick }) =>
     <div className={S.itemBody}>
         <div className={cx('flex', S.itemTitle)}>
-            <Link to={Urls.card(id)} className={cx(S.itemName)} onClick={onEntityClick && ((e) => { e.preventDefault(); onEntityClick(entity); })}>
+            <Link to={Urls.question(id)} className={cx(S.itemName)} onClick={onEntityClick && ((e) => { e.preventDefault(); onEntityClick(entity); })}>
                 {name}
             </Link>
             { collection &&
@@ -155,7 +156,7 @@ ItemBody.propTypes = {
     favorite:           PropTypes.bool.isRequired,
     id:                 PropTypes.number.isRequired,
     name:               PropTypes.string.isRequired,
-    setFavorited:       PropTypes.func.isRequired,
+    setFavorited:       PropTypes.func,
 };
 
 const ItemCreated = pure(({ created, by }) =>

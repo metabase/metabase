@@ -68,6 +68,8 @@
 }
 .text-lowercase { text-transform: lowercase; }
 
+.text-capitalize { text-transform: capitalize; }
+
 /* text weight */
 .text-light  { font-weight: 300; }
 .text-normal { font-weight: 400; }
@@ -92,6 +94,10 @@
 
 .text-small {
     font-size: 0.875em;
+}
+
+.text-smaller {
+    font-size: 0.8em;
 }
 
 .text-current {
@@ -127,6 +133,10 @@
 .text-monospace,
 :local(.text-monospace) {
     font-family: Monaco, monospace;
+}
+
+.text-pre-wrap {
+  white-space: pre-wrap;
 }
 
 .text-measure {

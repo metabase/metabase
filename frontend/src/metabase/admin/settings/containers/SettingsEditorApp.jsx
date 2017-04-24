@@ -1,6 +1,9 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
+
+import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import AdminLayout from "metabase/components/AdminLayout.jsx";
@@ -40,6 +43,7 @@ const mapDispatchToProps = {
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
     static propTypes = {
         sections: PropTypes.array.isRequired,

@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -25,7 +26,7 @@ export default class DataSelector extends Component {
     }
 
     static propTypes = {
-        query: PropTypes.object.isRequired,
+        datasetQuery: PropTypes.object.isRequired,
         databases: PropTypes.array.isRequired,
         tables: PropTypes.array,
         segments: PropTypes.array,
@@ -50,7 +51,7 @@ export default class DataSelector extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        let tableId = newProps.query.query && newProps.query.query.source_table;
+        let tableId = newProps.datasetQuery.query && newProps.datasetQuery.query.source_table;
         let selectedSchema;
         // augment databases with schemas
         let databases = newProps.databases && newProps.databases.map(database => {
@@ -137,15 +138,15 @@ export default class DataSelector extends Component {
     }
 
     getSegmentId() {
-        return this.props.query.segment;
+        return this.props.datasetQuery.segment;
     }
 
     getDatabaseId() {
-        return this.props.query.database;
+        return this.props.datasetQuery.database;
     }
 
     getTableId() {
-        return this.props.query.query && this.props.query.query.source_table;
+        return this.props.datasetQuery.query && this.props.datasetQuery.query.source_table;
     }
 
     renderDatabasePicker() {

@@ -70,15 +70,70 @@ Step-by-step instructions on how to upgrade Metabase running on Heroku.
 
 # Troubleshooting Common Problems
 
-### Metabase fails to startup
+### Metabase fails to start due to database locks
 
-Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly.
+Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly. The error message will look something like:
+
+    liquibase.exception.DatabaseException: liquibase.exception.LockException: Could not acquire change log lock.
 
 When this happens, go to a terminal where Metabase is installed and run:
 
     java -jar metabase.jar migrate release-locks
 
-in the command line to manually clear the locks.  Then restart your Metabase instance.
+in the command line to manually clear the locks. Then restart your Metabase instance.
+
+### Metabase fails to start due to PermGen OutOfMemoryErrors
+
+On Java 7, Metabase may fail to launch with a message like
+
+    java.lang.OutOfMemoryError: PermGen space
+
+or one like
+
+    Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler
+
+If this happens, setting a few JVM options should fix your issue:
+
+    java -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m -jar target/uberjar/metabase.jar
+
+You can also pass JVM arguments by setting the environment variable `JAVA_TOOL_OPTIONS`, e.g.
+
+    JAVA_TOOL_OPTIONS=`-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m`
+
+Alternatively, you can upgrade to Java 8 instead, which will fix the issue as well.
+
+### Metabase fails to start due to Heap Space OutOfMemoryErrors
+
+Normally, the JVM can figure out how much RAM is available on the system and automatically set a sensible upper bound for heap memory usage. On certain shared hosting
+environments, however, this doesn't always work perfectly. If Metabase fails to start with an error message like
+
+    java.lang.OutOfMemoryError: Java heap space
+
+You'll just need to set a JVM option to let it know explicitly how much memory it should use for the heap space:
+
+    java -Xmx2g -jar metabase.jar
+
+Adjust this number as appropriate for your shared hosting instance. Make sure to set the number lower than the total amount of RAM available on your instance, because Metabase isn't the only process that'll be running. Generally, leaving 1-2 GB of RAM for these other processes should be enough; for example, you might set `-Xmx` to `1g` for an instance with 2 GB of RAM, `2g` for one with 4 GB of RAM, `6g` for an instance with 8 GB of RAM, and so forth. You may need to experment with these settings a bit to find the right number.
+
+As above, you can use the environment variable `JAVA_TOOL_OPTIONS` to set JVM args instead of passing them directly to `java`. This is useful when running the Docker image,
+for example.
+
+    docker run -d -p 3000:3000 -e "JAVA_TOOL_OPTIONS=-Xmx2g" metabase/metabase
+
+### Metabase fails to connect to H2 Database on Windows 10
+
+In some situations the Metabase JAR needs to be unblocked so it has permissions to create local files for the application database.
+
+On Windows 10, if you see an error message like
+
+    Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
+
+when running the JAR, you can unblock the file by right-clicking, clicking "Properties", and then clicking "Unblock".
+See Microsoft's documentation [here](https://blogs.msdn.microsoft.com/delay/p/unblockingdownloadedfile/) for more details on unblocking downloaded files.
+
+There are a few other reasons why Metabase might not be able to connect to your H2 DB. Metabase connects to the DB over a TCP port, and it's possible
+that something in your `ipconfig` configuration is blocking the H2 port. See the discussion [here](https://github.com/metabase/metabase/issues/1871) for
+details on how to resolve this issue.
 
 
 # Configuring the Metabase Application Database

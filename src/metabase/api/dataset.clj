@@ -8,6 +8,7 @@
                     [hydrate :refer [hydrate]])
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
+                             [query :as query]
                              [query-execution :refer [QueryExecution]])
             [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qputil]
@@ -41,8 +42,8 @@
   (read-check Database database)
   ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if there's no data there.
   ;; if we still can't find relevant info, just default to 0
-  {:average (or (qputil/query-average-duration query)
-                (qputil/query-average-duration (assoc query :constraints default-query-constraints))
+  {:average (or (query/average-execution-time-ms (qputil/query-hash query))
+                (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
                 0)})
 
 (defn as-csv

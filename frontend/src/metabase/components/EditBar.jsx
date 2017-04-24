@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from 'react';
+import React, { Component } from 'react';
+import PropTypes from "prop-types";
 import cx from "classnames";
 
 class EditBar extends Component {
@@ -32,7 +33,7 @@ class EditBar extends Component {
                         {subtitle}
                     </span>
                 )}
-                <span className="flex-align-right">
+                <span className="flex-align-right flex">
                     {buttons}
                 </span>
             </div>

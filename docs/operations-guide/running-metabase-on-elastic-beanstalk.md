@@ -46,16 +46,19 @@ For the environment settings we want to make the following selections:
 
 ![ebenvtype](images/EBEnvType.png)
 
-This will run our Metabase application using  [Docker](https://www.docker.com) under the hood.  This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/)
+This will run our Metabase application using  [Docker](https://www.docker.com) under the hood.
+This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
 
-When your environment type settings look like the above then go ahead and click `Next`
+When your environment type settings look like the above then go ahead and click `Next`.
 
 
 ### Application Version
 
-The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
+The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.
+Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.
+Simply enter the following url in the `S3 URL` textbox:
 
-http://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip
+https://s3.amazonaws.com/downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip
 
 Leave all the settings under Deployment Limits on their defaults.  These settings won't impact Metabase.
 
@@ -64,7 +67,9 @@ Leave all the settings under Deployment Limits on their defaults.  These setting
 
 ### Environment Information
 
-Here you are given a chance to pick a name and url that you want to use for running Metabase instance.  Feel free to get creative, just remember that the URL for your Metabase instance must be unique across all AWS Elastic Beanstalk deployments, so you'll have to pick something nobody else is already using.
+Here you are given a chance to pick a name and url that you want to use for running Metabase instance.
+Feel free to get creative, just remember that the URL for your Metabase instance must be unique across all AWS Elastic Beanstalk deployments,
+so you'll have to pick something nobody else is already using.
 
 We often recommend something like `mycompanyname-metabase`
 

@@ -518,12 +518,13 @@
     z-index: 1;
     opacity: 1;
     box-shadow: 0 1px 2px rgba(0, 0, 0, .22);
-    transition: margin-top 0.5s, opacity 0.5s;
+    transition: transform 0.5s, opacity 0.5s;
     min-width: 8em;
+    position: relative;
 }
 
 .RunButton.RunButton--hidden {
-    margin-top: -110px;
+    transform: translateY(-65px);
     opacity: 0;
 }
 

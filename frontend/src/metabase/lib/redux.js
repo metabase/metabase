@@ -2,34 +2,11 @@ import moment from "moment";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import { createStore as originalCreateStore, applyMiddleware, compose } from "redux";
-import promise from 'redux-promise';
-import thunk from "redux-thunk";
-import createLogger from "redux-logger";
-
-import createHistory from "history/createBrowserHistory";
-
-import { reduxReactRouter } from 'redux-router';
-
 import { setRequestState, clearRequestState } from "metabase/redux/requests";
 
 // convienence
 export { combineReducers } from "redux";
 export { handleActions, createAction } from "redux-actions";
-
-import { DEBUG } from "metabase/lib/debug";
-
-let middleware = [thunk, promise];
-if (DEBUG) {
-    middleware.push(createLogger());
-}
-
-// common createStore with middleware applied
-export const createStore = compose(
-  applyMiddleware(...middleware),
-  reduxReactRouter({ createHistory }),
-  window.devToolsExtension ? window.devToolsExtension() : f => f
-)(originalCreateStore);
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
@@ -39,7 +16,10 @@ export function createThunkAction(actionType, actionThunkCreator) {
         return async function(dispatch, getState) {
             try {
                 let payload = await thunk(dispatch, getState);
-                dispatch({ type: actionType, payload });
+                let dispatchValue = { type: actionType, payload };
+                dispatch(dispatchValue);
+
+                return dispatchValue;
             } catch (error) {
                 dispatch({ type: actionType, payload: error, error: true });
                 throw error;

@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import { MODAL_CHILD_CONTEXT_TYPES } from "./Modal";
 import Icon from "metabase/components/Icon.jsx";
@@ -65,7 +66,7 @@ ModalHeader.contextTypes = MODAL_CHILD_CONTEXT_TYPES;
 
 export const ModalBody = ({ children }, { fullPageModal, formModal }) =>
     <div
-        className={cx("ModalBody", { "px4": formModal, "flex flex-full": !formModal })}
+        className={cx("ModalBody", { "px4": formModal, "flex flex-full flex-basis-auto": !formModal })}
     >
         <div
             className="flex-full ml-auto mr-auto flex flex-column"

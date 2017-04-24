@@ -86,7 +86,7 @@ const SECTIONS = [
                 key: "email-smtp-port",
                 display_name: "SMTP Port",
                 placeholder: "587",
-                type: "string",
+                type: "number",
                 required: true,
                 validations: [["integer", "That's not a valid port number"]]
             },
@@ -95,7 +95,7 @@ const SECTIONS = [
                 display_name: "SMTP Security",
                 description: null,
                 type: "radio",
-                options: { none: "None", ssl: "SSL", tls: "TLS" },
+                options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
                 defaultValue: 'none'
             },
             {
@@ -236,13 +236,49 @@ const SECTIONS = [
                 getHidden: (settings) => !settings["enable-embedding"]
             }
         ]
+    },
+    {
+        name: "Caching",
+        settings: [
+            {
+                key: "enable-query-caching",
+                display_name: "Enable Caching",
+                type: "boolean"
+            },
+            {
+                key: "query-caching-min-ttl",
+                display_name: "Minimum Query Duration",
+                type: "number",
+                getHidden: (settings) => !settings["enable-query-caching"]
+            },
+            {
+                key: "query-caching-ttl-ratio",
+                display_name: "Cache Time-To-Live (TTL)",
+                type: "number",
+                getHidden: (settings) => !settings["enable-query-caching"]
+            },
+            {
+                key: "query-caching-max-kb",
+                display_name: "Max Cache Entry Size",
+                type: "number",
+                getHidden: (settings) => !settings["enable-query-caching"]
+            }
+        ]
     }
 ];
 for (const section of SECTIONS) {
     section.slug = slugify(section.name);
 }
 
-export const getSettings = state => state.settings.settings;
+export const getSettings = createSelector(
+    state => state.settings.settings,
+    state => state.admin.settings.warnings,
+    (settings, warnings) =>
+        settings.map(setting => warnings[setting.key] ?
+            { ...setting, warning: warnings[setting.key] } :
+            setting
+        )
+)
 
 export const getSettingValues = createSelector(
     getSettings,

@@ -57,6 +57,12 @@ describe('formatting', () => {
             expect(formatValue(37.7749, { column: { base_type: TYPE.Number, special_type: TYPE.Latitude }})).toEqual("37.77490000");
             expect(formatValue(-122.4194, { column: { base_type: TYPE.Number, special_type: TYPE.Longitude }})).toEqual("-122.41940000");
         });
+        it("should return a component for links in jsx mode", () => {
+            expect(isElementOfType(formatValue("http://metabase.com/", { jsx: true }), ExternalLink)).toEqual(true);
+        });
+        it("should return a component for email addresses in jsx mode", () => {
+            expect(isElementOfType(formatValue("tom@metabase.com", { jsx: true }), ExternalLink)).toEqual(true);
+        });
     });
 
     describe("formatUrl", () => {
@@ -67,6 +73,10 @@ describe('formatting', () => {
             expect(isElementOfType(formatUrl("http://metabase.com/", { jsx: true }), ExternalLink)).toEqual(true);
             expect(isElementOfType(formatUrl("https://metabase.com/", { jsx: true }), ExternalLink)).toEqual(true);
             expect(isElementOfType(formatUrl("mailto:tom@metabase.com", { jsx: true }), ExternalLink)).toEqual(true);
+        });
+        it("should not return a link component for unrecognized links in jsx mode", () => {
+            expect(isElementOfType(formatUrl("nonexistent://metabase.com/", { jsx: true }), ExternalLink)).toEqual(false);
+            expect(isElementOfType(formatUrl("metabase.com", { jsx: true }), ExternalLink)).toEqual(false);
         });
         it("should return a string for javascript:, data:, and other links in jsx mode", () => {
             expect(formatUrl("javascript:alert('pwnd')", { jsx: true })).toEqual("javascript:alert('pwnd')");

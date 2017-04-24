@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import cx from "classnames";
 
@@ -142,8 +143,12 @@ export class FullPageModal extends Component {
         this._renderModal(false);
 
         // restore scroll position and scrolling
-        window.scrollTo(this._scrollX, this._scrollY);
-        document.body.style.overflow = "unset";
+        document.body.style.overflow = "";
+
+        // On IE11 a timeout is required for the scroll to happen after the change of overflow setting
+        setTimeout(() => {
+            window.scrollTo(this._scrollX, this._scrollY);
+        }, 0)
 
         // wait for animations to complete before unmounting
         setTimeout(() => {

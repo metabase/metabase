@@ -1,5 +1,6 @@
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import Greeting from "metabase/lib/greeting";
@@ -93,9 +94,11 @@ export default class HomepageApp extends Component {
                           <Activity {...this.props} />
                         </div>
                     </div>
-                    <div className="Layout-sidebar flex-no-shrink">
-                      <NextStep />
-                      <RecentViews {...this.props} />
+                    <div className="Layout-sidebar flex-no-shrink hide sm-show">
+                        <div>
+                            <NextStep />
+                            <RecentViews {...this.props} />
+                        </div>
                     </div>
                 </div>
             </div>

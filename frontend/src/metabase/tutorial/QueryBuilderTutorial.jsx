@@ -1,6 +1,6 @@
 /* eslint-disable react/display-name */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Tutorial, { qs, qsWithContent } from "./Tutorial.jsx";
 

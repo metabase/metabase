@@ -1,8 +1,9 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import title from "metabase/hoc/Title";
 
 import Dashboard from "../components/Dashboard.jsx";
 
@@ -13,6 +14,7 @@ import { getIsEditing, getIsEditingParameter, getIsDirty, getDashboardComplete, 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as dashboardActions from "../dashboard";
+import {deleteDashboard} from "metabase/dashboards/dashboards"
 
 const mapStateToProps = (state, props) => {
   return {
@@ -34,12 +36,14 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
     ...dashboardActions,
+    deleteDashboard,
     fetchDatabaseMetadata,
     setErrorPage,
     onChangeLocation: push
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ dashboard }) => dashboard && dashboard.name)
 export default class DashboardApp extends Component {
     render() {
         return <Dashboard {...this.props} />;

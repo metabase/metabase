@@ -4,7 +4,7 @@ import { formatValue } from "metabase/lib/formatting";
 
 import d3 from "d3";
 
-import { DateTimeColumn, NumberColumn } from "../../support/visualizations";
+import { DateTimeColumn, NumberColumn, StringColumn } from "../../support/visualizations";
 
 let formatTz = (offset) => (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00"
 
@@ -26,10 +26,12 @@ describe("LineAreaBarRenderer", () => {
 
     it("should display numeric year in X-axis and tooltip correctly", (done) => {
         renderTimeseriesLine({
-            rows: [
-                [2015, 1],
-                [2016, 2],
-                [2017, 3]
+            rowsOfSeries: [
+                [
+                    [2015, 1],
+                    [2016, 2],
+                    [2017, 3]
+                ]
             ],
             unit: "year",
             onHoverChange: (hover) => {
@@ -53,8 +55,9 @@ describe("LineAreaBarRenderer", () => {
                 ["2016-10-03T20:00:00.000" + tz, 1],
                 ["2016-10-03T21:00:00.000" + tz, 1],
             ];
+
             renderTimeseriesLine({
-                rows,
+                rowsOfSeries: [rows],
                 unit: "hour",
                 onHoverChange: (hover) => {
                     let expected = rows.map(row => formatValue(row[0], { column: DateTimeColumn({ unit: "hour" }) }));
@@ -78,7 +81,7 @@ describe("LineAreaBarRenderer", () => {
             ["2016-01-01T04:00:00.000" + tz, 1]
         ];
         renderTimeseriesLine({
-            rows,
+            rowsOfSeries: [rows],
             unit: "hour",
             onHoverChange: (hover) => {
                 expect(formatValue(rows[0][0], { column: DateTimeColumn({ unit: "hour" }) })).toEqual(
@@ -99,6 +102,84 @@ describe("LineAreaBarRenderer", () => {
         dispatchUIEvent(qs("svg .dot"), "mousemove");
     });
 
+    describe("should render correctly a compound line graph", () => {
+        const rowsOfNonemptyCard = [
+            [2015, 1],
+            [2016, 2],
+            [2017, 3]
+        ]
+
+        it("when only second series is not empty", () => {
+            renderTimeseriesLine({
+                rowsOfSeries: [
+                    [], rowsOfNonemptyCard, [], []
+                ],
+                unit: "hour"
+            });
+
+            // A simple check to ensure that lines are rendered as expected
+            expect(qs("svg .line")).not.toBe(null);
+        });
+
+        it("when only first series is not empty", () => {
+            renderTimeseriesLine({
+                rowsOfSeries: [
+                    rowsOfNonemptyCard, [], [], []
+                ],
+                unit: "hour"
+            });
+
+            expect(qs("svg .line")).not.toBe(null);
+        });
+
+        it("when there are many empty and nonempty values ", () => {
+            renderTimeseriesLine({
+                rowsOfSeries: [
+                    [], rowsOfNonemptyCard, [], [], rowsOfNonemptyCard, [], rowsOfNonemptyCard
+                ],
+                unit: "hour"
+            });
+            expect(qs("svg .line")).not.toBe(null);
+        });
+    })
+
+    describe("should render correctly a compound bar graph", () => {
+        it("when only second series is not empty", () => {
+            renderScalarBar({
+                scalars: [
+                    ["Non-empty value", null],
+                    ["Empty value", 25]
+                ]
+            })
+            expect(qs("svg .bar")).not.toBe(null);
+        });
+
+        it("when only first series is not empty", () => {
+            renderScalarBar({
+                scalars: [
+                    ["Non-empty value", 15],
+                    ["Empty value", null]
+                ]
+            })
+            expect(qs("svg .bar")).not.toBe(null);
+        });
+
+        it("when there are many empty and nonempty scalars", () => {
+            renderScalarBar({
+                scalars: [
+                    ["Empty value", null],
+                    ["Non-empty value", 15],
+                    ["2nd empty value", null],
+                    ["2nd non-empty value", 35],
+                    ["3rd empty value", null],
+                    ["4rd empty value", null],
+                    ["3rd non-empty value", 0],
+                ]
+            })
+            expect(qs("svg .bar")).not.toBe(null);
+        });
+    })
+
     // querySelector shortcut
     const qs = (selector) => element.querySelector(selector);
 
@@ -106,19 +187,40 @@ describe("LineAreaBarRenderer", () => {
     const qsa = (selector) => [...element.querySelectorAll(selector)];
 
     // helper for timeseries line charts
-    const renderTimeseriesLine = ({ rows, onHoverChange, unit }) => {
+    const renderTimeseriesLine = ({ rowsOfSeries, onHoverChange, unit }) => {
         lineAreaBarRenderer(element, {
             chartType: "line",
-            series: [{
+            series: rowsOfSeries.map((rows) => ({
                 data: {
                     "cols" : [DateTimeColumn({ unit }), NumberColumn()],
                     "rows" : rows
                 }
-            }],
+            })),
             settings: {
                 "graph.x_axis.scale": "timeseries",
                 "graph.x_axis.axis_enabled": true,
                 "graph.colors": ["#000000"]
+            },
+            onHoverChange
+        });
+    }
+
+    const renderScalarBar = ({ scalars, onHoverChange, unit }) => {
+        lineAreaBarRenderer(element, {
+            chartType: "bar",
+            series: scalars.map((scalar) => ({
+                data: {
+                    "cols" : [StringColumn(), NumberColumn()],
+                    "rows" : [scalar]
+                }
+            })),
+            settings: {
+                "bar.scalar_series": true,
+                "funnel.type": "bar",
+                "graph.colors": ["#509ee3", "#9cc177", "#a989c5", "#ef8c8c"],
+                "graph.x_axis.axis_enabled": true,
+                "graph.x_axis.scale": "ordinal",
+                "graph.x_axis._is_numeric": false
             },
             onHoverChange
         });

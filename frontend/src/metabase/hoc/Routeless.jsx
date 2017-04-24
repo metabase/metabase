@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import { connect } from "react-redux";
 import { push, goBack } from "react-router-redux";
@@ -24,6 +24,7 @@ export default (ComposedComponent) => class extends Component {
     static displayName = "Routeless["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
 
     _state: any;
+    _timeout: any;
 
     componentWillMount() {
         const push = this.props._routeless_push;
@@ -41,13 +42,23 @@ export default (ComposedComponent) => class extends Component {
         // if the state previously was the saved one and is now not, then we probably
         // hit the back button, so close the wrapped component
         if (location.state === this._state && nextLocation.state !== this._state) {
-            this.props.onClose();
+            // perform this in a timeout because the component may be unmounted anyway, in which
+            // case calling onClose again may cause problems.
+            // alternatively may be able to tighten up the logic above
+            this._timeout = setTimeout(() => {
+                this.props.onClose();
+            }, 100);
         }
     }
 
     componentWillUnmount() {
         const location = this.props._routeless_location;
         const goBack = this.props._routeless_goBack;
+
+        if (this._timeout != null) {
+            clearTimeout(this._timeout);
+        }
+
         // if we unmount (e.x. hit the close button which calls onClose directly) and still have the
         // same state then go back to the original state
         // NOTE: ideally we would remove the current state from the history so the forward

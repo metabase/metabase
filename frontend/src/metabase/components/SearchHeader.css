@@ -1,0 +1,18 @@
+@import '../questions/Questions.css';
+
+:local(.searchHeader) {
+    composes: flex align-center from "style";
+}
+
+:local(.searchIcon) {
+    color: var(--muted-color);
+}
+
+:local(.searchBox) {
+    composes: borderless from "style";
+    color: var(--title-color);
+    font-size: 20px;
+}
+:local(.searchBox)::-webkit-input-placeholder {
+    color: var(--subtitle-color);
+}

@@ -3,12 +3,12 @@ import { createSelector } from 'reselect';
 import { computeMetadataStrength } from "metabase/lib/schema_metadata";
 
 
-const segmentsSelector         = (state, props) => state.datamodel.segments;
-const metricsSelector          = (state, props) => state.datamodel.metrics;
+const segmentsSelector         = (state, props) => state.admin.datamodel.segments;
+const metricsSelector          = (state, props) => state.admin.datamodel.metrics;
 
-const tableMetadataSelector    = (state, props) => state.datamodel.tableMetadata;
-const previewSummarySelector   = (state, props) => state.datamodel.previewSummary;
-const revisionObjectSelector   = (state, props) => state.datamodel.revisionObject;
+const tableMetadataSelector    = (state, props) => state.admin.datamodel.tableMetadata;
+const previewSummarySelector   = (state, props) => state.admin.datamodel.previewSummary;
+const revisionObjectSelector   = (state, props) => state.admin.datamodel.revisionObject;
 
 const idSelector               = (state, props) => props.params.id == null ? null : parseInt(props.params.id);
 const tableIdSelector          = (state, props) => props.location.query.table == null ? null : parseInt(props.location.query.table);
@@ -73,13 +73,14 @@ export const revisionHistorySelectors = createSelector(
 );
 
 
-export const getDatabases             = (state, props) => state.datamodel.databases;
-export const getDatabaseIdfields      = (state, props) => state.datamodel.idfields;
-export const getEditingTable          = (state, props) => state.datamodel.editingTable;
+export const getDatabases             = (state, props) => state.admin.datamodel.databases;
+export const getDatabaseIdfields      = (state, props) => state.admin.datamodel.idfields;
+export const getEditingTable          = (state, props) => state.admin.datamodel.editingTable;
+export const getEditingDatabase       = (state, props) => state.admin.datamodel.editingDatabase;
 
 
 export const getEditingDatabaseWithTableMetadataStrengths = createSelector(
-    state => state.datamodel.editingDatabase,
+    state => state.admin.datamodel.editingDatabase,
     (database) => {
         if (!database || !database.tables) {
             return null;

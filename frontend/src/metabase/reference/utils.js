@@ -2,8 +2,9 @@ import { assoc, assocIn, chain } from "icepick";
 import _ from "underscore";
 
 import { titleize, humanize } from "metabase/lib/formatting";
-import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
+import { startNewCard } from "metabase/lib/card";
 import { isPK } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 
 export const idsToObjectMap = (ids, objects) => ids
     .map(id => objects[id])
@@ -76,11 +77,10 @@ export const tryUpdateData = async (fields, props) => {
                 const importantFieldIds = fields.important_fields.map(field => field.id);
                 const existingImportantFieldIds = guide.metric_important_fields && guide.metric_important_fields[entity.id];
 
-                const areFieldIdsIdentitical = existingImportantFieldIds && 
+                const areFieldIdsIdentitical = existingImportantFieldIds &&
                     existingImportantFieldIds.length === importantFieldIds.length &&
                     existingImportantFieldIds.every(id => importantFieldIds.includes(id));
-                
-                console.log(areFieldIdsIdentitical);
+
                 if (!areFieldIdsIdentitical) {
                     await updateMetricImportantFields(entity.id, importantFieldIds);
                     tryFetchData(props);
@@ -156,8 +156,8 @@ export const tryUpdateGuide = async (formFields, props) => {
     startLoading();
     try {
         const updateNewEntities = ({
-            entities, 
-            formFields, 
+            entities,
+            formFields,
             updateEntity
         }) => formFields.map(formField => {
             if (!formField.id) {
@@ -175,7 +175,7 @@ export const tryUpdateGuide = async (formFields, props) => {
 
             const newEntity = entities[formField.id];
             const updatedNewEntity = {
-                ...newEntity, 
+                ...newEntity,
                 ...editedEntity
             };
 
@@ -185,9 +185,9 @@ export const tryUpdateGuide = async (formFields, props) => {
         });
 
         const updateOldEntities = ({
-            newEntityIds, 
-            oldEntityIds, 
-            entities, 
+            newEntityIds,
+            oldEntityIds,
+            entities,
             updateEntity
         }) => oldEntityIds
             .filter(oldEntityId => !newEntityIds.includes(oldEntityId))
@@ -201,14 +201,14 @@ export const tryUpdateGuide = async (formFields, props) => {
                 );
 
                 const updatingOldEntity = updateEntity(updatedOldEntity);
-                
+
                 return [updatingOldEntity];
             });
         //FIXME: necessary because revision_message is a mandatory field
         // even though we don't actually keep track of changes to caveats/points_of_interest yet
         const updateWithRevisionMessage = updateEntity => entity => updateEntity(assoc(
             entity,
-            'revision_message', 
+            'revision_message',
             'Updated in Getting Started guide.'
         ));
 
@@ -218,9 +218,9 @@ export const tryUpdateGuide = async (formFields, props) => {
                 updateEntity: updateDashboard
             })
             .concat(updateOldEntities({
-                newEntityIds: formFields.most_important_dashboard ? 
+                newEntityIds: formFields.most_important_dashboard ?
                     [formFields.most_important_dashboard.id] : [],
-                oldEntityIds: guide.most_important_dashboard ? 
+                oldEntityIds: guide.most_important_dashboard ?
                     [guide.most_important_dashboard] :
                     [],
                 entities: dashboards,
@@ -239,7 +239,7 @@ export const tryUpdateGuide = async (formFields, props) => {
                 entities: metrics,
                 updateEntity: updateWithRevisionMessage(updateMetric)
             }));
-        
+
         const updatingMetricImportantFields = formFields.important_metrics
             .map(metricFormField => {
                 if (!metricFormField.id || !metricFormField.important_fields) {
@@ -248,17 +248,17 @@ export const tryUpdateGuide = async (formFields, props) => {
                 const importantFieldIds = metricFormField.important_fields
                     .map(field => field.id);
                 const existingImportantFieldIds = guide.metric_important_fields[metricFormField.id];
-                
-                const areFieldIdsIdentitical = existingImportantFieldIds && 
+
+                const areFieldIdsIdentitical = existingImportantFieldIds &&
                     existingImportantFieldIds.length === importantFieldIds.length &&
                     existingImportantFieldIds.every(id => importantFieldIds.includes(id));
                 if (areFieldIdsIdentitical) {
                     return [];
                 }
-                
+
                 return [updateMetricImportantFields(metricFormField.id, importantFieldIds)];
             });
-        
+
         const segmentFields = formFields.important_segments_and_tables
             .filter(field => field.type === 'segment');
 
@@ -299,7 +299,7 @@ export const tryUpdateGuide = async (formFields, props) => {
             guide.contact.name !== formFields.contact.name ?
                 [updateSetting({key: 'getting-started-contact-name', value: formFields.contact.name })] :
                 [];
-        
+
         const updatingContactEmail = guide.contact && formFields.contact &&
             guide.contact.email !== formFields.contact.email ?
                 [updateSetting({key: 'getting-started-contact-email', value: formFields.contact.email })] :
@@ -318,7 +318,7 @@ export const tryUpdateGuide = async (formFields, props) => {
 
         if (updatingData.length > 0) {
             await Promise.all(updatingData);
-            
+
             clearRequestState({statePath: ['reference', 'guide']});
 
             await fetchGuide();
@@ -431,7 +431,7 @@ export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCou
     return question;
 };
 
-export const getQuestionUrl = getQuestionArgs => `/q#${serializeCardForUrl(getQuestion(getQuestionArgs))}`;
+export const getQuestionUrl = getQuestionArgs => Urls.question(null, getQuestion(getQuestionArgs));
 
 export const isGuideEmpty = ({
     things_to_know,
@@ -446,7 +446,7 @@ export const isGuideEmpty = ({
     most_important_dashboard ? false :
     important_metrics && important_metrics.length !== 0 ? false :
     important_segments && important_segments.length !== 0 ? false :
-    important_tables && important_tables.length !== 0 ? false : 
+    important_tables && important_tables.length !== 0 ? false :
     true;
 
 export const typeToLinkClass = {

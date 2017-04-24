@@ -15,7 +15,7 @@
             [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.DatabaseMetaData
+  (:import (java.sql DatabaseMetaData ResultSet)
            java.util.Map
            (clojure.lang Keyword PersistentVector)
            com.mchange.v2.c3p0.ComboPooledDataSource
@@ -27,9 +27,12 @@
    Methods marked *OPTIONAL* have default implementations in `ISQLDriverDefaultsMixin`."
 
   (active-tables ^java.util.Set [this, ^DatabaseMetaData metadata]
-    "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
+    "*OPTIONAL* Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
      Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
-     this map should also include the string name of the table's `:schema`.")
+     this map should also include the string name of the table's `:schema`.
+
+   Two different implementations are provided in this namespace: `fast-active-tables` (the default), and `post-filtered-active-tables`. You should be fine using
+   the default, but refer to the documentation for those functions for more details on the differences.")
 
   ;; The following apply-* methods define how the SQL Query Processor handles given query clauses. Each method is called when a matching clause is present
   ;; in QUERY, and should return an appropriately modified version of KORMA-QUERY. Most drivers can use the default implementations for all of these methods,
@@ -71,7 +74,7 @@
   (field-percent-urls [this field]
     "*OPTIONAL*. Implementation of the `:field-percent-urls-fn` to be passed to `make-analyze-table`.
      The default implementation is `fast-field-percent-urls`, which avoids a full table scan. Substitue this with `slow-field-percent-urls` for databases
-     where this doesn't work, such as SQL Server")
+     where this doesn't work, such as SQL Server.")
 
   (field->alias ^String [this, ^Field field]
     "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation calls `name`, which
@@ -327,13 +330,18 @@
 
 ;;; ## Database introspection methods used by sync process
 
-;; TODO - clojure.java.jdbc now ships with a `metadata-query` function we could use here. See #2918
 (defmacro with-metadata
   "Execute BODY with `java.sql.DatabaseMetaData` for DATABASE."
   [[binding _ database] & body]
   `(with-open [^java.sql.Connection conn# (jdbc/get-connection (db->jdbc-connection-spec ~database))]
      (let [~binding (.getMetaData conn#)]
        ~@body)))
+
+(defn- get-tables
+  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
+  ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil]
+  (jdbc/result-set-seq (.getTables metadata nil schema-or-nil "%" ; tablePattern "%" = match all tables
+                                   (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))))
 
 (defn fast-active-tables
   "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
@@ -344,7 +352,7 @@
   (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
         schemas     (set/difference all-schemas (excluded-schemas driver))]
     (set (for [schema     schemas
-               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema "%" (into-array String ["TABLE", "VIEW", "FOREIGN TABLE"]))))] ; tablePattern "%" = match all tables
+               table-name (mapv :table_name (get-tables metadata schema))]
            {:name   table-name
             :schema schema}))))
 
@@ -353,7 +361,7 @@
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (jdbc/result-set-seq (.getTables metadata nil nil "%" (into-array String ["TABLE", "VIEW", "FOREIGN TABLE"]))))] ; tablePattern "%" = match all tables
+                           (get-tables metadata nil))]
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 

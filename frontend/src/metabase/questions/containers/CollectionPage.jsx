@@ -1,6 +1,7 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push, replace, goBack } from "react-router-redux";
+import title from "metabase/hoc/Title";
 
 import Icon from "metabase/components/Icon";
 import HeaderWithBack from "metabase/components/HeaderWithBack";
@@ -27,6 +28,7 @@ const mapDispatchToProps = ({
 })
 
 @connect(mapStateToProps, mapDispatchToProps)
+@title(({ collection }) => collection && collection.name)
 export default class CollectionPage extends Component {
     componentWillMount () {
         this.props.loadCollections();
