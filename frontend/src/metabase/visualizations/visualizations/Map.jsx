@@ -53,6 +53,21 @@ export default class Map extends Component<*, VisualizationProps, *> {
                 }
             }
         },
+        "map.pin_type": {
+            title: "Pin type",
+            // Don't expose this in the UI for now
+            widget: "select",
+            props: {
+                options: [
+                    { name: "Tiles", value: "tiles" },
+                    { name: "Markers", value: "markers" },
+                    { name: "Heat", value: "heat" },
+                    { name: "Grid", value: "grid" }
+                ]
+            },
+            getDefault: (series) => series[0].data.rows.length >= 1000 ? "tiles" : "markers",
+            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+        },
         "map.latitude_column": {
             title: "Latitude field",
             ...fieldSetting("map.latitude_column", isNumeric,
@@ -64,6 +79,15 @@ export default class Map extends Component<*, VisualizationProps, *> {
             ...fieldSetting("map.longitude_column", isNumeric,
                 ([{ data: { cols }}]) => (_.find(cols, isLongitude) || {}).name),
             getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+        },
+        "map.metric_column": {
+            title: "Metric field",
+            ...metricSetting("map.metric_column"),
+            getHidden: (series, vizSettings) =>
+                vizSettings["map.type"] !== "pin" || (
+                    vizSettings["map.pin_type"] !== "heat" &&
+                    vizSettings["map.pin_type"] !== "grid"
+                )
         },
         "map.region": {
             title: "Region map",
@@ -100,16 +124,6 @@ export default class Map extends Component<*, VisualizationProps, *> {
         },
         "map.center_longitude": {
         },
-        "map.pin_type": {
-            title: "Pin type",
-            // Don't expose this in the UI for now
-            // widget: ChartSettingSelect,
-            props: {
-                options: [{ name: "Tiles", value: "tiles" }, { name: "Markers", value: "markers" }]
-            },
-            getDefault: (series) => series[0].data.rows.length >= 1000 ? "tiles" : "markers",
-            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
-        }
     }
 
     static checkRenderable([{ data: { cols, rows} }], settings) {

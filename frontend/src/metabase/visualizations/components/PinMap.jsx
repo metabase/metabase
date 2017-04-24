@@ -5,11 +5,14 @@ import React, { Component } from "react";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
-import LeafletMarkerPinMap from "./LeafletMarkerPinMap.jsx";
-import LeafletTilePinMap from "./LeafletTilePinMap.jsx";
+import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
+import LeafletTilePinMap from "./LeafletTilePinMap";
+import LeafletHeatMap from "./LeafletHeatMap";
+import LeafletGridHeatMap from "./LeafletGridHeatMap";
 
 import _ from "underscore";
 import cx from "classnames";
+import d3 from "d3";
 
 import L from "leaflet";
 
@@ -28,6 +31,8 @@ type State = {
 const MAP_COMPONENTS_BY_TYPE = {
     "markers": LeafletMarkerPinMap,
     "tiles": LeafletTilePinMap,
+    "heat": LeafletHeatMap,
+    "grid": LeafletGridHeatMap,
 }
 
 export default class PinMap extends Component<*, Props, State> {
@@ -88,12 +93,27 @@ export default class PinMap extends Component<*, Props, State> {
         const { settings, series: [{ data: { cols, rows }}] } = props;
         const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
         const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
+        const metricIndex = _.findIndex(cols, (col) => col.name === settings["map.metric_column"]);
+
         const points = rows.map(row => [
             row[latitudeIndex],
-            row[longitudeIndex]
+            row[longitudeIndex],
+            metricIndex >= 0 ? row[metricIndex] : 0
         ]);
+
         const bounds = L.latLngBounds(points);
-        return { points, bounds };
+
+        const min = d3.min(points, point => point[2]);
+        const max = d3.max(points, point => point[2]);
+
+        const binWidth = Math.floor(
+            (cols[longitudeIndex]["max-value"] - cols[longitudeIndex]["min-value"]) / 40
+        );
+        const binHeight = Math.floor(
+            (cols[latitudeIndex]["max-value"] - cols[latitudeIndex]["min-value"]) / 20
+        );
+
+        return { points, bounds, min, max, binWidth, binHeight };
     }
 
     render() {
@@ -103,7 +123,7 @@ export default class PinMap extends Component<*, Props, State> {
 
         const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
 
-        const { points, bounds } = this.state;//this._getPoints(this.props);
+        const { points, bounds, min, max, binHeight, binWidth } = this.state;//this._getPoints(this.props);
 
         return (
             <div className={cx(className, "PinMap relative")} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
@@ -118,6 +138,10 @@ export default class PinMap extends Component<*, Props, State> {
                         zoom={zoom}
                         points={points}
                         bounds={bounds}
+                        min={min}
+                        max={max}
+                        binWidth={binWidth}
+                        binHeight={binHeight}
                     />
                 : null }
                 { isEditing || !isDashboard ?
