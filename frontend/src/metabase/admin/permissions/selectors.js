@@ -135,6 +135,37 @@ function getRawQueryWarningModal(permissions, groupId, entityId, value) {
     }
 }
 
+// If the user is revoking an access to every single table of a database for a specific user group,
+// warn the user that the access to raw queries will be revoked as well.
+// This warning will only be shown if the user is editing the permissions of individual tables.
+function getRevokingAccessToAllTablesWarningModal(database, permissions, groupId, entityId, value) {
+    if (value === "none" &&
+        getSchemasPermission(permissions, groupId, entityId) === "controlled" &&
+        getNativePermission(permissions, groupId, entityId) !== "none"
+    ) {
+        // Contains tables from all schemas, making sure that the warning is shown only
+        // if user tries to revoke access to the very last table of all schemas
+        const allTableEntityIds = database.tables().map((table) => ({
+            databaseId: table.db_id,
+            schemaName: table.schema,
+            tableId: table.id
+        }))
+
+        const afterChangesNoAccessToAnyTable = _.every(allTableEntityIds, (id) =>
+            getFieldsPermission(permissions, groupId, id) === "none" || _.isEqual(id, entityId)
+        )
+
+        if (afterChangesNoAccessToAnyTable) {
+            return {
+                title: "Revoke access to all tables?",
+                message: "This will also revoke this group's access to raw queries for this database.",
+                confirmButtonText: "Revoke access",
+                cancelButtonText: "Cancel"
+            };
+        }
+    }
+}
+
 const OPTION_GREEN = {
     icon: "check",
     iconColor: "#9CC177",
@@ -242,7 +273,8 @@ export const getTablesPermissionsGrid = createSelector(
                     confirm(groupId, entityId, value) {
                         return [
                             getPermissionWarningModal(getFieldsPermission, "fields", defaultGroup, permissions, groupId, entityId, value),
-                            getControlledDatabaseWarningModal(permissions, groupId, entityId)
+                            getControlledDatabaseWarningModal(permissions, groupId, entityId),
+                            getRevokingAccessToAllTablesWarningModal(database, permissions, groupId, entityId, value)
                         ];
                     },
                     warning(groupId, entityId) {
@@ -364,7 +396,7 @@ export const getDatabasesPermissionsGrid = createSelector(
                     },
                     confirm(groupId, entityId, value) {
                         return [
-                            getPermissionWarningModal(getSchemasPermission, "schemas", defaultGroup, permissions, groupId, entityId, value)
+                            getPermissionWarningModal(getSchemasPermission, "schemas", defaultGroup, permissions, groupId, entityId, value),
                         ];
                     },
                     warning(groupId, entityId) {
