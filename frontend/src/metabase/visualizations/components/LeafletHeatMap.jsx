@@ -17,13 +17,14 @@ export default class LeafletHeatMap extends LeafletMap {
 
         try {
             const { heatLayer } = this;
-            const { points, max } = this.props;
+            const { points, max, settings } = this.props;
 
             heatLayer.setOptions({
                 max: max,
-                maxZoom: 1,
-                radius: 30,
-                blur: 30
+                maxZoom: settings["map.heat.max-zoom"],
+                minOpacity: settings["map.heat.min-opacity"],
+                radius:  settings["map.heat.radius"],
+                blur: settings["map.heat.blur"],
             });
             heatLayer.setLatLngs(points);
         } catch (err) {

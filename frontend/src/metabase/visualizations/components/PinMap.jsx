@@ -98,7 +98,7 @@ export default class PinMap extends Component<*, Props, State> {
         const points = rows.map(row => [
             row[latitudeIndex],
             row[longitudeIndex],
-            metricIndex >= 0 ? row[metricIndex] : 0
+            metricIndex >= 0 ? row[metricIndex] : 1
         ]);
 
         const bounds = L.latLngBounds(points);

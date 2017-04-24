@@ -14,6 +14,8 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 import _ from "underscore";
 
+const PIN_MAP_TYPES = new Set(["pin", "heat"]);
+
 export default class Map extends Component<*, VisualizationProps, *> {
     static uiName = "Map";
     static identifier = "map";
@@ -34,7 +36,8 @@ export default class Map extends Component<*, VisualizationProps, *> {
             props: {
                 options: [
                     { name: "Pin map", value: "pin" },
-                    { name: "Region map", value: "region" }
+                    { name: "Region map", value: "region" },
+                    { name: "Heat map", value: "heat" }
                 ]
             },
             getDefault: ([{ card, data: { cols } }]) => {
@@ -56,7 +59,7 @@ export default class Map extends Component<*, VisualizationProps, *> {
         "map.pin_type": {
             title: "Pin type",
             // Don't expose this in the UI for now
-            widget: "select",
+            // widget: "select",
             props: {
                 options: [
                     { name: "Tiles", value: "tiles" },
@@ -65,29 +68,35 @@ export default class Map extends Component<*, VisualizationProps, *> {
                     { name: "Grid", value: "grid" }
                 ]
             },
-            getDefault: (series) => series[0].data.rows.length >= 1000 ? "tiles" : "markers",
-            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+            getDefault: (series, vizSettings) =>
+                vizSettings["map.type"] === "heat" ?
+                    "heat"
+                : series[0].data.rows.length >= 1000 ?
+                    "tiles"
+                :
+                    "markers",
+            getHidden: (series, vizSettings) => !PIN_MAP_TYPES.has(vizSettings["map.type"])
         },
         "map.latitude_column": {
             title: "Latitude field",
             ...fieldSetting("map.latitude_column", isNumeric,
                 ([{ data: { cols }}]) => (_.find(cols, isLatitude) || {}).name),
-            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+            getHidden: (series, vizSettings) => !PIN_MAP_TYPES.has(vizSettings["map.type"])
         },
         "map.longitude_column": {
             title: "Longitude field",
             ...fieldSetting("map.longitude_column", isNumeric,
                 ([{ data: { cols }}]) => (_.find(cols, isLongitude) || {}).name),
-            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+            getHidden: (series, vizSettings) => !PIN_MAP_TYPES.has(vizSettings["map.type"])
         },
         "map.metric_column": {
             title: "Metric field",
             ...metricSetting("map.metric_column"),
             getHidden: (series, vizSettings) =>
-                vizSettings["map.type"] !== "pin" || (
+                !PIN_MAP_TYPES.has(vizSettings["map.type"]) || (
                     vizSettings["map.pin_type"] !== "heat" &&
                     vizSettings["map.pin_type"] !== "grid"
-                )
+                ),
         },
         "map.region": {
             title: "Region map",
@@ -124,10 +133,34 @@ export default class Map extends Component<*, VisualizationProps, *> {
         },
         "map.center_longitude": {
         },
+        "map.heat.radius": {
+            title: "Radius",
+            widget: "number",
+            default: 30,
+            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat"
+        },
+        "map.heat.blur": {
+            title: "Blur",
+            widget: "number",
+            default: 60,
+            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat"
+        },
+        "map.heat.min-opacity": {
+            title: "Min Opacity",
+            widget: "number",
+            default: 0,
+            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat"
+        },
+        "map.heat.max-zoom": {
+            title: "Max Zoom",
+            widget: "number",
+            default: 1,
+            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat"
+        },
     }
 
     static checkRenderable([{ data: { cols, rows} }], settings) {
-        if (settings["map.type"] === "pin") {
+        if (PIN_MAP_TYPES.has(settings["map.type"])) {
             if (!settings["map.longitude_column"] || !settings["map.latitude_column"]) {
                 throw new ChartSettingsError("Please select longitude and latitude columns in the chart settings.", "Data");
             }
@@ -141,7 +174,7 @@ export default class Map extends Component<*, VisualizationProps, *> {
     render() {
         const { settings } = this.props;
         const type = settings["map.type"];
-        if (type === "pin") {
+        if (PIN_MAP_TYPES.has(type)) {
             return <PinMap {...this.props} />
         } else if (type === "region") {
             return <ChoroplethMap {...this.props} />
