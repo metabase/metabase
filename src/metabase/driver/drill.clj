@@ -138,11 +138,11 @@
                      :base-type (column->base-type (keyword (:data_type result)))}))}))
 
 (defprotocol ^:private IUnprepare
-  (^:private unprepare-arg ^String [this]))
+  (unprepare-arg ^String [this]))
 
 (extend-protocol IUnprepare
   nil     (unprepare-arg [this] "NULL")
-  String  (unprepare-arg [this] (str \' (s/replace this "'" "\\\\'") \')) ; escape single-quotes
+  String  (unprepare-arg [this] (str \' (s/replace this "'" "''") \')) ; escape single-quotes
   Boolean (unprepare-arg [this] (if this "TRUE" "FALSE"))
   Number  (unprepare-arg [this] (str this))
   Date    (unprepare-arg [this] (first (hsql/format
@@ -202,6 +202,10 @@
   Number (prepare-value [this] this)
   Object (prepare-value [this] (throw (Exception. (format "Don't know how to prepare value %s %s" (class this) this)))))
 
+(defn date-interval [unit amount]
+  (hsql/raw (format "(NOW() + INTERVAL '%d' %s(%d))" (int amount) (name unit)
+                    (count (str amount)))))
+
 (defrecord DrillDriver []
   clojure.lang.Named
   (getName [_] "Drill"))
@@ -210,7 +214,7 @@
                  driver/IDriver
                  (merge (sql/IDriverSQLDefaultsMixin)
                         {:can-connect? (u/drop-first-arg can-connect?)
-                         :date-interval (u/drop-first-arg hive-like/date-interval)
+                         :date-interval (u/drop-first-arg date-interval)
                          :describe-database describe-database
                          :describe-table describe-table
                          :describe-table-fks (constantly #{})

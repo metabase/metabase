@@ -4,7 +4,9 @@
             [clojure.data.csv :as csv]
             [environ.core :refer [env]]
             [medley.core :as m]
-            (metabase.driver [generic-sql :as sql])
+            [honeysql.core :as hsql]
+            (metabase.driver [generic-sql :as sql]
+                             [drill :as drill-driver])
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
             [metabase.util :as u]
@@ -35,17 +37,20 @@
       (.createNewFile file-path))))
 
 (defn create-table-sql [{:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [table-path (str "/tmp/" database-name "-" table-name ".csv")]
+  (let [table-path (str "/tmp/" database-name "-" table-name "_table.csv")]
     ;; we can't create the view unless the file exists, so create an empty one if necessary
     (make-sure-file-exists! table-path)
-    (format "CREATE VIEW %s AS SELECT %s FROM dfs.`%s`"
+    (format "CREATE OR REPLACE VIEW %s AS SELECT %s FROM dfs.`%s`"
             (str "dfs.tmp.`" database-name "_" table-name "`")
             (str (->> field-definitions
                       (map (fn [{:keys [field-name base-type]}]
-                             (format "CAST(`%s` AS %s) AS `%s`"
-                                     field-name
-                                     (field-base-type->sql-type base-type)
-                                     field-name)))
+                             (if (= base-type :type/DateTime)
+                               (format "CAST(to_timestamp(`%s`, 'YYYY-MM-dd''T''HH:mm:ss.SSSZ') AS TIMESTAMP) AS `%s`"
+                                       field-name field-name)
+                               (format "CAST(`%s` AS %s) AS `%s`"
+                                       field-name
+                                       (field-base-type->sql-type base-type)
+                                       field-name))))
                       (interpose ", ")
                       (apply str))
                  ", CAST(`id` as INTEGER) AS `id` ")
@@ -83,22 +88,79 @@
    \"escaped\" semicolon in the resulting SQL statement."
   [driver context dbdef sql]
   (when sql
-    (doseq [statement (map s/trim (s/split sql #";+"))]
-      (when (seq statement)
-        ()
-        (drill-execute-sql! driver context dbdef (s/replace statement #"⅋" ";"))))))
+    (try
+      (with-open [conn (jdbc/get-connection (generic/database->spec driver context dbdef))]
+        (doseq [statement (map s/trim (s/split (s/replace sql #"⅋" ";") #";+"))]
+          (when (seq statement)
+            (with-open [sql-statement (.createStatement conn)]
+              (.execute sql-statement statement)))))
+      (catch SQLException e
+        (printf "Caught SQLException:\n%s\n"
+                (with-out-str (jdbc/print-sql-exception-chain e)))
+        (throw e))
+      (catch Throwable e
+        (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
+                (with-out-str (.printStackTrace e)))
+        (throw e)))))
+
+(defn- unprepare [x]
+  (if (instance? honeysql.types.SqlRaw x)
+    (s/join " " (hsql/format x))
+    (drill-driver/unprepare-arg x)))
+
+(defn make-row-formatter [field-definitions]
+  (let [field-name->base-type (reduce (fn [acc {:keys [field-name base-type]}]
+                                        (assoc acc field-name base-type))
+                                      {}
+                                      field-definitions)
+        datetime-formatter (java.text.SimpleDateFormat. "YYYY-MM-dd'T'HH:mm:ss.SSS'Z'")]
+    (fn [row]
+      (map (fn [[column-key value]]
+             (if (= (field-name->base-type (name column-key)) :type/DateTime)
+               (.format datetime-formatter value)
+               value))
+           row))))
 
 (defn load-data! [driver
                   {:keys [database-name], :as dbdef}
                   {:keys [table-name field-definitions], :as tabledef}]
+  ;; if we have an instance of SqlRaw we'll have to use the big hammer
+  ;; and actually run this in Drill. we can't do this for all statements
+  ;; because there is a limit to how large the statements we send can be.
+  ;; in practice this is currently (2017-04-24) only being used to create
+  ;; relative time intervals. creating timestamps is incredibly slow when
+  ;; there are more than a few hundred rows, for some reason, so we just
+  ;; write .csv files directly when we can.
   (let [spec       (generic/database->spec driver :db dbdef)
         rows       (for [[i row] (m/indexed (generic/load-data-get-rows driver dbdef tabledef))]
                      (assoc row :id (inc i)))
-        table-path (str "/tmp/" database-name "-" table-name ".csv")]
-    (.delete (clojure.java.io/file table-path))
-    (with-open [out (clojure.java.io/writer table-path)]
-      (csv/write-csv out [(->> rows first keys (map name))])
-      (csv/write-csv out (map vals rows)))))
+        full-table-name (str "dfs.tmp.`" database-name "_" table-name "_table`")
+        table-path (str "/tmp/" database-name "-" table-name "_table.csv")
+        column-names (->> rows first keys (map name))
+        create-table-as (format "CREATE TABLE %s AS SELECT %s FROM (VALUES (%s))"
+                                full-table-name
+                                (s/join ", " (for [[i column-name] (m/indexed column-names)]
+                                 (str "expr$" i " `" column-name "`")))
+                                (s/join "), (" (map (fn [vs]
+                                                      (s/join "," (map unprepare vs)))
+                                                    (map vals rows))))
+        format-row (make-row-formatter field-definitions)]
+    (if (some #(instance? honeysql.types.SqlRaw %) (->> rows second vals))
+      (do
+        (sequentially-execute-sql! driver nil dbdef
+          (s/join "; " ["ALTER SESSION SET `store.format`='csv'"
+                        (format "DROP TABLE IF EXISTS %s" full-table-name)
+                        create-table-as]))
+        ;; this is a very hacky way to do this. it would be better to
+        ;; append all *.csv files in the directory into `table-path`
+        (clojure.java.io/copy (io/file (str "/tmp/" database-name "_" table-name "_table"
+                                        "/0_0_0.csv"))
+                              (io/file table-path)))
+      (do
+        (.delete (clojure.java.io/file table-path))
+        (with-open [out (clojure.java.io/writer table-path)]
+          (csv/write-csv out [(->> rows first keys (map name))])
+          (csv/write-csv out (map format-row rows)))))))
 
 (u/strict-extend DrillDriver
                  generic/IGenericSQLDatasetLoader
