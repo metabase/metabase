@@ -28,7 +28,9 @@
           :port 10000
           :db "default"
           :user "admin"
-          :password "admin"}))
+          :password "admin"}
+         (when (= context :db)
+           {:db database-name})))
 
 (defn quote-name [nm]
   (str \` nm \`))
@@ -94,6 +96,9 @@
 (defn drop-table-if-exists-sql [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s" (generic/qualify+quote-name driver database-name table-name)))
 
+(defn drop-db-if-exists-sql [driver {:keys [database-name]}]
+  (format "DROP DATABASE IF EXISTS %s CASCADE" (generic/qualify+quote-name driver database-name)))
+
 (u/strict-extend SparkSQLDriver
                  generic/IGenericSQLDatasetLoader
                  (merge generic/DefaultsMixin
@@ -101,10 +106,8 @@
                          :execute-sql!              generic/sequentially-execute-sql!
                          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
                          :create-table-sql          create-table-sql
-                         :create-db-sql             (constantly nil)
-                         :drop-db-if-exists-sql     (constantly nil)
-
                          :drop-table-if-exists-sql  drop-table-if-exists-sql
+                         :drop-db-if-exists-sql     drop-db-if-exists-sql
                          :load-data!                (make-load-data-fn generic/load-data-add-ids)
                          :pk-sql-type               (constantly "INT")
                          :qualified-name-components (u/drop-first-arg qualified-name-components)

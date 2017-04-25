@@ -37,7 +37,7 @@
         (java.sql.DriverManager/registerDriver (com.metabase.hive.jdbc.FixedHiveDriver.)))))
   (merge {:classname "com.metabase.hive.jdbc.FixedHiveDriver"
           :subprotocol "hive2"
-          :subname (str "//" host ":" port "/")}
+          :subname (str "//" host ":" port "/" db)}
          (dissoc opts :host :port)))
 
 (defn- connection-details->spec [details]
@@ -71,7 +71,7 @@
 (defn describe-database [driver database]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
              ;; arguably this should be "show tables in " (:name database)
-             (set (for [result (jdbc/query {:connection conn} [(str "show tables")])]
+             (set (for [result (jdbc/query {:connection conn} [(str "show tables in `" (:name database) "`")])]
                     {:name (:tablename result)
                      :schema nil})))})
 
@@ -80,7 +80,7 @@
     {:name (:name table)
      :schema nil
      :fields (set (for [result (jdbc/query {:connection conn}
-                                           [(str "describe `" (:name table) "`")])]
+                                           [(str "describe `" (:name database) "`.`" (:name table) "`")])]
                     {:name (:col_name result)
                      :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
 
