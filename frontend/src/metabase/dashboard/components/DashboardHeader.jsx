@@ -1,18 +1,19 @@
+/* @flow */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
 import DeleteDashboardModal from "./DeleteDashboardModal.jsx";
-import RefreshWidget from "./RefreshWidget.jsx";
 import Header from "metabase/components/Header.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
-import FullscreenIcon from "metabase/components/icons/FullscreenIcon.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
+
+import { getDashboardActions } from "./DashboardActions";
 
 import ParametersPopover from "./parameters/ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -21,15 +22,58 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 
-export default class DashboardHeader extends Component {
+import type { LocationDescriptor, QueryParams, Parameter, ParameterId, EntityType, EntityId } from "metabase/meta/types/Parameter";
 
-    constructor(props, context) {
-        super(props, context);
+import type { Card, CardId } from "metabase/meta/types/Card";
+import type { DashboardWithCards, DashboardId, DashCardId, ParameterOption } from "metabase/meta/types/Dashboard";
+import type { Revision, RevisionId } from "metabase/meta/types/Revision";
 
-        this.state = {
-            modal: null,
-        };
-    }
+type Props = {
+    location:               LocationDescriptor,
+
+    dashboard:              DashboardWithCards,
+    cards:                  Card[],
+    revisions:              { [key: string]: Revision[] },
+
+    isAdmin:                boolean,
+    isEditable:             boolean,
+    isEditing:              boolean,
+    isFullscreen:           boolean,
+    isNightMode:            boolean,
+
+    refreshPeriod:          ?number,
+    refreshElapsed:         ?number,
+
+    parameters:             React$Element<*>[],
+
+    addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
+    deleteDashboard:        (dashboardId: DashboardId) => void,
+    fetchCards:             (filterMode?: string) => void,
+    fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
+    fetchRevisions:         ({ entity: string, id: number }) => void,
+    revertToRevision:       ({ entity: string, id: number, revision_id: RevisionId }) => void,
+    saveDashboardAndCards:  () => Promise<void>,
+    setDashboardAttribute:  (attribute: string, value: any) => void,
+
+    addParameter:           (option: ParameterOption) => Promise<Parameter>,
+    setEditingParameter:    (parameterId: ParameterId) => void,
+
+    onEditingChange:        () => void,
+    onRefreshPeriodChange:  (?number) => void,
+    onNightModeChange:      (boolean) => void,
+    onFullscreenChange:     (boolean) => void,
+
+    onChangeLocation:       (string) => void,
+}
+
+type State = {
+    modal: null|"parameters",
+}
+
+export default class DashboardHeader extends Component<*, Props, State> {
+    state = {
+        modal: null,
+    };
 
     static propTypes = {
         dashboard: PropTypes.object.isRequired,
@@ -50,9 +94,9 @@ export default class DashboardHeader extends Component {
         revertToRevision: PropTypes.func.isRequired,
         saveDashboardAndCards: PropTypes.func.isRequired,
         setDashboardAttribute: PropTypes.func.isRequired,
-        onEditingChange: PropTypes.func.isRequired,
-        setRefreshPeriod: PropTypes.func.isRequired,
 
+        onEditingChange: PropTypes.func.isRequired,
+        onRefreshPeriodChange: PropTypes.func.isRequired,
         onNightModeChange: PropTypes.func.isRequired,
         onFullscreenChange: PropTypes.func.isRequired
     };
@@ -85,12 +129,12 @@ export default class DashboardHeader extends Component {
     }
 
     // 1. fetch revisions
-    onFetchRevisions({ entity, id }) {
+    onFetchRevisions({ entity, id }: { entity: EntityType, id: EntityId }) {
         return this.props.fetchRevisions({ entity, id });
     }
 
     // 2. revert to a revision
-    onRevertToRevision({ entity, id, revision_id }) {
+    onRevertToRevision({ entity, id, revision_id }: { entity: EntityType, id: EntityId, revision_id: RevisionId }) {
         return this.props.revertToRevision({ entity, id, revision_id });
     }
 
@@ -130,7 +174,7 @@ export default class DashboardHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { dashboard, parameters, isEditing, isFullscreen, isNightMode, isEditable, isAdmin } = this.props;
+        const { dashboard, parameters, isEditing, isFullscreen, isEditable, isAdmin } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
         const canEdit = isEditable && !!dashboard;
 
@@ -159,10 +203,10 @@ export default class DashboardHeader extends Component {
                     </Tooltip>
 
                     {this.state.modal && this.state.modal === "parameters" &&
-                        <Popover onClose={() => this.setState({modal: false})}>
+                        <Popover onClose={() => this.setState({ modal: null })}>
                             <ParametersPopover
                                 onAddParameter={this.props.addParameter}
-                                onClose={() => this.setState({modal: false})}
+                                onClose={() => this.setState({ modal: null })}
                             />
                         </Popover>
                     }
@@ -239,32 +283,7 @@ export default class DashboardHeader extends Component {
             )
         }
 
-        if (!isEditing && !isEmpty) {
-            buttons.push(
-                <RefreshWidget data-metabase-event="Dashboard;Refresh Menu Open" className="text-brand-hover" key="refresh" period={this.props.refreshPeriod} elapsed={this.props.refreshElapsed} onChangePeriod={this.props.setRefreshPeriod} />
-            );
-        }
-
-        if (!isEditing && isFullscreen) {
-            buttons.push(
-                <Tooltip tooltip={isNightMode ? "Daytime mode" : "Nighttime mode"}>
-                    <span data-metabase-event={"Dashboard;Night Mode;"+!isNightMode}>
-                        <NightModeIcon className="text-brand-hover cursor-pointer" key="night" isNightMode={isNightMode} onClick={() => this.props.onNightModeChange(!isNightMode) } />
-                    </span>
-                </Tooltip>
-            );
-        }
-
-        if (!isEditing && !isEmpty) {
-            // option click to enter fullscreen without making the browser go fullscreen
-            buttons.push(
-                <Tooltip tooltip={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
-                    <span data-metabase-event={"Dashboard;Fullscreen Mode;"+!isFullscreen}>
-                        <FullscreenIcon className="text-brand-hover cursor-pointer" key="fullscreen" isFullscreen={isFullscreen} onClick={(e) => this.props.onFullscreenChange(!isFullscreen, !e.altKey)} />
-                    </span>
-                </Tooltip>
-            );
-        }
+        buttons.push(...getDashboardActions(this.props));
 
         return [buttons];
     }
