@@ -3,12 +3,14 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
-            (metabase.driver [generic-sql :as sql]
-                             [postgres :as postgres])
-            [metabase.util :as u]
+            [metabase.driver
+             [generic-sql :as sql]
+             [postgres :as postgres]]
             [metabase.util.honeysql-extensions :as hx]))
 
 (defn- connection-details->spec [details]

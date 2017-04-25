@@ -1,22 +1,26 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.string :as s]
+  (:require [cheshire.core :as json]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
-            (monger [collection :as mc]
-                    [command :as cmd]
-                    [conversion :as conv]
-                    [db :as mdb]
-                    [query :as mq])
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
-                             [table :as table])
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver.mongo
+             [query-processor :as qp]
+             [util :refer [*mongo-connection* with-mongo-connection]]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :as field]
+             [table :as table]]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u])
+            [monger
+             [collection :as mc]
+             [command :as cmd]
+             [conversion :as conv]
+             [db :as mdb]
+             [query :as mq]]
+            [toucan.db :as db])
   (:import com.mongodb.DB))
 
 ;;; ## MongoDriver

@@ -1,11 +1,10 @@
 (ns metabase.events.sync-database
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
-            [metabase.events :as events]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync-database :as sync-database]))
-
+            [metabase
+             [events :as events]
+             [sync-database :as sync-database]]
+            [metabase.models.database :refer [Database]]))
 
 (def ^:const sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."

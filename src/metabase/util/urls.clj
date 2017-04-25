@@ -5,8 +5,7 @@
 
    Functions for generating URLs not related to Metabase *objects* generally do not belong here, unless they are used in many places in the
    codebase; one-off URL-generation functions should go in the same namespaces or modules where they are used."
-  (:require [clojure.string :as s]
-            [metabase.public-settings :as public-settings]))
+  (:require [metabase.public-settings :as public-settings]))
 
 (defn pulse-url
   "Return an appropriate URL for a `Pulse` with ID.

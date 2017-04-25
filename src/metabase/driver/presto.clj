@@ -1,22 +1,25 @@
 (ns metabase.driver.presto
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
-            [clj-http.client :as http]
-            (honeysql [core :as hsql]
-                      [helpers :as h])
-            [metabase.config :as config]
-            [metabase.driver :as driver]
+  (:require [clj-http.client :as http]
+            [clojure
+             [set :as set]
+             [string :as str]]
+            [honeysql
+             [core :as hsql]
+             [helpers :as h]]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
-            (metabase.models [field :as field]
-                             [table :as table])
-            [metabase.sync-database.analyze :as analyze]
+            [metabase.models
+             [field :as field]
+             [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]
+            [metabase.sync-database.analyze :as analyze]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.util.Date
-           (metabase.query_processor.interface DateTimeValue Value)))
-
+           [metabase.query_processor.interface DateTimeValue Value]))
 
 ;;; Presto API helpers
 

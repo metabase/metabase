@@ -2,10 +2,11 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
+            [metabase
+             [sync-database :as sync-database]
+             [util :as u]]
             [metabase.models.database :refer [Database]]
-            [metabase.sync-database :as sync-database]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 (def ^:private ^:const ^String sample-dataset-name     "Sample Dataset")
 (def ^:private ^:const ^String sample-dataset-filename "sample-dataset.db.mv.db")

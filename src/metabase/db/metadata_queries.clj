@@ -1,10 +1,11 @@
 (ns metabase.db.metadata-queries
   "Predefined MBQL queries for getting metadata about an external database."
-  (:require [toucan.db :as db]
+  (:require [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 (defn- qp-query [db-id query]
   (-> (qp/process-query
