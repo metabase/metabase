@@ -107,8 +107,7 @@
 (defn update-segment!
   "Update an existing `Segment`.
    Returns the updated `Segment` or throws an Exception."
-  {:style/indent 0}
-  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message]} user-id]
+  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message], :as body} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -116,15 +115,9 @@
          (string? revision_message)]}
   ;; update the segment itself
   (db/update! Segment id
-    (merge
-     {:name        name
-      :description description
-      :caveats     caveats
-      :definition  definition}
-     (when (seq points_of_interest)
-       {:points_of_interest points_of_interest})
-     (when (not (nil? show_in_getting_started))
-       {:show_in_getting_started show_in_getting_started})))
+    (u/select-keys-when body
+      :present #{:name :description :caveats :definition}
+      :non-nil #{:points_of_interest :show_in_getting_started}))
   (u/prog1 (retrieve-segment id)
     (events/publish-event! :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 

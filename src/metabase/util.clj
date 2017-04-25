@@ -831,3 +831,28 @@
       (if-let [new-index (s/index-of s substr index)]
         (recur (inc new-index) (inc cnt))
         cnt))))
+
+(defn select-non-nil-keys
+  "Like `select-keys`, but returns a map only containing keys in KS that are present *and non-nil* in M.
+
+     (select-non-nil-keys {:a 100, :b nil} #{:a :b :c})
+     ;; -> {:a 100}"
+  [m ks]
+  (into {} (for [k     ks
+                 :when (not (nil? (get m k)))]
+             {k (get m k)})))
+
+(defn select-keys-when
+  "Returns a map that only contains keys that are either `:present` or `:non-nil`.
+   Combines behavior of `select-keys` and `select-non-nil-keys`.
+   This is useful for API endpoints that update a model, which often have complex rules about what gets updated
+   (some keys are updated if `nil`, others only if non-nil).
+
+     (select-keys-when {:a 100, :b nil, :d 200, :e nil}
+       :present #{:a :b :c}
+       :non-nil #{:d :e :f})
+     ;; -> {:a 100, :b nil, :d 200}"
+  {:style/indent 1}
+  [m & {:keys [present non-nil]}]
+  (merge (select-keys m present)
+         (select-non-nil-keys m non-nil)))

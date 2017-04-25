@@ -49,7 +49,7 @@
   "Efficiently add `favorite` status for a large collection of `Cards`."
   [cards]
   (when (seq cards)
-    (let [favorite-card-ids (set (db/select-field :card_id CardFavorite, :owner_id *current-user-id*, :card_id [:in (map :id cards)]))]
+    (let [favorite-card-ids (db/select-field :card_id CardFavorite, :owner_id *current-user-id*, :card_id [:in (map :id cards)])]
       (for [card cards]
         (assoc card :favorite (contains? favorite-card-ids (:id card)))))))
 
@@ -145,7 +145,6 @@
 
 ;; TODO - do we need to hydrate the cards' collections as well?
 (defn- cards-for-filter-option [filter-option model-id label collection-slug]
-  (println "collection-slug:" collection-slug) ; NOCOMMIT
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
                   (hydrate :creator :collection)
                   hydrate-labels
@@ -269,17 +268,10 @@
       (check-superuser))
     ;; ok, now save the Card
     (db/update! Card id
-      (merge
-       ;; `collection_id` and `description` can be `nil` (in order to unset them)
-       (when (contains? body :collection_id)
-         {:collection_id collection_id})
-       (when (contains? body :description)
-         {:description description})
-       ;; other values should only be modified if they're passed in as non-nil
-       (into {} (for [k     [:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params]
-                      :let  [v (k body)]
-                      :when (not (nil? v))]
-                  {k v}))))
+      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be modified if they're passed in as non-nil
+      (u/select-keys-when body
+        :present #{:collection_id :description}
+        :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params}))
     (let [event (cond
                   ;; card was archived
                   (and archived
@@ -294,9 +286,12 @@
       (hydrate card :creator :dashboard_count :labels :can_write :collection))))
 
 
+;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT /api/card/:id) instead of deleted.
+;;        Should we remove this?
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
   [id]
+  (log/warn "DELETE /api/card/:id is deprecated. Instead of deleting a Card, you should change its `archived` value via PUT /api/card/:id.")
   (let [card (write-check Card id)]
     (db/delete! Card :id id)
     (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))

@@ -18,11 +18,12 @@
 
 
 (defn- dashboards-list [filter-option]
-  (filter mi/can-read? (-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
-                                                                 :all  true
-                                                                 :mine [:= :creator_id *current-user-id*])
-                                                     :order-by [:%lower.name]})
-                               (hydrate :creator))))
+  (as-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
+                                          :all  true
+                                          :mine [:= :creator_id *current-user-id*])
+                              :order-by [:%lower.name]}) <>
+    (hydrate <> :creator)
+    (filter mi/can-read? <>)))
 
 (defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -88,8 +89,15 @@
                    (not= embedding_params (:embedding_params dash))))
       (check-embedding-enabled)
       (check-superuser)))
-  (check-500 (-> (assoc dashboard :id id)
-                 (dashboard/update-dashboard! *current-user-id*))))
+  (check-500
+   (db/update! Dashboard id
+     ;; description is allowed to be `nil`. Everything else must be non-nil
+     (u/select-keys-when dashboard
+       :present #{:description}
+       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params})))
+  ;; now publish an event and return the updated Dashboard
+  (u/prog1 (Dashboard id)
+    (events/publish-event! :dashboard-update (assoc <> :actor_id *current-user-id*))))
 
 
 (defendpoint DELETE "/:id"
@@ -101,6 +109,7 @@
   generic-204-no-content)
 
 
+;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
   [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
@@ -123,11 +132,11 @@
 (defendpoint PUT "/:id/cards"
   "Update `Cards` on a `Dashboard`. Request body should have the form:
 
-    {:cards [{:id ...
-              :sizeX ...
-              :sizeY ...
-              :row ...
-              :col ...
+    {:cards [{:id     ...
+              :sizeX  ...
+              :sizeY  ...
+              :row    ...
+              :col    ...
               :series [{:id 123
                         ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]

@@ -317,4 +317,5 @@
   "Check that the OBJECT is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
   [object]
   (u/prog1 object
-    (check-404 (not (:archived object)))))
+    (check (not (:archived object))
+      [404 "The object has been archived."])))

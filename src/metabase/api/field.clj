@@ -38,27 +38,23 @@
    points_of_interest (s/maybe su/NonBlankString)
    special_type       (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)}
-  (let [field (write-check Field id)]
-    (let [special_type       (keyword (get body :special_type (:special_type field)))
-          visibility_type    (or visibility_type (:visibility_type field))
-          ;; only let target field be set for :type/FK type fields, and if it's not in the payload then leave the current value
-          fk-target-field-id (when (isa? special_type :type/FK)
-                               (get body :fk_target_field_id (:fk_target_field_id field)))]
-      ;; validate that fk_target_field_id is a valid Field
-      ;; TODO - we should also check that the Field is within the same database as our field
-      (when fk-target-field-id
-        (checkp (db/exists? Field :id fk-target-field-id)
-          :fk_target_field_id "Invalid target field"))
-      ;; everything checks out, now update the field
-      (check-500 (db/update! Field id (merge {:caveats            caveats
-                                              :description        description
-                                              :fk_target_field_id fk_target_field_id
-                                              :points_of_interest points_of_interest
-                                              :special_type       special_type
-                                              :visibility_type    visibility_type}
-                                             (when display_name {:display_name display_name}))))
-      ;; return updated field
-      (Field id))))
+  (let [field              (write-check Field id)
+        special_type       (keyword (or special_type (:special_type field)))
+        ;; only let target field be set for :type/FK type fields, and if it's not in the payload then leave the current value
+        fk_target_field_id (when (isa? special_type :type/FK)
+                             (or fk_target_field_id (:fk_target_field_id field)))]
+    ;; validate that fk_target_field_id is a valid Field
+    ;; TODO - we should also check that the Field is within the same database as our field
+    (when fk_target_field_id
+      (checkp (db/exists? Field :id fk_target_field_id)
+        :fk_target_field_id "Invalid target field"))
+    ;; everything checks out, now update the field
+    (check-500 (db/update! Field id
+                 (u/select-keys-when (assoc body :fk_target_field_id fk_target_field_id)
+                   :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type}
+                   :non-nil #{:display_name})))
+    ;; return updated field
+    (Field id)))
 
 (defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
