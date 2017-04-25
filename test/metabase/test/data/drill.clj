@@ -37,7 +37,8 @@
       (.createNewFile file-path))))
 
 (defn create-table-sql [{:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [table-path (str "/tmp/" database-name "-" table-name "_table.csv")]
+  (let [qualified-table-name (i/db-qualified-table-name database-name table-name)
+        table-path (str "/tmp/" qualified-table-name "_table.csv")]
     ;; we can't create the view unless the file exists, so create an empty one if necessary
     (make-sure-file-exists! table-path)
     (format "CREATE OR REPLACE VIEW %s AS SELECT %s FROM dfs.`%s`"
@@ -134,8 +135,9 @@
   (let [spec       (generic/database->spec driver :db dbdef)
         rows       (for [[i row] (m/indexed (generic/load-data-get-rows driver dbdef tabledef))]
                      (assoc row :id (inc i)))
-        full-table-name (str "dfs.tmp.`" database-name "_" table-name "_table`")
-        table-path (str "/tmp/" database-name "-" table-name "_table.csv")
+        qualified-table-name (i/db-qualified-table-name database-name table-name)
+        full-table-name (str "dfs.tmp.`" qualified-table-name "_table`")
+        table-path (str "/tmp/" qualified-table-name "_table.csv")
         column-names (->> rows first keys (map name))
         create-table-as (format "CREATE TABLE %s AS SELECT %s FROM (VALUES (%s))"
                                 full-table-name
@@ -153,7 +155,7 @@
                         create-table-as]))
         ;; this is a very hacky way to do this. it would be better to
         ;; append all *.csv files in the directory into `table-path`
-        (clojure.java.io/copy (io/file (str "/tmp/" database-name "_" table-name "_table"
+        (clojure.java.io/copy (io/file (str "/tmp/" qualified-table-name "_table"
                                         "/0_0_0.csv"))
                               (io/file table-path)))
       (do

@@ -411,7 +411,7 @@
     (update-select-subclause-aliases select-subclauses deduped)))
 
 (defn apply-aggregation
-  "BigQuery's implementation of `apply-aggregation` just hands off to the normal Generic SQL implementation, but calls `deduplicate-select-aliases` on the results."
+  "An implementation of `apply-aggregation` that just hands off to the normal Generic SQL implementation, but calls `deduplicate-select-aliases` on the results. Used by BigQuery and Drill."
   [driver honeysql-form query]
   (-> (sqlqp/apply-aggregation driver honeysql-form query)
       (update :select deduplicate-select-aliases)))

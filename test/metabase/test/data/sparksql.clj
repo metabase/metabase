@@ -1,5 +1,6 @@
 (ns metabase.test.data.sparksql
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as s]
             [environ.core :refer [env]]
             (metabase.driver [generic-sql :as sql]
                              [hive-like :as hive-like])
@@ -29,8 +30,13 @@
           :user "admin"
           :password "admin"}))
 
-(defn spark-quote-name [nm]
+(defn quote-name [nm]
   (str \` nm \`))
+
+(defn- qualified-name-components
+  ([db-name]                       [db-name])
+  ([db-name table-name]            [db-name (s/replace table-name #"-" "_")])
+  ([db-name table-name field-name] [(s/replace table-name #"-" "_") field-name]))
 
 (defn- do-insert!
   "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
@@ -65,7 +71,7 @@
   [& wrap-insert-fns]
   (fn [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
     (let [spec       (generic/database->spec driver :db dbdef)
-          table-name (apply hx/qualify-and-escape-dots (generic/qualified-name-components driver database-name (str database-name "_" table-name)))
+          table-name (apply hx/qualify-and-escape-dots (qualified-name-components driver database-name table-name))
           insert!    ((apply comp wrap-insert-fns) (partial do-insert! driver spec table-name))
           rows       (generic/load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
@@ -73,8 +79,8 @@
 (defn create-table-sql [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
   (let [quot          (partial generic/quote-name driver)
         pk-field-name (quot (generic/pk-field-name driver))]
-    (format "CREATE TABLE %s (%s, %s %s);"
-            (str "`" database-name "_" table-name "`")
+    (format "CREATE TABLE %s (%s, %s %s)"
+            (generic/qualify+quote-name driver database-name table-name)
             (->> field-definitions
                  (map (fn [{:keys [field-name base-type]}]
                         (format "%s %s" (quot field-name) (if (map? base-type)
@@ -85,8 +91,8 @@
             pk-field-name (generic/pk-sql-type driver)
             pk-field-name)))
 
-(defn drop-table-if-exists-sql [{:keys [database-name]} {:keys [table-name]}]
-  (format "DROP TABLE IF EXISTS %s" (str "`" database-name "_" table-name "`")))
+(defn drop-table-if-exists-sql [driver {:keys [database-name]} {:keys [table-name]}]
+  (format "DROP TABLE IF EXISTS %s" (generic/qualify+quote-name driver database-name table-name)))
 
 (u/strict-extend SparkSQLDriver
                  generic/IGenericSQLDatasetLoader
@@ -95,13 +101,14 @@
                          :execute-sql!              generic/sequentially-execute-sql!
                          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
                          :create-table-sql          create-table-sql
-                         :drop-table-if-exists-sql  (u/drop-first-arg drop-table-if-exists-sql)
                          :create-db-sql             (constantly nil)
                          :drop-db-if-exists-sql     (constantly nil)
 
+                         :drop-table-if-exists-sql  drop-table-if-exists-sql
                          :load-data!                (make-load-data-fn generic/load-data-add-ids)
                          :pk-sql-type               (constantly "INT")
-                         :quote-name                (u/drop-first-arg spark-quote-name)})
+                         :qualified-name-components (u/drop-first-arg qualified-name-components)
+                         :quote-name                (u/drop-first-arg quote-name)})
                  i/IDatasetLoader
                  (merge generic/IDatasetLoaderMixin
                         {:database->connection-details (u/drop-first-arg database->connection-details)

@@ -224,7 +224,7 @@
   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
     (let [honeysql-form (h/merge-left-join honeysql-form
                           [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
-                          [:= (hx/qualify-and-escape-dots source-table-name (:field-name source-field))
+                          [:= (hx/qualify-and-escape-dots source-table-name               (:field-name source-field))
                               (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
