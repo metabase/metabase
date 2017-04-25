@@ -40,29 +40,31 @@ const DashboardListItem = enhance(({dashboard, setFavorited, hover, setHover}: D
               onMouseLeave={() => setHover(false)}>
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
-            <div className={cx("flex-full shrink-below-content-size relative")}>
-                { hover &&
-                <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
-                    <Icon
-                        className={cx(
-                            "flex cursor-pointer absolute right",
-                            {"hidden": !hover},
-                            {"text-gold": hover}
-                        )}
-                        name={dashboard.favorite ? "star" : "staroutline"}
-                        size={20}
-                        onClick={() => setFavorited(dashboard.id, !dashboard.favorite) }
-                    />
-                </Tooltip>
-                }
-                <h4 className={cx("text-ellipsis text-nowrap overflow-hidden text-brand", {"text-white": hover})}
-                    style={{marginBottom: "0.2em", marginRight: hover ? "25px" : 0}}>
-                    <Ellipsified>{dashboard.name}</Ellipsified>
-                </h4>
-                <div
-                    className={cx("text-smaller text-uppercase text-bold", {"text-grey-3": !hover}, {"text-grey-2": hover})}>
-                    {/* NOTE: Could these time formats be centrally stored somewhere? */}
-                    {moment(dashboard.created_at).format('MMM D, YYYY')}
+            <div className={cx("flex-full shrink-below-content-size")}>
+                <div className="flex">
+                    <div className={cx("flex-full shrink-below-content-size")}> {/* first demo to maz: remove flex-full */}
+                        <h4 className={cx("text-ellipsis text-nowrap overflow-hidden text-brand", {"text-white": hover})}
+                            style={{marginBottom: "0.2em"}}>
+                            <Ellipsified>{dashboard.name}</Ellipsified>
+                        </h4>
+                        <div
+                            className={cx("text-smaller text-uppercase text-bold", {"text-grey-3": !hover}, {"text-grey-2": hover})}>
+                            {/* NOTE: Could these time formats be centrally stored somewhere? */}
+                            {moment(dashboard.created_at).format('MMM D, YYYY')}
+                        </div>
+                    </div>
+                    <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
+                        <Icon
+                            className={cx(
+                                "flex cursor-pointer", /* first demo to maz: add flex-no-shrink ml1 */
+                                {"hidden": !hover},
+                                {"text-gold": hover}
+                            )}
+                            name={dashboard.favorite ? "star" : "staroutline"}
+                            size={20}
+                            onClick={() => setFavorited(dashboard.id, !dashboard.favorite) }
+                        />
+                    </Tooltip>
                 </div>
             </div>
         </Link>
