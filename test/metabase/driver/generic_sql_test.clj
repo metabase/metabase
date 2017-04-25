@@ -121,5 +121,5 @@
     ;; Oracle considers empty strings to be NULL strings; thus in this particular test `percent-valid-urls` gives us 4/7 valid valid where other DBs give us 4/8
     0.5714285714285714
     0.5)
-  (dataset half_valid_urls
+  (dataset half-valid-urls
     (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))

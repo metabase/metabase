@@ -21,7 +21,7 @@
      :points_of_interest nil
      :id                 $
      :updated_at         $
-     :name               "test_data"
+     :name               "test-data"
      :is_sample          false
      :is_full_sync       true
      :description        nil

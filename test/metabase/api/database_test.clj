@@ -56,7 +56,7 @@
       :id                 $
       :details            $
       :updated_at         $
-      :name               "test_data"
+      :name               "test-data"
       :is_sample          false
       :is_full_sync       true
       :description        nil
@@ -164,7 +164,7 @@
                                      :engine             (name $engine)
                                      :id                 $
                                      :updated_at         $
-                                     :name               "test_data"
+                                     :name               "test-data"
                                      :native_permissions "write"
                                      :is_sample          false
                                      :is_full_sync       true
@@ -215,7 +215,7 @@
                                        :engine             (name $engine)
                                        :id                 $
                                        :updated_at         $
-                                       :name               "test_data"
+                                       :name               "test-data"
                                        :native_permissions "write"
                                        :is_sample          false
                                        :is_full_sync       true
@@ -237,7 +237,7 @@
      :engine          "h2"
      :id              $
      :updated_at      $
-     :name            "test_data"
+     :name            "test-data"
      :is_sample       false
      :is_full_sync    true
      :description     nil

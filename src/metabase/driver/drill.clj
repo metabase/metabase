@@ -44,14 +44,14 @@
 
 (defn drill
   "Create a database specification for a Drill cluster. Opts should include
-  :zookeeper-connect."
-  [{:keys [zookeeper-connect]
-    :or {zookeeper-connect "127.0.0.1:2181/drill"}
+  :drill-connect."
+  [{:keys [drill-connect]
+    :or {drill-connect "drillbit=localhost"}
     :as opts}]
   (merge {:classname "org.apache.drill.jdbc.Driver" ; must be in classpath
           :subprotocol "drill"
-          :subname (str "zk=" zookeeper-connect)}
-         (dissoc opts :zookeeper-connect)))
+          :subname drill-connect}
+         (dissoc opts :drill-connect)))
 
 (defn- connection-details->spec [details]
   (-> details
@@ -218,13 +218,13 @@
                          :describe-database describe-database
                          :describe-table describe-table
                          :describe-table-fks (constantly #{})
-                         :details-fields (constantly [{:name "zookeeper-connect"
-                                                       :display-name "ZooKeeper connect string"
-                                                       :default "127.0.0.1:2181/drill/cluster-id"}])
+                         :details-fields (constantly [{:name "drill-connect"
+                                                       :display-name "Drill connect string"
+                                                       :default "drillbit=localhost or zk=localhost:2181/drill/cluster-id"}])
                          :execute-query execute-query
                          :features (constantly #{:basic-aggregations
                                                  :standard-deviation-aggregations
-                                                 :foreign-keys
+                                                 ;;:foreign-keys
                                                  :expressions
                                                  :expression-aggregations
                                                  :native-parameters})

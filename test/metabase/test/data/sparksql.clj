@@ -23,6 +23,17 @@
    :type/Integer    "INTEGER"
    :type/Text       "STRING"})
 
+(defn quote-name [nm]
+  (str \` nm \`))
+
+(defn- dash-to-underscore [s]
+  (s/replace s #"-" "_"))
+
+(defn- qualified-name-components
+  ([db-name]                       (map dash-to-underscore [db-name]))
+  ([db-name table-name]            (map dash-to-underscore [db-name table-name]))
+  ([db-name table-name field-name] (map dash-to-underscore [table-name field-name])))
+
 (defn database->connection-details [context {:keys [database-name]}]
   (merge {:host "localhost"
           :port 10000
@@ -30,15 +41,7 @@
           :user "admin"
           :password "admin"}
          (when (= context :db)
-           {:db database-name})))
-
-(defn quote-name [nm]
-  (str \` nm \`))
-
-(defn- qualified-name-components
-  ([db-name]                       [db-name])
-  ([db-name table-name]            [db-name (s/replace table-name #"-" "_")])
-  ([db-name table-name field-name] [(s/replace table-name #"-" "_") field-name]))
+           {:db (dash-to-underscore database-name)})))
 
 (defn- do-insert!
   "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."

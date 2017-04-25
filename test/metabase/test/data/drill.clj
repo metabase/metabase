@@ -26,7 +26,7 @@
    :type/Text       "VARCHAR"})
 
 (defn database->connection-details [context {:keys [database-name]}]
-  (merge {:zookeeper-connect "localhost:2181/drill/drillbits1;schema=dfs.tmp"}))
+  (merge {:drill-connect "drillbit=localhost;schema=dfs.tmp"}))
 
 (defn quote-name [nm]
   (str \` nm \`))
@@ -42,7 +42,7 @@
     ;; we can't create the view unless the file exists, so create an empty one if necessary
     (make-sure-file-exists! table-path)
     (format "CREATE OR REPLACE VIEW %s AS SELECT %s FROM dfs.`%s`"
-            (str "dfs.tmp.`" database-name "_" table-name "`")
+            (str "dfs.tmp.`" qualified-table-name "`")
             (str (->> field-definitions
                       (map (fn [{:keys [field-name base-type]}]
                              (if (= base-type :type/DateTime)

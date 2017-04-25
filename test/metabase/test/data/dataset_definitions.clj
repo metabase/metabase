@@ -15,22 +15,22 @@
      ~@(edn/read-string (slurp (str edn-definitions-dir (name dbname) ".edn")))))
 
 ;; The O.G. "Test Database" dataset
-(def-database-definition-edn test_data)
+(def-database-definition-edn test-data)
 
 ;; Times when the Toucan cried
-(def-database-definition-edn sad_toucan_incidents)
+(def-database-definition-edn sad-toucan-incidents)
 
 ;; Places, times, and circumstances where Tupac was sighted
-(def-database-definition-edn tupac_sightings)
+(def-database-definition-edn tupac-sightings)
 
-(def-database-definition-edn geographical_tips)
+(def-database-definition-edn geographical-tips)
 
 ;; A tiny dataset where half the NON-NULL values are valid URLs
-(def-database-definition-edn half_valid_urls)
+(def-database-definition-edn half-valid-urls)
 
 ;; A very tiny dataset with a list of places and a booleans
-(def-database-definition-edn places_cam_likes)
+(def-database-definition-edn places-cam-likes)
 
 ;; A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user --
 ;; sender and reciever -- allowing us to test situations where multiple joins for a *single* table should occur.
-(def-database-definition-edn avian_singles)
+(def-database-definition-edn avian-singles)

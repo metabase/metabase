@@ -38,7 +38,7 @@
      :engine             "h2"
      :id                 $
      :updated_at         $
-     :name               "test_data"
+     :name               "test-data"
      :is_sample          false
      :is_full_sync       true
      :description        nil
@@ -174,7 +174,7 @@
                               (+ (.getYear inst) 1900)
                               (+ (.getMonth inst) 1)
                               (.getDate inst)))]
-    (->> defs/test_data
+    (->> defs/test-data
          :table-definitions
          first
          :rows
@@ -353,7 +353,7 @@
 (tt/expect-with-temp [Table [table {:rows 15}]]
   (merge (-> (table-defaults)
              (dissoc :segments :field_values :metrics)
-             (assoc-in [:db :details] {:db "mem:test_data;USER=GUEST;PASSWORD=guest"}))
+             (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
          (match-$ table
            {:description     "What a nice table!"
             :entity_type     "person"

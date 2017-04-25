@@ -20,7 +20,7 @@
    ["Houston"      11]
    ["Irvine"       11]
    ["Lakeland"     11]]
-  (->> (data/dataset tupac_sightings
+  (->> (data/dataset tupac-sightings
          (data/run-query sightings
            (ql/aggregation (ql/count))
            (ql/breakout $city_id->cities.name)
@@ -34,7 +34,7 @@
 ;; Test that we can filter on an FK field
 (datasets/expect-with-engines (engines-that-support :foreign-keys)
   [[60]]
-  (->> (data/dataset tupac_sightings
+  (->> (data/dataset tupac-sightings
          (data/run-query sightings
            (ql/aggregation (ql/count))
            (ql/filter (ql/= $category_id->categories.id 8))))
@@ -55,7 +55,7 @@
    [996 "At a Restaurant"]
    [897 "Wearing a Biggie Shirt"]
    [499 "In the Expa Office"]]
-  (->> (data/dataset tupac_sightings
+  (->> (data/dataset tupac-sightings
          (data/run-query sightings
            (ql/fields $id $category_id->categories.name)
            (ql/order-by (ql/desc $timestamp))
@@ -80,7 +80,7 @@
    [2 11 524]
    [2 13  77]
    [2 13 202]]
-  (->> (data/dataset tupac_sightings
+  (->> (data/dataset tupac-sightings
          (data/run-query sightings
            (ql/order-by (ql/asc $city_id->cities.name)
                         (ql/desc $category_id->categories.name)
@@ -93,7 +93,7 @@
 (datasets/expect-with-engines (engines-that-dont-support :foreign-keys)
   {:status :failed
    :error "foreign-keys is not supported by this driver."}
-  (select-keys (data/dataset tupac_sightings
+  (select-keys (data/dataset tupac-sightings
                  (data/run-query sightings
                    (ql/order-by (ql/asc $city_id->cities.name)
                                 (ql/desc $category_id->categories.name)
@@ -123,7 +123,7 @@
    ["Lucky Pigeon"     2]
    ["Peter Pelican"    5]
    ["Ronald Raven"     1]]
-  (data/dataset avian_singles
+  (data/dataset avian-singles
     (format-rows-by [str int]
       (rows (data/run-query messages
               (ql/aggregation (ql/count))

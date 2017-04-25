@@ -16,7 +16,7 @@
     x))
 
 (defn- sad-toucan-incidents-with-bucketing [unit]
-  (->> (data/with-db (data/get-or-create-database! defs/sad_toucan_incidents)
+  (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
          (data/run-query incidents
            (ql/aggregation (ql/count))
            (ql/breakout (ql/datetime-field $timestamp unit))
@@ -275,7 +275,7 @@
 
 ;; RELATIVE DATES
 (defn- database-def-with-timestamps [interval-seconds]
-  (i/create-database-definition (str "checkin_every_" interval-seconds "s")
+  (i/create-database-definition (str "a-checkin-every-" interval-seconds "-seconds")
     ["checkins"
      [{:field-name "timestamp"
        :base-type  :type/DateTime}]

@@ -13,7 +13,7 @@
   (if (i/has-questionable-timezone-support? *driver*)
     10
     9)
-  (count (rows (data/dataset sad_toucan_incidents
+  (count (rows (data/dataset sad-toucan-incidents
                  (data/run-query incidents
                    (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
                                       (ql/< $timestamp "2015-06-03")))
@@ -58,7 +58,7 @@
      ["2015-06-08T00:00:00.000Z" 10]
      ["2015-06-09T00:00:00.000Z"  6]
      ["2015-06-10T00:00:00.000Z" 10]])
-  (->> (data/dataset sad_toucan_incidents
+  (->> (data/dataset sad-toucan-incidents
          (data/run-query incidents
            (ql/aggregation (ql/count))
            (ql/breakout $timestamp)

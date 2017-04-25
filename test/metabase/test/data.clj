@@ -31,7 +31,7 @@
 (defn get-or-create-test-data-db!
   "Get or create the Test Data database for DATA-LOADER, which defaults to `*driver*`."
   ([]            (get-or-create-test-data-db! *driver*))
-  ([data-loader] (get-or-create-database! data-loader defs/test_data)))
+  ([data-loader] (get-or-create-database! data-loader defs/test-data)))
 
 (def ^:dynamic ^:private *get-db* get-or-create-test-data-db!)
 
@@ -231,7 +231,7 @@
   "Load and sync DATABASE-DEFINITION with DRIVER and execute BODY with the newly created `Database` bound to DB-BINDING,
    and make it the current database for `metabase.test.data` functions like `id`.
 
-     (with-temp-db [db tupac_sightings]
+     (with-temp-db [db tupac-sightings]
        (driver/process-quiery {:database (:id db)
                                :type     :query
                                :query    {:source_table (:id &events)

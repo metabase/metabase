@@ -39,7 +39,7 @@
 ;;; Generating Data File
 
 (defn- flattened-test-data []
-  (let [dbdef    (i/flatten-dbdef defs/test_data "checkins")
+  (let [dbdef    (i/flatten-dbdef defs/test-data "checkins")
         tabledef (first (:table-definitions dbdef))]
     (->> (:rows tabledef)
          (map (partial zipmap (map :field-name (:field-definitions tabledef))))

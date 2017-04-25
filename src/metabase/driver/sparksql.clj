@@ -68,10 +68,14 @@
     #".*" ; default
     message))
 
+(defn- dash-to-underscore [s]
+  (s/replace s #"-" "_"))
+
 (defn describe-database [driver database]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-             ;; arguably this should be "show tables in " (:name database)
-             (set (for [result (jdbc/query {:connection conn} [(str "show tables in `" (:name database) "`")])]
+             (set (for [result (jdbc/query {:connection conn}
+                                 [(format "show tables in `%s`"
+                                    (dash-to-underscore (:name database)))])]
                     {:name (:tablename result)
                      :schema nil})))})
 
@@ -80,7 +84,9 @@
     {:name (:name table)
      :schema nil
      :fields (set (for [result (jdbc/query {:connection conn}
-                                           [(str "describe `" (:name database) "`.`" (:name table) "`")])]
+                                 [(format "describe `%s`.`%s`"
+                                    (dash-to-underscore (:name database))
+                                    (dash-to-underscore (:name table)))])]
                     {:name (:col_name result)
                      :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
 
@@ -133,7 +139,7 @@
                          :execute-query execute-query
                          :features (constantly #{:basic-aggregations
                                                  :standard-deviation-aggregations
-                                                 :foreign-keys
+                                                 ;;:foreign-keys
                                                  :expressions
                                                  :expression-aggregations
                                                  :native-parameters})

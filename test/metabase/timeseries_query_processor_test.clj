@@ -16,7 +16,7 @@
 (def ^:private flattened-db-def
   "The normal test-data DB definition as a flattened, single-table DB definition.
   (this is a function rather than a straight delay because clojure complains when they delay gets embedding in expanded macros)"
-  (delay (i/flatten-dbdef defs/test_data "checkins")))
+  (delay (i/flatten-dbdef defs/test-data "checkins")))
 
 ;; force loading of the flattened db definitions for the DBs that need it
 (defn- load-event-based-db-data!
