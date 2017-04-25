@@ -1,6 +1,7 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [compojure.core :refer [GET POST PUT DELETE]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [GET POST PUT DELETE]]
             [schema.core :as s]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
@@ -9,6 +10,7 @@
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard], :as dashboard]
+                             [dashboard-favorite :refer [DashboardFavorite]]
                              [dashboard-card :refer [DashboardCard create-dashboard-card! update-dashboard-card! delete-dashboard-card!]]
                              [interface :as mi]
                              [revision :as revision])
@@ -16,22 +18,35 @@
             [metabase.util.schema :as su])
   (:import java.util.UUID))
 
+(defn- hydrate-favorites
+  "Efficiently hydrate the `:favorite` status (whether the current User has favorited it) for a group of Dashboards."
+  [dashboards]
+  (let [favorite-dashboard-ids (when (seq dashboards)
+                                 (db/select-field :dashboard_id DashboardFavorite
+                                   :user_id      *current-user-id*
+                                   :dashboard_id [:in (set (map u/get-id dashboards))]))]
+    (for [dashboard dashboards]
+      (assoc dashboard
+        :favorite (contains? favorite-dashboard-ids (u/get-id dashboard))))))
 
 (defn- dashboards-list [filter-option]
-  (as-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
-                                          :all  true
-                                          :mine [:= :creator_id *current-user-id*])
+  (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
+                                                :all  true
+                                                :mine [:= :creator_id *current-user-id*])
+                                              [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>
     (hydrate <> :creator)
-    (filter mi/can-read? <>)))
+    (filter mi/can-read? <>)
+    (hydrate-favorites <>)))
 
 (defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
-  *  `all` - Return all `Dashboards`.
-  *  `mine` - Return `Dashboards` created by the current user."
+  *  `all`      - Return all Dashboards.
+  *  `mine`     - Return Dashboards created by the current user.
+  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
   [f]
-  {f (s/maybe (s/enum "all" "mine"))}
+  {f (s/maybe (s/enum "all" "mine" "archived"))}
   (dashboards-list f))
 
 
@@ -63,6 +78,7 @@
   (u/prog1 (-> (Dashboard id)
                (hydrate :creator [:ordered_cards [:card :creator] :series])
                read-check
+               check-not-archived
                hide-unreadable-cards)
     (events/publish-event! :dashboard-read (assoc <> :actor_id *current-user-id*))))
 
@@ -72,7 +88,7 @@
 
    Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate permissions for the Cards belonging to this Dashboard),
    but to change the value of `enable_embedding` you must be a superuser."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding embedding_params], :as dashboard} :body}]
+  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding embedding_params position archived], :as dashboard} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -80,7 +96,9 @@
    show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Map])}
+   parameters              (s/maybe [su/Map])
+   position                (s/maybe su/IntGreaterThanZero)
+   archived                (s/maybe s/Bool)}
   (let [dash (write-check Dashboard id)]
     ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
     (when (or (and (not (nil? enable_embedding))
@@ -91,18 +109,20 @@
       (check-superuser)))
   (check-500
    (db/update! Dashboard id
-     ;; description is allowed to be `nil`. Everything else must be non-nil
+     ;; description, position are allowed to be `nil`. Everything else must be non-nil
      (u/select-keys-when dashboard
-       :present #{:description}
-       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params})))
+       :present #{:description :position}
+       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params :archived})))
   ;; now publish an event and return the updated Dashboard
   (u/prog1 (Dashboard id)
     (events/publish-event! :dashboard-update (assoc <> :actor_id *current-user-id*))))
 
 
+;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to be setting `:archived` to `true` via the `PUT` endpoint instead
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
   [id]
+  (log/warn "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its `archived` value via PUT /api/dashboard/:id.")
   (let [dashboard (write-check Dashboard id)]
     (db/delete! Dashboard :id id)
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))
@@ -115,8 +135,8 @@
   [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
   {cardId             su/IntGreaterThanZero
    parameter_mappings [su/Map]}
-  (write-check Dashboard id)
-  (read-check Card cardId)
+  (check-not-archived (write-check Dashboard id))
+  (check-not-archived (read-check Card cardId))
   (let [defaults       {:dashboard_id           id
                         :card_id                cardId
                         :visualization_settings {}
@@ -140,7 +160,7 @@
               :series [{:id 123
                         ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]
-  (write-check Dashboard id)
+  (check-not-archived (write-check Dashboard id))
   (let [dashcard-ids (db/select-ids DashboardCard, :dashboard_id id)]
     (doseq [{dashcard-id :id, :as dashboard-card} cards]
       ;; ensure the dashcard we are updating is part of the given dashboard
@@ -154,7 +174,7 @@
   "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
   {dashcardId su/IntStringGreaterThanZero}
-  (write-check Dashboard id)
+  (check-not-archived (write-check Dashboard id))
   (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (check-500 (delete-dashboard-card! dashboard-card *current-user-id*))
     {:success true})) ; TODO - why doesn't this return a 204 'No Content' response?
@@ -179,6 +199,24 @@
     :revision-id revision_id))
 
 
+;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
+
+(defendpoint POST "/:id/favorite"
+  "Favorite a Dashboard."
+  [id]
+  (check-not-archived (read-check Dashboard id))
+  (db/insert! DashboardFavorite :dashboard_id id, :user_id *current-user-id*))
+
+
+(defendpoint DELETE "/:id/favorite"
+  "Unfavorite a Dashboard."
+  [id]
+  (check-not-archived (read-check Dashboard id))
+  (let-404 [favorite-id (db/select-one-id DashboardFavorite :dashboard_id id, :user_id *current-user-id*)]
+    (db/delete! DashboardFavorite, :id favorite-id))
+  generic-204-no-content)
+
+
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
 
 (defendpoint POST "/:dashboard-id/public_link"
@@ -188,7 +226,7 @@
   [dashboard-id]
   (check-superuser)
   (check-public-sharing-enabled)
-  (read-check Dashboard dashboard-id)
+  (check-not-archived (read-check Dashboard dashboard-id))
   {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
                (db/update! Dashboard dashboard-id
@@ -200,7 +238,7 @@
   [dashboard-id]
   (check-superuser)
   (check-public-sharing-enabled)
-  (check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil])
+  (check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (db/update! Dashboard dashboard-id
     :public_uuid       nil
     :made_public_by_id nil)
@@ -211,14 +249,14 @@
   []
   (check-superuser)
   (check-public-sharing-enabled)
-  (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil]))
+  (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (defendpoint GET "/embeddable"
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding endpoints and a signed JWT."
   []
   (check-superuser)
   (check-embedding-enabled)
-  (db/select [Dashboard :name :id], :enable_embedding true))
+  (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
 
 (define-routes)
