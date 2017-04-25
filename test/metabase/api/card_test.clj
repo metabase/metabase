@@ -397,8 +397,15 @@
       (perms/grant-native-read-permissions! (perms-group/all-users) database-id)
       ((user->client :rasta) :post 200 (format "card/%d/query/json" (u/get-id card))))))
 
+;;; Tests for GET /api/card/:id/xlsx
+(expect
+  #(> (.length %1) 0)
+  (do-with-temp-native-card
+    (fn [database-id card]
+      (perms/grant-native-read-permissions! (perms-group/all-users) database-id)
+      ((user->client :rasta) :post 200 (format "card/%d/query/xlsx" (u/get-id card))))))
 
-;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json **WITH PARAMETERS**
+;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 
 (defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
   (tt/with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
@@ -433,6 +440,12 @@
     (fn [database-id card]
       ((user->client :rasta) :post 200 (format "card/%d/query/json?parameters=%s" (u/get-id card) encoded-params)))))
 
+;; XLSX
+(expect
+  #(> (.length %1) 0)
+  (do-with-temp-native-card-with-params
+    (fn [database-id card]
+      ((user->client :rasta) :post 200 (format "card/%d/query/xlsx?parameters=%s" (u/get-id card) encoded-params)))))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      COLLECTIONS                                                       |

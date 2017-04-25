@@ -89,7 +89,7 @@
       (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON and CSV versions)  ------------------------------------------------------------
+;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions)  ------------------------------------------------------------
 
 ;; Check that we *cannot* execute a PublicCard if the setting is disabled
 (expect
@@ -131,6 +131,12 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
+
+;; Check that we can exec a PublicCard and get results as XLSX
+(expect
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (with-temp-public-card [{uuid :public_uuid}]
+      (http/client :get 200 (str "public/card/" uuid "/query/xlsx")))))
 
 ;; Check that we can exec a PublicCard with `?parameters`
 (expect

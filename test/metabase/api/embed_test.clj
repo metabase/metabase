@@ -61,7 +61,8 @@
    (case results-format
      ""      (successful-query-results)
      "/json" [{:count 100}]
-     "/csv"  "count\n100\n")))
+     "/csv"  "count\n100\n"
+     "/xlsx" #(> (.length %1) 0))))
 
 (defn dissoc-id-and-name {:style/indent 0} [obj]
   (dissoc obj :id :name))
@@ -127,7 +128,7 @@
       (:parameters (http/client :get 200 (card-url card {:params {:c 100}}))))))
 
 
-;; ------------------------------------------------------------ GET /api/embed/card/:token/query (and JSON and CSV variants)  ------------------------------------------------------------
+;; ------------------------------------------------------------ GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants)  ------------------------------------------------------------
 
 (defn- card-query-url [card response-format & [additional-token-params]]
   (str "embed/card/"
@@ -137,7 +138,7 @@
 
 (defmacro ^:private expect-for-response-formats {:style/indent 1} [[response-format-binding] expected actual]
   `(do
-     ~@(for [response-format ["" "/json" "/csv"]]
+     ~@(for [response-format ["" "/json" "/csv" "/xlsx"]]
          `(expect
             (let [~response-format-binding ~response-format]
               ~expected)
