@@ -15,6 +15,8 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon.jsx";
 import SearchHeader from "metabase/components/SearchHeader";
 import EmptyState from "metabase/components/EmptyState";
+import ListFilterWidget from "metabase/components/ListFilterWidget";
+import type {ListFilterWidgetItem} from "metabase/components/ListFilterWidget";
 
 import {caseInsensitiveSearch} from "metabase/lib/string"
 
@@ -28,16 +30,50 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = dashboardsActions;
 
+const SECTIONS: ListFilterWidgetItem[] = [
+    {
+        id: 'all',
+        name: 'All dashboards',
+        icon: 'all',
+        // empty: 'No questions have been saved yet.',
+    },
+    // {
+    //     id: 'fav',
+    //     name: 'Favorites',
+    //     icon: 'star',
+    //     // empty: 'You haven\'t favorited any questions yet.',
+    // },
+    // {
+    //     id: 'recent',
+    //     name: 'Recently viewed',
+    //     icon: 'recents',
+    //     // empty: 'You haven\'t viewed any questions recently.',
+    // },
+    {
+        id: 'mine',
+        name: 'Saved by me',
+        icon: 'mine',
+        // empty:  'You haven\'t saved any questions yet.'
+    },
+    // {
+    //     id: 'popular',
+    //     name: 'Most popular',
+    //     icon: 'popular',
+    //     // empty: 'The most viewed questions across your company will show up here.',
+    // }
+];
+
 export class Dashboards extends Component {
     props: {
         dashboards: Dashboard[],
         createDashboard: (Dashboard) => any,
-        fetchDashboards: PropTypes.func.isRequired,
+        fetchDashboards: () => void,
     };
 
     state = {
         modalOpen: false,
-        searchText: ""
+        searchText: "",
+        section: SECTIONS[0]
     }
 
     componentWillMount() {
@@ -85,8 +121,12 @@ export class Dashboards extends Component {
         }
     }
 
+    updateSection = (section: ListFilterWidgetItem) => {
+        this.setState({section});
+    }
+
     render() {
-        let {modalOpen, searchText} = this.state;
+        let {modalOpen, searchText, section} = this.state;
 
         const isLoading = this.props.dashboards === null
         const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
@@ -124,6 +164,13 @@ export class Dashboards extends Component {
                                 searchText={searchText}
                                 setSearchText={(text) => this.setState({searchText: text})}
                             />
+                            <div className="flex-align-right">
+                                <ListFilterWidget
+                                    items={SECTIONS.filter(item => item.id !== "archived")}
+                                    activeItem={section}
+                                    onChange={this.updateSection}
+                                />
+                            </div>
                         </div>
                         { noSearchResults ?
                             <div className="flex justify-center">

@@ -7,7 +7,7 @@ import React, { Component } from "react";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "./PopoverWithTrigger";
 
-type FilterWidgetItem = {
+export type ListFilterWidgetItem = {
     id: string,
     name: string,
     icon: string
@@ -15,9 +15,9 @@ type FilterWidgetItem = {
 
 export default class ListFilterWidget extends Component {
     props: {
-        items: FilterWidgetItem[],
-        activeItem: FilterWidgetItem,
-        onChange: (FilterWidgetItem) => void
+        items: ListFilterWidgetItem[],
+        activeItem: ListFilterWidgetItem,
+        onChange: (ListFilterWidgetItem) => void
     };
 
     popoverRef: PopoverWithTrigger;
