@@ -1,8 +1,9 @@
 /* @flow */
 
-import React, {Component, PropTypes} from 'react';
+import React, {Component} from 'react';
 import {connect} from "react-redux";
 import cx from "classnames";
+import _ from "underscore"
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
@@ -22,17 +23,21 @@ import {caseInsensitiveSearch} from "metabase/lib/string"
 
 import * as dashboardsActions from "../dashboards";
 import {getDashboardListing} from "../selectors";
-
+import {getUser} from "metabase/selectors/user";
 
 const mapStateToProps = (state, props) => ({
-    dashboards: getDashboardListing(state)
+    dashboards: getDashboardListing(state),
+    user: getUser(state)
 });
 
 const mapDispatchToProps = dashboardsActions;
 
+const SECTION_ID_ALL = 'all';
+const SECTION_ID_MINE = 'mine'
+
 const SECTIONS: ListFilterWidgetItem[] = [
     {
-        id: 'all',
+        id: SECTION_ID_ALL,
         name: 'All dashboards',
         icon: 'all',
         // empty: 'No questions have been saved yet.',
@@ -50,7 +55,7 @@ const SECTIONS: ListFilterWidgetItem[] = [
     //     // empty: 'You haven\'t viewed any questions recently.',
     // },
     {
-        id: 'mine',
+        id: SECTION_ID_MINE,
         name: 'Saved by me',
         icon: 'mine',
         // empty:  'You haven\'t saved any questions yet.'
@@ -108,17 +113,26 @@ export class Dashboards extends Component {
         );
     }
 
-    getFilteredDashboards = () => {
-        const {searchText} = this.state;
-        const {dashboards} = this.props;
+    /* Returns a boolean indicating whether the search term was found from dashboard name or description */
+    searchTextFilter = (searchText: string) =>
+        ({name, description}: Dashboard) =>
+            (caseInsensitiveSearch(name, searchText) || (description && caseInsensitiveSearch(description, searchText)))
 
-        if (searchText === "") {
-            return dashboards;
-        } else {
-            return dashboards.filter(({name, description}) =>
-                caseInsensitiveSearch(name,searchText) || (description && caseInsensitiveSearch(description, searchText))
-            );
-        }
+    /* Returns a boolean indicating whether the dashboard belongs to the specified section or not */
+    sectionFilter = (section: ListFilterWidgetItem) =>
+        ({creator_id}: Dashboard) =>
+            (section.id === SECTION_ID_ALL) ||
+            (section.id === SECTION_ID_MINE && creator_id === this.props.user.id)
+
+    getFilteredDashboards = () => {
+        const {searchText, section} = this.state;
+        const {dashboards} = this.props;
+        const noOpFilter = _.constant(true)
+
+        return _.chain(dashboards)
+            .filter(searchText != "" ? this.searchTextFilter(searchText) : noOpFilter)
+            .filter(this.sectionFilter(section))
+            .value()
     }
 
     updateSection = (section: ListFilterWidgetItem) => {
