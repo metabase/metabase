@@ -1,12 +1,17 @@
 /* @flow weak */
 
 import { handleActions, createAction, combineReducers, createThunkAction } from "metabase/lib/redux";
-import { DashboardApi } from "metabase/services";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { inflect } from "metabase/lib/formatting";
+import * as Urls from "metabase/lib/urls";
+import { DashboardApi } from "metabase/services";
+import { addUndo } from "metabase/redux/undo";
+
+import React from "react";
+import {Link} from "react-router";
+import { push } from "react-router-redux";
 import moment from 'moment';
 
-import * as Urls from "metabase/lib/urls";
-import { push } from "react-router-redux";
 import type { Dashboard } from "metabase/meta/types/Dashboard";
 
 export const FETCH_DASHBOARDS = "metabase/dashboards/FETCH_DASHBOARDS";
@@ -15,6 +20,7 @@ export const DELETE_DASHBOARD = "metabase/dashboards/DELETE_DASHBOARD";
 export const SAVE_DASHBOARD   = "metabase/dashboards/SAVE_DASHBOARD";
 export const UPDATE_DASHBOARD = "metabase/dashboards/UPDATE_DASHBOARD";
 export const SET_FAVORITED    = "metabase/dashboards/SET_FAVORITED";
+export const SET_ARCHIVED     = "metabase/dashboards/SET_ARCHIVED";
 
 /**
  * Actions that retrieve/update the basic information of dashboards
@@ -93,7 +99,8 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashboar
     };
 });
 
-export const setFavorited = createThunkAction(SET_FAVORITED, (dashId, favorited) => {
+export type SetFavoritedAction = (dashId: number, favorited: boolean) => void;
+export const setFavorited: SetFavoritedAction = createThunkAction(SET_FAVORITED, (dashId, favorited) => {
     return async (dispatch, getState) => {
         if (favorited) {
             // await DashboardApi.favorite({ dashId });
@@ -105,13 +112,47 @@ export const setFavorited = createThunkAction(SET_FAVORITED, (dashId, favorited)
     }
 });
 
+// A simplified version of a similar method in questions/questions.js
+function createUndo(type, action) {
+    return {
+        type: type,
+        count: 1,
+        message: (undo) => // eslint-disable-line react/display-name
+                <div> { "Dashboard was " + type + "."} </div>,
+        actions: [action]
+    };
+}
+
+export type SetArchivedAction = (dashId: number, archived: boolean, undoable: boolean) => void;
+export const setArchived = createThunkAction(SET_ARCHIVED, (dashId, archived, undoable = false) => {
+    return async (dispatch, getState) => {
+        // TODO Remove mock
+        /*const response = await DashboardApi.update({
+            id: dashId,
+            archived: archived
+        });*/
+        const response = {id: dashId, archived: archived}
+
+        if (undoable) {
+            dispatch(addUndo(createUndo(
+                archived ? "archived" : "unarchived",
+                setArchived(dashId, !archived)
+            )));
+        }
+
+        MetabaseAnalytics.trackEvent("Dashboard", archived ? "Archive" : "Unarchive");
+        return response;
+    }
+});
+
 const dashboardListing = handleActions({
     [FETCH_DASHBOARDS]: (state, { payload }) => payload,
     [CREATE_DASHBOARD]: (state, { payload }) => (state || []).concat(payload),
     [DELETE_DASHBOARD]: (state, { payload }) => (state || []).filter(d => d.id !== payload),
     [SAVE_DASHBOARD]:   (state, { payload }) => (state || []).map(d => d.id === payload.id ? payload : d),
     [UPDATE_DASHBOARD]: (state, { payload }) => (state || []).map(d => d.id === payload.id ? payload : d),
-    [SET_FAVORITED]:    (state, { payload }) => (state || []).map(d => d.id === payload.id ? {...d, favorite: payload.favorite} : d)
+    [SET_FAVORITED]:    (state, { payload }) => (state || []).map(d => d.id === payload.id ? {...d, favorite: payload.favorite} : d),
+    [SET_ARCHIVED]:     (state, { payload }) => (state || []).map(d => d.id === payload.id ? {...d, archived: payload.archived} : d)
 }, null);
 
 export default combineReducers({

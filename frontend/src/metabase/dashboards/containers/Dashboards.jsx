@@ -21,9 +21,11 @@ import type {ListFilterWidgetItem} from "metabase/components/ListFilterWidget";
 
 import {caseInsensitiveSearch} from "metabase/lib/string"
 
+import type {SetFavoritedAction, SetArchivedAction} from "../dashboards";
 import * as dashboardsActions from "../dashboards";
 import {getDashboardListing} from "../selectors";
 import {getUser} from "metabase/selectors/user";
+
 
 const mapStateToProps = (state, props) => ({
     dashboards: getDashboardListing(state),
@@ -74,13 +76,15 @@ export class Dashboards extends Component {
         dashboards: Dashboard[],
         createDashboard: (Dashboard) => any,
         fetchDashboards: () => void,
-        setFavorited: (dashboardId: number, favorited: boolean) => void
+        setFavorited: SetFavoritedAction,
+        setArchived: SetArchivedAction
     };
 
     state = {
         modalOpen: false,
         searchText: "",
-        section: SECTIONS[0]
+        section: SECTIONS[0],
+        showArchived: false
     }
 
     componentWillMount() {
@@ -115,12 +119,13 @@ export class Dashboards extends Component {
         );
     }
 
-    /* Returns a boolean indicating whether the search term was found from dashboard name or description */
+    archivedFilter = (isArchived : boolean) =>
+        ({archived} : Dashboard) => !!archived === isArchived
+
     searchTextFilter = (searchText: string) =>
         ({name, description}: Dashboard) =>
             (caseInsensitiveSearch(name, searchText) || (description && caseInsensitiveSearch(description, searchText)))
 
-    /* Returns a boolean indicating whether the dashboard belongs to the specified section or not */
     sectionFilter = (section: ListFilterWidgetItem) =>
         ({creator_id, favorite}: Dashboard) =>
             (section.id === SECTION_ID_ALL) ||
@@ -128,11 +133,12 @@ export class Dashboards extends Component {
             (section.id === SECTION_ID_FAVORITES && favorite === true)
 
     getFilteredDashboards = () => {
-        const {searchText, section} = this.state;
+        const {searchText, section, showArchived} = this.state;
         const {dashboards} = this.props;
         const noOpFilter = _.constant(true)
 
         return _.chain(dashboards)
+            .filter(this.archivedFilter(showArchived))
             .filter(searchText != "" ? this.searchTextFilter(searchText) : noOpFilter)
             .filter(this.sectionFilter(section))
             .value()
@@ -143,7 +149,7 @@ export class Dashboards extends Component {
     }
 
     render() {
-        let {modalOpen, searchText, section} = this.state;
+        let {modalOpen, searchText, section, showArchived} = this.state;
 
         const isLoading = this.props.dashboards === null
         const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
@@ -205,7 +211,9 @@ export class Dashboards extends Component {
                                     smallDescription
                                 />
                             </div>
-                            : <DashboardList dashboards={filteredDashboards} setFavorited={this.props.setFavorited} />
+                            : <DashboardList dashboards={filteredDashboards}
+                                             setFavorited={this.props.setFavorited}
+                                             setArchived={this.props.setArchived}/>
                         }
                     </div>
 

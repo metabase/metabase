@@ -18,11 +18,12 @@ type DashboardListItemType = {
     dashboard: Dashboard,
     hover: boolean,
     setHover: (boolean) => void,
-    setFavorited: (id: number, favorited: boolean) => void
+    setFavorited: (dashId: number, favorited: boolean) => void,
+    setArchived: (dashId: number, archived: boolean) => void
 }
 
 const enhance = withState('hover', 'setHover', false)
-const DashboardListItem = enhance(({dashboard, setFavorited, hover, setHover}: DashboardListItemType) =>
+const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover, setHover}: DashboardListItemType) =>
     <li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
         <Link to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
@@ -53,13 +54,25 @@ const DashboardListItem = enhance(({dashboard, setFavorited, hover, setHover}: D
                             {moment(dashboard.created_at).format('MMM D, YYYY')}
                         </div>
                     </div>
-                    { (dashboard.favorite || hover) &&
-                    <div>
+                    <div className="flex align-center">
+                        { (dashboard.archived || hover) &&
+                        <Tooltip tooltip={dashboard.archived ? "Unarchive" : "Archive"}>
+                            <Icon
+                                className="flex cursor-pointer text-light-blue mr1"
+                                name={dashboard.archived ? "unarchive" : "archive"}
+                                size={19}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setArchived(dashboard.id, !dashboard.archived, true)
+                                } }
+                            />
+                        </Tooltip>
+                        }
+                        { (dashboard.favorite || hover) &&
                         <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
                             <Icon
                                 className={cx(
                                     "flex cursor-pointer",
-                                    {"hidden": !hover && !dashboard.favorite},
                                     {"text-light-blue": !dashboard.favorite},
                                     {"text-gold": dashboard.favorite}
                                 )}
@@ -71,8 +84,8 @@ const DashboardListItem = enhance(({dashboard, setFavorited, hover, setHover}: D
                                 } }
                             />
                         </Tooltip>
+                        }
                     </div>
-                    }
                 </div>
             </div>
         </Link>
@@ -85,12 +98,15 @@ export default class DashboardList extends Component {
     };
 
     render() {
-        const {dashboards, setFavorited} = this.props;
+        const {dashboards, setFavorited, setArchived} = this.props;
 
         return (
             <ol className="Grid Grid--guttersXl Grid--full small-Grid--1of2 md-Grid--1of3">
-                { dashboards.map(dash => <DashboardListItem key={dash.id} dashboard={dash}
-                                                            setFavorited={setFavorited}/>)}
+                { dashboards.map(dash =>
+                    <DashboardListItem key={dash.id} dashboard={dash}
+                                       setFavorited={setFavorited}
+                                       setArchived={setArchived}/>
+                )}
             </ol>
         );
     }
