@@ -45,6 +45,8 @@ export const DashboardApi = {
     addcard:                    POST("/api/dashboard/:dashId/cards"),
     removecard:               DELETE("/api/dashboard/:dashId/cards"),
     reposition_cards:            PUT("/api/dashboard/:dashId/cards"),
+    favorite:                   POST("/api/dashboard/:dashId/favorite"),
+    unfavorite:               DELETE("/api/dashboard/:dashId/favorite"),
 
     listPublic:                  GET("/api/dashboard/public"),
     listEmbeddable:              GET("/api/dashboard/embeddable"),

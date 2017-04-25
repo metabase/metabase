@@ -41,8 +41,8 @@ const DashboardListItem = enhance(({dashboard, setFavorited, hover, setHover}: D
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
             <div className={cx("flex-full shrink-below-content-size")}>
-                <div className="flex">
-                    <div className={cx("flex-full shrink-below-content-size")}> {/* first demo to maz: remove flex-full */}
+                <div className="flex align-center">
+                    <div className={cx("flex-full shrink-below-content-size")}>
                         <h4 className={cx("text-ellipsis text-nowrap overflow-hidden text-brand", {"text-white": hover})}
                             style={{marginBottom: "0.2em"}}>
                             <Ellipsified>{dashboard.name}</Ellipsified>
@@ -53,18 +53,26 @@ const DashboardListItem = enhance(({dashboard, setFavorited, hover, setHover}: D
                             {moment(dashboard.created_at).format('MMM D, YYYY')}
                         </div>
                     </div>
-                    <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
-                        <Icon
-                            className={cx(
-                                "flex cursor-pointer", /* first demo to maz: add flex-no-shrink ml1 */
-                                {"hidden": !hover},
-                                {"text-gold": hover}
-                            )}
-                            name={dashboard.favorite ? "star" : "staroutline"}
-                            size={20}
-                            onClick={() => setFavorited(dashboard.id, !dashboard.favorite) }
-                        />
-                    </Tooltip>
+                    { (dashboard.favorite || hover) &&
+                    <div>
+                        <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
+                            <Icon
+                                className={cx(
+                                    "flex cursor-pointer",
+                                    {"hidden": !hover && !dashboard.favorite},
+                                    {"text-light-blue": !dashboard.favorite},
+                                    {"text-gold": dashboard.favorite}
+                                )}
+                                name={dashboard.favorite ? "star" : "staroutline"}
+                                size={20}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setFavorited(dashboard.id, !dashboard.favorite)
+                                } }
+                            />
+                        </Tooltip>
+                    </div>
+                    }
                 </div>
             </div>
         </Link>

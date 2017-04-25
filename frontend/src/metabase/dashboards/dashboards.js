@@ -12,8 +12,9 @@ import type { Dashboard } from "metabase/meta/types/Dashboard";
 export const FETCH_DASHBOARDS = "metabase/dashboards/FETCH_DASHBOARDS";
 export const CREATE_DASHBOARD = "metabase/dashboards/CREATE_DASHBOARD";
 export const DELETE_DASHBOARD = "metabase/dashboards/DELETE_DASHBOARD";
-export const SAVE_DASHBOARD = "metabase/dashboards/SAVE_DASHBOARD";
+export const SAVE_DASHBOARD   = "metabase/dashboards/SAVE_DASHBOARD";
 export const UPDATE_DASHBOARD = "metabase/dashboards/UPDATE_DASHBOARD";
+export const SET_FAVORITED    = "metabase/dashboards/SET_FAVORITED";
 
 /**
  * Actions that retrieve/update the basic information of dashboards
@@ -92,12 +93,25 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashboar
     };
 });
 
+export const setFavorited = createThunkAction(SET_FAVORITED, (dashId, favorited) => {
+    return async (dispatch, getState) => {
+        if (favorited) {
+            // await DashboardApi.favorite({ dashId });
+        } else {
+            // await DashboardApi.unfavorite({ dashId });
+        }
+        MetabaseAnalytics.trackEvent("Dashboard", favorited ? "Favorite" : "Unfavorite");
+        return { id: dashId, favorite: favorited };
+    }
+});
+
 const dashboardListing = handleActions({
     [FETCH_DASHBOARDS]: (state, { payload }) => payload,
     [CREATE_DASHBOARD]: (state, { payload }) => (state || []).concat(payload),
     [DELETE_DASHBOARD]: (state, { payload }) => (state || []).filter(d => d.id !== payload),
     [SAVE_DASHBOARD]:   (state, { payload }) => (state || []).map(d => d.id === payload.id ? payload : d),
     [UPDATE_DASHBOARD]: (state, { payload }) => (state || []).map(d => d.id === payload.id ? payload : d),
+    [SET_FAVORITED]:    (state, { payload }) => (state || []).map(d => d.id === payload.id ? {...d, favorite: payload.favorite} : d)
 }, null);
 
 export default combineReducers({

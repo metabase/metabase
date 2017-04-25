@@ -74,6 +74,7 @@ export class Dashboards extends Component {
         dashboards: Dashboard[],
         createDashboard: (Dashboard) => any,
         fetchDashboards: () => void,
+        setFavorited: (dashboardId: number, favorited: boolean) => void
     };
 
     state = {
@@ -204,7 +205,7 @@ export class Dashboards extends Component {
                                     smallDescription
                                 />
                             </div>
-                            : <DashboardList dashboards={filteredDashboards}/>
+                            : <DashboardList dashboards={filteredDashboards} setFavorited={this.props.setFavorited} />
                         }
                     </div>
 
