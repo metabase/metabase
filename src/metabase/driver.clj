@@ -4,6 +4,7 @@
             [medley.core :as m]
             [metabase.models
              [database :refer [Database]]
+             field
              [setting :refer [defsetting]]]
             [metabase.util :as u]
             [toucan.db :as db])
