@@ -12,11 +12,26 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 const AGGREGATIONS = {
-    min: "Minimum",
-    max: "Maximum",
-    avg: "Average",
-    sum: "Sum",
-    distinct: "Distinct Values"
+    sum: {
+        section: "distribution",
+        title: "Sum",
+    },
+    avg: {
+        section: "aggregation",
+        title: "Avg",
+    },
+    min: {
+        section: "aggregation",
+        title: "Min",
+    },
+    max: {
+        section: "aggregation",
+        title: "Max",
+    },
+    distinct: {
+        section: "aggregation",
+        title: "Distincts",
+    },
 };
 
 export default (
@@ -36,8 +51,8 @@ export default (
     }
     const { column } = clicked;
 
-    return Object.entries(AGGREGATIONS).map(([aggregation, name]) => ({
-        title: <span>{name} of {column.display_name}</span>,
+    return Object.entries(AGGREGATIONS).map(([aggregation, action]) => ({
+        ...action,
         card: () =>
             summarize(
                 card,

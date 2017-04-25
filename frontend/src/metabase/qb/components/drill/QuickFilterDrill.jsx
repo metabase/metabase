@@ -62,44 +62,10 @@ export default (
         ];
     }
 
-    let operators = getFiltersForColumn(column);
-    if (!operators || operators.length === 0) {
-        return [];
-    }
-
-    return [
-        {
-            title: (
-                <span>
-                    Filter by this value
-                </span>
-            ),
-            default: true,
-            popover({ onChangeCardAndRun, onClose }) {
-                return (
-                    <ul className="h1 flex align-center px1">
-                        {operators &&
-                            operators.map(({ name, operator }) => (
-                                <li
-                                    key={operator}
-                                    className="p2 text-brand-hover cursor-pointer"
-                                    onClick={() => {
-                                        onChangeCardAndRun(
-                                            filter(
-                                                card,
-                                                operator,
-                                                column,
-                                                value
-                                            )
-                                        );
-                                    }}
-                                >
-                                    {name}
-                                </li>
-                            ))}
-                    </ul>
-                );
-            }
-        }
-    ];
+    let operators = getFiltersForColumn(column) || [];
+    return operators.map(({ name, operator }) => ({
+        section: "filter",
+        title: <span className="h3">{name}</span>,
+        card: () => filter(card, operator, column, value)
+    }));
 };

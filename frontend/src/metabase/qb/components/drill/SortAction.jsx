@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { assocIn } from "icepick";
+import { assocIn, getIn } from "icepick";
 import Query from "metabase/lib/query";
 import * as Card from "metabase/meta/Card";
 
@@ -27,49 +27,48 @@ export default (
     }
     const { column } = clicked;
 
-    return [
-        {
-            title: (
-                <span>
-                    Sort by {column.display_name}
-                </span>
-            ),
-            default: true,
-            card: () => {
-                let field = null;
-                if (column.id == null) {
-                    // ICK.  this is hacky for dealing with aggregations.  need something better
-                    // DOUBLE ICK.  we also need to deal with custom fields now as well
-                    const expressions = Query.getExpressions(query);
-                    if (column.display_name in expressions) {
-                        field = ["expression", column.display_name];
-                    } else {
-                        field = ["aggregation", 0];
-                    }
-                } else {
-                    field = column.id;
-                }
+    const field = getFieldFromColumn(column, query);
 
-                let sortClause = [field, "ascending"];
+    const [sortField, sortDirection] = getIn(query, ["order_by", 0]) || [];
+    const isAlreadySorted = sortField != null && Query.isSameField(sortField, field);
 
-                if (
-                    query.order_by &&
-                    query.order_by.length > 0 &&
-                    query.order_by[0].length > 0 &&
-                    query.order_by[0][1] === "ascending" &&
-                    Query.isSameField(query.order_by[0][0], field)
-                ) {
-                    // someone triggered another sort on the same column, so flip the sort direction
-                    sortClause = [field, "descending"];
-                }
-
-                // set clause
-                return assocIn(
-                    card,
-                    ["dataset_query", "query", "order_by"],
-                    [sortClause]
-                );
-            }
-        }
-    ];
+    const actions = [];
+    if (!isAlreadySorted || sortDirection === "descending" || sortDirection === "desc") {
+        actions.push({
+            title: "Ascending",
+            section: "sort",
+            card: () => assocIn(
+                card,
+                ["dataset_query", "query", "order_by"],
+                [[field, "ascending"]]
+            )
+        })
+    }
+    if (!isAlreadySorted || sortDirection === "ascending" || sortDirection === "asc") {
+        actions.push({
+            title: "Descending",
+            section: "sort",
+            card: () => assocIn(
+                card,
+                ["dataset_query", "query", "order_by"],
+                [[field, "descending"]]
+            )
+        });
+    }
+    return actions;
 };
+
+function getFieldFromColumn(column, query) {
+    if (column.id == null) {
+        // ICK.  this is hacky for dealing with aggregations.  need something better
+        // DOUBLE ICK.  we also need to deal with custom fields now as well
+        const expressions = Query.getExpressions(query);
+        if (column.display_name in expressions) {
+            return ["expression", column.display_name];
+        } else {
+            return ["aggregation", 0];
+        }
+    } else {
+        return column.id;
+    }
+}

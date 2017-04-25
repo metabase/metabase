@@ -20,15 +20,8 @@ export default (
 
     return [
         {
-            title: (
-                <span>
-                    Drill into this
-                    {" "}
-                    <span className="text-dark">
-                        {drilldown.name}
-                    </span>
-                </span>
-            ),
+            section: "zoom",
+            title: "Zoom in",
             card: () =>
                 pivot(card, drilldown.breakout, tableMetadata, dimensions)
         }
