@@ -60,11 +60,11 @@
 
 (u/strict-extend RedshiftDriver
   driver/IDriver
-  (ssh/with-tunnel-config
-    (merge (sql/IDriverSQLDefaultsMixin)
-           {:date-interval            (u/drop-first-arg date-interval)
-            :describe-table-fks       (u/drop-first-arg describe-table-fks)
-            :details-fields           (constantly [{:name         "host"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:date-interval            (u/drop-first-arg date-interval)
+          :describe-table-fks       (u/drop-first-arg describe-table-fks)
+          :details-fields           (constantly (ssh/with-tunnel-config
+                                                  [{:name         "host"
                                                     :display-name "Host"
                                                     :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
                                                     :required     true}
@@ -84,8 +84,8 @@
                                                     :display-name "Database user password"
                                                     :type         :password
                                                     :placeholder  "*******"
-                                                    :required     true}])
-            :format-custom-field-name (u/drop-first-arg str/lower-case)}))
+                                                    :required     true}]))
+          :format-custom-field-name (u/drop-first-arg str/lower-case)})
 
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin

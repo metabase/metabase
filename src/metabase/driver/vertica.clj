@@ -101,11 +101,11 @@
 
 (u/strict-extend VerticaDriver
   driver/IDriver
-  (ssh/with-tunnel-config
-    (merge (sql/IDriverSQLDefaultsMixin)
-           {:date-interval     (u/drop-first-arg date-interval)
-            :describe-database describe-database
-            :details-fields    (constantly [{:name         "host"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:date-interval     (u/drop-first-arg date-interval)
+          :describe-database describe-database
+          :details-fields    (constantly (ssh/with-tunnel-config
+                                           [{:name         "host"
                                              :display-name "Host"
                                              :default      "localhost"}
                                             {:name         "port"
@@ -123,7 +123,7 @@
                                             {:name         "password"
                                              :display-name "Database password"
                                              :type         :password
-                                             :placeholder  "*******"}])}))
+                                             :placeholder  "*******"}]))})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         (u/drop-first-arg column->base-type)

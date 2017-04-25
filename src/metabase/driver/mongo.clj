@@ -172,13 +172,13 @@
 
 (u/strict-extend MongoDriver
   driver/IDriver
-  (ssh/with-tunnel-config
-    (merge driver/IDriverDefaultsMixin
-           {:analyze-table                     (u/drop-first-arg analyze-table)
-            :can-connect?                      (u/drop-first-arg can-connect?)
-            :describe-database                 (u/drop-first-arg describe-database)
-            :describe-table                    (u/drop-first-arg describe-table)
-            :details-fields                    (constantly [{:name         "host"
+  (merge driver/IDriverDefaultsMixin
+         {:analyze-table                     (u/drop-first-arg analyze-table)
+          :can-connect?                      (u/drop-first-arg can-connect?)
+          :describe-database                 (u/drop-first-arg describe-database)
+          :describe-table                    (u/drop-first-arg describe-table)
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
                                                              :display-name "Host"
                                                              :default      "localhost"}
                                                             {:name         "port"
@@ -202,14 +202,14 @@
                                                             {:name         "ssl"
                                                              :display-name "Use a secure connection (SSL)?"
                                                              :type         :boolean
-                                                             :default      false}])
-            :execute-query                     (u/drop-first-arg qp/execute-query)
-            :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
-            :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
-            :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-            :mbql->native                      (u/drop-first-arg qp/mbql->native)
-            :process-query-in-context          (u/drop-first-arg process-query-in-context)
-            :sync-in-context                   (u/drop-first-arg sync-in-context)})))
+                                                             :default      false}]))
+          :execute-query                     (u/drop-first-arg qp/execute-query)
+          :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
+          :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :mbql->native                      (u/drop-first-arg qp/mbql->native)
+          :process-query-in-context          (u/drop-first-arg process-query-in-context)
+          :sync-in-context                   (u/drop-first-arg sync-in-context)}))
 
 
 (driver/register-driver! :mongo (MongoDriver.))

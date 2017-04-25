@@ -151,10 +151,10 @@
 
 (u/strict-extend MySQLDriver
   driver/IDriver
-  (ssh/with-tunnel-config
-    (merge (sql/IDriverSQLDefaultsMixin)
-           {:date-interval                     (u/drop-first-arg date-interval)
-            :details-fields                    (constantly [{:name         "host"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:date-interval                     (u/drop-first-arg date-interval)
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
                                                              :display-name "Host"
                                                              :default      "localhost"}
                                                             {:name         "port"
@@ -175,8 +175,8 @@
                                                              :placeholder  "*******"}
                                                             {:name         "additional-options"
                                                              :display-name "Additional JDBC connection string options"
-                                                             :placeholder  "tinyInt1isBit=false"}])
-            :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)}))
+                                                             :placeholder  "tinyInt1isBit=false"}]))
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

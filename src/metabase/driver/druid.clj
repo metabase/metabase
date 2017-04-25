@@ -52,18 +52,17 @@
 
 (defn- do-query [details query]
   {:pre [(map? query)]}
-  (ssh/with-ssh-tunnel details
-    (fn [details-with-tunnel]
-      (try (vec (POST (details->url details-with-tunnel "/druid/v2"), :body query))
-           (catch Throwable e
-             ;; try to extract the error
-             (let [message (or (u/ignore-exceptions
-                                 (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
-                               (.getMessage e))]
+  (ssh/with-ssh-tunnel [details-with-tunnel details]
+    (try (vec (POST (details->url details-with-tunnel "/druid/v2"), :body query))
+         (catch Throwable e
+           ;; try to extract the error
+           (let [message (or (u/ignore-exceptions
+                               (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
+                             (.getMessage e))]
 
-               (log/error (u/format-color 'red "Error running query:\n%s" message))
-               ;; Re-throw a new exception with `message` set to the extracted message
-               (throw (Exception. message e))))))))
+             (log/error (u/format-color 'red "Error running query:\n%s" message))
+             ;; Re-throw a new exception with `message` set to the extracted message
+             (throw (Exception. message e)))))))
 
 
 ;;; ### Sync
@@ -77,26 +76,24 @@
                 :type/Text)})
 
 (defn- describe-table [database table]
-  (ssh/with-ssh-tunnel (:details database)
-    (fn [details-with-tunnel]
-      (let [{:keys [dimensions metrics]} (GET (details->url details-with-tunnel "/druid/v2/datasources/" (:name table) "?interval=1900-01-01/2100-01-01"))]
-        {:schema nil
-         :name   (:name table)
-         :fields (set (concat
-                       ;; every Druid table is an event stream w/ a timestamp field
-                       [{:name       "timestamp"
-                         :base-type  :type/DateTime
-                         :pk?        true}]
-                       (map (partial describe-table-field :dimension) dimensions)
-                       (map (partial describe-table-field :metric) metrics)))}))))
+  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
+    (let [{:keys [dimensions metrics]} (GET (details->url details-with-tunnel "/druid/v2/datasources/" (:name table) "?interval=1900-01-01/2100-01-01"))]
+      {:schema nil
+       :name   (:name table)
+       :fields (set (concat
+                     ;; every Druid table is an event stream w/ a timestamp field
+                     [{:name       "timestamp"
+                       :base-type  :type/DateTime
+                       :pk?        true}]
+                     (map (partial describe-table-field :dimension) dimensions)
+                     (map (partial describe-table-field :metric) metrics)))})))
 
 (defn- describe-database [database]
   {:pre [(map? (:details database))]}
-  (ssh/with-ssh-tunnel (:details database)
-    (fn [details-with-tunnel]
-      (let [druid-datasources (GET (details->url details-with-tunnel "/druid/v2/datasources"))]
-        {:tables (set (for [table-name druid-datasources]
-                        {:schema nil, :name table-name}))}))))
+  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
+    (let [druid-datasources (GET (details->url details-with-tunnel "/druid/v2/datasources"))]
+      {:tables (set (for [table-name druid-datasources]
+                      {:schema nil, :name table-name}))})))
 
 
 ;;; ### field-values-lazy-seq
@@ -161,22 +158,22 @@
 
 (u/strict-extend DruidDriver
   driver/IDriver
-  (ssh/with-tunnel-config
-    (merge driver/IDriverDefaultsMixin
-           {:can-connect?          (u/drop-first-arg can-connect?)
-            :analyze-table         analyze-table
-            :describe-database     (u/drop-first-arg describe-database)
-            :describe-table        (u/drop-first-arg describe-table)
-            :details-fields        (constantly [{:name         "host"
+  (merge driver/IDriverDefaultsMixin
+         {:can-connect?          (u/drop-first-arg can-connect?)
+          :analyze-table         analyze-table
+          :describe-database     (u/drop-first-arg describe-database)
+          :describe-table        (u/drop-first-arg describe-table)
+          :details-fields        (constantly (ssh/with-tunnel-config
+                                               [{:name         "host"
                                                  :display-name "Host"
                                                  :default      "http://localhost"}
                                                 {:name         "port"
                                                  :display-name "Broker node port"
                                                  :type         :integer
-                                                 :default      8082}])
-            :execute-query         (fn [_ query] (qp/execute-query do-query query))
-            :features              (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
-            :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
-            :mbql->native          (u/drop-first-arg qp/mbql->native)})))
+                                                 :default      8082}]))
+          :execute-query         (fn [_ query] (qp/execute-query do-query query))
+          :features              (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
+          :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
+          :mbql->native          (u/drop-first-arg qp/mbql->native)}))
 
 (driver/register-driver! :druid (DruidDriver.))

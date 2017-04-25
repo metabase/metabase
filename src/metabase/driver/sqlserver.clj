@@ -145,10 +145,10 @@
 
 (u/strict-extend SQLServerDriver
   driver/IDriver
-  (ssh/with-tunnel-config
-    (merge (sql/IDriverSQLDefaultsMixin)
-           {:date-interval  (u/drop-first-arg date-interval)
-            :details-fields (constantly [{:name         "host"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:date-interval  (u/drop-first-arg date-interval)
+          :details-fields (constantly (ssh/with-tunnel-config
+                                        [{:name         "host"
                                           :display-name "Host"
                                           :default      "localhost"}
                                          {:name         "port"
@@ -176,7 +176,7 @@
                                          {:name         "ssl"
                                           :display-name "Use a secure connection (SSL)?"
                                           :type         :boolean
-                                          :default      false}])}))
+                                          :default      false}]))})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

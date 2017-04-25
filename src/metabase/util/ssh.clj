@@ -1,11 +1,15 @@
 (ns metabase.util.ssh
   (:require [clojure.tools.logging :as log]
+            [clojure.string :as string]
             [metabase.util :as u])
   (:import com.jcraft.jsch.JSch))
 
-(def default-ssh-timeout 30000)
+(def ^:private default-ssh-timeout 30000)
 
 (defn start-ssh-tunnel
+  "Opens a new ssh tunnel and returns the connection along with the dynamically
+   assigned tunnel entrance port. It's the callers responsibility to call .disconnect
+   on the returned connection object."
   [{:keys [tunnel-host tunnel-port tunnel-user tunnel-pass host port]}]
   (let [connection (doto (.getSession (new com.jcraft.jsch.JSch) tunnel-user tunnel-host tunnel-port)
                      (.setPassword tunnel-pass)
@@ -14,7 +18,7 @@
                      (.setPortForwardingL 0 host port))
         input-port (some-> (.getPortForwardingL connection)
                            first
-                           (clojure.string/split #":")
+                           (string/split #":")
                            first
                            (Integer.))]
     (assert (number? input-port))
@@ -22,6 +26,8 @@
     [connection input-port]))
 
 (def ssh-tunnel-preferences
+  "Configuration parameters to include in the add driver page on drivers that
+   support ssh tunnels"
   [{:name         "tunnel-enabled"
     :display-name "Use SSH tunnel"
     :placeholder  "Enable this ssh tunnel?"
@@ -52,10 +58,8 @@
 
 (defn with-tunnel-config
   "Add preferences for ssh tunnels to a drivers :details-fields"
-  [driver-config-map]
-  (assoc driver-config-map :details-fields
-    (constantly (concat ((:details-fields driver-config-map))
-                        ssh-tunnel-preferences))))
+  [driver-options]
+  (concat driver-options ssh-tunnel-preferences))
 
 (defn use-ssh-tunnel?
   "Is the SSH tunnel currently turned on for these connection details"
@@ -63,7 +67,7 @@
   (:tunnel-enabled details))
 
 (defn include-ssh-tunnel
-  "updates connection details for a data warehouse to use the ssh tunnel host and port
+  "Updates connection details for a data warehouse to use the ssh tunnel host and port
    For drivers that enter hosts including the protocol (https://host), copy the protocol over as well"
   [details]
   (if (use-ssh-tunnel? details)
@@ -77,7 +81,7 @@
       details-with-tunnel)
     details))
 
-(defn with-ssh-tunnel
+(defn with-ssh-tunnel*
   "Starts an SSH tunnel, runs the supplied function with the tunnel open, then closes it"
   [{:keys [host port tunnel-host tunnel-user tunnel-pass] :as details} f]
   (if (use-ssh-tunnel? details)
@@ -93,3 +97,11 @@
           (.disconnect (:tunnel-connection details-with-tunnel))
           (log/info (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
     (f details)))
+
+(defmacro with-ssh-tunnel
+  "Starts an ssh tunnel, and binds the supplied name to a database
+  details map with it's values adjusted to use the tunnel"
+  [[name details] & body]
+  `(with-ssh-tunnel* ~details
+     (fn [~name]
+       ~@body)))

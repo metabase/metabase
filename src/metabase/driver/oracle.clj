@@ -194,11 +194,11 @@
 
 (u/strict-extend OracleDriver
   driver/IDriver
-  (ssh/with-tunnel-config
-    (merge (sql/IDriverSQLDefaultsMixin)
-           {:can-connect?   (u/drop-first-arg can-connect?)
-            :date-interval  (u/drop-first-arg date-interval)
-            :details-fields (constantly [{:name         "host"
+  (merge (sql/IDriverSQLDefaultsMixin)
+         {:can-connect?   (u/drop-first-arg can-connect?)
+          :date-interval  (u/drop-first-arg date-interval)
+          :details-fields (constantly (ssh/with-tunnel-config
+                                        [{:name         "host"
                                           :display-name "Host"
                                           :default      "localhost"}
                                          {:name         "port"
@@ -215,8 +215,8 @@
                                          {:name         "password"
                                           :display-name "Database password"
                                           :type         :password
-                                          :placeholder  "*******"}])
-            :execute-query  (comp remove-rownum-column sqlqp/execute-query)}))
+                                          :placeholder  "*******"}]))
+          :execute-query  (comp remove-rownum-column sqlqp/execute-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

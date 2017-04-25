@@ -458,7 +458,6 @@
   "Default implementations of methods in `IDriver` for SQL drivers."
   []
   (require 'metabase.driver.generic-sql.query-processor)
-
   (merge driver/IDriverDefaultsMixin
          {:analyze-table           analyze-table
           :can-connect?            can-connect?
