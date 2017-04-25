@@ -173,7 +173,6 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
             column: cols[0]
         };
         const isClickable = visualizationIsClickable(clicked);
-        const onClick = isClickable && ((e) => this._scalar && onVisualizationClick({ ...clicked, element: this._scalar, e: e.nativeEvent }))
 
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>
@@ -187,8 +186,7 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
                     style={{maxWidth: '100%'}}
                 >
                     <span
-                        onClick={onClick}
-                        onContextMenu={onClick}
+                        onClick={isClickable && (() => this._scalar && onVisualizationClick({ ...clicked, element: this._scalar }))}
                         ref={scalar => this._scalar = scalar}
                     >
                         {compactScalarValue}
