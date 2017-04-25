@@ -4,7 +4,8 @@
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.ssh :as ssh])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
 
 (defn- column->base-type
@@ -144,37 +145,38 @@
 
 (u/strict-extend SQLServerDriver
   driver/IDriver
-  (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval  (u/drop-first-arg date-interval)
-          :details-fields (constantly [{:name         "host"
-                                        :display-name "Host"
-                                        :default      "localhost"}
-                                       {:name         "port"
-                                        :display-name "Port"
-                                        :type         :integer
-                                        :default      1433}
-                                       {:name         "db"
-                                        :display-name "Database name"
-                                        :placeholder  "BirdsOfTheWorld"
-                                        :required     true}
-                                       {:name         "instance"
-                                        :display-name "Database instance name"
-                                        :placeholder  "N/A"}
-                                       {:name         "domain"
-                                        :display-name "Windows domain"
-                                        :placeholder  "N/A"}
-                                       {:name         "user"
-                                        :display-name "Database username"
-                                        :placeholder  "What username do you use to login to the database?"
-                                        :required     true}
-                                       {:name         "password"
-                                        :display-name "Database password"
-                                        :type         :password
-                                        :placeholder  "*******"}
-                                       {:name         "ssl"
-                                        :display-name "Use a secure connection (SSL)?"
-                                        :type         :boolean
-                                        :default      false}])})
+  (ssh/with-tunnel-config
+    (merge (sql/IDriverSQLDefaultsMixin)
+           {:date-interval  (u/drop-first-arg date-interval)
+            :details-fields (constantly [{:name         "host"
+                                          :display-name "Host"
+                                          :default      "localhost"}
+                                         {:name         "port"
+                                          :display-name "Port"
+                                          :type         :integer
+                                          :default      1433}
+                                         {:name         "db"
+                                          :display-name "Database name"
+                                          :placeholder  "BirdsOfTheWorld"
+                                          :required     true}
+                                         {:name         "instance"
+                                          :display-name "Database instance name"
+                                          :placeholder  "N/A"}
+                                         {:name         "domain"
+                                          :display-name "Windows domain"
+                                          :placeholder  "N/A"}
+                                         {:name         "user"
+                                          :display-name "Database username"
+                                          :placeholder  "What username do you use to login to the database?"
+                                          :required     true}
+                                         {:name         "password"
+                                          :display-name "Database password"
+                                          :type         :password
+                                          :placeholder  "*******"}
+                                         {:name         "ssl"
+                                          :display-name "Use a secure connection (SSL)?"
+                                          :type         :boolean
+                                          :default      false}])}))
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
