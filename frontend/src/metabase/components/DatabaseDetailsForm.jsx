@@ -146,7 +146,28 @@ export default class DatabaseDetailsForm extends Component {
         let { engine } = this.props;
         window.ENGINE = engine;
 
-        if (field.name === "is_full_sync") {
+        if (field.name === "tunnel-enabled") {
+            let on = (this.state.details["tunnel-enabled"] == undefined) ? false : this.state.details["tunnel-enabled"];
+            return (
+                <FormField key={field.name} fieldName={field.name}>
+                    <div className="flex align-center Form-offset">
+                        <div className="Grid-cell--top">
+                            <Toggle value={on} onChange={(val) => this.onChange("tunnel-enabled", val)}/>
+                        </div>
+                        <div className="px2">
+                            <h3>Use an SSH-tunnel for database connection</h3>
+                            <div style={{maxWidth: "40rem"}} className="pt1">
+                                 Some database installations can only be accessed by connecting through an SSH bastion host.
+                                 This option also provides an extra layer of security when a VPN is not available.
+                                 Enabling this is usually slower than a dirrect connection.
+                            </div>
+                        </div>
+                    </div>
+                </FormField>
+            )
+        } else if (/^tunnel-/.test(field.name) && !this.state.details["tunnel-enabled"]) {
+            return null;
+        } else if (field.name === "is_full_sync") {
             let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
             return (
                 <FormField key={field.name} fieldName={field.name}>
