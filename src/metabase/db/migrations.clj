@@ -9,33 +9,31 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [schema.core :as s]
-            (toucan [db :as db]
-                    [models :as models])
-            (metabase [config :as config]
-                      [driver :as driver]
-                      types)
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.events.activity-feed :refer [activity-feed-topics]]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [card-label :refer [CardLabel]]
-                             [collection :refer [Collection], :as collection]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [label :refer [Label]]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :as perm-group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
-                             [query-execution :refer [QueryExecution], :as query-execution]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table] :as table]
-                             [setting :refer [Setting], :as setting]
-                             [user :refer [User]])
-            [metabase.public-settings :as public-settings]
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard-card :refer [DashboardCard]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [permissions :as perms :refer [Permissions]]
+             [permissions-group :as perm-group]
+             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+             [query-execution :as query-execution :refer [QueryExecution]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]
+             [setting :as setting :refer [Setting]]
+             [table :as table :refer [Table]]
+             [user :refer [User]]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]))
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; # Migration Helpers
 

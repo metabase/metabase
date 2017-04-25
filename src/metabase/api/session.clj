@@ -1,24 +1,26 @@
 (ns metabase.api.session
   "/api/session endpoints"
-  (:require [clojure.tools.logging :as log]
-            [cemerick.friend.credentials :as creds]
+  (:require [cemerick.friend.credentials :as creds]
             [cheshire.core :as json]
             [clj-http.client :as http]
-            [compojure.core :refer [defroutes GET POST DELETE]]
+            [clojure.tools.logging :as log]
+            [compojure.core :refer [DELETE GET POST]]
+            [metabase
+             [events :as events]
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.api.common :as api]
+            [metabase.email.messages :as email]
+            [metabase.models
+             [session :refer [Session]]
+             [setting :refer [defsetting]]
+             [user :as user :refer [User]]]
+            [metabase.util
+             [password :as pass]
+             [schema :as su]]
             [schema.core :as s]
             [throttle.core :as throttle]
-            [toucan.db :as db]
-            [metabase.api.common :refer :all]
-            [metabase.email.messages :as email]
-            [metabase.events :as events]
-            (metabase.models [user :refer [User], :as user]
-                             [session :refer [Session]]
-                             [setting :refer [defsetting]])
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            (metabase.util [password :as pass]
-                           [schema :as su])))
-
+            [toucan.db :as db]))
 
 (defn- create-session!
   "Generate a new `Session` for a given `User`. Returns the newly generated session ID."
@@ -38,7 +40,7 @@
   {:email      (throttle/make-throttler :email)
    :ip-address (throttle/make-throttler :email, :attempts-threshold 50)}) ; IP Address doesn't have an actual UI field so just show error by email
 
-(defendpoint POST "/"
+(api/defendpoint POST "/"
   "Login."
   [:as {{:keys [email password]} :body, remote-address :remote-addr}]
   {email    su/Email
@@ -54,13 +56,13 @@
     {:id (create-session! user)}))
 
 
-(defendpoint DELETE "/"
+(api/defendpoint DELETE "/"
   "Logout."
   [session_id]
   {session_id su/NonBlankString}
-  (check-exists? Session session_id)
+  (api/check-exists? Session session_id)
   (db/delete! Session :id session_id)
-  generic-204-no-content)
+  api/generic-204-no-content)
 
 ;; Reset tokens:
 ;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
@@ -73,7 +75,7 @@
   {:email      (throttle/make-throttler :email)
    :ip-address (throttle/make-throttler :email, :attempts-threshold 50)})
 
-(defendpoint POST "/forgot_password"
+(api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
   [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr}]
   {email su/Email}
@@ -105,7 +107,7 @@
             (when (< token-age reset-token-ttl-ms)
               user)))))))
 
-(defendpoint POST "/reset_password"
+(api/defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body}]
   {token    su/NonBlankString
@@ -119,17 +121,17 @@
         ;; after a successful password update go ahead and offer the client a new session that they can use
         {:success    true
          :session_id (create-session! user)})
-      (throw-invalid-param-exception :password "Invalid reset token")))
+      (api/throw-invalid-param-exception :password "Invalid reset token")))
 
 
-(defendpoint GET "/password_reset_token_valid"
+(api/defendpoint GET "/password_reset_token_valid"
   "Check is a password reset token is valid and isn't expired."
   [token]
   {token s/Str}
   {:valid (boolean (valid-reset-token->user token))})
 
 
-(defendpoint GET "/properties"
+(api/defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
   (public-settings/public-settings))
@@ -183,7 +185,7 @@
                     (google-auth-create-new-user! first-name last-name email))]
     {:id (create-session! user)}))
 
-(defendpoint POST "/google_auth"
+(api/defendpoint POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, remote-address :remote-addr}]
   {token su/NonBlankString}
@@ -194,4 +196,4 @@
     (google-auth-fetch-or-create-user! given_name family_name email)))
 
 
-(define-routes)
+(api/define-routes)

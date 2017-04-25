@@ -1,18 +1,20 @@
 (ns metabase.sync-database.analyze
   "Functions which handle the in-depth data shape analysis portion of the sync process."
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [cheshire.core :as json]
+            [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
-            [schema.core :as schema]
-            [toucan.db :as db]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.metadata-queries :as queries]
-            [metabase.driver :as driver]
-            (metabase.models [field :as field]
-                             [field-values :as field-values]
-                             [table :as table])
+            [metabase.models
+             [field :as field]
+             [field-values :as field-values]
+             [table :as table]]
             [metabase.sync-database.interface :as i]
-            [metabase.util :as u]))
+            [schema.core :as schema]
+            [toucan.db :as db]))
 
 (def ^:private ^:const ^Float percent-valid-url-threshold
   "Fields that have at least this percent of values that are valid URLs should be given a special type of `:type/URL`."

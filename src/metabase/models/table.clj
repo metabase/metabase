@@ -1,18 +1,19 @@
 (ns metabase.models.table
-  (:require [metabase.api.common :refer [*current-user-permissions-set*]]
-            (toucan [db :as db]
-                    [models :as models])
-            [metabase.db :as mdb]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [humanization :as humanization]
-                             [interface :as i]
-                             [metric :refer [Metric retrieve-metrics]]
-                             [permissions :refer [Permissions], :as perms]
-                             [segment :refer [Segment retrieve-segments]])
-            [metabase.util :as u]))
-
+  (:require [metabase
+             [db :as mdb]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]
+             [humanization :as humanization]
+             [interface :as i]
+             [metric :refer [Metric retrieve-metrics]]
+             [permissions :as perms :refer [Permissions]]
+             [segment :refer [retrieve-segments Segment]]]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Constants + Entity ------------------------------------------------------------
 

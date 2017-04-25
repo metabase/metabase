@@ -1,18 +1,19 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]]
-                    [models :as models])
-            [metabase.events :as events]
-            (metabase.models [card :refer [Card], :as card]
-                             [dashboard-card :refer [DashboardCard], :as dashboard-card]
-                             [interface :as i]
-                             [permissions :as perms]
-                             [revision :as revision])
+            [metabase
+             [events :as events]
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.models
+             [card :as card :refer [Card]]
+             [dashboard-card :as dashboard-card :refer [DashboardCard]]
+             [interface :as i]
+             [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]))
-
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 ;;; ---------------------------------------- Perms Checking ----------------------------------------
 

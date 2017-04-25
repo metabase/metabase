@@ -1,15 +1,17 @@
 (ns metabase.models.metric
   (:require [medley.core :as m]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]]
-                    [models :as models])
-            [metabase.events :as events]
-            (metabase.models [dependency :as dependency]
-                             [interface :as i]
-                             [revision :as revision])
-            [metabase.query :as q]
-            [metabase.util :as u]))
-
+            [metabase
+             [events :as events]
+             [query :as q]
+             [util :as u]]
+            [metabase.models
+             [dependency :as dependency]
+             [interface :as i]
+             [revision :as revision]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 (models/defmodel Metric :metric)
 

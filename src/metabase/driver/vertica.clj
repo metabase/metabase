@@ -1,12 +1,12 @@
 (ns metabase.driver.vertica
   (:require [clojure.java.jdbc :as jdbc]
-            (clojure [set :refer [rename-keys], :as set]
-                     [string :as s])
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
 (def ^:private ^:const column->base-type

@@ -1,14 +1,13 @@
 (ns metabase.query-processor.parameters
   "Code for handling parameter substitution in MBQL queries."
-  (:require [clojure.core.match :refer [match]]
+  (:require [clj-time
+             [core :as t]
+             [format :as tf]]
             [clojure.string :as s]
-            (clj-time [core :as t]
-                      [format :as tf])
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.query-processor.sql-parameters :as native-params]
-            [metabase.util :as u])
-  (:import (org.joda.time DateTimeConstants DateTime)))
+            [metabase.query-processor.sql-parameters :as native-params])
+  (:import [org.joda.time DateTime DateTimeConstants]))
 
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                    DATE RANGES & PERIODS                                              |

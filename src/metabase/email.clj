@@ -1,9 +1,10 @@
 (ns metabase.email
   (:require [clojure.tools.logging :as log]
-            (postal [core :as postal]
-                    [support :refer [make-props]])
-            [metabase.models.setting :refer [defsetting], :as setting]
-            [metabase.util :as u])
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.util :as u]
+            [postal
+             [core :as postal]
+             [support :refer [make-props]]])
   (:import javax.mail.Session))
 
 ;;; CONFIG
