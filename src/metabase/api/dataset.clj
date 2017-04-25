@@ -1,6 +1,7 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require [clojure.data.csv :as csv]
+            [clojure.string :as string]
             [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -47,77 +48,53 @@
                 (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
                 0)})
 
-(defn as-csv
-  "Return a CSV response containing the RESULTS of a query."
-  {:arglists '([results])}
-  [{{:keys [columns rows]} :data, :keys [status], :as response}]
-  (if (= status :completed)
-    ;; successful query, send CSV file
-    {:status  200
-     :body    (with-out-str
-                ;; turn keywords into strings, otherwise we get colons in our output
-                (csv/write-csv *out* (into [(mapv name columns)] rows)))
-     :headers {"Content-Type" "text/csv; charset=utf-8"
-               "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".csv\"")}}
-    ;; failed query, send error message
-    {:status 500
-     :body   (:error response)}))
+(defn ^:private export-to-csv
+  [columns rows]
+  (with-out-str
+    ;; turn keywords into strings, otherwise we get colons in our output
+    (csv/write-csv *out* (into [(mapv name columns)] rows))))
 
-(defn as-xlsx
-  "Return an XLSX response containing the RESULTS of a query."
-  {:arglists '([results])}
-  [{{:keys [columns rows]} :data, :keys [status], :as response}]
-  (if (= status :completed)
-    ;; successful query, send XLSX file
-    {:status  200
-     :body    (let [wb (spreadsheet/create-workbook "Query result" (conj rows (mapv name columns)))
-                    ; note: byte array streams don't need to be closed
-                    out (java.io.ByteArrayOutputStream.)]
-                (spreadsheet/save-workbook! out wb)
-                (java.io.ByteArrayInputStream. (.toByteArray out)))
-     :headers {"Content-Type" "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; charset=utf-8"
-               "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".xlsx\"")}}
-    ;; failed query, send error message
-    {:status 500
-     :body   (:error response)}))
+(defn ^:private export-to-xlsx
+  [columns rows]
+  (let [wb (spreadsheet/create-workbook "Query result" (conj rows (mapv name columns)))
+        ;; note: byte array streams don't need to be closed
+        out (java.io.ByteArrayOutputStream.)]
+    (spreadsheet/save-workbook! out wb)
+    (java.io.ByteArrayInputStream. (.toByteArray out))))
 
-(defn as-json
-  "Return a JSON response containing the RESULTS of a query."
-  {:arglists '([results])}
-  [{{:keys [columns rows]} :data, :keys [status], :as response}]
-  (if (= status :completed)
-    ;; successful query, send CSV file
-    {:status  200
-     :body    (for [row rows]
-                (zipmap columns row))
-     :headers {"Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".json\"")}}
-    ;; failed query, send error message
-    {:status 500
-     :body   {:error (:error response)}}))
+(defn ^:private export-to-json
+  [columns rows]
+  (for [row rows]
+    (zipmap columns row)))
 
-(defendpoint POST "/csv"
-  "Execute a query and download the result data as a CSV file."
-  [query]
+(def ^:private export-formats
+  {"csv"  {:export-fn export-to-csv,  :content-type "text/csv",                                                          :ext "csv"},
+   "xlsx" {:export-fn export-to-xlsx, :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", :ext "xlsx"},
+   "json" {:export-fn export-to-json, :content-type "applicaton/json",                                                   :ext "json"}})
+
+(defn as-format
+  "Return a response containing the RESULTS of a query in the specified format."
+  {:arglists '([export-format-name results])}
+  [export-format-name {{:keys [columns rows]} :data, :keys [status], :as response}]
+  (let-404 [export-format (export-formats export-format-name)]
+    (if (= status :completed)
+      ;; successful query, send file
+      {:status  200
+       :body ((:export-fn export-format) columns rows)
+       :headers {"Content-Type" (str (:content-type export-format) "; charset=utf-8")
+                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) "." (:ext export-format) "\"")}}
+      ;; failed query, send error message
+      {:status 500
+       :body   (:error response)})))
+
+(def ^:private export-format-name-regex (re-pattern (str "(" (string/join "|" (keys export-formats)) ")")))
+
+(defendpoint POST ["/:export-format-name", :export-format-name export-format-name-regex]
+  "Execute a query and download the result data as a file in the specified format."
+  [export-format-name query]
   {query su/JSONString}
   (let [query (json/parse-string query keyword)]
     (read-check Database (:database query))
-    (as-csv (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :csv-download}))))
-
-(defendpoint POST "/xlsx"
-  "Execute a query and download the result data as an XLSX file."
-  [query]
-  {query su/JSONString}
-  (let [query (json/parse-string query keyword)]
-    (read-check Database (:database query))
-    (as-xlsx (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :xlsx-download}))))
-
-(defendpoint POST "/json"
-  "Execute a query and download the result data as a JSON file."
-  [query]
-  {query su/JSONString}
-  (let [query (json/parse-string query keyword)]
-    (read-check Database (:database query))
-    (as-json (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :json-download}))))
-
+    (as-format export-format-name (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :download}))))
 
 (define-routes)

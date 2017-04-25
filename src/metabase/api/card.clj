@@ -417,36 +417,17 @@
   (binding [cache/*ignore-cached-results* ignore_cache]
     (run-query-for-card card-id, :parameters parameters)))
 
-(defendpoint POST "/:card-id/query/csv"
-  "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
-  [card-id parameters]
+(defendpoint POST "/:card-id/query/:export-format-name"
+  "Run the query associated with a Card, and return its results as a file in the specified format. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
+  [card-id export-format-name parameters]
   {parameters (s/maybe su/JSONString)}
   (binding [cache/*ignore-cached-results* true]
-    (dataset-api/as-csv (run-query-for-card card-id
-                          :parameters  (json/parse-string parameters keyword)
-                          :constraints nil
-                          :context     :csv-download))))
-
-(defendpoint POST "/:card-id/query/xlsx"
-  "Run the query associated with a Card, and return its results as XLSX. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
-  [card-id parameters]
-  {parameters (s/maybe su/JSONString)}
-  (binding [cache/*ignore-cached-results* true]
-    (dataset-api/as-xlsx (run-query-for-card card-id
-                          :parameters  (json/parse-string parameters keyword)
-                          :constraints nil
-                          :context     :xlsx-download))))
-
-(defendpoint POST "/:card-id/query/json"
-  "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
-  [card-id parameters]
-  {parameters (s/maybe su/JSONString)}
-  (binding [cache/*ignore-cached-results* true]
-    (dataset-api/as-json (run-query-for-card card-id
-                           :parameters  (json/parse-string parameters keyword)
-                           :constraints nil
-                           :context     :json-download))))
-
+    (dataset-api/as-format
+       export-format-name
+       (run-query-for-card card-id
+         :parameters  (json/parse-string parameters keyword)
+         :constraints nil
+         :context     :download))))
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
 

@@ -15,12 +15,10 @@
 (def Context
   "Schema for valid values of QueryExecution `:context`."
   (s/enum :ad-hoc
-          :csv-download
-          :xlsx-download
+          :download
           :dashboard
           :embedded-dashboard
           :embedded-question
-          :json-download
           :map-tiles
           :metabot
           :public-dashboard

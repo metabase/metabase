@@ -274,20 +274,10 @@
   (run-query-for-unsigned-token (eu/unsign token) query-params))
 
 
-(api/defendpoint GET "/card/:token/query/csv"
-  "Like `GET /api/embed/card/query`, but returns the results as CSV."
-  [token & query-params]
-  (dataset-api/as-csv (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
-
-(api/defendpoint GET "/card/:token/query/xlsx"
-  "Like `GET /api/embed/card/query`, but returns the results as XLSX."
-  [token & query-params]
-  (dataset-api/as-xlsx (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
-
-(api/defendpoint GET "/card/:token/query/json"
-  "Like `GET /api/embed/card/query`, but returns the results as JSOn."
-  [token & query-params]
-  (dataset-api/as-json (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
+(api/defendpoint GET "/card/:token/query/:export-format-name"
+  "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
+  [token export-format-name & query-params]
+  (dataset-api/as-format export-format-name (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
 
 
 ;;; ------------------------------------------------------------ /api/embed/dashboard endpoints ------------------------------------------------------------
