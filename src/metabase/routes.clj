@@ -12,19 +12,19 @@
             [metabase.util :as u]
             [metabase.util.embed :as embed]))
 
-(defn- load-file [path]
+(defn- load-file-at-path [path]
   (slurp (or (io/resource path)
              (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
 
 (defn- load-template [path variables]
-  (stencil/render-string (load-file path) variables))
+  (stencil/render-string (load-file-at-path path) variables))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
         (load-template (str "frontend_client/" entry ".html")
                        {:bootstrap_json (json/generate-string (public-settings/public-settings))
                         :embed_code     (when embeddable? (embed/head uri))})
-        (load-file "frontend_client/init.html"))
+        (load-file-at-path "frontend_client/init.html"))
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
 

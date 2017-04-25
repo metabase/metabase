@@ -39,22 +39,16 @@
 
 (defendpoint PUT "/:id"
   "Update a `Segment` with ID."
-  [id :as {{:keys [name description caveats points_of_interest show_in_getting_started definition revision_message]} :body}]
+  [id :as {{:keys [name definition revision_message], :as body} :body}]
   {name             su/NonBlankString
    revision_message su/NonBlankString
    definition       su/Map}
   (check-superuser)
   (write-check Segment id)
   (segment/update-segment!
-    {:id                      id
-     :name                    name
-     :description             description
-     :caveats                 caveats
-     :points_of_interest      points_of_interest
-     :show_in_getting_started show_in_getting_started
-     :definition              definition
-     :revision_message        revision_message}
-    *current-user-id*))
+   (assoc (select-keys body #{:name :description :caveats :points_of_interest :show_in_getting_started :definition :revision_message})
+     :id id)
+   *current-user-id*))
 
 
 (defendpoint DELETE "/:id"

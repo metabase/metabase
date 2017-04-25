@@ -3570,14 +3570,16 @@ databaseChangeLog:
   - changeSet:
       id: 54
       author: tlrobinson
+      validCheckSum: '7:695b12a78e897c62c21d41bfb04ab44b'
+      validCheckSum: '7:0857800db71a4757e7202aad4eaed48d'
       changes:
         - addColumn:
             tableName: pulse
-            remarks: 'Skip a scheduled Pulse if none of its questions have any results'
             columns:
               - column:
                   name: skip_if_empty
                   type: boolean
+                  remarks: 'Skip a scheduled Pulse if none of its questions have any results'
                   defaultValueBoolean: false
                   constraints:
                     nullable: false

@@ -163,42 +163,50 @@ export default class EmbedModalContent extends Component<*, Props, State> {
                         }}
                     />
                 </div>
-                <div className="flex flex-full">
-                    { embedType == null ?
-                        <div className="flex-full ml-auto mr-auto" style={{ maxWidth: 1040 }}>
+                { embedType == null ?
+                    <div className="flex-full">
+                        {/* Center only using margins because  */}
+                        <div className="ml-auto mr-auto" style={{maxWidth: 1040}}>
                             <SharingPane
                                 {...this.props}
                                 publicUrl={getUnsignedPreviewUrl(siteUrl, resourceType, resource.public_uuid, displayOptions)}
                                 iframeUrl={getUnsignedPreviewUrl(siteUrl, resourceType, resource.public_uuid, displayOptions)}
-                                onChangeEmbedType={(embedType) => this.setState({ embedType })}
+                                onChangeEmbedType={(embedType) => this.setState({embedType})}
                             />
                         </div>
+                    </div>
                     : embedType === "application" ?
-                        <AdvancedEmbedPane
-                            pane={pane}
-                            resource={resource}
-                            resourceType={resourceType}
-                            embedType={embedType}
-                            token={getSignedToken(resourceType, resource.id, params, secretKey, embeddingParams)}
-                            iframeUrl={getSignedPreviewUrl(siteUrl, resourceType, resource.id, params, displayOptions, secretKey, embeddingParams)}
-                            siteUrl={siteUrl}
-                            secretKey={secretKey}
-                            params={params}
-                            displayOptions={displayOptions}
-                            previewParameters={previewParameters}
-                            parameterValues={parameterValues}
-                            resourceParameters={resourceParameters}
-                            embeddingParams={embeddingParams}
-                            onChangeDisplayOptions={(displayOptions) => this.setState({ displayOptions })}
-                            onChangeEmbeddingParameters={(embeddingParams) => this.setState({ embeddingParams })}
-                            onChangeParameterValue={(id, value) => this.setState({ parameterValues: { ...parameterValues, [id]: value }})}
-                            onChangePane={(pane) => this.setState({ pane })}
-                            onSave={this.handleSave}
-                            onUnpublish={this.handleUnpublish}
-                            onDiscard={this.handleDiscard}
-                        />
-                : null }
-                </div>
+                        <div className="flex flex-full">
+                            <AdvancedEmbedPane
+                                pane={pane}
+                                resource={resource}
+                                resourceType={resourceType}
+                                embedType={embedType}
+                                token={getSignedToken(resourceType, resource.id, params, secretKey, embeddingParams)}
+                                iframeUrl={getSignedPreviewUrl(siteUrl, resourceType, resource.id, params, displayOptions, secretKey, embeddingParams)}
+                                siteUrl={siteUrl}
+                                secretKey={secretKey}
+                                params={params}
+                                displayOptions={displayOptions}
+                                previewParameters={previewParameters}
+                                parameterValues={parameterValues}
+                                resourceParameters={resourceParameters}
+                                embeddingParams={embeddingParams}
+                                onChangeDisplayOptions={(displayOptions) => this.setState({displayOptions})}
+                                onChangeEmbeddingParameters={(embeddingParams) => this.setState({embeddingParams})}
+                                onChangeParameterValue={(id, value) => this.setState({
+                                    parameterValues: {
+                                        ...parameterValues,
+                                        [id]: value
+                                    }
+                                })}
+                                onChangePane={(pane) => this.setState({pane})}
+                                onSave={this.handleSave}
+                                onUnpublish={this.handleUnpublish}
+                                onDiscard={this.handleDiscard}
+                            />
+                        </div>
+                        : null }
             </div>
         );
     }
