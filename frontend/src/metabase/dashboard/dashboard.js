@@ -138,7 +138,7 @@ export const addCardToDashboard = function({ dashId, cardId }: { dashId: DashCar
     };
 }
 
-export const saveDashboardAndCards = createThunkAction(SAVE_DASHBOARD_AND_CARDS, function(cardId) {
+export const saveDashboardAndCards = createThunkAction(SAVE_DASHBOARD_AND_CARDS, function() {
     return async function (dispatch, getState) {
         let {dashboards, dashcards, dashboardId} = getState().dashboard;
         let dashboard = {

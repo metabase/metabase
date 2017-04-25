@@ -1,12 +1,14 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { withRouter } from "react-router"; import { IFRAMED } from "metabase/lib/dom";
+import { withRouter } from "react-router";
+
+import { IFRAMED } from "metabase/lib/dom";
+import { parseHashOptions } from "metabase/lib/browser";
 
 import Parameters from "metabase/dashboard/containers/Parameters";
 import LogoBadge from "./LogoBadge";
 
-import querystring from "querystring";
 import cx from "classnames";
 
 import "./EmbedFrame.css";
@@ -24,7 +26,7 @@ type Props = {
     actionButtons?: any[],
     name?: string,
     description?: string,
-    location: { query: {[key:string]: string}},
+    location: { query: {[key:string]: string}, hash: string },
     parameters?: Parameter[],
     parameterValues?: {[key:string]: string},
     setParameterValue: (id: string, value: string) => void
@@ -54,23 +56,13 @@ export default class EmbedFrame extends Component<*, Props, *> {
         }
     }
 
-    _getOptions() {
-        let options = querystring.parse(window.location.hash.replace(/^#/, ""));
-        for (var name in options) {
-            if (/^(true|false|-?\d+(\.\d+)?)$/.test(options[name])) {
-                options[name] = JSON.parse(options[name]);
-            }
-        }
-        return { ...DEFAULT_OPTIONS, ...options };
-    }
-
     render() {
         const { className, children, actionButtons, location, parameters, parameterValues, setParameterValue } = this.props;
         const { innerScroll } = this.state;
 
         const footer = true;
 
-        const { bordered, titled, theme } = this._getOptions();
+        const { bordered, titled, theme } = { ...DEFAULT_OPTIONS, ...parseHashOptions(location.hash) };
 
         const name = titled ? this.props.name : null;
 
