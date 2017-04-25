@@ -9,6 +9,7 @@ export type DashboardId = number;
 export type Dashboard = {
     id: DashboardId,
     name: string,
+    favorite: boolean,
     created_at: ?string,
     creator_id: number,
     description: ?string,

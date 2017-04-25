@@ -33,7 +33,8 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = dashboardsActions;
 
 const SECTION_ID_ALL = 'all';
-const SECTION_ID_MINE = 'mine'
+const SECTION_ID_MINE = 'mine';
+const SECTION_ID_FAVORITES = 'fav';
 
 const SECTIONS: ListFilterWidgetItem[] = [
     {
@@ -42,12 +43,12 @@ const SECTIONS: ListFilterWidgetItem[] = [
         icon: 'all',
         // empty: 'No questions have been saved yet.',
     },
-    // {
-    //     id: 'fav',
-    //     name: 'Favorites',
-    //     icon: 'star',
-    //     // empty: 'You haven\'t favorited any questions yet.',
-    // },
+    {
+        id: SECTION_ID_FAVORITES,
+        name: 'Favorites',
+        icon: 'star',
+        // empty: 'You haven\'t favorited any questions yet.',
+    },
     // {
     //     id: 'recent',
     //     name: 'Recently viewed',
@@ -120,9 +121,10 @@ export class Dashboards extends Component {
 
     /* Returns a boolean indicating whether the dashboard belongs to the specified section or not */
     sectionFilter = (section: ListFilterWidgetItem) =>
-        ({creator_id}: Dashboard) =>
+        ({creator_id, favorite}: Dashboard) =>
             (section.id === SECTION_ID_ALL) ||
-            (section.id === SECTION_ID_MINE && creator_id === this.props.user.id)
+            (section.id === SECTION_ID_MINE && creator_id === this.props.user.id) ||
+            (section.id === SECTION_ID_FAVORITES && favorite === true)
 
     getFilteredDashboards = () => {
         const {searchText, section} = this.state;

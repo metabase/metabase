@@ -12,15 +12,17 @@ import * as Urls from "metabase/lib/urls";
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Tooltip from "metabase/components/Tooltip";
 
 type DashboardListItemType = {
     dashboard: Dashboard,
     hover: boolean,
-    setHover: (boolean) => void
+    setHover: (boolean) => void,
+    setFavorited: (id: number, favorited: boolean) => void
 }
 
 const enhance = withState('hover', 'setHover', false)
-const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListItemType) =>
+const DashboardListItem = enhance(({dashboard, setFavorited, hover, setHover}: DashboardListItemType) =>
     <li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
         <Link to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
@@ -38,9 +40,23 @@ const DashboardListItem = enhance(({dashboard, hover, setHover}: DashboardListIt
               onMouseLeave={() => setHover(false)}>
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
-            <div className={cx("flex-full shrink-below-content-size")}>
+            <div className={cx("flex-full shrink-below-content-size relative")}>
+                { hover &&
+                <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
+                    <Icon
+                        className={cx(
+                            "flex cursor-pointer absolute right",
+                            {"hidden": !hover},
+                            {"text-gold": hover}
+                        )}
+                        name={dashboard.favorite ? "star" : "staroutline"}
+                        size={20}
+                        onClick={() => setFavorited(dashboard.id, !dashboard.favorite) }
+                    />
+                </Tooltip>
+                }
                 <h4 className={cx("text-ellipsis text-nowrap overflow-hidden text-brand", {"text-white": hover})}
-                    style={{marginBottom: "0.2em"}}>
+                    style={{marginBottom: "0.2em", marginRight: hover ? "25px" : 0}}>
                     <Ellipsified>{dashboard.name}</Ellipsified>
                 </h4>
                 <div
@@ -59,11 +75,12 @@ export default class DashboardList extends Component {
     };
 
     render() {
-        const {dashboards} = this.props;
+        const {dashboards, setFavorited} = this.props;
 
         return (
             <ol className="Grid Grid--guttersXl Grid--full small-Grid--1of2 md-Grid--1of3">
-                { dashboards.map(dash => <DashboardListItem key={dash.id} dashboard={dash}/>)}
+                { dashboards.map(dash => <DashboardListItem key={dash.id} dashboard={dash}
+                                                            setFavorited={setFavorited}/>)}
             </ol>
         );
     }
