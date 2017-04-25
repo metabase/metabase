@@ -89,26 +89,6 @@
        (events/publish-event! :dashboard-create)))
 
 
-
-(defn update-dashboard!
-  "Update a `Dashboard`"
-  [dashboard user-id]
-  {:pre [(map? dashboard)
-         (u/maybe? u/sequence-of-maps? (:parameters dashboard))
-         (integer? user-id)]}
-  (db/update! Dashboard (u/get-id dashboard)
-    (merge
-     ;; description is allowed to be `nil`
-     (when (contains? dashboard :description)
-       {:description (:description dashboard)})
-     ;; only set everything else if its non-nil
-     (into {} (for [k     [:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params]
-                    :when (k dashboard)]
-                {k (k dashboard)}))))
-  (u/prog1 (Dashboard (u/get-id dashboard))
-    (events/publish-event! :dashboard-update (assoc <> :actor_id user-id))))
-
-
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
 
 (defn serialize-dashboard
