@@ -77,7 +77,7 @@ export default class HomepageApp extends Component {
                     </Modal>
                 : null }
 
-                <div className="CheckBg bg-brand text-white md-pl4">
+                <div className="bg-brand text-white md-pl4">
                     <div style={{marginRight: 346}}>
                         <div className="Layout-mainColumn">
                             <header style={this.styles.headerGreeting} className="flex align-center pb4 pt1">

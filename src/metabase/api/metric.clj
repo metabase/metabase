@@ -42,30 +42,24 @@
 (defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
-  (filter mi/can-read? (-> (db/select Metric, :is_active true, {:order-by [:%lower.name]})
-                           (hydrate :creator)
-                           add-db-ids)))
+  (as-> (db/select Metric, :is_active true, {:order-by [:%lower.name]}) <>
+    (hydrate <> :creator)
+    (add-db-ids <>)
+    (filter mi/can-read? <>)))
 
 
 (defendpoint PUT "/:id"
   "Update a `Metric` with ID."
-  [id :as {{:keys [name description caveats points_of_interest how_is_this_calculated show_in_getting_started definition revision_message]} :body}]
+  [id :as {{:keys [definition name revision_message], :as body} :body}]
   {name             su/NonBlankString
    revision_message su/NonBlankString
    definition       su/Map}
   (check-superuser)
   (write-check Metric id)
   (metric/update-metric!
-    {:id                      id
-     :name                    name
-     :description             description
-     :caveats                 caveats
-     :points_of_interest      points_of_interest
-     :how_is_this_calculated  how_is_this_calculated
-     :show_in_getting_started show_in_getting_started
-     :definition              definition
-     :revision_message        revision_message}
-    *current-user-id*))
+   (assoc (select-keys body #{:caveats :definition :description :how_is_this_calculated :name :points_of_interest :revision_message :show_in_getting_started})
+     :id id)
+   *current-user-id*))
 
 (defendpoint PUT "/:id/important_fields"
   "Update the important `Fields` for a `Metric` with ID.
