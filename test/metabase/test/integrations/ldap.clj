@@ -2,9 +2,9 @@
   (:require [clojure.java.io :as io]
             [expectations :refer [expect]]
             [metabase.test.util :as tu])
-  (:import (com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig))
-  (:import com.unboundid.ldap.sdk.schema.Schema)
-  (:import com.unboundid.ldif.LDIFReader))
+  (:import (com.unboundid.ldap.listener InMemoryDirectoryServer InMemoryDirectoryServerConfig InMemoryListenerConfig)
+           com.unboundid.ldap.sdk.schema.Schema
+           com.unboundid.ldif.LDIFReader))
 
 
 (def ^:dynamic *ldap-server*

@@ -96,21 +96,25 @@
                           :password  (ldap-password)
                           :security  (ldap-security)}))
 
-(defn- escape-value [value]
+(defn- escape-value
   "Escapes a value for use in an LDAP filter expression."
+  [value]
   (s/replace value #"[\*\(\)\\\\0]" (comp (partial format "\\%02X") int first)))
 
-(defn- get-connection []
+(defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
+  []
   (ldap/connect (settings->ldap-options)))
 
-(defn- with-connection [f & args]
+(defn- with-connection
   "Applies `f` with a connection and `args`"
+  [f & args]
   (with-open [conn (get-connection)]
     (apply f conn args)))
 
-(defn- ldap-groups->mb-group-ids [ldap-groups]
+(defn- ldap-groups->mb-group-ids
   "Will translate a set of DNs to a set of MB group IDs using the configured mappings."
+  [ldap-groups]
   (-> (ldap-group-mappings)
       (select-keys (map keyword ldap-groups))
       (vals)
