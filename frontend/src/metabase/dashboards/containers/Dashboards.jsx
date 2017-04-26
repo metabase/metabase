@@ -9,6 +9,7 @@ import type {Dashboard} from "metabase/meta/types/Dashboard";
 
 import DashboardList from "../components/DashboardList";
 
+import HeaderWithBack from "../../components/HeaderWithBack";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import Modal from "metabase/components/Modal.jsx";
@@ -51,24 +52,12 @@ const SECTIONS: ListFilterWidgetItem[] = [
         icon: 'star',
         // empty: 'You haven\'t favorited any questions yet.',
     },
-    // {
-    //     id: 'recent',
-    //     name: 'Recently viewed',
-    //     icon: 'recents',
-    //     // empty: 'You haven\'t viewed any questions recently.',
-    // },
     {
         id: SECTION_ID_MINE,
         name: 'Saved by me',
         icon: 'mine',
         // empty:  'You haven\'t saved any questions yet.'
     },
-    // {
-    //     id: 'popular',
-    //     name: 'Most popular',
-    //     icon: 'popular',
-    //     // empty: 'The most viewed questions across your company will show up here.',
-    // }
 ];
 
 export class Dashboards extends Component {
@@ -119,8 +108,8 @@ export class Dashboards extends Component {
         );
     }
 
-    archivedFilter = (isArchived : boolean) =>
-        ({archived} : Dashboard) => !!archived === isArchived
+    archivedFilter = (isArchived: boolean) =>
+        ({archived}: Dashboard) => !!archived === isArchived
 
     searchTextFilter = (searchText: string) =>
         ({name, description}: Dashboard) =>
@@ -128,9 +117,9 @@ export class Dashboards extends Component {
 
     sectionFilter = (section: ListFilterWidgetItem) =>
         ({creator_id, favorite}: Dashboard) =>
-            (section.id === SECTION_ID_ALL) ||
-            (section.id === SECTION_ID_MINE && creator_id === this.props.user.id) ||
-            (section.id === SECTION_ID_FAVORITES && favorite === true)
+        (section.id === SECTION_ID_ALL) ||
+        (section.id === SECTION_ID_MINE && creator_id === this.props.user.id) ||
+        (section.id === SECTION_ID_FAVORITES && favorite === true)
 
     getFilteredDashboards = () => {
         const {searchText, section, showArchived} = this.state;
@@ -175,25 +164,41 @@ export class Dashboards extends Component {
                     </div>
                     : <div>
                         <div className="flex align-center pt4 pb1">
-                            <TitleAndDescription title="Dashboards"/>
-                            <div className="flex-align-right cursor-pointer text-grey-5 text-brand-hover">
+                            { showArchived ?
+                                <HeaderWithBack name="Archive"
+                                                onBack={() => this.setState({showArchived: !showArchived})}/>
+                                : <TitleAndDescription title="Dashboards"/>
+                            }
+
+                            {!showArchived &&
+                            <div className="flex-align-right cursor-pointer text-grey-5">
+                                <Icon name="viewArchive"
+                                      className="mr2 text-brand-hover"
+                                      tooltip="View the archive"
+                                      size={20}
+                                      onClick={() => this.setState({showArchived: !showArchived})}/>
+
                                 <Icon name="add"
+                                      className="text-brand-hover"
+                                      tooltip="Add new dashboard"
                                       size={20}
                                       onClick={this.showCreateDashboard}/>
                             </div>
+                            }
                         </div>
                         <div className="flex align-center pb1">
                             <SearchHeader
                                 searchText={searchText}
                                 setSearchText={(text) => this.setState({searchText: text})}
                             />
+                            {!showArchived &&
                             <div className="flex-align-right">
                                 <ListFilterWidget
                                     items={SECTIONS.filter(item => item.id !== "archived")}
                                     activeItem={section}
                                     onChange={this.updateSection}
                                 />
-                            </div>
+                            </div>}
                         </div>
                         { noSearchResults ?
                             <div className="flex justify-center">
@@ -212,7 +217,7 @@ export class Dashboards extends Component {
                                 />
                             </div>
                             : <DashboardList dashboards={filteredDashboards}
-                                             setFavorited={this.props.setFavorited}
+                                             setFavorited={!showArchived && this.props.setFavorited}
                                              setArchived={this.props.setArchived}/>
                         }
                     </div>

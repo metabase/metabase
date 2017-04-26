@@ -68,7 +68,7 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                             />
                         </Tooltip>
                         }
-                        { (dashboard.favorite || hover) &&
+                        { setFavorited && (dashboard.favorite || hover) &&
                         <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
                             <Icon
                                 className={cx(
