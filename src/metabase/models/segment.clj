@@ -1,13 +1,15 @@
 (ns metabase.models.segment
   (:require [medley.core :as m]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]]
-                    [models :as models])
-            [metabase.events :as events]
-            (metabase.models [interface :as i]
-                             [revision :as revision])
-            [metabase.util :as u]))
-
+            [metabase
+             [events :as events]
+             [util :as u]]
+            [metabase.models
+             [interface :as i]
+             [revision :as revision]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 (models/defmodel Segment :segment)
 

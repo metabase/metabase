@@ -1,33 +1,22 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
   (:require [clojure.java.jdbc :as jdbc]
-            (clojure [string :as s]
-                     [walk :as walk])
             [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      [helpers :as h]
-                      types)
-            (metabase [config :as config]
-                      [driver :as driver])
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]
+             [helpers :as h]]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            (metabase.query-processor [annotate :as annotate]
-                                      [interface :as i]
-                                      [util :as qputil])
-            [metabase.util :as u]
+            [metabase.query-processor
+             [annotate :as annotate]
+             [interface :as i]
+             [util :as qputil]]
             [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.Timestamp
-           java.util.Date
-           clojure.lang.Keyword
-           (metabase.query_processor.interface AgFieldRef
-                                               DateTimeField
-                                               DateTimeValue
-                                               Field
-                                               Expression
-                                               ExpressionRef
-                                               JoinTable
-                                               RelativeDateTimeValue
-                                               Value)))
+  (:import clojure.lang.Keyword
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression ExpressionRef Field RelativeDateTimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."

@@ -3583,3 +3583,66 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 55
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: archived
+                  type: boolean
+                  remarks: 'Is this Dashboard archived (effectively treated as deleted?)'
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: integer
+                  remarks: 'The position this Dashboard should appear in the Dashboards list, lower-numbered positions appearing before higher numbered ones.'
+        - createTable:
+            tableName: dashboard_favorite
+            remarks: 'Presence of a row here indicates a given User has favorited a given Dashboard.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who favorited the Dashboard.'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_dashboard_favorite_user_id
+                    deleteCascade: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: 'ID of the Dashboard favorited by the User.'
+                  constraints:
+                    nullable: false
+                    references: report_dashboard(id)
+                    foreignKeyName: fk_dashboard_favorite_dashboard_id
+                    deleteCascade: true
+        - addUniqueConstraint:
+            tableName: dashboard_favorite
+            columnNames: user_id, dashboard_id
+            constraintName: unique_dashboard_favorite_user_id_dashboard_id
+        - createIndex:
+            tableName: dashboard_favorite
+            indexName: idx_dashboard_favorite_user_id
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: dashboard_favorite
+            indexName: idx_dashboard_favorite_dashboard_id
+            columns:
+              - column:
+                  name: dashboard_id

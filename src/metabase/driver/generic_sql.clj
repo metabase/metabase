@@ -1,26 +1,28 @@
 (ns metabase.driver.generic-sql
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
+            [clojure.java.jdbc :as jdbc]
             [clojure.math.numeric-tower :as math]
-            (clojure [set :as set]
-                     [string :as str])
             [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat])
-            (metabase [db :as db]
-                      [driver :as driver])
-            (metabase.models [field :as field]
-                             raw-table
-                             [table :as table])
-            metabase.query-processor.interface
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
+            [metabase
+             [db :as db]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [field :as field]
+             [table :as table]]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
-  (:import (java.sql DatabaseMetaData ResultSet)
-           java.util.Map
-           (clojure.lang Keyword PersistentVector)
+  (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
+           [java.sql DatabaseMetaData ResultSet]
+           java.util.Map
            metabase.models.field.FieldInstance
-           (metabase.query_processor.interface Field Value)))
+           [metabase.query_processor.interface Field Value]))
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.

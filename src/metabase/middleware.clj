@@ -1,21 +1,23 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [clojure.tools.logging :as log]
-            (cheshire factory
-                      [generate :refer [add-encoder encode-str encode-nil]])
-            monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
-            (toucan [db :as db]
-                    [models :as models])
-            [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
+  (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
+            [clojure.tools.logging :as log]
+            [metabase
+             [config :as config]
+             [db :as mdb]
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
             [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
-            [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
-            [metabase.db :as mdb]
-            (metabase.models [session :refer [Session]]
-                             [setting :refer [defsetting]]
-                             [user :refer [User], :as user])
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u])
+            [metabase.models
+             [session :refer [Session]]
+             [setting :refer [defsetting]]
+             [user :as user :refer [User]]]
+            monger.json
+            [toucan
+             [db :as db]
+             [models :as models]])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------

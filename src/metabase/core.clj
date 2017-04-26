@@ -1,35 +1,36 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require (clojure [pprint :as pprint]
-                     [string :as s])
+  (:require [clojure
+             [pprint :as pprint]
+             [string :as s]]
             [clojure.tools.logging :as log]
             environ.core
-            [ring.adapter.jetty :as ring-jetty]
-            (ring.middleware [cookies :refer [wrap-cookies]]
-                             [gzip :refer [wrap-gzip]]
-                             [json :refer [wrap-json-response
-                                           wrap-json-body]]
-                             [keyword-params :refer [wrap-keyword-params]]
-                             [params :refer [wrap-params]]
-                             [session :refer [wrap-session]])
             [medley.core :as m]
-            [toucan.db :as db]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [db :as mdb]
+             [driver :as driver]
+             [events :as events]
+             [metabot :as metabot]
+             [middleware :as mb-middleware]
+             [plugins :as plugins]
+             [routes :as routes]
+             [sample-data :as sample-data]
+             [setup :as setup]
+             [task :as task]
+             [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            (metabase [db :as mdb]
-                      [driver :as driver]
-                      [events :as events]
-                      [logger :as logger]
-                      [metabot :as metabot]
-                      [middleware :as mb-middleware]
-                      [plugins :as plugins]
-                      [routes :as routes]
-                      [sample-data :as sample-data]
-                      [setup :as setup]
-                      [task :as task]
-                      [util :as u])
-            [metabase.models.user :refer [User]])
+            [metabase.models.user :refer [User]]
+            [ring.adapter.jetty :as ring-jetty]
+            [ring.middleware
+             [cookies :refer [wrap-cookies]]
+             [gzip :refer [wrap-gzip]]
+             [json :refer [wrap-json-body wrap-json-response]]
+             [keyword-params :refer [wrap-keyword-params]]
+             [params :refer [wrap-params]]
+             [session :refer [wrap-session]]]
+            [toucan.db :as db])
   (:import org.eclipse.jetty.server.Server))
 
 ;;; CONFIG

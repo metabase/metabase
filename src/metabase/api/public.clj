@@ -2,24 +2,27 @@
   "Metabase API endpoints for viewing publically-accessible Cards and Dashboards."
   (:require [cheshire.core :as json]
             [compojure.core :refer [GET]]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
+            [metabase.api
+             [card :as card-api]
+             [common :as api]
+             [dataset :as dataset-api]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [field-values :refer [FieldValues]]]
+            [metabase.query-processor.expand :as ql]
+            [metabase.util
+             [embed :as embed]
+             [schema :as su]]
             [schema.core :as s]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            (metabase.api [card :as card-api]
-                          [common :as api]
-                          [dataset :as dataset-api])
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [field-values :refer [FieldValues]])
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
-            (metabase.query-processor [expand :as ql]
-                                      interface)
-            [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [metabase.util.embed :as embed])
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]])
   (:import metabase.query_processor.interface.FieldPlaceholder))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
@@ -146,7 +149,7 @@
   "Return a public Dashboard matching key-value CONDITIONS, removing all fields that should not be visible to the general public.
    Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters] conditions))
+  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
       (hydrate [:ordered_cards :card :series])
       add-field-values-for-parameters
       (update :ordered_cards (fn [dashcards]
@@ -185,7 +188,7 @@
   [uuid card-id parameters]
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
-  (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid)) card-id parameters))
+  (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters))
 
 
 (api/defendpoint GET "/oembed"

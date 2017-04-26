@@ -1,15 +1,16 @@
 (ns metabase.api.collection
   "/api/collection endpoints."
-  (:require [compojure.core :refer [GET POST DELETE PUT]]
-            [schema.core :as s]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
+  (:require [compojure.core :refer [GET POST PUT]]
             [metabase.api.common :as api]
-            (metabase.models [card :refer [Card]]
-                             [collection :refer [Collection], :as collection]
-                             [interface :as mi])
-            [metabase.util.schema :as su]))
-
+            [metabase.models
+             [card :refer [Card]]
+             [collection :as collection :refer [Collection]]
+             [interface :as mi]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for.
