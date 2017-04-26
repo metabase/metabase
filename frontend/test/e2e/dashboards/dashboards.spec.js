@@ -18,7 +18,7 @@ describeE2E("dashboards/dashboards", () => {
         });
 
         it("should let you create new dashboards, see them, filter them and enter them", async () => {
-            await d.get("/dashboard");
+            await d.get("/dashboards");
             await d.screenshot("screenshots/dashboards.png");
 
             await createDashboardInEmptyState();

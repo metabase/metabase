@@ -2,6 +2,7 @@
 
 import React, {Component} from 'react';
 import {connect} from "react-redux";
+import {Link} from "react-router";
 import cx from "classnames";
 import _ from "underscore"
 
@@ -9,7 +10,6 @@ import type {Dashboard} from "metabase/meta/types/Dashboard";
 
 import DashboardList from "../components/DashboardList";
 
-import HeaderWithBack from "../../components/HeaderWithBack";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import Modal from "metabase/components/Modal.jsx";
@@ -72,8 +72,7 @@ export class Dashboards extends Component {
     state = {
         modalOpen: false,
         searchText: "",
-        section: SECTIONS[0],
-        showArchived: false
+        section: SECTIONS[0]
     }
 
     componentWillMount() {
@@ -108,9 +107,6 @@ export class Dashboards extends Component {
         );
     }
 
-    archivedFilter = (isArchived: boolean) =>
-        ({archived}: Dashboard) => !!archived === isArchived
-
     searchTextFilter = (searchText: string) =>
         ({name, description}: Dashboard) =>
             (caseInsensitiveSearch(name, searchText) || (description && caseInsensitiveSearch(description, searchText)))
@@ -122,12 +118,11 @@ export class Dashboards extends Component {
         (section.id === SECTION_ID_FAVORITES && favorite === true)
 
     getFilteredDashboards = () => {
-        const {searchText, section, showArchived} = this.state;
+        const {searchText, section} = this.state;
         const {dashboards} = this.props;
         const noOpFilter = _.constant(true)
 
         return _.chain(dashboards)
-            .filter(this.archivedFilter(showArchived))
             .filter(searchText != "" ? this.searchTextFilter(searchText) : noOpFilter)
             .filter(this.sectionFilter(section))
             .value()
@@ -138,7 +133,7 @@ export class Dashboards extends Component {
     }
 
     render() {
-        let {modalOpen, searchText, section, showArchived} = this.state;
+        let {modalOpen, searchText, section} = this.state;
 
         const isLoading = this.props.dashboards === null
         const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
@@ -164,19 +159,15 @@ export class Dashboards extends Component {
                     </div>
                     : <div>
                         <div className="flex align-center pt4 pb1">
-                            { showArchived ?
-                                <HeaderWithBack name="Archive"
-                                                onBack={() => this.setState({showArchived: !showArchived})}/>
-                                : <TitleAndDescription title="Dashboards"/>
-                            }
+                            <TitleAndDescription title="Dashboards"/>
 
-                            {!showArchived &&
                             <div className="flex-align-right cursor-pointer text-grey-5">
-                                <Icon name="viewArchive"
-                                      className="mr2 text-brand-hover"
-                                      tooltip="View the archive"
-                                      size={20}
-                                      onClick={() => this.setState({showArchived: !showArchived})}/>
+                                <Link to="/dashboards/archive">
+                                    <Icon name="viewArchive"
+                                          className="mr2 text-brand-hover"
+                                          tooltip="View the archive"
+                                          size={20}/>
+                                </Link>
 
                                 <Icon name="add"
                                       className="text-brand-hover"
@@ -184,21 +175,19 @@ export class Dashboards extends Component {
                                       size={20}
                                       onClick={this.showCreateDashboard}/>
                             </div>
-                            }
                         </div>
                         <div className="flex align-center pb1">
                             <SearchHeader
                                 searchText={searchText}
                                 setSearchText={(text) => this.setState({searchText: text})}
                             />
-                            {!showArchived &&
                             <div className="flex-align-right">
                                 <ListFilterWidget
                                     items={SECTIONS.filter(item => item.id !== "archived")}
                                     activeItem={section}
                                     onChange={this.updateSection}
                                 />
-                            </div>}
+                            </div>
                         </div>
                         { noSearchResults ?
                             <div className="flex justify-center">
@@ -217,7 +206,7 @@ export class Dashboards extends Component {
                                 />
                             </div>
                             : <DashboardList dashboards={filteredDashboards}
-                                             setFavorited={!showArchived && this.props.setFavorited}
+                                             setFavorited={this.props.setFavorited}
                                              setArchived={this.props.setArchived}/>
                         }
                     </div>

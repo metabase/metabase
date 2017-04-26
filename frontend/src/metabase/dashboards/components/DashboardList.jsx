@@ -19,13 +19,16 @@ type DashboardListItemType = {
     hover: boolean,
     setHover: (boolean) => void,
     setFavorited: (dashId: number, favorited: boolean) => void,
-    setArchived: (dashId: number, archived: boolean) => void
+    setArchived: (dashId: number, archived: boolean) => void,
+    disableLink: boolean
 }
 
 const enhance = withState('hover', 'setHover', false)
-const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover, setHover}: DashboardListItemType) =>
-    <li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
-        <Link to={Urls.dashboard(dashboard.id)}
+const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover, setHover, disableLink}: DashboardListItemType) => {
+    const WrapperType = disableLink ? 'div' : Link
+
+    return (<li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
+        <WrapperType to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
               className={cx(
                   "flex align-center border-box p2 rounded no-decoration transition-background",
@@ -37,7 +40,7 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                   boxShadow: "0 1px 3px 0 rgba(220,220,220,0.50)",
                   height: "80px"
               }}
-              onMouseEnter={() => setHover(true)}
+              onMouseEnter={() => !disableLink && setHover(true)}
               onMouseLeave={() => setHover(false)}>
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
@@ -58,7 +61,7 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                         { (dashboard.archived || hover) &&
                         <Tooltip tooltip={dashboard.archived ? "Unarchive" : "Archive"}>
                             <Icon
-                                className="flex cursor-pointer text-light-blue mr1"
+                                className="flex cursor-pointer text-light-blue mr2"
                                 name={dashboard.archived ? "unarchive" : "archive"}
                                 size={19}
                                 onClick={(e) => {
@@ -88,9 +91,9 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                     </div>
                 </div>
             </div>
-        </Link>
-    </li>
-);
+        </WrapperType>
+    </li>)
+});
 
 export default class DashboardList extends Component {
     static propTypes = {
@@ -98,14 +101,15 @@ export default class DashboardList extends Component {
     };
 
     render() {
-        const {dashboards, setFavorited, setArchived} = this.props;
+        const {dashboards, disableLinks, setFavorited, setArchived} = this.props;
 
         return (
             <ol className="Grid Grid--guttersXl Grid--full small-Grid--1of2 md-Grid--1of3">
                 { dashboards.map(dash =>
                     <DashboardListItem key={dash.id} dashboard={dash}
                                        setFavorited={setFavorited}
-                                       setArchived={setArchived}/>
+                                       setArchived={setArchived}
+                                       disableLink={disableLinks}/>
                 )}
             </ol>
         );

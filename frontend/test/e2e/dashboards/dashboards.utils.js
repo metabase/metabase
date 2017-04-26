@@ -11,7 +11,7 @@ export const getPreviousDashboardUrl = (nFromLatest) => {
 }
 
 export const createDashboardInEmptyState = async () => {
-    await d.get("/dashboard");
+    await d.get("/dashboards");
 
     // Create a new dashboard in the empty state (EmptyState react component)
     await d.select(".Button.Button--primary").wait().click();

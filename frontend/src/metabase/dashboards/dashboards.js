@@ -15,6 +15,7 @@ import moment from 'moment';
 import type { Dashboard } from "metabase/meta/types/Dashboard";
 
 export const FETCH_DASHBOARDS = "metabase/dashboards/FETCH_DASHBOARDS";
+export const FETCH_ARCHIVE    = "metabase/dashboards/FETCH_ARCHIVE";
 export const CREATE_DASHBOARD = "metabase/dashboards/CREATE_DASHBOARD";
 export const DELETE_DASHBOARD = "metabase/dashboards/DELETE_DASHBOARD";
 export const SAVE_DASHBOARD   = "metabase/dashboards/SAVE_DASHBOARD";
@@ -30,6 +31,18 @@ export const SET_ARCHIVED     = "metabase/dashboards/SET_ARCHIVED";
 export const fetchDashboards = createThunkAction(FETCH_DASHBOARDS, () =>
     async function(dispatch, getState) {
         const dashboards = await DashboardApi.list({f: "all"})
+
+        for (const dashboard of dashboards) {
+            dashboard.updated_at = moment(dashboard.updated_at);
+        }
+
+        return dashboards;
+    }
+);
+
+export const fetchArchivedDashboards = createThunkAction(FETCH_ARCHIVE, () =>
+    async function(dispatch, getState) {
+        const dashboards = await DashboardApi.list({f: "archived"})
 
         for (const dashboard of dashboards) {
             dashboard.updated_at = moment(dashboard.updated_at);
@@ -103,9 +116,9 @@ export type SetFavoritedAction = (dashId: number, favorited: boolean) => void;
 export const setFavorited: SetFavoritedAction = createThunkAction(SET_FAVORITED, (dashId, favorited) => {
     return async (dispatch, getState) => {
         if (favorited) {
-            // await DashboardApi.favorite({ dashId });
+            await DashboardApi.favorite({ dashId });
         } else {
-            // await DashboardApi.unfavorite({ dashId });
+            await DashboardApi.unfavorite({ dashId });
         }
         MetabaseAnalytics.trackEvent("Dashboard", favorited ? "Favorite" : "Unfavorite");
         return { id: dashId, favorite: favorited };
@@ -126,12 +139,10 @@ function createUndo(type, action) {
 export type SetArchivedAction = (dashId: number, archived: boolean, undoable: boolean) => void;
 export const setArchived = createThunkAction(SET_ARCHIVED, (dashId, archived, undoable = false) => {
     return async (dispatch, getState) => {
-        // TODO Remove mock
-        /*const response = await DashboardApi.update({
+        const response = await DashboardApi.update({
             id: dashId,
             archived: archived
-        });*/
-        const response = {id: dashId, archived: archived}
+        });
 
         if (undoable) {
             dispatch(addUndo(createUndo(
@@ -145,6 +156,13 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (dashId, archived, un
     }
 });
 
+const archive = handleActions({
+    [FETCH_ARCHIVE]: (state, { payload }) => payload,
+    [SET_ARCHIVED]: (state, {payload}) => payload.archived
+        ? (state || []).concat(payload)
+        : (state || []).filter(d => d.id !== payload.id)
+}, null);
+
 const dashboardListing = handleActions({
     [FETCH_DASHBOARDS]: (state, { payload }) => payload,
     [CREATE_DASHBOARD]: (state, { payload }) => (state || []).concat(payload),
@@ -152,10 +170,13 @@ const dashboardListing = handleActions({
     [SAVE_DASHBOARD]:   (state, { payload }) => (state || []).map(d => d.id === payload.id ? payload : d),
     [UPDATE_DASHBOARD]: (state, { payload }) => (state || []).map(d => d.id === payload.id ? payload : d),
     [SET_FAVORITED]:    (state, { payload }) => (state || []).map(d => d.id === payload.id ? {...d, favorite: payload.favorite} : d),
-    [SET_ARCHIVED]:     (state, { payload }) => (state || []).map(d => d.id === payload.id ? {...d, archived: payload.archived} : d)
+    [SET_ARCHIVED]: (state, {payload}) => payload.archived
+        ? (state || []).filter(d => d.id !== payload.id)
+        : (state || []).concat(payload)
 }, null);
 
 export default combineReducers({
-    dashboardListing
+    dashboardListing,
+    archive
 });
 
