@@ -155,7 +155,7 @@ export default class DatabaseDetailsForm extends Component {
                             <Toggle value={on} onChange={(val) => this.onChange("tunnel-enabled", val)}/>
                         </div>
                         <div className="px2">
-                            <h3>Use an SSH-tunnel for database connection</h3>
+                            <h3>Use an SSH-tunnel for database connections</h3>
                             <div style={{maxWidth: "40rem"}} className="pt1">
                                  Some database installations can only be accessed by connecting through an SSH bastion host.
                                  This option also provides an extra layer of security when a VPN is not available.
