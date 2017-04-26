@@ -230,6 +230,7 @@
   ([object]
    (api/check-embedding-enabled)
    (api/check-404 object)
+   (api/check-not-archived object)
    (api/check (:enable_embedding object)
      [400 "Embedding is not enabled for this object."])))
 

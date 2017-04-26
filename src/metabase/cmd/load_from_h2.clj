@@ -32,6 +32,7 @@
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
+             [dashboard-favorite :refer [DashboardFavorite]]
              [database :refer [Database]]
              [dependency :refer [Dependency]]
              [field :refer [Field]]
@@ -98,6 +99,7 @@
    PermissionsRevision
    Collection
    CollectionRevision
+   DashboardFavorite
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 

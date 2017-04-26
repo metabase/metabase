@@ -87,7 +87,8 @@
                                                     :parameters "abc"}))
 
 (def ^:private ^:const dashboard-defaults
-  {:caveats                 nil
+  {:archived                false
+   :caveats                 nil
    :created_at              true ; assuming you call dashboard-response on the results
    :description             nil
    :embedding_params        nil
@@ -95,6 +96,7 @@
    :made_public_by_id       nil
    :parameters              []
    :points_of_interest      nil
+   :position                nil
    :public_uuid             nil
    :show_in_getting_started false
    :updated_at              true})

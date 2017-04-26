@@ -149,7 +149,7 @@
   "Return a public Dashboard matching key-value CONDITIONS, removing all fields that should not be visible to the general public.
    Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
-  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters] conditions))
+  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
       (hydrate [:ordered_cards :card :series])
       add-field-values-for-parameters
       (update :ordered_cards (fn [dashcards]
@@ -188,7 +188,7 @@
   [uuid card-id parameters]
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
-  (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid)) card-id parameters))
+  (public-dashcard-results (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false)) card-id parameters))
 
 
 (api/defendpoint GET "/oembed"
