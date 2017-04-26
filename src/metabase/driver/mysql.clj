@@ -1,13 +1,17 @@
 (ns metabase.driver.mysql
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure
+             [set :as set]
+             [string :as s]]
             [honeysql.core :as hsql]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.ssh :as ssh]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
+
 
 ;;; # IMPLEMENTATION
 

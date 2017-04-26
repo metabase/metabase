@@ -1,16 +1,18 @@
 (ns metabase.models.field
-  (:require (clojure [data :as d]
-                     [string :as s])
-            [metabase.config :as config]
-            (toucan [db :as db]
-                    [models :as models])
-            metabase.types
-            (metabase.models [field-values :refer [FieldValues]]
-                             [humanization :as humanization]
-                             [interface :as i]
-                             [permissions :as perms])
-            [metabase.util :as u]))
-
+  (:require [clojure
+             [data :as d]
+             [string :as s]]
+            [metabase
+             [config :as config]
+             [util :as u]]
+            [metabase.models
+             [field-values :refer [FieldValues]]
+             [humanization :as humanization]
+             [interface :as i]
+             [permissions :as perms]]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Type Mappings ------------------------------------------------------------
 

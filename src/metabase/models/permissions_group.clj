@@ -1,9 +1,10 @@
 (ns metabase.models.permissions-group
-  (:require [clojure.tools.logging :as log]
-            [clojure.string :as s]
-            (toucan [db :as db]
-                    [models :as models])
-            [metabase.util :as u]))
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel PermissionsGroup :permissions_group)
 

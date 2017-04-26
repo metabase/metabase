@@ -1,14 +1,16 @@
 (ns metabase.task.upgrade-checks
   "Contains a Metabase task which periodically checks for the availability of new Metabase versions."
-  (:require [clojure.tools.logging :as log]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [clojurewerkz.quartzite.jobs :as jobs]
+            [clojure.tools.logging :as log]
+            [clojurewerkz.quartzite
+             [jobs :as jobs]
+             [triggers :as triggers]]
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.triggers :as triggers]
-            (metabase [config :as config]
-                      [public-settings :as public-settings]
-                      [task :as task])))
+            [metabase
+             [config :as config]
+             [public-settings :as public-settings]
+             [task :as task]]))
 
 (def ^:private ^:const job-key     "metabase.task.upgrade-checks.job")
 (def ^:private ^:const trigger-key "metabase.task.upgrade-checks.trigger")

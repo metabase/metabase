@@ -1,13 +1,13 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
   (:require [clojure.tools.logging :as log]
-            [monger
-             [core :as mg]
-             [credentials :as mcred]]
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.util.ssh :as ssh]))
+            [metabase.util.ssh :as ssh]
+            [monger
+             [core :as mg]
+             [credentials :as mcred]]))
 
 (def ^:const ^:private connection-timeout-ms
   "Number of milliseconds to wait when attempting to establish a Mongo connection.

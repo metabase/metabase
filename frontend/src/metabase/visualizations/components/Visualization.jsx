@@ -275,7 +275,7 @@ export default class Visualization extends Component<*, Props, State> {
 
         if (!error) {
             // $FlowFixMe
-            noResults = series[0] && series[0].data && datasetContainsNoResults(series[0].data);
+            noResults = _.every(series, s => s && s.data && datasetContainsNoResults(s.data));
         }
 
         let extra = (

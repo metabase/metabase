@@ -3,14 +3,17 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
-            (metabase.driver [generic-sql :as sql]
-                             [postgres :as postgres])
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.ssh :as ssh]))
+            [metabase.driver
+             [generic-sql :as sql]
+             [postgres :as postgres]]
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
 (defn- connection-details->spec [details]
   (dbspec/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL

@@ -2,9 +2,9 @@
   "Implementation for the `api-documentation` command, which generate"
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [metabase.config :as config]
-            [metabase.util :as u]))
-
+            [metabase
+             [config :as config]
+             [util :as u]]))
 
 (defn- dox
   "Generate a Markdown string containing documentation for all Metabase API endpoints."

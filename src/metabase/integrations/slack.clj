@@ -1,10 +1,9 @@
 (ns metabase.integrations.slack
-  (:require [clojure.tools.logging :as log]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [metabase.models.setting :as setting, :refer [defsetting]]
+            [clojure.tools.logging :as log]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]))
-
 
 ;; Define a setting which captures our Slack api token
 (defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")

@@ -9,7 +9,7 @@
             [metabase
              [config :as config]
              [email :as email]]
-            [metabase.api.common :refer :all]
+            [metabase.api.common :as api]
             [metabase.models.setting :as setting]
             [metabase.util.schema :as su]))
 
@@ -65,11 +65,11 @@
                            (string/upper-case v))])
               corrections)))
 
-(defendpoint PUT "/"
+(api/defendpoint PUT "/"
   "Update multiple `Settings` values.  You must be a superuser to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (check-superuser)
+  (api/check-superuser)
   (let [email-settings (select-keys settings (keys mb-to-smtp-settings))
         smtp-settings  (-> (set/rename-keys email-settings mb-to-smtp-settings)
                            (assoc :port (Integer/parseInt (:email-smtp-port settings))))
@@ -90,13 +90,13 @@
       {:status 500
        :body   (humanize-error-messages response)})))
 
-(defendpoint POST "/test"
+(api/defendpoint POST "/test"
   "Send a test email. You must be a superuser to do this."
   []
-  (check-superuser)
+  (api/check-superuser)
   (let [response (email/send-message!
                    :subject      "Metabase Test Email"
-                   :recipients   [(:email @*current-user*)]
+                   :recipients   [(:email @api/*current-user*)]
                    :message-type :text
                    :message      "Your Metabase emails are working — hooray!")]
     (if (= :SUCCESS (:error response))
@@ -104,4 +104,4 @@
       {:status 500
        :body   (humanize-error-messages response)})))
 
-(define-routes)
+(api/define-routes)

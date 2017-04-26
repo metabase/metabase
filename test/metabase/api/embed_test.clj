@@ -74,7 +74,8 @@
    :display                "table"
    :visualization_settings {}
    :dataset_query          {:type "query"}
-   :parameters             ()})
+   :parameters             ()
+   :param_values           nil})
 
 (def successful-dashboard-info
   {:description nil, :parameters (), :ordered_cards (), :param_values nil})

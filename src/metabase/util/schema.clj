@@ -1,11 +1,10 @@
 (ns metabase.util.schema
   "Various schemas that are useful throughout the app."
-  (:require [clojure.string :as str]
-            [cheshire.core :as json]
-            [schema.core :as s]
-            metabase.types
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [metabase.util :as u]
-            [metabase.util.password :as password]))
+            [metabase.util.password :as password]
+            [schema.core :as s]))
 
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails validation."

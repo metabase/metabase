@@ -1,18 +1,16 @@
 (ns metabase.driver.oracle
   (:require [clojure.java.jdbc :as jdbc]
-            (clojure [set :as set]
-                     [string :as s])
-            [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [helpers :as h])
-            [metabase.config :as config]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
+            [clojure.set :as set]
+            [honeysql.core :as hsql]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.ssh :as ssh]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
 (def ^:private ^:const pattern->type
   [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578

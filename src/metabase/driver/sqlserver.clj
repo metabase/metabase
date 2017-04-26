@@ -1,12 +1,11 @@
 (ns metabase.driver.sqlserver
-  (:require [clojure.string :as s]
-            [honeysql.core :as hsql]
-            [metabase.driver :as driver]
+  (:require [honeysql.core :as hsql]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.ssh :as ssh])
-  (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
+            [metabase.util.ssh :as ssh]))
 
 (defn- column->base-type
   "See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details."
