@@ -71,21 +71,21 @@
 (defn- dash-to-underscore [s]
   (s/replace s #"-" "_"))
 
-(defn describe-database [driver database]
+(defn describe-database [driver {:keys [details] :as database}]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
              (set (for [result (jdbc/query {:connection conn}
                                  [(format "show tables in `%s`"
-                                    (dash-to-underscore (:name database)))])]
+                                    (dash-to-underscore (:dbname details)))])]
                     {:name (:tablename result)
                      :schema nil})))})
 
-(defn describe-table [driver database table]
+(defn describe-table [driver {:keys [details] :as database} table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
     {:name (:name table)
      :schema nil
      :fields (set (for [result (jdbc/query {:connection conn}
                                  [(format "describe `%s`.`%s`"
-                                    (dash-to-underscore (:name database))
+                                    (dash-to-underscore (:dbname details))
                                     (dash-to-underscore (:name table)))])]
                     {:name (:col_name result)
                      :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
