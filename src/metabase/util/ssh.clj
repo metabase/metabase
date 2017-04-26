@@ -11,8 +11,11 @@
    assigned tunnel entrance port. It's the callers responsibility to call .disconnect
    on the returned connection object."
   [{:keys [tunnel-host tunnel-port tunnel-user tunnel-pass host port]}]
-  (let [connection (doto (.getSession (new com.jcraft.jsch.JSch) tunnel-user tunnel-host tunnel-port)
-                     (.setPassword tunnel-pass)
+  (let [connection (doto ^com.jcraft.jsch.Session (.getSession (new com.jcraft.jsch.JSch)
+                                                               ^String tunnel-user
+                                                               ^String tunnel-host
+                                                               ^Int tunnel-port)
+                     (.setPassword ^String tunnel-pass)
                      (.setConfig "StrictHostKeyChecking" "no")
                      (.connect default-ssh-timeout)
                      (.setPortForwardingL 0 host port))
@@ -20,7 +23,7 @@
                            first
                            (string/split #":")
                            first
-                           (Integer.))]
+                           (Integer/parseInt))]
     (assert (number? input-port))
     (log/info (u/format-color 'cyan "creating ssh tunnel %s@%s:%s -L %s:%s:%s" tunnel-user tunnel-host tunnel-port input-port host port))
     [connection input-port]))
@@ -98,7 +101,7 @@
         (catch Exception e
           (throw e))
         (finally
-          (.disconnect (:tunnel-connection details-with-tunnel))
+          (.disconnect ^com.jcraft.jsch.Session (:tunnel-connection details-with-tunnel))
           (log/info (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
     (f details)))
 

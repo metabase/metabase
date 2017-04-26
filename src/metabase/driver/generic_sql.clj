@@ -163,7 +163,7 @@
     ;; now actively shut down the pool so that any open connections are closed
     (.close ^ComboPooledDataSource (:datasource pool))
     (when-let [ssh-tunnel (:ssh-tunnel pool)]
-      (.disconnect ssh-tunnel))))
+      (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
