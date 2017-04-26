@@ -17,7 +17,7 @@ describeE2E("dashboards/dashboards", () => {
     });
 
     describe("dashboards list", () => {
-        it("should let you create new dashboards, see them, filter them and enter them", async () => {
+        xit("should let you create new dashboards, see them, filter them and enter them", async () => {
             // Delegate dashboard creation to dashboard list test code
             await createDashboardInEmptyState();
 

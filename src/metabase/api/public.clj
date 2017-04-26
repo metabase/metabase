@@ -29,6 +29,26 @@
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
 
 
+;;; ------------------------------------------------------------ Param Resolution Stuff Used For Both Card & Dashboards ------------------------------------------------------------
+
+(defn- field-form->id
+  "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references.
+
+     (field-form->id [:field-id 100])  ; -> 100"
+  [field-form]
+  (when-let [field-placeholder (u/ignore-exceptions (ql/expand-ql-sexpr field-form))]
+    (when (instance? FieldPlaceholder field-placeholder)
+      (:field-id field-placeholder))))
+
+(defn- field-ids->param-field-values
+  "Given a collection of PARAM-FIELD-IDS return a map of FieldValues for the Fields they reference.
+   This map is returned by various endpoints as `:param_values`."
+  [param-field-ids]
+  (when (seq param-field-ids)
+    (u/key-by :field_id (db/select [FieldValues :values :human_readable_values :field_id]
+                          :field_id [:in param-field-ids]))))
+
+
 ;;; ------------------------------------------------------------ Public Cards ------------------------------------------------------------
 
 (defn- remove-card-non-public-fields
@@ -36,12 +56,27 @@
   [card]
   (u/select-nested-keys card [:id :name :description :display :visualization_settings [:dataset_query :type [:native :template_tags]]]))
 
+(defn- card->template-tag-field-ids
+  "Return a set of Field IDs referenced in template tag parameters in CARD."
+  [card]
+  (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template_tags])
+             :when                      dimension
+             :let                       [field-id (field-form->id dimension)]
+             :when                      field-id]
+         field-id)))
+
+(defn- add-card-param-values
+  "Add FieldValues for any Fields referenced in CARD's `:template_tags`."
+  [card]
+  (assoc card :param_values (field-ids->param-field-values (card->template-tag-field-ids card))))
+
 (defn public-card
   "Return a public Card matching key-value CONDITIONS, removing all fields that should not be visible to the general public.
    Throws a 404 if the Card doesn't exist."
   [& conditions]
   (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings], :archived false, conditions))
-      remove-card-non-public-fields))
+      remove-card-non-public-fields
+      add-card-param-values))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -96,15 +131,6 @@
 ;; TODO - This logic seems too complicated for a one-off custom response format. Simplification would be nice, as would potentially
 ;;        moving some of this logic into a shared module
 
-(defn- field-form->id
-  "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references.
-
-     (field-form->id [:field-id 100])  ; -> 100"
-  [field-form]
-  (when-let [field-placeholder (u/ignore-exceptions (ql/expand-ql-sexpr field-form))]
-    (when (instance? FieldPlaceholder field-placeholder)
-      (:field-id field-placeholder))))
-
 (defn- template-tag->field-form
   "Fetch the `field-id` or `fk->` form from DASHCARD referenced by TEMPLATE-TAG.
 
@@ -136,9 +162,7 @@
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in DASHBOARD,
    or `nil` if none are referenced or none of them have FieldValues."
   [dashboard]
-  (when-let [param-field-ids (dashboard->param-field-ids dashboard)]
-    (u/key-by :field_id (db/select [FieldValues :values :human_readable_values :field_id]
-                          :field_id [:in param-field-ids]))))
+  (field-ids->param-field-values (dashboard->param-field-ids dashboard)))
 
 (defn- add-field-values-for-parameters
   "Add a `:param_values` map containing FieldValues for the parameter Fields in the DASHBOARD."
