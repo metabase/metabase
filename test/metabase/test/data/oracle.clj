@@ -86,11 +86,13 @@
 
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details (fn [& _] @db-connection-details)
-          :default-schema               (constantly session-schema)
-          :engine                       (constantly :oracle)
-          :expected-base-type->actual   (u/drop-first-arg expected-base-type->actual)
-          :id-field-type                (constantly :type/Decimal)}))
+         {:database->connection-details       (fn [& _] @db-connection-details)
+          :default-schema                     (constantly session-schema)
+          :engine                             (constantly :oracle)
+          :expected-base-type->actual         (u/drop-first-arg expected-base-type->actual)
+          :id-field-type                      (constantly :type/Decimal)
+          ;; TODO - Not sure why we need to do this
+          :has-questionable-timezone-support? (constantly true)}))
 
 (defn- dbspec [& _]
   (sql/connection-details->spec (OracleDriver.) @db-connection-details))

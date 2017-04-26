@@ -254,9 +254,7 @@
                                           (require 'metabase.test.data.oracle)
                                           ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
           :field-percent-urls        sql/slow-field-percent-urls
-          ;; TODO - we *should* be able to set timezone using the SQL below, but I think the SQL doesn't work with prepared params (i.e., '?')
-          ;; Find some way to work around this for Oracle
-          ;; :set-timezone-sql          (constantly "ALTER session SET time_zone = ?")
+          :set-timezone-sql          (constantly "ALTER session SET time_zone = %s")
           :prepare-value             (u/drop-first-arg prepare-value)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))

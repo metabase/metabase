@@ -127,7 +127,7 @@
          {:column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
-          :set-timezone-sql          (constantly "SET TIME ZONE TO ?;")
+          :set-timezone-sql          (constantly "SET TIME ZONE TO %s;")
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
