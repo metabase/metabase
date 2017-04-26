@@ -330,9 +330,10 @@
   "Set the timezone for the current connection."
   [driver settings connection]
   (let [timezone (:report-timezone settings)
-        sql      (sql/set-timezone-sql driver)]
-    (log/debug (u/pprint-to-str 'green [sql timezone]))
-    (jdbc/db-do-prepared connection [sql timezone])))
+        sql      (sql/set-timezone-sql driver)
+        replaced (clojure.string/replace sql "?" (str "'" (re-matches #"[A-z\/_]+" timezone) "'"))]
+    (log/debug (u/pprint-to-str 'green [replaced]))
+    (jdbc/db-do-prepared connection [replaced])))
 
 (defn- run-query-without-timezone [driver settings connection query]
   (do-in-transaction connection (partial run-query query)))
