@@ -35,18 +35,22 @@
     :default      false}
    {:name         "tunnel-host"
     :display-name "SSH tunnel host"
-    :placeholder  "What hostname do you use to connect to the SSH tunnel?"}
+    :placeholder  "What hostname do you use to connect to the SSH tunnel?"
+    :required     true}
    {:name         "tunnel-port"
     :display-name "SSH tunnel port"
     :type         :integer
-    :default      22}
+    :default      22
+    :required     false}
    {:name         "tunnel-user"
     :display-name "SSH tunnel username"
-    :placeholder  "What username do you use to login to the SSH tunnel?"}
+    :placeholder  "What username do you use to login to the SSH tunnel?"
+    :required     true}
    {:name         "tunnel-pass"
     :display-name "SSH tunnel password"
     :type         :password
-    :placeholder  "******"}
+    :placeholder  "******"
+    :required     true}
    #_{:name         "tunnel-private-key"
     :display-name "SSH private key to connect to the tunnel"
     :type         :string

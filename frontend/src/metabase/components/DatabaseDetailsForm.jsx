@@ -166,7 +166,22 @@ export default class DatabaseDetailsForm extends Component {
                 </FormField>
             )
         } else if (/^tunnel-/.test(field.name) && !this.state.details["tunnel-enabled"]) {
+            if (field.originally_required == undefined) { // the first time through we want to save the original
+                field.originally_required=field.required; // required state, so we can restore it later
+            }
+            field.required=false
             return null;
+        } else if (/^tunnel-/.test(field.name) && this.state.details["tunnel-enabled"]) {
+            // if the "tunnel-enabled" has been flipped off and on again, then make the fields required again
+            // if it was originally enabled, and this is the first time through, then use the original value
+            field.required=field.originally_required;
+            return (
+                <FormField key={field.name} fieldName={field.name}>
+                    <FormLabel title={field['display-name']} fieldName={field.name}></FormLabel>
+                    {this.renderFieldInput(field, fieldIndex)}
+                    <span className="Form-charm"></span>
+                </FormField>
+            )
         } else if (field.name === "is_full_sync") {
             let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
             return (
