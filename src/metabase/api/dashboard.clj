@@ -1,6 +1,7 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [events :as events]
              [util :as u]]
@@ -8,8 +9,8 @@
             [metabase.models
              [card :refer [Card]]
              [dashboard :as dashboard :refer [Dashboard]]
-             [dashboard-favorite :refer [DashboardFavorite]]
              [dashboard-card :refer [create-dashboard-card! DashboardCard delete-dashboard-card! update-dashboard-card!]]
+             [dashboard-favorite :refer [DashboardFavorite]]
              [interface :as mi]
              [revision :as revision]]
             [metabase.util.schema :as su]
@@ -24,7 +25,7 @@
   [dashboards]
   (let [favorite-dashboard-ids (when (seq dashboards)
                                  (db/select-field :dashboard_id DashboardFavorite
-                                   :user_id      *current-user-id*
+                                   :user_id      api/*current-user-id*
                                    :dashboard_id [:in (set (map u/get-id dashboards))]))]
     (for [dashboard dashboards]
       (assoc dashboard
@@ -33,11 +34,12 @@
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                 :all  true
-                                                :mine [:= :creator_id *current-user-id*])
+                                                :mine [:= :creator_id api/*current-user-id*])
                                               [:= :archived (= (keyword filter-option) :archived)]]
+                              :order-by [:%lower.name]}) <>
     (hydrate <> :creator)
     (filter mi/can-read? <>)
-    (hydrate-favorites <>)))))
+    (hydrate-favorites <>)))
 
 (api/defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
@@ -201,20 +203,20 @@
 
 ;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
 
-(defendpoint POST "/:id/favorite"
+(api/defendpoint POST "/:id/favorite"
   "Favorite a Dashboard."
   [id]
-  (check-not-archived (read-check Dashboard id))
-  (db/insert! DashboardFavorite :dashboard_id id, :user_id *current-user-id*))
+  (api/check-not-archived (api/read-check Dashboard id))
+  (db/insert! DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*))
 
 
-(defendpoint DELETE "/:id/favorite"
+(api/defendpoint DELETE "/:id/favorite"
   "Unfavorite a Dashboard."
   [id]
-  (check-not-archived (read-check Dashboard id))
-  (let-404 [favorite-id (db/select-one-id DashboardFavorite :dashboard_id id, :user_id *current-user-id*)]
+  (api/check-not-archived (api/read-check Dashboard id))
+  (api/let-404 [favorite-id (db/select-one-id DashboardFavorite :dashboard_id id, :user_id api/*current-user-id*)]
     (db/delete! DashboardFavorite, :id favorite-id))
-  generic-204-no-content)
+  api/generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
