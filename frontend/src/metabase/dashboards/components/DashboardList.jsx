@@ -61,7 +61,7 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                         { (dashboard.archived || hover) &&
                         <Tooltip tooltip={dashboard.archived ? "Unarchive" : "Archive"}>
                             <Icon
-                                className="flex cursor-pointer text-light-blue mr2"
+                                className="flex cursor-pointer text-light-blue ml2"
                                 name={dashboard.archived ? "unarchive" : "archive"}
                                 size={19}
                                 onClick={(e) => {
@@ -75,7 +75,7 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                         <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
                             <Icon
                                 className={cx(
-                                    "flex cursor-pointer",
+                                    "flex cursor-pointer ml2",
                                     {"text-light-blue": !dashboard.favorite},
                                     {"text-gold": dashboard.favorite}
                                 )}
