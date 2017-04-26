@@ -1,12 +1,15 @@
 (ns metabase.driver.sqlite
-  (:require (clojure [set :as set]
-                     [string :as s])
-            (honeysql [core :as hsql]
-                      [format :as hformat])
-            [metabase.config :as config]
-            [metabase.driver :as driver]
+  (:require [clojure
+             [set :as set]
+             [string :as s]]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
 (defn- connection-details->spec

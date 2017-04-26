@@ -1,25 +1,20 @@
 (ns metabase.query-processor.resolve
   "Resolve references to `Fields`, `Tables`, and `Databases` in an expanded query dictionary."
   (:refer-clojure :exclude [resolve])
-  (:require (clojure [set :as set]
-                     [walk :as walk])
+  (:require [clojure
+             [set :as set]
+             [walk :as walk]]
             [medley.core :as m]
+            [metabase
+             [db :as mdb]
+             [util :as u]]
+            [metabase.models
+             [field :as field]
+             [table :refer [Table]]]
+            [metabase.query-processor.interface :as i]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.db :as mdb]
-            (metabase.models [field :as field]
-                             [table :refer [Table]])
-            [metabase.query-processor.interface :refer :all]
-            [metabase.util :as u])
-  (:import (metabase.query_processor.interface DateTimeField
-                                               DateTimeValue
-                                               ExpressionRef
-                                               Field
-                                               FieldPlaceholder
-                                               RelativeDatetime
-                                               RelativeDateTimeValue
-                                               Value
-                                               ValuePlaceholder)))
+            [toucan.db :as db])
+  (:import [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder RelativeDatetime RelativeDateTimeValue Value ValuePlaceholder]))
 
 ;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
 
@@ -77,7 +72,7 @@
                       (assoc this :parent resolved)))
                   this)
     parent-id (assoc this :parent (or (field-id->field parent-id)
-                                      (map->FieldPlaceholder {:field-id parent-id})))
+                                      (i/map->FieldPlaceholder {:field-id parent-id})))
     :else     this))
 
 (defn- field-resolve-table [{:keys [table-id fk-field-id field-id], :as this} fk-id+table-id->table]
@@ -105,15 +100,15 @@
 
 (defn- field-ph-resolve-field [{:keys [field-id datetime-unit fk-field-id], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
-                                                               map->Field
+                                                               i/map->Field
                                                                (assoc :fk-field-id fk-field-id))]
     ;; try to resolve the Field with the ones available in field-id->field
     (let [datetime-field? (or (isa? base-type :type/DateTime)
                               (isa? special-type :type/DateTime))]
       (if-not datetime-field?
         field
-        (map->DateTimeField {:field field
-                             :unit  (or datetime-unit :day)}))) ; default to `:day` if a unit wasn't specified
+        (i/map->DateTimeField {:field field
+                               :unit  (or datetime-unit :day)}))) ; default to `:day` if a unit wasn't specified
     ;; If that fails just return ourselves as-is
     this))
 
@@ -133,21 +128,21 @@
 (extend-protocol IParseValueForField
   Field
   (parse-value [this value]
-    (s/validate Value (map->Value {:field this, :value value})))
+    (s/validate Value (i/map->Value {:field this, :value value})))
 
   ExpressionRef
   (parse-value [this value]
-    (s/validate Value (map->Value {:field this, :value value})))
+    (s/validate Value (i/map->Value {:field this, :value value})))
 
   DateTimeField
   (parse-value [this value]
     (cond
       (u/date-string? value)
-      (s/validate DateTimeValue (map->DateTimeValue {:field this, :value (u/->Timestamp value)}))
+      (s/validate DateTimeValue (i/map->DateTimeValue {:field this, :value (u/->Timestamp value)}))
 
       (instance? RelativeDatetime value)
       (do (s/validate RelativeDatetime value)
-          (s/validate RelativeDateTimeValue (map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
+          (s/validate RelativeDateTimeValue (i/map->RelativeDateTimeValue {:field this, :amount (:amount value), :unit (:unit value)})))
 
       (nil? value)
       nil
@@ -202,7 +197,7 @@
                                           :id [:in field-ids]))
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
-                                                          (map->FieldPlaceholder {:field-id parent-id})))))]
+                                                          (i/map->FieldPlaceholder {:field-id parent-id})))))]
           (->>
            ;; Now record the IDs of Tables these fields references in the :table-ids property of the expanded query dict.
            ;; Those will be used for Table resolution in the next step.
@@ -233,15 +228,15 @@
   [source-table-id fk-field-ids]
   (when (seq fk-field-ids)
     (vec (for [{:keys [source-field-name source-field-id target-field-id target-field-name target-table-id target-table-name target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
-           (map->JoinTable {:table-id     target-table-id
-                            :table-name   target-table-name
-                            :schema       target-table-schema
-                            :pk-field     (map->JoinTableField {:field-id   target-field-id
-                                                                :field-name target-field-name})
-                            :source-field (map->JoinTableField {:field-id   source-field-id
-                                                                :field-name source-field-name})
-                            ;; some DBs like Oracle limit the length of identifiers to 30 characters so only take the first 30 here
-                            :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
+           (i/map->JoinTable {:table-id     target-table-id
+                              :table-name   target-table-name
+                              :schema       target-table-schema
+                              :pk-field     (i/map->JoinTableField {:field-id   target-field-id
+                                                                    :field-name target-field-name})
+                              :source-field (i/map->JoinTableField {:field-id   source-field-id
+                                                                    :field-name source-field-name})
+                              ;; some DBs like Oracle limit the length of identifiers to 30 characters so only take the first 30 here
+                              :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."

@@ -1,18 +1,15 @@
 (ns metabase.pulse
   "Public API for sending Pulses."
-  (:require (clojure [pprint :refer [cl-format]]
-                     [string :refer [upper-case]])
-            [clojure.tools.logging :as log]
-            [metabase.email :as email]
+  (:require [clojure.tools.logging :as log]
+            [metabase
+             [email :as email]
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
             [metabase.pulse.render :as render]
-            [metabase.query-processor :as qp]
-            [metabase.util.urls :as urls]
-            [metabase.util :as u]
             [metabase.util.urls :as urls]))
-
 
 ;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
 

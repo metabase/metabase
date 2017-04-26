@@ -1,11 +1,12 @@
 (ns metabase.query-processor.middleware.expand-resolve
   "Middleware for converting a MBQL query into an 'expanded' form that contains additional information needed by drivers for running queries,
    and resolving various referenced Fields and Tables."
-  (:require [toucan.db :as db]
-            [metabase.models.database :refer [Database]]
-            (metabase.query-processor [expand :as expand]
-                                      [resolve :as resolve]
-                                      [util :as qputil])))
+  (:require [metabase.models.database :refer [Database]]
+            [metabase.query-processor
+             [expand :as expand]
+             [resolve :as resolve]
+             [util :as qputil]]
+            [toucan.db :as db]))
 
 (def ^{:arglists '([query])} expand-and-resolve
   "Expand and resolve a QUERY.

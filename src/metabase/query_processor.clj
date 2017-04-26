@@ -1,32 +1,35 @@
 (ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.tools.logging :as log]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.models [query :as query]
-                             [query-execution :refer [QueryExecution], :as query-execution])
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [query :as query]
+             [query-execution :as query-execution :refer [QueryExecution]]]
+            [metabase.query-processor.middleware
+             [add-implicit-clauses :as implicit-clauses]
+             [add-row-count-and-status :as row-count-and-status]
+             [add-settings :as add-settings]
+             [annotate-and-sort :as annotate-and-sort]
+             [cache :as cache]
+             [catch-exceptions :as catch-exceptions]
+             [cumulative-aggregations :as cumulative-ags]
+             [dev :as dev]
+             [driver-specific :as driver-specific]
+             [expand-macros :as expand-macros]
+             [expand-resolve :as expand-resolve]
+             [format-rows :as format-rows]
+             [limit :as limit]
+             [log :as log-query]
+             [mbql-to-native :as mbql-to-native]
+             [parameters :as parameters]
+             [permissions :as perms]
+             [resolve-driver :as resolve-driver]]
             [metabase.query-processor.util :as qputil]
-            (metabase.query-processor.middleware [add-implicit-clauses :as implicit-clauses]
-                                                 [add-row-count-and-status :as row-count-and-status]
-                                                 [add-settings :as add-settings]
-                                                 [annotate-and-sort :as annotate-and-sort]
-                                                 [catch-exceptions :as catch-exceptions]
-                                                 [cache :as cache]
-                                                 [cumulative-aggregations :as cumulative-ags]
-                                                 [dev :as dev]
-                                                 [driver-specific :as driver-specific]
-                                                 [expand-macros :as expand-macros]
-                                                 [expand-resolve :as expand-resolve]
-                                                 [format-rows :as format-rows]
-                                                 [limit :as limit]
-                                                 [log :as log-query]
-                                                 [mbql-to-native :as mbql-to-native]
-                                                 [parameters :as parameters]
-                                                 [permissions :as perms]
-                                                 [resolve-driver :as resolve-driver])
-            [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                           QUERY PROCESSOR                                             |

@@ -18,6 +18,8 @@ import {deleteDashboard} from "metabase/dashboards/dashboards"
 
 const mapStateToProps = (state, props) => {
   return {
+      dashboardId:          props.params.dashboardId,
+
       isAdmin:              getUserIsAdmin(state, props),
       isEditing:            getIsEditing(state, props),
       isEditingParameter:   getIsEditingParameter(state, props),
@@ -31,6 +33,7 @@ const mapStateToProps = (state, props) => {
       editingParameter:     getEditingParameter(state, props),
       parameters:           getParameters(state, props),
       parameterValues:      getParameterValues(state, props),
+
       addCardOnLoad:        props.location.query.add ? parseInt(props.location.query.add) : null
   }
 }

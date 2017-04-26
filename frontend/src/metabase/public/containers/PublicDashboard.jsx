@@ -4,9 +4,12 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import DashboardGrid from "metabase/dashboard/components/DashboardGrid.jsx";
+import { IFRAMED } from "metabase/lib/dom";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
+import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
+import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import EmbedFrame from "../components/EmbedFrame";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
@@ -23,6 +26,7 @@ import _ from "underscore";
 
 const mapStateToProps = (state, props) => {
   return {
+      dashboardId:          props.params.dashboardId || props.params.uuid || props.params.token,
       dashboard:            getDashboardComplete(state, props),
       dashcardData:         getCardData(state, props),
       cardDurations:        getCardDurations(state, props),
@@ -41,6 +45,7 @@ const mapDispatchToProps = {
 type Props = {
     params:                 { uuid?: string, token?: string },
     location:               { query: { [key:string]: string }},
+    dashboardId:            string,
 
     dashboard?:             Dashboard,
     parameters:             Parameter[],
@@ -54,6 +59,7 @@ type Props = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@DashboardControls
 export default class PublicDashboard extends Component<*, Props, *> {
     // $FlowFixMe
     async componentWillMount() {
@@ -76,6 +82,8 @@ export default class PublicDashboard extends Component<*, Props, *> {
 
     render() {
         const { dashboard, parameters, parameterValues } = this.props;
+        const buttons = !IFRAMED ? getDashboardActions(this.props) : [];
+
         return (
             <EmbedFrame
                 name={dashboard && dashboard.name}
@@ -83,6 +91,13 @@ export default class PublicDashboard extends Component<*, Props, *> {
                 parameters={parameters}
                 parameterValues={parameterValues}
                 setParameterValue={this.props.setParameterValue}
+                actionButtons={buttons.length > 0 &&
+                    <div>
+                        {buttons.map((button, index) =>
+                            <span key={index} className="m1">{button}</span>
+                        )}
+                    </div>
+                }
             >
                 <LoadingAndErrorWrapper className="p1 flex-full" loading={!dashboard}>
                 { () =>

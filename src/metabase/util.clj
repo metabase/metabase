@@ -1,27 +1,27 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.data :as data]
-            (clojure.java [classpath :as classpath]
-                          [jdbc :as jdbc])
+  (:require [clj-time
+             [coerce :as coerce]
+             [core :as t]
+             [format :as time]]
+            [clojure
+             [data :as data]
+             [pprint :refer [pprint]]
+             [string :as s]]
+            [clojure.java
+             [classpath :as classpath]
+             [jdbc :as jdbc]]
             [clojure.math.numeric-tower :as math]
-            (clojure [pprint :refer [pprint]]
-                     [string :as s])
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            (clj-time [core :as t]
-                      [coerce :as coerce]
-                      [format :as time])
-            colorize.core
-            [ring.util.codec :as codec]
+            colorize.core ; this needs to be loaded for `format-color`
             [metabase.config :as config]
-            metabase.logger)             ; make sure this is loaded since we use clojure.tools.logging here
+            [ring.util.codec :as codec])
   (:import clojure.lang.Keyword
-           (java.net Socket
-                     InetSocketAddress
-                     InetAddress)
-           (java.sql SQLException Timestamp)
-           (java.text Normalizer Normalizer$Form)
-           (java.util Calendar Date TimeZone)
+           [java.net InetAddress InetSocketAddress Socket]
+           [java.sql SQLException Timestamp]
+           [java.text Normalizer Normalizer$Form]
+           [java.util Calendar Date TimeZone]
            javax.xml.bind.DatatypeConverter
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))

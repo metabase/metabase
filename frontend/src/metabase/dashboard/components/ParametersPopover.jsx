@@ -2,14 +2,15 @@
 import React, { Component } from "react";
 
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
-import type { ParameterOption } from "metabase/meta/types/Parameter";
+
+import type { Parameter, ParameterOption } from "metabase/meta/types/Parameter";
 
 import _ from "underscore";
 
 export default class ParametersPopover extends Component {
     props: {
-        onAddParameter: (option: ParameterOption) => {},
-        onClose: () => {}
+        onAddParameter: (option: ParameterOption) => Promise<Parameter>,
+        onClose: () => void
     };
     state: {
         section?: string

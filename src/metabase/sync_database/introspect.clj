@@ -2,13 +2,15 @@
   "Functions which handle the raw sync process."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [schema.core :as schema]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.models [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]])
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]]
             [metabase.sync-database.interface :as i]
-            [metabase.util :as u]))
+            [schema.core :as schema]
+            [toucan.db :as db]))
 
 (defn- named-table
   ([table]

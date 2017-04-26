@@ -15,49 +15,48 @@
    MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase lein run load-from-h2
    ```"
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
             [colorize.core :as color]
             [medley.core :as m]
-            [metabase.config :as config]
-            [toucan.db :as db]
-            [metabase.db :as mdb]
+            [metabase
+             [config :as config]
+             [db :as mdb]
+             [util :as u]]
             [metabase.db.migrations :refer [DataMigrations]]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [card-favorite :refer [CardFavorite]]
-                             [card-label :refer [CardLabel]]
-                             [collection :refer [Collection]]
-                             [collection-revision :refer [CollectionRevision]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [database :refer [Database]]
-                             [dependency :refer [Dependency]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [label :refer [Label]]
-                             [metric :refer [Metric]]
-                             [metric-important-field :refer [MetricImportantField]]
-                             [permissions :refer [Permissions]]
-                             [permissions-group :refer [PermissionsGroup]]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [permissions-revision :refer [PermissionsRevision]]
-                             [pulse :refer [Pulse]]
-                             [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel]]
-                             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [revision :refer [Revision]]
-                             [segment :refer [Segment]]
-                             [session :refer [Session]]
-                             [setting :refer [Setting]]
-                             [table :refer [Table]]
-                             [user :refer [User]]
-                             [view-log :refer [ViewLog]])
-            [metabase.util :as u]
-            [clojure.tools.logging :as log]))
-
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [card-favorite :refer [CardFavorite]]
+             [card-label :refer [CardLabel]]
+             [collection :refer [Collection]]
+             [collection-revision :refer [CollectionRevision]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [dashboard-favorite :refer [DashboardFavorite]]
+             [database :refer [Database]]
+             [dependency :refer [Dependency]]
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]
+             [label :refer [Label]]
+             [metric :refer [Metric]]
+             [metric-important-field :refer [MetricImportantField]]
+             [permissions :refer [Permissions]]
+             [permissions-group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
+             [permissions-revision :refer [PermissionsRevision]]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]
+             [revision :refer [Revision]]
+             [segment :refer [Segment]]
+             [session :refer [Session]]
+             [setting :refer [Setting]]
+             [table :refer [Table]]
+             [user :refer [User]]
+             [view-log :refer [ViewLog]]]))
 
 (defn- println-ok [] (println (color/green "[OK]")))
 
@@ -100,6 +99,7 @@
    PermissionsRevision
    Collection
    CollectionRevision
+   DashboardFavorite
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 

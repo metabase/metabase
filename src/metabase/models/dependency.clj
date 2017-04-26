@@ -1,8 +1,9 @@
 (ns metabase.models.dependency
   (:require [clojure.set :as set]
-            (toucan [db :as db]
-                    [models :as models])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (defprotocol IDependent
   "Methods an entity may optionally implement to control how dependencies of an instance are captured."

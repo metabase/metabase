@@ -1,14 +1,16 @@
 (ns metabase.driver.druid
   "Druid driver."
-  (:require [clojure.tools.logging :as log]
+  (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [cheshire.core :as json]
-            [metabase.driver :as driver]
+            [clojure.tools.logging :as log]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.druid.query-processor :as qp]
-            (metabase.models [field :as field]
-                             [table :as table])
-            [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u]))
+            [metabase.models
+             [field :as field]
+             [table :as table]]
+            [metabase.sync-database.analyze :as analyze]))
 
 ;;; ### Request helper fns
 
