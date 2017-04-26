@@ -1,11 +1,10 @@
 (ns metabase.models.interface
-  (:require [clojure.core.memoize :as memoize]
-            [cheshire.core :as json]
-            [taoensso.nippy :as nippy]
-            [toucan.models :as models]
-            [metabase.config :as config]
+  (:require [cheshire.core :as json]
+            [clojure.core.memoize :as memoize]
             [metabase.util :as u]
-            [metabase.util.encryption :as encryption])
+            [metabase.util.encryption :as encryption]
+            [taoensso.nippy :as nippy]
+            [toucan.models :as models])
   (:import java.sql.Blob))
 
 ;;; ------------------------------------------------------------ Toucan Extensions ------------------------------------------------------------

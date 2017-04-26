@@ -1,15 +1,16 @@
 (ns metabase.api.field
-  (:require [compojure.core :refer [GET PUT POST]]
-            [schema.core :as s]
-            [metabase.api.common :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
+  (:require [compojure.core :refer [GET POST PUT]]
+            [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
-            (metabase.models [field :refer [Field] :as field]
-                             [field-values :refer [FieldValues create-field-values-if-needed! field-should-have-field-values?]])
-            metabase.types
+            [metabase.models
+             [field :as field :refer [Field]]
+             [field-values :refer [create-field-values-if-needed! field-should-have-field-values? FieldValues]]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (def ^:private FieldType
   "Schema for a valid `Field` type."
@@ -21,14 +22,14 @@
   (apply s/enum (map name field/visibility-types)))
 
 
-(defendpoint GET "/:id"
+(api/defendpoint GET "/:id"
   "Get `Field` with ID."
   [id]
-  (-> (read-check Field id)
+  (-> (api/read-check Field id)
       (hydrate [:table :db])))
 
 
-(defendpoint PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest special_type visibility_type], :as body} :body}]
   {caveats            (s/maybe su/NonBlankString)
@@ -38,7 +39,7 @@
    points_of_interest (s/maybe su/NonBlankString)
    special_type       (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)}
-  (let [field              (write-check Field id)
+  (let [field              (api/write-check Field id)
         special_type       (keyword (or special_type (:special_type field)))
         ;; only let target field be set for :type/FK type fields, and if it's not in the payload then leave the current value
         fk_target_field_id (when (isa? special_type :type/FK)
@@ -46,48 +47,48 @@
     ;; validate that fk_target_field_id is a valid Field
     ;; TODO - we should also check that the Field is within the same database as our field
     (when fk_target_field_id
-      (checkp (db/exists? Field :id fk_target_field_id)
+      (api/checkp (db/exists? Field :id fk_target_field_id)
         :fk_target_field_id "Invalid target field"))
     ;; everything checks out, now update the field
-    (check-500 (db/update! Field id
-                 (u/select-keys-when (assoc body :fk_target_field_id fk_target_field_id)
-                   :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type}
-                   :non-nil #{:display_name})))
+    (api/check-500 (db/update! Field id
+                     (u/select-keys-when (assoc body :fk_target_field_id fk_target_field_id)
+                       :present #{:caveats :description :fk_target_field_id :points_of_interest :special_type :visibility_type}
+                       :non-nil #{:display_name})))
     ;; return updated field
     (Field id)))
 
-(defendpoint GET "/:id/summary"
+(api/defendpoint GET "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
   [id]
-  (let [field (read-check Field id)]
+  (let [field (api/read-check Field id)]
     [[:count     (metadata/field-count field)]
      [:distincts (metadata/field-distinct-count field)]]))
 
 
-(defendpoint GET "/:id/values"
+(api/defendpoint GET "/:id/values"
   "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return
    all distinct values of the field, and a map of human-readable values defined by the user."
   [id]
-  (let [field (read-check Field id)]
+  (let [field (api/read-check Field id)]
     (if-not (field-should-have-field-values? field)
       {:values {} :human_readable_values {}}
       (create-field-values-if-needed! field))))
 
 
 ;; TODO - not sure this is used anymore
-(defendpoint POST "/:id/value_map_update"
+(api/defendpoint POST "/:id/value_map_update"
   "Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
    or whose base type is `type/Boolean`."
   [id :as {{:keys [values_map]} :body}]
   {values_map su/Map}
-  (let [field (write-check Field id)]
-    (check (field-should-have-field-values? field)
+  (let [field (api/write-check Field id)]
+    (api/check (field-should-have-field-values? field)
       [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."])
     (if-let [field-values-id (db/select-one-id FieldValues, :field_id id)]
-      (check-500 (db/update! FieldValues field-values-id
-                   :human_readable_values values_map))
+      (api/check-500 (db/update! FieldValues field-values-id
+                       :human_readable_values values_map))
       (create-field-values-if-needed! field values_map)))
   {:status :success})
 
 
-(define-routes)
+(api/define-routes)

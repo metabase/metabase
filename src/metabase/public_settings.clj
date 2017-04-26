@@ -1,11 +1,13 @@
 (ns metabase.public-settings
   (:require [clojure.string :as s]
-            [toucan.db :as db]
-            [metabase.config :as config]
-            (metabase.models [common :as common]
-                             [setting :refer [defsetting], :as setting])
-            [metabase.types :as types]
-            [metabase.util.password :as password])
+            [metabase
+             [config :as config]
+             [types :as types]]
+            [metabase.models
+             [common :as common]
+             [setting :as setting :refer [defsetting]]]
+            [metabase.util.password :as password]
+            [toucan.db :as db])
   (:import java.util.TimeZone))
 
 (defsetting check-for-updates

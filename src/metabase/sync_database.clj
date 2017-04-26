@@ -1,18 +1,20 @@
 (ns metabase.sync-database
   "The logic for doing DB and Table syncing itself."
   (:require [clojure.tools.logging :as log]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            [metabase.events :as events]
-            [metabase.models.raw-table :as raw-table]
-            [metabase.models.table :as table]
+            [metabase
+             [driver :as driver]
+             [events :as events]
+             [util :as u]]
+            [metabase.models
+             [raw-table :as raw-table]
+             [table :as table]]
             [metabase.query-processor.interface :as i]
-            (metabase.sync-database [analyze :as analyze]
-                                    [introspect :as introspect]
-                                    [sync :as sync]
-                                    [sync-dynamic :as sync-dynamic])
-            [metabase.util :as u]))
-
+            [metabase.sync-database
+             [analyze :as analyze]
+             [introspect :as introspect]
+             [sync :as sync]
+             [sync-dynamic :as sync-dynamic]]
+            [toucan.db :as db]))
 
 (declare sync-database-with-tracking!
          sync-table-with-tracking!)

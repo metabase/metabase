@@ -1,16 +1,16 @@
 (ns metabase.api.activity
   (:require [clojure.set :as set]
             [compojure.core :refer [GET]]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]]
-                    [models :as models])
-            [metabase.api.common :refer :all]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [interface :as mi]
-                             [view-log :refer [ViewLog]])
-            [metabase.models.interface :as mi]))
+            [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [interface :as mi]
+             [view-log :refer [ViewLog]]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (defn- dashcard-activity? [activity]
   (contains? #{:dashboard-add-cards :dashboard-remove-cards}
