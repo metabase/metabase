@@ -1,9 +1,9 @@
 (ns metabase.models.raw-table
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.models.raw-column :refer [RawColumn]]
-            [metabase.util :as u]))
-
+  (:require [metabase.models.raw-column :refer [RawColumn]]
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel RawTable :raw_table)
 

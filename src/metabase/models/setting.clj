@@ -30,17 +30,17 @@
 
       (setting/all)"
   (:refer-clojure :exclude [get])
-  (:require [clojure.string :as str]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
             [environ.core :as env]
-            [medley.core :as m]
+            [metabase
+             [events :as events]
+             [util :as u]]
             [schema.core :as s]
-            (toucan [db :as db]
-                    [models :as models])
-            [metabase.events :as events]
-            [metabase.util :as u]))
-
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel Setting
   "The model that underlies `defsetting`."

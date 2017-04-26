@@ -1,22 +1,24 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
             [medley.core :as m]
-            [schema.core :as s]
-            [toucan.db :as db]
-            (metabase.api [common :refer :all]
-                          [database :refer [DBEngine]])
-            (metabase [driver :as driver]
-                      [email :as email]
-                      [events :as events])
+            [metabase
+             [driver :as driver]
+             [email :as email]
+             [events :as events]
+             [public-settings :as public-settings]
+             [setup :as setup]
+             [util :as u]]
+            [metabase.api
+             [common :as api]
+             [database :refer [DBEngine]]]
             [metabase.integrations.slack :as slack]
-            (metabase.models [database :refer [Database]]
-                             [session :refer [Session]]
-                             [setting :as setting]
-                             [user :refer [User], :as user])
-            [metabase.public-settings :as public-settings]
-            [metabase.setup :as setup]
-            [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.models
+             [database :refer [Database]]
+             [session :refer [Session]]
+             [user :as user :refer [User]]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:private SetupToken
   "Schema for a string that matches the instance setup token."
@@ -24,7 +26,7 @@
     "Token does not match the setup token."))
 
 
-(defendpoint POST "/"
+(api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
   [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body}]
@@ -72,7 +74,7 @@
     {:id session-id}))
 
 
-(defendpoint POST "/validate"
+(api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
   [:as {{{:keys [engine] {:keys [host port] :as details} :details} :details, token :token} :body}]
   {token  SetupToken
@@ -183,11 +185,11 @@
 (defn- admin-checklist []
   (partition-steps-into-groups (add-next-step-info (admin-checklist-values))))
 
-(defendpoint GET "/admin_checklist"
+(api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
-  (check-superuser)
+  (api/check-superuser)
   (admin-checklist))
 
 
-(define-routes)
+(api/define-routes)

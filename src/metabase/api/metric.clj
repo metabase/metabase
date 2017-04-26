@@ -1,35 +1,34 @@
 (ns metabase.api.metric
   "/api/metric endpoints."
   (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
-            [compojure.core :refer [defroutes GET PUT POST DELETE]]
-            [schema.core :as s]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [metabase.api.common :refer :all]
-            (metabase.models [interface :as mi]
-                             [metric :refer [Metric], :as metric]
-                             [revision :as revision]
-                             [table :refer [Table]])
-            [metabase.util.schema :as su]))
+            [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase.api.common :as api]
+            [metabase.models
+             [interface :as mi]
+             [metric :as metric :refer [Metric]]
+             [revision :as revision]
+             [table :refer [Table]]]
+            [metabase.util.schema :as su]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
-
-(defendpoint POST "/"
+(api/defendpoint POST "/"
   "Create a new `Metric`."
   [:as {{:keys [name description table_id definition]} :body}]
   {name       su/NonBlankString
    table_id   su/IntGreaterThanZero
    definition su/Map}
-  (check-superuser)
-  (write-check Table table_id)
-  (check-500 (metric/create-metric! table_id name description *current-user-id* definition)))
+  (api/check-superuser)
+  (api/write-check Table table_id)
+  (api/check-500 (metric/create-metric! table_id name description api/*current-user-id* definition)))
 
 
-(defendpoint GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
   [id]
-  (check-superuser)
-  (read-check (metric/retrieve-metric id)))
+  (api/check-superuser)
+  (api/read-check (metric/retrieve-metric id)))
 
 (defn- add-db-ids
   "Add `:database_id` fields to METRICS by looking them up from their `:table_id`."
@@ -39,42 +38,36 @@
       (for [metric metrics]
         (assoc metric :database_id (table-id->db-id (:table_id metric)))))))
 
-(defendpoint GET "/"
+(api/defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
-  (filter mi/can-read? (-> (db/select Metric, :is_active true, {:order-by [:%lower.name]})
-                           (hydrate :creator)
-                           add-db-ids)))
+  (as-> (db/select Metric, :is_active true, {:order-by [:%lower.name]}) <>
+    (hydrate <> :creator)
+    (add-db-ids <>)
+    (filter mi/can-read? <>)))
 
 
-(defendpoint PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a `Metric` with ID."
-  [id :as {{:keys [name description caveats points_of_interest how_is_this_calculated show_in_getting_started definition revision_message]} :body}]
+  [id :as {{:keys [definition name revision_message], :as body} :body}]
   {name             su/NonBlankString
    revision_message su/NonBlankString
    definition       su/Map}
-  (check-superuser)
-  (write-check Metric id)
+  (api/check-superuser)
+  (api/write-check Metric id)
   (metric/update-metric!
-    {:id                      id
-     :name                    name
-     :description             description
-     :caveats                 caveats
-     :points_of_interest      points_of_interest
-     :how_is_this_calculated  how_is_this_calculated
-     :show_in_getting_started show_in_getting_started
-     :definition              definition
-     :revision_message        revision_message}
-    *current-user-id*))
+   (assoc (select-keys body #{:caveats :definition :description :how_is_this_calculated :name :points_of_interest :revision_message :show_in_getting_started})
+     :id id)
+   api/*current-user-id*))
 
-(defendpoint PUT "/:id/important_fields"
+(api/defendpoint PUT "/:id/important_fields"
   "Update the important `Fields` for a `Metric` with ID.
    (This is used for the Getting Started guide)."
   [id :as {{:keys [important_field_ids]} :body}]
   {important_field_ids [su/IntGreaterThanZero]}
-  (check-superuser)
-  (write-check Metric id)
-  (check (<= (count important_field_ids) 3)
+  (api/check-superuser)
+  (api/write-check Metric id)
+  (api/check (<= (count important_field_ids) 3)
     [400 "A Metric can have a maximum of 3 important fields."])
   (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id id))
                                                     (set important_field_ids))]
@@ -88,35 +81,35 @@
     {:success true}))
 
 
-(defendpoint DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Delete a `Metric`."
   [id revision_message]
   {revision_message su/NonBlankString}
-  (check-superuser)
-  (write-check Metric id)
-  (metric/delete-metric! id *current-user-id* revision_message)
+  (api/check-superuser)
+  (api/write-check Metric id)
+  (metric/delete-metric! id api/*current-user-id* revision_message)
   {:success true}) ; TODO - why doesn't this return a 204 'No Content'?
 
 
-(defendpoint GET "/:id/revisions"
+(api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for `Metric` with ID."
   [id]
-  (check-superuser)
-  (write-check Metric id)
+  (api/check-superuser)
+  (api/write-check Metric id)
   (revision/revisions+details Metric id))
 
 
-(defendpoint POST "/:id/revert"
+(api/defendpoint POST "/:id/revert"
   "Revert a `Metric` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
-  (check-superuser)
-  (write-check Metric id)
+  (api/check-superuser)
+  (api/write-check Metric id)
   (revision/revert!
     :entity      Metric
     :id          id
-    :user-id     *current-user-id*
+    :user-id     api/*current-user-id*
     :revision-id revision_id))
 
 
-(define-routes)
+(api/define-routes)

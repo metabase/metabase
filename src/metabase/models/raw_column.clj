@@ -1,8 +1,8 @@
 (ns metabase.models.raw-column
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.util :as u]))
-
+  (:require [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel RawColumn :raw_column)
 

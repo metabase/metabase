@@ -1,30 +1,32 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
-  (:require [compojure.core :refer [GET POST PUT DELETE]]
+  (:require [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase
+             [events :as events]
+             [util :as u]]
+            [metabase.api.common :as api]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :as dashboard :refer [Dashboard]]
+             [dashboard-card :refer [create-dashboard-card! DashboardCard delete-dashboard-card! update-dashboard-card!]]
+             [interface :as mi]
+             [revision :as revision]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            [metabase.events :as events]
-            [metabase.api.common :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            (metabase.models [card :refer [Card]]
-                             [common :as common]
-                             [dashboard :refer [Dashboard], :as dashboard]
-                             [dashboard-card :refer [DashboardCard create-dashboard-card! update-dashboard-card! delete-dashboard-card!]]
-                             [interface :as mi]
-                             [revision :as revision])
-            [metabase.util :as u]
-            [metabase.util.schema :as su])
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]])
   (:import java.util.UUID))
 
-
 (defn- dashboards-list [filter-option]
-  (filter mi/can-read? (-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
-                                                                 :all  true
-                                                                 :mine [:= :creator_id *current-user-id*])
-                                                     :order-by [:%lower.name]})
-                               (hydrate :creator))))
+  (as-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
+                                          :all  true
+                                          :mine [:= :creator_id api/*current-user-id*])
+                              :order-by [:%lower.name]}) <>
+    (hydrate <> :creator)
+    (filter mi/can-read? <>)))
 
-(defendpoint GET "/"
+(api/defendpoint GET "/"
   "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
   *  `all` - Return all `Dashboards`.
@@ -34,12 +36,12 @@
   (dashboards-list f))
 
 
-(defendpoint POST "/"
+(api/defendpoint POST "/"
   "Create a new `Dashboard`."
   [:as {{:keys [name parameters], :as dashboard} :body}]
   {name       su/NonBlankString
    parameters [su/Map]}
-  (dashboard/create-dashboard! dashboard *current-user-id*))
+  (dashboard/create-dashboard! dashboard api/*current-user-id*))
 
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
@@ -56,17 +58,17 @@
                                                        (update :card hide-unreadable-card)
                                                        (update :series (partial mapv hide-unreadable-card)))))))
 
-(defendpoint GET "/:id"
+(api/defendpoint GET "/:id"
   "Get `Dashboard` with ID."
   [id]
   (u/prog1 (-> (Dashboard id)
                (hydrate :creator [:ordered_cards [:card :creator] :series])
-               read-check
+               api/read-check
                hide-unreadable-cards)
-    (events/publish-event! :dashboard-read (assoc <> :actor_id *current-user-id*))))
+    (events/publish-event! :dashboard-read (assoc <> :actor_id api/*current-user-id*))))
 
 
-(defendpoint PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a `Dashboard`.
 
    Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate permissions for the Cards belonging to this Dashboard),
@@ -80,136 +82,144 @@
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
    parameters              (s/maybe [su/Map])}
-  (let [dash (write-check Dashboard id)]
+  (let [dash (api/write-check Dashboard id)]
     ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
     (when (or (and (not (nil? enable_embedding))
                    (not= enable_embedding (:enable_embedding dash)))
               (and embedding_params
                    (not= embedding_params (:embedding_params dash))))
-      (check-embedding-enabled)
-      (check-superuser)))
-  (check-500 (-> (assoc dashboard :id id)
-                 (dashboard/update-dashboard! *current-user-id*))))
+      (api/check-embedding-enabled)
+      (api/check-superuser)))
+  (api/check-500
+   (db/update! Dashboard id
+     ;; description is allowed to be `nil`. Everything else must be non-nil
+     (u/select-keys-when dashboard
+       :present #{:description}
+       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params})))
+  ;; now publish an event and return the updated Dashboard
+  (u/prog1 (Dashboard id)
+    (events/publish-event! :dashboard-update (assoc <> :actor_id api/*current-user-id*))))
 
 
-(defendpoint DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
   [id]
-  (let [dashboard (write-check Dashboard id)]
+  (let [dashboard (api/write-check Dashboard id)]
     (db/delete! Dashboard :id id)
-    (events/publish-event! :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))
-  generic-204-no-content)
+    (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
+  api/generic-204-no-content)
 
 
-(defendpoint POST "/:id/cards"
+;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
+(api/defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
   [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
   {cardId             su/IntGreaterThanZero
    parameter_mappings [su/Map]}
-  (write-check Dashboard id)
-  (read-check Card cardId)
+  (api/write-check Dashboard id)
+  (api/read-check Card cardId)
   (let [defaults       {:dashboard_id           id
                         :card_id                cardId
                         :visualization_settings {}
-                        :creator_id             *current-user-id*
+                        :creator_id             api/*current-user-id*
                         :series                 (or series [])}
         dashboard-card (-> (merge dashboard-card defaults)
                            (update :series #(filter identity (map :id %))))]
-    (u/prog1 (check-500 (create-dashboard-card! dashboard-card))
-      (events/publish-event! :dashboard-add-cards {:id id, :actor_id *current-user-id*, :dashcards [<>]}))))
+    (u/prog1 (api/check-500 (create-dashboard-card! dashboard-card))
+      (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]}))))
 
 
 ;; TODO - we should use schema to validate the format of the Cards :D
-(defendpoint PUT "/:id/cards"
+(api/defendpoint PUT "/:id/cards"
   "Update `Cards` on a `Dashboard`. Request body should have the form:
 
-    {:cards [{:id ...
-              :sizeX ...
-              :sizeY ...
-              :row ...
-              :col ...
+    {:cards [{:id     ...
+              :sizeX  ...
+              :sizeY  ...
+              :row    ...
+              :col    ...
               :series [{:id 123
                         ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]
-  (write-check Dashboard id)
+  (api/write-check Dashboard id)
   (let [dashcard-ids (db/select-ids DashboardCard, :dashboard_id id)]
     (doseq [{dashcard-id :id, :as dashboard-card} cards]
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)
         (update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %)))))))
-  (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id *current-user-id*, :dashcards cards})
+  (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 
 
-(defendpoint DELETE "/:id/cards"
+(api/defendpoint DELETE "/:id/cards"
   "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
   {dashcardId su/IntStringGreaterThanZero}
-  (write-check Dashboard id)
+  (api/write-check Dashboard id)
   (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
-    (check-500 (delete-dashboard-card! dashboard-card *current-user-id*))
+    (api/check-500 (delete-dashboard-card! dashboard-card api/*current-user-id*))
     {:success true})) ; TODO - why doesn't this return a 204 'No Content' response?
 
 
-(defendpoint GET "/:id/revisions"
+(api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for `Dashboard` with ID."
   [id]
-  (read-check Dashboard id)
+  (api/read-check Dashboard id)
   (revision/revisions+details Dashboard id))
 
 
-(defendpoint POST "/:id/revert"
+(api/defendpoint POST "/:id/revert"
   "Revert a `Dashboard` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
-  (write-check Dashboard id)
+  (api/write-check Dashboard id)
   (revision/revert!
     :entity      Dashboard
     :id          id
-    :user-id     *current-user-id*
+    :user-id     api/*current-user-id*
     :revision-id revision_id))
 
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
 
-(defendpoint POST "/:dashboard-id/public_link"
+(api/defendpoint POST "/:dashboard-id/public_link"
   "Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links.
    (If this Dashboard has already been shared, it will return the existing public link rather than creating a new one.)
    Public sharing must be enabled."
   [dashboard-id]
-  (check-superuser)
-  (check-public-sharing-enabled)
-  (read-check Dashboard dashboard-id)
+  (api/check-superuser)
+  (api/check-public-sharing-enabled)
+  (api/read-check Dashboard dashboard-id)
   {:uuid (or (db/select-one-field :public_uuid Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
                (db/update! Dashboard dashboard-id
                  :public_uuid       <>
-                 :made_public_by_id *current-user-id*)))})
+                 :made_public_by_id api/*current-user-id*)))})
 
-(defendpoint DELETE "/:dashboard-id/public_link"
+(api/defendpoint DELETE "/:dashboard-id/public_link"
   "Delete the publically-accessible link to this Dashboard."
   [dashboard-id]
-  (check-superuser)
-  (check-public-sharing-enabled)
-  (check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil])
+  (api/check-superuser)
+  (api/check-public-sharing-enabled)
+  (api/check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil])
   (db/update! Dashboard dashboard-id
     :public_uuid       nil
     :made_public_by_id nil)
   {:status 204, :body nil})
 
-(defendpoint GET "/public"
+(api/defendpoint GET "/public"
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is enabled."
   []
-  (check-superuser)
-  (check-public-sharing-enabled)
+  (api/check-superuser)
+  (api/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil]))
 
-(defendpoint GET "/embeddable"
+(api/defendpoint GET "/embeddable"
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding endpoints and a signed JWT."
   []
-  (check-superuser)
-  (check-embedding-enabled)
+  (api/check-superuser)
+  (api/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true))
 
 
-(define-routes)
+(api/define-routes)

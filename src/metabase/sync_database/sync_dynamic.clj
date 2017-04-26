@@ -1,18 +1,19 @@
 (ns metabase.sync-database.sync-dynamic
   "Functions for syncing drivers with `:dynamic-schema` which have no fixed definition of their data."
   (:require [clojure.set :as set]
-            [clojure.string :as s]
             [clojure.tools.logging :as log]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [field :as field :refer [Field]]
+             [raw-table :as raw-table :refer [RawTable]]
+             [table :as table :refer [Table]]]
+            [metabase.sync-database
+             [interface :as i]
+             [sync :as sync]]
             [schema.core :as schema]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.models [field :refer [Field], :as field]
-                             [raw-table :refer [RawTable], :as raw-table]
-                             [table :refer [Table], :as table])
-            (metabase.sync-database [interface :as i]
-                                    [sync :as sync])
-            [metabase.util :as u]))
-
+            [toucan.db :as db]))
 
 (defn- save-nested-fields!
   "Save any nested `Fields` for a given parent `Field`.

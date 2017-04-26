@@ -1,15 +1,16 @@
 (ns metabase.models.user
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            [cemerick.friend.credentials :as creds]
-            (toucan [db :as db]
-                    [models :as models])
+  (:require [cemerick.friend.credentials :as creds]
+            [clojure.string :as s]
+            [metabase
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.email.messages :as email]
-            (metabase.models [permissions :as perms]
-                             [permissions-group :as group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership])
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u])
+            [metabase.models
+             [permissions-group :as group]
+             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
+            [toucan
+             [db :as db]
+             [models :as models]])
   (:import java.util.UUID))
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------

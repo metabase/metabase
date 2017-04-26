@@ -1,42 +1,84 @@
+/* @flow */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import MetabaseAnalytics from "metabase/lib/analytics";
 
 import Parameters from "../containers/Parameters.jsx";
 
-import screenfull from "screenfull";
+import DashboardControls from "../hoc/DashboardControls";
 
 import _ from "underscore";
 import cx from "classnames";
-import querystring from "querystring";
 
-const TICK_PERIOD = 0.25; // seconds
+import type { LocationDescriptor, ApiError, QueryParams } from "metabase/meta/types"
 
-export default class Dashboard extends Component {
+import type { Card, CardId, VisualizationSettings } from "metabase/meta/types/Card";
+import type { DashboardWithCards, DashboardId, DashCardId, ParameterOption } from "metabase/meta/types/Dashboard";
+import type { RevisionId } from "metabase/meta/types/Revision";
+import type { Parameter, ParameterId, ParameterValues } from "metabase/meta/types/Parameter";
 
-    constructor(props, context) {
-        super(props, context);
+type Props = {
+    location:               LocationDescriptor,
 
-        this.state = {
-            error: null,
+    dashboardId:            DashboardId,
+    dashboard:              DashboardWithCards,
+    cards:                  Card[],
 
-            isFullscreen: false,
-            isNightMode: false,
+    isEditable:             boolean,
+    isEditing:              boolean,
+    isEditingParameter:     boolean,
 
-            refreshPeriod: null,
-            refreshElapsed: null
-        };
+    parameterValues:        ParameterValues,
 
-        _.bindAll(this,
-            "setRefreshPeriod", "tickRefreshClock",
-            "setFullscreen", "setNightMode", "fullScreenChanged",
-            "setEditing", "setDashboardAttribute",
-        );
-    }
+    addCardOnLoad:          DashboardId,
+
+    initialize:             () => Promise<void>,
+    addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
+    deleteDashboard:        (dashboardId: DashboardId) => void,
+    fetchCards:             (filterMode?: string) => void,
+    fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
+    fetchRevisions:         ({ entity: string, id: number }) => void,
+    revertToRevision:       ({ entity: string, id: number, revision_id: RevisionId }) => void,
+    saveDashboardAndCards:  () => Promise<void>,
+    setDashboardAttributes: ({ [attribute: string]: any }) => void,
+    fetchDashboardCardData: (options: { reload: bool, clear: bool }) => Promise<void>,
+
+    setEditingParameter:    (parameterId: ParameterId) => void,
+    setEditingDashboard:    (isEditing: boolean) => void,
+
+    addParameter:               (option: ParameterOption) => Promise<Parameter>,
+    removeParameter:            (parameterId: ParameterId) => void,
+    setParameterName:           (parameterId: ParameterId, name: string) => void,
+    setParameterValue:          (parameterId: ParameterId, value: string) => void,
+    setParameterDefaultValue:   (parameterId: ParameterId, defaultValue: string) => void,
+
+    editingParameter:       ?Parameter,
+
+    isFullscreen:           boolean,
+    isNightMode:            boolean,
+    onRefreshPeriodChange:  (?number) => void,
+    loadDashboardParams:    () => void,
+
+    onReplaceAllDashCardVisualizationSettings: (dashcardId: DashCardId, settings: VisualizationSettings) => void,
+    onUpdateDashCardVisualizationSettings: (dashcardId: DashCardId, settings: VisualizationSettings) => void,
+
+    onChangeLocation:       (string) => void,
+    setErrorPage:           (error: ApiError) => void,
+}
+
+type State = {
+    error: ?ApiError
+}
+
+@DashboardControls
+export default class Dashboard extends Component<*, Props, State> {
+    state = {
+        error: null,
+    };
 
     static propTypes = {
         isEditable: PropTypes.bool,
@@ -66,50 +108,22 @@ export default class Dashboard extends Component {
         isEditable: true
     };
 
-    async componentDidMount() {
-        this.loadDashboard(this.props.params.dashboardId);
+    componentDidMount() {
+        this.loadDashboard(this.props.dashboardId);
     }
 
-    componentDidUpdate() {
-        this.updateParams();
-        this._showNav(!this.state.isFullscreen);
-    }
-
-    componentWillReceiveProps(nextProps) {
-        if (this.props.params.dashboardId !== nextProps.params.dashboardId) {
-            this.loadDashboard(nextProps.params.dashboardId);
+    componentWillReceiveProps(nextProps: Props) {
+        if (this.props.dashboardId !== nextProps.dashboardId) {
+            this.loadDashboard(nextProps.dashboardId);
         } else if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues) || !this.props.dashboard) {
             this.props.fetchDashboardCardData({ reload: false, clear: true });
         }
     }
 
-    componentWillMount() {
-        if (screenfull.enabled) {
-            document.addEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
-        }
-    }
-
-    componentWillUnmount() {
-        this._showNav(true);
-        this._clearRefreshInterval();
-        if (screenfull.enabled) {
-            document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
-        }
-    }
-
-    _showNav(show) {
-        const nav = document.querySelector(".Nav");
-        if (show && nav) {
-            nav.classList.remove("hide");
-        } else if (!show && nav) {
-            nav.classList.add("hide");
-        }
-    }
-
-    async loadDashboard(dashboardId) {
+    async loadDashboard(dashboardId: DashboardId) {
         this.props.initialize();
 
-        this.loadParams();
+        this.props.loadDashboardParams();
         const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, setErrorPage, location } = this.props;
 
         try {
@@ -130,98 +144,21 @@ export default class Dashboard extends Component {
         }
     }
 
-    loadParams() {
-        let params = querystring.parse(window.location.hash.substring(1));
-        let refresh = parseInt(params.refresh);
-        this.setRefreshPeriod(Number.isNaN(refresh) || refresh === 0 ? null : refresh);
-        this.setNightMode("night" in params);
-        this.setFullscreen("fullscreen" in params);
-    }
-
-    updateParams() {
-        let hashParams = {};
-        if (this.state.refreshPeriod) {
-            hashParams.refresh = this.state.refreshPeriod;
-        }
-        if (this.state.isFullscreen) {
-            hashParams.fullscreen = true;
-        }
-        if (this.state.isNightMode) {
-            hashParams.night = true;
-        }
-        let hash = querystring.stringify(hashParams).replace(/=true\b/g, "");
-        hash = (hash ? "#" + hash : "");
-
-        // setting window.location.hash = "" causes the page to reload for some reasonc
-        if (hash !== window.location.hash) {
-            history.replaceState(null, document.title, window.location.pathname + window.location.search + hash);
-        }
-    }
-
-    _clearRefreshInterval() {
-        if (this._interval != null) {
-            clearInterval(this._interval);
-        }
-    }
-
-    setRefreshPeriod(refreshPeriod) {
-        this._clearRefreshInterval();
-        if (refreshPeriod != null) {
-            this._interval = setInterval(this.tickRefreshClock, TICK_PERIOD * 1000);
-            this.setState({ refreshPeriod, refreshElapsed: 0 });
-            MetabaseAnalytics.trackEvent("Dashboard", "Set Refresh", refreshPeriod);
-        } else {
-            this.setState({ refreshPeriod: null, refreshElapsed: null });
-        }
-    }
-
-    setNightMode(isNightMode) {
-        this.setState({ isNightMode });
-    }
-
-    setFullscreen(isFullscreen, browserFullscreen = true) {
-        if (isFullscreen !== this.state.isFullscreen) {
-            if (screenfull.enabled && browserFullscreen) {
-                if (isFullscreen) {
-                    screenfull.request();
-                } else {
-                    screenfull.exit();
-                }
-            }
-            this.setState({ isFullscreen });
-        }
-    }
-
-    fullScreenChanged() {
-        this.setState({ isFullscreen: screenfull.isFullscreen });
-    }
-
-    setEditing(isEditing) {
-        this.setRefreshPeriod(null);
+    setEditing = (isEditing: boolean) => {
+        this.props.onRefreshPeriodChange(null);
         this.props.setEditingDashboard(isEditing);
     }
 
-    setDashboardAttribute(attribute, value) {
+    setDashboardAttribute = (attribute: string, value: any) => {
         this.props.setDashboardAttributes({
             id: this.props.dashboard.id,
             attributes: { [attribute]: value }
         });
     }
 
-    async tickRefreshClock() {
-        let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
-        if (refreshElapsed >= this.state.refreshPeriod) {
-            refreshElapsed = 0;
-
-            await this.props.fetchDashboard(this.props.params.dashboardId, this.props.location.query);
-            this.props.fetchDashboardCardData({ reload: true, clear: false });
-        }
-        this.setState({ refreshElapsed });
-    }
-
     render() {
-        let { dashboard, isEditing, editingParameter, parameterValues, location } = this.props;
-        let { error, isFullscreen, isNightMode } = this.state;
+        let { dashboard, isEditing, editingParameter, parameterValues, location, isFullscreen, isNightMode } = this.props;
+        let { error } = this.state;
         isNightMode = isNightMode && isFullscreen;
 
         let parameters;
@@ -255,13 +192,6 @@ export default class Dashboard extends Component {
                     <header className="DashboardHeader relative z2">
                         <DashboardHeader
                             {...this.props}
-                            isFullscreen={this.state.isFullscreen}
-                            isNightMode={this.state.isNightMode}
-                            refreshPeriod={this.state.refreshPeriod}
-                            refreshElapsed={this.state.refreshElapsed}
-                            setRefreshPeriod={this.setRefreshPeriod}
-                            onFullscreenChange={this.setFullscreen}
-                            onNightModeChange={this.setNightMode}
                             onEditingChange={this.setEditing}
                             setDashboardAttribute={this.setDashboardAttribute}
                             addParameter={this.props.addParameter}
@@ -284,7 +214,6 @@ export default class Dashboard extends Component {
                         :
                             <DashboardGrid
                                 {...this.props}
-                                isFullscreen={this.state.isFullscreen}
                                 onEditingChange={this.setEditing}
                             />
                         }

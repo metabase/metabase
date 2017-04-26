@@ -230,3 +230,15 @@
 (expect 1 (occurances-of-substring "WHERE ID = {{id}}"                                                                 "{{id}}"))
 (expect 2 (occurances-of-substring "WHERE ID = {{id}} OR USER_ID = {{id}}"                                             "{{id}}"))
 (expect 3 (occurances-of-substring "WHERE ID = {{id}} OR USER_ID = {{id}} OR TOUCAN_ID = {{id}} OR BIRD_ID = {{bird}}" "{{id}}"))
+
+
+;;; tests for `select-non-nil-keys` and `select-keys-when`
+(expect
+  {:a 100}
+  (select-non-nil-keys {:a 100, :b nil} #{:a :b :c}))
+
+(expect
+  {:a 100, :b nil, :d 200}
+  (select-keys-when {:a 100, :b nil, :d 200, :e nil}
+    :present #{:a :b :c}
+    :non-nil #{:d :e :f}))

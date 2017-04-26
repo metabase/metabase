@@ -1,23 +1,24 @@
 (ns metabase.routes
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [cheshire.core :as json]
-            (compojure [core :refer [context defroutes GET]]
-                       [route :as route])
-            [ring.util.response :as resp]
-            [stencil.core :as stencil]
+  (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
+            [compojure
+             [core :refer [context defroutes GET]]
+             [route :as route]]
+            [metabase
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.api.routes :as api]
             [metabase.core.initialization-status :as init-status]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.embed :as embed]))
+            [metabase.util.embed :as embed]
+            [ring.util.response :as resp]
+            [stencil.core :as stencil]))
 
 (defn- load-file-at-path [path]
   (slurp (or (io/resource path)
              (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
 
 (defn- load-template [path variables]
-  (stencil/render-string (load-file path) variables))
+  (stencil/render-string (load-file-at-path path) variables))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
