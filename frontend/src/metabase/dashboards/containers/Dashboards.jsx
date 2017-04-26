@@ -43,7 +43,7 @@ const SECTIONS: ListFilterWidgetItem[] = [
     {
         id: SECTION_ID_ALL,
         name: 'All dashboards',
-        icon: 'all',
+        icon: 'dashboard',
         // empty: 'No questions have been saved yet.',
     },
     {
