@@ -1,0 +1,21 @@
+{
+  "name": "metabase",
+  "version": "1.0.0",
+  "description": "",
+  "main": "metabase.sketchplugin",
+  "manifest": "src/manifest.json",
+  "scripts": {
+    "build": "skpm build",
+    "watch": "skpm build --watch",
+    "render": "skpm build --watch --run",
+    "render:once": "skpm build --run",
+    "link-plugin": "skpm link"
+  },
+  "devDependencies": {
+    "skpm": "^0.8.0"
+  },
+  "dependencies": {
+    "react": "^15.4.2",
+    "react-sketchapp": "^0.10.0"
+  }
+}

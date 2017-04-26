@@ -47,6 +47,7 @@
     "react-element-to-jsx-string": "^6.3.0",
     "react-height": "^2.1.1",
     "react-motion": "^0.4.5",
+    "react-primitives": "^0.3.4",
     "react-redux": "^5.0.4",
     "react-resizable": "^1.0.1",
     "react-retina-image": "^2.0.4",
@@ -131,6 +132,7 @@
     "promise-loader": "^1.0.0",
     "react-addons-test-utils": "^15.4.2",
     "react-hot-loader": "^1.3.0",
+    "react-sketchapp": "^0.10.2",
     "react-test-renderer": "^15.5.4",
     "sauce-connect-launcher": "^1.1.1",
     "selenium-webdriver": "^2.53.3",
@@ -160,7 +162,8 @@
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --tab-width 4 --write 'frontend/src/metabase/qb/**/*.js*' 'frontend/src/metabase/new_question/**/*.js*'",
-    "test-jest": "jest"
+    "test-jest": "jest",
+    "sketch:render": "cd frontend/sketch && yarn && yarn run render"
   },
   "lint-staged": {
     "frontend/src/metabase/qb/**/*.js*": [
