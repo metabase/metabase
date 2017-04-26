@@ -1,9 +1,10 @@
 (ns ^:deprecated metabase.models.label
   "Labels that can be applied to Cards. Deprecated in favor of Collections."
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.models.interface :as i]
-            [metabase.util :as u]))
+  (:require [metabase.models.interface :as i]
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel ^:deprecated Label :label)
 

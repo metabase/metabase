@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import QueryModeButton from "./QueryModeButton.jsx";
 
 import ActionButton from 'metabase/components/ActionButton.jsx';
-import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.jsx';
+import AddToDashSelectDashModal from 'metabase/containers/AddToDashSelectDashModal.jsx';
 import ButtonBar from "metabase/components/ButtonBar.jsx";
 import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.jsx';
 import HeaderBar from "metabase/components/HeaderBar.jsx";

@@ -19,8 +19,9 @@ import LogoutApp from "metabase/auth/containers/LogoutApp.jsx"; import PasswordR
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
-import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
+import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
+import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
@@ -151,7 +152,10 @@ export const getRoutes = (store) =>
                 {/* HOME */}
                 <Route path="/" component={HomepageApp} />
 
-                {/* DASHBOARD */}
+                {/* DASHBOARD LIST */}
+                <Route path="/dashboard" title="Dashboards" component={Dashboards} />
+
+                {/* INDIVIDUAL DASHBOARDS */}
                 <Route path="/dashboard/:dashboardId" title="Dashboard" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
@@ -271,8 +275,9 @@ export const getRoutes = (store) =>
             </Route>
 
             {/* DEPRECATED */}
-            <Redirect from="/q" to="/question" />
-            <Redirect from="/card/:cardId" to="/question/:cardId" />
+            {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
+            <Route path="/q" onEnter={({ location }, replace) => replace({ pathname: "/question", hash: location.hash })} />
+            <Route path="/card/:cardId" onEnter={({ location, params }, replace) => replace({ pathname: `/question/${params.cardId}`, hash: location.hash })} />
             <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
 
             {/* MISC */}

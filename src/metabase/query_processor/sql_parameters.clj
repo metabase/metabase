@@ -3,18 +3,18 @@
    This is a new implementation, fondly referred to as 'SQL parameters 2.0', written for v0.23.0.
    The new implementation uses prepared statement args instead of substituting them directly into the query,
    and is much better-organized and better-documented."
-  (:require [clojure.tools.logging :as log]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.models.field :refer [Field], :as field]
+            [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.expand :as ql]
             [metabase.util :as u]
-            [metabase.util.schema :as su])
-  (:import java.text.NumberFormat
-           clojure.lang.Keyword
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import clojure.lang.Keyword
            honeysql.types.SqlCall
+           java.text.NumberFormat
            metabase.models.field.FieldInstance))
 
 ;; The Basics:

@@ -3,14 +3,10 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from 'react-redux';
-import { push } from 'react-router-redux';
 import { reduxForm } from "redux-form";
 
 import { assoc } from "icepick";
 import cx from "classnames";
-
-import MetabaseAnalytics from "metabase/lib/analytics";
-import * as Urls from "metabase/lib/urls";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
@@ -25,10 +21,7 @@ import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.j
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 import { clearRequestState } from "metabase/redux/requests";
-import {
-    updateDashboard,
-    createDashboard
-} from 'metabase/dashboard/dashboard';
+import { createDashboard, updateDashboard } from 'metabase/dashboards/dashboards';
 
 import {
     updateSetting
@@ -73,7 +66,7 @@ const mapStateToProps = (state, props) => {
     const initialValues = guide && {
         things_to_know: guide.things_to_know || null,
         contact: guide.contact || {name: null, email: null},
-        most_important_dashboard: guide.most_important_dashboard !== null ?
+        most_important_dashboard: dashboards !== null && guide.most_important_dashboard !== null ?
             dashboards[guide.most_important_dashboard] :
             {},
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ?
@@ -116,7 +109,6 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
-    push,
     updateDashboard,
     createDashboard,
     updateSetting,
@@ -170,7 +162,6 @@ export default class ReferenceGettingStartedGuide extends Component {
         isDashboardModalOpen: PropTypes.bool,
         showDashboardModal: PropTypes.func,
         hideDashboardModal: PropTypes.func,
-        push: PropTypes.func
     };
 
     render() {
@@ -204,7 +195,6 @@ export default class ReferenceGettingStartedGuide extends Component {
             isDashboardModalOpen,
             showDashboardModal,
             hideDashboardModal,
-            push
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
@@ -227,14 +217,11 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <CreateDashboardModal
                             createDashboardFn={async (newDashboard) => {
                                 try {
-                                    const action = await createDashboard(newDashboard, true);
-                                    push(Urls.dashboard(action.payload.id));
+                                    await createDashboard(newDashboard, { redirect: true });
                                 }
                                 catch(error) {
                                     console.error(error);
                                 }
-
-                                MetabaseAnalytics.trackEvent("Dashboard", "Create");
                             }}
                             onClose={hideDashboardModal}
                         />

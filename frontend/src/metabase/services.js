@@ -118,7 +118,7 @@ export const MetabaseApi = {
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
-    // field_values:                GET("/api/field/:fieldId/values"),
+    field_values:                GET("/api/field/:fieldId/values"),
     // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
     field_update:                PUT("/api/field/:id"),
     dataset:                    POST("/api/dataset"),

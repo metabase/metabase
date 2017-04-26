@@ -6,8 +6,6 @@ import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 
-import "./ModalContent.css";
-
 export default class ModalContent extends Component {
     static propTypes = {
         id: PropTypes.string,
@@ -66,7 +64,7 @@ ModalHeader.contextTypes = MODAL_CHILD_CONTEXT_TYPES;
 
 export const ModalBody = ({ children }, { fullPageModal, formModal }) =>
     <div
-        className={cx("ModalBody", { "px4": formModal, "flex flex-full": !formModal })}
+        className={cx("ModalBody", { "px4": formModal, "flex flex-full flex-basis-auto": !formModal })}
     >
         <div
             className="flex-full ml-auto mr-auto flex flex-column"

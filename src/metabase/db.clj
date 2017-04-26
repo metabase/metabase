@@ -1,31 +1,25 @@
 (ns metabase.db
   "Database definition and helper functions for interacting with the database."
-  (:require (clojure.java [io :as io]
-                          [jdbc :as jdbc])
+  (:require [clojure
+             [string :as s]
+             [walk :as walk]]
+            [clojure.java
+             [io :as io]
+             [jdbc :as jdbc]]
             [clojure.tools.logging :as log]
-            (clojure [set :as set]
-                     [string :as s]
-                     [walk :as walk])
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      [helpers :as h])
-            [medley.core :as m]
-            [ring.util.codec :as codec]
-            [toucan.db :as db]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.models.interface :as models]
-            [metabase.util :as u]
-            metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
-  (:import java.io.StringWriter
-           java.sql.Connection
+            [ring.util.codec :as codec]
+            [toucan.db :as db])
+  (:import com.mchange.v2.c3p0.ComboPooledDataSource
+           java.io.StringWriter
            java.util.Properties
-           com.mchange.v2.c3p0.ComboPooledDataSource
-           liquibase.Liquibase
-           (liquibase.database DatabaseFactory Database)
+           [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
+           liquibase.Liquibase
            liquibase.resource.ClassLoaderResourceAccessor))
-
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DB FILE & CONNECTION DETAILS                                              |

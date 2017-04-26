@@ -252,6 +252,7 @@ if (NODE_ENV !== "production") {
     // this is required to ensure we don't minify Chevrotain token identifiers
     // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
     config.plugins.push(new webpack.optimize.UglifyJsPlugin({
+        warnings: false,
         mangle: {
             except: allTokens.map(function(currTok) {
                 return chevrotain.tokenName(currTok);

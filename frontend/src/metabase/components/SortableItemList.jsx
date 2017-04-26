@@ -61,10 +61,12 @@ export default class SortableItemList extends Component {
                                         <h4 className="text-grey-3">{item.description || "No description yet"}</h4>
                                     </div>
                                 </div>
-                                <div className="flex-align-right text-right text-grey-3">
-                                    <div className="mb1">Saved by {item.creator.common_name}</div>
-                                    <div>Modified {item.updated_at.fromNow()}</div>
-                                </div>
+                                {item.creator && item.updated_at &&
+                                    <div className="flex-align-right text-right text-grey-3">
+                                        <div className="mb1">Saved by {item.creator.common_name}</div>
+                                        <div>Modified {item.updated_at.fromNow()}</div>
+                                    </div>
+                                }
                             </a>
                         </li>
                     )}

@@ -6,6 +6,12 @@ export type FieldId = number;
 export type Field = {
     id: FieldId,
 
+    // Metadata field "values" type is inconsistent
     // https://github.com/metabase/metabase/issues/3417
-    values: Array<string> | { values: Array<string> }
+    values: [] | FieldValues
 };
+
+export type FieldValues = {
+    // incomplete
+    values: Array<string> | {}
+}

@@ -1,20 +1,17 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
-  (:require [clojure.data.csv :as csv]
-            [clojure.string :as string]
-            [cheshire.core :as json]
-            [compojure.core :refer [GET POST]]
+  (:require [cheshire.core :as json]
+            [clojure.data.csv :as csv]
+            [compojure.core :refer [POST]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.api.common :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            (metabase.models [card :refer [Card]]
-                             [database :refer [Database]]
-                             [query :as query]
-                             [query-execution :refer [QueryExecution]])
-            [metabase.query-processor :as qp]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
+            [metabase.api.common :as api]
+            [metabase.models
+             [database :refer [Database]]
+             [query :as query]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]
             [metabase.util.schema :as su]))
 
 (def ^:private ^:const max-results-bare-rows
@@ -30,18 +27,18 @@
   {:max-results           max-results
    :max-results-bare-rows max-results-bare-rows})
 
-(defendpoint POST "/"
+(api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format."
   [:as {{:keys [database] :as body} :body}]
-  (read-check Database database)
+  (api/read-check Database database)
   ;; add sensible constraints for results limits on our query
   (let [query (assoc body :constraints default-query-constraints)]
-    (qp/dataset-query query {:executed-by *current-user-id*, :context :ad-hoc})))
+    (qp/dataset-query query {:executed-by api/*current-user-id*, :context :ad-hoc})))
 
-(defendpoint POST "/duration"
+(api/defendpoint POST "/duration"
   "Get historical query execution duration."
   [:as {{:keys [database], :as query} :body}]
-  (read-check Database database)
+  (api/read-check Database database)
   ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if there's no data there.
   ;; if we still can't find relevant info, just default to 0
   {:average (or (query/average-execution-time-ms (qputil/query-hash query))
@@ -94,7 +91,7 @@
   [export-format-name query]
   {query su/JSONString}
   (let [query (json/parse-string query keyword)]
-    (read-check Database (:database query))
-    (as-format export-format-name (qp/dataset-query (dissoc query :constraints) {:executed-by *current-user-id*, :context :download}))))
+    (api/read-check Database (:database query))
+    (as-format export-format-name (qp/dataset-query (dissoc query :constraints) {:executed-by api/*current-user-id*, :context :download}))))
 
-(define-routes)
+(api/define-routes)

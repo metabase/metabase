@@ -1,18 +1,20 @@
 (ns metabase.query-processor.annotate
   "Code that analyzes the results of running a query and adds relevant type information about results (including foreign key information).
    TODO - The code in this namespace could definitely use a little cleanup to make it a little easier to wrap one's head around :)"
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.models.field :refer [Field]]
-            (metabase.query-processor [interface :as i]
-                                      [sort :as sort])
-            [metabase.util :as u])
-  (:import (metabase.query_processor.interface Expression
-                                               ExpressionRef)))
+            [metabase.query-processor
+             [interface :as i]
+             [sort :as sort]]
+            [toucan.db :as db])
+  (:import [metabase.query_processor.interface Expression ExpressionRef]))
 
 ;;; ## Field Resolution
 
