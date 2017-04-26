@@ -5,12 +5,14 @@
             [metabase.models
              [database :refer [Database]]
              field
-             [setting :refer [defsetting]]]
+             [setting :refer [defsetting]]
+             table]
             [metabase.util :as u]
             [toucan.db :as db])
   (:import clojure.lang.Keyword
            metabase.models.database.DatabaseInstance
-           metabase.models.field.FieldInstance))
+           metabase.models.field.FieldInstance
+           metabase.models.table.TableInstance))
 
 ;;; ## INTERFACE + CONSTANTS
 
