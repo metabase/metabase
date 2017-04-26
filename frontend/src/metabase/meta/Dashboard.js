@@ -6,7 +6,7 @@ import type Field from "./metadata/Field";
 import type { FieldId } from "./types/Field";
 import type { TemplateTag } from "./types/Query";
 import type { Card } from "./types/Card";
-import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
+import type { ParameterOption, Parameter, ParameterType, ParameterMappingUIOption, DimensionTarget, VariableTarget } from "./types/Parameter";
 
 import { getTemplateTags } from "./Card";
 
@@ -204,23 +204,6 @@ export function getCardVariables(metadata: Metadata, card: Card, filter: Templat
         return variables;
     }
     return [];
-}
-
-export function getParameterMappingTargetField(metadata: Metadata, card: Card, target: ParameterMappingTarget): ?Field {
-    if (target[0] === "dimension") {
-        let dimension = target[1];
-        if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
-            if (card.dataset_query.type === "native") {
-                let templateTag = card.dataset_query.native.template_tags[String(dimension[1])];
-                if (templateTag && templateTag.type === "dimension") {
-                    return metadata.field(Query.getFieldTargetId(templateTag.dimension));
-                }
-            }
-        } else {
-            return metadata.field(Query.getFieldTargetId(dimension));
-        }
-    }
-    return null;
 }
 
 function fieldFilterForParameter(parameter: Parameter) {

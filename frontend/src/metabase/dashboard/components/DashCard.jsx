@@ -10,7 +10,7 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx"
 
 import Icon from "metabase/components/Icon.jsx";
 
-import DashCardParameterMapper from "../components/parameters/DashCardParameterMapper.jsx";
+import DashCardParameterMapper from "./DashCardParameterMapper.jsx";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 

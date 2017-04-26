@@ -15,11 +15,12 @@ import EmbedFrame from "../components/EmbedFrame";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 
-import { getDashboardComplete, getCardData, getCardDurations,getParameterValues } from "metabase/dashboard/selectors";
+import { getDashboardComplete, getCardData, getCardDurations, getParameters, getParameterValues } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/dashboard";
 
 import type { Dashboard } from "metabase/meta/types/Dashboard";
+import type { Parameter } from "metabase/meta/types/Parameter";
 
 import _ from "underscore";
 
@@ -29,6 +30,7 @@ const mapStateToProps = (state, props) => {
       dashboard:            getDashboardComplete(state, props),
       dashcardData:         getCardData(state, props),
       cardDurations:        getCardDurations(state, props),
+      parameters:           getParameters(state, props),
       parameterValues:      getParameterValues(state, props)
   }
 }
@@ -46,6 +48,7 @@ type Props = {
     dashboardId:            string,
 
     dashboard?:             Dashboard,
+    parameters:             Parameter[],
     parameterValues:        {[key:string]: string},
 
     initialize:             () => void,
@@ -78,14 +81,14 @@ export default class PublicDashboard extends Component<*, Props, *> {
     }
 
     render() {
-        const { dashboard, parameterValues } = this.props;
+        const { dashboard, parameters, parameterValues } = this.props;
         const buttons = !IFRAMED ? getDashboardActions(this.props) : [];
 
         return (
             <EmbedFrame
                 name={dashboard && dashboard.name}
                 description={dashboard && dashboard.description}
-                parameters={dashboard && dashboard.parameters}
+                parameters={parameters}
                 parameterValues={parameterValues}
                 setParameterValue={this.props.setParameterValue}
                 actionButtons={buttons.length > 0 &&

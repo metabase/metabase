@@ -36,7 +36,7 @@ import {
     getTableForeignKeys,
     getTableForeignKeyReferences,
     getUiControls,
-    getParametersWithValues,
+    getParameters,
     getDatabaseFields,
     getSampleDatasetId,
     getNativeDatabases,
@@ -99,7 +99,7 @@ const mapStateToProps = (state, props) => {
         isObjectDetail:            getIsObjectDetail(state),
 
         uiControls:                getUiControls(state),
-        parameters:                getParametersWithValues(state),
+        parameters:                getParameters(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
 
