@@ -191,7 +191,7 @@
           ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
           ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
           ;; TODO - This can also be set via `sessionVariables` in the connection string, if that's more useful (?)
-          :set-timezone-sql          (constantly "SET @@session.time_zone = ?;")
+          :set-timezone-sql          (constantly "SET @@session.time_zone = %s;")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :mysql (MySQLDriver.))

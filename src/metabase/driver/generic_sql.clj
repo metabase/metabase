@@ -108,9 +108,10 @@
         (hsql/format ... :quoting (quote-style driver))")
 
   (set-timezone-sql ^String [this]
-    "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
+    "*OPTIONAL*. This should be a format string containing a SQL statement to be used to set the timezone for the current transaction.
+     The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific`.
 
-       \"SET @@session.timezone = ?;\"")
+       \"SET @@session.timezone = %s;\"")
 
   (stddev-fn ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults to `:STDDEV`.")
