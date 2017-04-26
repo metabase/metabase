@@ -1,17 +1,20 @@
 (ns metabase.models.pulse
   (:require [clojure.set :as set]
             [medley.core :as m]
+            [metabase
+             [db :as mdb]
+             [events :as events]
+             [util :as u]]
             [metabase.api.common :refer [*current-user*]]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]]
-                    [models :as models])
-            [metabase.db :as mdb]
-            [metabase.events :as events]
-            (metabase.models [card :refer [Card]]
-                             [interface :as i]
-                             [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel] :as pulse-channel])
-            [metabase.util :as u]))
+            [metabase.models
+             [card :refer [Card]]
+             [interface :as i]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :as pulse-channel :refer [PulseChannel]]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Perms Checking ------------------------------------------------------------
 

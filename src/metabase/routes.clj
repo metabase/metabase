@@ -1,16 +1,18 @@
 (ns metabase.routes
-  (:require [clojure.java.io :as io]
+  (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
             [clojure.string :as s]
-            [cheshire.core :as json]
-            (compojure [core :refer [context defroutes GET]]
-                       [route :as route])
-            [ring.util.response :as resp]
-            [stencil.core :as stencil]
+            [compojure
+             [core :refer [context defroutes GET]]
+             [route :as route]]
+            [metabase
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.api.routes :as api]
             [metabase.core.initialization-status :as init-status]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.embed :as embed]))
+            [metabase.util.embed :as embed]
+            [ring.util.response :as resp]
+            [stencil.core :as stencil]))
 
 (defn- base-href []
   (str (.getPath (clojure.java.io/as-url (public-settings/site-url))) "/"))
@@ -20,12 +22,12 @@
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
   (s/replace text #"</script" "</scr\\\\ipt"))
 
-(defn- load-file [path]
+(defn- load-file-at-path [path]
   (slurp (or (io/resource path)
              (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
 
 (defn- load-template [path variables]
-  (stencil/render-string (load-file path) variables))
+  (stencil/render-string (load-file-at-path path) variables))
 
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
@@ -34,7 +36,7 @@
                         :uri            (escape-script (json/generate-string uri))
                         :base_href      (escape-script (json/generate-string (base-href)))
                         :embed_code     (when embeddable? (embed/head uri))})
-        (load-file "frontend_client/init.html"))
+        (load-file-at-path "frontend_client/init.html"))
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
 

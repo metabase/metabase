@@ -1,12 +1,12 @@
 (ns metabase.driver.vertica
   (:require [clojure.java.jdbc :as jdbc]
-            (clojure [set :refer [rename-keys], :as set]
-                     [string :as s])
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
 (def ^:private ^:const column->base-type
@@ -127,7 +127,7 @@
          {:column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
-          :set-timezone-sql          (constantly "SET TIME ZONE TO ?;")
+          :set-timezone-sql          (constantly "SET TIME ZONE TO %s;")
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 

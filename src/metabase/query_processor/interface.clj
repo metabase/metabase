@@ -2,13 +2,12 @@
   "Definitions of `Field`, `Value`, and other record types present in an expanded query.
    This namespace should just contain definitions of various protocols and record types; associated logic
    should go in `metabase.query-processor.expand`."
-  (:require [schema.core :as s]
-            [metabase.models.field :as field]
+  (:require [metabase.models.field :as field]
             [metabase.util :as u]
-            [metabase.util.schema :as su])
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import clojure.lang.Keyword
            java.sql.Timestamp))
-
 
 ;;; # ------------------------------------------------------------ CONSTANTS ------------------------------------------------------------
 

@@ -2,17 +2,17 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [toucan.db :as db]
-            [metabase.config :as config]
-            (metabase.models [database :refer [Database]]
-                             field
-                             [query-execution :refer [QueryExecution]]
-                             [setting :refer [defsetting]])
-            [metabase.util :as u])
+            [metabase.models
+             [database :refer [Database]]
+             field
+             [setting :refer [defsetting]]
+             table]
+            [metabase.util :as u]
+            [toucan.db :as db])
   (:import clojure.lang.Keyword
            metabase.models.database.DatabaseInstance
-           metabase.models.field.FieldInstance))
-
+           metabase.models.field.FieldInstance
+           metabase.models.table.TableInstance))
 
 ;;; ## INTERFACE + CONSTANTS
 

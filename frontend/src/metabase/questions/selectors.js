@@ -5,10 +5,7 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import visualizations from "metabase/visualizations";
-
-function caseInsensitiveSearch(haystack, needle) {
-    return !needle || (haystack != null && haystack.toLowerCase().indexOf(needle.toLowerCase()) >= 0);
-}
+import {caseInsensitiveSearch} from "metabase/lib/string"
 
 export const getEntityType          = (state, props) => props && props.entityType ? props.entityType : state.questions.lastEntityType;
 export const getEntityQuery         = (state, props) => props && props.entityQuery ? JSON.stringify(props.entityQuery) : state.questions.lastEntityQuery;

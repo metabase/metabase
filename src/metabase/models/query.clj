@@ -1,9 +1,9 @@
 (ns metabase.models.query
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.db :as mdb]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+  (:require [metabase.db :as mdb]
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel Query :query)
 

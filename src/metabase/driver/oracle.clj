@@ -1,16 +1,13 @@
 (ns metabase.driver.oracle
   (:require [clojure.java.jdbc :as jdbc]
-            (clojure [set :as set]
-                     [string :as s])
-            [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [helpers :as h])
-            [metabase.config :as config]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
+            [clojure.set :as set]
+            [honeysql.core :as hsql]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
 (def ^:private ^:const pattern->type
@@ -257,9 +254,7 @@
                                           (require 'metabase.test.data.oracle)
                                           ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
           :field-percent-urls        sql/slow-field-percent-urls
-          ;; TODO - we *should* be able to set timezone using the SQL below, but I think the SQL doesn't work with prepared params (i.e., '?')
-          ;; Find some way to work around this for Oracle
-          ;; :set-timezone-sql          (constantly "ALTER session SET time_zone = ?")
+          :set-timezone-sql          (constantly "ALTER session SET time_zone = %s")
           :prepare-value             (u/drop-first-arg prepare-value)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))

@@ -10,7 +10,7 @@ import AdvancedSettingsPane from "./AdvancedSettingsPane";
 import PreviewPane from "./PreviewPane";
 import EmbedCodePane from "./EmbedCodePane";
 
-import type { Parameter, ParameterId } from "metabase/meta/types/Dashboard";
+import type { Parameter, ParameterId } from "metabase/meta/types/Parameter";
 import type { Pane, EmbedType, EmbeddableResource, EmbeddingParams, DisplayOptions } from "./EmbedModalContent";
 
 import _ from "underscore";

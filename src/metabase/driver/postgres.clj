@@ -1,19 +1,15 @@
 (ns metabase.driver.postgres
-  ;; TODO - rework this to be like newer-style namespaces that use `u/drop-first-arg`
-  (:require [clojure.java.jdbc :as jdbc]
-            (clojure [set :refer [rename-keys], :as set]
-                     [string :as s])
-            [clojure.tools.logging :as log]
+  (:require [clojure
+             [set :as set :refer [rename-keys]]
+             [string :as s]]
             [honeysql.core :as hsql]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
-  ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
-  ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
-  (:import java.util.UUID
-           org.postgresql.ssl.NonValidatingFactory))
+  (:import java.util.UUID))
 
 (def ^:private ^:const column->base-type
   "Map of Postgres column types -> Field base types.
@@ -196,7 +192,7 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
+          :set-timezone-sql          (constantly "SET SESSION TIMEZONE TO %s;")
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 

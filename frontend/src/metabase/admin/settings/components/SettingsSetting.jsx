@@ -45,6 +45,9 @@ export default class SettingsSetting extends Component {
                 { errorMessage &&
                     <div className="text-error text-bold pt1">{errorMessage}</div>
                 }
+                { setting.warning &&
+                    <div className="text-gold text-bold pt1">{setting.warning}</div>
+                }
             </li>
         );
     }

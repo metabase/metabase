@@ -1,6 +1,8 @@
 /* eslint "react/prop-types": "warn" */
-import React, {Component} from "react"
+
+import React, { Component } from "react"
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -14,7 +16,7 @@ import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget.jsx";
 import CategoryWidget from "./widgets/CategoryWidget.jsx";
 import TextWidget from "./widgets/TextWidget.jsx";
 
-import S from "../../containers/ParameterWidget.css";
+import S from "./ParameterWidget.css";
 
 import cx from "classnames";
 
@@ -27,6 +29,18 @@ const WIDGETS = {
     "date/all-options": DateAllOptionsWidget
 }
 
+import { fetchFieldValues } from "metabase/redux/metadata";
+import { getParameterFieldValues } from "metabase/selectors/metadata";
+
+const mapStateToProps = (state, props) => ({
+    values: getParameterFieldValues(state, props),
+})
+
+const mapDispatchToProps = {
+    fetchFieldValues
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class ParameterValueWidget extends Component {
 
     static propTypes = {
@@ -70,6 +84,22 @@ export default class ParameterValueWidget extends Component {
     }
 
     state = { isFocused: false };
+
+    componentWillMount() {
+        this.updateFieldValues(this.props);
+    }
+
+    componentWillReceiveProps(nextProps) {
+        if (nextProps.parameter.field_id != null && nextProps.parameter.field_id !== this.props.parameter.field_id) {
+            this.updateFieldValues(nextProps);
+        }
+    }
+
+    updateFieldValues(props) {
+        if (props.parameter.field_id != null) {
+            props.fetchFieldValues(props.parameter.field_id)
+        }
+    }
 
     render() {
         const {parameter, value, values, setValue, isEditing, placeholder, isFullscreen,

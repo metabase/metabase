@@ -1,27 +1,27 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:require [clojure.data :as data]
-            (clojure.java [classpath :as classpath]
-                          [jdbc :as jdbc])
+  (:require [clj-time
+             [coerce :as coerce]
+             [core :as t]
+             [format :as time]]
+            [clojure
+             [data :as data]
+             [pprint :refer [pprint]]
+             [string :as s]]
+            [clojure.java
+             [classpath :as classpath]
+             [jdbc :as jdbc]]
             [clojure.math.numeric-tower :as math]
-            (clojure [pprint :refer [pprint]]
-                     [string :as s])
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            (clj-time [core :as t]
-                      [coerce :as coerce]
-                      [format :as time])
-            colorize.core
-            [ring.util.codec :as codec]
+            colorize.core ; this needs to be loaded for `format-color`
             [metabase.config :as config]
-            metabase.logger)             ; make sure this is loaded since we use clojure.tools.logging here
+            [ring.util.codec :as codec])
   (:import clojure.lang.Keyword
-           (java.net Socket
-                     InetSocketAddress
-                     InetAddress)
-           (java.sql SQLException Timestamp)
-           (java.text Normalizer Normalizer$Form)
-           (java.util Calendar Date TimeZone)
+           [java.net InetAddress InetSocketAddress Socket]
+           [java.sql SQLException Timestamp]
+           [java.text Normalizer Normalizer$Form]
+           [java.util Calendar Date TimeZone]
            javax.xml.bind.DatatypeConverter
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
@@ -831,3 +831,28 @@
       (if-let [new-index (s/index-of s substr index)]
         (recur (inc new-index) (inc cnt))
         cnt))))
+
+(defn select-non-nil-keys
+  "Like `select-keys`, but returns a map only containing keys in KS that are present *and non-nil* in M.
+
+     (select-non-nil-keys {:a 100, :b nil} #{:a :b :c})
+     ;; -> {:a 100}"
+  [m ks]
+  (into {} (for [k     ks
+                 :when (not (nil? (get m k)))]
+             {k (get m k)})))
+
+(defn select-keys-when
+  "Returns a map that only contains keys that are either `:present` or `:non-nil`.
+   Combines behavior of `select-keys` and `select-non-nil-keys`.
+   This is useful for API endpoints that update a model, which often have complex rules about what gets updated
+   (some keys are updated if `nil`, others only if non-nil).
+
+     (select-keys-when {:a 100, :b nil, :d 200, :e nil}
+       :present #{:a :b :c}
+       :non-nil #{:d :e :f})
+     ;; -> {:a 100, :b nil, :d 200}"
+  {:style/indent 1}
+  [m & {:keys [present non-nil]}]
+  (merge (select-keys m present)
+         (select-non-nil-keys m non-nil)))

@@ -1,32 +1,16 @@
 (ns metabase.driver.googleanalytics
-  ;; TODO - probably makes to call this namespace `google-analytics`
-  (:require (clojure [set :as set]
-                     [string :as s]
-                     [walk :as walk])
-            [clojure.tools.logging :as log]
-            [cheshire.core :as json]
-            [metabase.config :as config]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
+  (:require [cheshire.core :as json]
+            [clojure.string :as s]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.google :as google]
-            (metabase.driver.googleanalytics [query-processor :as qp])
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
-                             [table :as table])
-            [metabase.sync-database.analyze :as analyze]
-            metabase.query-processor.interface
-            [metabase.util :as u])
-  (:import (java.util Collections Date List Map)
-           (com.google.api.client.googleapis.auth.oauth2 GoogleCredential GoogleCredential$Builder GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleTokenResponse)
-           com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
-           (com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException)
-           com.google.api.client.googleapis.services.AbstractGoogleClientRequest
-           com.google.api.client.http.HttpTransport
-           com.google.api.client.json.JsonFactory
-           com.google.api.client.json.jackson2.JacksonFactory
-           (com.google.api.services.analytics Analytics Analytics$Builder Analytics$Data$Ga$Get AnalyticsScopes)
-           (com.google.api.services.analytics.model Account Accounts Columns Column Profile Profiles Webproperty Webproperties)))
-
+            [metabase.driver.googleanalytics.query-processor :as qp]
+            [metabase.models.database :refer [Database]])
+  (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
+           [com.google.api.services.analytics Analytics Analytics$Builder Analytics$Data$Ga$Get AnalyticsScopes]
+           [com.google.api.services.analytics.model Column Columns Profile Profiles Webproperties Webproperty]
+           [java.util Collections Date Map]))
 
 ;;; ------------------------------------------------------------ Client ------------------------------------------------------------
 

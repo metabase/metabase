@@ -1,4 +1,4 @@
-/* @flow weak */
+/* @flow */
 
 import React, { Component } from "react";
 
@@ -7,7 +7,33 @@ import ParameterWidget from "./ParameterWidget.jsx";
 import querystring from "querystring";
 import cx from "classnames";
 
-export default class Parameters extends Component {
+import type { QueryParams } from "metabase/meta/types";
+import type { ParameterId, Parameter, ParameterValues } from "metabase/meta/types/Parameter";
+
+type Props = {
+    className?:                 string,
+
+    parameters:                 Parameter[],
+    editingParameter:           ?Parameter,
+    parameterValues:            ParameterValues,
+
+    isFullscreen?:              boolean,
+    isNightMode?:               boolean,
+    isEditing?:                 boolean,
+    isQB?:                      boolean,
+    vertical?:                  boolean,
+    commitImmediately?:         boolean,
+
+    query:                      QueryParams,
+
+    setParameterName:           (parameterId: ParameterId, name: string) => void,
+    setParameterValue:          (parameterId: ParameterId, value: string) => void,
+    setParameterDefaultValue:   (parameterId: ParameterId, defaultValue: string) => void,
+    removeParameter:            (parameterId: ParameterId) => void,
+    setEditingParameter:        (parameterId: ParameterId) => void,
+}
+
+export default class Parameters extends Component<*, Props, *> {
     defaultProps = {
         syncQueryString: false,
         vertical: false,

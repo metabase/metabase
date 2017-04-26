@@ -649,7 +649,7 @@
 
 ;; Test that we *cannot* share a Card if the Card has been archived
 (expect
-  "Not found."
+  "The object has been archived."
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [card {:archived true}]
       ((user->client :crowberto) :post 404 (format "card/%d/public_link" (u/get-id card))))))

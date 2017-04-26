@@ -60,7 +60,7 @@ export default class LoadingAndErrorWrapper extends Component {
             <div className={this.props.className} style={this.props.style}>
                 { error ?
                     <div className={contentClassName}>
-                        <h2 className="text-normal text-grey-2">{this.getErrorMessage()}</h2>
+                        <h2 className="text-normal text-grey-2 ie-wrap-content-fix">{this.getErrorMessage()}</h2>
                     </div>
                 : loading ?
                     <div className={contentClassName}>
