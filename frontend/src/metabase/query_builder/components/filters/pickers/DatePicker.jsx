@@ -151,6 +151,12 @@ export type Operator = {
     test: (filter: FieldFilter) => boolean
 }
 
+const ALL_TIME_OPERATOR = {
+    name: "All Time",
+    init: () => null,
+    test: (op) => op === null
+}
+
 export const DATE_OPERATORS: Operator[] = [
     {
         name: "Previous",
@@ -246,15 +252,20 @@ export default class DatePicker extends Component<*, Props, *> {
     }
 
     render() {
-        let { filter, onFilterChange, className} = this.props;
-        const operator = this._getOperator(this.state.operators);
+        let { filter, onFilterChange, className, includeAllTime } = this.props;
+        let { operators } = this.state;
+        if (includeAllTime) {
+            operators = [ALL_TIME_OPERATOR, ...operators];
+        }
+
+        const operator = this._getOperator(operators);
         const Widget = operator && operator.widget;
 
         return (
             <div className={cx("pt2", className)}>
                 <DateOperatorSelector
                     operator={operator && operator.name}
-                    operators={this.state.operators}
+                    operators={operators}
                     onOperatorChange={operator => onFilterChange(operator.init(filter))}
                 />
                 { Widget &&
