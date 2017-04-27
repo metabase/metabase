@@ -1,6 +1,5 @@
 /* @flow */
 import React, { Component } from "react";
-import cx from "classnames";
 
 import Input from "metabase/components/Input.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
