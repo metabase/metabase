@@ -1,6 +1,6 @@
 (ns metabase.driver-test
   (:require [expectations :refer :all]
-            [metabase.driver :refer :all]))
+            [metabase.driver :as driver]))
 
 
 (defrecord TestDriver []
@@ -8,11 +8,11 @@
   (getName [_] "TestDriver"))
 
 (extend TestDriver
-  IDriver
+  driver/IDriver
   {:features (constantly #{:a})})
 
 
 ;; driver-supports?
 
-(expect true (driver-supports? (TestDriver.) :a))
-(expect false (driver-supports? (TestDriver.) :b))
+(expect true  (driver/driver-supports? (TestDriver.) :a))
+(expect false (driver/driver-supports? (TestDriver.) :b))

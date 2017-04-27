@@ -15,17 +15,17 @@ import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
 import { getDashboardActions } from "./DashboardActions";
 
-import ParametersPopover from "./parameters/ParametersPopover.jsx";
+import ParametersPopover from "./ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 
-import type { LocationDescriptor, QueryParams, Parameter, ParameterId, EntityType, EntityId } from "metabase/meta/types/Parameter";
-
+import type { LocationDescriptor, QueryParams, EntityType, EntityId } from "metabase/meta/types";
 import type { Card, CardId } from "metabase/meta/types/Card";
-import type { DashboardWithCards, DashboardId, DashCardId, ParameterOption } from "metabase/meta/types/Dashboard";
+import type { Parameter, ParameterId, ParameterOption } from "metabase/meta/types/Parameter";
+import type { DashboardWithCards, DashboardId, DashCardId } from "metabase/meta/types/Dashboard";
 import type { Revision, RevisionId } from "metabase/meta/types/Revision";
 
 type Props = {
@@ -56,7 +56,7 @@ type Props = {
     setDashboardAttribute:  (attribute: string, value: any) => void,
 
     addParameter:           (option: ParameterOption) => Promise<Parameter>,
-    setEditingParameter:    (parameterId: ParameterId) => void,
+    setEditingParameter:    (parameterId: ?ParameterId) => void,
 
     onEditingChange:        () => void,
     onRefreshPeriodChange:  (?number) => void,

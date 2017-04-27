@@ -4,14 +4,16 @@
    Objects that implement `IDatasetLoader` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as str]
-            [schema.core :as s]
-            (metabase [db :as db]
-                      [driver :as driver])
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field] :as field]
-                             [table :refer [Table]])
-            [metabase.util :as u]
-            [metabase.util.schema :as su])
+            [metabase
+             [db :as db]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :as field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import clojure.lang.Keyword))
 
 (s/defrecord FieldDefinition [field-name      :- su/NonBlankString

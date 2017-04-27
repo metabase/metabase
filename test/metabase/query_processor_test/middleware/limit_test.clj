@@ -1,11 +1,8 @@
 (ns metabase.query-processor-test.middleware.limit-test
   "Tests for the `:limit` clause and `:max-results` constraints."
   (:require [expectations :refer :all]
-            (metabase.query-processor [expand :as ql]
-                                      [interface :as i])
-            [metabase.query-processor.middleware.limit :as limit]
-            [metabase.query-processor-test :refer :all]
-            [metabase.util :as u]))
+            [metabase.query-processor.interface :as i]
+            [metabase.query-processor.middleware.limit :as limit]))
 
 ;;; ------------------------------------------------------------ LIMIT-MAX-RESULT-ROWS ------------------------------------------------------------
 ;; Apply limit-max-result-rows to an infinite sequence and make sure it gets capped at `i/absolute-max-results`

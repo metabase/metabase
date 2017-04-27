@@ -1,9 +1,9 @@
 (ns metabase.util.stats-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
             [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.test.util :as tu]
             [metabase.util.stats :refer :all]
-            [metabase.test.util :as tu]))
+            [toucan.db :as db]))
 
 (tu/resolve-private-vars metabase.util.stats
   bin-micro-number bin-medium-number bin-large-number)

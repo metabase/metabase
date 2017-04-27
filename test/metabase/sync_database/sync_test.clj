@@ -1,20 +1,25 @@
 (ns metabase.sync-database.sync-test
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table]])
-            (metabase.sync-database [introspect :as introspect]
-                                    [sync :refer :all])
-            [metabase.test.data :as data]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]
+             [table :refer [Table]]]
+            [metabase.sync-database
+             [introspect :as introspect]
+             [sync :refer :all]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.interface :as i]
-            (metabase.test.mock [moviedb :as moviedb]
-                                [schema-per-customer :as schema-per-customer])
-            [metabase.test.util :as tu]))
+            [metabase.test.mock
+             [moviedb :as moviedb]
+             [schema-per-customer :as schema-per-customer]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
+            [toucan.util.test :as tt]))
 
 (tu/resolve-private-vars metabase.sync-database.sync
   save-fks! save-table-fields!)

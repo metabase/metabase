@@ -30,12 +30,13 @@
   "Special endpoint for creating the first user during setup.
    This endpoint both creates the user AND logs them in and returns a session ID."
   [:as {{:keys [token] {:keys [name engine details is_full_sync]} :database, {:keys [first_name last_name email password]} :user, {:keys [allow_tracking site_name]} :prefs} :body}]
-  {token      SetupToken
-   site_name  su/NonBlankString
-   first_name su/NonBlankString
-   last_name  su/NonBlankString
-   email      su/Email
-   password   su/ComplexPassword}
+  {token          SetupToken
+   site_name      su/NonBlankString
+   first_name     su/NonBlankString
+   last_name      su/NonBlankString
+   email          su/Email
+   password       su/ComplexPassword
+   allow_tracking (s/maybe (s/cond-pre s/Bool su/BooleanString))}
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
@@ -49,18 +50,16 @@
     ;; set a couple preferences
     (public-settings/site-name site_name)
     (public-settings/admin-email email)
-    (public-settings/anon-tracking-enabled (if (m/boolean? allow_tracking)
-                                             allow_tracking
-                                             true)) ; default to `true` if allow_tracking isn't specified
+    (public-settings/anon-tracking-enabled (or (nil? allow_tracking) ; default to `true` if allow_tracking isn't specified
+                                               allow_tracking))      ; the setting will set itself correctly whether a boolean or boolean string is specified
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
       (->> (db/insert! Database
              :name         name
              :engine       engine
              :details      details
-             :is_full_sync (if-not (nil? is_full_sync)
-                             is_full_sync
-                             true))
+             :is_full_sync (or (nil? is_full_sync) ; default to `true` is `is_full_sync` isn't specified
+                               is_full_sync))
            (events/publish-event! :database-create)))
     ;; clear the setup token now, it's no longer needed
     (setup/clear-token!)

@@ -17,7 +17,7 @@ describeE2E("dashboards/dashboards", () => {
             await ensureLoggedIn(server, driver, "bob@metabase.com", "12341234");
         });
 
-        it("should let you create new dashboards, see them, filter them and enter them", async () => {
+        xit("should let you create new dashboards, see them, filter them and enter them", async () => {
             await d.get("/dashboards");
             await d.screenshot("screenshots/dashboards.png");
 

@@ -1,23 +1,18 @@
 (ns metabase.events.activity-feed-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
             [metabase.events.activity-feed :refer :all]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [metric :refer [Metric]]
-                             [pulse :refer [Pulse]]
-                             [segment :refer [Segment]]
-                             [session :refer [Session]]
-                             [table :refer [Table]]
-                             [user :refer [User]])
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
+             [segment :refer [Segment]]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer [user->id]]
-            [metabase.test.util :as tu]
-            [metabase.test-setup :refer :all]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (defn- do-with-temp-activities [f]
   (db/delete! Activity)                  ; Not 100% sure this is neccessary anymore

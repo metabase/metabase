@@ -1,10 +1,10 @@
 (ns metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
   (:require [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             vertica)
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.driver.generic-sql :as sql]
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.vertica.VerticaDriver))
 

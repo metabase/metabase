@@ -7,7 +7,7 @@ import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import Parameters from "../containers/Parameters.jsx";
+import Parameters from "metabase/parameters/components/Parameters.jsx";
 
 import DashboardControls from "../hoc/DashboardControls";
 
@@ -17,9 +17,9 @@ import cx from "classnames";
 import type { LocationDescriptor, ApiError, QueryParams } from "metabase/meta/types"
 
 import type { Card, CardId, VisualizationSettings } from "metabase/meta/types/Card";
-import type { DashboardWithCards, DashboardId, DashCardId, ParameterOption } from "metabase/meta/types/Dashboard";
+import type { DashboardWithCards, DashboardId, DashCardId } from "metabase/meta/types/Dashboard";
 import type { RevisionId } from "metabase/meta/types/Revision";
-import type { Parameter, ParameterId, ParameterValues } from "metabase/meta/types/Parameter";
+import type { Parameter, ParameterId, ParameterValues, ParameterOption } from "metabase/meta/types/Parameter";
 
 type Props = {
     location:               LocationDescriptor,
@@ -32,6 +32,7 @@ type Props = {
     isEditing:              boolean,
     isEditingParameter:     boolean,
 
+    parameters:             Parameter[],
     parameterValues:        ParameterValues,
 
     addCardOnLoad:          DashboardId,
@@ -87,6 +88,7 @@ export default class Dashboard extends Component<*, Props, State> {
 
         dashboard: PropTypes.object,
         cards: PropTypes.array,
+        parameters: PropTypes.array,
 
         addCardToDashboard: PropTypes.func.isRequired,
         deleteDashboard: PropTypes.func.isRequired,
@@ -157,13 +159,13 @@ export default class Dashboard extends Component<*, Props, State> {
     }
 
     render() {
-        let { dashboard, isEditing, editingParameter, parameterValues, location, isFullscreen, isNightMode } = this.props;
+        let { dashboard, isEditing, editingParameter, parameters, parameterValues, location, isFullscreen, isNightMode } = this.props;
         let { error } = this.state;
         isNightMode = isNightMode && isFullscreen;
 
-        let parameters;
-        if (dashboard && dashboard.parameters && dashboard.parameters.length) {
-            parameters = (
+        let parametersWidget;
+        if (parameters && parameters.length > 0) {
+            parametersWidget = (
                 <Parameters
                     syncQueryString
 
@@ -171,7 +173,7 @@ export default class Dashboard extends Component<*, Props, State> {
                     isFullscreen={isFullscreen}
                     isNightMode={isNightMode}
 
-                    parameters={dashboard.parameters.map(p => ({ ...p, value: parameterValues[p.id] }))}
+                    parameters={parameters.map(p => ({ ...p, value: parameterValues[p.id] }))}
                     query={location.query}
 
                     editingParameter={editingParameter}
@@ -195,12 +197,12 @@ export default class Dashboard extends Component<*, Props, State> {
                             onEditingChange={this.setEditing}
                             setDashboardAttribute={this.setDashboardAttribute}
                             addParameter={this.props.addParameter}
-                            parameters={parameters}
+                            parameters={parametersWidget}
                         />
                     </header>
-                    {!isFullscreen && parameters &&
+                    {!isFullscreen && parametersWidget &&
                         <div className="wrapper flex flex-column align-start mt2 relative z2">
-                            {parameters}
+                            {parametersWidget}
                         </div>
                     }
                     <div className="wrapper">

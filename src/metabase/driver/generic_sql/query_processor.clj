@@ -329,10 +329,12 @@
 (defn- set-timezone!
   "Set the timezone for the current connection."
   [driver settings connection]
-  (let [timezone (:report-timezone settings)
-        sql      (sql/set-timezone-sql driver)]
-    (log/debug (u/pprint-to-str 'green [sql timezone]))
-    (jdbc/db-do-prepared connection [sql timezone])))
+  (let [timezone      (u/prog1 (:report-timezone settings)
+                        (assert (re-matches #"[A-Za-z\/_]+" <>)))
+        format-string (sql/set-timezone-sql driver)
+        sql           (format format-string (str \' timezone \'))]
+    (log/debug (u/format-color 'green "Setting timezone with statement: %s" sql))
+    (jdbc/db-do-prepared connection [sql])))
 
 (defn- run-query-without-timezone [driver settings connection query]
   (do-in-transaction connection (partial run-query query)))

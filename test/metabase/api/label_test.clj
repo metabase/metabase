@@ -1,11 +1,11 @@
 (ns metabase.api.label-test
   "Tests for `/api/label` endpoints."
   (:require [expectations :refer [expect]]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
             [metabase.models.label :refer [Label]]
             [metabase.test.data.users :refer [user->client]]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;;; GET /api/label -- list all labels
 (tt/expect-with-temp [Label [{label-1-id :id} {:name "Toucan-Approved"}]

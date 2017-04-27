@@ -2,7 +2,7 @@
 
 import type { DatabaseId } from "./Database";
 import type { StructuredQuery, NativeQuery } from "./Query";
-import type { Parameter, ParameterInstance } from "./Dashboard";
+import type { Parameter, ParameterInstance } from "./Parameter";
 
 export type CardId = number;
 

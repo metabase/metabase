@@ -17,7 +17,9 @@
              [table :as table]]
             [metabase.query-processor.util :as qputil]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
   (:import java.util.Date
            [metabase.query_processor.interface DateTimeValue Value]))
 
@@ -64,28 +66,30 @@
           (parser value))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
-  (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
-    (when error
-      (throw (ex-info (or (:message error) "Error running query.") error)))
-    (let [rows    (parse-presto-results columns data)
-          results {:columns (or columns prev-columns)
-                   :rows    (vec (concat prev-rows rows))}]
-      (if (nil? nextUri)
-        results
-        (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
-            (fetch-presto-results! details results nextUri))))))
+  (ssh/with-ssh-tunnel [details-with-tunnel details]
+    (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details-with-tunnel) :as :json))]
+      (when error
+        (throw (ex-info (or (:message error) "Error running query.") error)))
+      (let [rows    (parse-presto-results columns data)
+            results {:columns (or columns prev-columns)
+                     :rows    (vec (concat prev-rows rows))}]
+        (if (nil? nextUri)
+          results
+          (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
+              (fetch-presto-results! details-with-tunnel results nextUri)))))))
 
 (defn- execute-presto-query! [details query]
-  (let [{{:keys [columns data nextUri error]} :body} (http/post (details->uri details "/v1/statement")
-                                                                (assoc (details->request details) :body query, :as :json))]
-    (when error
-      (throw (ex-info (or (:message error) "Error preparing query.") error)))
-    (let [rows    (parse-presto-results (or columns []) (or data []))
-          results {:columns (or columns [])
-                   :rows    rows}]
-      (if (nil? nextUri)
-        results
-        (fetch-presto-results! details results nextUri)))))
+  (ssh/with-ssh-tunnel [details-with-tunnel details]
+    (let [{{:keys [columns data nextUri error]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
+                                                                  (assoc (details->request details-with-tunnel) :body query, :as :json))]
+      (when error
+        (throw (ex-info (or (:message error) "Error preparing query.") error)))
+      (let [rows    (parse-presto-results (or columns []) (or data []))
+            results {:columns (or columns [])
+                     :rows    rows}]
+        (if (nil? nextUri)
+          results
+          (fetch-presto-results! details-with-tunnel results nextUri))))))
 
 
 ;;; Generic helpers
@@ -291,29 +295,30 @@
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
           :describe-table-fks                (constantly nil) ; no FKs in Presto
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      8080}
-                                                          {:name         "catalog"
-                                                           :display-name "Database name"
-                                                           :placeholder  "hive"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database"
-                                                           :default      "metabase"}
-                                                          {:name         "password"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "*******"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}])
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      8080}
+                                                            {:name         "catalog"
+                                                             :display-name "Database name"
+                                                             :placeholder  "hive"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database"
+                                                             :default      "metabase"}
+                                                            {:name         "password"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "*******"}
+                                                            {:name         "ssl"
+                                                             :display-name "Use a secure connection (SSL)?"
+                                                             :type         :boolean
+                                                             :default      false}]))
           :execute-query                     (u/drop-first-arg execute-query)
           :features                          (constantly (set/union #{:set-timezone
                                                                       :basic-aggregations

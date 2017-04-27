@@ -6,7 +6,7 @@ import { withRouter } from "react-router";
 import { IFRAMED } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
-import Parameters from "metabase/dashboard/containers/Parameters";
+import Parameters from "metabase/parameters/components/Parameters";
 import LogoBadge from "./LogoBadge";
 
 import cx from "classnames";
@@ -18,7 +18,7 @@ const DEFAULT_OPTIONS = {
     titled: true
 }
 
-import type { Parameter } from "metabase/meta/types/Dashboard";
+import type { Parameter } from "metabase/meta/types/Parameter";
 
 type Props = {
     className?: string,

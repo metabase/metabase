@@ -2,7 +2,8 @@
 import React, { Component } from "react";
 
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
-import type { Parameter, ParameterOption } from "metabase/meta/types/Dashboard";
+
+import type { Parameter, ParameterOption } from "metabase/meta/types/Parameter";
 
 import _ from "underscore";
 

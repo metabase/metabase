@@ -1,14 +1,15 @@
 (ns metabase.models.metric-test
   (:require [expectations :refer :all]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [metric :refer :all, :as metric]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [database :refer [Database]]
+             [metric :as metric :refer :all]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 (def ^:private ^:const metric-defaults
   {:description             nil

@@ -1,17 +1,21 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :as hydrate])
-            [toucan.util.test :as tt]
-            [metabase.driver :as driver]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
-            (metabase.test.data [datasets :as datasets]
-                                [users :refer :all])
-            [metabase.test.util :refer [match-$ random-name], :as tu]
-            [metabase.util :as u]))
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu :refer [match-$]]]
+            [metabase.test.data
+             [datasets :as datasets]
+             [users :refer :all]]
+            [toucan
+             [db :as db]
+             [hydrate :as hydrate]]))
 
 ;; HELPER FNS
 
