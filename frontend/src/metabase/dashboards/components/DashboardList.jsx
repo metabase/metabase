@@ -66,7 +66,7 @@ class DashboardListItem extends Component {
 
         const dashboardIcon =
             <Icon name="dashboard"
-                  className={cx("ml2", {"text-grey-1": !hover}, {"text-brand-darken": hover})}
+                  className={cx("ml2", "text-grey-1")}
                   size={25}/>
 
         return (
@@ -104,14 +104,29 @@ class DashboardListItem extends Component {
                                     {moment(created_at).format('MMM D, YYYY')}
                                 </div>
                             </div>
-                            <div className="flex align-center">
-                                { (archived || hover) && archivalButton }
-                                { setFavorited && (favorite || hover) && favoritingButton }
+
+                            <div className="flex align-center hidden">
+                                { hover && archivalButton }
+                                { (favorite || hover) && favoritingButton }
+                                { !hover && !favorite && dashboardIcon }
                             </div>
+
+                            <div className="flex align-center absolute right transition-all" style={{right: "16px", opacity: hover ? 0 : 1}}>
+                                { favorite ? favoritingButton : dashboardIcon}
+                            </div>
+
+                            <div className="flex align-center absolute right transition-all" style={{right: "16px", opacity: favorite ? 1 : 0}}>
+                                { favoritingButton }
+                            </div>
+
+                            <div className="flex align-center absolute right transition-all" style={{right: "16px", opacity: hover ? 1 : 0}}>
+                                { archivalButton }
+                                { favoritingButton }
+                            </div>
+
                         </div>
                     </div>
 
-                    { !hover && !favorite && dashboardIcon }
                 </Link>
             </li>
         )
