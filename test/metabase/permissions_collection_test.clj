@@ -1,17 +1,18 @@
 (ns metabase.permissions-collection-test
   "A test suite for permissions `Collections`. Reüses functions from `metabase.permissions-test`."
-  (:require  [expectations :refer :all]
-             [toucan.db :as db]
-             [toucan.util.test :as tt]
-             (metabase.models [card :refer [Card], :as card]
-                              [collection :refer [Collection]]
-                              [permissions :as permissions]
-                              [permissions-group :as group]
-                              [revision :refer [Revision]])
-             [metabase.permissions-test :as perms-test, :refer [*card:db2-count-of-venues* *db2*]]
-             [metabase.test.data.users :as test-users]
-             [metabase.test.util :as tu]
-             [metabase.util :as u]))
+  (:require [expectations :refer :all]
+            [metabase
+             [permissions-test :as perms-test :refer [*card:db2-count-of-venues* *db2*]]
+             [util :as u]]
+            [metabase.models
+             [card :as card :refer [Card]]
+             [collection :refer [Collection]]
+             [permissions :as permissions]
+             [permissions-group :as group]
+             [revision :refer [Revision]]]
+            [metabase.test.data.users :as test-users]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; the Card used in the tests below is one Crowberto (an admin) should be allowed to read/write based on data permissions,
 ;; but not Rasta (all-users)

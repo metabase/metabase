@@ -2,22 +2,23 @@
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
             [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.http-client :as http]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [field-values :refer [FieldValues]])
-            metabase.public-settings ; for `enable-public-sharing
-            [metabase.query-processor-test :as qp-test]
-            [metabase.test.data :as data]
+            [metabase
+             [http-client :as http]
+             [query-processor-test :as qp-test]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [field-values :refer [FieldValues]]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
-            [metabase.util :as u])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import java.util.UUID))
-
 
 ;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
 

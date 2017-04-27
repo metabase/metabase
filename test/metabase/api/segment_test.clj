@@ -1,18 +1,21 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
   (:require [expectations :refer :all]
-            [toucan.hydrate :refer [hydrate]]
-            [toucan.util.test :as tt]
-            (metabase [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [database :refer [Database]]
-                             [revision :refer [Revision]]
-                             [segment :refer [Segment], :as segment]
-                             [table :refer [Table]])
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [revision :refer [Revision]]
+             [segment :as segment :refer [Segment]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.data :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [toucan.hydrate :refer [hydrate]]
+            [toucan.util.test :as tt]))
 
 ;; ## Helper Fns
 

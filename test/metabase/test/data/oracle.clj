@@ -3,10 +3,9 @@
             [clojure.string :as s]
             [environ.core :refer [env]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.test.data :as data]
-            (metabase.test.data [datasets :as datasets]
-                                [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.oracle.OracleDriver))
 

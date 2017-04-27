@@ -1,12 +1,8 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [expectations :refer :all]
-            (metabase.query-processor [expand :as ql]
-                                      [interface :as qpi])
-            [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+  (:require [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.expand :as ql]
+            [metabase.test.data :as data]))
 
 ;;; ------------------------------------------------------------ "FILTER" CLAUSE ------------------------------------------------------------
 

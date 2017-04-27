@@ -1,13 +1,11 @@
 (ns metabase.api.preview-embed-test
   (:require [expectations :refer :all]
-            [toucan.util.test :as tt]
             [metabase.api.embed-test :as embed-test]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])
+            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 ;;; ------------------------------------------------------------ GET /api/preview_embed/card/:token ------------------------------------------------------------
 

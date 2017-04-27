@@ -1,15 +1,16 @@
 (ns metabase.sync-database.introspect-test
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]])
+            [metabase.models
+             [database :refer [Database]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]]
             [metabase.sync-database.introspect :as introspect]
             [metabase.test.mock.moviedb :as moviedb]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
+            [toucan.util.test :as tt]))
 
 (tu/resolve-private-vars metabase.sync-database.introspect
   save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
