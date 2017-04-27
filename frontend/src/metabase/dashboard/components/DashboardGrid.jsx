@@ -197,7 +197,9 @@ export default class DashboardGrid extends Component {
                 onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                 onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(this, dc.id)}
                 onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(this, dc.id)}
+                onChangeCardAndRun={this.props.onChangeCardAndRun}
                 linkToCard={this.props.linkToCard}
+                metadata={this.props.metadata}
             />
         )
     }

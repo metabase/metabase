@@ -11,7 +11,7 @@ import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 
 import { getIsEditing, getIsEditingParameter, getIsDirty, getDashboardComplete, getCardList, getRevisions, getCardData, getCardDurations, getEditingParameter, getParameterValues } from "../selectors";
-import { getDatabases } from "metabase/selectors/metadata";
+import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as dashboardActions from "../dashboard";
@@ -31,7 +31,9 @@ const mapStateToProps = (state, props) => {
       databases:            getDatabases(state, props),
       editingParameter:     getEditingParameter(state, props),
       parameterValues:      getParameterValues(state, props),
-      addCardOnLoad:        props.location.query.add ? parseInt(props.location.query.add) : null
+      addCardOnLoad:        props.location.query.add ? parseInt(props.location.query.add) : null,
+
+      metadata:             getMetadata(state)
   }
 }
 

@@ -498,6 +498,15 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
     return { id };
 });
 
+import * as Urls from "metabase/lib/urls";
+import { push } from "react-router-redux";
+
+const CHANGE_CARD_AND_RUN = "metabase/database/CHANGE_CARD_AND_RUN";
+export const onChangeCardAndRun = createThunkAction(CHANGE_CARD_AND_RUN, card =>
+    (dispatch, getState) => {
+        dispatch(push(Urls.question(null, card)));
+    });
+
 // reducers
 
 const dashboardId = handleActions({

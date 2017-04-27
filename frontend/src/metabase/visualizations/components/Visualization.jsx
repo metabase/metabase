@@ -18,7 +18,7 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { getModeDrills } from "metabase/qb/lib/modes"
+import { getMode, getModeDrills } from "metabase/qb/lib/modes"
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
@@ -186,9 +186,14 @@ export default class Visualization extends Component<*, Props, State> {
         this.setState({ hovered });
     }
 
+    getMode() {
+        const { series: [{ card }], tableMetadata } = this.props;
+        return this.props.mode || getMode(card, tableMetadata);
+    }
+
     getClickActions(clicked: ?ClickObject) {
-        const { mode, series: [{ card }], tableMetadata } = this.props;
-        return getModeDrills(mode, card, tableMetadata, clicked);
+        const { series: [{ card }], tableMetadata } = this.props;
+        return getModeDrills(this.getMode(), card, tableMetadata, clicked);
     }
 
     visualizationIsClickable = (clicked: ClickObject) => {
