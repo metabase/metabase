@@ -8,7 +8,9 @@
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
 (def ^:private ^:const pattern->type
   [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578
@@ -193,24 +195,25 @@
   (merge (sql/IDriverSQLDefaultsMixin)
          {:can-connect?   (u/drop-first-arg can-connect?)
           :date-interval  (u/drop-first-arg date-interval)
-          :details-fields (constantly [{:name         "host"
-                                        :display-name "Host"
-                                        :default      "localhost"}
-                                       {:name         "port"
-                                        :display-name "Port"
-                                        :type         :integer
-                                        :default      1521}
-                                       {:name         "sid"
-                                        :display-name "Oracle System ID"
-                                        :default      "ORCL"}
-                                       {:name         "user"
-                                        :display-name "Database username"
-                                        :placeholder  "What username do you use to login to the database?"
-                                        :required     true}
-                                       {:name         "password"
-                                        :display-name "Database password"
-                                        :type         :password
-                                        :placeholder  "*******"}])
+          :details-fields (constantly (ssh/with-tunnel-config
+                                        [{:name         "host"
+                                          :display-name "Host"
+                                          :default      "localhost"}
+                                         {:name         "port"
+                                          :display-name "Port"
+                                          :type         :integer
+                                          :default      1521}
+                                         {:name         "sid"
+                                          :display-name "Oracle System ID"
+                                          :default      "ORCL"}
+                                         {:name         "user"
+                                          :display-name "Database username"
+                                          :placeholder  "What username do you use to login to the database?"
+                                          :required     true}
+                                         {:name         "password"
+                                          :display-name "Database password"
+                                          :type         :password
+                                          :placeholder  "*******"}]))
           :execute-query  (comp remove-rownum-column sqlqp/execute-query)})
 
   sql/ISQLDriver

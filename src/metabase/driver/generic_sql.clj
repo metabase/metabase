@@ -16,7 +16,9 @@
              [field :as field]
              [table :as table]]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
   (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
            [java.sql DatabaseMetaData ResultSet]
@@ -141,13 +143,15 @@
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
   [{:keys [id engine details]}]
   (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
-  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (db/connection-pool (assoc spec
-                          :minimum-pool-size           1
-                          ;; prevent broken connections closed by dbs by testing them every 3 mins
-                          :idle-connection-test-period (* 3 60)
-                          ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                          :excess-timeout              (* 15 60)))))
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
+        spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
+    (assoc (db/connection-pool (assoc spec
+                                 :minimum-pool-size           1
+                                 ;; prevent broken connections closed by dbs by testing them every 3 mins
+                                 :idle-connection-test-period (* 3 60)
+                                 ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                                 :excess-timeout              (* 15 60)))
+      :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
 (defn- notify-database-updated
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
@@ -158,7 +162,9 @@
     ;; remove the cached reference to the pool so we don't try to use it anymore
     (swap! database-id->connection-pool dissoc id)
     ;; now actively shut down the pool so that any open connections are closed
-    (.close ^ComboPooledDataSource (:datasource pool))))
+    (.close ^ComboPooledDataSource (:datasource pool))
+    (when-let [ssh-tunnel (:ssh-tunnel pool)]
+      (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.

@@ -4,6 +4,7 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.util.ssh :as ssh]
             [monger
              [core :as mg]
              [credentials :as mcred]]))
@@ -45,33 +46,35 @@
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
   [f database]
-  (let [{:keys [dbname host port user pass ssl authdb]
-         :or   {port 27017, pass "", ssl false}} (cond
-                                                   (string? database)            {:dbname database}
-                                                   (:dbname (:details database)) (:details database) ; entire Database obj
-                                                   (:dbname database)            database            ; connection details map only
-                                                   :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))
-        user             (when (seq user) ; ignore empty :user and :pass strings
-                           user)
-        pass             (when (seq pass)
-                           pass)
-        authdb           (if (seq authdb)
-                           authdb
-                           dbname)
-        server-address   (mg/server-address host port)
-        credentials      (when user
-                           (mcred/create user authdb pass))
-        connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
-        conn             (if credentials
-                           (connect credentials)
-                           (connect))
-        mongo-connection (mg/get-db conn dbname)]
-    (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
-    (try
-      (binding [*mongo-connection* mongo-connection]
-        (f *mongo-connection*))
-      (finally
-        (mg/disconnect conn)))))
+  (let [details (cond
+                  (string? database)            {:dbname database}
+                  (:dbname (:details database)) (:details database) ; entire Database obj
+                  (:dbname database)            database            ; connection details map only
+                  :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:" (:details database)))))]
+    (ssh/with-ssh-tunnel [details-with-tunnel details]
+      (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass]
+             :or   {port 27017, pass "", ssl false}} details-with-tunnel
+            user             (when (seq user) ; ignore empty :user and :pass strings
+                               user)
+            pass             (when (seq pass)
+                               pass)
+            authdb           (if (seq authdb)
+                               authdb
+                               dbname)
+            server-address   (mg/server-address host port)
+            credentials      (when user
+                               (mcred/create user authdb pass))
+            connect          (partial mg/connect server-address (build-connection-options :ssl? ssl))
+            conn             (if credentials
+                               (connect credentials)
+                               (connect))
+            mongo-connection (mg/get-db conn dbname)]
+        (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
+        (try
+          (binding [*mongo-connection* mongo-connection]
+            (f *mongo-connection*))
+          (finally        (mg/disconnect conn)
+                          (log/debug (u/format-color 'cyan "<< CLOSED MONGODB CONNECTION >>"))))))))
 
 (defmacro with-mongo-connection
   "Open a new MongoDB connection to DATABASE-OR-CONNECTION-STRING, bind connection to BINDING, execute BODY, and close the connection.

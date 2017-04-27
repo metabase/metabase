@@ -7,7 +7,9 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
 (def ^:private ^:const column->base-type
   "Map of Vertica column types -> Field base types.
@@ -103,25 +105,26 @@
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval     (u/drop-first-arg date-interval)
           :describe-database describe-database
-          :details-fields    (constantly [{:name         "host"
-                                           :display-name "Host"
-                                           :default      "localhost"}
-                                          {:name         "port"
-                                           :display-name "Port"
-                                           :type         :integer
-                                           :default      5433}
-                                          {:name         "dbname"
-                                           :display-name "Database name"
-                                           :placeholder  "birds_of_the_word"
-                                           :required     true}
-                                          {:name         "user"
-                                           :display-name "Database username"
-                                           :placeholder  "What username do you use to login to the database?"
-                                           :required     true}
-                                          {:name         "password"
-                                           :display-name "Database password"
-                                           :type         :password
-                                           :placeholder  "*******"}])})
+          :details-fields    (constantly (ssh/with-tunnel-config
+                                           [{:name         "host"
+                                             :display-name "Host"
+                                             :default      "localhost"}
+                                            {:name         "port"
+                                             :display-name "Port"
+                                             :type         :integer
+                                             :default      5433}
+                                            {:name         "dbname"
+                                             :display-name "Database name"
+                                             :placeholder  "birds_of_the_word"
+                                             :required     true}
+                                            {:name         "user"
+                                             :display-name "Database username"
+                                             :placeholder  "What username do you use to login to the database?"
+                                             :required     true}
+                                            {:name         "password"
+                                             :display-name "Database password"
+                                             :type         :password
+                                             :placeholder  "*******"}]))})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         (u/drop-first-arg column->base-type)
