@@ -10,7 +10,8 @@
             [metabase.models
              [field :as field]
              [table :as table]]
-            [metabase.sync-database.analyze :as analyze]))
+            [metabase.sync-database.analyze :as analyze]
+            [metabase.util.ssh :as ssh]))
 
 ;;; ### Request helper fns
 
@@ -30,8 +31,8 @@
      (do-request http/get \"http://my-json-api.net\")"
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
-  (let [options                  (cond-> (merge {:content-type "application/json"} options)
-                                   (:body options) (update :body json/generate-string))
+  (let [options               (cond-> (merge {:content-type "application/json"} options)
+                                (:body options) (update :body json/generate-string))
         {:keys [status body]} (request-fn url options)]
     (when (not= status 200)
       (throw (Exception. (format "Error [%d]: %s" status body))))
@@ -53,16 +54,17 @@
 
 (defn- do-query [details query]
   {:pre [(map? query)]}
-  (try (vec (POST (details->url details "/druid/v2"), :body query))
-       (catch Throwable e
-         ;; try to extract the error
-         (let [message (or (u/ignore-exceptions
-                             (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
-                           (.getMessage e))]
+  (ssh/with-ssh-tunnel [details-with-tunnel details]
+    (try (vec (POST (details->url details-with-tunnel "/druid/v2"), :body query))
+         (catch Throwable e
+           ;; try to extract the error
+           (let [message (or (u/ignore-exceptions
+                               (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
+                             (.getMessage e))]
 
-           (log/error (u/format-color 'red "Error running query:\n%s" message))
-           ;; Re-throw a new exception with `message` set to the extracted message
-           (throw (Exception. message e))))))
+             (log/error (u/format-color 'red "Error running query:\n%s" message))
+             ;; Re-throw a new exception with `message` set to the extracted message
+             (throw (Exception. message e)))))))
 
 
 ;;; ### Sync
@@ -76,24 +78,24 @@
                 :type/Text)})
 
 (defn- describe-table [database table]
-  (let [details                      (:details database)
-        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=1900-01-01/2100-01-01"))]
-    {:schema nil
-     :name   (:name table)
-     :fields (set (concat
-                    ;; every Druid table is an event stream w/ a timestamp field
-                    [{:name       "timestamp"
-                      :base-type  :type/DateTime
-                      :pk?        true}]
-                    (map (partial describe-table-field :dimension) dimensions)
-                    (map (partial describe-table-field :metric) metrics)))}))
+  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
+    (let [{:keys [dimensions metrics]} (GET (details->url details-with-tunnel "/druid/v2/datasources/" (:name table) "?interval=1900-01-01/2100-01-01"))]
+      {:schema nil
+       :name   (:name table)
+       :fields (set (concat
+                     ;; every Druid table is an event stream w/ a timestamp field
+                     [{:name       "timestamp"
+                       :base-type  :type/DateTime
+                       :pk?        true}]
+                     (map (partial describe-table-field :dimension) dimensions)
+                     (map (partial describe-table-field :metric) metrics)))})))
 
 (defn- describe-database [database]
   {:pre [(map? (:details database))]}
-  (let [details           (:details database)
-        druid-datasources (GET (details->url details "/druid/v2/datasources"))]
-    {:tables (set (for [table-name druid-datasources]
-                    {:schema nil, :name table-name}))}))
+  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
+    (let [druid-datasources (GET (details->url details-with-tunnel "/druid/v2/datasources"))]
+      {:tables (set (for [table-name druid-datasources]
+                      {:schema nil, :name table-name}))})))
 
 
 ;;; ### field-values-lazy-seq
@@ -163,13 +165,14 @@
           :analyze-table         analyze-table
           :describe-database     (u/drop-first-arg describe-database)
           :describe-table        (u/drop-first-arg describe-table)
-          :details-fields        (constantly [{:name         "host"
-                                               :display-name "Host"
-                                               :default      "http://localhost"}
-                                              {:name         "port"
-                                               :display-name "Broker node port"
-                                               :type         :integer
-                                               :default      8082}])
+          :details-fields        (constantly (ssh/with-tunnel-config
+                                               [{:name         "host"
+                                                 :display-name "Host"
+                                                 :default      "http://localhost"}
+                                                {:name         "port"
+                                                 :display-name "Broker node port"
+                                                 :type         :integer
+                                                 :default      8082}]))
           :execute-query         (fn [_ query] (qp/execute-query do-query query))
           :features              (constantly #{:basic-aggregations :set-timezone :expression-aggregations})
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)

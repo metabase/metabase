@@ -1,10 +1,8 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
-  (:require [expectations :refer :all]
+  (:require [metabase.query-processor-test :refer :all]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
-            [metabase.util :as u]))
+            [metabase.test.data :as data]))
 
 ;;; single column
 (qp-expect-with-all-engines

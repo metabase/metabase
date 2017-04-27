@@ -1,11 +1,12 @@
 (ns metabase.models.humanization-test
   (:require [expectations :refer :all]
+            [metabase.models
+             [field :refer [Field]]
+             [humanization :refer :all]
+             [table :refer [Table]]]
+            [metabase.test.util :as tu]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [field :refer [Field]]
-                             [humanization :refer :all]
-                             [table :refer [Table]])
-            [metabase.test.util :as tu]))
+            [toucan.util.test :as tt]))
 
 (tu/resolve-private-vars metabase.models.humanization
   name->human-readable-name:simple name->human-readable-name:advanced)

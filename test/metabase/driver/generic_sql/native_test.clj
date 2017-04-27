@@ -1,9 +1,9 @@
 (ns metabase.driver.generic-sql.native-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
-            [metabase.test.data :refer :all]))
+            [metabase.test.data :refer :all]
+            [toucan.db :as db]))
 
 ;; Just check that a basic query works
 (expect {:status :completed

@@ -1,10 +1,10 @@
 (ns metabase.api.geojson-test
   (:require [expectations :refer :all]
-            [schema.core :as s]
             [metabase.api.geojson :refer [custom-geojson]]
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [schema.core :as s]))
 
 (tu/resolve-private-vars metabase.api.geojson
   valid-json-url?

@@ -1,7 +1,7 @@
 (ns metabase.util.schema-test
-  (:require [metabase.util.schema :as su]
-            [schema.core :as s]
-            [expectations :refer :all]))
+  (:require [expectations :refer :all]
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 ;; check that the API error message generation is working as intended
 (expect

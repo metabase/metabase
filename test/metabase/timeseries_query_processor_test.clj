@@ -1,14 +1,15 @@
 (ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
    There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  (:require [expectations :refer :all]
+  (:require [metabase
+             [query-processor-test :refer [first-row format-rows-by rows]]
+             [util :as u]]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [format-rows-by rows first-row]]
             [metabase.test.data :as data]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets]
-                                [interface :as i])
-            [metabase.util :as u]))
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets]
+             [interface :as i]]))
 
 (def ^:private ^:const event-based-dbs
   #{:druid})

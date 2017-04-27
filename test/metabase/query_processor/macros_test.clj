@@ -1,19 +1,20 @@
 (ns metabase.query-processor.macros-test
   (:require [expectations :refer :all]
-            [toucan.util.test :as tt]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.metric :refer [Metric]]
-            [metabase.models.segment :refer [Segment]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            (metabase.query-processor [expand :as ql]
-                                      [macros :refer :all])
-            [metabase.query-processor-test :refer :all]
+            [metabase
+             [query-processor :as qp]
+             [query-processor-test :refer :all]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [metric :refer [Metric]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
+            [metabase.query-processor
+             [expand :as ql]
+             [macros :refer :all]]
             [metabase.test.data :as data]
-            (metabase.test.data [datasets :as datasets]
-                                [users :refer :all])
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets]
+            [toucan.util.test :as tt]))
 
 ;; expand-macros
 

@@ -1,14 +1,15 @@
 (ns metabase.query-processor-test.date-bucketing-test
   "Tests for date bucketing."
-  (:require [expectations :refer :all]
-            [metabase.driver :as driver]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor-test :refer :all]
+             [util :as u]]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets, :refer [*driver* *engine*]]
-                                [interface :as i])
-            [metabase.util :as u]))
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets :refer [*driver* *engine*]]
+             [interface :as i]]))
 
 (defn- ->long-if-number [x]
   (if (number? x)

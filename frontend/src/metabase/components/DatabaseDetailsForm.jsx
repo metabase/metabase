@@ -23,6 +23,8 @@ const CREDENTIALS_URL_PREFIXES = {
     googleanalytics: 'https://console.developers.google.com/apis/credentials/oauthclient?project=',
 };
 
+const isTunnelField = (field) => /^tunnel-/.test(field.name);
+
 /**
  * This is a form for capturing database details for a given `engine` supplied via props.
  * The intention is to encapsulate the entire <form> with standard MB form styling and allow a callback
@@ -61,7 +63,10 @@ export default class DatabaseDetailsForm extends Component {
 
         // go over individual fields
         for (let field of engines[engine]['details-fields']) {
-            if (field.required && isEmpty(details[field.name])) {
+            // tunnel fields aren't required if tunnel isn't enabled
+            if (!details["tunnel-enabled"] && isTunnelField(field)) {
+                continue;
+            } else if (field.required && isEmpty(details[field.name])) {
                 valid = false;
                 break;
             }
@@ -146,7 +151,29 @@ export default class DatabaseDetailsForm extends Component {
         let { engine } = this.props;
         window.ENGINE = engine;
 
-        if (field.name === "is_full_sync") {
+        if (field.name === "tunnel-enabled") {
+            let on = (this.state.details["tunnel-enabled"] == undefined) ? false : this.state.details["tunnel-enabled"];
+            return (
+                <FormField key={field.name} fieldName={field.name}>
+                    <div className="flex align-center Form-offset">
+                        <div className="Grid-cell--top">
+                            <Toggle value={on} onChange={(val) => this.onChange("tunnel-enabled", val)}/>
+                        </div>
+                        <div className="px2">
+                            <h3>Use an SSH-tunnel for database connections</h3>
+                            <div style={{maxWidth: "40rem"}} className="pt1">
+                                 Some database installations can only be accessed by connecting through an SSH bastion host.
+                                 This option also provides an extra layer of security when a VPN is not available.
+                                 Enabling this is usually slower than a dirrect connection.
+                            </div>
+                        </div>
+                    </div>
+                </FormField>
+            )
+        } else if (isTunnelField(field) && !this.state.details["tunnel-enabled"]) {
+            // don't show tunnel fields if tunnel isn't enabled
+            return null;
+        } else if (field.name === "is_full_sync") {
             let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
             return (
                 <FormField key={field.name} fieldName={field.name}>

@@ -1,21 +1,15 @@
 (ns metabase.query-processor.parameters-test
   "Tests for *MBQL* parameter substitution."
-  (:require (clj-time [core :as t]
-                      [format :as tf])
+  (:require [clj-time.core :as t]
             [expectations :refer :all]
-            [metabase.driver :as driver]
-            (metabase.models [database :refer [Database]]
-                             [metric :refer [Metric]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]])
-            [metabase.query-processor :as qp]
-            (metabase.query-processor [expand :as ql]
-                                      [parameters :refer :all])
-            [metabase.query-processor-test :refer [non-timeseries-engines first-row format-rows-by]]
+            [metabase
+             [query-processor :as qp]
+             [query-processor-test :refer [first-row format-rows-by non-timeseries-engines]]]
+            [metabase.query-processor
+             [expand :as ql]
+             [parameters :refer :all]]
             [metabase.test.data :as data]
-            (metabase.test.data [datasets :as datasets]
-                                [users :refer :all])
-            [metabase.test.util :as tu]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;; we hard code "now" to a specific point in time so that we can control the test output
 (defn- test-date->range [value]

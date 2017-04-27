@@ -2,22 +2,20 @@
   "Common functionality for various Generic SQL dataset drivers."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      [helpers :as h])
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]
+             [helpers :as h]]
             [medley.core :as m]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            (metabase.test.data [datasets :as datasets]
-                                [interface :as i])
+            [metabase.test.data
+             [datasets :as datasets]
+             [interface :as i]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.SQLException
-           clojure.lang.Keyword
-           (metabase.test.data.interface DatabaseDefinition
-                                         FieldDefinition
-                                         TableDefinition)))
+  (:import clojure.lang.Keyword
+           java.sql.SQLException
+           [metabase.test.data.interface DatabaseDefinition FieldDefinition TableDefinition]))
 
 ;;; ## ------------------------------------------------------------ IGenericDatasetLoader + default impls ------------------------------------------------------------
 

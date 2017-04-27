@@ -1,13 +1,10 @@
 (ns metabase.test.data.redshift
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             redshift)
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i]
-                                [postgres :as postgres])
+            [metabase.driver.generic-sql :as sql]
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.redshift.RedshiftDriver))
 

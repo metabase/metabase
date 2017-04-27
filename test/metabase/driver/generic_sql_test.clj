@@ -1,15 +1,15 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
             [metabase.driver :as driver]
-            (metabase.driver [generic-sql :refer :all]
-                             h2)
-            (metabase.models [field :refer [Field]]
-                             [table :refer [Table], :as table])
-            [metabase.test.data :refer :all]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets])
-            [metabase.test.util :refer [resolve-private-vars]])
+            [metabase.driver.generic-sql :refer :all]
+            [metabase.models
+             [field :refer [Field]]
+             [table :as table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :refer [resolve-private-vars]]]
+            [metabase.test.data.datasets :as datasets]
+            [toucan.db :as db])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))
