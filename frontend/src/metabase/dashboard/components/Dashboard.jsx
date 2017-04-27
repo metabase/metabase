@@ -39,7 +39,7 @@ type Props = {
 
     initialize:             () => Promise<void>,
     addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
-    deleteDashboard:        (dashboardId: DashboardId) => void,
+    archiveDashboard:        (dashboardId: DashboardId) => void,
     fetchCards:             (filterMode?: string) => void,
     fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
     fetchRevisions:         ({ entity: string, id: number }) => void,
@@ -91,7 +91,7 @@ export default class Dashboard extends Component<*, Props, State> {
         parameters: PropTypes.array,
 
         addCardToDashboard: PropTypes.func.isRequired,
-        deleteDashboard: PropTypes.func.isRequired,
+        archiveDashboard: PropTypes.func.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchDashboard: PropTypes.func.isRequired,
         fetchRevisions: PropTypes.func.isRequired,

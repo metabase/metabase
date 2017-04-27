@@ -38,7 +38,7 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                   boxShadow: "0 1px 3px 0 rgba(220,220,220,0.50)",
                   height: "80px"
               }}
-              onMouseEnter={() => setHover(true)}
+              onMouseOver={() => setHover(true)}
               onMouseLeave={() => setHover(false)}>
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>

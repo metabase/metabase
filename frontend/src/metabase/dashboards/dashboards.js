@@ -98,12 +98,6 @@ export const updateDashboard = createThunkAction(UPDATE_DASHBOARD, (dashboard: D
     }
 );
 
-export const deleteDashboard = createAction(DELETE_DASHBOARD, async (dashId) => {
-    MetabaseAnalytics.trackEvent("Dashboard", "Delete");
-    await DashboardApi.delete({ dashId });
-    return dashId;
-});
-
 export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashboard: Dashboard) {
     return async function(dispatch, getState): Promise<Dashboard> {
         let { id, name, description, parameters } = dashboard
@@ -155,6 +149,8 @@ export const setArchived = createThunkAction(SET_ARCHIVED, (dashId, archived, un
         return response;
     }
 });
+// Convenience shorthand
+export const archiveDashboard = async (dashId) => await setArchived(dashId, true);
 
 const archive = handleActions({
     [FETCH_ARCHIVE]: (state, { payload }) => payload,

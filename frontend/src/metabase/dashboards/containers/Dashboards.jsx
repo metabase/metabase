@@ -143,11 +143,31 @@ export class Dashboards extends Component {
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading}
-                className={cx("relative mx4", {"flex-full flex align-center justify-center": noDashboardsCreated})}
+                className={cx("relative mx4", {"flex flex-full flex-column": noDashboardsCreated})}
             >
                 { modalOpen ? this.renderCreateDashboardModal() : null }
+                <div className="flex align-center pt4 pb1">
+                    <TitleAndDescription title="Dashboards"/>
+
+                    <div className="flex-align-right cursor-pointer text-grey-5">
+                        <Link to="/dashboards/archive">
+                            <Icon name="viewArchive"
+                                  className="mr2 text-brand-hover"
+                                  tooltip="View the archive"
+                                  size={20}/>
+                        </Link>
+
+                        {!noDashboardsCreated &&
+                        <Icon name="add"
+                              className="text-brand-hover"
+                              tooltip="Add new dashboard"
+                              size={20}
+                              onClick={this.showCreateDashboard}/>
+                        }
+                    </div>
+                </div>
                 { noDashboardsCreated ?
-                    <div className="mt2">
+                    <div className="mt2 flex-full flex align-center justify-center">
                         <EmptyState
                             message={<span>Put the charts and graphs you look at <br/>frequently in a single, handy place.</span>}
                             image="/app/img/dashboard_illustration"
@@ -158,25 +178,7 @@ export class Dashboards extends Component {
                         />
                     </div>
                     : <div>
-                        <div className="flex align-center pt4 pb1">
-                            <TitleAndDescription title="Dashboards"/>
-
-                            <div className="flex-align-right cursor-pointer text-grey-5">
-                                <Link to="/dashboards/archive">
-                                    <Icon name="viewArchive"
-                                          className="mr2 text-brand-hover"
-                                          tooltip="View the archive"
-                                          size={20}/>
-                                </Link>
-
-                                <Icon name="add"
-                                      className="text-brand-hover"
-                                      tooltip="Add new dashboard"
-                                      size={20}
-                                      onClick={this.showCreateDashboard}/>
-                            </div>
-                        </div>
-                        <div className="flex align-center pb1">
+                        <div className="flex-full flex align-center pb1">
                             <SearchHeader
                                 searchText={searchText}
                                 setSearchText={(text) => this.setState({searchText: text})}

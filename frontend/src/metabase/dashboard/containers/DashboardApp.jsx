@@ -14,7 +14,7 @@ import { getIsEditing, getIsEditingParameter, getIsDirty, getDashboardComplete, 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as dashboardActions from "../dashboard";
-import {deleteDashboard} from "metabase/dashboards/dashboards"
+import {archiveDashboard} from "metabase/dashboards/dashboards"
 
 const mapStateToProps = (state, props) => {
   return {
@@ -40,7 +40,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
     ...dashboardActions,
-    deleteDashboard,
+    archiveDashboard,
     fetchDatabaseMetadata,
     setErrorPage,
     onChangeLocation: push
