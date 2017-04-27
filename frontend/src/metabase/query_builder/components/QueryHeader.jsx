@@ -187,7 +187,6 @@ export default class QueryHeader extends Component {
         if (isNew && isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
-                    full
                     form
                     key="save"
                     ref="saveModal"
