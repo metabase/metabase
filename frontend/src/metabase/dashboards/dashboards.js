@@ -1,14 +1,12 @@
 /* @flow weak */
 
-import { handleActions, createAction, combineReducers, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { inflect } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import { DashboardApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
 
 import React from "react";
-import {Link} from "react-router";
 import { push } from "react-router-redux";
 import moment from 'moment';
 

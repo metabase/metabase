@@ -105,21 +105,33 @@ class DashboardListItem extends Component {
                                 </div>
                             </div>
 
+                            {/* Hidden flexbox item which makes sure that long titles are ellipsified correctly */}
                             <div className="flex align-center hidden">
                                 { hover && archivalButton }
                                 { (favorite || hover) && favoritingButton }
                                 { !hover && !favorite && dashboardIcon }
                             </div>
 
-                            <div className="flex align-center absolute right transition-all" style={{right: "16px", opacity: hover ? 0 : 1}}>
-                                { favorite ? favoritingButton : dashboardIcon}
+                            {/* Non-hover dashboard icon, only rendered if the dashboard isn't favorited */}
+                            {!favorite &&
+                            <div className="flex align-center absolute right transition-all"
+                                 style={{right: "16px", opacity: hover ? 0 : 1}}>
+                                { dashboardIcon }
                             </div>
+                            }
 
-                            <div className="flex align-center absolute right transition-all" style={{right: "16px", opacity: favorite ? 1 : 0}}>
+                            {/* Favorite icon, only rendered if the dashboard is favorited */}
+                            {/* Visible also in the hover state (under other button) because hiding leads to an ugly animation */}
+                            {favorite &&
+                            <div className="flex align-center absolute right transition-all"
+                                 style={{right: "16px", opacity: 1}}>
                                 { favoritingButton }
                             </div>
+                            }
 
-                            <div className="flex align-center absolute right transition-all" style={{right: "16px", opacity: hover ? 1 : 0}}>
+                            {/* Hover state buttons, both archival and favoriting */}
+                            <div className="flex align-center absolute right transition-all"
+                                 style={{right: "16px", opacity: hover ? 1 : 0}}>
                                 { archivalButton }
                                 { favoritingButton }
                             </div>

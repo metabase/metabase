@@ -12,7 +12,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import SearchHeader from "metabase/components/SearchHeader";
 import EmptyState from "metabase/components/EmptyState";
 import ArchivedItem from "metabase/components/ArchivedItem";
-import type {ListFilterWidgetItem} from "metabase/components/ListFilterWidget";
 
 import {caseInsensitiveSearch} from "metabase/lib/string"
 
