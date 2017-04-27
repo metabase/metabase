@@ -10,7 +10,7 @@ import {
 import { normalize } from "normalizr";
 import { DatabaseSchema, TableSchema, FieldSchema, SegmentSchema, MetricSchema } from "metabase/schema";
 
-import { getIn, assoc, assocIn } from "icepick";
+import { getIn, assocIn } from "icepick";
 import _ from "underscore";
 
 import { MetabaseApi, MetricApi, SegmentApi, RevisionsApi } from "metabase/services";
