@@ -18,7 +18,7 @@ const SECTIONS = {
         icon: "document"
     },
     sort: {
-        icon: "expand"
+        icon: "sort"
     },
     breakout: {
         icon: "breakout"
@@ -114,11 +114,7 @@ export default class ChartClickActions extends Component<*, Props, State> {
                     <div className="text-bold text-grey-3">
                         {sections.map(([key, actions]) =>
                             <div key={key} className="border-row-divider p2 flex align-center text-default-hover">
-                                <div className="flex align-center mr2">
-                                    { SECTIONS[key] &&
-                                        <Icon name={SECTIONS[key].icon} />
-                                    }
-                                </div>
+                                <Icon name={SECTIONS[key] && SECTIONS[key].icon || "unknown"} className="mr3" size={16} />
                                 { actions.map((action, index) =>
                                     <div
                                         key={index}
