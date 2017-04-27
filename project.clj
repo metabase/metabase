@@ -53,6 +53,7 @@
                  [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
                  [crypto-random "1.2.0"]                              ; library for generating cryptographically secure random bytes and strings
+                 [dk.ative/docjure "1.11.0"]                          ; Excel export
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
@@ -78,8 +79,7 @@
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [toucan "1.0.2"                                      ; Model layer, hydration, and DB utilities
-                  :exclusions [honeysql]]
-                 [dk.ative/docjure "1.11.0"]]                         ; Excel export
+                  :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'

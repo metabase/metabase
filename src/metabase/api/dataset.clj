@@ -2,6 +2,7 @@
   "/api/dataset endpoints."
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
+            [clojure.string :as string]
             [compojure.core :refer [POST]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase
@@ -12,7 +13,8 @@
              [database :refer [Database]]
              [query :as query]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
@@ -45,13 +47,13 @@
                 (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
                 0)})
 
-(defn ^:private export-to-csv
+(defn- export-to-csv
   [columns rows]
   (with-out-str
     ;; turn keywords into strings, otherwise we get colons in our output
     (csv/write-csv *out* (into [(mapv name columns)] rows))))
 
-(defn ^:private export-to-xlsx
+(defn- export-to-xlsx
   [columns rows]
   (let [wb (spreadsheet/create-workbook "Query result" (conj rows (mapv name columns)))
         ;; note: byte array streams don't need to be closed
@@ -59,39 +61,59 @@
     (spreadsheet/save-workbook! out wb)
     (java.io.ByteArrayInputStream. (.toByteArray out))))
 
-(defn ^:private export-to-json
+(defn- export-to-json
   [columns rows]
   (for [row rows]
     (zipmap columns row)))
 
 (def ^:private export-formats
-  {"csv"  {:export-fn export-to-csv,  :content-type "text/csv",                                                          :ext "csv"},
-   "xlsx" {:export-fn export-to-xlsx, :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", :ext "xlsx"},
-   "json" {:export-fn export-to-json, :content-type "applicaton/json",                                                   :ext "json"}})
+  {"csv"  {:export-fn    export-to-csv
+           :content-type "text/csv"
+           :ext          "csv"
+           :context      :csv-download},
+   "xlsx" {:export-fn    export-to-xlsx
+           :content-type "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+           :ext          "xlsx"
+           :context      :xlsx-download},
+   "json" {:export-fn    export-to-json
+           :content-type "applicaton/json"
+           :ext          "json"
+           :context      :json-download}})
+
+(def export-format-schema (apply s/enum (keys export-formats)))
+
+(defn export-format-context [export-format]
+  (if-let [export-conf (export-formats export-format)]
+    (:context export-conf)))
 
 (defn as-format
   "Return a response containing the RESULTS of a query in the specified format."
-  {:arglists '([export-format-name results])}
-  [export-format-name {{:keys [columns rows]} :data, :keys [status], :as response}]
-  (let-404 [export-format (export-formats export-format-name)]
+  {:arglists '([export-format results])}
+  [export-format {{:keys [columns rows]} :data, :keys [status], :as response}]
+  (api/let-404 [export-conf (export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
       {:status  200
-       :body ((:export-fn export-format) columns rows)
-       :headers {"Content-Type" (str (:content-type export-format) "; charset=utf-8")
-                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) "." (:ext export-format) "\"")}}
+       :body ((:export-fn export-conf) columns rows)
+       :headers {"Content-Type" (str (:content-type export-conf) "; charset=utf-8")
+                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) "." (:ext export-conf) "\"")}}
       ;; failed query, send error message
       {:status 500
        :body   (:error response)})))
 
-(def ^:private export-format-name-regex (re-pattern (str "(" (string/join "|" (keys export-formats)) ")")))
+(def ^:private export-format-regex (re-pattern (str "(" (string/join "|" (keys export-formats)) ")")))
 
-(defendpoint POST ["/:export-format-name", :export-format-name export-format-name-regex]
+(api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format-name query]
-  {query su/JSONString}
+  [export-format query]
+  {query su/JSONString
+   export-format export-format-schema}
   (let [query (json/parse-string query keyword)]
     (api/read-check Database (:database query))
-    (as-format export-format-name (qp/dataset-query (dissoc query :constraints) {:executed-by api/*current-user-id*, :context :download}))))
+    (as-format
+      export-format
+      (qp/dataset-query
+        (dissoc query :constraints)
+        {:executed-by api/*current-user-id*, :context (export-format-context export-format)}))))
 
 (api/define-routes)

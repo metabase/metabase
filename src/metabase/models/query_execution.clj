@@ -14,16 +14,18 @@
 (def Context
   "Schema for valid values of QueryExecution `:context`."
   (s/enum :ad-hoc
-          :download
+          :csv-download
           :dashboard
           :embedded-dashboard
           :embedded-question
+          :json-download
           :map-tiles
           :metabot
           :public-dashboard
           :public-question
           :pulse
-          :question))
+          :question
+          :xlsx-download))
 
 (defn- pre-insert [{context :context, :as query-execution}]
   (u/prog1 query-execution

@@ -414,17 +414,18 @@
   (binding [cache/*ignore-cached-results* ignore_cache]
     (run-query-for-card card-id, :parameters parameters)))
 
-(api/defendpoint POST "/:card-id/query/:export-format-name"
+(api/defendpoint POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
-  [card-id export-format-name parameters]
-  {parameters (s/maybe su/JSONString)}
+  [card-id export-format parameters]
+  {parameters (s/maybe su/JSONString)
+   export-format dataset-api/export-format-schema}
   (binding [cache/*ignore-cached-results* true]
     (dataset-api/as-format
-       export-format-name
+       export-format
        (run-query-for-card card-id
          :parameters  (json/parse-string parameters keyword)
          :constraints nil
-         :context     :download))))
+         :context     (dataset-api/export-format-context export-format)))))
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
 

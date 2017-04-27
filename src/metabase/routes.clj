@@ -34,15 +34,15 @@
 (def ^:private embed  (partial entrypoint "embed"  :embeddable))
 
 (defroutes ^:private public-routes
-  (GET ["/question/:uuid.:export-format-name" :uuid u/uuid-regex]
-       [uuid export-format-name]
-       (resp/redirect (format "/api/public/card/%s/query/%s" uuid export-format-name)))
+  (GET ["/question/:uuid.:export-format" :uuid u/uuid-regex]
+       [uuid export-format]
+       (resp/redirect (format "/api/public/card/%s/query/%s" uuid export-format)))
   (GET "*" [] public))
 
 (defroutes ^:private embed-routes
-  (GET "/question/:token.:export-format-name"
-       [token export-format-name]
-       (resp/redirect (format "/api/embed/card/%s/query/%s" token export-format-name)))
+  (GET "/question/:token.:export-format"
+       [token export-format]
+       (resp/redirect (format "/api/embed/card/%s/query/%s" token export-format)))
   (GET "*" [] embed))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete

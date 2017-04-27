@@ -276,10 +276,11 @@
   (run-query-for-unsigned-token (eu/unsign token) query-params))
 
 
-(api/defendpoint GET "/card/:token/query/:export-format-name"
+(api/defendpoint GET "/card/:token/query/:export-format"
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [token export-format-name & query-params]
-  (dataset-api/as-format export-format-name (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
+  [token export-format & query-params]
+  {export-format dataset-api/export-format-schema}
+  (dataset-api/as-format export-format (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
 
 
 ;;; ------------------------------------------------------------ /api/embed/dashboard endpoints ------------------------------------------------------------

@@ -113,11 +113,12 @@
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid uuid parameters))
 
-(api/defendpoint GET "/card/:uuid/query/:export-format-name"
+(api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publically-accessible Card and return query results in the specified format. Does not require auth credentials. Public sharing must be enabled."
-  [uuid export-format-name parameters]
-  {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-format export-format-name (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
+  [uuid export-format parameters]
+  {parameters (s/maybe su/JSONString)
+   export-format dataset-api/export-format-schema}
+  (dataset-api/as-format export-format (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
 ;;; ------------------------------------------------------------ Public Dashboards ------------------------------------------------------------
 
