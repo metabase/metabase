@@ -29,28 +29,30 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
         <Link to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
               className={cx(
-                  "flex align-center border-box p2 rounded no-decoration transition-background",
-                  {"bg-white": !hover},
-                  {"bg-brand": hover}
+                  "flex align-center border-box p2 rounded no-decoration transition-background bg-white transition-all"
               )}
               style={{
                   border: "1px solid rgba(220,225,228,0.50)",
-                  boxShadow: "0 1px 3px 0 rgba(220,220,220,0.50)",
-                  height: "80px"
+                  boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
+                  height: "70px"
               }}
               onMouseOver={() => setHover(true)}
               onMouseLeave={() => setHover(false)}>
-            <Icon name="dashboard"
-                  className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
             <div className={cx("flex-full shrink-below-content-size")}>
                 <div className="flex align-center">
                     <div className={cx("flex-full shrink-below-content-size")}>
-                        <h4 className={cx("text-ellipsis text-nowrap overflow-hidden text-brand", {"text-white": hover})}
-                            style={{marginBottom: "0.2em"}}>
+                        <h3
+                            className={cx(
+                                "text-ellipsis text-nowrap overflow-hidden text-bold transition-all",
+                                {"text-slate": !hover},
+                                {"text-brand": hover}
+                            )}
+                            style={{marginBottom: "0.3em"}}
+                        >
                             <Ellipsified>{dashboard.name}</Ellipsified>
-                        </h4>
+                        </h3>
                         <div
-                            className={cx("text-smaller text-uppercase text-bold", {"text-grey-3": !hover}, {"text-grey-2": hover})}>
+                            className={cx("text-smaller text-uppercase text-bold text-grey-3")}>
                             {/* NOTE: Could these time formats be centrally stored somewhere? */}
                             {moment(dashboard.created_at).format('MMM D, YYYY')}
                         </div>
@@ -59,9 +61,9 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                         { (dashboard.archived || hover) &&
                         <Tooltip tooltip={dashboard.archived ? "Unarchive" : "Archive"}>
                             <Icon
-                                className="flex cursor-pointer text-light-blue ml2"
+                                className="flex cursor-pointer text-light-blue text-brand-hover ml2"
                                 name={dashboard.archived ? "unarchive" : "archive"}
-                                size={19}
+                                size={21}
                                 onClick={(e) => {
                                     e.preventDefault();
                                     setArchived(dashboard.id, !dashboard.archived, true)
@@ -74,11 +76,11 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                             <Icon
                                 className={cx(
                                     "flex cursor-pointer ml2",
-                                    {"text-light-blue": !dashboard.favorite},
+                                    {"text-light-blue text-brand-hover": !dashboard.favorite},
                                     {"text-gold": dashboard.favorite}
                                 )}
                                 name={dashboard.favorite ? "star" : "staroutline"}
-                                size={20}
+                                size={22}
                                 onClick={(e) => {
                                     e.preventDefault();
                                     setFavorited(dashboard.id, !dashboard.favorite)
@@ -89,6 +91,11 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                     </div>
                 </div>
             </div>
+
+            { !hover && !dashboard.favorite &&
+            <Icon name="dashboard"
+                  className={cx("ml2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={25}/>
+            }
         </Link>
     </li>)
 });
