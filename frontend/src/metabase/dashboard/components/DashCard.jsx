@@ -102,9 +102,6 @@ export default class DashCard extends Component {
             errorIcon = "warning";
         }
 
-        const sourceTable = getIn(dashcard, ["card", "dataset_query", "query", "source_table"]);
-        const tableMetadata = sourceTable == null ? null : getIn(metadata, ["tables", sourceTable]);
-
         return (
             <div
                 className={cx("Card bordered rounded flex flex-column hover-parent hover--visibility", {
@@ -135,7 +132,7 @@ export default class DashCard extends Component {
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                     linkToCard={linkToCard}
-                    tableMetadata={tableMetadata}
+                    metadata={metadata}
                     onChangeCardAndRun={this.props.onChangeCardAndRun}
                 />
             </div>

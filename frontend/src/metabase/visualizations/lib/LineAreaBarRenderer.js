@@ -404,11 +404,16 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualiza
                         }
                     }
 
-                    if (clicked && series.length > 1 && card._breakoutColumn) {
-                        clicked.dimensions.push({
-                            value: card._breakoutValue,
-                            column: card._breakoutColumn
-                        });
+                    // handle multiseries
+                    if (clicked && series.length > 1) {
+                        if (card._breakoutColumn) {
+                            clicked.dimensions.push({
+                                value: card._breakoutValue,
+                                column: card._breakoutColumn
+                            });
+                        } else {
+                            clicked.seriesIndex = seriesIndex;
+                        }
                     }
 
                     if (clicked) {

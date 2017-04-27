@@ -64,6 +64,14 @@ export function getQuery(card: Card): ?StructuredQuery {
     }
 }
 
+export function getTableMetadata(card: Card, metadata): ?TableMetadata {
+    const query = getQuery(card);
+    if (query) {
+        return metadata.tables[query.source_table] || null;
+    }
+    return null;
+}
+
 export function getTemplateTags(card: ?Card): Array<TemplateTag> {
     return card && card.dataset_query.type === "native" && card.dataset_query.native.template_tags ?
         Object.values(card.dataset_query.native.template_tags) :
