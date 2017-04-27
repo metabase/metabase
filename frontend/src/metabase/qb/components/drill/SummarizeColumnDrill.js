@@ -13,25 +13,25 @@ import type {
 
 const AGGREGATIONS = {
     sum: {
-        section: "distribution",
-        title: "Sum",
+        section: "sum",
+        title: "Sum"
     },
     avg: {
-        section: "aggregation",
-        title: "Avg",
+        section: "distribution",
+        title: "Avg"
     },
     min: {
-        section: "aggregation",
-        title: "Min",
+        section: "distribution",
+        title: "Min"
     },
     max: {
-        section: "aggregation",
-        title: "Max",
+        section: "distribution",
+        title: "Max"
     },
     distinct: {
-        section: "aggregation",
-        title: "Distincts",
-    },
+        section: "distribution",
+        title: "Distincts"
+    }
 };
 
 export default (

@@ -12,7 +12,7 @@ import _ from "underscore";
 
 const SECTIONS = {
     zoom: {
-        icon: "search"
+        icon: "zoom"
     },
     details: {
         icon: "document"
@@ -21,16 +21,16 @@ const SECTIONS = {
         icon: "expand"
     },
     breakout: {
-        icon: "connections"
+        icon: "breakout"
+    },
+    sum: {
+        icon: "sum"
     },
     distribution: {
-        icon: "number"
-    },
-    aggregation: {
-        icon: "line"
+        icon: "distribution"
     },
     filter: {
-        icon: "funnel"
+        icon: "funneloutline"
     },
     dashboard: {
         icon: "dashboard"
@@ -114,7 +114,7 @@ export default class ChartClickActions extends Component<*, Props, State> {
                     <div className="text-bold text-grey-3">
                         {sections.map(([key, actions]) =>
                             <div key={key} className="border-row-divider p2 flex align-center text-default-hover">
-                                <div className="flex align-center mr1">
+                                <div className="flex align-center mr2">
                                     { SECTIONS[key] &&
                                         <Icon name={SECTIONS[key].icon} />
                                     }

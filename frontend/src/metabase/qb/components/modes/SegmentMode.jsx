@@ -8,7 +8,7 @@ import SummarizeBySegmentMetricAction
 import CommonMetricsAction from "../actions/CommonMetricsAction";
 import CountByTimeAction from "../actions/CountByTimeAction";
 import SummarizeColumnDrill from "../drill/SummarizeColumnDrill";
-import SumColumnByTimeDrill from "../drill/SumColumnByTimeDrill";
+import SummarizeColumnByTimeDrill from "../drill/SummarizeColumnByTimeDrill";
 import CountByColumnDrill from "../drill/CountByColumnDrill";
 // import PlotSegmentField from "../actions/PlotSegmentField";
 
@@ -27,7 +27,7 @@ const SegmentMode: QueryMode = {
     drills: [
         ...DEFAULT_DRILLS,
         SummarizeColumnDrill,
-        SumColumnByTimeDrill,
+        SummarizeColumnByTimeDrill,
         CountByColumnDrill
     ]
 };

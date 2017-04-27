@@ -9,6 +9,7 @@ import {
 } from "metabase/qb/lib/actions";
 import * as Card from "metabase/meta/Card";
 import { isNumeric, isDate } from "metabase/lib/schema_metadata";
+import { capitalize } from "metabase/lib/formatting";
 
 import type {
     ClickAction,
@@ -34,24 +35,23 @@ export default (
     }
     const { column } = clicked;
 
-    return [
-        {
-            title: <span>Sum of {column.display_name} by Time</span>,
-            card: () =>
-                pivot(
-                    summarize(
-                        card,
-                        ["sum", getFieldClauseFromCol(column)],
-                        tableMetadata
-                    ),
-                    [
-                        "datetime-field",
-                        getFieldClauseFromCol(dateField),
-                        "as",
-                        "day"
-                    ],
+    return ["sum", "count"].map(aggregation => ({
+        title: <span>{capitalize(aggregation)} by time</span>,
+        section: "sum",
+        card: () =>
+            pivot(
+                summarize(
+                    card,
+                    [aggregation, getFieldClauseFromCol(column)],
                     tableMetadata
-                )
-        }
-    ];
+                ),
+                [
+                    "datetime-field",
+                    getFieldClauseFromCol(dateField),
+                    "as",
+                    "day"
+                ],
+                tableMetadata
+            )
+    }));
 };

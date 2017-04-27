@@ -47,6 +47,7 @@ export default (
     } else if (isFK(column.special_type)) {
         return [
             {
+                section: "filter",
                 title: (
                     <span>
                         View this
@@ -65,7 +66,7 @@ export default (
     let operators = getFiltersForColumn(column) || [];
     return operators.map(({ name, operator }) => ({
         section: "filter",
-        title: <span className="h3">{name}</span>,
+        title: <span className="h2">{name}</span>,
         card: () => filter(card, operator, column, value)
     }));
 };
