@@ -14,7 +14,7 @@
   (let [connection (doto ^com.jcraft.jsch.Session (.getSession (new com.jcraft.jsch.JSch)
                                                                ^String tunnel-user
                                                                ^String tunnel-host
-                                                               ^Int tunnel-port)
+                                                               tunnel-port)
                      (.setPassword ^String tunnel-pass)
                      (.setConfig "StrictHostKeyChecking" "no")
                      (.connect default-ssh-timeout)
