@@ -25,7 +25,10 @@ export default (
     return [
         {
             section: "zoom",
-            title: "View rows",
+            title: "View " +
+                inflect("these", count, "this", "these") +
+                " " +
+                inflect(tableMetadata.display_name, count),
             card: () => drillUnderlyingRecords(card, dimensions)
         }
     ];
