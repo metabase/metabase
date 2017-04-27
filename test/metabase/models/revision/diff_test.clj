@@ -1,8 +1,7 @@
 (ns metabase.models.revision.diff-test
   (:require [clojure.data :as data]
-            [metabase.models.revision.diff :refer :all]
-            [expectations :refer :all]))
-
+            [expectations :refer :all]
+            [metabase.models.revision.diff :refer :all]))
 
 ;; Check that pattern matching allows specialization and that string only reflects the keys that have changed
 (expect "renamed this card from \"Tips by State\" to \"Spots by State\"."

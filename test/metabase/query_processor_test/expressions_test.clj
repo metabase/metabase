@@ -1,12 +1,14 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
   (:require [expectations :refer :all]
-            (metabase.query-processor [expand :as ql]
-                                      [interface :as qpi])
-            [metabase.query-processor-test :refer :all]
+            [metabase
+             [query-processor-test :refer :all]
+             [util :as u]]
+            [metabase.query-processor
+             [expand :as ql]
+             [interface :as qpi]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;; Test the expansion of the expressions clause
 (expect

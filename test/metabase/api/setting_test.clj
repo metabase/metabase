@@ -1,11 +1,6 @@
 (ns metabase.api.setting-test
   (:require [expectations :refer :all]
-            (metabase.models [setting :as setting]
-                             [setting-test :refer [set-settings!
-                                                   setting-exists-in-db?
-                                                   test-setting-1
-                                                   test-setting-2]])
-            [metabase.test.data :refer :all]
+            [metabase.models.setting-test :refer [set-settings! test-setting-1 test-setting-2]]
             [metabase.test.data.users :refer :all]))
 
 ;; ## Helper Fns

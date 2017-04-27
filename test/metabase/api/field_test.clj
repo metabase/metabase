@@ -1,15 +1,16 @@
 (ns metabase.api.field-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
             [metabase.driver :as driver]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; Helper Fns
 

@@ -1,18 +1,19 @@
 (ns metabase.models.pulse-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer [Card]]
-                             [pulse :refer :all]
-                             [pulse-card :refer :all]
-                             [pulse-channel :refer :all]
-                             [pulse-channel-recipient :refer :all])
+            [metabase.models
+             [card :refer [Card]]
+             [pulse :refer :all]
+             [pulse-card :refer :all]
+             [pulse-channel :refer :all]
+             [pulse-channel-recipient :refer :all]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
+            [toucan.util.test :as tt]))
 
 (defn- user-details
   [username]

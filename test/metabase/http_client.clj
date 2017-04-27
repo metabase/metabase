@@ -1,12 +1,12 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
             [clj-http.client :as client]
-            [metabase.config :as config]
-            [metabase.util :as u]))
-
+            [clojure.string :as s]
+            [clojure.tools.logging :as log]
+            [metabase
+             [config :as config]
+             [util :as u]]))
 
 ;;; build-url
 

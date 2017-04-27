@@ -1,10 +1,8 @@
 (ns metabase.events.last-login-test
   (:require [expectations :refer :all]
-            [toucan.util.test :as tt]
             [metabase.events.last-login :refer [process-last-login-event]]
             [metabase.models.user :refer [User]]
-            [metabase.test.util :as tu]))
-
+            [toucan.util.test :as tt]))
 
 ;; `:user-login` event
 (expect
