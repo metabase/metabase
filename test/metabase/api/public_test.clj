@@ -1,6 +1,7 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [toucan.db :as db]
             [toucan.util.test :as tt]
@@ -153,9 +154,14 @@
 
 ;; Check that we can exec a PublicCard and get results as XLSX
 (expect
+  [{:col "count"} {:col 100.0}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (http/client :get 200 (str "public/card/" uuid "/query/xlsx")))))
+      (->> (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})
+           (java.io.ByteArrayInputStream.)
+           (spreadsheet/load-workbook)
+           (spreadsheet/select-sheet "Query result")
+           (spreadsheet/select-columns {:A :col})))))
 
 ;; Check that we can exec a PublicCard with `?parameters`
 (expect
