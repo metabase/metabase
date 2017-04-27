@@ -10,6 +10,7 @@ ENV LEIN_ROOT 1
 
 ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
+ENV TZ UTC
 
 # install core build tools
 RUN apk add --update nodejs git wget bash python make g++ java-cacerts ttf-dejavu fontconfig && \
