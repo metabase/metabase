@@ -2,23 +2,24 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase [db :as mdb]
-                      [driver :as driver])
+            [metabase
+             [db :as mdb]
+             [driver :as driver]
+             [sync-database :refer :all]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table]])
-            [metabase.sync-database :refer :all]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]
+             [raw-table :refer [RawTable]]
+             [table :refer [Table]]]
             metabase.sync-database.analyze
-            [metabase.test.data :refer :all]
-            [metabase.test.data.interface :as i]
-            [metabase.test.util :refer [resolve-private-vars] :as tu]
-            [metabase.util :as u]))
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"

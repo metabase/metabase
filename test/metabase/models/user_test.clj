@@ -1,18 +1,18 @@
 (ns metabase.models.user-test
   (:require [clojure.string :as str]
             [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.email-test :as email-test]
-            [metabase.http-client :as http]
-            (metabase.models [permissions :as perms]
-                             [permissions-group :refer [PermissionsGroup]]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [user :refer [User], :as user])
-            [metabase.test.data.users :as test-users, :refer [user->id]]
+            [metabase
+             [email-test :as email-test]
+             [http-client :as http]]
+            [metabase.models
+             [permissions :as perms]
+             [permissions-group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
+             [user :as user :refer [User]]]
+            [metabase.test.data.users :as test-users :refer [user->id]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
-
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;;; Tests for permissions-set
 

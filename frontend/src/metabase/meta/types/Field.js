@@ -40,6 +40,12 @@ export type Field = {
     created_at:         ISO8601Time,
     updated_at:         ISO8601Time,
 
+    // Metadata field "values" type is inconsistent
     // https://github.com/metabase/metabase/issues/3417
-    values: Array<string> | { values: Array<string> }
+    values: [] | FieldValues
 };
+
+export type FieldValues = {
+    // incomplete
+    values: Array<string> | {}
+}

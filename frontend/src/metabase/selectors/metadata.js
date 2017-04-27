@@ -4,6 +4,9 @@ import { createSelector } from "reselect";
 
 import Metadata from "metabase/meta/metadata/Metadata";
 
+import { getIn } from "icepick";
+import { getFieldValues } from "metabase/lib/query/field";
+
 import {
     getOperators,
     getBreakouts,
@@ -110,6 +113,11 @@ export const getSegments = createSelector(
     ({ segments }) => segments
 );
 
+// MISC
+
+export const getParameterFieldValues = (state, props) => {
+    return getFieldValues(getIn(state, ["metadata", "fields", props.parameter.field_id, "values"]));
+}
 
 // UTILS:
 

@@ -1,16 +1,16 @@
 (ns metabase.models.pulse-channel-test
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase.models [pulse :refer :all]
-                             [pulse-channel :refer :all]
-                             [pulse-channel-recipient :refer :all])
+            [medley.core :as m]
+            [metabase.models
+             [pulse :refer :all]
+             [pulse-channel :refer :all]
+             [pulse-channel-recipient :refer :all]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [medley.core :as m]))
-
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
+            [toucan.util.test :as tt]))
 
 ;; Test out our predicate functions
 

@@ -4,27 +4,33 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import DashboardGrid from "metabase/dashboard/components/DashboardGrid.jsx";
+import { IFRAMED } from "metabase/lib/dom";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
+import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
+import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import EmbedFrame from "../components/EmbedFrame";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 
-import { getDashboardComplete, getCardData, getCardDurations,getParameterValues } from "metabase/dashboard/selectors";
+import { getDashboardComplete, getCardData, getCardDurations, getParameters, getParameterValues } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/dashboard";
 
 import type { Dashboard } from "metabase/meta/types/Dashboard";
+import type { Parameter } from "metabase/meta/types/Parameter";
 
 import _ from "underscore";
 
 const mapStateToProps = (state, props) => {
   return {
+      dashboardId:          props.params.dashboardId || props.params.uuid || props.params.token,
       dashboard:            getDashboardComplete(state, props),
       dashcardData:         getCardData(state, props),
       cardDurations:        getCardDurations(state, props),
+      parameters:           getParameters(state, props),
       parameterValues:      getParameterValues(state, props)
   }
 }
@@ -39,8 +45,10 @@ const mapDispatchToProps = {
 type Props = {
     params:                 { uuid?: string, token?: string },
     location:               { query: { [key:string]: string }},
+    dashboardId:            string,
 
     dashboard?:             Dashboard,
+    parameters:             Parameter[],
     parameterValues:        {[key:string]: string},
 
     initialize:             () => void,
@@ -51,6 +59,7 @@ type Props = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
+@DashboardControls
 export default class PublicDashboard extends Component<*, Props, *> {
     // $FlowFixMe
     async componentWillMount() {
@@ -72,14 +81,23 @@ export default class PublicDashboard extends Component<*, Props, *> {
     }
 
     render() {
-        const { dashboard, parameterValues } = this.props;
+        const { dashboard, parameters, parameterValues } = this.props;
+        const buttons = !IFRAMED ? getDashboardActions(this.props) : [];
+
         return (
             <EmbedFrame
                 name={dashboard && dashboard.name}
                 description={dashboard && dashboard.description}
-                parameters={dashboard && dashboard.parameters}
+                parameters={parameters}
                 parameterValues={parameterValues}
                 setParameterValue={this.props.setParameterValue}
+                actionButtons={buttons.length > 0 &&
+                    <div>
+                        {buttons.map((button, index) =>
+                            <span key={index} className="m1">{button}</span>
+                        )}
+                    </div>
+                }
             >
                 <LoadingAndErrorWrapper className="p1 flex-full" loading={!dashboard}>
                 { () =>

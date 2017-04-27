@@ -1,11 +1,10 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
-  (:require [clojure.core.reducers :as r]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [metabase.db.spec :as dbspec]
-            metabase.driver.h2
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.h2.H2Driver))
 

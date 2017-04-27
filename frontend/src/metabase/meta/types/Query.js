@@ -4,7 +4,7 @@ import type { TableId } from "./Table";
 import type { FieldId } from "./Field";
 import type { SegmentId } from "./Segment";
 import type { MetricId } from "./Metric";
-import type { ParameterType } from "./Dashboard";
+import type { ParameterType } from "./Parameter";
 
 export type ExpressionName = string;
 
@@ -20,13 +20,14 @@ export type RelativeDatetimeUnit = "minute" | "hour" | "day" | "week" | "month" 
 export type DatetimeUnit = "default" | "minute" | "minute-of-hour" | "hour" | "hour-of-day" | "day" | "day-of-week" | "day-of-month" | "day-of-year" | "week" | "week-of-year" | "month" | "month-of-year" | "quarter" | "quarter-of-year" | "year";
 
 export type TemplateTagId = string;
+export type TemplateTagName = string;
 
 export type TemplateTag = {
     id:           TemplateTagId,
-    name:         string,
+    name:         TemplateTagName,
     display_name: string,
     type:         string,
-    dimension?:   ["field-id", number],
+    dimension?:   LocalFieldReference,
     widget_type?: ParameterType,
     required?:    boolean,
     default?:     string,
@@ -34,7 +35,7 @@ export type TemplateTag = {
 
 export type NativeQuery = {
     query: string,
-    template_tags: { [key: string]: TemplateTag }
+    template_tags: { [key: TemplateTagName]: TemplateTag }
 };
 
 export type StructuredQuery = {

@@ -1,11 +1,12 @@
 (ns metabase.query-processor.middleware.log
   "Middleware for logging a query before it is processed.
    (Various other middleware functions log the query as well in different stages.)"
-  (:require [clojure.walk :as walk]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [medley.core :as m]
-            (metabase.query-processor [interface :as i]
-                                      [util :as qputil])
+            [metabase.query-processor
+             [interface :as i]
+             [util :as qputil]]
             [metabase.util :as u]))
 
 (defn- log-expanded-query* [query]

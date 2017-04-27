@@ -2,8 +2,7 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
 
-import { getTemplateTags } from "metabase/meta/Card";
-import { getTemplateTagParameters } from "metabase/meta/Parameter";
+import { getParametersWithExtras } from "metabase/meta/Card";
 
 import { isCardDirty, isCardRunnable } from "metabase/lib/card";
 import { parseFieldTargetId } from "metabase/lib/query_time";
@@ -146,32 +145,9 @@ export const getMode = createSelector(
     (card, tableMetadata) => getMode_(card, tableMetadata)
 )
 
-export const getImplicitParameters = createSelector(
-    [getCard],
-    (card) =>
-        getTemplateTagParameters(getTemplateTags(card))
-);
-
-export const getModeParameters = createSelector(
-    [getLastRunCard, getTableMetadata, getMode],
-    (card, tableMetadata, mode) =>
-        (card && tableMetadata && mode && mode.getModeParameters) ?
-            mode.getModeParameters(card, tableMetadata) :
-            []
-);
-
 export const getParameters = createSelector(
-    [getModeParameters, getImplicitParameters],
-    (modeParameters, implicitParameters) => [...modeParameters, ...implicitParameters]
-);
-
-export const getParametersWithValues = createSelector(
-    [getParameters, getParameterValues],
-    (parameters, values) =>
-        parameters.map(parameter => ({
-            ...parameter,
-            value: values[parameter.id] != null ? values[parameter.id] : null
-        }))
+    [getCard, getParameterValues],
+    (card, parameterValues) => getParametersWithExtras(card, parameterValues)
 );
 
 export const getIsRunnable = createSelector(
@@ -184,7 +160,7 @@ const getNextRunDatasetQuery = createSelector([getCard], (card) => card && card.
 
 const getLastRunParameters = createSelector([getQueryResult], (queryResult) => queryResult && queryResult.json_query.parameters || [])
 const getLastRunParameterValues = createSelector([getLastRunParameters], (parameters) => parameters.map(parameter => parameter.value))
-const getNextRunParameterValues = createSelector([getParametersWithValues], (parameters) => parameters.map(parameter => parameter.value))
+const getNextRunParameterValues = createSelector([getParameters], (parameters) => parameters.map(parameter => parameter.value))
 
 export const getIsResultDirty = createSelector(
     [getLastRunDatasetQuery, getNextRunDatasetQuery, getLastRunParameterValues, getNextRunParameterValues],

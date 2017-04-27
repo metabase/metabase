@@ -283,8 +283,8 @@ export const getSchemasPermissionsGrid = createSelector(
             ],
             groups,
             permissions: {
-                header: "Data Access",
                 "tables": {
+                    header: "Data Access",
                     options(groupId, entityId) {
                         return [OPTION_ALL, OPTION_CONTROLLED, OPTION_NONE]
                     },

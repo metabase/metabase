@@ -1,26 +1,30 @@
 (ns metabase.driver.generic-sql
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
+            [clojure.java.jdbc :as jdbc]
             [clojure.math.numeric-tower :as math]
-            (clojure [set :as set]
-                     [string :as str])
             [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat])
-            (metabase [db :as db]
-                      [driver :as driver])
-            (metabase.models [field :as field]
-                             raw-table
-                             [table :as table])
-            metabase.query-processor.interface
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
+            [metabase
+             [db :as db]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [field :as field]
+             [table :as table]]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import (java.sql DatabaseMetaData ResultSet)
-           java.util.Map
-           (clojure.lang Keyword PersistentVector)
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
+  (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
+           [java.sql DatabaseMetaData ResultSet]
+           java.util.Map
            metabase.models.field.FieldInstance
-           (metabase.query_processor.interface Field Value)))
+           [metabase.query_processor.interface Field Value]))
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
@@ -106,9 +110,10 @@
         (hsql/format ... :quoting (quote-style driver))")
 
   (set-timezone-sql ^String [this]
-    "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
+    "*OPTIONAL*. This should be a format string containing a SQL statement to be used to set the timezone for the current transaction.
+     The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific`.
 
-       \"SET @@session.timezone = ?;\"")
+       \"SET @@session.timezone = %s;\"")
 
   (stddev-fn ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults to `:STDDEV`.")
@@ -138,13 +143,15 @@
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
   [{:keys [id engine details]}]
   (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
-  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (db/connection-pool (assoc spec
-                          :minimum-pool-size           1
-                          ;; prevent broken connections closed by dbs by testing them every 3 mins
-                          :idle-connection-test-period (* 3 60)
-                          ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                          :excess-timeout              (* 15 60)))))
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
+        spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
+    (assoc (db/connection-pool (assoc spec
+                                 :minimum-pool-size           1
+                                 ;; prevent broken connections closed by dbs by testing them every 3 mins
+                                 :idle-connection-test-period (* 3 60)
+                                 ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                                 :excess-timeout              (* 15 60)))
+      :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
 (defn- notify-database-updated
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
@@ -155,7 +162,9 @@
     ;; remove the cached reference to the pool so we don't try to use it anymore
     (swap! database-id->connection-pool dissoc id)
     ;; now actively shut down the pool so that any open connections are closed
-    (.close ^ComboPooledDataSource (:datasource pool))))
+    (.close ^ComboPooledDataSource (:datasource pool))
+    (when-let [ssh-tunnel (:ssh-tunnel pool)]
+      (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.

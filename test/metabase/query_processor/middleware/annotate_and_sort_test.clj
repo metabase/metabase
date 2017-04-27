@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.annotate-and-sort-test
   (:require [expectations :refer :all]
-            metabase.query-processor.middleware.annotate-and-sort
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-vars metabase.query-processor.middleware.annotate-and-sort
