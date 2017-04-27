@@ -23,6 +23,7 @@ type State = {
     zoom: ?number,
     points: L.Point[],
     bounds: L.Bounds,
+    filtering: boolean,
 };
 
 const MAP_COMPONENTS_BY_TYPE = {
@@ -44,6 +45,7 @@ export default class PinMap extends Component<*, Props, State> {
     }
 
     state: State;
+    _map: ?(LeafletMarkerPinMap|LeafletTilePinMap) = null;
 
     constructor(props: Props) {
         super(props);
@@ -51,6 +53,7 @@ export default class PinMap extends Component<*, Props, State> {
             lat: null,
             lng: null,
             zoom: null,
+            filtering: false,
             ...this._getPoints(props)
         };
     }
