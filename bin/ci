@@ -54,7 +54,7 @@ node-5() {
 }
 node-6() {
     if is_enabled "jar" || is_enabled "e2e" || is_enabled "screenshots"; then
-        run_step ./bin/build version frontend sample-dataset uberjar
+        run_step ./bin/build version frontend-fast sample-dataset uberjar
     fi
     if is_enabled "e2e" || is_enabled "compare_screenshots"; then
         USE_SAUCE=true \

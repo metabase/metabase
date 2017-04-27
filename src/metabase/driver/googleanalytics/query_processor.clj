@@ -1,21 +1,12 @@
 (ns metabase.driver.googleanalytics.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format."
-  (:require (clojure [string :as s])
-            [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
             [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
             [metabase.query-processor.expand :as ql]
             [metabase.util :as u])
-  (:import java.sql.Timestamp
-           java.util.Date
-           clojure.lang.PersistentArrayMap
-           (com.google.api.services.analytics.model GaData GaData$ColumnHeaders)
-           (metabase.query_processor.interface AgFieldRef
-                                               DateTimeField
-                                               DateTimeValue
-                                               Field
-                                               RelativeDateTimeValue
-                                               Value)))
+  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue Value]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date "today")

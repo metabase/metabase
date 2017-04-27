@@ -1,12 +1,10 @@
 (ns metabase.query-processor-test.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
-  (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [metabase.models.field :refer [Field]]
-            [metabase.query-processor.expand :as ql]
+  (:require [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 ;;; ------------------------------------------------------------ :details-only fields  ------------------------------------------------------------
 ;; make sure that rows where visibility_type = details-only are included and properly marked up

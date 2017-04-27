@@ -34,7 +34,7 @@ import { assocIn } from "icepick";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
-import Parameters from "metabase/dashboard/containers/Parameters";
+import Parameters from "metabase/parameters/components/Parameters";
 
 // This should return an object with information about the mode the ACE Editor should use to edit the query.
 // This object should have 2 properties:

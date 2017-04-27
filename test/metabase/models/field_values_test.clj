@@ -1,12 +1,12 @@
 (ns metabase.models.field-values-test
   (:require [expectations :refer :all]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [field-values :refer :all]
+             [table :refer [Table]]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer :all]
-                             [table :refer [Table]])
-            [metabase.test.util :as tu]))
+            [toucan.util.test :as tt]))
 
 ;; ## TESTS FOR FIELD-SHOULD-HAVE-FIELD-VALUES?
 

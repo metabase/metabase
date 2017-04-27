@@ -1,17 +1,18 @@
 (ns metabase.permissions-collection-test
   "A test suite for permissions `Collections`. Reüses functions from `metabase.permissions-test`."
-  (:require  [expectations :refer :all]
-             [toucan.db :as db]
-             [toucan.util.test :as tt]
-             (metabase.models [card :refer [Card], :as card]
-                              [collection :refer [Collection]]
-                              [permissions :as permissions]
-                              [permissions-group :as group]
-                              [revision :refer [Revision]])
-             [metabase.permissions-test :as perms-test, :refer [*card:db2-count-of-venues* *db2*]]
-             [metabase.test.data.users :as test-users]
-             [metabase.test.util :as tu]
-             [metabase.util :as u]))
+  (:require [expectations :refer :all]
+            [metabase
+             [permissions-test :as perms-test :refer [*card:db2-count-of-venues* *db2*]]
+             [util :as u]]
+            [metabase.models
+             [card :as card :refer [Card]]
+             [collection :refer [Collection]]
+             [permissions :as permissions]
+             [permissions-group :as group]
+             [revision :refer [Revision]]]
+            [metabase.test.data.users :as test-users]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; the Card used in the tests below is one Crowberto (an admin) should be allowed to read/write based on data permissions,
 ;; but not Rasta (all-users)
@@ -55,8 +56,10 @@
     (println "[In the occasionally failing test]") ; DEBUG
     (set-card-collection! collection)
     (permissions/grant-collection-read-permissions! (group/all-users) collection)
-    ;; try it twice because sometimes it randomly fails :unamused:
+    ;; try it a few times because sometimes it randomly fails :unamused:
     (or (can-run-query? :rasta)
+        (can-run-query? :rasta)
+        (Thread/sleep 1000)
         (can-run-query? :rasta))))
 
 ;; Make sure a User isn't allowed to save a Card they have collections readwrite permissions for

@@ -1071,7 +1071,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
 
     let onGoalHover = () => {};
     if (settings["graph.show_goal"]) {
-        const goalData = [[xDomain[0], settings["graph.goal_value"]], [xDomain[1], settings["graph.goal_value"]]];
+        const goalValue = settings["graph.goal_value"];
+        const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
         const goalDimension = crossfilter(goalData).dimension(d => d[0]);
         const goalGroup = goalDimension.group().reduceSum(d => d[1]);
         const goalIndex = charts.length;
@@ -1088,8 +1089,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
 
         onGoalHover = (element) => {
             onHoverChange(element && {
-                element: element,
-                data: [{ key: "Goal", value: settings["graph.goal"] }]
+                element,
+                data: [{ key: "Goal", value: goalValue }]
             });
         }
     }

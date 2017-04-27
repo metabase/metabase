@@ -2,10 +2,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.crate.util :as crate-util]
-            [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u])
+            [metabase.driver.generic-sql :as sql])
   (:import java.sql.DatabaseMetaData))
 
 (def ^:private ^:const column->base-type

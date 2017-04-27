@@ -1,17 +1,19 @@
 (ns metabase.sync-database.sync
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure
+             [set :as set]
+             [string :as s]]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
-            (metabase.models [field :refer [Field], :as field]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable], :as raw-table]
-                             [table :refer [Table], :as table])
-            [metabase.util :as u])
+            [metabase
+             [db :as mdb]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [field :as field :refer [Field]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :as raw-table :refer [RawTable]]
+             [table :as table :refer [Table]]]
+            [toucan.db :as db])
   (:import metabase.models.raw_table.RawTableInstance))
-
 
 ;;; ------------------------------------------------------------ FKs ------------------------------------------------------------
 

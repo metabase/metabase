@@ -4,8 +4,6 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import "./ModalContent.css";
-
 export default class ModalContent extends Component {
     static propTypes = {
         id: PropTypes.string,

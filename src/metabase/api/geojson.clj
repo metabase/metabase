@@ -1,12 +1,12 @@
 (ns metabase.api.geojson
-  (:require [clojure.java.io :as io]
-            [cheshire.core :as json]
-            [compojure.core :refer [defroutes GET]]
-            [schema.core :as s]
-            [metabase.api.common :refer :all]
-            [metabase.models.setting :refer [defsetting], :as setting]
+  (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
+            [compojure.core :refer [GET]]
+            [metabase.api.common :refer [defendpoint define-routes]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 (defn- valid-json?
   "Does this URL-OR-RESOURCE point to valid JSON?

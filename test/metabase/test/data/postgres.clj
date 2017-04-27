@@ -1,10 +1,9 @@
 (ns metabase.test.data.postgres
   "Code for creating / destroying a Postgres database from a `DatabaseDefinition`."
   (:require [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             postgres)
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 

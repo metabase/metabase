@@ -6,6 +6,7 @@ import Table from "./Table";
 import type { FieldId, Field as FieldObject } from "metabase/meta/types/Field";
 import type { TableId } from "metabase/meta/types/Table";
 
+import { getFieldValues } from "metabase/lib/query/field";
 import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
 import { isPK, isFK } from "metabase/lib/types";
 
@@ -48,15 +49,7 @@ export default class Field extends Base {
     isFK()        { return isFK(this.special_type); }
 
     values(): Array<string> {
-        let values = this._object.values;
-        // https://github.com/metabase/metabase/issues/3417
-        if (Array.isArray(values)) {
-            return values;
-        } else if (values && Array.isArray(values.values)) {
-            return values.values;
-        } else {
-            return [];
-        }
+        return getFieldValues(this._object)
     }
 
     icon() {

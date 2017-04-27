@@ -1,19 +1,15 @@
 (ns metabase.events.dependencies-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
             [metabase.events.dependencies :refer :all]
-            (metabase.models [card :refer [Card]]
-                             [database :refer [Database]]
-                             [dependency :refer [Dependency]]
-                             [metric :refer [Metric]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]])
+            [metabase.models
+             [card :refer [Card]]
+             [database :refer [Database]]
+             [dependency :refer [Dependency]]
+             [metric :refer [Metric]]
+             [table :refer [Table]]]
             [metabase.test.data :refer :all]
-            [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.test-setup :refer :all]))
-
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; `:card-create` event
 (expect

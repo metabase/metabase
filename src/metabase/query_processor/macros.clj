@@ -3,8 +3,7 @@
    At some point this ought to be reworked to be case-insensitive and cleaned up."
   (:require [clojure.core.match :refer [match]]
             [clojure.walk :as walk]
-            [toucan.db :as db]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 (defn- non-empty-clause? [clause]
   (and clause

@@ -1,15 +1,13 @@
 (ns metabase.driver.bigquery-test
   (:require [expectations :refer :all]
-            metabase.driver.bigquery
-            [metabase.models.database :as database]
-            [metabase.query-processor :as qp]
+            [metabase
+             [query-processor :as qp]
+             [query-processor-test :as qptest]]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :as qptest]
-            [metabase.test.data :as data]
-            (metabase.test.data [datasets :refer [expect-with-engine]]
-                                [interface :refer [def-database-definition]])
-            [metabase.test.util :as tu]))
-
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data.datasets :refer [expect-with-engine]]))
 
 ;; Test native queries
 (expect-with-engine :bigquery

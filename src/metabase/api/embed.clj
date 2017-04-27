@@ -14,25 +14,26 @@
       {:resource {:question  <card-id>
                   :dashboard <dashboard-id>}
        :params   <params>}"
-  ;; TODO - switch resource.question back to resource.card
-  (:require (clojure [set :as set]
-                     [string :as str])
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [medley.core :as m]
-            [schema.core :as s]
-            [toucan.db :as db]
-            (metabase.api [common :as api]
-                          [dataset :as dataset-api]
-                          [public :as public-api])
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])
-            [metabase.models.setting :as setting]
+            [metabase.api
+             [common :as api]
+             [dataset :as dataset-api]
+             [public :as public-api]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]]
             [metabase.util :as u]
-            (metabase.util [embed :as eu]
-                           [schema :as su])))
-
+            [metabase.util
+             [embed :as eu]
+             [schema :as su]]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 ;;; ------------------------------------------------------------ Param Checking ------------------------------------------------------------
 
@@ -229,6 +230,7 @@
   ([object]
    (api/check-embedding-enabled)
    (api/check-404 object)
+   (api/check-not-archived object)
    (api/check (:enable_embedding object)
      [400 "Embedding is not enabled for this object."])))
 

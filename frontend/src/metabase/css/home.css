@@ -2,15 +2,6 @@
     z-index: 4;
 }
 
-.CheckBg {
-    background-image: url('/app/components/icons/assets/header_rect.svg');
-    background-repeat: repeat;
-}
-
-.CheckBg-offset {
-  background-position-y: -15px;
-}
-
 .NavItem {
     border-radius: 8px;
 }
