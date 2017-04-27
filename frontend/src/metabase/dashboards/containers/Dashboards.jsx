@@ -125,6 +125,7 @@ export class Dashboards extends Component {
             .filter(searchText != "" ? this.searchTextFilter(searchText) : noOpFilter)
             .filter(this.sectionFilter(section))
             .value()
+            .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
     }
 
     updateSection = (section: ListFilterWidgetItem) => {

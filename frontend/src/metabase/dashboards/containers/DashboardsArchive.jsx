@@ -55,7 +55,9 @@ export class Dashboards extends Component {
 
         return _.chain(dashboards)
             .filter(searchText != "" ? this.searchTextFilter(searchText) : noOpFilter)
+            .sortBy((dash) => dash.name.toLowerCase())
             .value()
+            .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
     }
 
     render() {
@@ -81,7 +83,7 @@ export class Dashboards extends Component {
                         {headerWithBackContainer}
                         <div className="full flex justify-center" style={{marginTop: "75px"}}>
                             <EmptyState
-                                message={"No dashboards have been archived yet"}
+                                message={<span>No dashboards have been<br />archived yet</span>}
                                 icon="viewArchive"
                             />
                         </div>
