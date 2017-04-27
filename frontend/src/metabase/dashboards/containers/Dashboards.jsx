@@ -202,6 +202,7 @@ export class Dashboards extends Component {
                                         </div>
                                     }
                                     image="/app/img/empty_dashboard"
+                                    imageHeight="210px"
                                     action="Create a dashboard"
                                     imageClassName="mln2"
                                     smallDescription
