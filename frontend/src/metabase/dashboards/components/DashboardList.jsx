@@ -3,7 +3,6 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
 import {Link} from "react-router";
-import {withState} from "recompose";
 import cx from "classnames";
 import moment from "moment";
 
@@ -14,91 +13,111 @@ import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Tooltip from "metabase/components/Tooltip";
 
-type DashboardListItemType = {
+type DashboardListItemProps = {
     dashboard: Dashboard,
-    hover: boolean,
-    setHover: (boolean) => void,
     setFavorited: (dashId: number, favorited: boolean) => void,
-    setArchived: (dashId: number, archived: boolean) => void,
-    disableLink: boolean
+    setArchived: (dashId: number, archived: boolean) => void
 }
 
-const enhance = withState('hover', 'setHover', false)
-const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover, setHover}: DashboardListItemType) => {
-    return (<li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
-        <Link to={Urls.dashboard(dashboard.id)}
-              data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
-              className={cx(
-                  "flex align-center border-box p2 rounded no-decoration transition-background bg-white transition-all"
-              )}
-              style={{
-                  border: "1px solid rgba(220,225,228,0.50)",
-                  boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
-                  height: "70px"
-              }}
-              onMouseOver={() => setHover(true)}
-              onMouseLeave={() => setHover(false)}>
-            <div className={cx("flex-full shrink-below-content-size")}>
-                <div className="flex align-center">
+class DashboardListItem extends Component {
+    props: DashboardListItemProps
+
+    state = {
+        hover: false,
+        fadingOut: false
+    }
+
+    render() {
+        const {dashboard, setFavorited, setArchived} = this.props
+        const {hover, fadingOut} = this.state
+
+        const {id, name, created_at, archived, favorite} = dashboard
+
+        const archivalButton =
+            <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
+                <Icon
+                    className="flex cursor-pointer text-light-blue text-brand-hover ml2"
+                    name={archived ? "unarchive" : "archive"}
+                    size={21}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        this.setState({fadingOut: true})
+                        setTimeout(() => setArchived(id, !archived, true), 300);
+                    } }
+                />
+            </Tooltip>
+
+        const favoritingButton =
+            <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
+                <Icon
+                    className={cx(
+                        "flex cursor-pointer ml2",
+                        {"text-light-blue text-brand-hover": !favorite},
+                        {"text-gold": favorite}
+                    )}
+                    name={favorite ? "star" : "staroutline"}
+                    size={22}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        setFavorited(id, !favorite)
+                    } }
+                />
+            </Tooltip>
+
+        const dashboardIcon =
+            <Icon name="dashboard"
+                  className={cx("ml2", {"text-grey-1": !hover}, {"text-brand-darken": hover})}
+                  size={25}/>
+
+        return (
+            <li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
+                <Link to={Urls.dashboard(id)}
+                      data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + id}
+                      className={cx(
+                          "flex align-center border-box p2 rounded no-decoration transition-background bg-white transition-all relative"
+                      )}
+                      style={{
+                          border: "1px solid rgba(220,225,228,0.50)",
+                          boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
+                          height: "70px",
+                          opacity: fadingOut ? 0 : 1,
+                          top: fadingOut ? "10px" : 0
+                      }}
+                      onMouseOver={() => this.setState({hover: true})}
+                      onMouseLeave={() => this.setState({hover: false})}>
                     <div className={cx("flex-full shrink-below-content-size")}>
-                        <h3
-                            className={cx(
-                                "text-ellipsis text-nowrap overflow-hidden text-bold transition-all",
-                                {"text-slate": !hover},
-                                {"text-brand": hover}
-                            )}
-                            style={{marginBottom: "0.3em"}}
-                        >
-                            <Ellipsified>{dashboard.name}</Ellipsified>
-                        </h3>
-                        <div
-                            className={cx("text-smaller text-uppercase text-bold text-grey-3")}>
-                            {/* NOTE: Could these time formats be centrally stored somewhere? */}
-                            {moment(dashboard.created_at).format('MMM D, YYYY')}
+                        <div className="flex align-center">
+                            <div className={cx("flex-full shrink-below-content-size")}>
+                                <h3
+                                    className={cx(
+                                        "text-ellipsis text-nowrap overflow-hidden text-bold transition-all",
+                                        {"text-slate": !hover},
+                                        {"text-brand": hover}
+                                    )}
+                                    style={{marginBottom: "0.3em"}}
+                                >
+                                    <Ellipsified>{name}</Ellipsified>
+                                </h3>
+                                <div
+                                    className={cx("text-smaller text-uppercase text-bold text-grey-3")}>
+                                    {/* NOTE: Could these time formats be centrally stored somewhere? */}
+                                    {moment(created_at).format('MMM D, YYYY')}
+                                </div>
+                            </div>
+                            <div className="flex align-center">
+                                { (archived || hover) && archivalButton }
+                                { setFavorited && (favorite || hover) && favoritingButton }
+                            </div>
                         </div>
                     </div>
-                    <div className="flex align-center">
-                        { (dashboard.archived || hover) &&
-                        <Tooltip tooltip={dashboard.archived ? "Unarchive" : "Archive"}>
-                            <Icon
-                                className="flex cursor-pointer text-light-blue text-brand-hover ml2"
-                                name={dashboard.archived ? "unarchive" : "archive"}
-                                size={21}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    setArchived(dashboard.id, !dashboard.archived, true)
-                                } }
-                            />
-                        </Tooltip>
-                        }
-                        { setFavorited && (dashboard.favorite || hover) &&
-                        <Tooltip tooltip={dashboard.favorite ? "Unfavorite" : "Favorite"}>
-                            <Icon
-                                className={cx(
-                                    "flex cursor-pointer ml2",
-                                    {"text-light-blue text-brand-hover": !dashboard.favorite},
-                                    {"text-gold": dashboard.favorite}
-                                )}
-                                name={dashboard.favorite ? "star" : "staroutline"}
-                                size={22}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    setFavorited(dashboard.id, !dashboard.favorite)
-                                } }
-                            />
-                        </Tooltip>
-                        }
-                    </div>
-                </div>
-            </div>
 
-            { !hover && !dashboard.favorite &&
-            <Icon name="dashboard"
-                  className={cx("ml2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={25}/>
-            }
-        </Link>
-    </li>)
-});
+                    { !hover && !favorite && dashboardIcon }
+                </Link>
+            </li>
+        )
+    }
+
+}
 
 export default class DashboardList extends Component {
     static propTypes = {
