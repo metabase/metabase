@@ -24,11 +24,9 @@ type DashboardListItemType = {
 }
 
 const enhance = withState('hover', 'setHover', false)
-const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover, setHover, disableLink}: DashboardListItemType) => {
-    const WrapperType = disableLink ? 'div' : Link
-
+const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover, setHover}: DashboardListItemType) => {
     return (<li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
-        <WrapperType to={Urls.dashboard(dashboard.id)}
+        <Link to={Urls.dashboard(dashboard.id)}
               data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + dashboard.id}
               className={cx(
                   "flex align-center border-box p2 rounded no-decoration transition-background",
@@ -40,7 +38,7 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                   boxShadow: "0 1px 3px 0 rgba(220,220,220,0.50)",
                   height: "80px"
               }}
-              onMouseEnter={() => !disableLink && setHover(true)}
+              onMouseEnter={() => setHover(true)}
               onMouseLeave={() => setHover(false)}>
             <Icon name="dashboard"
                   className={cx("pr2", {"text-grey-1": !hover}, {"text-brand-darken": hover})} size={32}/>
@@ -91,7 +89,7 @@ const DashboardListItem = enhance(({dashboard, setFavorited, setArchived, hover,
                     </div>
                 </div>
             </div>
-        </WrapperType>
+        </Link>
     </li>)
 });
 
@@ -101,7 +99,7 @@ export default class DashboardList extends Component {
     };
 
     render() {
-        const {dashboards, disableLinks, setFavorited, setArchived} = this.props;
+        const {dashboards, isArchivePage, setFavorited, setArchived} = this.props;
 
         return (
             <ol className="Grid Grid--guttersXl Grid--full small-Grid--1of2 md-Grid--1of3">
@@ -109,7 +107,7 @@ export default class DashboardList extends Component {
                     <DashboardListItem key={dash.id} dashboard={dash}
                                        setFavorited={setFavorited}
                                        setArchived={setArchived}
-                                       disableLink={disableLinks}/>
+                                       disableLink={isArchivePage}/>
                 )}
             </ol>
         );

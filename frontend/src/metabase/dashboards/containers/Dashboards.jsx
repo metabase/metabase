@@ -27,7 +27,6 @@ import * as dashboardsActions from "../dashboards";
 import {getDashboardListing} from "../selectors";
 import {getUser} from "metabase/selectors/user";
 
-
 const mapStateToProps = (state, props) => ({
     dashboards: getDashboardListing(state),
     user: getUser(state)
@@ -138,7 +137,7 @@ export class Dashboards extends Component {
         const isLoading = this.props.dashboards === null
         const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
         const filteredDashboards = isLoading ? [] : this.getFilteredDashboards();
-        const noSearchResults = searchText !== "" && filteredDashboards.length === 0;
+        const noResultsFound = filteredDashboards.length === 0;
 
         return (
             <LoadingAndErrorWrapper
@@ -189,7 +188,7 @@ export class Dashboards extends Component {
                                 />
                             </div>
                         </div>
-                        { noSearchResults ?
+                        { noResultsFound ?
                             <div className="flex justify-center">
                                 <EmptyState
                                     message={
