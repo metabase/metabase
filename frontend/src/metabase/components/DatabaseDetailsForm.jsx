@@ -23,6 +23,8 @@ const CREDENTIALS_URL_PREFIXES = {
     googleanalytics: 'https://console.developers.google.com/apis/credentials/oauthclient?project=',
 };
 
+const isTunnelField = (field) => /^tunnel-/.test(field.name);
+
 /**
  * This is a form for capturing database details for a given `engine` supplied via props.
  * The intention is to encapsulate the entire <form> with standard MB form styling and allow a callback
@@ -61,7 +63,10 @@ export default class DatabaseDetailsForm extends Component {
 
         // go over individual fields
         for (let field of engines[engine]['details-fields']) {
-            if (field.required && isEmpty(details[field.name])) {
+            // tunnel fields aren't required if tunnel isn't enabled
+            if (!details["tunnel-enabled"] && isTunnelField(field)) {
+                continue;
+            } else if (field.required && isEmpty(details[field.name])) {
                 valid = false;
                 break;
             }
@@ -165,23 +170,9 @@ export default class DatabaseDetailsForm extends Component {
                     </div>
                 </FormField>
             )
-        } else if (/^tunnel-/.test(field.name) && !this.state.details["tunnel-enabled"]) {
-            if (field.originally_required == undefined) { // the first time through we want to save the original
-                field.originally_required=field.required; // required state, so we can restore it later
-            }
-            field.required=false
+        } else if (isTunnelField(field) && !this.state.details["tunnel-enabled"]) {
+            // don't show tunnel fields if tunnel isn't enabled
             return null;
-        } else if (/^tunnel-/.test(field.name) && this.state.details["tunnel-enabled"]) {
-            // if the "tunnel-enabled" has been flipped off and on again, then make the fields required again
-            // if it was originally enabled, and this is the first time through, then use the original value
-            field.required=field.originally_required;
-            return (
-                <FormField key={field.name} fieldName={field.name}>
-                    <FormLabel title={field['display-name']} fieldName={field.name}></FormLabel>
-                    {this.renderFieldInput(field, fieldIndex)}
-                    <span className="Form-charm"></span>
-                </FormField>
-            )
         } else if (field.name === "is_full_sync") {
             let on = (this.state.details.is_full_sync == undefined) ? true : this.state.details.is_full_sync;
             return (
