@@ -24,15 +24,8 @@ export default (
 
     return [
         {
-            title: (
-                <span>
-                    View {inflect("these", count, "this", "these")}
-                    {" "}
-                    <span className="text-dark">
-                        {inflect(tableMetadata.display_name, count)}
-                    </span>
-                </span>
-            ),
+            section: "zoom",
+            title: "View rows",
             card: () => drillUnderlyingRecords(card, dimensions)
         }
     ];

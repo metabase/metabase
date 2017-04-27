@@ -33,6 +33,10 @@
     color: var(--default-font-color);
 }
 
+.text-default-hover:hover {
+    color: var(--default-font-color);
+}
+
 .text-danger { color: #EEA5A5; }
 
 /* brand */

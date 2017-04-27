@@ -44,15 +44,8 @@ export default (
 
     return [
         {
-            title: (
-                <span>
-                    View this
-                    {" "}
-                    <span className="text-dark">
-                        {singularize(stripId(recordType))}
-                    </span>
-                </span>
-            ),
+            section: "details",
+            title: "View details",
             default: true,
             card: () =>
                 drillRecord(tableMetadata.db_id, table.id, field.id, value)

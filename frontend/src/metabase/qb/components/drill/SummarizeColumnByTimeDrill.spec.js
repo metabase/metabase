@@ -1,6 +1,6 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
-import SumColumnByTimeDrill from "./SumColumnByTimeDrill";
+import SummarizeColumnByTimeDrill from "./SummarizeColumnByTimeDrill";
 
 import {
     card,
@@ -8,13 +8,15 @@ import {
     clickedFloatHeader
 } from "../__support__/fixtures";
 
-describe("SumColumnByTimeDrill", () => {
+describe("SummarizeColumnByTimeDrill", () => {
     it("should not be valid for top level actions", () => {
-        expect(SumColumnByTimeDrill({ card, tableMetadata })).toHaveLength(0);
+        expect(
+            SummarizeColumnByTimeDrill({ card, tableMetadata })
+        ).toHaveLength(0);
     });
     it("should not be valid if there is no time field", () => {
         expect(
-            SumColumnByTimeDrill({
+            SummarizeColumnByTimeDrill({
                 card,
                 tableMetadata: { fields: [] },
                 clicked: clickedFloatHeader
@@ -22,12 +24,12 @@ describe("SumColumnByTimeDrill", () => {
         ).toHaveLength(0);
     });
     it("should be return correct new card", () => {
-        const actions = SumColumnByTimeDrill({
+        const actions = SummarizeColumnByTimeDrill({
             card,
             tableMetadata,
             clicked: clickedFloatHeader
         });
-        expect(actions).toHaveLength(1);
+        expect(actions).toHaveLength(2);
         const newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
             source_table: 10,

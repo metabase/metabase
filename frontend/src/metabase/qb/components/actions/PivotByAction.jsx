@@ -66,7 +66,10 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
 
         return [
             {
-                title: (
+                section: "breakout",
+                title: clicked ?
+                    name
+                : (
                     <span>
                         Pivot by
                         {" "}
