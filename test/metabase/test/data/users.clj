@@ -1,15 +1,13 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
-            [toucan.db :as db]
-            [metabase.config :as config]
+            [metabase
+             [config :as config]
+             [http-client :as http]
+             [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.http-client :as http]
-            (metabase.models [permissions-group :as perms-group]
-                             [user :refer [User]])
-            [metabase.util :as u]
-            [metabase.test.util :refer [random-name]])
+            [metabase.models.user :refer [User]]
+            [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo))
 
 ;;; ------------------------------------------------------------ User Definitions ------------------------------------------------------------

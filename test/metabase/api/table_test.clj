@@ -1,23 +1,25 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :as hydrate])
-            [toucan.util.test :as tt]
-            (metabase [driver :as driver]
-                      [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]]
-                             [permissions :as perms]
-                             [permissions-group :as perms-group])
-            [metabase.test.data :refer :all]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets]
-                                [users :refer :all])
-            [metabase.test.util :refer [match-$ resolve-private-vars], :as tu]
-            [metabase.util :as u]))
+            [metabase
+             [driver :as driver]
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [permissions :as perms]
+             [permissions-group :as perms-group]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu :refer [match-$ resolve-private-vars]]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [users :refer :all]]
+            [toucan.hydrate :as hydrate]
+            [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 

@@ -14,6 +14,7 @@
              [field :as field]
              [table :as table]]
             [metabase.sync-database.analyze :as analyze]
+            [metabase.util.ssh :as ssh]
             [monger
              [collection :as mc]
              [command :as cmd]
@@ -42,6 +43,12 @@
 
     #"^Password can not be null when the authentication mechanism is unspecified$"
     (driver/connection-error-messages :password-required)
+
+    #"^com.jcraft.jsch.JSchException: Auth fail$"
+    (driver/connection-error-messages :ssh-tunnel-auth-fail)
+
+    #"j^ava.net.ConnectException: Connection refused (Connection refused)$"
+    (driver/connection-error-messages :ssh-tunnel-connection-fail)
 
     #".*"                               ; default
     message))
@@ -174,31 +181,32 @@
           :can-connect?                      (u/drop-first-arg can-connect?)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      27017}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "carrierPigeonDeliveries"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"}
-                                                          {:name         "pass"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "******"}
-                                                          {:name         "authdb"
-                                                           :display-name "Authentication Database"
-                                                           :placeholder  "Optional database to use when authenticating"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}])
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      27017}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "carrierPigeonDeliveries"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"}
+                                                            {:name         "pass"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "******"}
+                                                            {:name         "authdb"
+                                                             :display-name "Authentication Database"
+                                                             :placeholder  "Optional database to use when authenticating"}
+                                                            {:name         "ssl"
+                                                             :display-name "Use a secure connection (SSL)?"
+                                                             :type         :boolean
+                                                             :default      false}]))
           :execute-query                     (u/drop-first-arg qp/execute-query)
           :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
           :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)

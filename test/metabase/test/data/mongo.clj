@@ -1,10 +1,10 @@
 (ns metabase.test.data.mongo
-  (:require (monger [collection :as mc]
-                    [core :as mg])
-            metabase.driver.mongo
-            [metabase.driver.mongo.util :refer [with-mongo-connection]]
+  (:require [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.test.data.interface :as i]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [monger
+             [collection :as mc]
+             [core :as mg]])
   (:import metabase.driver.mongo.MongoDriver))
 
 (defn- database->connection-details

@@ -1,7 +1,7 @@
 (ns metabase.email.messages-test
   (:require [expectations :refer :all]
-            [metabase.email-test :refer [with-fake-inbox inbox]]
-            [metabase.email.messages :refer :all]))
+            [metabase.email-test :refer [inbox with-fake-inbox]]
+            [metabase.email.messages :refer [send-new-user-email! send-password-reset-email!]]))
 
 ;; new user email
 ;; NOTE: we are not validating the content of the email body namely because it's got randomized elements and thus

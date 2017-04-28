@@ -2,21 +2,25 @@
   (:require [clojure.java.jdbc :as jdbc]
             [expectations :refer :all]
             [honeysql.core :as hsql]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [query-processor-test :refer [rows]]
+             [sync-database :as sync-db]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])
-            [metabase.query-processor-test :refer [rows]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor.expand :as ql]
-            [metabase.sync-database :as sync-db]
-            [metabase.test.data :as data]
-            (metabase.test.data [datasets :refer [expect-with-engine]]
-                                [interface :as i])
-            [metabase.test.util :as tu]
-            [metabase.util :as u])
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [datasets :refer [expect-with-engine]]
+             [interface :as i]]
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import metabase.driver.postgres.PostgresDriver))
 
 (def ^:private ^PostgresDriver pg-driver (PostgresDriver.))

@@ -1,16 +1,19 @@
 (ns metabase.sync-database.sync-dynamic-test
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table]])
-            (metabase.sync-database [introspect :as introspect]
-                                    [sync-dynamic :refer :all])
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [raw-table :refer [RawTable]]
+             [table :refer [Table]]]
+            [metabase.sync-database
+             [introspect :as introspect]
+             [sync-dynamic :refer :all]]
             [metabase.test.mock.toucanery :as toucanery]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
+            [toucan.util.test :as tt]))
 
 (tu/resolve-private-vars metabase.sync-database.sync-dynamic
   save-table-fields!)

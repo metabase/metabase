@@ -2,24 +2,22 @@
   "Tests for /api/dashboard endpoints."
   (:require [expectations :refer :all]
             [medley.core :as m]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [toucan.util.test :as tt]
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]]
             [metabase.api.card-test :as card-api-test]
-            (metabase [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [revision :refer [Revision]]
-                             [user :refer [User]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [revision :refer [Revision]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
-            [metabase.util :as u])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import java.util.UUID))
-
 
 ;; ## Helper Fns
 

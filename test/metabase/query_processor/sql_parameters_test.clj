@@ -1,19 +1,18 @@
 (ns metabase.query-processor.sql-parameters-test
   (:require [clj-time.core :as t]
             [expectations :refer :all]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            [metabase.models.table :as table]
-            [metabase.query-processor :as qp]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]
+             [query-processor-test :refer [engines-that-support first-row format-rows-by]]]
             [metabase.query-processor.sql-parameters :refer :all]
-            [metabase.query-processor-test :refer [engines-that-support first-row format-rows-by]]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.data.generic-sql :as generic-sql]
-            [metabase.test.util :as tu]
-            [metabase.test.data.generic-sql :as generic]
-            [metabase.util :as u]))
-
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [datasets :as datasets]
+             [generic-sql :as generic-sql]]
+            [toucan.db :as db]))
 
 ;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
 

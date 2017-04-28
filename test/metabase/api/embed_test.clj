@@ -2,16 +2,18 @@
   (:require [buddy.sign.jwt :as jwt]
             [crypto.random :as crypto-random]
             [expectations :refer :all]
-            [toucan.util.test :as tt]
-            [metabase.http-client :as http]
+            [metabase
+             [http-client :as http]
+             [util :as u]]
             [metabase.api.public-test :as public-test]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])
-            (metabase.test [data :as data]
-                           [util :as tu])
-            [metabase.util :as u]
-            [metabase.util.embed :as eu]))
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [toucan.util.test :as tt]))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 

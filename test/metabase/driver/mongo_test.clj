@@ -1,23 +1,25 @@
 (ns metabase.driver.mongo-test
   "Tests for Mongo driver."
-  (:require [clojure.walk :as walk]
-            [expectations :refer :all]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [table :refer [Table] :as table])
-            [metabase.query-processor :as qp]
+  (:require [expectations :refer :all]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]
+             [query-processor-test :refer [rows]]]
+            [metabase.models
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]
+             [table :as table :refer [Table]]]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [rows]]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.data.interface :as i]
-            [metabase.test.util :as tu])
-  (:import org.bson.types.ObjectId
-           org.joda.time.DateTime
-           metabase.driver.mongo.MongoDriver))
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [datasets :as datasets]
+             [interface :as i]]
+            [toucan.db :as db])
+  (:import metabase.driver.mongo.MongoDriver
+           org.bson.types.ObjectId
+           org.joda.time.DateTime))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?

@@ -1,10 +1,9 @@
 (ns metabase.test.data.mysql
   "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
-  (:require [clojure.string :as s]
-            [environ.core :refer [env]]
-            metabase.driver.mysql
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+  (:require [environ.core :refer [env]]
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.mysql.MySQLDriver))
 

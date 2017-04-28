@@ -1,16 +1,15 @@
 (ns metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
-  (:require [expectations :refer :all]
-            [toucan.util.test :as tt]
-            [metabase.driver :as driver]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor :as qp]
+             [query-processor-test :refer :all]
+             [util :as u]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets, :refer [*engine* *driver*]]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets :refer [*driver* *engine*]]
+            [toucan.util.test :as tt]))
 
 ;; sum, *
 (datasets/expect-with-engines (engines-that-support :expression-aggregations)

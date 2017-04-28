@@ -1,19 +1,21 @@
 (ns metabase.api.session-test
   "Tests for /api/session"
-  (:require [cemerick.friend.credentials :as creds]
-            [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
+  (:require [expectations :refer :all]
+            [metabase
+             [http-client :refer :all]
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.api.session :refer :all]
-            [metabase.http-client :refer :all]
-            (metabase.models [session :refer [Session]]
-                             [user :refer [User]])
-            [metabase.public-settings :as public-settings]
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [session :refer [Session]]
+             [user :refer [User]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu :refer [resolve-private-vars with-temporary-setting-values]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.integrations.ldap :refer [expect-with-ldap-server]]
-            [metabase.test.util :refer [random-name resolve-private-vars with-temporary-setting-values], :as tu]
-            [metabase.util :as u]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; ## POST /api/session
 ;; Test that we can login

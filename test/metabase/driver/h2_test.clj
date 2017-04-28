@@ -1,7 +1,8 @@
 (ns metabase.driver.h2-test
   (:require [expectations :refer :all]
-            [metabase.db :as mdb]
-            [metabase.driver :as driver]
+            [metabase
+             [db :as mdb]
+             [driver :as driver]]
             [metabase.driver.h2 :refer :all]
             [metabase.test.util :refer [resolve-private-vars]])
   (:import metabase.driver.h2.H2Driver))

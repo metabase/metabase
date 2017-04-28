@@ -11,7 +11,9 @@
             [metabase.driver
              [generic-sql :as sql]
              [postgres :as postgres]]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
 (defn- connection-details->spec [details]
   (dbspec/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
@@ -64,27 +66,28 @@
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval            (u/drop-first-arg date-interval)
           :describe-table-fks       (u/drop-first-arg describe-table-fks)
-          :details-fields           (constantly [{:name         "host"
-                                                  :display-name "Host"
-                                                  :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
-                                                  :required     true}
-                                                 {:name         "port"
-                                                  :display-name "Port"
-                                                  :type         :integer
-                                                  :default      5439}
-                                                 {:name         "db"
-                                                  :display-name "Database name"
-                                                  :placeholder  "toucan_sightings"
-                                                  :required     true}
-                                                 {:name         "user"
-                                                  :display-name "Database username"
-                                                  :placeholder  "cam"
-                                                  :required     true}
-                                                 {:name         "password"
-                                                  :display-name "Database user password"
-                                                  :type         :password
-                                                  :placeholder  "*******"
-                                                  :required     true}])
+          :details-fields           (constantly (ssh/with-tunnel-config
+                                                  [{:name         "host"
+                                                    :display-name "Host"
+                                                    :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
+                                                    :required     true}
+                                                   {:name         "port"
+                                                    :display-name "Port"
+                                                    :type         :integer
+                                                    :default      5439}
+                                                   {:name         "db"
+                                                    :display-name "Database name"
+                                                    :placeholder  "toucan_sightings"
+                                                    :required     true}
+                                                   {:name         "user"
+                                                    :display-name "Database username"
+                                                    :placeholder  "cam"
+                                                    :required     true}
+                                                   {:name         "password"
+                                                    :display-name "Database user password"
+                                                    :type         :password
+                                                    :placeholder  "*******"
+                                                    :required     true}]))
           :format-custom-field-name (u/drop-first-arg str/lower-case)})
 
   sql/ISQLDriver

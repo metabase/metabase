@@ -3,24 +3,27 @@
   (:require [cheshire.core :as json]
             [expectations :refer :all]
             [medley.core :as m]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.http-client :refer :all, :as http]
-            [metabase.middleware :as middleware]
-            (metabase.models [card :refer [Card]]
-                             [card-favorite :refer [CardFavorite]]
-                             [card-label :refer [CardLabel]]
-                             [collection :refer [Collection]]
-                             [database :refer [Database]]
-                             [label :refer [Label]]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :as perms-group]
-                             [table :refer [Table]]
-                             [view-log :refer [ViewLog]])
-            [metabase.test.data :refer :all]
+            [metabase
+             [http-client :as http :refer :all]
+             [middleware :as middleware]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [card-favorite :refer [CardFavorite]]
+             [card-label :refer [CardLabel]]
+             [collection :refer [Collection]]
+             [database :refer [Database]]
+             [label :refer [Label]]
+             [permissions :as perms]
+             [permissions-group :as perms-group]
+             [table :refer [Table]]
+             [view-log :refer [ViewLog]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu :refer [match-$ random-name]]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name obj->json->obj], :as tu]
-            [metabase.util :as u])
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import java.util.UUID))
 
 ;;; CARD LIFECYCLE
