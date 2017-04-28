@@ -1,0 +1,17 @@
+{
+	"compatibleVersion": 3,
+	"bundleVersion": 1,
+	"commands": [
+		{
+			"name": "react-sketchapp: Metabase",
+			"identifier": "main",
+			"script": "./component-guide.js"
+		}
+	],
+	"menu": {
+		"isRoot": true,
+		"items": [
+			"main"
+		]
+	}
+}

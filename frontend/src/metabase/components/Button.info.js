@@ -1,5 +1,5 @@
 import React from "react";
-import Button from "metabase/components/Button";
+import Button from "./Button.jsx";
 
 export const component = Button;
 
@@ -12,3 +12,5 @@ export const examples = {
     "primary": <Button primary>Clickity click</Button>,
     "with an icon": <Button icon='star'>Clickity click</Button>
 };
+
+export const universal = true;

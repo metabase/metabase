@@ -1,11 +1,35 @@
 import React from "react";
-import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
+import { View, Text, StyleSheet } from "react-primitives";
 
-import cx from "classnames";
+var buttonStyles = StyleSheet.create({
+    button: {
+        backgroundColor: "#FBFCFD",
+        borderColor: "#ddd",
+        borderWidth: 1,
+        borderRadius: 4,
+        padding: 10
+    },
+    text: {
+        color: "#444",
+        fontWeight: "bold"
+    },
+    icon: {
+        marginRight: 20
+    }
+});
 
-import _ from "underscore";
+var variants = {
+    primary: StyleSheet.create({
+        button: {
+            backgroundColor: "#509EE3",
+            borderColor: "#509EE3"
+        },
+        text: {
+            color: "#FFF"
+        }
+    })
+};
 
 const BUTTON_VARIANTS = [
     "small",
@@ -19,36 +43,22 @@ const BUTTON_VARIANTS = [
     "borderless"
 ];
 
-const Button = ({ className, icon, children, ...props }) => {
-    let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(variant => "Button--" + variant);
+const Button = ({ icon, children, ...props }) => {
+    const style = name => [
+        buttonStyles[name],
+        ...BUTTON_VARIANTS.filter(variant => props[variant])
+            .map(variant => variants[variant] && variants[variant][name])
+            .filter(s => s)
+    ];
+
     return (
-        <button
-            {..._.omit(props, ...BUTTON_VARIANTS)}
-            className={cx("Button", className, variantClasses)}
-        >
-            <div className="flex layout-centered">
-                { icon && <Icon name={icon} size={14} className="mr1" />}
-                <div>{children}</div>
-            </div>
-        </button>
+        <View style={style("button")}>
+            {/* {icon && <Icon name={icon} size={14} style={style("icon")} />} */}
+            {typeof children === "string"
+                ? <Text style={style("text")}>{children}</Text>
+                : children}
+        </View>
     );
-}
-
-Button.propTypes = {
-    className: PropTypes.string,
-    icon: PropTypes.string,
-    children: PropTypes.any,
-
-    small: PropTypes.bool,
-    medium: PropTypes.bool,
-    large: PropTypes.bool,
-
-    primary: PropTypes.bool,
-    warning: PropTypes.bool,
-    cancel: PropTypes.bool,
-    purple: PropTypes.bool,
-
-    borderless: PropTypes.bool
 };
 
 export default Button;
