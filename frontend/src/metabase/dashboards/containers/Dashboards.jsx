@@ -1,8 +1,10 @@
 /* @flow */
 
-import React, {Component, PropTypes} from 'react';
+import React, {Component} from 'react';
 import {connect} from "react-redux";
+import {Link} from "react-router";
 import cx from "classnames";
+import _ from "underscore"
 
 import type {Dashboard} from "metabase/meta/types/Dashboard";
 
@@ -15,29 +17,63 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon.jsx";
 import SearchHeader from "metabase/components/SearchHeader";
 import EmptyState from "metabase/components/EmptyState";
+import ListFilterWidget from "metabase/components/ListFilterWidget";
+import type {ListFilterWidgetItem} from "metabase/components/ListFilterWidget";
 
 import {caseInsensitiveSearch} from "metabase/lib/string"
 
+import type {SetFavoritedAction, SetArchivedAction} from "../dashboards";
+import type {User} from "metabase/meta/types/User"
 import * as dashboardsActions from "../dashboards";
 import {getDashboardListing} from "../selectors";
-
+import {getUser} from "metabase/selectors/user";
 
 const mapStateToProps = (state, props) => ({
-    dashboards: getDashboardListing(state)
+    dashboards: getDashboardListing(state),
+    user: getUser(state)
 });
 
 const mapDispatchToProps = dashboardsActions;
+
+const SECTION_ID_ALL = 'all';
+const SECTION_ID_MINE = 'mine';
+const SECTION_ID_FAVORITES = 'fav';
+
+const SECTIONS: ListFilterWidgetItem[] = [
+    {
+        id: SECTION_ID_ALL,
+        name: 'All dashboards',
+        icon: 'dashboard',
+        // empty: 'No questions have been saved yet.',
+    },
+    {
+        id: SECTION_ID_FAVORITES,
+        name: 'Favorites',
+        icon: 'star',
+        // empty: 'You haven\'t favorited any questions yet.',
+    },
+    {
+        id: SECTION_ID_MINE,
+        name: 'Saved by me',
+        icon: 'mine',
+        // empty:  'You haven\'t saved any questions yet.'
+    },
+];
 
 export class Dashboards extends Component {
     props: {
         dashboards: Dashboard[],
         createDashboard: (Dashboard) => any,
-        fetchDashboards: PropTypes.func.isRequired,
+        fetchDashboards: () => void,
+        setFavorited: SetFavoritedAction,
+        setArchived: SetArchivedAction,
+        user: User
     };
 
     state = {
         modalOpen: false,
-        searchText: ""
+        searchText: "",
+        section: SECTIONS[0]
     }
 
     componentWillMount() {
@@ -72,35 +108,68 @@ export class Dashboards extends Component {
         );
     }
 
-    getFilteredDashboards = () => {
-        const {searchText} = this.state;
-        const {dashboards} = this.props;
+    searchTextFilter = (searchText: string) =>
+        ({name, description}: Dashboard) =>
+            (caseInsensitiveSearch(name, searchText) || (description && caseInsensitiveSearch(description, searchText)))
 
-        if (searchText === "") {
-            return dashboards;
-        } else {
-            return dashboards.filter(({name, description}) =>
-                caseInsensitiveSearch(name,searchText) || (description && caseInsensitiveSearch(description, searchText))
-            );
-        }
+    sectionFilter = (section: ListFilterWidgetItem) =>
+        ({creator_id, favorite}: Dashboard) =>
+        (section.id === SECTION_ID_ALL) ||
+        (section.id === SECTION_ID_MINE && creator_id === this.props.user.id) ||
+        (section.id === SECTION_ID_FAVORITES && favorite === true)
+
+    getFilteredDashboards = () => {
+        const {searchText, section} = this.state;
+        const {dashboards} = this.props;
+        const noOpFilter = _.constant(true)
+
+        return _.chain(dashboards)
+            .filter(searchText != "" ? this.searchTextFilter(searchText) : noOpFilter)
+            .filter(this.sectionFilter(section))
+            .value()
+            .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+    }
+
+    updateSection = (section: ListFilterWidgetItem) => {
+        this.setState({section});
     }
 
     render() {
-        let {modalOpen, searchText} = this.state;
+        let {modalOpen, searchText, section} = this.state;
 
         const isLoading = this.props.dashboards === null
         const noDashboardsCreated = this.props.dashboards && this.props.dashboards.length === 0
         const filteredDashboards = isLoading ? [] : this.getFilteredDashboards();
-        const noSearchResults = searchText !== "" && filteredDashboards.length === 0;
+        const noResultsFound = filteredDashboards.length === 0;
 
         return (
             <LoadingAndErrorWrapper
                 loading={isLoading}
-                className={cx("relative mx4", {"flex-full flex align-center justify-center": noDashboardsCreated})}
+                className={cx("relative mx4", {"flex flex-full flex-column": noDashboardsCreated})}
             >
                 { modalOpen ? this.renderCreateDashboardModal() : null }
+                <div className="flex align-center pt4 pb1">
+                    <TitleAndDescription title="Dashboards"/>
+
+                    <div className="flex-align-right cursor-pointer text-grey-5">
+                        <Link to="/dashboards/archive">
+                            <Icon name="viewArchive"
+                                  className="mr2 text-brand-hover"
+                                  tooltip="View the archive"
+                                  size={20}/>
+                        </Link>
+
+                        {!noDashboardsCreated &&
+                        <Icon name="add"
+                              className="text-brand-hover"
+                              tooltip="Add new dashboard"
+                              size={20}
+                              onClick={this.showCreateDashboard}/>
+                        }
+                    </div>
+                </div>
                 { noDashboardsCreated ?
-                    <div className="mt2">
+                    <div className="mt2 flex-full flex align-center justify-center">
                         <EmptyState
                             message={<span>Put the charts and graphs you look at <br/>frequently in a single, handy place.</span>}
                             image="/app/img/dashboard_illustration"
@@ -111,21 +180,20 @@ export class Dashboards extends Component {
                         />
                     </div>
                     : <div>
-                        <div className="flex align-center pt4 pb1">
-                            <TitleAndDescription title="Dashboards"/>
-                            <div className="flex-align-right cursor-pointer text-grey-5 text-brand-hover">
-                                <Icon name="add"
-                                      size={20}
-                                      onClick={this.showCreateDashboard}/>
-                            </div>
-                        </div>
-                        <div className="flex align-center pb1">
+                        <div className="flex-full flex align-center pb1">
                             <SearchHeader
                                 searchText={searchText}
                                 setSearchText={(text) => this.setState({searchText: text})}
                             />
+                            <div className="flex-align-right">
+                                <ListFilterWidget
+                                    items={SECTIONS.filter(item => item.id !== "archived")}
+                                    activeItem={section}
+                                    onChange={this.updateSection}
+                                />
+                            </div>
                         </div>
-                        { noSearchResults ?
+                        { noResultsFound ?
                             <div className="flex justify-center">
                                 <EmptyState
                                     message={
@@ -136,12 +204,15 @@ export class Dashboards extends Component {
                                         </div>
                                     }
                                     image="/app/img/empty_dashboard"
+                                    imageHeight="210px"
                                     action="Create a dashboard"
                                     imageClassName="mln2"
                                     smallDescription
                                 />
                             </div>
-                            : <DashboardList dashboards={filteredDashboards}/>
+                            : <DashboardList dashboards={filteredDashboards}
+                                             setFavorited={this.props.setFavorited}
+                                             setArchived={this.props.setArchived}/>
                         }
                     </div>
 

@@ -126,7 +126,7 @@ export default class Navbar extends Component {
                         </Link>
                     </li>
                     <li className="pl3 hide sm-show">
-                        <MainNavLink to="/dashboard" name="Dashboards" eventName="Dashboards" />
+                        <MainNavLink to="/dashboards" name="Dashboards" eventName="Dashboards" />
                     </li>
                     <li className="pl1 hide sm-show">
                         <MainNavLink to="/questions" name="Questions" eventName="Questions" />

@@ -37,7 +37,7 @@
 
 (defn- dashboards-list [filter-option]
   (as-> (db/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
-                                                :all  true
+                                                (:all :archived)  true
                                                 :mine [:= :creator_id api/*current-user-id*])
                                               [:= :archived (= (keyword filter-option) :archived)]]
                               :order-by [:%lower.name]}) <>

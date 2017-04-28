@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
 
-export default class DeleteDashboardModal extends Component {
+export default class ArchiveDashboardModal extends Component {
     constructor(props, context) {
         super(props, context);
 
@@ -16,12 +16,12 @@ export default class DeleteDashboardModal extends Component {
         dashboard: PropTypes.object.isRequired,
 
         onClose: PropTypes.func,
-        onDelete: PropTypes.func
+        onArchive: PropTypes.func
     };
 
-    async deleteDashboard() {
+    async archiveDashboard() {
         try {
-            this.props.onDelete(this.props.dashboard);
+            this.props.onArchive(this.props.dashboard);
         } catch (error) {
             this.setState({ error });
         }
@@ -46,7 +46,7 @@ export default class DeleteDashboardModal extends Component {
 
         return (
             <ModalContent
-                title="Delete Dashboard"
+                title="Archive Dashboard"
                 onClose={this.props.onClose}
             >
                 <div className="Form-inputs mb4">
@@ -54,7 +54,7 @@ export default class DeleteDashboardModal extends Component {
                 </div>
 
                 <div className="Form-actions">
-                    <button className="Button Button--danger" onClick={() => this.deleteDashboard()}>Yes</button>
+                    <button className="Button Button--danger" onClick={() => this.archiveDashboard()}>Yes</button>
                     <button className="Button Button--primary ml1" onClick={this.props.onClose}>No</button>
                     {formError}
                 </div>
