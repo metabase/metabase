@@ -34,7 +34,7 @@ export const getCards             = state => state.dashboard.cards;
 export const getDashboards        = state => state.dashboard.dashboards;
 export const getDashcards         = state => state.dashboard.dashcards;
 export const getCardData          = state => state.dashboard.dashcardData;
-export const getCardDurations     = state => state.dashboard.cardDurations;
+export const getSlowCards         = state => state.dashboard.slowCards;
 export const getCardIdList        = state => state.dashboard.cardList;
 export const getRevisions         = state => state.dashboard.revisions;
 export const getParameterValues   = state => state.dashboard.parameterValues;

@@ -34,6 +34,7 @@
   (let [query (assoc body :constraints default-query-constraints)]
     (qp/dataset-query query {:executed-by api/*current-user-id*, :context :ad-hoc})))
 
+;; TODO - this is no longer used. Should we remove it?
 (api/defendpoint POST "/duration"
   "Get historical query execution duration."
   [:as {{:keys [database], :as query} :body}]

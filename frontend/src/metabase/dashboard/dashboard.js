@@ -22,12 +22,11 @@ import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { addParamValues, fetchDatabaseMetadata } from "metabase/redux/metadata";
 
 
-import { DashboardApi, MetabaseApi, CardApi, RevisionApi, PublicApi, EmbedApi } from "metabase/services";
+import { DashboardApi, CardApi, RevisionApi, PublicApi, EmbedApi } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
 
-const DATASET_SLOW_TIMEOUT   = 15 * 1000;
-const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
+const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
 // normalizr schemas
 const dashcard = new schema.Entity('dashcard');
@@ -60,7 +59,7 @@ export const SAVE_DASHCARD = "metabase/dashboard/SAVE_DASHCARD";
 
 export const FETCH_DASHBOARD_CARD_DATA = "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
-export const FETCH_CARD_DURATION = "metabase/dashboard/FETCH_CARD_DURATION";
+export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
 export const FETCH_REVISIONS = "metabase/dashboard/FETCH_REVISIONS";
@@ -281,10 +280,10 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
 
         let result = null;
 
-        // start a timer that will fetch the expected card duration if the query takes too long
+        // start a timer that will show the expected card duration if the query takes too long
         let slowCardTimer = setTimeout(() => {
             if (result === null) {
-                dispatch(fetchCardDuration(card, datasetQuery));
+                dispatch(markCardAsSlow(card, datasetQuery));
             }
         }, DATASET_SLOW_TIMEOUT);
 
@@ -316,18 +315,11 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
     };
 });
 
-export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function(card, datasetQuery) {
-    return async function(dispatch, getState) {
-        let result = await MetabaseApi.dataset_duration(datasetQuery);
-        return {
-            id: card.id,
-            result: {
-                fast_threshold: DATASET_USUALLY_FAST_THRESHOLD,
-                ...result
-            }
-        };
-    };
-});
+export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, (card) => ({
+    id: card.id,
+    result: true
+}));
+
 
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId, queryParams, enableDefaultParameters = true) {
     let result;
@@ -611,8 +603,8 @@ const dashcardData = handleActions({
     }
 }, {});
 
-const cardDurations = handleActions({
-    [FETCH_CARD_DURATION]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
+const slowCards = handleActions({
+    [MARK_CARD_AS_SLOW]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
 }, {});
 
 const parameterValues = handleActions({
@@ -632,6 +624,6 @@ export default combineReducers({
     editingParameterId,
     revisions,
     dashcardData,
-    cardDurations,
+    slowCards,
     parameterValues
 });
