@@ -41,6 +41,8 @@ class DashboardListItem extends Component {
                     size={21}
                     onClick={(e) => {
                         e.preventDefault();
+
+                        // Let the 0.2s transition finish before the archival API call (`setArchived` action)
                         this.setState({fadingOut: true})
                         setTimeout(() => setArchived(id, !archived, true), 300);
                     } }
@@ -66,16 +68,14 @@ class DashboardListItem extends Component {
 
         const dashboardIcon =
             <Icon name="dashboard"
-                  className={cx("ml2", "text-grey-1")}
+                  className={"ml2 text-grey-1"}
                   size={25}/>
 
         return (
             <li className="Grid-cell shrink-below-content-size" style={{maxWidth: "550px"}}>
                 <Link to={Urls.dashboard(id)}
                       data-metabase-event={"Navbar;Dashboards;Open Dashboard;" + id}
-                      className={cx(
-                          "flex align-center border-box p2 rounded no-decoration transition-background bg-white transition-all relative"
-                      )}
+                      className={"flex align-center border-box p2 rounded no-decoration transition-background bg-white transition-all relative"}
                       style={{
                           border: "1px solid rgba(220,225,228,0.50)",
                           boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
@@ -85,9 +85,9 @@ class DashboardListItem extends Component {
                       }}
                       onMouseOver={() => this.setState({hover: true})}
                       onMouseLeave={() => this.setState({hover: false})}>
-                    <div className={cx("flex-full shrink-below-content-size")}>
+                    <div className={"flex-full shrink-below-content-size"}>
                         <div className="flex align-center">
-                            <div className={cx("flex-full shrink-below-content-size")}>
+                            <div className={"flex-full shrink-below-content-size"}>
                                 <h3
                                     className={cx(
                                         "text-ellipsis text-nowrap overflow-hidden text-bold transition-all",
@@ -99,7 +99,7 @@ class DashboardListItem extends Component {
                                     <Ellipsified>{name}</Ellipsified>
                                 </h3>
                                 <div
-                                    className={cx("text-smaller text-uppercase text-bold text-grey-3")}>
+                                    className={"text-smaller text-uppercase text-bold text-grey-3"}>
                                     {/* NOTE: Could these time formats be centrally stored somewhere? */}
                                     {moment(created_at).format('MMM D, YYYY')}
                                 </div>

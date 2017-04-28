@@ -154,14 +154,14 @@ export class Dashboards extends Component {
                     <div className="flex-align-right cursor-pointer text-grey-5">
                         <Link to="/dashboards/archive">
                             <Icon name="viewArchive"
-                                  className="mr2 text-brand-hover Icon Icon-viewArchive"
+                                  className="mr2 text-brand-hover"
                                   tooltip="View the archive"
                                   size={20}/>
                         </Link>
 
                         {!noDashboardsCreated &&
                         <Icon name="add"
-                              className="text-brand-hover Icon Icon-add"
+                              className="text-brand-hover"
                               tooltip="Add new dashboard"
                               size={20}
                               onClick={this.showCreateDashboard}/>
