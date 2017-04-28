@@ -5,10 +5,9 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [schema.core :as s]
-            metabase.logger
             [metabase.util :as u]
-            [metabase.util.schema :as su])
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import java.sql.SQLException))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+

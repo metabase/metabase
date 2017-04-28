@@ -1,15 +1,13 @@
 (ns metabase.events.activity-feed
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
             [metabase.events :as events]
-            (metabase.models [activity :refer [Activity], :as activity]
-                             [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [interface :as mi]
-                             [session :refer [Session first-session-for-user]]
-                             [table :as table])))
-
+            [metabase.models
+             [activity :as activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [table :as table]]
+            [toucan.db :as db]))
 
 (def ^:const activity-feed-topics
   "The `Set` of event topics which are subscribed to for use in the Metabase activity feed."

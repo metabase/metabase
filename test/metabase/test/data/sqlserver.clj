@@ -3,11 +3,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             sqlserver)
-            (metabase.test.data [datasets :as datasets]
-                                [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.driver.generic-sql :as sql]
+            [metabase.test.data
+             [datasets :as datasets]
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.sqlserver.SQLServerDriver))
 

@@ -1,7 +1,7 @@
 (ns metabase.api.common.internal-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            (metabase.api.common [internal :refer :all])
+            [metabase.api.common.internal :refer :all]
             [metabase.util :as u]))
 
 ;;; TESTS FOR ROUTE-FN-NAME

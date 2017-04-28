@@ -1,7 +1,6 @@
 (ns metabase.task.follow-up-emails-test
   (:require [expectations :refer :all]
-            [metabase.email-test :refer [with-fake-inbox inbox]]
-            metabase.task.follow-up-emails
+            [metabase.email-test :refer [inbox with-fake-inbox]]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]))
 

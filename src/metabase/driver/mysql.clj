@@ -1,12 +1,17 @@
 (ns metabase.driver.mysql
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [clojure
+             [set :as set]
+             [string :as s]]
             [honeysql.core :as hsql]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
+
 
 ;;; # IMPLEMENTATION
 
@@ -152,28 +157,29 @@
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     (u/drop-first-arg date-interval)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      3306}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "birds_of_the_word"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"
-                                                           :required     true}
-                                                          {:name         "password"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "*******"}
-                                                          {:name         "additional-options"
-                                                           :display-name "Additional JDBC connection string options"
-                                                           :placeholder  "tinyInt1isBit=false"}])
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      3306}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "birds_of_the_word"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"
+                                                             :required     true}
+                                                            {:name         "password"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "*******"}
+                                                            {:name         "additional-options"
+                                                             :display-name "Additional JDBC connection string options"
+                                                             :placeholder  "tinyInt1isBit=false"}]))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver
@@ -189,7 +195,7 @@
           ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
           ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
           ;; TODO - This can also be set via `sessionVariables` in the connection string, if that's more useful (?)
-          :set-timezone-sql          (constantly "SET @@session.time_zone = ?;")
+          :set-timezone-sql          (constantly "SET @@session.time_zone = %s;")
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :mysql (MySQLDriver.))

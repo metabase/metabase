@@ -1,9 +1,9 @@
 (ns metabase.query-processor.util
   "Utility functions used by the global query processor and middleware functions."
-  (:require (buddy.core [codecs :as codecs]
-                        [hash :as hash])
-            [cheshire.core :as json]
-            [toucan.db :as db]))
+  (:require [buddy.core
+             [codecs :as codecs]
+             [hash :as hash]]
+            [cheshire.core :as json]))
 
 (defn mbql-query?
   "Is the given query an MBQL query?"

@@ -1,11 +1,11 @@
 (ns metabase.util.schema
   "Various schemas that are useful throughout the app."
-  (:require [clojure.string :as str]
-            [cheshire.core :as json]
-            [schema.core :as s]
-            metabase.types
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
+            [medley.core :as m]
             [metabase.util :as u]
-            [metabase.util.password :as password]))
+            [metabase.util.password :as password]
+            [schema.core :as s]))
 
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails validation."
@@ -41,6 +41,12 @@
       (when (instance? schema.core.EnumSchema schema)
         (format "value must be one of: %s." (str/join ", " (for [v (sort (:vs schema))]
                                                              (str "`" v "`")))))
+      ;; For cond-pre schemas we'll generate something like
+      ;; value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
+      (when (instance? schema.core.CondPre schema)
+        (str "value must satisfy one of the following requirements: "
+             (str/join " " (for [[i child-schema] (m/indexed (:schemas schema))]
+                             (format "%d) %s" (inc i) (api-error-message child-schema))))))
       ;; do the same for sequences of a schema
       (when (vector? schema)
         (str "value must be an array." (when (= (count schema) 1)
@@ -113,7 +119,7 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
    Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
-    "value must be a valid boolean (true or false)."))
+    "value must be a valid boolean string ('true' or 'false')."))
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."

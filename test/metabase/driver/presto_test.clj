@@ -1,13 +1,14 @@
 (ns metabase.driver.presto-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.models.table :as table]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :refer [resolve-private-vars]]]
             [metabase.test.data.datasets :as datasets]
-            [metabase.test.util :refer [resolve-private-vars]])
-  (:import (metabase.driver.presto PrestoDriver)))
+            [toucan.db :as db])
+  (:import metabase.driver.presto.PrestoDriver))
 
 (resolve-private-vars metabase.driver.presto details->uri details->request parse-presto-results quote-name quote+combine-names apply-page)
 

@@ -1,13 +1,12 @@
 (ns metabase.models.revision-test
   (:require [expectations :refer :all]
-            [medley.core :as m]
-            (toucan [db :as db]
-                    [models :as models])
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer [Card]]
-                             [revision :refer :all])
+            [metabase.models
+             [card :refer [Card]]
+             [revision :refer :all]]
             [metabase.test.data.users :refer :all]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.models :as models]
+            [toucan.util.test :as tt]))
 
 (def ^:private reverted-to
   (atom nil))

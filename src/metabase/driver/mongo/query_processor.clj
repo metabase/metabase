@@ -1,30 +1,24 @@
 (ns metabase.driver.mongo.query-processor
   (:refer-clojure :exclude [find sort])
-  (:require (clojure [set :as set]
-                     [string :as s])
+  (:require [cheshire.core :as json]
+            [clojure
+             [set :as set]
+             [string :as s]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
-            [cheshire.core :as json]
-            (monger [collection :as mc]
-                    joda-time                ; apparently if this is loaded Monger can handle JodaTime dates (?)
-                    [operators :refer :all])
-            [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
-            [metabase.models.table :refer [Table]]
-            (metabase.query-processor [annotate :as annotate]
-                                      [interface :as i])
-            [metabase.util :as u])
+            [metabase.driver.mongo.util :refer [*mongo-connection*]]
+            [metabase.query-processor
+             [annotate :as annotate]
+             [interface :as i]]
+            [metabase.util :as u]
+            [monger joda-time
+             [collection :as mc]
+             [operators :refer :all]])
   (:import java.sql.Timestamp
            java.util.Date
-           clojure.lang.PersistentArrayMap
-           (com.mongodb CommandResult DB)
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue Value]
            org.bson.types.ObjectId
-           org.joda.time.DateTime
-           (metabase.query_processor.interface AgFieldRef
-                                               DateTimeField
-                                               DateTimeValue
-                                               Field
-                                               RelativeDateTimeValue
-                                               Value)))
+           org.joda.time.DateTime))
 
 (def ^:private ^:const $subtract :$subtract)
 

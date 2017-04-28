@@ -1,8 +1,9 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            (toucan [db :as db]
-                    [models :as models])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;; ## Entity + DB Multimethods
 

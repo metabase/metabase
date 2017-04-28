@@ -1,15 +1,16 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer [Card]]
-                             [collection :refer [Collection]]
-                             [permissions :as perms]
-                             [permissions-group :as group])
+            [metabase.models
+             [card :refer [Card]]
+             [collection :refer [Collection]]
+             [permissions :as perms]
+             [permissions-group :as group]]
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; check that we can get a basic list of collections
 (tt/expect-with-temp [Collection [collection]]

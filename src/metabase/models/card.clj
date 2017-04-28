@@ -2,23 +2,24 @@
   (:require [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*], :as api]
-            (toucan [db :as db]
-                    [models :as models])
-            (metabase.models [card-label :refer [CardLabel]]
-                             [collection :refer [Collection], :as collection]
-                             [dependency :as dependency]
-                             [interface :as i]
-                             [label :refer [Label]]
-                             [permissions :as perms]
-                             [revision :as revision]
-                             [user :as user])
-            [metabase.public-settings :as public-settings]
-            [metabase.query :as q]
-            [metabase.query-processor :as qp]
+            [metabase
+             [public-settings :as public-settings]
+             [query :as q]
+             [query-processor :as qp]
+             [util :as u]]
+            [metabase.api.common :as api :refer [*current-user-id*]]
+            [metabase.models
+             [card-label :refer [CardLabel]]
+             [collection :as collection]
+             [dependency :as dependency]
+             [interface :as i]
+             [label :refer [Label]]
+             [permissions :as perms]
+             [revision :as revision]]
             [metabase.query-processor.permissions :as qp-perms]
-            [metabase.util :as u]))
-
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel Card :report_card)
 

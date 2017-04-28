@@ -1,15 +1,14 @@
 (ns metabase.middleware-test
   (:require [cheshire.core :as json]
             [expectations :refer :all]
-            [ring.mock.request :as mock]
-            [toucan.db :as db]
-            [metabase.api.common :refer [*current-user-id* *current-user*]]
-            [metabase.middleware :refer :all]
+            [metabase
+             [middleware :refer :all]
+             [util :as u]]
+            [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models.session :refer [Session]]
-            [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.util :as u]))
-
+            [ring.mock.request :as mock]
+            [toucan.db :as db]))
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 
