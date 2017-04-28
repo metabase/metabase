@@ -64,7 +64,7 @@ export default class DashCard extends Component {
                 ...getIn(dashcardData, [dashcard.id, card.id]),
                 card: card,
                 isSlow: slowCards[card.id],
-                isUsuallyFast: card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD
+                isUsuallyFast: card.query_average_duration && (card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD)
             }));
 
         const loading = !(series.length > 0 && _.every(series, (s) => s.data));
