@@ -84,7 +84,7 @@
      ::total              (merge defaults {:queryType :timeseries})
      ::grouped-timeseries (merge defaults {:queryType :timeseries})
      ::topN               (merge defaults {:queryType :topN
-                                           :threshold i/absolute-max-results})
+                                           :threshold 1000})
      ::groupBy            (merge defaults {:queryType :groupBy})}))
 
 
