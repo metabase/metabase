@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import { pivot, drillDownForDimensions } from "metabase/qb/lib/actions";
 
 import type {

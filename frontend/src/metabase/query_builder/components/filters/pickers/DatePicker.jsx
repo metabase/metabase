@@ -141,8 +141,7 @@ function getDateTimeFieldAndValues(filter: FieldFilter, count: number): [Concret
 }
 
 
-export type OperatorName =
-    ("Previous"|"Next"|"Current"|"Before"|"After"|"On"|"Between"|"Is Empty"|"Not Empty");
+export type OperatorName = string;
 
 export type Operator = {
     name: OperatorName,
@@ -226,7 +225,8 @@ type Props = {
     onFilterChange: (filter: FieldFilter) => void,
     className: ?string,
     hideEmptinessOperators: boolean, // Don't show is empty / not empty dialog
-    hideTimeSelectors?: boolean
+    hideTimeSelectors?: boolean,
+    includeAllTime?: boolean,
 }
 
 export default class DatePicker extends Component<*, Props, *> {

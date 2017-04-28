@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import { drillUnderlyingRecords } from "metabase/qb/lib/actions";
 
 import { inflect } from "metabase/lib/formatting";

@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import { summarize, getFieldClauseFromCol } from "metabase/qb/lib/actions";
 import * as Card from "metabase/meta/Card";
 import { isNumeric } from "metabase/lib/schema_metadata";
@@ -51,6 +49,7 @@ export default (
     }
     const { column } = clicked;
 
+    // $FlowFixMe
     return Object.entries(AGGREGATIONS).map(([aggregation, action]) => ({
         ...action,
         card: () =>
