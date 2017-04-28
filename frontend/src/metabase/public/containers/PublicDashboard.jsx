@@ -15,7 +15,7 @@ import EmbedFrame from "../components/EmbedFrame";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 
-import { getDashboardComplete, getCardData, getCardDurations, getParameters, getParameterValues } from "metabase/dashboard/selectors";
+import { getDashboardComplete, getCardData, getSlowCards, getParameters, getParameterValues } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/dashboard";
 
@@ -29,7 +29,7 @@ const mapStateToProps = (state, props) => {
       dashboardId:          props.params.dashboardId || props.params.uuid || props.params.token,
       dashboard:            getDashboardComplete(state, props),
       dashcardData:         getCardData(state, props),
-      cardDurations:        getCardDurations(state, props),
+      slowCards:            getSlowCards(state, props),
       parameters:           getParameters(state, props),
       parameterValues:      getParameterValues(state, props)
   }
