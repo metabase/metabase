@@ -84,7 +84,7 @@
      ::total              (merge defaults {:queryType :timeseries})
      ::grouped-timeseries (merge defaults {:queryType :timeseries})
      ::topN               (merge defaults {:queryType :topN
-                                           :threshold 1000})
+                                           :threshold i/druid-topN-max-results})
      ::groupBy            (merge defaults {:queryType :groupBy})}))
 
 

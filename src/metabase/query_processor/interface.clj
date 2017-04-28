@@ -19,6 +19,13 @@
    https://support.office.com/en-nz/article/Excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3"
   1048576)
 
+(def ^:const druid-topN-max-results
+  "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
+
+   Coming from the default value hardcoded in the Druid engine itself
+   http://druid.io/docs/latest/querying/topnquery.html"
+  1000)
+
 
 ;;; # ------------------------------------------------------------ DYNAMIC VARS ------------------------------------------------------------
 
