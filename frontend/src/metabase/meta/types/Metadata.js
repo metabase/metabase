@@ -5,6 +5,7 @@
 import type { Table } from "metabase/meta/types/Table";
 import type { Field } from "metabase/meta/types/Field";
 import type { Segment } from "metabase/meta/types/Segment";
+import type { Metric } from "metabase/meta/types/Metric";
 
 export type FieldValue = {
     name: string,
@@ -50,8 +51,9 @@ export type BreakoutOptions = {
 }
 
 export type TableMetadata = Table & {
-    segments: Segment[],
     fields: FieldMetadata[],
+    segments: Segment[],
+    metrics: Metric[],
     aggregation_options: AggregationOption[],
     breakout_options: BreakoutOptions
 }

@@ -134,7 +134,8 @@ var config = module.exports = {
             globOptions: {
                 ignore: [
                     "**/types/*.js",
-                    "**/*.spec.*"
+                    "**/*.spec.*",
+                    "**/__support__/*.js"
                 ]
             }
         }),

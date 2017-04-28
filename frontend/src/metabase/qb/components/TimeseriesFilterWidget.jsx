@@ -121,12 +121,12 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                 sizeToFit
             >
                 <DatePicker
-                    className="mt2"
                     filter={this.state.filter}
                     onFilterChange={newFilter => {
                         this.setState({ filter: newFilter });
                     }}
                     tableMetadata={tableMetadata}
+                    includeAllTime
                 />
                 <div className="p1">
                     <Button

@@ -87,9 +87,10 @@ export const getModeActions = (
 ): ClickAction[] => {
     if (mode && card && tableMetadata) {
         const props: ClickActionProps = { card, tableMetadata };
-        return mode.actions
-            .map(actionCreator => actionCreator(props))
-            .filter(action => action);
+        // flatten array of arrays
+        return [].concat(
+            ...mode.actions.map(actionCreator => actionCreator(props))
+        );
     }
     return [];
 };
@@ -102,9 +103,10 @@ export const getModeDrills = (
 ): ClickAction[] => {
     if (mode && card && tableMetadata && clicked) {
         const props: ClickActionProps = { card, tableMetadata, clicked };
-        return mode.drills
-            .map(actionCreator => actionCreator(props))
-            .filter(action => action);
+        // flatten array of arrays
+        return [].concat(
+            ...mode.drills.map(actionCreator => actionCreator(props))
+        );
     }
     return [];
 };

@@ -204,16 +204,17 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     handleVisualizationClick = (clicked: ClickObject) => {
+        console.log("clicked", clicked)
         // needs to be delayed so we don't clear it when switching from one drill through to another
         setTimeout(() => {
-            const { onChangeCardAndRun } = this.props;
-            let clickActions = this.getClickActions(clicked);
+            // const { onChangeCardAndRun } = this.props;
+            // let clickActions = this.getClickActions(clicked);
             // if there's a single drill action (without a popover) execute it immediately
-            if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
-                onChangeCardAndRun(clickActions[0].card());
-            } else {
+            // if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
+            //     onChangeCardAndRun(clickActions[0].card());
+            // } else {
                 this.setState({ clicked });
-            }
+            // }
         }, 100)
     }
 
@@ -294,6 +295,8 @@ export default class Visualization extends Component<*, Props, State> {
                 height: Math.round(height / (gridUnit * 3)),
             };
         }
+
+        console.log("clicked", clicked);
 
         return (
             <div className={cx(className, "flex flex-column")}>
