@@ -108,6 +108,7 @@ export default class ChartClickActions extends Component<*, Props, State> {
                 verticalAttachments={["top", "bottom"]}
                 horizontalAttachments={["left", "center", "right"]}
                 sizeToFit
+                pinInitialAttachment
             >
                 { popover ?
                     popover
