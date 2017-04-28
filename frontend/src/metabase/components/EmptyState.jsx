@@ -15,7 +15,7 @@ type EmptyStateProps = {
     title?: string,
     icon?: string,
     image?: string,
-    imageHeight?: number, // for reducing ui flickering when the image is loading
+    imageHeight?: string, // for reducing ui flickering when the image is loading
     imageClassName?: string,
     action?: string,
     link?: string,

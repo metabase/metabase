@@ -23,6 +23,7 @@ import type {ListFilterWidgetItem} from "metabase/components/ListFilterWidget";
 import {caseInsensitiveSearch} from "metabase/lib/string"
 
 import type {SetFavoritedAction, SetArchivedAction} from "../dashboards";
+import type {User} from "metabase/meta/types/User"
 import * as dashboardsActions from "../dashboards";
 import {getDashboardListing} from "../selectors";
 import {getUser} from "metabase/selectors/user";
@@ -65,7 +66,8 @@ export class Dashboards extends Component {
         createDashboard: (Dashboard) => any,
         fetchDashboards: () => void,
         setFavorited: SetFavoritedAction,
-        setArchived: SetArchivedAction
+        setArchived: SetArchivedAction,
+        user: User
     };
 
     state = {

@@ -128,7 +128,7 @@ function createUndo(type, action) {
     };
 }
 
-export type SetArchivedAction = (dashId: number, archived: boolean, undoable: boolean) => void;
+export type SetArchivedAction = (dashId: number, archived: boolean, undoable?: boolean) => void;
 export const setArchived = createThunkAction(SET_ARCHIVED, (dashId, archived, undoable = false) => {
     return async (dispatch, getState) => {
         const response = await DashboardApi.update({
