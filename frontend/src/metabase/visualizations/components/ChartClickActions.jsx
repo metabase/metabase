@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import cx from 'classnames'
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -120,7 +121,7 @@ export default class ChartClickActions extends Component<*, Props, State> {
                                 { actions.map((action, index) =>
                                     <div
                                         key={index}
-                                        className="text-brand-hover px1 cursor-pointer"
+                                        className={cx("text-brand-hover cursor-pointer", { "pr2": index === actions.length - 1, "pr4": index != actions.length - 1})}
                                         onClick={() => this.handleClickAction(action)}
                                     >
                                         {action.title}
