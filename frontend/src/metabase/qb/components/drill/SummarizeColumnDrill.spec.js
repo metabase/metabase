@@ -22,7 +22,7 @@ describe("SummarizeColumnDrill", () => {
         let newCard = actions[0].card();
         expect(newCard.dataset_query.query).toEqual({
             source_table: 10,
-            aggregation: [["min", ["field-id", 1]]]
+            aggregation: [["sum", ["field-id", 1]]]
         });
         expect(newCard.display).toEqual("scalar");
     });
