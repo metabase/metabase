@@ -60,4 +60,6 @@ declare module "underscore" {
 
   // TODO: improve this
   declare function chain<S>(obj: S): any;
+
+  declare function constant<S>(obj: S): () => S;
 }

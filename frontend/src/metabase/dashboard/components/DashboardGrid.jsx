@@ -186,7 +186,7 @@ export default class DashboardGrid extends Component {
                 dashcard={dc}
                 dashcardData={this.props.dashcardData}
                 parameterValues={this.props.parameterValues}
-                cardDurations={this.props.cardDurations}
+                slowCards={this.props.slowCards}
                 fetchCardData={this.props.fetchCardData}
                 markNewCardSeen={this.props.markNewCardSeen}
                 isEditing={this.props.isEditing}

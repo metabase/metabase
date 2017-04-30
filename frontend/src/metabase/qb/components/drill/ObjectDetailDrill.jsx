@@ -1,11 +1,8 @@
 /* @flow */
 
-import React from "react";
-
 import { drillRecord } from "metabase/qb/lib/actions";
 
 import { isFK, isPK } from "metabase/lib/types";
-import { singularize, stripId } from "metabase/lib/formatting";
 
 import * as Table from "metabase/lib/query/table";
 
@@ -31,9 +28,7 @@ export default (
 
     let field = Table.getField(tableMetadata, clicked.column.id);
     let table = tableMetadata;
-    let recordType = tableMetadata.display_name;
     if (field.target) {
-        recordType = field.display_name;
         table = field.target.table;
         field = field.target;
     }

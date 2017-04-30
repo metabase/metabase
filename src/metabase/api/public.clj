@@ -8,7 +8,8 @@
             [metabase.api
              [card :as card-api]
              [common :as api]
-             [dataset :as dataset-api]]
+             [dataset :as dataset-api]
+             [dashboard :as dashboard-api]]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -176,6 +177,7 @@
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
       (hydrate [:ordered_cards :card :series])
       add-field-values-for-parameters
+      dashboard-api/add-query-average-durations
       (update :ordered_cards (fn [dashcards]
                                (for [dashcard dashcards]
                                  (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX :sizeY :parameter_mappings :visualization_settings])

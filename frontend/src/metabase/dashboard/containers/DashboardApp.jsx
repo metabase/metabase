@@ -10,12 +10,12 @@ import Dashboard from "../components/Dashboard.jsx";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 
-import { getIsEditing, getIsEditingParameter, getIsDirty, getDashboardComplete, getCardList, getRevisions, getCardData, getCardDurations, getEditingParameter, getParameters, getParameterValues } from "../selectors";
+import { getIsEditing, getIsEditingParameter, getIsDirty, getDashboardComplete, getCardList, getRevisions, getCardData, getSlowCards, getEditingParameter, getParameters, getParameterValues } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as dashboardActions from "../dashboard";
-import {deleteDashboard} from "metabase/dashboards/dashboards"
+import {archiveDashboard} from "metabase/dashboards/dashboards"
 
 const mapStateToProps = (state, props) => {
   return {
@@ -29,7 +29,7 @@ const mapStateToProps = (state, props) => {
       cards:                getCardList(state, props),
       revisions:            getRevisions(state, props),
       dashcardData:         getCardData(state, props),
-      cardDurations:        getCardDurations(state, props),
+      slowCards:            getSlowCards(state, props),
       databases:            getDatabases(state, props),
       editingParameter:     getEditingParameter(state, props),
       parameters:           getParameters(state, props),
@@ -42,7 +42,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
     ...dashboardActions,
-    deleteDashboard,
+    archiveDashboard,
     fetchDatabaseMetadata,
     setErrorPage,
     onChangeLocation: push

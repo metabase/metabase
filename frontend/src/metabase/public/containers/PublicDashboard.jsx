@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import cx from 'classnames';
 
 import { IFRAMED } from "metabase/lib/dom";
 
@@ -15,7 +16,7 @@ import EmbedFrame from "../components/EmbedFrame";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
 
-import { getDashboardComplete, getCardData, getCardDurations, getParameters, getParameterValues } from "metabase/dashboard/selectors";
+import { getDashboardComplete, getCardData, getSlowCards, getParameters, getParameterValues } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/dashboard";
 
@@ -29,7 +30,7 @@ const mapStateToProps = (state, props) => {
       dashboardId:          props.params.dashboardId || props.params.uuid || props.params.token,
       dashboard:            getDashboardComplete(state, props),
       dashcardData:         getCardData(state, props),
-      cardDurations:        getCardDurations(state, props),
+      slowCards:            getSlowCards(state, props),
       parameters:           getParameters(state, props),
       parameterValues:      getParameterValues(state, props)
   }
@@ -52,6 +53,8 @@ type Props = {
     parameterValues:        {[key:string]: string},
 
     initialize:             () => void,
+    isFullscreen:           boolean,
+    isNightMode:            boolean,
     fetchDashboard:         (dashId: string, query: { [key:string]: string }) => Promise<void>,
     fetchDashboardCardData: (options: { reload: bool, clear: bool }) => Promise<void>,
     setParameterValue:      (id: string, value: string) => void,
@@ -81,7 +84,7 @@ export default class PublicDashboard extends Component<*, Props, *> {
     }
 
     render() {
-        const { dashboard, parameters, parameterValues } = this.props;
+        const { dashboard, parameters, parameterValues, isFullscreen, isNightMode } = this.props;
         const buttons = !IFRAMED ? getDashboardActions(this.props) : [];
 
         return (
@@ -99,7 +102,7 @@ export default class PublicDashboard extends Component<*, Props, *> {
                     </div>
                 }
             >
-                <LoadingAndErrorWrapper className="p1 flex-full" loading={!dashboard}>
+                <LoadingAndErrorWrapper className={cx("Dashboard p1 flex-full", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode })} loading={!dashboard}>
                 { () =>
                     <DashboardGrid
                         {...this.props}

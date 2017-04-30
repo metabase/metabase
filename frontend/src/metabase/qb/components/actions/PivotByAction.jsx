@@ -67,15 +67,15 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
         return [
             {
                 section: "breakout",
-                title: clicked ?
-                    name
-                : (
-                    <span>
-                        Pivot by
-                        {" "}
-                        <span className="text-dark">{name.toLowerCase()}</span>
-                    </span>
-                ),
+                title: clicked
+                    ? name
+                    : <span>
+                          Pivot by
+                          {" "}
+                          <span className="text-dark">
+                              {name.toLowerCase()}
+                          </span>
+                      </span>,
                 icon: icon,
                 // eslint-disable-next-line react/display-name
                 popover: (

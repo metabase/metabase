@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import { drillUnderlyingRecords } from "metabase/qb/lib/actions";
 
 import { inflect } from "metabase/lib/formatting";
@@ -25,7 +23,10 @@ export default (
     return [
         {
             section: "zoom",
-            title: "View rows",
+            title: "View " +
+                inflect("these", count, "this", "these") +
+                " " +
+                inflect(tableMetadata.display_name, count),
             card: () => drillUnderlyingRecords(card, dimensions)
         }
     ];

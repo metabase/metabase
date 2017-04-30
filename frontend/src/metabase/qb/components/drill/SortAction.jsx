@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import { assocIn, getIn } from "icepick";
 import Query from "metabase/lib/query";
 import * as Card from "metabase/meta/Card";
@@ -30,29 +28,40 @@ export default (
     const field = getFieldFromColumn(column, query);
 
     const [sortField, sortDirection] = getIn(query, ["order_by", 0]) || [];
-    const isAlreadySorted = sortField != null && Query.isSameField(sortField, field);
+    const isAlreadySorted = sortField != null &&
+        Query.isSameField(sortField, field);
 
     const actions = [];
-    if (!isAlreadySorted || sortDirection === "descending" || sortDirection === "desc") {
+    if (
+        !isAlreadySorted ||
+        sortDirection === "descending" ||
+        sortDirection === "desc"
+    ) {
         actions.push({
             title: "Ascending",
             section: "sort",
-            card: () => assocIn(
-                card,
-                ["dataset_query", "query", "order_by"],
-                [[field, "ascending"]]
-            )
-        })
+            card: () =>
+                assocIn(
+                    card,
+                    ["dataset_query", "query", "order_by"],
+                    [[field, "ascending"]]
+                )
+        });
     }
-    if (!isAlreadySorted || sortDirection === "ascending" || sortDirection === "asc") {
+    if (
+        !isAlreadySorted ||
+        sortDirection === "ascending" ||
+        sortDirection === "asc"
+    ) {
         actions.push({
             title: "Descending",
             section: "sort",
-            card: () => assocIn(
-                card,
-                ["dataset_query", "query", "order_by"],
-                [[field, "descending"]]
-            )
+            card: () =>
+                assocIn(
+                    card,
+                    ["dataset_query", "query", "order_by"],
+                    [[field, "descending"]]
+                )
         });
     }
     return actions;
