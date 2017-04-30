@@ -18,7 +18,8 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { getModeDrills } from "metabase/qb/lib/modes"
+import { getMode, getModeDrills } from "metabase/qb/lib/modes"
+import * as Card from "metabase/meta/Card";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
@@ -29,9 +30,8 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-import type { HoverObject, ClickObject, Series, QueryMode } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { Card as CardObject, VisualizationSettings } from "metabase/meta/types/Card";
+import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
 
 type Props = {
     series: Series,
@@ -60,9 +60,8 @@ type Props = {
     settings: VisualizationSettings,
 
     // for click actions
-    mode?: QueryMode,
-    tableMetadata: TableMetadata,
-    onChangeCardAndRun: (card: Card) => void,
+    metadata: null, // FIXME
+    onChangeCardAndRun: (card: CardObject) => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -187,7 +186,14 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     getClickActions(clicked: ?ClickObject) {
-        const { mode, series: [{ card }], tableMetadata } = this.props;
+        if (!clicked) {
+            return [];
+        }
+        const { series, metadata } = this.props;
+        const seriesIndex = clicked.seriesIndex || 0;
+        const card = series[seriesIndex].card;
+        const tableMetadata = Card.getTableMetadata(card, metadata);
+        const mode = getMode(card, tableMetadata);
         return getModeDrills(mode, card, tableMetadata, clicked);
     }
 
@@ -206,14 +212,14 @@ export default class Visualization extends Component<*, Props, State> {
     handleVisualizationClick = (clicked: ClickObject) => {
         // needs to be delayed so we don't clear it when switching from one drill through to another
         setTimeout(() => {
-            const { onChangeCardAndRun } = this.props;
-            let clickActions = this.getClickActions(clicked);
+            // const { onChangeCardAndRun } = this.props;
+            // let clickActions = this.getClickActions(clicked);
             // if there's a single drill action (without a popover) execute it immediately
-            if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
-                onChangeCardAndRun(clickActions[0].card());
-            } else {
+            // if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
+            //     onChangeCardAndRun(clickActions[0].card());
+            // } else {
                 this.setState({ clicked });
-            }
+            // }
         }, 100)
     }
 

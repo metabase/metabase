@@ -1,8 +1,8 @@
 (ns metabase.models.session
-  (:require (toucan [db :as db]
-                    [models :as models])
-            [metabase.models.user :refer [User]]
-            [metabase.util :as u]))
+  (:require [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (models/defmodel Session :core_session)
 

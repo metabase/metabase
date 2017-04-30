@@ -11,8 +11,8 @@ export const sauceServer = `http://${SAUCE_USERNAME}:${SAUCE_ACCESS_KEY}@localho
 
 export const sauceCapabilities = {
     browserName: 'chrome',
-    platform: 'Mac',
-    version: '48.0',
+    version: '52.0',
+    platform: 'macOS 10.12',
     username: SAUCE_USERNAME,
     accessKey: SAUCE_ACCESS_KEY,
     build: CIRCLE_BUILD_NUM

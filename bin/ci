@@ -49,12 +49,11 @@ node-5() {
     run_step lein eastwood
     run_step yarn run lint
     run_step yarn run test
-    run_step yarn run test-jest
     run_step yarn run flow
 }
 node-6() {
     if is_enabled "jar" || is_enabled "e2e" || is_enabled "screenshots"; then
-        run_step ./bin/build version frontend sample-dataset uberjar
+        run_step ./bin/build version frontend-fast sample-dataset uberjar
     fi
     if is_enabled "e2e" || is_enabled "compare_screenshots"; then
         USE_SAUCE=true \

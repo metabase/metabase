@@ -98,7 +98,7 @@ If this happens, setting a few JVM options should fix your issue:
 
 You can also pass JVM arguments by setting the environment variable `JAVA_TOOL_OPTIONS`, e.g.
 
-    JAVA_TOOL_OPTIONS=`-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m`
+    JAVA_TOOL_OPTIONS='-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m'
 
 Alternatively, you can upgrade to Java 8 instead, which will fix the issue as well.
 

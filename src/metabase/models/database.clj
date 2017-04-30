@@ -1,14 +1,16 @@
 (ns metabase.models.database
-  (:require [clojure.string :as s]
-            [cheshire.generate :refer [add-encoder encode-map]]
+  (:require [cheshire.generate :refer [add-encoder encode-map]]
+            [metabase
+             [db :as mdb]
+             [util :as u]]
             [metabase.api.common :refer [*current-user*]]
-            (toucan [db :as db]
-                    [models :as models])
-            [metabase.db :as mdb]
-            (metabase.models [interface :as i]
-                             [permissions, :as perms]
-                             [permissions-group :as perm-group])
-            [metabase.util :as u]))
+            [metabase.models
+             [interface :as i]
+             [permissions :as perms]
+             [permissions-group :as perm-group]]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 

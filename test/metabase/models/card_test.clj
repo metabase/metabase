@@ -1,19 +1,20 @@
 (ns metabase.models.card-test
   (:require [expectations :refer :all]
-            [metabase.api.common :refer [*current-user-permissions-set* *is-superuser?*]]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer :all]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [interface :as mi]
-                             [permissions :as perms])
+            [metabase.api.common :refer [*current-user-permissions-set*]]
+            [metabase.models
+             [card :refer :all]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [interface :as mi]
+             [permissions :as perms]]
             [metabase.query-processor.expand :as ql]
-            [metabase.test.data :refer [id]]
+            [metabase.test
+             [data :refer [id]]
+             [util :as tu :refer [random-name]]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [random-name], :as tu]
-            [metabase.util :as u]))
-
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 (defn- create-dash! [dash-name]
   ((user->client :rasta) :post 200 "dashboard" {:name dash-name}))

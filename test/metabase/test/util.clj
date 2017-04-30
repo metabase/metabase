@@ -1,31 +1,30 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [clojure.tools.logging :as log]
+  (:require [cheshire.core :as json]
+            [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [cheshire.core :as json]
             [expectations :refer :all]
-            (toucan [db :as db]
-                    [models :as models])
-            [toucan.util.test :as test]
-            (metabase.models [card :refer [Card]]
-                             [collection :refer [Collection]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [metric :refer [Metric]]
-                             [permissions-group :refer [PermissionsGroup]]
-                             [pulse :refer [Pulse]]
-                             [pulse-channel :refer [PulseChannel]]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [revision :refer [Revision]]
-                             [segment :refer [Segment]]
-                             [setting :as setting]
-                             [table :refer [Table]]
-                             [user :refer [User]])
+            [metabase.models
+             [card :refer [Card]]
+             [collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [permissions-group :refer [PermissionsGroup]]
+             [pulse :refer [Pulse]]
+             [pulse-channel :refer [PulseChannel]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]
+             [revision :refer [Revision]]
+             [segment :refer [Segment]]
+             [setting :as setting]
+             [table :refer [Table]]
+             [user :refer [User]]]
             [metabase.test.data :as data]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.util.test :as test]))
 
 (declare $->prop)
 

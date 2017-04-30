@@ -1,22 +1,15 @@
 (ns metabase.driver.druid.query-processor
-  (:require [clojure.core.match :refer [match]]
+  (:require [cheshire.core :as json]
+            [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
             [metabase.driver.druid.js :as js]
-            (metabase.query-processor [annotate :as annotate]
-                                      [interface :as i])
+            [metabase.query-processor
+             [annotate :as annotate]
+             [interface :as i]]
             [metabase.util :as u])
-  (:import clojure.lang.Keyword
-           (metabase.query_processor.interface AgFieldRef
-                                               DateTimeField
-                                               DateTimeValue
-                                               Expression
-                                               Field
-                                               RelativeDateTimeValue
-                                               Value)))
-
+  (:import [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression Field RelativeDateTimeValue Value]))
 
 ;;             +-----> ::select      +----> :groupBy
 ;; ::query ----|                     |

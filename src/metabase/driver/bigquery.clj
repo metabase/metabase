@@ -1,37 +1,34 @@
 (ns metabase.driver.bigquery
-  (:require (clojure [set :as set]
-                     [string :as s]
-                     [walk :as walk])
+  (:require [clojure
+             [set :as set]
+             [string :as s]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [helpers :as h])
-            [metabase.config :as config]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            [metabase.driver.google :as google]
-            [metabase.driver.generic-sql :as sql]
+            [honeysql
+             [core :as hsql]
+             [helpers :as h]]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver
+             [generic-sql :as sql]
+             [google :as google]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
-                             [table :as table])
-            [metabase.sync-database.analyze :as analyze]
-            metabase.query-processor.interface
+            [metabase.models
+             [database :refer [Database]]
+             [field :as field]
+             [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import (java.util Collections Date)
-           (com.google.api.client.googleapis.auth.oauth2 GoogleCredential GoogleCredential$Builder GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleTokenResponse)
-           com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
-           (com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException)
-           com.google.api.client.googleapis.services.AbstractGoogleClientRequest
-           com.google.api.client.http.HttpTransport
-           com.google.api.client.json.JsonFactory
-           com.google.api.client.json.jackson2.JacksonFactory
-           (com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes)
-           (com.google.api.services.bigquery.model Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema QueryRequest QueryResponse)
-           (metabase.query_processor.interface DateTimeValue Value)))
-
+            [metabase.sync-database.analyze :as analyze]
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db])
+  (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
+           [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
+           [java.util Collections Date]
+           [metabase.query_processor.interface DateTimeValue Value]))
 
 ;;; ------------------------------------------------------------ Client ------------------------------------------------------------
 

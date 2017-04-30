@@ -1,19 +1,16 @@
 (ns metabase.test-setup
   "Functions that run before + after unit tests (setup DB, start web server, load test data)."
-  (:require clojure.data
-            [clojure.java.io :as io]
-            [clojure.set :as set]
+  (:require [clojure data
+             [set :as set]]
             [clojure.tools.logging :as log]
             [expectations :refer :all]
-            [metabase.core :as core]
+            [metabase
+             [core :as core]
+             [db :as mdb]
+             [driver :as driver]
+             [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            (metabase [db :as mdb]
-                      [driver :as driver])
-            (metabase.models [setting :as setting]
-                             [table :refer [Table]])
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]))
+            [metabase.models.setting :as setting]))
 
 ;; # ---------------------------------------- EXPECTAIONS FRAMEWORK SETTINGS ------------------------------
 

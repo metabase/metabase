@@ -36,7 +36,7 @@ import {
     getTableForeignKeys,
     getTableForeignKeyReferences,
     getUiControls,
-    getParametersWithValues,
+    getParameters,
     getDatabaseFields,
     getSampleDatasetId,
     getNativeDatabases,
@@ -44,6 +44,8 @@ import {
     getIsResultDirty,
     getMode,
 } from "../selectors";
+
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -89,6 +91,7 @@ const mapStateToProps = (state, props) => {
         nativeDatabases:           getNativeDatabases(state),
         tables:                    getTables(state),
         tableMetadata:             getTableMetadata(state),
+        metadata:                  getMetadata(state),
         tableForeignKeys:          getTableForeignKeys(state),
         tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
@@ -99,7 +102,7 @@ const mapStateToProps = (state, props) => {
         isObjectDetail:            getIsObjectDetail(state),
 
         uiControls:                getUiControls(state),
-        parameters:                getParametersWithValues(state),
+        parameters:                getParameters(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
 

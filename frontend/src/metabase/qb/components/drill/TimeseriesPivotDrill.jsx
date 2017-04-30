@@ -11,23 +11,19 @@ import type {
 
 export default (
     { card, tableMetadata, clicked }: ClickActionProps
-): ?ClickAction => {
+): ClickAction[] => {
     const dimensions = (clicked && clicked.dimensions) || [];
     const drilldown = drillDownForDimensions(dimensions);
     if (!drilldown) {
-        return;
+        return [];
     }
 
-    return {
-        title: (
-            <span>
-                Drill into this
-                {" "}
-                <span className="text-dark">
-                    {drilldown.name}
-                </span>
-            </span>
-        ),
-        card: () => pivot(card, drilldown.breakout, tableMetadata, dimensions)
-    };
+    return [
+        {
+            section: "zoom",
+            title: "Zoom in",
+            card: () =>
+                pivot(card, drilldown.breakout, tableMetadata, dimensions)
+        }
+    ];
 };

@@ -1,19 +1,17 @@
 (ns metabase.driver.postgres
-  ;; TODO - rework this to be like newer-style namespaces that use `u/drop-first-arg`
-  (:require [clojure.java.jdbc :as jdbc]
-            (clojure [set :refer [rename-keys], :as set]
-                     [string :as s])
-            [clojure.tools.logging :as log]
+  (:require [clojure
+             [set :as set :refer [rename-keys]]
+             [string :as s]]
             [honeysql.core :as hsql]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
-  ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
-  (:import java.util.UUID
-           org.postgresql.ssl.NonValidatingFactory))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
+  (:import java.util.UUID))
 
 (def ^:private ^:const column->base-type
   "Map of Postgres column types -> Field base types.
@@ -196,7 +194,7 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
+          :set-timezone-sql          (constantly "SET SESSION TIMEZONE TO %s;")
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
@@ -204,32 +202,33 @@
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     (u/drop-first-arg date-interval)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      5432}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "birds_of_the_word"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"
-                                                           :required     true}
-                                                          {:name         "password"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "*******"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}
-                                                          {:name         "additional-options"
-                                                           :display-name "Additional JDBC connection string options"
-                                                           :placeholder  "prepareThreshold=0"}])
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      5432}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "birds_of_the_word"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"
+                                                             :required     true}
+                                                            {:name         "password"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "*******"}
+                                                            {:name         "ssl"
+                                                             :display-name "Use a secure connection (SSL)?"
+                                                             :type         :boolean
+                                                             :default      false}
+                                                            {:name         "additional-options"
+                                                             :display-name "Additional JDBC connection string options"
+                                                             :placeholder  "prepareThreshold=0"}]))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver PostgresISQLDriverMixin)

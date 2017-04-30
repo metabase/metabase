@@ -13,7 +13,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL, humanize } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
-import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
@@ -307,6 +306,8 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
     }
 });
 
+import { fetchTableMetadata } from "metabase/redux/metadata";
+
 export const LOAD_TABLE_METADATA = "metabase/qb/LOAD_TABLE_METADATA";
 export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId) => {
     return async (dispatch, getState) => {
@@ -317,7 +318,8 @@ export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId
         }
 
         try {
-            return await loadTableAndForeignKeys(tableId);
+            await dispatch(fetchTableMetadata(tableId));
+            // return await loadTableAndForeignKeys(tableId);
         } catch(error) {
             console.log('error getting table metadata', error);
             return {};

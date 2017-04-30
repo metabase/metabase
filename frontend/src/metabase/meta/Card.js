@@ -2,8 +2,11 @@
 
 import type { StructuredQuery, NativeQuery, TemplateTag } from "./types/Query";
 import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "./types/Card";
-import type { Parameter, ParameterId, ParameterMapping } from "metabase/meta/types/Dashboard";
-import { getTemplateTagParameters } from "metabase/meta/Parameter";
+import type { Parameter, ParameterMapping, ParameterValues } from "./types/Parameter";
+
+import { getTemplateTagParameters, getParameterTargetFieldId } from "metabase/meta/Parameter";
+
+import { assoc } from "icepick";
 
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
@@ -61,6 +64,14 @@ export function getQuery(card: Card): ?StructuredQuery {
     }
 }
 
+export function getTableMetadata(card: Card, metadata): ?TableMetadata {
+    const query = getQuery(card);
+    if (query) {
+        return metadata.tables[query.source_table] || null;
+    }
+    return null;
+}
+
 export function getTemplateTags(card: ?Card): Array<TemplateTag> {
     return card && card.dataset_query.type === "native" && card.dataset_query.native.template_tags ?
         Object.values(card.dataset_query.native.template_tags) :
@@ -76,10 +87,25 @@ export function getParameters(card: ?Card): Parameter[] {
     return getTemplateTagParameters(tags);
 }
 
+export function getParametersWithExtras(card: Card, parameterValues?: ParameterValues) {
+    return getParameters(card).map(parameter => {
+        // if we have a parameter value for this parameter, set "value"
+        if (parameterValues && parameter.id in parameterValues) {
+            parameter = assoc(parameter, "value", parameterValues[parameter.id]);
+        }
+        // if we have a field id for this parameter, set "field_id"
+        const fieldId = getParameterTargetFieldId(parameter.target, card.dataset_query);
+        if (fieldId != null) {
+            parameter = assoc(parameter, "field_id", fieldId);
+        }
+        return parameter;
+    })
+}
+
 export function applyParameters(
     card: Card,
     parameters: Parameter[],
-    parameterValues: { [key: ParameterId]: string } = {},
+    parameterValues: ParameterValues = {},
     parameterMappings: ParameterMapping[] = []
 ): DatasetQuery {
     const datasetQuery = Utils.copy(card.dataset_query);

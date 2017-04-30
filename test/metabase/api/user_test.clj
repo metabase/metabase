@@ -1,16 +1,17 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [session :refer [Session]]
-                             [user :refer [User]])
-            [metabase.test.data :refer :all]
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]]
+            [metabase.models.user :refer [User]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu :refer [match-$ random-name]]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name], :as tu]
-            [metabase.util :as u]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same

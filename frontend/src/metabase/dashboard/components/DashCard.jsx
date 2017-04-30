@@ -10,7 +10,7 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx"
 
 import Icon from "metabase/components/Icon.jsx";
 
-import DashCardParameterMapper from "../components/parameters/DashCardParameterMapper.jsx";
+import DashCardParameterMapper from "./DashCardParameterMapper.jsx";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
@@ -38,9 +38,6 @@ export default class DashCard extends Component {
     async componentDidMount() {
         const { dashcard, markNewCardSeen } = this.props;
 
-        this.visibilityTimer = window.setInterval(this.updateVisibility, 2000);
-        window.addEventListener("scroll", this.updateVisibility, false);
-
         // HACK: way to scroll to a newly added card
         if (dashcard.justAdded) {
             ReactDOM.findDOMNode(this).scrollIntoView();
@@ -50,25 +47,21 @@ export default class DashCard extends Component {
 
     componentWillUnmount() {
         window.clearInterval(this.visibilityTimer);
-        window.removeEventListener("scroll", this.updateVisibility, false);
-    }
-
-    updateVisibility = () => {
-        const { isFullscreen } = this.props;
-        const element = ReactDOM.findDOMNode(this);
-        if (element) {
-            const rect = element.getBoundingClientRect();
-            const isOffscreen = (rect.bottom < 0 || rect.bottom > window.innerHeight || rect.top < 0);
-            if (isFullscreen && isOffscreen) {
-                element.style.opacity = 0.05;
-            } else {
-                element.style.opacity = 1.0;
-            }
-        }
     }
 
     render() {
-        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove, linkToCard } = this.props;
+        const {
+            dashcard,
+            dashcardData,
+            cardDurations,
+            parameterValues,
+            isEditing,
+            isEditingParameter,
+            onAddSeries,
+            onRemove,
+            linkToCard,
+            metadata
+        } = this.props;
 
         const mainCard = {
             ...dashcard.card,
@@ -139,6 +132,8 @@ export default class DashCard extends Component {
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                     linkToCard={linkToCard}
+                    metadata={metadata}
+                    onChangeCardAndRun={this.props.onChangeCardAndRun}
                 />
             </div>
         );

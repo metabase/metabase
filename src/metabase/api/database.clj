@@ -2,23 +2,25 @@
   "/api/database endpoints."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [compojure.core :refer [GET POST PUT DELETE]]
+            [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [events :as events]
+             [sample-data :as sample-data]
+             [util :as u]]
+            [metabase.api.common :as api]
+            [metabase.models
+             [database :as database :refer [Database protected-password]]
+             [field :refer [Field]]
+             [interface :as mi]
+             [permissions :as perms]
+             [table :refer [Table]]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]])
-            [metabase.api.common :refer :all]
-            (metabase [config :as config]
-                      [driver :as driver]
-                      [events :as events])
-            (metabase.models common
-                             [database :refer [Database protected-password], :as database]
-                             [field :refer [Field]]
-                             [interface :as mi]
-                             [permissions :as perms]
-                             [table :refer [Table]])
-            (metabase [sample-data :as sample-data]
-                      [util :as u])
-            [metabase.util.schema :as su]))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (def DBEngine
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
@@ -39,7 +41,7 @@
 
 (defn- add-native-perms-info [dbs]
   (for [db dbs]
-    (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @*current-user-permissions-set* (path-fn (u/get-id db))))]
+    (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
       (assoc db :native_permissions (cond
                                       (user-has-perms? perms/native-readwrite-path) :write
                                       (user-has-perms? perms/native-read-path)      :read
@@ -51,7 +53,7 @@
                              dbs
                              (add-tables dbs)))))
 
-(defendpoint GET "/"
+(api/defendpoint GET "/"
   "Fetch all `Databases`."
   [include_tables]
   (or (dbs-list include_tables)
@@ -60,16 +62,16 @@
 
 ;;; ------------------------------------------------------------ GET /api/database/:id ------------------------------------------------------------
 
-(defendpoint GET "/:id"
+(api/defendpoint GET "/:id"
   "Get `Database` with ID."
   [id]
-  (read-check Database id))
+  (api/read-check Database id))
 
 
 ;;; ------------------------------------------------------------ GET /api/database/:id/metadata ------------------------------------------------------------
 
 (defn- db-metadata [id]
-  (-> (read-check Database id)
+  (-> (api/read-check Database id)
       (hydrate [:tables [:fields :target :values] :segments :metrics])
       (update :tables   (fn [tables]
                           (for [table tables
@@ -78,7 +80,7 @@
                                 (update :segments (partial filter mi/can-read?))
                                 (update :metrics  (partial filter mi/can-read?))))))))
 
-(defendpoint GET "/:id/metadata"
+(api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
    Returns DB, fields, and field values."
   [id]
@@ -121,7 +123,7 @@
         fields (filter mi/can-read? (autocomplete-fields db-id prefix))]
     (autocomplete-results tables fields)))
 
-(defendpoint GET "/:id/autocomplete_suggestions"
+(api/defendpoint GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given PREFIX.
    This is intened for use with the ACE Editor when the User is typing raw SQL.
    Suggestions include matching `Tables` and `Fields` in this `Database`.
@@ -130,7 +132,7 @@
    Fields are returned in the format `[field_name \"table_name base_type special_type\"]`"
   [id prefix]
   {prefix su/NonBlankString}
-  (read-check Database id)
+  (api/read-check Database id)
   (try
     (autocomplete-suggestions id prefix)
     (catch Throwable t
@@ -139,10 +141,10 @@
 
 ;;; ------------------------------------------------------------ GET /api/database/:id/fields ------------------------------------------------------------
 
-(defendpoint GET "/:id/fields"
+(api/defendpoint GET "/:id/fields"
   "Get a list of all `Fields` in `Database`."
   [id]
-  (read-check Database id)
+  (api/read-check Database id)
   (for [{:keys [id display_name table base_type special_type]} (filter mi/can-read? (-> (db/select [Field :id :display_name :table_id :base_type :special_type]
                                                                                                    :table_id        [:in (db/select-field :id Table, :db_id id)]
                                                                                                    :visibility_type [:not-in ["sensitive" "retired"]])
@@ -157,10 +159,10 @@
 
 ;;; ------------------------------------------------------------ GET /api/database/:id/idfields ------------------------------------------------------------
 
-(defendpoint GET "/:id/idfields"
+(api/defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [id]
-  (read-check Database id)
+  (api/read-check Database id)
   (sort-by (comp str/lower-case :name :table) (filter mi/can-read? (-> (database/pk-fields {:id id})
                                                                          (hydrate :table)))))
 
@@ -195,13 +197,13 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(defendpoint POST "/"
+(api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync]} :body}]
   {name    su/NonBlankString
    engine  DBEngine
    details su/Map}
-  (check-superuser)
+  (api/check-superuser)
   ;; this function tries connecting over ssl and non-ssl to establish a connection
   ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
   (let [try-connection   (fn [engine details]
@@ -219,7 +221,7 @@
                            (boolean is_full_sync))]
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation
-      (let-500 [new-db (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is_full_sync)]
+      (api/let-500 [new-db (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is_full_sync)]
         (events/publish-event! :database-create new-db)
         new-db)
       ;; failed to connect, return error
@@ -229,23 +231,23 @@
 
 ;;; ------------------------------------------------------------ POST /api/database/sample_dataset ------------------------------------------------------------
 
-(defendpoint POST "/sample_dataset"
+(api/defendpoint POST "/sample_dataset"
   "Add the sample dataset as a new `Database`."
   []
-  (check-superuser)
+  (api/check-superuser)
   (sample-data/add-sample-dataset!)
   (Database :is_sample true))
 
 ;;; ------------------------------------------------------------ PUT /api/database/:id ------------------------------------------------------------
 
-(defendpoint PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest]} :body}]
   {name    su/NonBlankString
    engine  DBEngine
    details su/Map}
-  (check-superuser)
-  (let-404 [database (Database id)]
+  (api/check-superuser)
+  (api/let-404 [database (Database id)]
     (let [details      (if-not (= protected-password (:password details))
                          details
                          (assoc details :password (get-in database [:details :password])))
@@ -257,14 +259,14 @@
         (do
           ;; TODO: is there really a reason to let someone change the engine on an existing database?
           ;;       that seems like the kind of thing that will almost never work in any practical way
-          (check-500 (db/update-non-nil-keys! Database id
-                       :name               name
-                       :engine             engine
-                       :details            details
-                       :is_full_sync       is_full_sync
-                       :description        description
-                       :caveats            caveats
-                       :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
+          (api/check-500 (db/update-non-nil-keys! Database id
+                           :name               name
+                           :engine             engine
+                           :details            details
+                           :is_full_sync       is_full_sync
+                           :description        description
+                           :caveats            caveats
+                           :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
           (events/publish-event! :database-update (Database id)))
         ;; failed to connect, return error
         {:status 400
@@ -272,25 +274,25 @@
 
 ;;; ------------------------------------------------------------ DELETE /api/database/:id ------------------------------------------------------------
 
-(defendpoint DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Delete a `Database`."
   [id]
-  (let-404 [db (Database id)]
-    (write-check db)
+  (api/let-404 [db (Database id)]
+    (api/write-check db)
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
-  generic-204-no-content)
+  api/generic-204-no-content)
 
 
 ;;; ------------------------------------------------------------ POST /api/database/:id/sync ------------------------------------------------------------
 
 ;; TODO - Shouldn't we just check for superuser status instead of write checking?
-(defendpoint POST "/:id/sync"
+(api/defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."
   [id]
   ;; just publish a message and let someone else deal with the logistics
-  (events/publish-event! :database-trigger-sync (write-check Database id))
+  (events/publish-event! :database-trigger-sync (api/write-check Database id))
   {:status :ok})
 
 
-(define-routes)
+(api/define-routes)

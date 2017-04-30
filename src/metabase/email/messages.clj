@@ -4,17 +4,20 @@
   (:require [clojure.core.cache :as cache]
             [hiccup.core :refer [html]]
             [medley.core :as m]
-            (stencil [core :as stencil]
-                     [loader :as stencil-loader])
-            [toucan.db :as db]
-            (metabase [config :as config]
-                      [email :as email])
-            [metabase.public-settings :as public-settings]
+            [metabase
+             [config :as config]
+             [email :as email]
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.pulse.render :as render]
-            [metabase.util :as u]
-            (metabase.util [quotation :as quotation]
-                           [urls :as url]))
-  (:import (java.io File FileOutputStream)
+            [metabase.util
+             [quotation :as quotation]
+             [urls :as url]]
+            [stencil
+             [core :as stencil]
+             [loader :as stencil-loader]]
+            [toucan.db :as db])
+  (:import [java.io File FileOutputStream]
            java.util.Arrays))
 
 ;; Dev only -- disable template caching
