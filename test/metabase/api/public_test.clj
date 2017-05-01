@@ -1,6 +1,7 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [metabase
              [http-client :as http]
@@ -18,7 +19,8 @@
             [metabase.test.data.users :as test-users]
             [toucan.db :as db]
             [toucan.util.test :as tt])
-  (:import java.util.UUID))
+  (:import java.io.ByteArrayInputStream
+           java.util.UUID))
 
 ;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
 
@@ -109,7 +111,7 @@
         (update-in [(data/id :categories :name) :values] count))))
 
 
-;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON and CSV versions)  ------------------------------------------------------------
+;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions)  ------------------------------------------------------------
 
 ;; Check that we *cannot* execute a PublicCard if the setting is disabled
 (expect
@@ -151,6 +153,17 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
+
+;; Check that we can exec a PublicCard and get results as XLSX
+(expect
+  [{:col "count"} {:col 100.0}]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (with-temp-public-card [{uuid :public_uuid}]
+      (->> (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})
+           ByteArrayInputStream.
+           spreadsheet/load-workbook
+           (spreadsheet/select-sheet "Query result")
+           (spreadsheet/select-columns {:A :col})))))
 
 ;; Check that we can exec a PublicCard with `?parameters`
 (expect
