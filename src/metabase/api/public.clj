@@ -118,7 +118,7 @@
   "Fetch a publically-accessible Card and return query results in the specified format. Does not require auth credentials. Public sharing must be enabled."
   [uuid export-format parameters]
   {parameters    (s/maybe su/JSONString)
-   export-format dataset-api/export-format-schema}
+   export-format dataset-api/ExportFormat}
   (dataset-api/as-format export-format
     (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
