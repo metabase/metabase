@@ -230,7 +230,7 @@ export function loadIcon(name) {
     }
 
     if (def.img) {
-        return def;
+        return { ...def, attrs: { ...def.attrs, className: 'Icon Icon-' + name } };
     }
 
     var icon = {
