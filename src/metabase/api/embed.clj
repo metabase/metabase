@@ -280,7 +280,8 @@
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format & query-params]
   {export-format dataset-api/export-format-schema}
-  (dataset-api/as-format export-format (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
+  (dataset-api/as-format export-format
+    (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
 
 
 ;;; ------------------------------------------------------------ /api/embed/dashboard endpoints ------------------------------------------------------------

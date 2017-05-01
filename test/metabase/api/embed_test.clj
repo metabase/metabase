@@ -14,7 +14,8 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.io.ByteArrayInputStream))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 
@@ -66,8 +67,8 @@
      "/json" [{:count 100}]
      "/csv"  "count\n100\n"
      "/xlsx" (fn [body]
-               (->> (java.io.ByteArrayInputStream. body)
-                    (spreadsheet/load-workbook)
+               (->> (ByteArrayInputStream. body)
+                    spreadsheet/load-workbook
                     (spreadsheet/select-sheet "Query result")
                     (spreadsheet/select-columns {:A :col})
                     (= [{:col "count"} {:col 100.0}]))))))
@@ -147,13 +148,13 @@
 
 (defmacro ^:private expect-for-response-formats {:style/indent 1} [[response-format-binding request-options-binding] expected actual]
   `(do
-     ~@(for [[response-format request-options] [["" {}] ["/json" {}] ["/csv" {}] ["/xlsx" {:as :byte-array}]]]
+     ~@(for [[response-format request-options] [[""] ["/json"] ["/csv"] ["/xlsx" {:as :byte-array}]]]
          `(expect
-            (let [~response-format-binding ~response-format
-                  ~request-options-binding {:request-options ~request-options}]
+            (let [~response-format-binding         ~response-format
+                  ~(or request-options-binding '_) {:request-options ~request-options}]
               ~expected)
-            (let [~response-format-binding ~response-format
-                  ~request-options-binding {:request-options ~request-options}]
+            (let [~response-format-binding         ~response-format
+                  ~(or request-options-binding '_) {:request-options ~request-options}]
               ~actual)))))
 
 ;; it should be possible to run a Card successfully if you jump through the right hoops...
@@ -164,14 +165,14 @@
       (http/client :get 200 (card-query-url card response-format) request-options))))
 
 ;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking query info)
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "An error occurred while running the query."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id), :type :native, :native {:query "SELECT * FROM XYZ"}}}]
       (http/client :get 400 (card-query-url card response-format)))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "Embedding is not enabled."
   (tu/with-temporary-setting-values [enable-embedding false]
     (with-new-secret-key
@@ -179,14 +180,14 @@
         (http/client :get 400 (card-query-url card response-format))))))
 
 ;; check that if embedding *is* enabled globally but not for the Card the request fails
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "Embedding is not enabled for this object."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card]
       (http/client :get 400 (card-query-url card response-format)))))
 
 ;; check that if embedding is enabled globally and for the object that requests fail if they are signed with the wrong key
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "Message seems corrupt or manipulated."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true}]
@@ -195,7 +196,7 @@
 ;;; LOCKED params
 
 ;; check that if embedding is enabled globally and for the object requests fail if the token is missing a `:locked` parameter
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "You must specify a value for :abc in the JWT."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "locked"}}]
@@ -209,7 +210,7 @@
       (http/client :get 200 (card-query-url card response-format {:params {:abc 100}}) request-options))))
 
 ;; If `:locked` parameter is present in URL params, request should fail
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "You can only specify a value for :abc in the JWT."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "locked"}}]
@@ -218,14 +219,14 @@
 ;;; DISABLED params
 
 ;; check that if embedding is enabled globally and for the object requests fail if they pass a `:disabled` parameter
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "You're not allowed to specify a value for :abc."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "disabled"}}]
       (http/client :get 400 (card-query-url card response-format {:params {:abc 100}})))))
 
 ;; If a `:disabled` param is passed in the URL the request should fail
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "You're not allowed to specify a value for :abc."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "disabled"}}]
@@ -234,7 +235,7 @@
 ;;; ENABLED params
 
 ;; If `:enabled` param is present in both JWT and the URL, the request should fail
-(expect-for-response-formats [response-format request-options]
+(expect-for-response-formats [response-format]
   "You can't specify a value for :abc if it's already set in the JWT."
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "enabled"}}]

@@ -49,13 +49,13 @@
 (defn- parse-response
   "Deserialize the JSON response or return as-is if that fails."
   [body]
-  (if (string? body)
+  (if-not (string? body)
+    body
     (try
       (auto-deserialize-dates (json/parse-string body keyword))
       (catch Throwable _
         (when-not (s/blank? body)
-          body)))
-    body))
+          body)))))
 
 
 ;;; authentication
@@ -150,9 +150,8 @@
    *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params"
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & url-kwargs])}
   [& args]
-  (let [[credentials [method & args]]     (u/optional #(or (map? %)
-                                                           (string? %)) args)
+  (let [[credentials [method & args]]     (u/optional #(or (map? %) (string? %)) args)
         [expected-status [url & args]]    (u/optional integer? args)
-        [{:keys [request-options]} args] (u/optional #(and (map? %) (:request-options %)) args {:request-options {}})
+        [{:keys [request-options]} args]  (u/optional #(and (map? %) (:request-options %)) args {:request-options {}})
         [body [& {:as url-param-kwargs}]] (u/optional map? args)]
     (-client credentials method expected-status url body url-param-kwargs request-options)))

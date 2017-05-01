@@ -19,7 +19,8 @@
             [metabase.test.data.users :as test-users]
             [toucan.db :as db]
             [toucan.util.test :as tt])
-  (:import java.util.UUID))
+  (:import java.io.ByteArrayInputStream
+           java.util.UUID))
 
 ;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
 
@@ -159,8 +160,8 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (->> (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})
-           (java.io.ByteArrayInputStream.)
-           (spreadsheet/load-workbook)
+           ByteArrayInputStream.
+           spreadsheet/load-workbook
            (spreadsheet/select-sheet "Query result")
            (spreadsheet/select-columns {:A :col})))))
 
