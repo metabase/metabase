@@ -246,11 +246,16 @@
   (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
 
   (let [start-time-ns         (System/nanoTime)
-        tables                (db/select table/Table, :db_id database-id, :active true)
-        visible-tables        (filter #(not= :hidden (:visibility_type %)) tables)
-        tables-count          (count visible-tables)
+        tables                (db/select table/Table,
+                                {:where [:and
+                                         [:= :db_id database-id]
+                                         [:= :active true]
+                                         [:or
+                                          [:= :visibility_type nil]
+                                          [:not= :visibility_type "hidden"]]]})
+        tables-count          (count tables)
         finished-tables-count (atom 0)]
-    (doseq [{table-name :name, :as table} visible-tables]
+    (doseq [{table-name :name, :as table} tables]
       (try
         (analyze-table-data-shape! driver table)
         (catch Throwable t
