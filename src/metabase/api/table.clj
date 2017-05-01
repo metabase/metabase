@@ -65,7 +65,7 @@
                      :entity_type             entity_type
                      :description             description))
     (api/check-500 (db/update! Table id, :visibility_type visibility_type))
-    (let [updated-table (Table :id id)
+    (let [updated-table (Table id)
           visibility-changed? (not= (visible-state? (:visibility_type updated-table))
                                     (visible-state? original-visibility-type))]
       (when visibility-changed?
