@@ -74,7 +74,6 @@ export type VisualizationProps = {
     isDashboard: boolean,
     isEditing: boolean,
     actionButtons: Node,
-    linkToCard?: bool,
 
     hovered: ?HoverObject,
     onHoverChange: (?HoverObject) => void,

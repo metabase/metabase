@@ -78,8 +78,6 @@ type Props = {
     gridSize?: { width: number, height: number },
     // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
     gridUnit?: number,
-
-    linkToCard?: bool,
 }
 
 type State = {
@@ -120,7 +118,6 @@ export default class Visualization extends Component<*, Props, State> {
         showTitle: false,
         isDashboard: false,
         isEditing: false,
-        linkToCard: true,
         onUpdateVisualizationSettings: (...args) => console.warn("onUpdateVisualizationSettings", args)
     };
 
@@ -232,7 +229,7 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     render() {
-        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, linkToCard } = this.props;
+        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, onChangeCardAndRun } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -317,7 +314,7 @@ export default class Visualization extends Component<*, Props, State> {
                             actionButtons={extra}
                             description={settings["card.description"]}
                             settings={settings}
-                            linkToCard={linkToCard}
+                            onChangeCardAndRun={onChangeCardAndRun}
                         />
                     </div>
                 : null
@@ -386,7 +383,7 @@ export default class Visualization extends Component<*, Props, State> {
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
                         gridSize={gridSize}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={onChangeCardAndRun}
                     />
                 }
                 <ChartTooltip

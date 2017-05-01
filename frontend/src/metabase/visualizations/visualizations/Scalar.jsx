@@ -103,7 +103,7 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
     };
 
     render() {
-        let { series: [{ card, data: { cols, rows }}], className, actionButtons, gridSize, settings, linkToCard, visualizationIsClickable, onVisualizationClick } = this.props;
+        let { series: [{ card, data: { cols, rows }}], className, actionButtons, gridSize, settings, onChangeCardAndRun, visualizationIsClickable, onVisualizationClick } = this.props;
         let description = settings["card.description"];
 
         let isSmall = gridSize && gridSize.width < 4;
@@ -194,11 +194,15 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
                 </Ellipsified>
                 <div className={styles.Title + " flex align-center"}>
                     <Ellipsified tooltip={card.name}>
-                        { linkToCard ?
-                          <Link to={Urls.question(card.id)} className="no-decoration fullscreen-normal-text fullscreen-night-text">{settings["card.title"]}</Link>
-                          :
-                          <span className="fullscreen-normal-text fullscreen-night-text">{settings["card.title"]}</span>
-                        }
+                        <span
+                            onClick={onChangeCardAndRun && (() => onChangeCardAndRun(card))}
+                            className={cx("fullscreen-normal-text fullscreen-night-text", {
+                                "cursor-pointer": !!onChangeCardAndRun
+                            })}
+                        >
+                            {settings["card.title"]}
+                        </span>
+
                     </Ellipsified>
                     { description &&
                       <div className="hover-child">
