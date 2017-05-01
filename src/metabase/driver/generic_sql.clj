@@ -185,12 +185,16 @@
 (defn handle-additional-options
   "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
    (Some drivers like MySQL provide this details field to allow special behavior where needed)."
-  {:arglists '([connection-spec details])}
-  [{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details}]
-  (-> (dissoc connection-spec :additional-options)
-      (assoc :subname (str connection-string (when (seq additional-options)
-                                               (str (if (str/includes? connection-string "?") "&" "?")
-                                                    additional-options))))))
+  {:arglists '([connection-spec] [connection-spec details])}
+  ;; single arity provided for cases when `connection-spec` is built by applying simple transformations to `details`
+  ([connection-spec]
+   (handle-additional-options connection-spec connection-spec))
+  ;; two-arity version provided for when `connection-spec` is being built up separately from `details` source
+  ([{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details}]
+   (-> (dissoc connection-spec :additional-options)
+       (assoc :subname (str connection-string (when (seq additional-options)
+                                                (str (if (str/includes? connection-string "?") "&" "?")
+                                                     additional-options)))))))
 
 
 (defn escape-field-name

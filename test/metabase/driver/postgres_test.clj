@@ -7,7 +7,9 @@
              [query-processor-test :refer [rows]]
              [sync-database :as sync-db]
              [util :as u]]
-            [metabase.driver.generic-sql :as sql]
+            [metabase.driver
+             [generic-sql :as sql]
+             postgres]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]

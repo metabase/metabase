@@ -42,13 +42,15 @@
 
 (defn- connection-details->spec
   "Create a database specification for an Oracle database. DETAILS should include keys
-  for `:user`, `:password`, and `:sid`. You can also optionally set `:host` and `:port`."
+  for `:user`, `:password`, and `:sid`. You can also optionally set `:host` and `:port`, and
+  supply `:addtional-options` that are appended to the end of the JDBC connection string."
   [{:keys [host port sid]
     :or   {host "localhost", port 1521}
     :as   details}]
-  (merge {:subprotocol "oracle:thin"
-          :subname     (str "@" host ":" port ":" sid)}
-         (dissoc details :host :port)))
+  (-> (merge {:subprotocol "oracle:thin"
+              :subname     (str "@" host ":" port ":" sid)}
+             (dissoc details :host :port))
+      sql/handle-additional-options))
 
 (defn- can-connect? [details]
   (let [connection (connection-details->spec details)]
@@ -213,7 +215,10 @@
                                          {:name         "password"
                                           :display-name "Database password"
                                           :type         :password
-                                          :placeholder  "*******"}]))
+                                          :placeholder  "*******"}
+                                         {:name         "additional-options"
+                                          :display-name "Additional JDBC connection string options"
+                                          :placeholder  "serviceName=myservicename"}]))
           :execute-query  (comp remove-rownum-column sqlqp/execute-query)})
 
   sql/ISQLDriver
