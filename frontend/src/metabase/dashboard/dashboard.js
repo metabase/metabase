@@ -496,6 +496,10 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
 
 import { push } from "react-router-redux";
 
+/** All navigation actions from dashboards to cards (e.x. clicking a title, drill through)
+ *  should go through this action, which merges any currently applied dashboard filters
+ *  into the new card / URL parmeters.
+ */
 const CHANGE_CARD_AND_RUN = "metabase/database/CHANGE_CARD_AND_RUN";
 export const onChangeCardAndRun = createThunkAction(CHANGE_CARD_AND_RUN, (card, dashcard = null) =>
     (dispatch, getState) => {

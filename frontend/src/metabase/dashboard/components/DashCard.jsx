@@ -135,6 +135,7 @@ export default class DashCard extends Component {
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                     metadata={metadata}
                     onChangeCardAndRun={(card) => {
+                        // ensure the original card ID is included to track lineage
                         card = { ...card, id: series[0].card.id };
                         onChangeCardAndRun(card, dashcard);
                     }}

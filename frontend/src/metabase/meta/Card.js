@@ -143,7 +143,7 @@ export function applyParameters(
     return datasetQuery;
 }
 
-
+/** returns a question URL with parameters added to query string or MBQL filters */
 export function questionUrlWithParameters(
     card: Card,
     parameters: Parameter[],
@@ -152,12 +152,18 @@ export function questionUrlWithParameters(
 ): DatasetQuery {
     card = Utils.copy(card);
 
-    const datasetQuery = applyParameters(card, parameters, parameterValues, parameterMappings);
     const cardParameters = getParameters(card);
+    const datasetQuery = applyParameters(
+        card,
+        parameters,
+        parameterValues,
+        parameterMappings
+    );
 
     const query = {};
     for (const datasetParameter of datasetQuery.parameters) {
-        const cardParameter = _.find(cardParameters, p => Utils.equals(p.target, datasetParameter.target));
+        const cardParameter = _.find(cardParameters, p =>
+            Utils.equals(p.target, datasetParameter.target));
         if (cardParameter) {
             // if the card has a real parameter we can use, use that
             query[cardParameter.slug] = datasetParameter.value;
@@ -166,14 +172,13 @@ export function questionUrlWithParameters(
             const filter = parameterToMBQLFilter(datasetParameter);
             if (filter) {
                 card = updateIn(card, ["dataset_query", "query"], query =>
-                    Query.addFilter(query, filter)
-                );
+                    Query.addFilter(query, filter));
             } else {
-                console.warn("UNHANDLED PARAMETER", datasetParameter)
+                console.warn("UNHANDLED PARAMETER", datasetParameter);
             }
         } else {
-            console.warn("UNHANDLED PARAMETER", datasetParameter)
+            console.warn("UNHANDLED PARAMETER", datasetParameter);
         }
     }
-    return Urls.question(card.id, card.dataset_query ? card : undefined, query)
+    return Urls.question(card.id, card.dataset_query ? card : undefined, query);
 }
