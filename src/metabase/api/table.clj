@@ -41,6 +41,14 @@
   (-> (api/read-check Table id)
       (hydrate :db :pk_field)))
 
+(defn- visible-state?
+  "only the nil state is considered visible."
+  [state]
+  {:pre [(or (nil? state) (table/visibility-types state))]}
+  (if (nil? state)
+    :show
+    :hide))
+
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started]} :body}]
@@ -48,7 +56,7 @@
    entity_type     (s/maybe TableEntityType)
    visibility_type (s/maybe TableVisibilityType)}
   (api/write-check Table id)
-  (let [original-visibility_type (:visibility_type (Table :id id))]
+  (let [original-visibility-type (:visibility_type (Table :id id))]
     (api/check-500 (db/update-non-nil-keys! Table id
                      :display_name            display_name
                      :caveats                 caveats
@@ -58,9 +66,10 @@
                      :description             description))
     (api/check-500 (db/update! Table id, :visibility_type visibility_type))
     (let [updated-table (Table :id id)
-          visibility-changed? (not= (:visibility_type updated-table) original-visibility_type)]
+          visibility-changed? (not= (visible-state? (:visibility_type updated-table))
+                                    (visible-state? original-visibility-type))]
       (when visibility-changed?
-        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility_type visibility_type visibility-changed?)
+        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
         (sync-database/sync-table! updated-table))
       updated-table)))
 
