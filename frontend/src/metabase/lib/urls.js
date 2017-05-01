@@ -2,17 +2,25 @@ import { serializeCardForUrl } from "metabase/lib/card";
 
 // provides functions for building urls to things we care about
 
-export function question(cardId, cardOrHash = "") {
-    if (cardOrHash && typeof cardOrHash === "object") {
-        cardOrHash = serializeCardForUrl(cardOrHash);
+export function question(cardId, hash = "", query = "") {
+    if (hash && typeof hash === "object") {
+        hash = serializeCardForUrl(hash);
     }
-    if (cardOrHash && cardOrHash.charAt(0) !== "#") {
-        cardOrHash = "#" + cardOrHash;
+    if (query && typeof query === "object") {
+        query = Object.entries(query)
+            .map(kv => kv.map(encodeURIComponent).join("="))
+            .join("&");
+    }
+    if (hash && hash.charAt(0) !== "#") {
+        hash = "#" + hash;
+    }
+    if (query && query.charAt(0) !== "?") {
+        query = "?" + query;
     }
     // NOTE that this is for an ephemeral card link, not an editable card
     return cardId != null
-        ? `/question/${cardId}${cardOrHash}`
-        : `/question${cardOrHash}`;
+        ? `/question/${cardId}${query}${hash}`
+        : `/question${query}${hash}`;
 }
 
 export function dashboard(dashboardId) {

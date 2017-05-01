@@ -1,20 +1,22 @@
 /* @flow */
 
+import { getTemplateTagParameters, getParameterTargetFieldId, parameterToMBQLFilter } from "metabase/meta/Parameter";
+
+import * as Query from "metabase/lib/query/query";
+import Q from "metabase/lib/query"; // legacy
+import Utils from "metabase/lib/utils";
+import * as Urls from "metabase/lib/urls";
+
+import _ from "underscore";
+import { assoc, updateIn } from "icepick";
+
 import type { StructuredQuery, NativeQuery, TemplateTag } from "./types/Query";
 import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "./types/Card";
 import type { Parameter, ParameterMapping, ParameterValues } from "./types/Parameter";
 
-import { getTemplateTagParameters, getParameterTargetFieldId } from "metabase/meta/Parameter";
-
-import { assoc } from "icepick";
-
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
 }
-
-import Query from "metabase/lib/query";
-import Utils from "metabase/lib/utils";
-import _ from "underscore";
 
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
     type: "query",
@@ -111,7 +113,7 @@ export function applyParameters(
     const datasetQuery = Utils.copy(card.dataset_query);
     // clean the query
     if (datasetQuery.type === "query") {
-        datasetQuery.query = Query.cleanQuery(datasetQuery.query);
+        datasetQuery.query = Q.cleanQuery(datasetQuery.query);
     }
     datasetQuery.parameters = [];
     for (const parameter of parameters || []) {
@@ -139,4 +141,39 @@ export function applyParameters(
     }
 
     return datasetQuery;
+}
+
+
+export function questionUrlWithParameters(
+    card: Card,
+    parameters: Parameter[],
+    parameterValues: ParameterValues = {},
+    parameterMappings: ParameterMapping[] = []
+): DatasetQuery {
+    card = Utils.copy(card);
+
+    const datasetQuery = applyParameters(card, parameters, parameterValues, parameterMappings);
+    const cardParameters = getParameters(card);
+
+    const query = {};
+    for (const datasetParameter of datasetQuery.parameters) {
+        const cardParameter = _.find(cardParameters, p => Utils.equals(p.target, datasetParameter.target));
+        if (cardParameter) {
+            // if the card has a real parameter we can use, use that
+            query[cardParameter.slug] = datasetParameter.value;
+        } else if (isStructured(card)) {
+            // if the card is structured, try converting the parameter to an MBQL filter clause
+            const filter = parameterToMBQLFilter(datasetParameter);
+            if (filter) {
+                card = updateIn(card, ["dataset_query", "query"], query =>
+                    Query.addFilter(query, filter)
+                );
+            } else {
+                console.warn("UNHANDLED PARAMETER", datasetParameter)
+            }
+        } else {
+            console.warn("UNHANDLED PARAMETER", datasetParameter)
+        }
+    }
+    return Urls.question(card.id, card.dataset_query ? card : undefined, query)
 }

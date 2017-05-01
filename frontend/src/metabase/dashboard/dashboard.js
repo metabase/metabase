@@ -10,7 +10,7 @@ import { normalize, schema } from "normalizr";
 import { saveDashboard } from "metabase/dashboards/dashboards";
 
 import { createParameter, setParameterName as setParamName, setParameterDefaultValue as setParamDefaultValue } from "metabase/meta/Dashboard";
-import { applyParameters } from "metabase/meta/Card";
+import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import { getParametersBySlug } from "metabase/meta/Parameter";
 
 import type { DashboardWithCards, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
@@ -494,13 +494,16 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
     return { id };
 });
 
-import * as Urls from "metabase/lib/urls";
 import { push } from "react-router-redux";
 
 const CHANGE_CARD_AND_RUN = "metabase/database/CHANGE_CARD_AND_RUN";
-export const onChangeCardAndRun = createThunkAction(CHANGE_CARD_AND_RUN, card =>
+export const onChangeCardAndRun = createThunkAction(CHANGE_CARD_AND_RUN, (card, dashcard = null) =>
     (dispatch, getState) => {
-        dispatch(push(Urls.question(null, card)));
+        const { dashboardId, dashboards, parameterValues } = getState().dashboard;
+        const dashboard = dashboards[dashboardId];
+
+        const url = questionUrlWithParameters(card, dashboard.parameters, parameterValues, dashcard && dashcard.parameter_mappings);
+        dispatch(push(url));
     });
 
 // reducers
