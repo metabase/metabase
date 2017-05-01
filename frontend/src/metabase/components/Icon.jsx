@@ -25,8 +25,7 @@ export default class Icon extends Component {
         if (!icon) {
             return null;
         }
-
-        const className = cx(icon.attrs.className, this.props.className)
+        const className = cx(icon.attrs && icon.attrs.className, this.props.className)
         const props = { ...icon.attrs, ...this.props, className };
         for (const prop of ["width", "height", "size", "scale"]) {
             if (typeof props[prop] === "string") {
