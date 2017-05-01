@@ -247,9 +247,10 @@
 
   (let [start-time-ns         (System/nanoTime)
         tables                (db/select table/Table, :db_id database-id, :active true)
-        tables-count          (count tables)
+        visible-tables        (filter #(not= :hidden (:visibility_type %)) tables)
+        tables-count          (count visible-tables)
         finished-tables-count (atom 0)]
-    (doseq [{table-name :name, :as table} tables]
+    (doseq [{table-name :name, :as table} visible-tables]
       (try
         (analyze-table-data-shape! driver table)
         (catch Throwable t
