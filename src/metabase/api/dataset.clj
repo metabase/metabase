@@ -79,7 +79,7 @@
            :ext          "json"
            :context      :json-download}})
 
-(def export-format-schema
+(def ExportFormat
   "Schema for valid export formats for downloading query results."
   (apply s/enum (keys export-formats)))
 
@@ -112,7 +112,7 @@
   "Execute a query and download the result data as a file in the specified format."
   [export-format query]
   {query         su/JSONString
-   export-format export-format-schema}
+   export-format ExportFormat}
   (let [query (json/parse-string query keyword)]
     (api/read-check Database (:database query))
     (as-format export-format

@@ -418,7 +418,7 @@
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
   [card-id export-format parameters]
   {parameters    (s/maybe su/JSONString)
-   export-format dataset-api/export-format-schema}
+   export-format dataset-api/ExportFormat}
   (binding [cache/*ignore-cached-results* true]
     (dataset-api/as-format export-format
       (run-query-for-card card-id

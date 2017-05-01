@@ -279,7 +279,7 @@
 (api/defendpoint GET "/card/:token/query/:export-format"
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format & query-params]
-  {export-format dataset-api/export-format-schema}
+  {export-format dataset-api/ExportFormat}
   (dataset-api/as-format export-format
     (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
 
