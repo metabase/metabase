@@ -10,7 +10,8 @@
             [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]
-            [metabase.driver :as driver]))
+            [metabase.driver :as driver]
+            [metabase.models.field :as field]))
 
 ;; test:cardinality-and-extract-field-values
 ;; (#2332) check that if field values are long we skip over them
@@ -80,16 +81,16 @@
 (expect false (values-are-valid-emails? ["false"]))
 
 ;; Tests to avoid analyzing hidden tables
-(defn count-un-analyzed-fields [db_id table-name]
-  (let [table-id (db/select-one-id table/Table, :db_id db_id, :active true :name table-name)]
+(defn count-unanalyzed-fields [db_id table-name]
+  (let [table-id (db/select-one-id Table, :db_id db_id, :active true :name table-name)]
     (assert (pos? ;; don't let ourselves be fooled if the test passes because the table is
                   ;; totally broken or has no fields. Make sure we actually test something
-             (db/count metabase.models.field/Field :table_id table-id)))
-    (db/count metabase.models.field/Field :last_analyzed nil :table_id table-id)))
+             (db/count Field :table_id table-id)))
+    (db/count Field :last_analyzed nil :table_id table-id)))
 
 (defn get-latest-sync-time [db_id table-name]
-  (let [table-id (db/select-one-id table/Table, :db_id db_id, :active true :name table-name)]
-    (db/select-field :last_analyzed metabase.models.field/Field :table_id table-id)))
+  (let [table-id (db/select-one-id Table, :db_id db_id, :active true :name table-name)]
+    (db/select-field :last_analyzed Field :table_id table-id)))
 
 
 (defn api-table-call [state table]
@@ -119,7 +120,7 @@
       (api-table-call "technical" table)
       (api-sync-call table)
       (api-sync-call table)
-      (count-un-analyzed-fields (:db_id table) (:name table))))
+      (count-unanalyzed-fields (:db_id table) (:name table))))
 
 ;; same test not coming through the api
 (tt/expect-with-temp [Table [table {:rows 15}]
@@ -135,7 +136,7 @@
       (api-table-call "technical" table)
       (sync-call table)
       (sync-call table)
-      (count-un-analyzed-fields (:db_id table) (:name table))))
+      (count-unanalyzed-fields (:db_id table) (:name table))))
 
 ;; un-hiding a table should cause it to be analyzed
 (tt/expect-with-temp [Table [table {:rows 15}]
@@ -143,15 +144,13 @@
   0
   (do (api-table-call "hidden" table)
       (api-table-call nil table)
-      (count-un-analyzed-fields (:db_id table) (:name table))))
+      (count-unanalyzed-fields (:db_id table) (:name table))))
 
 ;; re-hiding a table should not cause it to be analyzed
 (tt/expect-with-temp [Table [table {:rows 15}]
                       Field [field {:table_id (:id table)}]]
   (do (api-table-call "hidden" table)
       (api-table-call nil table)
-      (println (get-latest-sync-time (:db_id table) (:name table)))
       (get-latest-sync-time (:db_id table) (:name table)))
   (do (api-table-call "hidden" table)
-      (println (get-latest-sync-time (:db_id table) (:name table)))
       (get-latest-sync-time (:db_id table) (:name table))))
