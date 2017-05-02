@@ -111,7 +111,7 @@ export function timeParameterValueToMBQL(urlEncoded: UrlEncoded, field: Concrete
 export function parameterToMBQLFilter(parameter) {
     let field: ConcreteField;
     if (parameter.target && parameter.target[0] === "dimension" && parameter.target[1][0] !== "template-tag") {
-        field = parameter.target[1][1];
+        field = parameter.target[1];
     }
 
     if (!field) {

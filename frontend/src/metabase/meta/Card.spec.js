@@ -19,6 +19,11 @@ describe("metabase/meta/Card", () => {
                 id: 3,
                 slug: "param_date",
                 type: "date/month"
+            },
+            {
+                id: 4,
+                slug: "param_fk",
+                type: "date/month"
             }
         ];
 
@@ -88,7 +93,12 @@ describe("metabase/meta/Card", () => {
                     card_id: 1,
                     parameter_id: 3,
                     target: ["dimension", ["field-id", 3]]
-                }
+                },
+                {
+                    card_id: 1,
+                    parameter_id: 4,
+                    target: ["dimension", ["fk->", 4, 5]]
+                },
             ];
             it("should return question URL with no parameters", () => {
                 const url = Card.questionUrlWithParameters(card, []);
@@ -111,7 +121,7 @@ describe("metabase/meta/Card", () => {
                     card: assocIn(
                         dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
-                        ["AND", ["=", 1, "bar"]]
+                        ["AND", ["=", ["field-id", 1], "bar"]]
                     )
                 });
             });
@@ -128,7 +138,7 @@ describe("metabase/meta/Card", () => {
                     card: assocIn(
                         dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
-                        ["AND", ["=", 1, 123]]
+                        ["AND", ["=", ["field-id", 1], 123]]
                     )
                 });
             });
@@ -145,7 +155,24 @@ describe("metabase/meta/Card", () => {
                     card: assocIn(
                         dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
-                        ["AND", ["=", ["datetime-field", 3, "month"], "2017-05-01"]]
+                        ["AND", ["=", ["datetime-field", ["field-id", 3], "month"], "2017-05-01"]]
+                    )
+                });
+            });
+            it("should return question URL with date MBQL filter on a FK added", () => {
+                const url = Card.questionUrlWithParameters(
+                    card,
+                    parameters,
+                    { "4": "2017-05" },
+                    parameterMappings
+                );
+                expect(parseUrl(url)).toEqual({
+                    pathname: "/question/1",
+                    query: {},
+                    card: assocIn(
+                        dissoc(card, "id"),
+                        ["dataset_query", "query", "filter"],
+                        ["AND", ["=", ["datetime-field", ["fk->", 4, 5], "month"], "2017-05-01"]]
                     )
                 });
             });
