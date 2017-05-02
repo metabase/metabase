@@ -116,7 +116,11 @@ Run the linters and type checker with
 
 #### End-to-end tests
 
-End-to-end tests are written with [webschauffeur](https://github.com/metabase/webchauffeur) which is a wrapper around [`selenium-webdriver`](https://www.npmjs.com/package/selenium-webdriver).
+End-to-end tests are written with [webschauffeur](https://github.com/metabase/webchauffeur) which is a wrapper around [`selenium-webdriver`](https://www.npmjs.com/package/selenium-webdriver). 
+
+Generate the Metabase jar file which is used in E2E tests:
+
+    ./bin/build
 
 Run E2E tests once with
 
@@ -177,7 +181,6 @@ You'll probably want to tell Emacs to store customizations in a different file. 
 Start up an instant cheatsheet for the project + dependencies by running
 
     lein instant-cheatsheet
-
 
 ## License
 
