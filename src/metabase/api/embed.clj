@@ -276,7 +276,7 @@
   (run-query-for-unsigned-token (eu/unsign token) query-params))
 
 
-(api/defendpoint GET "/card/:token/query/:export-format"
+(api/defendpoint GET ["/card/:token/query/:export-format", :export-format dataset-api/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format & query-params]
   {export-format dataset-api/ExportFormat}
