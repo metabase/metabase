@@ -373,7 +373,7 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
         }
 
         if (onVisualizationClick) {
-            chart.selectAll(".bar, .dot, .bubble")
+            chart.selectAll(".bar, .dot, .area, .bubble")
                 .style({ "cursor": "pointer" })
                 .on("mouseup", function(d) {
                     const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
@@ -408,6 +408,10 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                                 { value: d.data.key, column: cols[0] }
                             ]
                         }
+                    } else {
+                        clicked = {
+                            dimensions: []
+                        };
                     }
 
                     // handle multiseries
