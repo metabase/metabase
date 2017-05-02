@@ -66,8 +66,11 @@
                      :description             description))
     (api/check-500 (db/update! Table id, :visibility_type visibility_type))
     (let [updated-table (Table id)
-          visibility-changed? (not= (visible-state? (:visibility_type updated-table))
-                                    (visible-state? original-visibility-type))]
+          new-visibility (visible-state? (:visibility_type updated-table))
+          old-visibility (visible-state? original-visibility-type)
+          visibility-changed? (and (not= new-visibility
+                                         old-visibility)
+                                   (= :show new-visibility))]
       (when visibility-changed?
         (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
         (sync-database/sync-table! updated-table))
