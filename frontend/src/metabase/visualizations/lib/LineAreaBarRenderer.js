@@ -631,7 +631,6 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
 
     function disableClickFiltering() {
         chart.selectAll("rect.bar")
-            .style({ cursor: "inherit" })
             .on("click", (d) => {
                 chart.filter(null);
                 chart.filter(d.key);
