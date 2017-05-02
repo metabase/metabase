@@ -145,7 +145,7 @@ describe("metabase/meta/Card", () => {
                     card: assocIn(
                         dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
-                        ["AND", ["=", ["datetime-field", 1, "month"], "FIXME: what should this be?"]]
+                        ["AND", ["=", ["datetime-field", 3, "month"], "2017-05-01"]]
                     )
                 });
             });

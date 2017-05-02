@@ -5,6 +5,8 @@ import type { TemplateTag, LocalFieldReference } from "./types/Query";
 import type { Parameter, ParameterTarget, ParameterValues } from "./types/Parameter";
 import type { FieldId } from "./types/Field";
 
+import moment from "moment";
+
 import Q from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
 
@@ -62,29 +64,45 @@ export function getParameterTargetFieldId(target: ?ParameterTarget, datasetQuery
 
 
 const timeParameterValueDeserializers: [{ testRegex: RegExp, deserialize: Deserializer}] = [
-    {testRegex: /^past([0-9]+)([a-z]+)s$/, deserialize: (matches) => {
-        return ["time-interval", noopRef, -parseInt(matches[0]), matches[1]]
-    }},
-    {testRegex: /^next([0-9]+)([a-z]+)s$/, deserialize: (matches) => {
-        return ["time-interval", noopRef, parseInt(matches[0]), matches[1]]
-    }},
-    {testRegex: /^this([a-z]+)$/, deserialize: (matches) => ["time-interval", noopRef, "current", matches[0]] },
-    {testRegex: /^~([0-9-T:]+)$/, deserialize: (matches) => ["<", noopRef, matches[0]]},
-    {testRegex: /^([0-9-T:]+)~$/, deserialize: (matches) => [">", noopRef, matches[0]]},
-    {testRegex: /^([0-9-T:]+)$/, deserialize: (matches) => ["=", noopRef, matches[0]]},
+    {testRegex: /^past([0-9]+)([a-z]+)s$/, deserialize: (matches, field = noopRef) =>
+        ["time-interval", field, -parseInt(matches[0]), matches[1]]
+    },
+    {testRegex: /^next([0-9]+)([a-z]+)s$/, deserialize: (matches, field = noopRef) =>
+        ["time-interval", field, parseInt(matches[0]), matches[1]]
+    },
+    {testRegex: /^this([a-z]+)$/, deserialize: (matches, field = noopRef) =>
+        ["time-interval", field, "current", matches[0]]
+    },
+    {testRegex: /^~([0-9-T:]+)$/, deserialize: (matches, field = noopRef) =>
+        ["<", field, matches[0]]
+    },
+    {testRegex: /^([0-9-T:]+)~$/, deserialize: (matches, field = noopRef) =>
+        [">", field, matches[0]]
+    },
+    {testRegex: /^(\d{4}-\d{2})$/, deserialize: (matches, field = noopRef) =>
+        ["=", ["datetime-field", field, "month"], moment(matches[0], "YYYY-MM").format("YYYY-MM-DD")]
+    },
+    {testRegex: /^(Q\d-\d{4})$/, deserialize: (matches, field = noopRef) =>
+        ["=", ["datetime-field", field, "quarter"], moment(matches[0], "[Q]Q-YYYY").format("YYYY-MM-DD")]
+    },
+    {testRegex: /^([0-9-T:]+)$/, deserialize: (matches, field = noopRef) =>
+        ["=", field, matches[0]]
+    },
     // TODO 3/27/17 Atte Keinänen
     // Unify BETWEEN -> between, IS_NULL -> is-null, NOT_NULL -> not-null throughout the codebase
     // $FlowFixMe
-    {testRegex: /^([0-9-T:]+)~([0-9-T:]+)$/, deserialize: (matches) => ["BETWEEN", noopRef, matches[0], matches[1]]},
+    {testRegex: /^([0-9-T:]+)~([0-9-T:]+)$/, deserialize: (matches, field = noopRef) =>
+        ["BETWEEN", field, matches[0], matches[1]]
+    },
 ];
 
-export function timeParameterValueToMBQL(urlEncoded: UrlEncoded): ?FieldFilter {
+export function timeParameterValueToMBQL(urlEncoded: UrlEncoded, field: ConcreteField = noopRef): ?FieldFilter {
     const deserializer =
-        timeParameterValueDeserializers.find((des) => urlEncoded.search(des.testRegex) !== -1);
+        timeParameterValueDeserializers.find((des) => des.testRegex.test(urlEncoded));
 
     if (deserializer) {
         const substringMatches = deserializer.testRegex.exec(urlEncoded).splice(1);
-        return deserializer.deserialize(substringMatches);
+        return deserializer.deserialize(substringMatches, field);
     } else {
         return null;
     }
@@ -102,8 +120,7 @@ export function parameterToMBQLFilter(parameter) {
 
     let filter;
     if (parameter.type.indexOf("date/") === 0) {
-        filter = timeParameterValueToMBQL(parameter.value);
-        filter[1] = field;
+        filter = timeParameterValueToMBQL(parameter.value, field);
     } else {
         // FIXME: we don't have the field type so we don't know when the value should be a number or a string
         // assuming string for now
