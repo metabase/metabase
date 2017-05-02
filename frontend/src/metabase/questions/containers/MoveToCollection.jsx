@@ -16,28 +16,29 @@ const mapStateToProps = (state, props) => ({
 
 })
 
-const mapDispatchToProps = {
+const mapDispatchToProps = (dispatch) => ({
     loadCollections,
-    setCollection
-}
+    dispatch
+})
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class MoveToCollection extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            collectionId: props.initialCollectionId
+            currentCollection: { id:  props.initialCollectionId }
         }
+
     }
 
     componentWillMount() {
         this.props.loadCollections()
     }
 
-    async onMove(collectionId) {
+    async onMove(collection) {
         try {
             this.setState({ error: null })
-            await this.props.setCollection(this.props.questionId, collectionId, true);
+            this.props.setCollection(this.props, collection, true);
             this.props.onClose();
         } catch (e) {
             this.setState({ error: e })
@@ -46,7 +47,7 @@ export default class MoveToCollection extends Component {
 
     render() {
         const { onClose } = this.props;
-        const { collectionId, error } = this.state;
+        const { currentCollection, error } = this.state;
         return (
             <ModalContent
                 title="Which collection should this be in?"
@@ -58,7 +59,7 @@ export default class MoveToCollection extends Component {
                         <Button className="mr1" onClick={onClose}>
                             Cancel
                         </Button>
-                        <Button primary disabled={collectionId === undefined} onClick={() => this.onMove(collectionId)}>
+                        <Button primary disabled={currentCollection.id === undefined} onClick={() => this.onMove(currentCollection)}>
                             Move
                         </Button>
                     </div>
@@ -71,9 +72,9 @@ export default class MoveToCollection extends Component {
                         <ol className="List text-brand ml-auto mr-auto" style={{ width: 520 }}>
                             { [{ name: "None", id: null }].concat(collections).map((collection, index) =>
                                 <li
-                                    className={cx("List-item flex align-center cursor-pointer mb1 p1", { "List-item--selected": collection.id === collectionId })}
+                                    className={cx("List-item flex align-center cursor-pointer mb1 p1", { "List-item--selected": collection.id === currentCollection.id })}
                                     key={index}
-                                    onClick={() => this.setState({ collectionId: collection.id })}
+                                    onClick={() => this.setState({ currentCollection: collection })}
                                 >
                                     <Icon
                                         className="Icon mr2"
@@ -91,5 +92,11 @@ export default class MoveToCollection extends Component {
                 </CollectionList>
             </ModalContent>
         )
+    }
+}
+
+MoveToCollection.defaultProps = {
+    setCollection: async (props, collection) => {
+        await props.dispatch(setCollection(props.questionId, collection.id, true))
     }
 }

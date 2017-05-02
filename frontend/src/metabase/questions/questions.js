@@ -178,6 +178,7 @@ export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collecti
             selected.map(item => dispatch(setCollection(item.id, collectionId)));
         } else {
             const collection = _.findWhere(state.collections.collections, { id: collectionId });
+
             if (undoable) {
                 dispatch(addUndo(createUndo(
                     "moved",
