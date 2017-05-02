@@ -16,6 +16,7 @@
              [util :as qputil]]
             [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
+           java.sql.SQLException
            [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression ExpressionRef Field RelativeDateTimeValue Value]))
 
 (def ^:dynamic *query*
@@ -299,7 +300,7 @@
     {:rows    (or rows [])
      :columns columns}))
 
-(defn- exception->nice-error-message ^String [^java.sql.SQLException e]
+(defn- exception->nice-error-message ^String [^SQLException e]
   (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
            (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
            second)             ; so just return the part of the exception that is relevant
@@ -307,7 +308,7 @@
 
 (defn- do-with-try-catch {:style/indent 0} [f]
   (try (f)
-       (catch java.sql.SQLException e
+       (catch SQLException e
          (log/error (jdbc/print-sql-exception-chain e))
          (throw (Exception. (exception->nice-error-message e))))))
 
@@ -344,8 +345,11 @@
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
                                     (run-query query transaction-connection)))
-    (catch java.sql.SQLException e
+    (catch SQLException e
       (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (run-query-without-timezone driver settings connection query))
+    (catch Throwable e
+      (log/error "Failed to set timezone:\n" (.getMessage e))
       (run-query-without-timezone driver settings connection query))))
 
 
