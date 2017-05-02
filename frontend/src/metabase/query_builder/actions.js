@@ -156,18 +156,17 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         if (params.cardId || serializedCard) {
             // existing card being loaded
             try {
-                // TODO: Don't load a card if a card is passed in the hash? Speeds up the page load.
-
                 if (params.cardId) {
                     card = await loadCard(params.cardId);
 
-                    // when we are loading from a card id we want an explict clone of the card we loaded which is unmodified
+                    // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
                     originalCard = Utils.copy(card);
                 }
 
                 // if we have a serialized card then unpack it and use it
                 if (serializedCard) {
                     let deserializedCard = deserializeCardFromUrl(serializedCard);
+                    // the serialized card often differs from the card stored in db so merge the properties to fetched card if needed
                     card = card ? _.extend(card, deserializedCard) : deserializedCard;
                 }
 
