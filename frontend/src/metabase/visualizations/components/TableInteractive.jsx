@@ -12,6 +12,7 @@ import Value from "metabase/components/Value.jsx";
 
 import { capitalize } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { getTableCellClickedObject } from "metabase/visualizations/lib/table";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -212,38 +213,14 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-        const { isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
-        // $FlowFixMe: not sure why flow has a problem with this
-        const { rows, cols } = this.props.data;
+        const { data, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { rows, cols } = data;
 
         const column = cols[columnIndex];
         const row = rows[rowIndex];
         const value = row[columnIndex];
 
-        let clicked;
-        if (isPivoted) {
-            // if it's a pivot table, the first column is
-            if (columnIndex === 0) {
-                clicked = row._dimension;
-            } else {
-                clicked = {
-                    value,
-                    column,
-                    dimensions: [row._dimension, column._dimension]
-                };
-            }
-        } else if (column.source === "aggregation") {
-            clicked = {
-                value,
-                column,
-                dimensions: cols
-                    .map((column, index) => ({ value: row[index], column }))
-                    .filter(dimension => dimension.column.source === "breakout")
-            };
-        } else {
-            clicked = { value, column };
-        }
-
+        const clicked = getTableCellClickedObject(data, rowIndex, columnIndex, isPivoted);
         const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
 
         return (
