@@ -14,7 +14,7 @@ import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import { getParametersBySlug } from "metabase/meta/Parameter";
 
 import type { DashboardWithCards, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
-import type { Card, CardId } from "metabase/meta/types/Card";
+import type { UnsavedCard, Card, CardId } from "metabase/meta/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -55,7 +55,6 @@ export const SET_DASHCARD_ATTRIBUTES = "metabase/dashboard/SET_DASHCARD_ATTRIBUT
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS = "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
 export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS = "metabase/dashboard/REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS";
 export const UPDATE_DASHCARD_ID = "metabase/dashboard/UPDATE_DASHCARD_ID"
-export const SAVE_DASHCARD = "metabase/dashboard/SAVE_DASHCARD";
 
 export const FETCH_DASHBOARD_CARD_DATA = "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
@@ -66,8 +65,6 @@ export const FETCH_REVISIONS = "metabase/dashboard/FETCH_REVISIONS";
 export const REVERT_TO_REVISION = "metabase/dashboard/REVERT_TO_REVISION";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
-
-export const FETCH_DATABASE_METADATA = "metabase/dashboard/FETCH_DATABASE_METADATA";
 
 export const SET_EDITING_PARAMETER_ID = "metabase/dashboard/SET_EDITING_PARAMETER_ID";
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
@@ -496,10 +493,13 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
 
 /** All navigation actions from dashboards to cards (e.x. clicking a title, drill through)
  *  should go through this action, which merges any currently applied dashboard filters
- *  into the new card / URL parmeters.
+ *  into the new card / URL parameters.
  */
-const CHANGE_CARD_AND_RUN = "metabase/database/CHANGE_CARD_AND_RUN";
-export const onChangeCardAndRun = createThunkAction(CHANGE_CARD_AND_RUN, (card, dashcard = null) =>
+
+// TODO Atte Keinänen 5/2/17: This could be combined with `setCardAndRun` of query_builder/actions.js
+// Having two separate actions for very similar behavior was a source of initial confusion for me
+const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
+export const navigateToNewCard = createThunkAction(NAVIGATE_TO_NEW_CARD, (card: UnsavedCard|Card, dashcard: DashCard) =>
     (dispatch, getState) => {
         const { metadata } = getState();
         const { dashboardId, dashboards, parameterValues } = getState().dashboard;

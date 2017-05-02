@@ -30,7 +30,7 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type { Card as CardObject, VisualizationSettings } from "metabase/meta/types/Card";
+import type {Card as CardObject, UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
 import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
 import type { Metadata } from "metabase/meta/types/Metadata";
 
@@ -221,6 +221,23 @@ export default class Visualization extends Component<*, Props, State> {
         }, 100)
     }
 
+    handleOnChangeCardAndRun = (card: UnsavedCard) => {
+        // If the current card has a name, carry that information to the new card for showing lineage
+        // The card description is omitted because it isn't relevant for showing the lineage
+        const { series } = this.state
+        const currentlyInSavedCard = series[0] && series[0].card && series[0].card.id
+        if (currentlyInSavedCard) {
+            const savedCard: CardObject = {
+                ...card,
+                id: series[0].card.id,
+            };
+
+            this.props.onChangeCardAndRun(savedCard)
+        } else {
+            this.props.onChangeCardAndRun(card)
+        }
+    }
+
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {
         this.setState({ yAxisSplit, warnings });
     }
@@ -230,7 +247,7 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     render() {
-        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, onChangeCardAndRun } = this.props;
+        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -315,7 +332,7 @@ export default class Visualization extends Component<*, Props, State> {
                             actionButtons={extra}
                             description={settings["card.description"]}
                             settings={settings}
-                            onChangeCardAndRun={onChangeCardAndRun}
+                            onChangeCardAndRun={this.handleOnChangeCardAndRun}
                         />
                     </div>
                 : null
@@ -384,7 +401,7 @@ export default class Visualization extends Component<*, Props, State> {
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
                         gridSize={gridSize}
-                        onChangeCardAndRun={onChangeCardAndRun}
+                        onChangeCardAndRun={this.handleOnChangeCardAndRun}
                     />
                 }
                 <ChartTooltip
@@ -394,7 +411,7 @@ export default class Visualization extends Component<*, Props, State> {
                 <ChartClickActions
                     clicked={clicked}
                     clickActions={clickActions}
-                    onChangeCardAndRun={this.props.onChangeCardAndRun}
+                    onChangeCardAndRun={this.handleOnChangeCardAndRun}
                     onClose={() => this.setState({ clicked: null })}
                 />
             </div>

@@ -60,7 +60,7 @@ export default class DashCard extends Component {
             isEditingParameter,
             onAddSeries,
             onRemove,
-            onChangeCardAndRun,
+            navigateToNewCard,
             metadata
         } = this.props;
 
@@ -134,10 +134,8 @@ export default class DashCard extends Component {
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                     metadata={metadata}
-                    onChangeCardAndRun={(card) => {
-                        // ensure the original card ID is included to track lineage
-                        card = { ...card, id: series[0].card.id };
-                        onChangeCardAndRun(card, dashcard);
+                    onChangeCardAndRun={(card: UnsavedCard|Card) => {
+                        this.props.navigateToNewCard(card, dashcard)
                     }}
                 />
             </div>
