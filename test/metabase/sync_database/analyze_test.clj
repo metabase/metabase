@@ -92,8 +92,7 @@
   (let [table-id (db/select-one-id Table, :db_id db_id, :active true :name table-name)]
     (db/select-field :last_analyzed Field :table_id table-id)))
 
-
-(defn api-table-call [state table]
+(defn set-table-visibility-type! [table state]
   ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
                                                                        :entity_type     "person"
                                                                        :visibility_type state
@@ -103,21 +102,21 @@
   ((user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table)) {}))
 
 (defn sync-call [table]
-  (let [db-id(:db_id table)]
+  (let [db-id (:db_id table)]
     (analyze-data-shape-for-tables! (driver/database-id->driver db-id) {:id db-id})))
 
 ;; expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing
 (tt/expect-with-temp [Table [table {:rows 15}]
                       Field [field {:table_id (:id table)}]]
   1
-  (do (api-table-call "hidden" table)
+  (do (set-table-visibility-type! table "hidden")
       (api-sync-call table)
-      (api-table-call "cruft" table)
-      (api-table-call "cruft" table)
+      (set-table-visibility-type! table "cruft")
+      (set-table-visibility-type! table "cruft")
       (api-sync-call table)
-      (api-table-call "technical" table)
+      (set-table-visibility-type! table "technical")
       (api-sync-call table)
-      (api-table-call "technical" table)
+      (set-table-visibility-type! table "technical")
       (api-sync-call table)
       (api-sync-call table)
       (count-unanalyzed-fields (:db_id table) (:name table))))
@@ -126,14 +125,14 @@
 (tt/expect-with-temp [Table [table {:rows 15}]
                       Field [field {:table_id (:id table)}]]
   1
-  (do (api-table-call "hidden" table)
+  (do (set-table-visibility-type! table "hidden")
       (sync-call table)
-      (api-table-call "cruft" table)
-      (api-table-call "cruft" table)
+      (set-table-visibility-type! table "cruft")
+      (set-table-visibility-type! table "cruft")
       (sync-call table)
-      (api-table-call "technical" table)
+      (set-table-visibility-type! table "technical")
       (sync-call table)
-      (api-table-call "technical" table)
+      (set-table-visibility-type! table "technical")
       (sync-call table)
       (sync-call table)
       (count-unanalyzed-fields (:db_id table) (:name table))))
@@ -142,15 +141,15 @@
 (tt/expect-with-temp [Table [table {:rows 15}]
                       Field [field {:table_id (:id table)}]]
   0
-  (do (api-table-call "hidden" table)
-      (api-table-call nil table)
+  (do (set-table-visibility-type! table "hidden")
+      (set-table-visibility-type! table nil)
       (count-unanalyzed-fields (:db_id table) (:name table))))
 
 ;; re-hiding a table should not cause it to be analyzed
 (tt/expect-with-temp [Table [table {:rows 15}]
                       Field [field {:table_id (:id table)}]]
-  (do (api-table-call "hidden" table)
-      (api-table-call nil table)
+  (do (set-table-visibility-type! table "hidden")
+      (set-table-visibility-type! table nil)
       (get-latest-sync-time (:db_id table) (:name table)))
-  (do (api-table-call "hidden" table)
+  (do (set-table-visibility-type! table "hidden")
       (get-latest-sync-time (:db_id table) (:name table))))
