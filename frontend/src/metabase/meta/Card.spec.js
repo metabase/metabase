@@ -57,9 +57,9 @@ describe("metabase/meta/Card", () => {
             it("should return question URL with no parameters", () => {
                 const url = Card.questionUrlWithParameters(card, metadata, []);
                 expect(parseUrl(url)).toEqual({
-                    pathname: "/question/1",
+                    pathname: "/question",
                     query: {},
-                    card: dissoc(card, "id")
+                    card: card,
                 });
             });
             it("should return question URL with query string parameter", () => {
@@ -71,9 +71,9 @@ describe("metabase/meta/Card", () => {
                     parameterMappings
                 );
                 expect(parseUrl(url)).toEqual({
-                    pathname: "/question/1",
+                    pathname: "/question",
                     query: { baz: "bar" },
-                    card: dissoc(card, "id")
+                    card: card,
                 });
             });
         });
@@ -112,9 +112,9 @@ describe("metabase/meta/Card", () => {
             it("should return question URL with no parameters", () => {
                 const url = Card.questionUrlWithParameters(card, metadata, []);
                 expect(parseUrl(url)).toEqual({
-                    pathname: "/question/1",
+                    pathname: "/question",
                     query: {},
-                    card: dissoc(card, "id")
+                    card
                 });
             });
             it("should return question URL with string MBQL filter added", () => {
@@ -126,10 +126,10 @@ describe("metabase/meta/Card", () => {
                     parameterMappings
                 );
                 expect(parseUrl(url)).toEqual({
-                    pathname: "/question/1",
+                    pathname: "/question",
                     query: {},
                     card: assocIn(
-                        dissoc(card, "id"),
+                        card,
                         ["dataset_query", "query", "filter"],
                         ["AND", ["=", ["field-id", 1], "bar"]]
                     )
@@ -144,10 +144,10 @@ describe("metabase/meta/Card", () => {
                     parameterMappings
                 );
                 expect(parseUrl(url)).toEqual({
-                    pathname: "/question/1",
+                    pathname: "/question",
                     query: {},
                     card: assocIn(
-                        dissoc(card, "id"),
+                        card,
                         ["dataset_query", "query", "filter"],
                         ["AND", ["=", ["field-id", 2], 123]]
                     )
@@ -161,11 +161,12 @@ describe("metabase/meta/Card", () => {
                     { "3": "2017-05" },
                     parameterMappings
                 );
+
                 expect(parseUrl(url)).toEqual({
-                    pathname: "/question/1",
+                    pathname: "/question",
                     query: {},
                     card: assocIn(
-                        dissoc(card, "id"),
+                        card,
                         ["dataset_query", "query", "filter"],
                         ["AND", ["=", ["datetime-field", ["field-id", 3], "month"], "2017-05-01"]]
                     )
@@ -180,10 +181,10 @@ describe("metabase/meta/Card", () => {
                     parameterMappings
                 );
                 expect(parseUrl(url)).toEqual({
-                    pathname: "/question/1",
+                    pathname: "/question",
                     query: {},
                     card: assocIn(
-                        dissoc(card, "id"),
+                        card,
                         ["dataset_query", "query", "filter"],
                         ["AND", ["=", ["datetime-field", ["fk->", 4, 5], "month"], "2017-05-01"]]
                     )

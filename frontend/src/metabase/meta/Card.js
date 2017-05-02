@@ -182,5 +182,5 @@ export function questionUrlWithParameters(
             console.warn("UNHANDLED PARAMETER", datasetParameter);
         }
     }
-    return Urls.question(card.id, card.dataset_query ? card : undefined, query);
+    return Urls.question(null, card.dataset_query ? card : undefined, query);
 }

@@ -78,7 +78,9 @@ export function serializeCardForUrl(card) {
     if (dataset_query.query) {
         dataset_query.query = Query.cleanQuery(dataset_query.query);
     }
+
     var cardCopy = {
+        id: card.id,
         name: card.name,
         description: card.description,
         dataset_query: dataset_query,
@@ -86,6 +88,7 @@ export function serializeCardForUrl(card) {
         parameters: card.parameters,
         visualization_settings: card.visualization_settings
     };
+
     return utf8_to_b64url(JSON.stringify(cardCopy));
 }
 
