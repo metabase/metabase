@@ -7,7 +7,9 @@
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.routes :as api]
+            [metabase.api
+             [dataset :as dataset-api]
+             [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
             [ring.util.response :as resp]
@@ -34,13 +36,15 @@
 (def ^:private embed  (partial entrypoint "embed"  :embeddable))
 
 (defroutes ^:private public-routes
-  (GET ["/question/:uuid.csv"  :uuid u/uuid-regex] [uuid] (resp/redirect (format "/api/public/card/%s/query/csv"  uuid)))
-  (GET ["/question/:uuid.json" :uuid u/uuid-regex] [uuid] (resp/redirect (format "/api/public/card/%s/query/json" uuid)))
+  (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format dataset-api/export-format-regex]
+       [uuid export-format]
+       (resp/redirect (format "/api/public/card/%s/query/%s" uuid export-format)))
   (GET "*" [] public))
 
 (defroutes ^:private embed-routes
-  (GET "/question/:token.csv"  [token] (resp/redirect (format "/api/embed/card/%s/query/csv"  token)))
-  (GET "/question/:token.json" [token] (resp/redirect (format "/api/embed/card/%s/query/json" token)))
+  (GET ["/question/:token.:export-format", :export-format dataset-api/export-format-regex]
+       [token export-format]
+       (resp/redirect (format "/api/embed/card/%s/query/%s" token export-format)))
   (GET "*" [] embed))
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete

@@ -1,6 +1,7 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require [cheshire.core :as json]
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
             [metabase
@@ -24,7 +25,8 @@
             [metabase.test.data.users :refer :all]
             [toucan.db :as db]
             [toucan.util.test :as tt])
-  (:import java.util.UUID))
+  (:import java.io.ByteArrayInputStream
+           java.util.UUID))
 
 ;;; CARD LIFECYCLE
 
@@ -400,20 +402,31 @@
       (perms/grant-native-read-permissions! (perms-group/all-users) database-id)
       ((user->client :rasta) :post 200 (format "card/%d/query/json" (u/get-id card))))))
 
+;;; Tests for GET /api/card/:id/xlsx
+(expect
+  [{:col "COUNT(*)"} {:col 75.0}]
+  (do-with-temp-native-card
+    (fn [database-id card]
+      (perms/grant-native-read-permissions! (perms-group/all-users) database-id)
+      (->> ((user->client :rasta) :post 200 (format "card/%d/query/xlsx" (u/get-id card)) {:request-options {:as :byte-array}})
+           ByteArrayInputStream.
+           spreadsheet/load-workbook
+           (spreadsheet/select-sheet "Query result")
+           (spreadsheet/select-columns {:A :col})))))
 
-;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json **WITH PARAMETERS**
+;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 
 (defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
   (tt/with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
-               Table     [{table-id :id}    {:db_id database-id, :name "VENUES"}]
-               Card      [card              {:dataset_query {:database database-id
-                                                             :type     :native
-                                                             :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
-                                                                        :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
-                                                                                                   :name         "category"
-                                                                                                   :display_name "Category"
-                                                                                                   :type         "number"
-                                                                                                   :required     true}}}}}]]
+                  Table     [{table-id :id}    {:db_id database-id, :name "VENUES"}]
+                  Card      [card              {:dataset_query {:database database-id
+                                                                :type     :native
+                                                                :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
+                                                                           :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
+                                                                                                      :name         "category"
+                                                                                                      :display_name "Category"
+                                                                                                      :type         "number"
+                                                                                                      :required     true}}}}}]]
     (f database-id card)))
 
 (def ^:private ^:const ^String encoded-params
@@ -436,6 +449,17 @@
     (fn [database-id card]
       ((user->client :rasta) :post 200 (format "card/%d/query/json?parameters=%s" (u/get-id card) encoded-params)))))
 
+;; XLSX
+(expect
+  [{:col "COUNT(*)"} {:col 8.0}]
+  (do-with-temp-native-card-with-params
+    (fn [database-id card]
+      (->> ((user->client :rasta) :post 200 (format "card/%d/query/xlsx?parameters=%s" (u/get-id card) encoded-params)
+            {:request-options {:as :byte-array}})
+           ByteArrayInputStream.
+           spreadsheet/load-workbook
+           (spreadsheet/select-sheet "Query result")
+           (spreadsheet/select-columns {:A :col})))))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      COLLECTIONS                                                       |

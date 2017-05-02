@@ -114,18 +114,13 @@
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid uuid parameters))
 
-(api/defendpoint GET "/card/:uuid/query/json"
-  "Fetch a publically-accessible Card and return query results as JSON. Does not require auth credentials. Public sharing must be enabled."
-  [uuid parameters]
-  {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
-
-(api/defendpoint GET "/card/:uuid/query/csv"
-  "Fetch a publically-accessible Card and return query results as CSV. Does not require auth credentials. Public sharing must be enabled."
-  [uuid parameters]
-  {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
-
+(api/defendpoint GET "/card/:uuid/query/:export-format"
+  "Fetch a publically-accessible Card and return query results in the specified format. Does not require auth credentials. Public sharing must be enabled."
+  [uuid export-format parameters]
+  {parameters    (s/maybe su/JSONString)
+   export-format dataset-api/ExportFormat}
+  (dataset-api/as-format export-format
+    (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
 ;;; ------------------------------------------------------------ Public Dashboards ------------------------------------------------------------
 

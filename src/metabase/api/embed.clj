@@ -276,16 +276,12 @@
   (run-query-for-unsigned-token (eu/unsign token) query-params))
 
 
-(api/defendpoint GET "/card/:token/query/csv"
-  "Like `GET /api/embed/card/query`, but returns the results as CSV."
-  [token & query-params]
-  (dataset-api/as-csv (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
-
-
-(api/defendpoint GET "/card/:token/query/json"
-  "Like `GET /api/embed/card/query`, but returns the results as JSOn."
-  [token & query-params]
-  (dataset-api/as-json (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
+(api/defendpoint GET ["/card/:token/query/:export-format", :export-format dataset-api/export-format-regex]
+  "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
+  [token export-format & query-params]
+  {export-format dataset-api/ExportFormat}
+  (dataset-api/as-format export-format
+    (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
 
 
 ;;; ------------------------------------------------------------ /api/embed/dashboard endpoints ------------------------------------------------------------
