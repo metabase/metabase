@@ -246,7 +246,7 @@
   (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
 
   (let [start-time-ns         (System/nanoTime)
-        tables                (db/select table/Table, :db_id database-id, :active true)
+        tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
         tables-count          (count tables)
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]

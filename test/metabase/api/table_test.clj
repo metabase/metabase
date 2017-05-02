@@ -5,7 +5,8 @@
              [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
-             [util :as u]]
+             [util :as u]
+             [sync-database :as sync-database]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -374,6 +375,26 @@
                                                                            :description     "What a nice table!"})
       (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
               :updated_at)))
+
+(tt/expect-with-temp [Table [table {:rows 15}]]
+  2
+  (let [original-sync-table! sync-database/sync-table!
+        called (atom 0)
+        test-fun (fn [state]
+                   (with-redefs [sync-database/sync-table! (fn [& args] (swap! called inc)
+                                                             (apply original-sync-table! args))]
+                     ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
+                                                                                          :entity_type     "person"
+                                                                                          :visibility_type state
+                                                                                          :description     "What a nice table!"})))]
+    (do (test-fun "hidden")
+        (test-fun nil)
+        (test-fun "hidden")
+        (test-fun "cruft")
+        (test-fun "technical")
+        (test-fun nil)
+        (test-fun "technical")
+        @called)))
 
 
 ;; ## GET /api/table/:id/fks
