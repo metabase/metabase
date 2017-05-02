@@ -2,13 +2,15 @@
 
 import React, { Component } from "react";
 
+import { ModalFooter } from "metabase/components/ModalContent"
+import AdminContentTable from "metabase/components/AdminContentTable";
 import Button from "metabase/components/Button";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
 import GroupSummary from "metabase/admin/people/components/GroupSummary";
-import Icon from "metabase/components/Icon.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import Icon from "metabase/components/Icon";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import { PermissionsApi, SettingsApi } from "metabase/services";
 
@@ -107,27 +109,22 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
             <div className="flex align-center">
                 <SettingToggle {...this.props} />
                 <div className="flex align-center pt1">
-                    <Button className="ml1" medium onClick={this._showEditModal}>Edit Mappings</Button>
+                    <Button type="button" className="ml1" medium onClick={this._showEditModal}>Edit Mappings</Button>
                 </div>
                 { showEditModal ? (
                     <Modal wide>
-                        <div className="p4">
-                            <h2>Group Mappings</h2>
-                            <Button className="float-right" primary onClick={this._showAddRow}>Create a mapping</Button>
-                            <p className="text-measure">
-                                Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
-                                directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a
-                                failsafe measure.
-                            </p>
-                            <table className="ContentTable">
-                                <thead>
-                                    <tr>
-                                        <th>Distinguished Name</th>
-                                        <th>Groups</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        <div>
+                            <div className="pt4 px4">
+                                <h2>Group Mappings</h2>
+                            </div>
+                            <div className="px4">
+                                <Button className="float-right" primary onClick={this._showAddRow}>Create a mapping</Button>
+                                <p className="text-measure">
+                                    Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the
+                                    directory server. Membership to the Admin group can be granted through mappings, but will not be automatically removed as a
+                                    failsafe measure.
+                                </p>
+                                <AdminContentTable columnTitles={['Distinguished Name', 'Groups', '']}>
                                     { showAddRow ? (
                                         <AddMappingRow mappings={mappings} onCancel={this._hideAddRow} onAdd={this._addMapping} />
                                     ) : null }
@@ -141,12 +138,12 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
                                             onDelete={this._deleteMapping(dn)}
                                         />
                                     ) }
-                                </tbody>
-                            </table>
-                            <div className="py1">
-                                <Button borderless onClick={this._cancelClick}>Cancel</Button>,
-                                <Button primary className="ml2" onClick={this._saveClick}>Save</Button>
+                                </AdminContentTable>
                             </div>
+                            <ModalFooter>
+                                <Button type="button" onClick={this._cancelClick}>Cancel</Button>
+                                <Button primary onClick={this._saveClick}>Save</Button>
+                            </ModalFooter>
                         </div>
                     </Modal>
                 ) : null }

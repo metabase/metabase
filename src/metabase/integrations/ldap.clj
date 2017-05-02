@@ -32,7 +32,7 @@
              (setting/set-string! :ldap-security new-value)))
 
 (defsetting ldap-bind-dn
-  "The DN to bind as, this user will be used to lookup information about other users.")
+  "The Distinguished Name to bind as, this user will be used to lookup information about other users.")
 
 (defsetting ldap-password
   "The password to bind with.")
@@ -41,7 +41,7 @@
   "Search base for users. (Will be searched recursively)")
 
 (defsetting ldap-user-filter
-  "Filter to use for looking up a specific user, the placeholder {login} will be replaced by the user supplied login."
+  "User lookup filter, the placeholder {login} will be replaced by the user supplied login."
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
