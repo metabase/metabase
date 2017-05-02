@@ -35,7 +35,7 @@
   "The Distinguished Name to bind as, this user will be used to lookup information about other users.")
 
 (defsetting ldap-password
-  "The password to bind with.")
+  "The password to bind with for the lookup user.")
 
 (defsetting ldap-user-base
   "Search base for users. (Will be searched recursively)")
@@ -62,8 +62,7 @@
   :default false)
 
 (defsetting ldap-group-base
-  "Search base for groups. (Will be searched recursively if the LDAP directory does not provide a 'memberOf' overlay attribute)")
-
+  "Search base for groups, not required if your LDAP directory provides a 'memberOf' overlay. (Will be searched recursively)")
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
@@ -78,9 +77,7 @@
        (boolean (ldap-host))
        (boolean (ldap-bind-dn))
        (boolean (ldap-password))
-       (boolean (ldap-user-base))
-       (or (not (ldap-group-sync))
-           (boolean (ldap-group-base)))))
+       (boolean (ldap-user-base))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   {:host      (str host ":" port)
@@ -126,12 +123,13 @@
   ([dn]
     (with-connection get-user-groups dn))
   ([conn dn]
-    (let [results (ldap/search conn (ldap-group-base) {:scope      :sub
-                                                       :filter     (str "member=" (escape-value dn))
-                                                       :attributes [:dn :distinguishedName]})]
-      (filter some?
-        (for [result results]
-          (or (:dn result) (:distinguishedName result)))))))
+    (when (ldap-group-base)
+      (let [results (ldap/search conn (ldap-group-base) {:scope      :sub
+                                                         :filter     (str "member=" (escape-value dn))
+                                                         :attributes [:dn :distinguishedName]})]
+        (filter some?
+          (for [result results]
+            (or (:dn result) (:distinguishedName result))))))))
 
 (defn test-ldap-connection
   "Test the connection to an LDAP server to determine if we can find the search base.
@@ -147,14 +145,27 @@
   [{:keys [user-base group-base], :as details}]
   (try
     (with-open [conn (ldap/connect (details->ldap-options details))]
-      (if-let [_ (ldap/get conn user-base)]
-        (if-let [_ (or (nil? group-base) (ldap/get conn group-base))]
-          {:status :SUCCESS}
-          {:status  :ERROR, :message "Group search base does not exist or is unreadable"})
-        {:status  :ERROR, :message "User search base does not exist or is unreadable"}))
+      (let [user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"}
+            group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"}]
+        (or
+          (try
+            (when-not (ldap/get conn user-base)
+              user-base-error)
+            (catch Exception e
+              user-base-error))
+
+          (when group-base
+            (try
+              (when-not (ldap/get conn group-base)
+                group-base-error)
+              (catch Exception e
+                group-base-error)))
+
+          {:status :SUCCESS})))
+    (catch com.unboundid.ldap.sdk.LDAPException e
+      {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
     (catch Exception e
-      ;; ActiveDirectory annoyingly throws for every little thing
-      {:status  :ERROR, :message (.getMessage e)})))
+      {:status :ERROR, :message (.getMessage e)})))
 
 (defn find-user
   "Gets user information for the supplied username."
@@ -194,7 +205,7 @@
 
 (defn fetch-or-create-user!
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
-  [{:keys [first-name last-name email groups], :as user-info} password]
+  [{:keys [first-name last-name email groups]} password]
   (let [user (or (db/select-one [User :id :last_login] :email email)
              (user/create-new-ldap-auth-user! first-name last-name email password))]
     (u/prog1 user

@@ -29,12 +29,13 @@
   [{:keys [status message]}]
   (when (not= :SUCCESS status)
     (log/warn "Problem connecting to LDAP server:" message)
-    (let [conn-error       {:errors {:ldap-host "Wrong host or port"
-                                     :ldap-port "Wrong host or port"}}
-          security-error   {:errors {:ldap-port     "Wrong port or security setting"
-                                     :ldap-security "Wrong port or security setting"}}
-          creds-error      {:errors {:ldap-bind-dn  "Wrong bind DN or password"
-                                     :ldap-password "Wrong bind DN or password"}}]
+    (let [conn-error     {:errors {:ldap-host "Wrong host or port"
+                                   :ldap-port "Wrong host or port"}}
+          security-error {:errors {:ldap-port     "Wrong port or security setting"
+                                   :ldap-security "Wrong port or security setting"}}
+          bind-dn-error  {:errors {:ldap-bind-dn "Wrong bind DN"}}
+          creds-error    {:errors {:ldap-bind-dn  "Wrong bind DN or password"
+                                   :ldap-password "Wrong bind DN or password"}}]
       (condp re-matches message
         #".*UnknownHostException.*"
         conn-error
@@ -45,15 +46,35 @@
         #".*SocketException.*"
         security-error
 
-        #"^80090308:.*"
+        #".*SSLException.*"
+        security-error
+
+        #"^For input string.*"
+        {:errors {:ldap-host "Invalid hostname, do not add the 'ldap://' or 'ldaps://' prefix"}}
+
+        #".*password was incorrect.*"
+        {:errors {:ldap-password "Password was incorrect"}}
+
+        #"^Unable to bind as user.*"
+        bind-dn-error
+
+        #"^Unable to parse bind DN.*"
+        {:errors {:ldap-bind-dn "Invalid bind DN"}}
+
+        #".*AcceptSecurityContext error, data 525,.*"
+        bind-dn-error
+
+        #".*AcceptSecurityContext error, data 52e,.*"
         creds-error
 
-        #"^Unable to bind as user .*"
-        creds-error
+        #".*AcceptSecurityContext error, data 532,.*"
+        {:errors {:ldap-password "Password is expired"}}
 
-        #"(?s)^0000202B:.*"
-        {:errors {:ldap-user-base  "User or group search base does not exist or is unreadable"
-                  :ldap-group-base "User or group search base does not exist or is unreadable"}}
+        #".*AcceptSecurityContext error, data 533,.*"
+        {:errors {:ldap-bind-dn "Account is disabled"}}
+
+        #".*AcceptSecurityContext error, data 701,.*"
+        {:errors {:ldap-bind-dn "Account is expired"}}
 
         #"^User search base does not exist .*"
         {:errors {:ldap-user-base "User search base does not exist or is unreadable"}}
@@ -63,7 +84,7 @@
 
         ;; everything else :(
         #"(?s).*"
-        {:message "Sorry, something went wrong. Please try again."}))))
+        {:message message}))))
 
 (defendpoint PUT "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
@@ -75,13 +96,13 @@
                           (assoc :port
                             (when-not (empty? (:ldap-port settings))
                               (Integer/parseInt (:ldap-port settings)))))
-        results       (if (or config/is-test? (not (:ldap-enabled settings)))
-                        ;; for unit testing or disabled status just respond with a success message
+        results       (if-not (:ldap-enabled settings)
+                        ;; when disabled just respond with a success message
                         {:status :SUCCESS}
-                        ;; in normal conditions, validate connection
+                        ;; otherwise validate settings
                         (ldap/test-ldap-connection ldap-details))]
     (if (= :SUCCESS (:status results))
-      ;; test was good, save our settings
+      ;; test succeeded, save our settings
       (setting/set-many! ldap-settings)
       ;; test failed, return result message
       {:status 500

@@ -81,9 +81,6 @@ export default class SettingsLdapForm extends Component {
         // Validate form only if LDAP is enabled
         if (formData['ldap-enabled']) {
             elements.forEach(function(element) {
-                // Do not validate group-base if group sync is not enabled
-                if (element.key === 'ldap-group-base' && !formData['ldap-group-sync']) return;
-
                 // test for required elements
                 if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
                     valid = false;
