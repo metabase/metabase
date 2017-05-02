@@ -156,6 +156,8 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         if (params.cardId || serializedCard) {
             // existing card being loaded
             try {
+                // TODO: Don't load a card if a card is passed in the hash? Speeds up the page load.
+
                 if (params.cardId) {
                     card = await loadCard(params.cardId);
 
