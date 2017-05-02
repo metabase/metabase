@@ -308,7 +308,7 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualizationClick) {
+function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll("title").remove();
@@ -391,6 +391,12 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualiza
                             ],
                             origin: d.key._origin
                         }
+                    } else if (isScalarSeries) {
+                        // special case for multi-series scalar series, which should be treated as scalars
+                        clicked = {
+                            value: d.data.value,
+                            column: series[seriesIndex].data.cols[1]
+                        };
                     } else if (d.data) { // line, area, bar
                         if (!isSingleSeriesBar) {
                             cols = series[seriesIndex].data.cols;
@@ -1153,7 +1159,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
     }
     const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
-    applyChartTooltips(parent, series, isStacked, (hovered) => {
+    applyChartTooltips(parent, series, isStacked, isScalarSeries, (hovered) => {
         if (onHoverChange) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {
