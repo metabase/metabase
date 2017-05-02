@@ -138,8 +138,8 @@
     (if-not (values-are-valid-json? (take driver/max-sync-lazy-seq-results (driver/field-values-lazy-seq driver field)))
       field-stats
       (do
-        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :type/JSON." (field/qualified-name field)))
-        (assoc field-stats :special-type :type/JSON, :preview-display false)))))
+        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :type/SerializedJSON." (field/qualified-name field)))
+        (assoc field-stats :special-type :type/SerializedJSON, :preview-display false)))))
 
 (defn- values-are-valid-emails?
   "`true` if at every item in VALUES is `nil` or a valid email, and at least one of those is non-nil."

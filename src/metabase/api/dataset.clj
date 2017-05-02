@@ -2,7 +2,7 @@
   "/api/dataset endpoints."
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
-            [clojure.string :as string]
+            [clojure.string :as str]
             [compojure.core :refer [POST]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase
@@ -106,7 +106,12 @@
       {:status 500
        :body   (:error response)})))
 
-(def ^:private export-format-regex (re-pattern (str "(" (string/join "|" (keys export-formats)) ")")))
+(def export-format-regex
+  "Regex for matching valid export formats (e.g., `json`) for queries.
+   Inteneded for use in an endpoint definition:
+
+     (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
+  (re-pattern (str "(" (str/join "|" (keys export-formats)) ")")))
 
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
