@@ -5,12 +5,16 @@ import cx from "classnames";
 
 import DatePicker, {DATE_OPERATORS} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
 import {generateTimeFilterValuesDescriptions} from "metabase/lib/query_time";
-import { timeParameterValueToMBQL } from "metabase/meta/Parameter";
+import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
 
 import type {OperatorName} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
 import type {FieldFilter} from "metabase/meta/types/Query";
 
 type UrlEncoded = string;
+
+// Use a placeholder value as field references are not used in dashboard filters
+// $FlowFixMe
+const noopRef: LocalFieldReference = null;
 
 function getFilterValueSerializer(func: ((val1: string, val2: string) => UrlEncoded)) {
     // $FlowFixMe
@@ -65,7 +69,7 @@ export default class DateAllOptionsWidget extends Component<*, Props, State> {
 
         this.state = {
             // $FlowFixMe
-            filter: props.value != null ? timeParameterValueToMBQL(props.value) || [] : []
+            filter: props.value != null ? dateParameterValueToMBQL(props.value, noopRef) || [] : []
         }
     }
 
@@ -74,7 +78,7 @@ export default class DateAllOptionsWidget extends Component<*, Props, State> {
 
     static format = (urlEncoded: ?string) => {
         if (urlEncoded == null) return null;
-        const filter = timeParameterValueToMBQL(urlEncoded);
+        const filter = dateParameterValueToMBQL(urlEncoded, noopRef);
 
         return filter ? getFilterTitle(filter) : null;
     };

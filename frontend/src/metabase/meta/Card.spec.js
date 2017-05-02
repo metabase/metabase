@@ -4,6 +4,14 @@ import { assocIn, dissoc } from "icepick";
 
 describe("metabase/meta/Card", () => {
     describe("questionUrlWithParameters", () => {
+        const metadata = {
+            fields: {
+                2: {
+                    base_type: "type/Integer"
+                }
+            }
+        }
+
         const parameters = [
             {
                 id: 1,
@@ -47,7 +55,7 @@ describe("metabase/meta/Card", () => {
                 }
             ];
             it("should return question URL with no parameters", () => {
-                const url = Card.questionUrlWithParameters(card, []);
+                const url = Card.questionUrlWithParameters(card, metadata, []);
                 expect(parseUrl(url)).toEqual({
                     pathname: "/question/1",
                     query: {},
@@ -57,6 +65,7 @@ describe("metabase/meta/Card", () => {
             it("should return question URL with query string parameter", () => {
                 const url = Card.questionUrlWithParameters(
                     card,
+                    metadata,
                     parameters,
                     { "1": "bar" },
                     parameterMappings
@@ -101,7 +110,7 @@ describe("metabase/meta/Card", () => {
                 },
             ];
             it("should return question URL with no parameters", () => {
-                const url = Card.questionUrlWithParameters(card, []);
+                const url = Card.questionUrlWithParameters(card, metadata, []);
                 expect(parseUrl(url)).toEqual({
                     pathname: "/question/1",
                     query: {},
@@ -111,6 +120,7 @@ describe("metabase/meta/Card", () => {
             it("should return question URL with string MBQL filter added", () => {
                 const url = Card.questionUrlWithParameters(
                     card,
+                    metadata,
                     parameters,
                     { "1": "bar" },
                     parameterMappings
@@ -128,6 +138,7 @@ describe("metabase/meta/Card", () => {
             it("should return question URL with number MBQL filter added", () => {
                 const url = Card.questionUrlWithParameters(
                     card,
+                    metadata,
                     parameters,
                     { "2": "123" },
                     parameterMappings
@@ -138,13 +149,14 @@ describe("metabase/meta/Card", () => {
                     card: assocIn(
                         dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
-                        ["AND", ["=", ["field-id", 1], 123]]
+                        ["AND", ["=", ["field-id", 2], 123]]
                     )
                 });
             });
             it("should return question URL with date MBQL filter added", () => {
                 const url = Card.questionUrlWithParameters(
                     card,
+                    metadata,
                     parameters,
                     { "3": "2017-05" },
                     parameterMappings
@@ -162,6 +174,7 @@ describe("metabase/meta/Card", () => {
             it("should return question URL with date MBQL filter on a FK added", () => {
                 const url = Card.questionUrlWithParameters(
                     card,
+                    metadata,
                     parameters,
                     { "4": "2017-05" },
                     parameterMappings

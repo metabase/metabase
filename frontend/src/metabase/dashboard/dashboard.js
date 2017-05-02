@@ -20,7 +20,7 @@ import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
 import { addParamValues, fetchDatabaseMetadata } from "metabase/redux/metadata";
-
+import { push } from "react-router-redux";
 
 import { DashboardApi, CardApi, RevisionApi, PublicApi, EmbedApi } from "metabase/services";
 
@@ -494,8 +494,6 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
     return { id };
 });
 
-import { push } from "react-router-redux";
-
 /** All navigation actions from dashboards to cards (e.x. clicking a title, drill through)
  *  should go through this action, which merges any currently applied dashboard filters
  *  into the new card / URL parmeters.
@@ -503,10 +501,11 @@ import { push } from "react-router-redux";
 const CHANGE_CARD_AND_RUN = "metabase/database/CHANGE_CARD_AND_RUN";
 export const onChangeCardAndRun = createThunkAction(CHANGE_CARD_AND_RUN, (card, dashcard = null) =>
     (dispatch, getState) => {
+        const { metadata } = getState();
         const { dashboardId, dashboards, parameterValues } = getState().dashboard;
         const dashboard = dashboards[dashboardId];
 
-        const url = questionUrlWithParameters(card, dashboard.parameters, parameterValues, dashcard && dashcard.parameter_mappings);
+        const url = questionUrlWithParameters(card, metadata, dashboard.parameters, parameterValues, dashcard && dashcard.parameter_mappings);
         dispatch(push(url));
     });
 

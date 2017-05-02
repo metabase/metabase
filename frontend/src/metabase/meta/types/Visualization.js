@@ -33,6 +33,7 @@ export type ClickObject = {
     dimensions?: DimensionValue[],
     event?: MouseEvent,
     element?: HTMLElement,
+    seriesIndex?: number,
 }
 
 export type ClickAction = {
@@ -79,6 +80,7 @@ export type VisualizationProps = {
     onHoverChange: (?HoverObject) => void,
     onVisualizationClick: (?ClickObject) => void,
     visualizationIsClickable: (?ClickObject) => boolean,
+    onChangeCardAndRun: (card: Card) => void,
 
     onUpdateVisualizationSettings: ({ [key: string]: any }) => void
 }

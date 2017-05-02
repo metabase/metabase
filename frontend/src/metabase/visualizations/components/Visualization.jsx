@@ -32,6 +32,7 @@ export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see
 
 import type { Card as CardObject, VisualizationSettings } from "metabase/meta/types/Card";
 import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
+import type { Metadata } from "metabase/meta/types/Metadata";
 
 type Props = {
     series: Series,
@@ -60,7 +61,7 @@ type Props = {
     settings: VisualizationSettings,
 
     // for click actions
-    metadata: null, // FIXME
+    metadata: Metadata,
     onChangeCardAndRun: (card: CardObject) => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
@@ -189,7 +190,7 @@ export default class Visualization extends Component<*, Props, State> {
         const { series, metadata } = this.props;
         const seriesIndex = clicked.seriesIndex || 0;
         const card = series[seriesIndex].card;
-        const tableMetadata = Card.getTableMetadata(card, metadata);
+        const tableMetadata = card && Card.getTableMetadata(card, metadata);
         const mode = getMode(card, tableMetadata);
         return getModeDrills(mode, card, tableMetadata, clicked);
     }

@@ -2,11 +2,19 @@
 
 // Legacy "tableMetadata" etc
 
-import type { Database } from "metabase/meta/types/Database";
+import type { Database, DatabaseId } from "metabase/meta/types/Database";
 import type { Table, TableId } from "metabase/meta/types/Table";
 import type { Field, FieldId } from "metabase/meta/types/Field";
-import type { Segment } from "metabase/meta/types/Segment";
-import type { Metric } from "metabase/meta/types/Metric";
+import type { Segment, SegmentId } from "metabase/meta/types/Segment";
+import type { Metric, MetricId } from "metabase/meta/types/Metric";
+
+export type Metadata = {
+    databases: { [id: DatabaseId]: DatabaseMetadata },
+    tables:    { [id: TableId]:    TableMetadata },
+    fields:    { [id: FieldId]:    FieldMetadata },
+    metrics:   { [id: MetricId]:   MetricMetadata },
+    segments:  { [id: SegmentId]:  SegmentMetadata },
+}
 
 export type DatabaseMetadata = Database & {
     tables:              TableMetadata[],
@@ -41,7 +49,6 @@ export type SegmentMetadata = Segment & {
 export type MetricMetadata = Metric & {
     table:              TableMetadata,
 }
-
 
 export type FieldValue = {
     name: string,

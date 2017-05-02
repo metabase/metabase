@@ -10,9 +10,10 @@ import * as Urls from "metabase/lib/urls";
 import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
-import type { StructuredQuery, NativeQuery, TemplateTag } from "./types/Query";
-import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "./types/Card";
-import type { Parameter, ParameterMapping, ParameterValues } from "./types/Parameter";
+import type { StructuredQuery, NativeQuery, TemplateTag } from "metabase/meta/types/Query";
+import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "metabase/meta/types/Card";
+import type { Parameter, ParameterMapping, ParameterValues } from "metabase/meta/types/Parameter";
+import type { Metadata, TableMetadata } from "metabase/meta/types/Metadata";
 
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
@@ -66,9 +67,9 @@ export function getQuery(card: Card): ?StructuredQuery {
     }
 }
 
-export function getTableMetadata(card: Card, metadata): ?TableMetadata {
+export function getTableMetadata(card: Card, metadata: Metadata): ?TableMetadata {
     const query = getQuery(card);
-    if (query) {
+    if (query && query.source_table != null) {
         return metadata.tables[query.source_table] || null;
     }
     return null;
@@ -146,6 +147,7 @@ export function applyParameters(
 /** returns a question URL with parameters added to query string or MBQL filters */
 export function questionUrlWithParameters(
     card: Card,
+    metadata: Metadata,
     parameters: Parameter[],
     parameterValues: ParameterValues = {},
     parameterMappings: ParameterMapping[] = []
@@ -161,7 +163,7 @@ export function questionUrlWithParameters(
     );
 
     const query = {};
-    for (const datasetParameter of datasetQuery.parameters) {
+    for (const datasetParameter of datasetQuery.parameters || []) {
         const cardParameter = _.find(cardParameters, p =>
             Utils.equals(p.target, datasetParameter.target));
         if (cardParameter) {
@@ -169,7 +171,7 @@ export function questionUrlWithParameters(
             query[cardParameter.slug] = datasetParameter.value;
         } else if (isStructured(card)) {
             // if the card is structured, try converting the parameter to an MBQL filter clause
-            const filter = parameterToMBQLFilter(datasetParameter);
+            const filter = parameterToMBQLFilter(datasetParameter, metadata);
             if (filter) {
                 card = updateIn(card, ["dataset_query", "query"], query =>
                     Query.addFilter(query, filter));

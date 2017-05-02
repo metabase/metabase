@@ -1,14 +1,12 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { Link } from "react-router";
 import styles from "./Scalar.css";
 
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 
-import * as Urls from "metabase/lib/urls";
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 import { isNumber } from "metabase/lib/schema_metadata";

@@ -125,6 +125,7 @@ export const getParameterFieldValues = (state, props) => {
 function copyObjects(objects) {
     let copies = {};
     for (const object of Object.values(objects)) {
+        // $FlowFixMe
         copies[object.id] = { ...object };
     }
     return copies;
@@ -133,6 +134,7 @@ function copyObjects(objects) {
 // calls a function to derive the value of a property for every object
 function hydrate(objects, property, getPropertyValue) {
     for (const object of Object.values(objects)) {
+        // $FlowFixMe
         object[property] = getPropertyValue(object);
     }
 }
