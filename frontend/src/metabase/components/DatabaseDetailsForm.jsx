@@ -15,6 +15,7 @@ function isEmpty(str) {
 
 const AUTH_URL_PREFIXES = {
     bigquery: 'https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery&client_id=',
+    bigquery_with_drive: 'https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery%20https://www.googleapis.com/auth/drive&client_id=',
     googleanalytics: 'https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=',
 };
 
@@ -222,7 +223,10 @@ export default class DatabaseDetailsForm extends Component {
                 authURLLink = (
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
-                            <a href={authURL} target='_blank'>Click here to get an auth code 😋</a>
+                            <a href={authURL} target='_blank'>Click here</a> to get an auth code
+                            { engine === "bigquery" &&
+                                <span> (or <a href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID} target='_blank'>with Google Drive permissions</a>)</span>
+                            }
                         </div>
                     </div>);
             }
