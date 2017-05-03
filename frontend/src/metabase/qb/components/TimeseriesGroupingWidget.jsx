@@ -60,8 +60,8 @@ export default class TimeseriesGroupingWidget extends Component<*, Props, *> {
                                     0,
                                     breakout
                                 );
-                                // $FlowFixMe
                                 const datasetQuery: DatasetQuery = {
+                                    // $FlowFixMe
                                     ...card.dataset_query,
                                     query
                                 };

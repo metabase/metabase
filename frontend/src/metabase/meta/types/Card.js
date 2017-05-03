@@ -15,8 +15,8 @@ export type UnsavedCard = {
 
 export type SavedCardFields = {
     id: CardId,
-    name: ?string,
-    description: ?string,
+    name?: string,
+    description?: string,
 }
 
 export type Card = UnsavedCard & SavedCardFields;

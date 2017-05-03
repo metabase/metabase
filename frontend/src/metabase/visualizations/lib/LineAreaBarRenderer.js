@@ -417,11 +417,13 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                     // handle multiseries
                     if (clicked && series.length > 1) {
                         if (card._breakoutColumn) {
+                            // $FlowFixMe
                             clicked.dimensions.push({
                                 value: card._breakoutValue,
                                 column: card._breakoutColumn
                             });
                         } else {
+                            // $FlowFixMe
                             clicked.seriesIndex = seriesIndex;
                         }
                     }

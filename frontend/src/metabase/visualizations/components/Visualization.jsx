@@ -191,7 +191,9 @@ export default class Visualization extends Component<*, Props, State> {
         const seriesIndex = clicked.seriesIndex || 0;
         const card = series[seriesIndex].card;
         const tableMetadata = card && Card.getTableMetadata(card, metadata);
+        // $FlowFixMe
         const mode = getMode(card, tableMetadata);
+        // $FlowFixMe
         return getModeDrills(mode, card, tableMetadata, clicked);
     }
 
@@ -224,15 +226,18 @@ export default class Visualization extends Component<*, Props, State> {
     handleOnChangeCardAndRun = (card: UnsavedCard) => {
         // If the current card is saved, carry that information to the new card for showing lineage
         const { series } = this.state
+        // $FlowFixMe
         const currentlyInSavedCard = series[0] && series[0].card && series[0].card.id
         if (currentlyInSavedCard) {
             const savedCard: CardObject = {
                 ...card,
+                // $FlowFixMe
                 id: series[0].card.id
             };
 
             this.props.onChangeCardAndRun(savedCard)
         } else {
+            // $FlowFixMe
             this.props.onChangeCardAndRun(card)
         }
     }

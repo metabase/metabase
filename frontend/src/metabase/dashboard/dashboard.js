@@ -505,6 +505,7 @@ export const navigateToNewCard = createThunkAction(NAVIGATE_TO_NEW_CARD, (card: 
         const { dashboardId, dashboards, parameterValues } = getState().dashboard;
         const dashboard = dashboards[dashboardId];
 
+        // $FlowFixMe
         const url = questionUrlWithParameters(card, metadata, dashboard.parameters, parameterValues, dashcard && dashcard.parameter_mappings);
         dispatch(push(url));
     });
