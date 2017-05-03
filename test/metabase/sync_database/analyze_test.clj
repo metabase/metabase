@@ -88,14 +88,14 @@
              (db/count Field :table_id table-id)))
     (db/count Field :last_analyzed nil :table_id table-id)))
 
-(defn get-latest-sync-time [db_id table-name]
+(defn latest-sync-time [db_id table-name]
   (let [table-id (db/select-one-id Table, :db_id db_id, :active true :name table-name)]
     (db/select-field :last_analyzed Field :table_id table-id)))
 
-(defn set-table-visibility-type! [table state]
+(defn set-table-visibility-type! [table visibility-type]
   ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
                                                                        :entity_type     "person"
-                                                                       :visibility_type state
+                                                                       :visibility_type visibility-type
 
                                                                        :description     "What a nice table!"}))
 (defn api-sync-call [table]
@@ -150,6 +150,6 @@
                       Field [field {:table_id (:id table)}]]
   (do (set-table-visibility-type! table "hidden")
       (set-table-visibility-type! table nil)
-      (get-latest-sync-time (:db_id table) (:name table)))
+      (latest-sync-time (:db_id table) (:name table)))
   (do (set-table-visibility-type! table "hidden")
-      (get-latest-sync-time (:db_id table) (:name table))))
+      (latest-sync-time (:db_id table) (:name table))))
