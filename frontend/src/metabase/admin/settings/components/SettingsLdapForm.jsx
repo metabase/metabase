@@ -1,17 +1,20 @@
 import React, { Component, PropTypes } from "react";
 
-import cx from "classnames";
 import _ from "underscore";
+import cx from "classnames";
 
+import Collapse from "react-collapse";
+
+import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
-import SettingsSetting from "./SettingsSetting.jsx";
+import SettingsSetting from "./SettingsSetting";
 
 export default class SettingsLdapForm extends Component {
-
     constructor(props, context) {
         super(props, context);
         this.state = {
             formData: {},
+            showAttributes: false,
             submitting: "default",
             valid: false,
             validationErrors: {}
@@ -101,7 +104,10 @@ export default class SettingsLdapForm extends Component {
     }
 
     handleChangeEvent(element, value, event) {
-        this.setState({ formData: { ...this.state.formData, [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value } });
+        this.setState((previousState) => ({ formData: {
+            ...previousState.formData,
+            [element.key]: (MetabaseUtils.isEmpty(value)) ? null : value
+        } }));
     }
 
     handleFormErrors(error) {
@@ -118,6 +124,10 @@ export default class SettingsLdapForm extends Component {
         }
 
         return formErrors;
+    }
+
+    handleAttributeToggle() {
+        this.setState((previousState) => ({ showAttributes: !previousState['showAttributes'] }));
     }
 
     updateLdapSettings(e) {
@@ -146,10 +156,26 @@ export default class SettingsLdapForm extends Component {
     }
 
     render() {
-        let { elements } = this.props;
-        let { formData, formErrors, submitting, valid, validationErrors } = this.state;
+        const { elements } = this.props;
+        const { formData, formErrors, showAttributes, submitting, valid, validationErrors } = this.state;
 
-        let settings = elements.map((element, index) => {
+        let sections = {
+            'ldap-enabled': 'server',
+            'ldap-host': 'server',
+            'ldap-port': 'server',
+            'ldap-security': 'server',
+            'ldap-bind-dn': 'server',
+            'ldap-password': 'server',
+            'ldap-user-base': 'user',
+            'ldap-user-filter': 'user',
+            'ldap-attribute-email': 'attribute',
+            'ldap-attribute-firstname': 'attribute',
+            'ldap-attribute-lastname': 'attribute',
+            'ldap-group-sync': 'group',
+            'ldap-group-base': 'group'
+        }
+
+        const toElement = (element) => {
             // merge together data from a couple places to provide a complete view of the Element state
             let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
             let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
@@ -165,19 +191,22 @@ export default class SettingsLdapForm extends Component {
                         errorMessage={errorMessage}
                     />
                 );
-            } else if (element.key !== 'ldap-group-mappings') {
-                return (
-                    <SettingsSetting
-                        key={element.key}
-                        setting={{ ...element, value }}
-                        updateSetting={this.handleChangeEvent.bind(this, element)}
-                        errorMessage={errorMessage}
-                    />
-                );
             }
 
-            return null;
-        });
+            return (
+                <SettingsSetting
+                    key={element.key}
+                    setting={{ ...element, value }}
+                    updateSetting={this.handleChangeEvent.bind(this, element)}
+                    errorMessage={errorMessage}
+                />
+            );
+        };
+
+        let serverSettings = elements.filter(e => sections[e.key] === 'server').map(toElement);
+        let userSettings = elements.filter(e => sections[e.key] === 'user').map(toElement);
+        let attributeSettings = elements.filter(e => sections[e.key] === 'attribute').map(toElement);
+        let groupSettings = elements.filter(e => sections[e.key] === 'group').map(toElement);
 
         let saveSettingsButtonStates = {
             default: "Save changes",
@@ -185,20 +214,36 @@ export default class SettingsLdapForm extends Component {
             success: "Changes saved!"
         };
 
-        let disabled = (!valid || submitting !== "default"),
-            saveButtonText = saveSettingsButtonStates[submitting];
+        let disabled = (!valid || submitting !== "default");
+        let saveButtonText = saveSettingsButtonStates[submitting];
 
         return (
             <form noValidate>
-                <ul>
-                    {settings}
-                    <li className="m2 mb4">
-                        <button className={cx("Button mr2", {"Button--primary": !disabled}, {"Button--success-new": submitting === "success"})} disabled={disabled} onClick={this.updateLdapSettings.bind(this)}>
-                            {saveButtonText}
-                        </button>
-                        { formErrors && formErrors.message ? <span className="pl2 text-error text-bold">{formErrors.message}</span> : null }
-                    </li>
-                </ul>
+                <h2 className="mx2">Server Settings</h2>
+                <ul>{serverSettings}</ul>
+                <h2 className="mx2">User Schema</h2>
+                <ul>{userSettings}</ul>
+                <div className="mb4">
+                    <div className="inline-block ml1 cursor-pointer text-brand-hover" onClick={this.handleAttributeToggle.bind(this)}>
+                        <div className="flex align-center">
+                            <DisclosureTriangle open={showAttributes} />
+                            <h3>Attributes</h3>
+                        </div>
+                    </div>
+                    <Collapse isOpened={showAttributes} keepCollapsedContent>
+                        <ul>{attributeSettings}</ul>
+                    </Collapse>
+                </div>
+                <h2 className="mx2">Group Schema</h2>
+                <ul>{groupSettings}</ul>
+                <div className="m2 mb4">
+                    <button className={cx("Button mr2", {"Button--primary": !disabled}, {"Button--success-new": submitting === "success"})} disabled={disabled} onClick={this.updateLdapSettings.bind(this)}>
+                        {saveButtonText}
+                    </button>
+                    { (formErrors && formErrors.message) ? (
+                        <span className="pl2 text-error text-bold">{formErrors.message}</span>
+                    ) : null }
+                </div>
             </form>
         );
     }
