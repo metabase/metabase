@@ -62,7 +62,7 @@ type Props = {
 
     // for click actions
     metadata: Metadata,
-    onChangeCardAndRun: (card: CardObject) => void,
+    onChangeCardAndRun: (card: UnsavedCard|CardObject) => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -225,19 +225,25 @@ export default class Visualization extends Component<*, Props, State> {
 
     handleOnChangeCardAndRun = (card: UnsavedCard) => {
         // If the current card is saved, carry that information to the new card for showing lineage
-        const { series } = this.state
+        const { series, clicked } = this.state;
+
+        if (clicked == null) {
+            console.error("The visualization wasn't clicked before calling `onChangeCardAndRun`");
+            return;
+        }
+        const index = clicked.seriesIndex;
+
         // $FlowFixMe
-        const currentlyInSavedCard = series[0] && series[0].card && series[0].card.id
-        if (currentlyInSavedCard) {
+        const cardId = series[index] && series[index].card && series[index].card.id;
+        if (cardId) {
             const savedCard: CardObject = {
                 ...card,
                 // $FlowFixMe
-                id: series[0].card.id
+                id: cardId
             };
 
             this.props.onChangeCardAndRun(savedCard)
         } else {
-            // $FlowFixMe
             this.props.onChangeCardAndRun(card)
         }
     }
