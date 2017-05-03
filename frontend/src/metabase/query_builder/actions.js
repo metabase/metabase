@@ -164,15 +164,15 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                 card = serializedCard ? deserializeCardFromUrl(serializedCard) : {}
 
                 // load the card either from `cardId` parameter or the serialized card
-                const cardId = params.cardId || card.id
-                if (cardId) {
-                    const loadedCard = await loadCard(cardId);
-
+                if (params.cardId) {
+                    card = await loadCard(params.cardId);
                     // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
-                    originalCard = Utils.copy(loadedCard);
-
-                    // the serialized card often differs from the card stored in db so merge the properties to fetched card if needed
-                    card = {...loadedCard, ...card};
+                    originalCard = Utils.copy(card);
+                } else if (card.id) {
+                    // deserialized card contains the card id, so just populate originalCard
+                    originalCard = await loadCard(card.id);
+                    // strip the card id from the deserialized card so that we have a correct url and show lineage correctly
+                    card = _.omit(card, "id");
                 }
 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
