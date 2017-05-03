@@ -1,6 +1,6 @@
 import * as Card from "./Card";
 
-import { assocIn, dissoc } from "icepick";
+import { assocIn } from "icepick";
 
 describe("metabase/meta/Card", () => {
     describe("questionUrlWithParameters", () => {

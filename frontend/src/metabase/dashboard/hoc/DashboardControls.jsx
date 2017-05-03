@@ -38,7 +38,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         class extends Component<*, Props, State> {
             static displayName = "DashboardControls["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
 
-            state = {
+            state: State = {
                 isFullscreen: false,
                 isNightMode: false,
 

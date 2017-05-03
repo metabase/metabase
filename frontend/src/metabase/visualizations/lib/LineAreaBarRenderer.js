@@ -35,7 +35,7 @@ import { parseTimestamp } from "metabase/lib/time";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 
-import type { Series } from "metabase/meta/types/Visualization"
+import type { Series, ClickObject } from "metabase/meta/types/Visualization"
 
 const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
@@ -380,7 +380,7 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                     const card = series[seriesIndex].card;
                     const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
 
-                    let clicked;
+                    let clicked: ?ClickObject;
                     if (Array.isArray(d.key)) { // scatter
                         clicked = {
                             value: d.key[2],

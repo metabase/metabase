@@ -13,11 +13,13 @@ export function getTableCellClickedObject(data: DatasetData, rowIndex: number, c
     if (isPivoted) {
         // if it's a pivot table, the first column is
         if (columnIndex === 0) {
+            // $FlowFixMe: _dimension
             return row._dimension;
         } else {
             return {
                 value,
                 column,
+                // $FlowFixMe: _dimension
                 dimensions: [row._dimension, column._dimension]
             };
         }

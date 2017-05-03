@@ -177,17 +177,16 @@ export default class PieChart extends Component<*, Props, *> {
             value = formatMetric(total);
         }
 
-        const getSliceClickObject = ({ index, event }) => ({
+        const getSliceClickObject = (index) => ({
             value:      slices[index].value,
             column:     cols[metricIndex],
             dimensions: [{
                 value: slices[index].key,
                 column: cols[dimensionIndex],
-            }],
-            event:      event
+            }]
         })
 
-        const isClickable = onVisualizationClick && visualizationIsClickable(getSliceClickObject({ index: 0 }));
+        const isClickable = onVisualizationClick && visualizationIsClickable(getSliceClickObject(0));
         const getSliceIsClickable = (index) => isClickable && slices[index] !== otherSlice;
 
         return (
@@ -216,10 +215,10 @@ export default class PieChart extends Component<*, Props, *> {
                                         onMouseLeave={() => onHoverChange && onHoverChange(null)}
                                         className={cx({ "cursor-pointer": getSliceIsClickable(index) })}
                                         onClick={getSliceIsClickable(index) && ((e) =>
-                                            onVisualizationClick(getSliceClickObject({
-                                                index,
+                                            onVisualizationClick({
+                                                ...getSliceClickObject(index),
                                                 event: e.nativeEvent
-                                            }))
+                                            })
                                         )}
                                     />
                                 )}

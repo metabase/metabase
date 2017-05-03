@@ -135,7 +135,7 @@ export default class DashCard extends Component {
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                     metadata={metadata}
                     onChangeCardAndRun={(card: UnsavedCard|Card) => {
-                        this.props.navigateToNewCard(card, dashcard)
+                        navigateToNewCard(card, dashcard)
                     }}
                 />
             </div>

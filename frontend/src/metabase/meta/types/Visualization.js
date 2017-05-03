@@ -29,7 +29,7 @@ export type DimensionValue = {
 
 export type ClickObject = {
     value?: Value,
-    column: Column,
+    column?: Column,
     dimensions?: DimensionValue[],
     event?: MouseEvent,
     element?: HTMLElement,
