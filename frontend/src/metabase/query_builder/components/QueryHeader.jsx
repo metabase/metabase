@@ -29,6 +29,57 @@ import * as Urls from "metabase/lib/urls";
 import cx from "classnames";
 import _ from "underscore";
 
+import Button from "metabase/components/Button";
+import { connect } from "react-redux"
+import { setArchived } from "metabase/questions/questions"
+
+const mapStateToProps = () => ({})
+
+const mapDispatchToProps = {
+    setArchived
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
+class ArchiveQuestionModal extends Component {
+    onArchive = async () => {
+        try {
+            await this.props.setArchived(this.props.questionId, true, true)
+            this.onClose();
+        } catch (error) {
+            console.error('dat error', error)
+            this.setState({ error })
+        }
+    }
+
+    onClose = () => {
+        if (this.refs.archiveModal) {
+            this.refs.archiveModal.close();
+        }
+    }
+
+    render () {
+        return (
+            <ModalWithTrigger
+                ref="archiveModal"
+                triggerElement={
+                    <Tooltip key="archive" tooltip="Archive">
+                        <span className="text-brand-hover">
+                            <Icon name="archive" size={16} />
+                        </span>
+                    </Tooltip>
+                }
+                title="Archive this question"
+                footer={[
+                    <Button key='cancel' onClick={this.onClose}>Cancel</Button>,
+                    <Button key='archive' warning onClick={this.onArchive}>Archive</Button>
+                ]}
+            >
+                <div className="px4 pb4">The saved questions in this collection will also be archived.</div>
+            </ModalWithTrigger>
+        )
+    }
+}
+
 export default class QueryHeader extends Component {
     constructor(props, context) {
         super(props, context);
@@ -256,22 +307,7 @@ export default class QueryHeader extends Component {
 
                 // delete button
                 buttonSections.push([
-                    <Tooltip key="delete" tooltip="Delete">
-                        <ModalWithTrigger
-                            ref="deleteModal"
-                            triggerElement={
-                                <span className="text-brand-hover">
-                                    <Icon name="trash" size={16} />
-                                </span>
-                            }
-                        >
-                            <DeleteQuestionModal
-                                card={this.props.card}
-                                deleteCardFn={this.onDelete}
-                                onClose={() => this.refs.deleteModal.toggle()}
-                            />
-                        </ModalWithTrigger>
-                    </Tooltip>
+                    <ArchiveQuestionModal questionId={this.props.card.id} />
                 ]);
 
                 buttonSections.push([
