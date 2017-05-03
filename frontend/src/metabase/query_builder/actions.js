@@ -235,6 +235,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         // clean up the url and make sure it reflects our card state
         dispatch(updateUrl(card, {
             dirty: isCardDirty(card, originalCard),
+            replaceState: true,
             preserveParameters
         }));
 
