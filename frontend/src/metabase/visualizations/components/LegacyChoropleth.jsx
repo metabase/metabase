@@ -2,6 +2,7 @@ import React, { Component } from "react";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import d3 from "d3";
+import cx from "classnames";
 
 const LegacyChoropleth = ({ series, geoJson, projection, getColor, onHoverFeature, onClickFeature }) => {
     let geo = d3.geo.path()
@@ -27,6 +28,7 @@ const LegacyChoropleth = ({ series, geoJson, projection, getColor, onHoverFeatur
                                 event: e.nativeEvent
                             })}
                             onMouseLeave={() => onHoverFeature(null)}
+                            className={cx({ "cursor-pointer": !!onClickFeature })}
                             onClick={(e) => onClickFeature({
                                 feature: feature,
                                 event: e.nativeEvent

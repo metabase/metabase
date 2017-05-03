@@ -2,10 +2,53 @@
 
 // Legacy "tableMetadata" etc
 
-import type { Table } from "metabase/meta/types/Table";
-import type { Field } from "metabase/meta/types/Field";
-import type { Segment } from "metabase/meta/types/Segment";
-import type { Metric } from "metabase/meta/types/Metric";
+import type { Database, DatabaseId } from "metabase/meta/types/Database";
+import type { Table, TableId } from "metabase/meta/types/Table";
+import type { Field, FieldId } from "metabase/meta/types/Field";
+import type { Segment, SegmentId } from "metabase/meta/types/Segment";
+import type { Metric, MetricId } from "metabase/meta/types/Metric";
+
+export type Metadata = {
+    databases: { [id: DatabaseId]: DatabaseMetadata },
+    tables:    { [id: TableId]:    TableMetadata },
+    fields:    { [id: FieldId]:    FieldMetadata },
+    metrics:   { [id: MetricId]:   MetricMetadata },
+    segments:  { [id: SegmentId]:  SegmentMetadata },
+}
+
+export type DatabaseMetadata = Database & {
+    tables:              TableMetadata[],
+    tables_lookup:       { [id: TableId]: TableMetadata },
+}
+
+export type TableMetadata = Table & {
+    db:                  DatabaseMetadata,
+
+    fields:              FieldMetadata[],
+    fields_lookup:       { [id: FieldId]: FieldMetadata },
+
+    segments:            SegmentMetadata[],
+    metrics:             MetricMetadata[],
+
+    aggregation_options: AggregationOption[],
+    breakout_options:    BreakoutOption,
+}
+
+export type FieldMetadata = Field & {
+    table:              TableMetadata,
+    target:             FieldMetadata,
+
+    operators:    Operator[],
+    operators_lookup:   { [key: OperatorName]: Operator }
+}
+
+export type SegmentMetadata = Segment & {
+    table:              TableMetadata,
+}
+
+export type MetricMetadata = Metric & {
+    table:              TableMetadata,
+}
 
 export type FieldValue = {
     name: string,
@@ -32,10 +75,6 @@ export type OperatorField = {
 
 export type ValidArgumentsFilter = (field: Field, table: Table) => bool;
 
-export type FieldMetadata = Field & {
-    operators_lookup: { [name: string]: Operator }
-}
-
 export type AggregationOption = {
     name: string,
     short: string,
@@ -43,19 +82,11 @@ export type AggregationOption = {
     validFieldsFilter: (fields: Field[]) => Field[]
 }
 
-export type BreakoutOptions = {
+export type BreakoutOption = {
     name: string,
     short: string,
     fields: Field[],
     validFieldsFilter: (fields: Field[]) => Field[]
-}
-
-export type TableMetadata = Table & {
-    fields: FieldMetadata[],
-    segments: Segment[],
-    metrics: Metric[],
-    aggregation_options: AggregationOption[],
-    breakout_options: BreakoutOptions
 }
 
 export type FieldOptions = {

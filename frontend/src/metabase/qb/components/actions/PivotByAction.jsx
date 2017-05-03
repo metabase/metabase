@@ -29,6 +29,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
             !tableMetadata ||
             (clicked &&
                 (clicked.value === undefined ||
+                    // $FlowFixMe
                     clicked.column.source !== "aggregation"))
         ) {
             return [];

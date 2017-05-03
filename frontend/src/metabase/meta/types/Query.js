@@ -21,12 +21,13 @@ export type DatetimeUnit = "default" | "minute" | "minute-of-hour" | "hour" | "h
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;
+export type TemplateTagType = "text" | "number" | "date" | "dimension";
 
 export type TemplateTag = {
     id:           TemplateTagId,
     name:         TemplateTagName,
     display_name: string,
-    type:         string,
+    type:         TemplateTagType,
     dimension?:   LocalFieldReference,
     widget_type?: ParameterType,
     required?:    boolean,

@@ -25,7 +25,6 @@ import {
     getCard,
     getOriginalCard,
     getLastRunCard,
-    getDatabases,
     getQueryResult,
     getParameterValues,
     getIsDirty,
@@ -44,6 +43,8 @@ import {
     getIsResultDirty,
     getMode,
 } from "../selectors";
+
+import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -85,10 +86,12 @@ const mapStateToProps = (state, props) => {
 
         parameterValues:           getParameterValues(state),
 
-        databases:                 getDatabases(state),
+        databases:                 getDatabasesList(state),
         nativeDatabases:           getNativeDatabases(state),
         tables:                    getTables(state),
         tableMetadata:             getTableMetadata(state),
+        metadata:                  getMetadata(state),
+
         tableForeignKeys:          getTableForeignKeys(state),
         tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
