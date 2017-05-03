@@ -98,6 +98,7 @@
                                                                        :visibility_type visibility-type
 
                                                                        :description     "What a nice table!"}))
+
 (defn api-sync-call [table]
   ((user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table)) {}))
 
