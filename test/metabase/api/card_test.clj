@@ -211,11 +211,11 @@
   ((user->client :rasta) :get 200 (str "card/" (u/get-id card))))
 
 ;; Check that a user without permissions isn't allowed to fetch the card
-(tt/expect-with-temp [Database  [{database-id :id}]
-                      Table     [{table-id :id}    {:db_id database-id}]
-                      Card      [card              {:dataset_query (mbql-count-query database-id table-id)}]]
+(expect
   "You don't have permissions to do that."
-  (do
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id}    {:db_id database-id}]
+                  Card     [card              {:dataset_query (mbql-count-query database-id table-id)}]]
     ;; revoke permissions for default group to this database
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     ;; now a non-admin user shouldn't be able to fetch this card
@@ -480,13 +480,14 @@
         (db/delete! Card :id card-id)))))
 
 ;; Make sure we card creation fails if we try to set a `collection_id` we don't have permissions for
-(tt/expect-with-temp [Collection [collection]]
+(expect
   "You don't have permissions to do that."
-  ((user->client :rasta) :post 403 "card" {:name                   "My Cool Card"
-                                           :display                "scalar"
-                                           :dataset_query          (mbql-count-query (id) (id :venues))
-                                           :visualization_settings {:global {:title nil}}
-                                           :collection_id          (u/get-id collection)}))
+  (tt/with-temp Collection [collection]
+    ((user->client :rasta) :post 403 "card" {:name                   "My Cool Card"
+                                             :display                "scalar"
+                                             :dataset_query          (mbql-count-query (id) (id :venues))
+                                             :visualization_settings {:global {:title nil}}
+                                             :collection_id          (u/get-id collection)})))
 
 ;; Make sure we can change the `collection_id` of a Card if it's not in any collection
 (tt/expect-with-temp [Card       [card]
@@ -497,26 +498,27 @@
     (db/select-one-field :collection_id Card :id (u/get-id card))))
 
 ;; Make sure we can still change *anything* for a Card if we don't have permissions for the Collection it belongs to
-(tt/expect-with-temp [Collection [collection]
-                      Card       [card       {:collection_id (u/get-id collection)}]]
+(expect
   "You don't have permissions to do that."
-  ((user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:name "Number of Blueberries Consumed Per Month"}))
+  (tt/with-temp* [Collection [collection]
+                  Card       [card       {:collection_id (u/get-id collection)}]]
+    ((user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:name "Number of Blueberries Consumed Per Month"})))
 
 ;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the new collection
-(tt/expect-with-temp [Collection [original-collection]
-                      Collection [new-collection]
-                      Card       [card                {:collection_id (u/get-id original-collection)}]]
+(expect
   "You don't have permissions to do that."
-  (do
+  (tt/with-temp* [Collection [original-collection]
+                  Collection [new-collection]
+                  Card       [card                {:collection_id (u/get-id original-collection)}]]
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
     ((user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)})))
 
 ;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the current collection
-(tt/expect-with-temp [Collection [original-collection]
-                      Collection [new-collection]
-                      Card       [card                {:collection_id (u/get-id original-collection)}]]
+(expect
   "You don't have permissions to do that."
-  (do
+  (tt/with-temp* [Collection [original-collection]
+                  Collection [new-collection]
+                  Card       [card                {:collection_id (u/get-id original-collection)}]]
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
     ((user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)})))
 
@@ -606,20 +608,22 @@
   (POST-card-collections! :crowberto 200 new-collection [card-1 card-2]))
 
 ;; Test that we can bulk remove some Cards from a collection
-(tt/expect-with-temp [Collection [collection]
-                      Card       [card-1     {:collection_id (u/get-id collection)}]
-                      Card       [card-2     {:collection_id (u/get-id collection)}]]
+(expect
   [{:status "ok"}
    [nil nil]]
-  (POST-card-collections! :crowberto 200 nil [card-1 card-2]))
+  (tt/with-temp* [Collection [collection]
+                  Card       [card-1     {:collection_id (u/get-id collection)}]
+                  Card       [card-2     {:collection_id (u/get-id collection)}]]
+    (POST-card-collections! :crowberto 200 nil [card-1 card-2])))
 
 ;; Check that we aren't allowed to move Cards if we don't have permissions for destination collection
-(tt/expect-with-temp [Collection [collection]
-                      Card       [card-1]
-                      Card       [card-2]]
+(expect
   ["You don't have permissions to do that."
    [nil nil]]
-  (POST-card-collections! :rasta 403 collection [card-1 card-2]))
+  (tt/with-temp* [Collection [collection]
+                  Card       [card-1]
+                  Card       [card-2]]
+    (POST-card-collections! :rasta 403 collection [card-1 card-2])))
 
 ;; Check that we aren't allowed to move Cards if we don't have permissions for source collection
 (tt/expect-with-temp [Collection [collection]
@@ -630,14 +634,14 @@
   (POST-card-collections! :rasta 403 nil [card-1 card-2]))
 
 ;; Check that we aren't allowed to move Cards if we don't have permissions for the Card
-(tt/expect-with-temp [Collection [collection]
-                      Database   [database]
-                      Table      [table      {:db_id (u/get-id database)}]
-                      Card       [card-1     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]
-                      Card       [card-2     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]]
+(expect
   ["You don't have permissions to do that."
    [nil nil]]
-  (do
+  (tt/with-temp* [Collection [collection]
+                  Database   [database]
+                  Table      [table      {:db_id (u/get-id database)}]
+                  Card       [card-1     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]
+                  Card       [card-2     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]]
     (perms/revoke-permissions! (perms-group/all-users) (u/get-id database))
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
     (POST-card-collections! :rasta 403 collection [card-1 card-2])))
