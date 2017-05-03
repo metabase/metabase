@@ -174,9 +174,9 @@
 
 
 ;; ## DELETE /api/pulse/:id
-(tt/expect-with-temp [Pulse [pulse]]
+(expect
   nil
-  (do
+  (tt/with-temp Pulse [pulse]
     ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
     (pulse/retrieve-pulse (:id pulse))))
 
