@@ -372,10 +372,11 @@
 
 
 ;;; PUT /api/segment/id. Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?
-(tt/expect-with-temp [Segment [segment]]
-  :ok
-  (do ((user->client :crowberto) :put 200 (str "segment/" (u/get-id segment))
-       {:name             "Cool name"
-        :revision_message "WOW HOW COOL"
-        :definition       {}})
-      :ok))
+(expect
+  (tt/with-temp Segment [segment]
+    ;; just make sure API call doesn't barf
+    ((user->client :crowberto) :put 200 (str "segment/" (u/get-id segment))
+     {:name             "Cool name"
+      :revision_message "WOW HOW COOL"
+      :definition       {}})
+    true))

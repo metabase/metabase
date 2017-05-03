@@ -343,3 +343,11 @@
                                           (ql/aggregation (ql/count))
                                           (ql/filter (ql/and (ql/not (ql/> $id 32))
                                                              (ql/contains $name "BBQ")))))))
+
+
+;; make sure that filtering with dates truncating to minutes works (#4632)
+(expect-with-non-timeseries-dbs [107] (first-row
+                                        (format-rows-by [int]
+                                          (data/run-query checkins
+                                            (ql/aggregation (ql/count))
+                                            (ql/filter (ql/between (ql/datetime-field $date :minute) "2015-01-01T12:30:00" "2015-05-31"))))))
