@@ -227,18 +227,13 @@ export default class Visualization extends Component<*, Props, State> {
         // If the current card is saved, carry that information to the new card for showing lineage
         const { series, clicked } = this.state;
 
-        if (clicked == null) {
-            console.error("The visualization wasn't clicked before calling `onChangeCardAndRun`");
-            return;
-        }
-        const index = clicked.seriesIndex;
+        const index = (clicked && clicked.seriesIndex) || 0;
 
         // $FlowFixMe
         const cardId = series[index] && series[index].card && series[index].card.id;
         if (cardId) {
             const savedCard: CardObject = {
                 ...card,
-                // $FlowFixMe
                 id: cardId
             };
 
