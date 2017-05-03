@@ -110,7 +110,7 @@ export MB_DB_FILE=$new_db_dir/$(basename $db_file)
 chown metabase:metabase $new_db_dir $new_db_dir/* 2>/dev/null  # all that fussing makes this safe
 
 # Setup Java Options
-JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -server"
+JAVA_OPTS="${JAVA_OPTS} -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:+UseCompressedOops -server"
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"

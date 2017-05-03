@@ -92,6 +92,7 @@
              "-Xverify:none"                                          ; disable bytecode verification when running in dev so it starts slightly faster
              "-XX:+CMSClassUnloadingEnabled"                          ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
              "-XX:+UseConcMarkSweepGC"                                ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
+             "-XX:+UseCompressedOops"                                 ; use 32-bit Ordinary Object Pointers instead of 64-bit, which saves memory and increases performance
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
