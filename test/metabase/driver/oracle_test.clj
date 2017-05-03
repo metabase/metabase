@@ -7,15 +7,6 @@
              oracle])
   (:import metabase.driver.oracle.OracleDriver))
 
-;; make sure we can set additional connection string options
-(expect
-  {:subprotocol "oracle:thin"
-   :subname     "@localhost:1521:ORCL?serviceName=myservicename"}
-  (sql/connection-details->spec (OracleDriver.) {:host               "localhost"
-                                                 :port               1521
-                                                 :sid                "ORCL"
-                                                 :additional-options "serviceName=myservicename"}))
-
 ;; make sure we can connect with an SID
 (expect
   {:subprotocol "oracle:thin"

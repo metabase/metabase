@@ -50,15 +50,14 @@
     :or   {host "localhost", port 1521}
     :as   details}]
   (assert (or sid service-name))
-  (-> (merge {:subprotocol "oracle:thin"
-              :subname     (str "@" host
-                                ":" port
-                                (when sid
-                                  (str ":" sid))
-                                (when service-name
-                                  (str "/" service-name)))}
-             (dissoc details :host :port :sid :service-name))
-      sql/handle-additional-options))
+  (merge {:subprotocol "oracle:thin"
+          :subname     (str "@" host
+                            ":" port
+                            (when sid
+                              (str ":" sid))
+                            (when service-name
+                              (str "/" service-name)))}
+         (dissoc details :host :port :sid :service-name)))
 
 (defn- can-connect? [details]
   (let [connection (connection-details->spec details)]
@@ -222,10 +221,10 @@
                                                              :default      1521}
                                                             {:name         "sid"
                                                              :display-name "Oracle system ID (SID)"
-                                                             :placeholder  "Usually something like ORCL or XE. You might not need this if you specify a Service Name."}
+                                                             :placeholder  "Usually something like ORCL or XE. Optional if using service name"}
                                                             {:name         "service-name"
                                                              :display-name "Oracle service name"
-                                                             :placeholder  "Optional TNS alias."}
+                                                             :placeholder  "Optional TNS alias"}
                                                             {:name         "user"
                                                              :display-name "Database username"
                                                              :placeholder  "What username do you use to login to the database?"
@@ -233,9 +232,7 @@
                                                             {:name         "password"
                                                              :display-name "Database password"
                                                              :type         :password
-                                                             :placeholder  "*******"}
-                                                            {:name         "additional-options"
-                                                             :display-name "Additional JDBC connection string options"}]))
+                                                             :placeholder  "*******"}]))
           :execute-query                     (comp remove-rownum-column sqlqp/execute-query)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
