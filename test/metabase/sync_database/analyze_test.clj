@@ -148,8 +148,10 @@
 ;; re-hiding a table should not cause it to be analyzed
 (tt/expect-with-temp [Table [table {:rows 15}]
                       Field [field {:table_id (:id table)}]]
-  (do (set-table-visibility-type! table "hidden")
-      (set-table-visibility-type! table nil)
-      (latest-sync-time (:db_id table) (:name table)))
-  (do (set-table-visibility-type! table "hidden")
-      (latest-sync-time (:db_id table) (:name table))))
+  true
+  (do (set-table-visibility-type! table "hidden") ;; start with it not visible
+      (set-table-visibility-type! table nil)      ;; make it visible to trigger analysis
+      (let [initial-sync-time (latest-sync-time (:db_id table) (:name table))]
+        ;; make it invisible which should not trigger analysis
+        (set-table-visibility-type! table "hidden")
+        (= initial-sync-time (latest-sync-time (:db_id table) (:name table))))))
