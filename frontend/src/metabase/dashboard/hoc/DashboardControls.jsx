@@ -134,10 +134,12 @@ export default (ComposedComponent: ReactClass<any>) =>
             };
 
             setNightMode = isNightMode => {
+                isNightMode = !!isNightMode;
                 this.setState({ isNightMode });
             };
 
             setFullscreen = (isFullscreen, browserFullscreen = true) => {
+                isFullscreen = !!isFullscreen;
                 if (isFullscreen !== this.state.isFullscreen) {
                     if (screenfull.enabled && browserFullscreen) {
                         if (isFullscreen) {
@@ -184,7 +186,7 @@ export default (ComposedComponent: ReactClass<any>) =>
             }
 
             _fullScreenChanged = () => {
-                this.setState({ isFullscreen: screenfull.isFullscreen });
+                this.setState({ isFullscreen: !!screenfull.isFullscreen });
             };
 
             render() {
