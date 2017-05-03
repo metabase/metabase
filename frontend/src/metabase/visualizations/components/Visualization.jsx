@@ -222,14 +222,13 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     handleOnChangeCardAndRun = (card: UnsavedCard) => {
-        // If the current card has a name, carry that information to the new card for showing lineage
-        // The card description is omitted because it isn't relevant for showing the lineage
+        // If the current card is saved, carry that information to the new card for showing lineage
         const { series } = this.state
         const currentlyInSavedCard = series[0] && series[0].card && series[0].card.id
         if (currentlyInSavedCard) {
             const savedCard: CardObject = {
                 ...card,
-                id: series[0].card.id,
+                id: series[0].card.id
             };
 
             this.props.onChangeCardAndRun(savedCard)

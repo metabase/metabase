@@ -156,25 +156,25 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         if (params.cardId || serializedCard) {
             // existing card being loaded
             try {
-                // TODO: Don't load a card if a card is passed in the hash? Speeds up the page load.
-
-                if (params.cardId) {
-                    card = await loadCard(params.cardId);
-
-                    // when we are loading from a card id we want an explict clone of the card we loaded which is unmodified
-                    originalCard = Utils.copy(card);
-                }
-
                 // if we have a serialized card then unpack it and use it
-                if (serializedCard) {
-                    let deserializedCard = deserializeCardFromUrl(serializedCard);
-                    card = card ? _.extend(card, deserializedCard) : deserializedCard;
+                card = serializedCard ? deserializeCardFromUrl(serializedCard) : {}
+
+                // load the card either from `cardId` parameter or the serialized card
+                const cardId = params.cardId || card.id
+                if (cardId) {
+                    const loadedCard = await loadCard(cardId);
+
+                    // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
+                    originalCard = Utils.copy(loadedCard);
+
+                    // the serialized card often differs from the card stored in db so merge the properties to fetched card if needed
+                    card = {...loadedCard, ...card};
                 }
 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
 
                 // if we have deserialized card from the url AND loaded a card by id then the user should be dropped into edit mode
-                uiControls.isEditing = (options.edit || (params.cardId && serializedCard)) ? true : false;
+                uiControls.isEditing = !!options.edit
 
                 // if this is the users first time loading a saved card on the QB then show them the newb modal
                 if (params.cardId && currentUser.is_qbnewb) {
