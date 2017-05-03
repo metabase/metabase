@@ -48,8 +48,9 @@
     :or   {host "localhost", port 1521}
     :as   details}]
   (-> (merge {:subprotocol "oracle:thin"
-              :subname     (str "@" host ":" port ":" sid)}
-             (dissoc details :host :port))
+              :subname     (str "@" host ":" port (when sid
+                                                    (str ":" sid)))}
+             (dissoc details :host :port :sid))
       sql/handle-additional-options))
 
 (defn- can-connect? [details]
@@ -207,7 +208,7 @@
                                           :default      1521}
                                          {:name         "sid"
                                           :display-name "Oracle System ID"
-                                          :default      "ORCL"}
+                                          :placeholder  "ORCL"}
                                          {:name         "user"
                                           :display-name "Database username"
                                           :placeholder  "What username do you use to login to the database?"
@@ -270,10 +271,8 @@
 ;; only register the Oracle driver if the JDBC driver is available
 (when (u/ignore-exceptions
         (Class/forName "oracle.jdbc.OracleDriver"))
-
   ;; By default the Oracle JDBC driver isn't compliant with JDBC standards -- instead of returning types like java.sql.Timestamp
   ;; it returns wacky types like oracle.sql.TIMESTAMPT. By setting this System property the JDBC driver will return the appropriate types.
   ;; See this page for more details: http://docs.oracle.com/database/121/JJDBC/datacc.htm#sthref437
   (.setProperty (System/getProperties) "oracle.jdbc.J2EE13Compliant" "TRUE")
-
   (driver/register-driver! :oracle (OracleDriver.)))
