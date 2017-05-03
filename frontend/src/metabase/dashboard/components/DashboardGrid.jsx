@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { shallowEqual } from "recompose"
 
 import GridLayout from "./grid/GridLayout.jsx";
 import DashCard from "./DashCard.jsx";
@@ -65,7 +66,7 @@ export default class DashboardGrid extends Component {
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        return !(_.isEqual(this.props, nextProps) && _.isEqual(this.state, nextState));
+        return !(shallowEqual(this.props, nextProps) && shallowEqual(this.state, nextState));
     }
 
     componentWillReceiveProps(nextProps) {
