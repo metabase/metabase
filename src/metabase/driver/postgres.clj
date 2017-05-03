@@ -114,8 +114,8 @@
     :seconds      (hsql/call :to_timestamp expr)
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/cast :timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              (hx/cast :timestamp expr)))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -134,9 +134,9 @@
     :day-of-month    (extract-integer :day expr)
     :day-of-year     (extract-integer :doy expr)
     ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-    :week            (hx/- (date-trunc :week (hx/+ expr one-day))
+    :week            (hx/- (date-trunc :week (hx/+ (hx/->timestamp expr) one-day))
                            one-day)
-    :week-of-year    (extract-integer :week (hx/+ expr one-day))
+    :week-of-year    (extract-integer :week (hx/+ (hx/->timestamp expr) one-day))
     :month           (date-trunc :month expr)
     :month-of-year   (extract-integer :month expr)
     :quarter         (date-trunc :quarter expr)
