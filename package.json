@@ -151,7 +151,7 @@
     "test": "yarn run test-jest && yarn run test-karma",
     "test-karma": "karma start frontend/test/karma.conf.js --single-run",
     "test-karma-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
-    "test-jest": "jest frontend/src/",
+    "test-jest": "jest",
     "test-jest-watch": "jest --watch",
     "test-e2e": "JASMINE_CONFIG_PATH=./frontend/test/e2e/support/jasmine.json jasmine",
     "test-e2e-dev": "./frontend/test/e2e-with-persistent-browser.js",
