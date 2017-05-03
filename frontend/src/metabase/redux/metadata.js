@@ -400,7 +400,7 @@ const databases = handleActions({
 }, {});
 
 const databasesList = handleActions({
-    [FETCH_DATABASES]: { next: (state, { payload }) => payload.result }
+    [FETCH_DATABASES]: { next: (state, { payload }) => (payload && payload.result) || state }
 }, []);
 
 const tables = handleActions({
