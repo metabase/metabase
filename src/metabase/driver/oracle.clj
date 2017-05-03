@@ -44,13 +44,17 @@
   "Create a database specification for an Oracle database. DETAILS should include keys
   for `:user`, `:password`, and `:sid`. You can also optionally set `:host` and `:port`, and
   supply `:addtional-options` that are appended to the end of the JDBC connection string."
-  [{:keys [host port sid]
+  [{:keys [host port sid service-name]
     :or   {host "localhost", port 1521}
     :as   details}]
   (-> (merge {:subprotocol "oracle:thin"
-              :subname     (str "@" host ":" port (when sid
-                                                    (str ":" sid)))}
-             (dissoc details :host :port :sid))
+              :subname     (str "@" host
+                                ":" port
+                                (when sid
+                                  (str ":" sid))
+                                (when service-name
+                                  (str "/" service-name)))}
+             (dissoc details :host :port :sid :service-name))
       sql/handle-additional-options))
 
 (defn- can-connect? [details]
@@ -207,8 +211,10 @@
                                           :type         :integer
                                           :default      1521}
                                          {:name         "sid"
-                                          :display-name "Oracle System ID"
+                                          :display-name "Oracle SID (System ID)"
                                           :placeholder  "ORCL"}
+                                         {:name         "service-name"
+                                          :display-name "Service Name"}
                                          {:name         "user"
                                           :display-name "Database username"
                                           :placeholder  "What username do you use to login to the database?"
@@ -218,8 +224,7 @@
                                           :type         :password
                                           :placeholder  "*******"}
                                          {:name         "additional-options"
-                                          :display-name "Additional JDBC connection string options"
-                                          :placeholder  "serviceName=myservicename"}]))
+                                          :display-name "Additional JDBC connection string options"}]))
           :execute-query  (comp remove-rownum-column sqlqp/execute-query)})
 
   sql/ISQLDriver
