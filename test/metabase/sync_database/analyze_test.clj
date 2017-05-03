@@ -1,17 +1,20 @@
 (ns metabase.sync-database.analyze-test
   (:require [clojure.string :as str]
             [expectations :refer :all]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
             [metabase.sync-database.analyze :refer :all]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.driver :as driver]
-            [metabase.models.field :as field]))
+            [toucan.util.test :as tt]))
 
 ;; test:cardinality-and-extract-field-values
 ;; (#2332) check that if field values are long we skip over them
@@ -29,8 +32,8 @@
 
 ;;; ## mark-json-field!
 
-(tu/resolve-private-vars metabase.sync-database.analyze values-are-valid-json?)
-(tu/resolve-private-vars metabase.sync-database.analyze values-are-valid-emails?)
+(tu/resolve-private-vars metabase.sync-database.analyze
+  values-are-valid-json? values-are-valid-emails?)
 
 (def ^:const ^:private fake-values-seq-json
   "A sequence of values that should be marked is valid JSON.")
@@ -81,28 +84,28 @@
 (expect false (values-are-valid-emails? ["false"]))
 
 ;; Tests to avoid analyzing hidden tables
-(defn count-unanalyzed-fields [db_id table-name]
-  (let [table-id (db/select-one-id Table, :db_id db_id, :active true :name table-name)]
-    (assert (pos? ;; don't let ourselves be fooled if the test passes because the table is
-                  ;; totally broken or has no fields. Make sure we actually test something
-             (db/count Field :table_id table-id)))
-    (db/count Field :last_analyzed nil :table_id table-id)))
+(defn- unanalyzed-fields-count [table]
+  (assert (pos? ;; don't let ourselves be fooled if the test passes because the table is
+           ;; totally broken or has no fields. Make sure we actually test something
+           (db/count Field :table_id (u/get-id table))))
+  (db/count Field :last_analyzed nil, :table_id (u/get-id table)))
 
-(defn latest-sync-time [table]
-  (let [table-id (db/select-one-id Table :db_id (:db_id table) :active true :name (:name table))]
-    (db/select-field :last_analyzed Field :table_id table-id)))
+(defn- latest-sync-time [table]
+  (db/select-one-field :last_analyzed Field
+    :last_analyzed [:not= nil]
+    :table_id      (u/get-id table)
+    {:order-by [[:last_analyzed :desc]]}))
 
-(defn set-table-visibility-type! [table visibility-type]
+(defn- set-table-visibility-type! [table visibility-type]
   ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
                                                                        :entity_type     "person"
                                                                        :visibility_type visibility-type
-
                                                                        :description     "What a nice table!"}))
 
-(defn api-sync-call [table]
-  ((user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table)) {}))
+(defn- api-sync! [table]
+  ((user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
 
-(defn sync-call [table]
+(defn- analyze! [table]
   (let [db-id (:db_id table)]
     (analyze-data-shape-for-tables! (driver/database-id->driver db-id) {:id db-id})))
 
@@ -111,44 +114,43 @@
   1
   (tt/with-temp* [Table [table {:rows 15}]
                   Field [field {:table_id (:id table)}]]
-
-    (do (set-table-visibility-type! table "hidden")
-        (api-sync-call table)
-        (set-table-visibility-type! table "cruft")
-        (set-table-visibility-type! table "cruft")
-        (api-sync-call table)
-        (set-table-visibility-type! table "technical")
-        (api-sync-call table)
-        (set-table-visibility-type! table "technical")
-        (api-sync-call table)
-        (api-sync-call table)
-        (count-unanalyzed-fields (:db_id table) (:name table)))))
+    (set-table-visibility-type! table "hidden")
+    (api-sync! table)
+    (set-table-visibility-type! table "cruft")
+    (set-table-visibility-type! table "cruft")
+    (api-sync! table)
+    (set-table-visibility-type! table "technical")
+    (api-sync! table)
+    (set-table-visibility-type! table "technical")
+    (api-sync! table)
+    (api-sync! table)
+    (unanalyzed-fields-count table)))
 
 ;; same test not coming through the api
 (expect
   1
   (tt/with-temp* [Table [table {:rows 15}]
                   Field [field {:table_id (:id table)}]]
-    (do (set-table-visibility-type! table "hidden")
-        (sync-call table)
-        (set-table-visibility-type! table "cruft")
-        (set-table-visibility-type! table "cruft")
-        (sync-call table)
-        (set-table-visibility-type! table "technical")
-        (sync-call table)
-        (set-table-visibility-type! table "technical")
-        (sync-call table)
-        (sync-call table)
-        (count-unanalyzed-fields (:db_id table) (:name table)))))
+    (set-table-visibility-type! table "hidden")
+    (analyze! table)
+    (set-table-visibility-type! table "cruft")
+    (set-table-visibility-type! table "cruft")
+    (analyze! table)
+    (set-table-visibility-type! table "technical")
+    (analyze! table)
+    (set-table-visibility-type! table "technical")
+    (analyze! table)
+    (analyze! table)
+    (unanalyzed-fields-count table)))
 
 ;; un-hiding a table should cause it to be analyzed
 (expect
   0
   (tt/with-temp* [Table [table {:rows 15}]
                   Field [field {:table_id (:id table)}]]
-    (do (set-table-visibility-type! table "hidden")
-        (set-table-visibility-type! table nil)
-        (count-unanalyzed-fields (:db_id table) (:name table)))))
+    (set-table-visibility-type! table "hidden")
+    (set-table-visibility-type! table nil)
+    (unanalyzed-fields-count table)))
 
 ;; re-hiding a table should not cause it to be analyzed
 (expect
