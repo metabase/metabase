@@ -74,7 +74,7 @@ export const getMetadata = createSelector(
         hydrateList(meta.tables, "segments", meta.segments);
         hydrateList(meta.tables, "metrics", meta.metrics);
 
-        hydrate(meta.tables, "db", t => meta.databases[t.db_id]);
+        hydrate(meta.tables, "db", t => meta.databases[t.db_id || t.db]);
 
         hydrate(meta.segments, "table", s => meta.tables[s.table_id]);
         hydrate(meta.metrics, "table", m => meta.tables[m.table_id]);
@@ -98,6 +98,11 @@ export const getMetadata = createSelector(
 export const getDatabases = createSelector(
     [getMetadata],
     ({ databases }) => databases
+);
+
+export const getDatabasesList = createSelector(
+    [getDatabases, state => state.metadata.databasesList],
+    (databases, ids) => ids.map(id => databases[id])
 );
 
 export const getTables = createSelector([getMetadata], ({ tables }) => tables);
@@ -145,7 +150,7 @@ function hydrateList(objects, property, targetObjects) {
         objects,
         property,
         object =>
-            object[property] && object[property].map(id => targetObjects[id])
+            (object[property] || []).map(id => targetObjects[id])
     );
 }
 

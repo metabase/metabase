@@ -130,7 +130,7 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
         const requestStatePath = ["metadata", "databases"];
         const existingStatePath = requestStatePath;
         const getData = async () => {
-            const databases = await MetabaseApi.db_list();
+            const databases = await MetabaseApi.db_list_with_tables();
             return normalize(databases, [DatabaseSchema]);
         };
 
@@ -399,6 +399,10 @@ export const fetchDatabasesWithMetadata = createThunkAction(FETCH_DATABASES_WITH
 const databases = handleActions({
 }, {});
 
+const databasesList = handleActions({
+    [FETCH_DATABASES]: { next: (state, { payload }) => payload.result }
+}, []);
+
 const tables = handleActions({
 }, {});
 
@@ -457,5 +461,6 @@ export default combineReducers({
     databases: handleEntities(/^metabase\/metadata\//, "databases", databases),
     tables:    handleEntities(/^metabase\/metadata\//, "tables", tables),
     fields:    handleEntities(/^metabase\/metadata\//, "fields", fields),
-    revisions
+    revisions,
+    databasesList,
 });

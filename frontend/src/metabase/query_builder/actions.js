@@ -19,7 +19,10 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { applyParameters } from "metabase/meta/Card";
 
-import { getParameters, getNativeDatabases } from "./selectors";
+import { getParameters, getTableMetadata, getNativeDatabases } from "./selectors";
+import { getDatabases, getTables, getDatabasesList } from "metabase/selectors/metadata";
+
+import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -120,7 +123,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         const { currentUser } = getState();
 
-        let card, databases, originalCard;
+        let card, databasesList, originalCard;
         let uiControls = {
             isEditing: false,
             isShowingTemplateTagsEditor: false
@@ -128,9 +131,10 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         // always start the QB by loading up the databases for the application
         try {
-            databases = await MetabaseApi.db_list_with_tables();
+            await dispatch(fetchDatabases());
+            databasesList = getDatabasesList(getState());
         } catch(error) {
-            console.log("error fetching dbs", error);
+            console.error("error fetching dbs", error);
 
             // if we can't actually get the databases list then bail now
             dispatch(setErrorPage(error));
@@ -150,7 +154,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                 serializedCard = hash;
             }
         }
-        const sampleDataset = _.findWhere(databases, { is_sample: true });
+        const sampleDataset = _.findWhere(databasesList, { is_sample: true });
 
         let preserveParameters = false;
         if (params.cardId || serializedCard) {
@@ -198,7 +202,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         } else {
             // we are starting a new/empty card
-            const databaseId = (options.db) ? parseInt(options.db) : (databases && databases.length > 0 && databases[0].id);
+            const databaseId = (options.db) ? parseInt(options.db) : (databasesList && databasesList.length > 0 && databasesList[0].id);
 
             card = startNewCard("query", databaseId);
 
@@ -237,7 +241,6 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         return {
             card,
             originalCard,
-            databases,
             uiControls
         };
     };
@@ -308,22 +311,16 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
     }
 });
 
-import { fetchTableMetadata } from "metabase/redux/metadata";
-
 export const LOAD_TABLE_METADATA = "metabase/qb/LOAD_TABLE_METADATA";
 export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId) => {
     return async (dispatch, getState) => {
-        // if we already have the metadata loaded for the given table then we are done
-        const { qb: { tableMetadata } } = getState();
-        if (tableMetadata && tableMetadata.id === tableId) {
-            return tableMetadata;
-        }
-
         try {
             await dispatch(fetchTableMetadata(tableId));
-            // return await loadTableAndForeignKeys(tableId);
+            // TODO: finish moving this to metadata duck:
+            const foreignKeys = await MetabaseApi.table_fks({ tableId });
+            return { foreignKeys }
         } catch(error) {
-            console.log('error getting table metadata', error);
+            console.error('error getting table metadata', error);
             return {};
         }
     };
@@ -497,10 +494,11 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shoul
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
-        const { qb: { card, uiControls, databases } } = getState();
+        const { qb: { card, uiControls } } = getState();
+        const databasesList = getDatabasesList(getState());
 
         const databaseId = card.dataset_query.database;
-        const database = _.findWhere(databases, { id: databaseId });
+        const database = _.findWhere(databasesList, { id: databaseId });
         const supportsNativeParameters = database && _.contains(database.features, "native-parameters");
 
         let updatedCard = Utils.copy(card),
@@ -600,7 +598,8 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
-        const { qb: { card, queryResult, tableMetadata, uiControls } } = getState();
+        const { qb: { card, queryResult, uiControls } } = getState();
+        const tableMetadata = getTableMetadata(getState());
 
         // if the type didn't actually change then nothing has been modified
         if (type === card.dataset_query.type) {
@@ -664,7 +663,8 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 export const SET_QUERY_DATABASE = "metabase/qb/SET_QUERY_DATABASE";
 export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseId) => {
     return async (dispatch, getState) => {
-        const { qb: { card, databases, uiControls } } = getState();
+        const { qb: { card, uiControls } } = getState();
+        const databases = getDatabases(getState());
 
         // picking the same database doesn't change anything
         if (databaseId === card.dataset_query.database) {
@@ -682,7 +682,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
             // set the initial collection for the query if this is a native query
             // this is only used for Mongo queries which need to be ran against a specific collection
             if (updatedCard.dataset_query.type === 'native') {
-                let database = _.findWhere(databases, { id: databaseId }),
+                let database = databases[databaseId],
                     tables   = database ? database.tables : [],
                     table    = tables.length > 0 ? tables[0] : null;
                 if (table) updatedCard.dataset_query.native.collection = table.name;
@@ -730,15 +730,9 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
         if (_.isObject(sourceTable)) {
             databaseId = sourceTable.db_id;
         } else {
-            // this is a bit hacky and slow
-            const { qb: { databases } } = getState();
-            for (var i=0; i < databases.length; i++) {
-                const database = databases[i];
-
-                if (_.findWhere(database.tables, { id: tableId })) {
-                    databaseId = database.id;
-                    break;
-                }
+            const table = getTables(getState())[tableId];
+            if (table) {
+                databaseId = table.db_id;
             }
         }
 
@@ -1091,7 +1085,7 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
                     info["value"] = "Unknown";
                 }
             } catch (error) {
-                console.log("error getting fk count", error, fkQuery);
+                console.error("error getting fk count", error, fkQuery);
             } finally {
                 info["status"] = 1;
             }

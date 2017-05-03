@@ -12,6 +12,8 @@ import Utils from "metabase/lib/utils";
 
 import { getIn } from "icepick";
 
+import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+
 export const getUiControls      = state => state.qb.uiControls;
 
 export const getCard            = state => state.qb.card;
@@ -40,13 +42,11 @@ export const getTableId = createSelector(
     (card) => getIn(card, ["dataset_query", "query", "source_table"])
 );
 
-
-export const getDatabases                 = state => state.qb.databases;
 export const getTableForeignKeys          = state => state.qb.tableForeignKeys;
 export const getTableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
 
 export const getTables = createSelector(
-    [getDatabaseId, getDatabases],
+    [getDatabaseId, getDatabasesList],
     (databaseId, databases) => {
         if (databaseId != null && databases && databases.length > 0) {
             let db = _.findWhere(databases, { id: databaseId });
@@ -60,12 +60,10 @@ export const getTables = createSelector(
 );
 
 export const getNativeDatabases = createSelector(
-    [getDatabases],
+    [getDatabasesList],
     (databases) =>
         databases && databases.filter(db => db.native_permissions === "write")
 )
-
-import { getMetadata } from "metabase/selectors/metadata";
 
 export const getTableMetadata = createSelector(
     [getTableId, getMetadata],
@@ -73,7 +71,7 @@ export const getTableMetadata = createSelector(
 )
 
 export const getSampleDatasetId = createSelector(
-    [getDatabases],
+    [getDatabasesList],
     (databases) => {
         const sampleDataset = _.findWhere(databases, { is_sample: true });
         return sampleDataset && sampleDataset.id;
