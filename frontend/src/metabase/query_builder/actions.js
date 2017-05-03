@@ -17,7 +17,7 @@ import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { applyParameters } from "metabase/meta/Card";
+import { applyParameters, cardIsEquivalent } from "metabase/meta/Card";
 
 import { getParameters, getTableMetadata, getNativeDatabases } from "./selectors";
 import { getDatabases, getTables, getDatabasesList } from "metabase/selectors/metadata";
@@ -171,8 +171,13 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                 } else if (card.id) {
                     // deserialized card contains the card id, so just populate originalCard
                     originalCard = await loadCard(card.id);
-                    // strip the card id from the deserialized card so that we have a correct url and show lineage correctly
-                    card = _.omit(card, "id");
+                    // if the cards are equal then show the original
+                    if (cardIsEquivalent(card, originalCard)) {
+                        card = Utils.copy(originalCard);
+                    } else {
+                        // strip the card id from the deserialized card so that we have a correct url and show lineage correctly
+                        card = _.omit(card, "id");
+                    }
                 }
 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
