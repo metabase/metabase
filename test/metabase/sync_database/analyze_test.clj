@@ -88,8 +88,8 @@
              (db/count Field :table_id table-id)))
     (db/count Field :last_analyzed nil :table_id table-id)))
 
-(defn latest-sync-time [db_id table-name]
-  (let [table-id (db/select-one-id Table, :db_id db_id, :active true :name table-name)]
+(defn latest-sync-time [table]
+  (let [table-id (db/select-one-id Table :db_id (:db_id table) :active true :name (:name table))]
     (db/select-field :last_analyzed Field :table_id table-id)))
 
 (defn set-table-visibility-type! [table visibility-type]
@@ -106,52 +106,58 @@
     (analyze-data-shape-for-tables! (driver/database-id->driver db-id) {:id db-id})))
 
 ;; expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing
-(tt/expect-with-temp [Table [table {:rows 15}]
-                      Field [field {:table_id (:id table)}]]
+(expect
   1
-  (do (set-table-visibility-type! table "hidden")
-      (api-sync-call table)
-      (set-table-visibility-type! table "cruft")
-      (set-table-visibility-type! table "cruft")
-      (api-sync-call table)
-      (set-table-visibility-type! table "technical")
-      (api-sync-call table)
-      (set-table-visibility-type! table "technical")
-      (api-sync-call table)
-      (api-sync-call table)
-      (count-unanalyzed-fields (:db_id table) (:name table))))
+  (tt/with-temp* [Table [table {:rows 15}]
+                  Field [field {:table_id (:id table)}]]
+
+    (do (set-table-visibility-type! table "hidden")
+        (api-sync-call table)
+        (set-table-visibility-type! table "cruft")
+        (set-table-visibility-type! table "cruft")
+        (api-sync-call table)
+        (set-table-visibility-type! table "technical")
+        (api-sync-call table)
+        (set-table-visibility-type! table "technical")
+        (api-sync-call table)
+        (api-sync-call table)
+        (count-unanalyzed-fields (:db_id table) (:name table)))))
 
 ;; same test not coming through the api
-(tt/expect-with-temp [Table [table {:rows 15}]
-                      Field [field {:table_id (:id table)}]]
+(expect
   1
-  (do (set-table-visibility-type! table "hidden")
-      (sync-call table)
-      (set-table-visibility-type! table "cruft")
-      (set-table-visibility-type! table "cruft")
-      (sync-call table)
-      (set-table-visibility-type! table "technical")
-      (sync-call table)
-      (set-table-visibility-type! table "technical")
-      (sync-call table)
-      (sync-call table)
-      (count-unanalyzed-fields (:db_id table) (:name table))))
+  (tt/with-temp* [Table [table {:rows 15}]
+                  Field [field {:table_id (:id table)}]]
+    (do (set-table-visibility-type! table "hidden")
+        (sync-call table)
+        (set-table-visibility-type! table "cruft")
+        (set-table-visibility-type! table "cruft")
+        (sync-call table)
+        (set-table-visibility-type! table "technical")
+        (sync-call table)
+        (set-table-visibility-type! table "technical")
+        (sync-call table)
+        (sync-call table)
+        (count-unanalyzed-fields (:db_id table) (:name table)))))
 
 ;; un-hiding a table should cause it to be analyzed
-(tt/expect-with-temp [Table [table {:rows 15}]
-                      Field [field {:table_id (:id table)}]]
+(expect
   0
-  (do (set-table-visibility-type! table "hidden")
-      (set-table-visibility-type! table nil)
-      (count-unanalyzed-fields (:db_id table) (:name table))))
+  (tt/with-temp* [Table [table {:rows 15}]
+                  Field [field {:table_id (:id table)}]]
+    (do (set-table-visibility-type! table "hidden")
+        (set-table-visibility-type! table nil)
+        (count-unanalyzed-fields (:db_id table) (:name table)))))
 
 ;; re-hiding a table should not cause it to be analyzed
-(tt/expect-with-temp [Table [table {:rows 15}]
-                      Field [field {:table_id (:id table)}]]
-  true
-  (do (set-table-visibility-type! table "hidden") ;; start with it not visible
-      (set-table-visibility-type! table nil)      ;; make it visible to trigger analysis
-      (let [initial-sync-time (latest-sync-time (:db_id table) (:name table))]
-        ;; make it invisible which should not trigger analysis
-        (set-table-visibility-type! table "hidden")
-        (= initial-sync-time (latest-sync-time (:db_id table) (:name table))))))
+(expect
+  ;; create an initially hidden table
+  (tt/with-temp* [Table [table {:rows 15, :visibility_type "hidden"}]
+                  Field [field {:table_id (:id table)}]]
+    ;; switch the table to visible (triggering a sync) and get the last sync time
+    (let [last-sync-time (do (set-table-visibility-type! table nil)
+                             (latest-sync-time table))]
+      ;; now make it hidden again
+      (set-table-visibility-type! table "hidden")
+      ;; sync time shouldn't change
+      (= last-sync-time (latest-sync-time table)))))
