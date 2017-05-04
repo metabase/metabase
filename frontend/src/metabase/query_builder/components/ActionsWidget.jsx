@@ -72,6 +72,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
         // Include the original card id if present for showing the lineage next to title
         const nextCardWithOriginalId = {
             ...nextCard,
+            // $FlowFixMe
             original_card_id: card.id || card.original_card_id
         };
         if (nextCardWithOriginalId) {
