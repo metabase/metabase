@@ -43,9 +43,8 @@
    [#"XML"         :type/*]])
 
 (defn- connection-details->spec
-  "Create a database specification for an Oracle database. DETAILS should include keys
-  for `:user`, `:password`, and `:sid`. You can also optionally set `:host` and `:port`, and
-  supply `:addtional-options` that are appended to the end of the JDBC connection string."
+  "Create a database specification for an Oracle database. DETAILS should include keys for `:user`,
+   `:password`, and one or both of `:sid` and `:serivce-name`. You can also optionally set `:host` and `:port`."
   [{:keys [host port sid service-name]
     :or   {host "localhost", port 1521}
     :as   details}]
