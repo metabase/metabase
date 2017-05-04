@@ -422,7 +422,9 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                                 value: card._breakoutValue,
                                 column: card._breakoutColumn
                             });
-                        } else {
+                        }
+                        // series was not transformed
+                        else if (!series._raw) {
                             // $FlowFixMe
                             clicked.seriesIndex = seriesIndex;
                         }
