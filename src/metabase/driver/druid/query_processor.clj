@@ -11,6 +11,13 @@
             [metabase.util :as u])
   (:import [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression Field RelativeDateTimeValue Value]))
 
+(def ^:private ^:const topN-max-results
+  "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
+
+   Coming from the default value hardcoded in the Druid engine itself
+   http://druid.io/docs/latest/querying/topnquery.html"
+  1000)
+
 ;;             +-----> ::select      +----> :groupBy
 ;; ::query ----|                     |
 ;;             +----> ::ag-query ----+----> ::topN
@@ -77,7 +84,7 @@
      ::total              (merge defaults {:queryType :timeseries})
      ::grouped-timeseries (merge defaults {:queryType :timeseries})
      ::topN               (merge defaults {:queryType :topN
-                                           :threshold i/absolute-max-results})
+                                           :threshold topN-max-results})
      ::groupBy            (merge defaults {:queryType :groupBy})}))
 
 

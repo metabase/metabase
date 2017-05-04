@@ -1,6 +1,8 @@
 (ns metabase.driver.oracle
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
+            [clojure.java.jdbc :as jdbc]
             [honeysql.core :as hsql]
             [metabase
              [config :as config]
@@ -41,17 +43,20 @@
    [#"XML"         :type/*]])
 
 (defn- connection-details->spec
-  "Create a database specification for an Oracle database. DETAILS should include keys
-  for `:user`, `:password`, and `:sid`. You can also optionally set `:host` and `:port`, and
-  supply `:addtional-options` that are appended to the end of the JDBC connection string."
-  [{:keys [host port sid]
+  "Create a database specification for an Oracle database. DETAILS should include keys for `:user`,
+   `:password`, and one or both of `:sid` and `:serivce-name`. You can also optionally set `:host` and `:port`."
+  [{:keys [host port sid service-name]
     :or   {host "localhost", port 1521}
     :as   details}]
-  (-> (merge {:subprotocol "oracle:thin"
-              :subname     (str "@" host ":" port (when sid
-                                                    (str ":" sid)))}
-             (dissoc details :host :port :sid))
-      sql/handle-additional-options))
+  (assert (or sid service-name))
+  (merge {:subprotocol "oracle:thin"
+          :subname     (str "@" host
+                            ":" port
+                            (when sid
+                              (str ":" sid))
+                            (when service-name
+                              (str "/" service-name)))}
+         (dissoc details :host :port :sid :service-name)))
 
 (defn- can-connect? [details]
   (let [connection (connection-details->spec details)]
@@ -188,6 +193,13 @@
      :rows    (for [row rows]
                 (butlast row))}))
 
+(defn- humanize-connection-error-message [message]
+  ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
+  ;; return a slightly nicer looking version. Otherwise just return message as-is
+  (if (str/includes? message "(or sid service-name)")
+    "You must specify the SID and/or the Service Name."
+    message))
+
 
 (defrecord OracleDriver []
   clojure.lang.Named
@@ -196,31 +208,32 @@
 (u/strict-extend OracleDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:can-connect?   (u/drop-first-arg can-connect?)
-          :date-interval  (u/drop-first-arg date-interval)
-          :details-fields (constantly (ssh/with-tunnel-config
-                                        [{:name         "host"
-                                          :display-name "Host"
-                                          :default      "localhost"}
-                                         {:name         "port"
-                                          :display-name "Port"
-                                          :type         :integer
-                                          :default      1521}
-                                         {:name         "sid"
-                                          :display-name "Oracle System ID"
-                                          :placeholder  "ORCL"}
-                                         {:name         "user"
-                                          :display-name "Database username"
-                                          :placeholder  "What username do you use to login to the database?"
-                                          :required     true}
-                                         {:name         "password"
-                                          :display-name "Database password"
-                                          :type         :password
-                                          :placeholder  "*******"}
-                                         {:name         "additional-options"
-                                          :display-name "Additional JDBC connection string options"
-                                          :placeholder  "serviceName=myservicename"}]))
-          :execute-query  (comp remove-rownum-column sqlqp/execute-query)})
+         {:can-connect?                      (u/drop-first-arg can-connect?)
+          :date-interval                     (u/drop-first-arg date-interval)
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      1521}
+                                                            {:name         "sid"
+                                                             :display-name "Oracle system ID (SID)"
+                                                             :placeholder  "Usually something like ORCL or XE. Optional if using service name"}
+                                                            {:name         "service-name"
+                                                             :display-name "Oracle service name"
+                                                             :placeholder  "Optional TNS alias"}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"
+                                                             :required     true}
+                                                            {:name         "password"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "*******"}]))
+          :execute-query                     (comp remove-rownum-column sqlqp/execute-query)
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
