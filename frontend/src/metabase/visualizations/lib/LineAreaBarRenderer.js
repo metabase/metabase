@@ -131,15 +131,23 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
             dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
         }
 
+        if (dataInterval.interval === "week") {
+            const newTickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width(), MIN_PIXELS_PER_TICK.x);
+            if (newTickInterval.interval !== tickInterval.interval || newTickInterval.count !== tickInterval.count) {
+                dimensionColumn = { ...dimensionColumn, unit: "month" },
+                tickInterval = { interval: "month", count: 1 };
+            }
+        }
+
         chart.xAxis().tickFormat(timestamp => {
             // timestamp is a plain Date object which discards the timezone,
             // so add it back in so it's formatted correctly
             const timestampFixed = moment(timestamp).utcOffset(dataOffset).format();
-            return formatValue(timestampFixed, { column: dimensionColumn })
+            return formatValue(timestampFixed, { column: dimensionColumn, type: "axis" })
         });
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        tickInterval = computeTimeseriesTicksInterval(xDomain, dataInterval, chart.width(), MIN_PIXELS_PER_TICK.x, );
+        tickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width(), MIN_PIXELS_PER_TICK.x);
         chart.xAxis().ticks(d3.time[tickInterval.interval], tickInterval.count);
     } else {
         chart.xAxis().ticks(0);
