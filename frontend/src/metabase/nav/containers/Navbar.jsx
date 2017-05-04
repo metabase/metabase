@@ -118,7 +118,7 @@ export default class Navbar extends Component {
 
     renderMainNav() {
         return (
-            <nav className={cx("Nav CheckBg CheckBg-offset relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
+            <nav className={cx("Nav relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
                 <ul className="ml2 sm-pl4 pr1 flex align-center">
                     <li>
                         <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background p1">
@@ -126,7 +126,7 @@ export default class Navbar extends Component {
                         </Link>
                     </li>
                     <li className="pl3 hide sm-show">
-                        <MainNavLink to="/dashboard" name="Dashboards" eventName="Dashboards" />
+                        <MainNavLink to="/dashboards" name="Dashboards" eventName="Dashboards" />
                     </li>
                     <li className="pl1 hide sm-show">
                         <MainNavLink to="/questions" name="Questions" eventName="Questions" />

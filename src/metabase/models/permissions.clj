@@ -1,19 +1,22 @@
 (ns metabase.models.permissions
-  (:require [clojure.core.match :refer [match]]
-            [clojure.data :as data]
-            [clojure.string :as str]
+  (:require [clojure
+             [data :as data]
+             [string :as str]]
+            [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [schema.core :as s]
-            (toucan [db :as db]
-                    [models :as models])
             [metabase.api.common :refer [*current-user-id*]]
-            (metabase.models [permissions-group :as group]
-                             [permissions-revision :refer [PermissionsRevision] :as perms-revision])
+            [metabase.models
+             [permissions-group :as group]
+             [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
             [metabase.util :as u]
-            (metabase.util [honeysql-extensions :as hx]
-                           [schema :as su])))
-
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [schema :as su]]
+            [schema.core :as s]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                                      UTIL FNS                                                                        |

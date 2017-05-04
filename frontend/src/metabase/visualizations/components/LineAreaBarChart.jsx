@@ -56,8 +56,12 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
         return getChartTypeFromData(cols, rows, false) != null;
     }
 
-    static checkRenderable([{ data: { cols, rows} }], settings) {
-        if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
+    static checkRenderable(series, settings) {
+        const singleSeriesHasNoRows = ({ data: { cols, rows} }) => rows.length < 1;
+        if (_.every(series, singleSeriesHasNoRows)) {
+             throw new MinRowsError(1, 0);
+        }
+
         const dimensions = (settings["graph.dimensions"] || []).filter(name => name);
         const metrics = (settings["graph.metrics"] || []).filter(name => name);
         if (dimensions.length < 1 || metrics.length < 1) {
@@ -176,7 +180,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     }
 
     render() {
-        const { series, hovered, showTitle, actionButtons, linkToCard, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { series, hovered, showTitle, actionButtons, onChangeCardAndRun, onVisualizationClick, visualizationIsClickable } = this.props;
 
         const settings = this.getSettings();
 
@@ -204,7 +208,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         series={titleHeaderSeries}
                         description={settings["card.description"]}
                         actionButtons={actionButtons}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={onChangeCardAndRun}
                     />
                 : null }
                 { multiseriesHeaderSeries || (!titleHeaderSeries && actionButtons) ? // always show action buttons if we have them
@@ -215,7 +219,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
                         actionButtons={!titleHeaderSeries ? actionButtons : null}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={onChangeCardAndRun}
                         onVisualizationClick={onVisualizationClick}
                         visualizationIsClickable={visualizationIsClickable}
                     />

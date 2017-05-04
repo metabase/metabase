@@ -33,6 +33,10 @@ import { determineSeriesIndexFromElement } from "./tooltip";
 import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
+import { datasetContainsNoResults } from "metabase/lib/dataset";
+
+import type { Series, ClickObject } from "metabase/meta/types/Visualization"
+
 const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
@@ -103,11 +107,15 @@ function initChart(chart, element) {
 }
 
 function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
+    // find the first nonempty single series
+    // $FlowFixMe
+    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+
     // setup an x-axis where the dimension is a timeseries
-    let dimensionColumn = series[0].data.cols[0];
+    let dimensionColumn = firstSeries.data.cols[0];
 
     // get the data's timezone offset from the first row
-    let dataOffset = parseTimestamp(series[0].data.rows[0][0]).utcOffset() / 60;
+    let dataOffset = parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
 
     // compute the data interval
     let dataInterval = xInterval;
@@ -149,7 +157,10 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
 }
 
 function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval) {
-    const dimensionColumn = series[0].data.cols[0];
+    // find the first nonempty single series
+    // $FlowFixMe
+    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+    const dimensionColumn = firstSeries.data.cols[0];
 
     if (settings["graph.x_axis.labels_enabled"]) {
         chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn), X_LABEL_PADDING);
@@ -187,7 +198,11 @@ function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, 
 }
 
 function applyChartOrdinalXAxis(chart, settings, series, xValues) {
-    const dimensionColumn = series[0].data.cols[0];
+    // find the first nonempty single series
+    // $FlowFixMe
+    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+
+    const dimensionColumn = firstSeries.data.cols[0];
 
     if (settings["graph.x_axis.labels_enabled"]) {
         chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn), X_LABEL_PADDING);
@@ -293,7 +308,7 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualizationClick) {
+function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll("title").remove();
@@ -358,14 +373,14 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualiza
         }
 
         if (onVisualizationClick) {
-            chart.selectAll(".bar, .dot, .bubble")
+            chart.selectAll(".bar, .dot, .area, .bubble")
                 .style({ "cursor": "pointer" })
                 .on("mouseup", function(d) {
                     const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
                     const card = series[seriesIndex].card;
                     const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
 
-                    let clicked;
+                    let clicked: ?ClickObject;
                     if (Array.isArray(d.key)) { // scatter
                         clicked = {
                             value: d.key[2],
@@ -376,6 +391,12 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualiza
                             ],
                             origin: d.key._origin
                         }
+                    } else if (isScalarSeries) {
+                        // special case for multi-series scalar series, which should be treated as scalars
+                        clicked = {
+                            value: d.data.value,
+                            column: series[seriesIndex].data.cols[1]
+                        };
                     } else if (d.data) { // line, area, bar
                         if (!isSingleSeriesBar) {
                             cols = series[seriesIndex].data.cols;
@@ -387,13 +408,26 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualiza
                                 { value: d.data.key, column: cols[0] }
                             ]
                         }
+                    } else {
+                        clicked = {
+                            dimensions: []
+                        };
                     }
 
-                    if (clicked && series.length > 1 && card._breakoutColumn) {
-                        clicked.dimensions.push({
-                            value: card._breakoutValue,
-                            column: card._breakoutColumn
-                        });
+                    // handle multiseries
+                    if (clicked && series.length > 1) {
+                        if (card._breakoutColumn) {
+                            // $FlowFixMe
+                            clicked.dimensions.push({
+                                value: card._breakoutValue,
+                                column: card._breakoutColumn
+                            });
+                        }
+                        // series was not transformed
+                        else if (!series._raw) {
+                            // $FlowFixMe
+                            clicked.seriesIndex = seriesIndex;
+                        }
                     }
 
                     if (clicked) {
@@ -601,7 +635,6 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
 
     function disableClickFiltering() {
         chart.selectAll("rect.bar")
-            .style({ cursor: "inherit" })
             .on("click", (d) => {
                 chart.filter(null);
                 chart.filter(d.key);
@@ -812,10 +845,14 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
     const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
     const isOrdinal = !isTimeseries && !isQuantitative;
 
-    const isDimensionTimeseries = dimensionIsTimeseries(series[0].data);
-    const isDimensionNumeric = dimensionIsNumeric(series[0].data);
+    // find the first nonempty single series
+    // $FlowFixMe
+    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
 
-    if (series[0].data.cols.length < 2) {
+    const isDimensionTimeseries = dimensionIsTimeseries(firstSeries.data);
+    const isDimensionNumeric = dimensionIsNumeric(firstSeries.data);
+
+    if (firstSeries.data.cols.length < 2) {
         throw new Error("This chart type requires at least 2 columns.");
     }
 
@@ -955,7 +992,11 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
 
         dimension = dataset.dimension(d => d[0]);
         groups = datas.map((data, seriesIndex) => {
+            // If the value is empty, pass a dummy array to crossfilter
+            data = data.length > 0 ? data : [[null, null]];
+
             let dim = crossfilter(data).dimension(d => d[0]);
+
             return data[0].slice(1).map((_, metricIndex) =>
                 reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
             );
@@ -1048,7 +1089,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
 
     let onGoalHover = () => {};
     if (settings["graph.show_goal"]) {
-        const goalData = [[xDomain[0], settings["graph.goal_value"]], [xDomain[1], settings["graph.goal_value"]]];
+        const goalValue = settings["graph.goal_value"];
+        const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
         const goalDimension = crossfilter(goalData).dimension(d => d[0]);
         const goalGroup = goalDimension.group().reduceSum(d => d[1]);
         const goalIndex = charts.length;
@@ -1065,8 +1107,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
 
         onGoalHover = (element) => {
             onHoverChange(element && {
-                element: element,
-                data: [{ key: "Goal", value: settings["graph.goal"] }]
+                element,
+                data: [{ key: "Goal", value: goalValue }]
             });
         }
     }
@@ -1124,7 +1166,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
     }
     const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
-    applyChartTooltips(parent, series, isStacked, (hovered) => {
+    applyChartTooltips(parent, series, isStacked, isScalarSeries, (hovered) => {
         if (onHoverChange) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {

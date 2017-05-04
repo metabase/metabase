@@ -1,12 +1,11 @@
 (ns metabase.query-processor-test.unix-timestamp-test
   "Tests for UNIX timestamp support."
-  (:require [expectations :refer :all]
+  (:require [metabase.query-processor-test :refer :all]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
-            (metabase.test.data [datasets :as datasets, :refer [*engine* *driver*]]
-                                [interface :as i])
-            [metabase.util :as u]))
+            [metabase.test.data
+             [datasets :as datasets :refer [*driver* *engine*]]
+             [interface :as i]]))
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
 (expect-with-non-timeseries-dbs

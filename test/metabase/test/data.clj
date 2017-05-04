@@ -1,27 +1,30 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require (clojure [string :as str]
-                     [walk :as walk])
+  (:require [clojure
+             [string :as str]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]
+             [sync-database :as sync-database]
+             [util :as u]]
+            metabase.driver.h2
+            [metabase.models
+             [database :refer [Database]]
+             [field :as field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.query-processor
+             [expand :as ql]
+             [interface :as qi]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :refer [*driver*]]
+             h2
+             [interface :as i]]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field] :as field]
-                             [table :refer [Table]])
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.expand :as ql]
-            [metabase.query-processor.interface :as qi]
-            [metabase.sync-database :as sync-database]
-            (metabase.test.data [datasets :refer [*driver*]]
-                                [dataset-definitions :as defs]
-                                [h2 :as h2]
-                                [interface :as i])
-            [metabase.util :as u])
-  (:import clojure.lang.Keyword
-           (metabase.test.data.interface DatabaseDefinition
-                                         FieldDefinition
-                                         TableDefinition)))
+            [toucan.db :as db])
+  (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
 (declare get-or-create-database!)
 

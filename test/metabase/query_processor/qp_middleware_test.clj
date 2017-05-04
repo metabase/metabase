@@ -1,13 +1,13 @@
 (ns metabase.query_processor.qp-middleware-test
-  (:require [expectations :refer :all]
-            [clj-time.coerce :as tc]
+  (:require [clj-time.coerce :as tc]
+            [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.models.setting :as setting]
-            (metabase.query-processor.middleware [add-row-count-and-status :as add-row-count-and-status]
-                                                 [add-settings :as add-settings]
-                                                 [catch-exceptions :as catch-exceptions]
-                                                 [format-rows :as format-rows])))
-
+            [metabase.query-processor.middleware
+             [add-row-count-and-status :as add-row-count-and-status]
+             [add-settings :as add-settings]
+             [catch-exceptions :as catch-exceptions]
+             [format-rows :as format-rows]]))
 
 (defrecord TestDriver []
   clojure.lang.Named

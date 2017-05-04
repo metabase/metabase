@@ -2,17 +2,17 @@
   (:require [clojure.string :as s]
             [environ.core :refer [env]]
             [medley.core :as m]
-            [metabase.driver.google :as google]
-            [metabase.driver.bigquery :as bigquery]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets]
-                                [interface :as i])
+            [metabase.driver
+             [bigquery :as bigquery]
+             [google :as google]]
+            [metabase.test.data
+             [datasets :as datasets]
+             [interface :as i]]
             [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util :as u])
-  (:import java.util.Arrays
-           com.google.api.client.util.DateTime
+  (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           (com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema)
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
            metabase.driver.bigquery.BigQueryDriver))
 
 (resolve-private-vars metabase.driver.bigquery post-process-native)

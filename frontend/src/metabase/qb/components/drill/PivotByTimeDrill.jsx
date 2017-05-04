@@ -9,6 +9,6 @@ import type {
 
 export default (
     { card, tableMetadata, clicked }: ClickActionProps
-): ?ClickAction => {
+): ClickAction[] => {
     return PivotByTimeAction({ card, tableMetadata, clicked });
 };

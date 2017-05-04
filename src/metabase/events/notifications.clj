@@ -2,19 +2,19 @@
   (:require [clojure.core.async :as async]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [toucan.db :as db]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [dependency :refer [Dependency]]
-                             [metric :refer [Metric]]
-                             [pulse :refer [Pulse]]
-                             [pulse-card :refer [PulseCard]]
-                             [segment :refer [Segment]]
-                             [user :refer [User]])))
-
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [dependency :refer [Dependency]]
+             [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [segment :refer [Segment]]
+             [user :refer [User]]]
+            [toucan.db :as db]))
 
 (def ^:const notifications-topics
   "The `Set` of event topics which are subscribed to for use in notifications tracking."

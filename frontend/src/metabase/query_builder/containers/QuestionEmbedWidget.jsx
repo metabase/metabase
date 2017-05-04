@@ -33,7 +33,7 @@ export default class QuestionEmbedWidget extends Component {
                 onUpdateEnableEmbedding={(enableEmbedding) => updateEnableEmbedding(card, enableEmbedding)}
                 onUpdateEmbeddingParams={(embeddingParams) => updateEmbeddingParams(card, embeddingParams)}
                 getPublicUrl={({ public_uuid }, extension) => window.location.origin + Urls.publicCard(public_uuid, extension)}
-                extensions={["csv", "json"]}
+                extensions={["csv", "xlsx", "json"]}
             />
         );
     }

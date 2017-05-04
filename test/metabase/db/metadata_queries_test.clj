@@ -1,13 +1,11 @@
 (ns metabase.db.metadata-queries-test
-  (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [metabase.db.metadata-queries :refer :all]
-            (metabase.models [field :refer [Field]]
-                             [table :refer [Table]])
+  (:require [metabase.db.metadata-queries :refer :all]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor-test :as qp-test]
             [metabase.test.data :refer :all]
             [metabase.test.data.datasets :as datasets]))
-
 
 ;; Redshift & Crate tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
 (def ^:private ^:const metadata-queries-test-engines

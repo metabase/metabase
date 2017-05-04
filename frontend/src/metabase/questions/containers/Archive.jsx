@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 
 import HeaderWithBack from "metabase/components/HeaderWithBack";
 import SearchHeader from "metabase/components/SearchHeader";
-import ArchivedItem from "../components/ArchivedItem";
+import ArchivedItem from "../../components/ArchivedItem";
 
 import { loadEntities, setArchived, setSearchText } from "../questions";
 import { setCollectionArchived } from "../collections";

@@ -1,9 +1,8 @@
 (ns metabase.test.data.sqlite
-  (:require [clojure.string :as s]
-            [honeysql.core :as hsql]
-            metabase.driver.sqlite
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+  (:require [honeysql.core :as hsql]
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import metabase.driver.sqlite.SQLiteDriver))

@@ -78,14 +78,17 @@ export function serializeCardForUrl(card) {
     if (dataset_query.query) {
         dataset_query.query = Query.cleanQuery(dataset_query.query);
     }
+
     var cardCopy = {
         name: card.name,
         description: card.description,
         dataset_query: dataset_query,
         display: card.display,
         parameters: card.parameters,
-        visualization_settings: card.visualization_settings
+        visualization_settings: card.visualization_settings,
+        original_card_id: card.original_card_id
     };
+
     return utf8_to_b64url(JSON.stringify(cardCopy));
 }
 

@@ -7,13 +7,15 @@ import type {
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default ({ card, tableMetadata }: ClickActionProps): ?ClickAction => {
+export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
     if (card.display !== "table") {
-        return;
+        return [];
     }
-    return {
-        title: "Plot a field in this segment",
-        icon: "bar",
-        card: () => plotSegmentField(card)
-    };
+    return [
+        {
+            title: "Plot a field in this segment",
+            icon: "bar",
+            card: () => plotSegmentField(card)
+        }
+    ];
 };

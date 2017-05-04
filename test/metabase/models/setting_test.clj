@@ -1,10 +1,8 @@
 (ns metabase.models.setting-test
   (:require [expectations :refer :all]
-            [medley.core :as m]
-            [toucan.db :as db]
-            [metabase.models.setting :refer [defsetting Setting], :as setting]
-            (metabase.test [data :refer :all]
-                           [util :refer :all])))
+            [metabase.models.setting :as setting :refer [defsetting Setting]]
+            [metabase.test.util :refer :all]
+            [toucan.db :as db]))
 
 ;; ## TEST SETTINGS DEFINITIONS
 ;; TODO! These don't get loaded by `lein ring server` unless this file is touched

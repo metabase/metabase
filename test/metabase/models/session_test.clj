@@ -1,12 +1,13 @@
 (ns metabase.models.session-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [session :refer :all]
-                             [user :refer [User]])
-            [metabase.test.data.users :refer :all]
+            [metabase.models
+             [session :refer :all]
+             [user :refer [User]]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
+
 ;; first-session-for-user
 (expect
   "the-greatest-day-ever"

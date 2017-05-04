@@ -13,14 +13,16 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL, humanize } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
-import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { applyParameters } from "metabase/meta/Card";
+import { applyParameters, cardIsEquivalent } from "metabase/meta/Card";
 
-import { getParameters, getNativeDatabases } from "./selectors";
+import { getParameters, getTableMetadata, getNativeDatabases } from "./selectors";
+import { getDatabases, getTables, getDatabasesList } from "metabase/selectors/metadata";
+
+import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -121,7 +123,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         const { currentUser } = getState();
 
-        let card, databases, originalCard;
+        let card, databasesList, originalCard;
         let uiControls = {
             isEditing: false,
             isShowingTemplateTagsEditor: false
@@ -129,9 +131,10 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         // always start the QB by loading up the databases for the application
         try {
-            databases = await MetabaseApi.db_list_with_tables();
+            await dispatch(fetchDatabases());
+            databasesList = getDatabasesList(getState());
         } catch(error) {
-            console.log("error fetching dbs", error);
+            console.error("error fetching dbs", error);
 
             // if we can't actually get the databases list then bail now
             dispatch(setErrorPage(error));
@@ -151,29 +154,36 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                 serializedCard = hash;
             }
         }
-        const sampleDataset = _.findWhere(databases, { is_sample: true });
+        const sampleDataset = _.findWhere(databasesList, { is_sample: true });
 
         let preserveParameters = false;
         if (params.cardId || serializedCard) {
             // existing card being loaded
             try {
+                // if we have a serialized card then unpack it and use it
+                card = serializedCard ? deserializeCardFromUrl(serializedCard) : {};
+
+                // load the card either from `cardId` parameter or the serialized card
                 if (params.cardId) {
                     card = await loadCard(params.cardId);
-
-                    // when we are loading from a card id we want an explict clone of the card we loaded which is unmodified
+                    // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
                     originalCard = Utils.copy(card);
-                }
-
-                // if we have a serialized card then unpack it and use it
-                if (serializedCard) {
-                    let deserializedCard = deserializeCardFromUrl(serializedCard);
-                    card = card ? _.extend(card, deserializedCard) : deserializedCard;
+                    // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
+                    // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
+                    card.original_card_id = card.id;
+                } else if (card.original_card_id) {
+                    // deserialized card contains the card id, so just populate originalCard
+                    originalCard = await loadCard(card.original_card_id);
+                    // if the cards are equal then show the original
+                    if (cardIsEquivalent(card, originalCard)) {
+                        card = Utils.copy(originalCard);
+                    }
                 }
 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
 
                 // if we have deserialized card from the url AND loaded a card by id then the user should be dropped into edit mode
-                uiControls.isEditing = (options.edit || (params.cardId && serializedCard)) ? true : false;
+                uiControls.isEditing = !!options.edit
 
                 // if this is the users first time loading a saved card on the QB then show them the newb modal
                 if (params.cardId && currentUser.is_qbnewb) {
@@ -197,7 +207,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         } else {
             // we are starting a new/empty card
-            const databaseId = (options.db) ? parseInt(options.db) : (databases && databases.length > 0 && databases[0].id);
+            const databaseId = (options.db) ? parseInt(options.db) : (databasesList && databasesList.length > 0 && databasesList[0].id);
 
             card = startNewCard("query", databaseId);
 
@@ -230,13 +240,13 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         // clean up the url and make sure it reflects our card state
         dispatch(updateUrl(card, {
             dirty: isCardDirty(card, originalCard),
+            replaceState: true,
             preserveParameters
         }));
 
         return {
             card,
             originalCard,
-            databases,
             uiControls
         };
     };
@@ -310,16 +320,13 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
 export const LOAD_TABLE_METADATA = "metabase/qb/LOAD_TABLE_METADATA";
 export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId) => {
     return async (dispatch, getState) => {
-        // if we already have the metadata loaded for the given table then we are done
-        const { qb: { tableMetadata } } = getState();
-        if (tableMetadata && tableMetadata.id === tableId) {
-            return tableMetadata;
-        }
-
         try {
-            return await loadTableAndForeignKeys(tableId);
+            await dispatch(fetchTableMetadata(tableId));
+            // TODO: finish moving this to metadata duck:
+            const foreignKeys = await MetabaseApi.table_fks({ tableId });
+            return { foreignKeys }
         } catch(error) {
-            console.log('error getting table metadata', error);
+            console.error('error getting table metadata', error);
             return {};
         }
     };
@@ -475,16 +482,20 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 
 // setCardAndRun
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shouldUpdateUrl = true) => {
+export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
-        let card = Utils.copy(runCard);
+        const card = Utils.copy(nextCard);
+        const originalCard = card.original_card_id ? await loadCard(card.original_card_id) : card;
 
         dispatch(loadMetadataForCard(card));
 
         dispatch(runQuery(card, { shouldUpdateUrl: shouldUpdateUrl }));
 
-        return card;
+        return {
+            card,
+            originalCard
+        };
     };
 });
 
@@ -493,10 +504,11 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shoul
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
-        const { qb: { card, uiControls, databases } } = getState();
+        const { qb: { card, uiControls } } = getState();
+        const databasesList = getDatabasesList(getState());
 
         const databaseId = card.dataset_query.database;
-        const database = _.findWhere(databases, { id: databaseId });
+        const database = _.findWhere(databasesList, { id: databaseId });
         const supportsNativeParameters = database && _.contains(database.features, "native-parameters");
 
         let updatedCard = Utils.copy(card),
@@ -596,7 +608,8 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
-        const { qb: { card, queryResult, tableMetadata, uiControls } } = getState();
+        const { qb: { card, queryResult, uiControls } } = getState();
+        const tableMetadata = getTableMetadata(getState());
 
         // if the type didn't actually change then nothing has been modified
         if (type === card.dataset_query.type) {
@@ -660,7 +673,8 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 export const SET_QUERY_DATABASE = "metabase/qb/SET_QUERY_DATABASE";
 export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseId) => {
     return async (dispatch, getState) => {
-        const { qb: { card, databases, uiControls } } = getState();
+        const { qb: { card, uiControls } } = getState();
+        const databases = getDatabases(getState());
 
         // picking the same database doesn't change anything
         if (databaseId === card.dataset_query.database) {
@@ -678,7 +692,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
             // set the initial collection for the query if this is a native query
             // this is only used for Mongo queries which need to be ran against a specific collection
             if (updatedCard.dataset_query.type === 'native') {
-                let database = _.findWhere(databases, { id: databaseId }),
+                let database = databases[databaseId],
                     tables   = database ? database.tables : [],
                     table    = tables.length > 0 ? tables[0] : null;
                 if (table) updatedCard.dataset_query.native.collection = table.name;
@@ -726,15 +740,9 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
         if (_.isObject(sourceTable)) {
             databaseId = sourceTable.db_id;
         } else {
-            // this is a bit hacky and slow
-            const { qb: { databases } } = getState();
-            for (var i=0; i < databases.length; i++) {
-                const database = databases[i];
-
-                if (_.findWhere(database.tables, { id: tableId })) {
-                    databaseId = database.id;
-                    break;
-                }
+            const table = getTables(getState())[tableId];
+            if (table) {
+                databaseId = table.db_id;
             }
         }
 
@@ -977,7 +985,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 
         if (isPK(coldef.special_type)) {
             // action is on a PK column
-            let newCard = startNewCard("query", card.dataset_query.database);
+            let newCard: Card = startNewCard("query", card.dataset_query.database);
 
             newCard.dataset_query.query.source_table = coldef.table_id;
             newCard.dataset_query.query.aggregation = ["rows"];
@@ -1087,7 +1095,7 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
                     info["value"] = "Unknown";
                 }
             } catch (error) {
-                console.log("error getting fk count", error, fkQuery);
+                console.error("error getting fk count", error, fkQuery);
             } finally {
                 info["status"] = 1;
             }

@@ -33,7 +33,7 @@ const getOriginalPermissions = (state) => state.admin.permissions.originalPermis
 const getDatabaseId = (state, props) => props.params.databaseId ? parseInt(props.params.databaseId) : null
 const getSchemaName = (state, props) => props.params.schemaName
 
-const getMetadata = createSelector(
+const getMeta = createSelector(
     [(state) => state.admin.permissions.databases],
     (databases) => databases && new Metadata(databases)
 );
@@ -235,7 +235,7 @@ const OPTION_COLLECTION_READ = {
 };
 
 export const getTablesPermissionsGrid = createSelector(
-    getMetadata, getGroups, getPermissions, getDatabaseId, getSchemaName,
+    getMeta, getGroups, getPermissions, getDatabaseId, getSchemaName,
     (metadata: Metadata, groups: Array<Group>, permissions: GroupsPermissions, databaseId: DatabaseId, schemaName: SchemaName) => {
         const database = metadata && metadata.database(databaseId);
 
@@ -296,7 +296,7 @@ export const getTablesPermissionsGrid = createSelector(
 );
 
 export const getSchemasPermissionsGrid = createSelector(
-    getMetadata, getGroups, getPermissions, getDatabaseId,
+    getMeta, getGroups, getPermissions, getDatabaseId,
     (metadata: Metadata, groups: Array<Group>, permissions: GroupsPermissions, databaseId: DatabaseId) => {
         const database = metadata && metadata.database(databaseId);
 
@@ -315,8 +315,8 @@ export const getSchemasPermissionsGrid = createSelector(
             ],
             groups,
             permissions: {
-                header: "Data Access",
                 "tables": {
+                    header: "Data Access",
                     options(groupId, entityId) {
                         return [OPTION_ALL, OPTION_CONTROLLED, OPTION_NONE]
                     },
@@ -356,7 +356,7 @@ export const getSchemasPermissionsGrid = createSelector(
 );
 
 export const getDatabasesPermissionsGrid = createSelector(
-    getMetadata, getGroups, getPermissions,
+    getMeta, getGroups, getPermissions,
     (metadata: Metadata, groups: Array<Group>, permissions: GroupsPermissions) => {
         if (!groups || !permissions || !metadata) {
             return null;
@@ -501,7 +501,7 @@ export const getCollectionsPermissionsGrid = createSelector(
 
 
 export const getDiff = createSelector(
-    getMetadata, getGroups, getPermissions, getOriginalPermissions,
+    getMeta, getGroups, getPermissions, getOriginalPermissions,
     (metadata: Metadata, groups: Array<Group>, permissions: GroupsPermissions, originalPermissions: GroupsPermissions) =>
         diffPermissions(permissions, originalPermissions, groups, metadata)
 );

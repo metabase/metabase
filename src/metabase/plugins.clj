@@ -1,9 +1,10 @@
 (ns metabase.plugins
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.util :as u])
-  (:import (java.net URL URLClassLoader)))
+            [metabase
+             [config :as config]
+             [util :as u]])
+  (:import [java.net URL URLClassLoader]))
 
 (defn- plugins-dir
   "The Metabase plugins directory. This defaults to `plugins/` in the same directory as `metabase.jar`, but can be configured via the env var `MB_PLUGINS_DIR`."

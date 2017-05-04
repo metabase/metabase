@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require schema.utils
+  (:require [metabase.query-processor.middleware.expand-resolve :as expand-resolve]
             [metabase.query-processor.util :as qputil]
-            [metabase.query-processor.middleware.expand-resolve :as expand-resolve]
-            [metabase.util :as u])
-  (:import (schema.utils NamedError ValidationError)))
+            [metabase.util :as u]
+            schema.utils)
+  (:import [schema.utils NamedError ValidationError]))
 
 (defn- fail [query, ^Throwable e, & [additional-info]]
   (merge {:status         :failed
