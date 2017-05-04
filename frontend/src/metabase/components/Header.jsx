@@ -30,8 +30,7 @@ export default class Header extends Component {
     }
     componentDidUpdate() {
         if (this.refs.header) {
-            const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
-            const headerHeight = rect.top + getScrollY();
+            const headerHeight = ReactDOM.findDOMNode(this.refs.header).offsetHeight + getScrollY();
             if (this.state.headerHeight !== headerHeight) {
                 this.setState({ headerHeight });
             }
