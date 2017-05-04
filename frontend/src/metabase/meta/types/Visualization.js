@@ -29,10 +29,11 @@ export type DimensionValue = {
 
 export type ClickObject = {
     value?: Value,
-    column: Column,
+    column?: Column,
     dimensions?: DimensionValue[],
     event?: MouseEvent,
     element?: HTMLElement,
+    seriesIndex?: number,
 }
 
 export type ClickAction = {
@@ -74,12 +75,12 @@ export type VisualizationProps = {
     isDashboard: boolean,
     isEditing: boolean,
     actionButtons: Node,
-    linkToCard?: bool,
 
     hovered: ?HoverObject,
     onHoverChange: (?HoverObject) => void,
     onVisualizationClick: (?ClickObject) => void,
     visualizationIsClickable: (?ClickObject) => boolean,
+    onChangeCardAndRun: (card: Card) => void,
 
     onUpdateVisualizationSettings: ({ [key: string]: any }) => void
 }

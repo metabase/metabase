@@ -115,18 +115,6 @@ export const originalCard = handleActions({
     [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => Utils.copy(payload) },
 }, null);
 
-
-// the full list of databases available for use
-export const databases = handleActions({
-    [INITIALIZE_QB]: { next: (state, { payload }) => payload ? payload.databases : null },
-}, null);
-
-// the table actively being queried against.  this is only used for MBQL queries.
-export const tableMetadata = handleActions({
-    [RESET_QB]: { next: (state, { payload }) => null },
-    [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.table ? payload.table : state }
-}, null);
-
 export const tableForeignKeys = handleActions({
     [RESET_QB]: { next: (state, { payload }) => null },
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.foreignKeys ? payload.foreignKeys : state }

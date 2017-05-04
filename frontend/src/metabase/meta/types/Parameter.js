@@ -1,10 +1,15 @@
 /* @flow */
 
 import type { CardId } from "./Card";
-import type { ConcreteField } from "./Query";
+import type { LocalFieldReference, ForeignFieldReference } from "./Query";
 
 export type ParameterId = string;
+
+// date/*, category, id, etc
 export type ParameterType = string;
+
+// a URL-safe encoding of a parameter value
+export type ParameterValue = string;
 
 export type Parameter = {
     id: ParameterId,
@@ -16,10 +21,8 @@ export type Parameter = {
     target?: ParameterTarget
 };
 
-export type ParameterValue = number | string;
-
 export type VariableTarget = ["template-tag", string];
-export type DimensionTarget = ["template-tag", string] | ConcreteField
+export type DimensionTarget = ["template-tag", string] | LocalFieldReference | ForeignFieldReference
 
 export type ParameterTarget =
     ["variable", VariableTarget] |
@@ -45,7 +48,7 @@ export type ParameterOption = {
 export type ParameterInstance = {
     type: ParameterType,
     target: ParameterTarget,
-    value: string
+    value: ParameterValue
 };
 
 export type ParameterMappingUIOption = ParameterMappingOption & {

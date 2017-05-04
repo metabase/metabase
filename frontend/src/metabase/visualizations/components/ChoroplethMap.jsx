@@ -118,7 +118,7 @@ export default class ChoroplethMap extends Component {
             );
         }
 
-        const { series, className, gridSize, hovered, onHoverChange, onVisualizationClick, settings } = this.props;
+        const { series, className, gridSize, hovered, onHoverChange, visualizationIsClickable, onVisualizationClick, settings } = this.props;
         let { geoJson, minimalBounds } = this.state;
 
         // special case builtin maps to use legacy choropleth map
@@ -161,21 +161,28 @@ export default class ChoroplethMap extends Component {
                 data: { key: getFeatureName(hover.feature), value: getFeatureValue(hover.feature)
             } })
         }
-        const onClickFeature = (click) => {
+
+        const getFeatureClickObject = (row) => ({
+            value: row[metricIndex],
+            column: cols[metricIndex],
+            dimensions: [{
+                value: row[dimensionIndex],
+                column: cols[dimensionIndex]
+            }]
+        })
+
+        const isClickable = onVisualizationClick && visualizationIsClickable(getFeatureClickObject(rows[0]))
+
+        const onClickFeature = isClickable && ((click) => {
             const featureKey = getFeatureKey(click.feature);
             const row = _.find(rows, row => getRowKey(row) === featureKey);
             if (onVisualizationClick && row !== undefined) {
                 onVisualizationClick({
-                    value: row[metricIndex],
-                    column: cols[metricIndex],
-                    dimensions: [{
-                        value: row[dimensionIndex],
-                        column: cols[dimensionIndex]
-                    }],
+                    ...getFeatureClickObject(row),
                     event: click.event
                 });
             }
-        }
+        })
 
         const valuesMap = {};
         const domain = []

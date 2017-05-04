@@ -107,7 +107,6 @@ export default class PublicDashboard extends Component<*, Props, *> {
                     <DashboardGrid
                         {...this.props}
                         className={"spread"}
-                        linkToCard={false}
                     />
                 }
                 </LoadingAndErrorWrapper>

@@ -86,7 +86,7 @@ export default class FilterPopover extends Component<*, Props, State> {
             let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
 
             // let the DatePicker choose the default operator, otherwise use the first one
-            let operator = isDate(field) ? null : field.valid_operators[0].name;
+            let operator = isDate(field) ? null : field.operators[0].name;
 
             // $FlowFixMe
             filter = this._updateOperator(filter, operator);
@@ -280,7 +280,7 @@ export default class FilterPopover extends Component<*, Props, State> {
                         <div>
                             <OperatorSelector
                                 operator={filter[0]}
-                                operators={field.valid_operators}
+                                operators={field.operators}
                                 onOperatorChange={this.setOperator}
                             />
                             { this.renderPicker(filter, field) }

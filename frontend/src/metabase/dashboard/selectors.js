@@ -5,9 +5,11 @@ import { updateIn, setIn } from "icepick";
 
 import { createSelector } from 'reselect';
 
+import { getMeta } from "metabase/selectors/metadata";
+
 import * as Dashboard from "metabase/meta/Dashboard";
+
 import { getParameterTargetFieldId } from "metabase/meta/Parameter";
-import Metadata from "metabase/meta/metadata/Metadata";
 
 import type { CardId, Card } from "metabase/meta/types/Card";
 import type { DashCardId } from "metabase/meta/types/Dashboard";
@@ -38,13 +40,6 @@ export const getSlowCards         = state => state.dashboard.slowCards;
 export const getCardIdList        = state => state.dashboard.cardList;
 export const getRevisions         = state => state.dashboard.revisions;
 export const getParameterValues   = state => state.dashboard.parameterValues;
-
-export const getDatabases         = state => state.metadata.databases;
-
-export const getMetadata = createSelector(
-    [state => state.metadata],
-    (metadata) => Metadata.fromEntities(metadata)
-)
 
 export const getDashboard = createSelector(
     [getDashboardId, getDashboards],
@@ -98,7 +93,7 @@ export const getParameterTarget = createSelector(
 );
 
 export const getMappingsByParameter = createSelector(
-    [getMetadata, getDashboardComplete],
+    [getMeta, getDashboardComplete],
     (metadata, dashboard) => {
         if (!dashboard) {
             return {};
@@ -168,7 +163,7 @@ export const getParameters = createSelector(
 
 export const makeGetParameterMappingOptions = () => {
     const getParameterMappingOptions = createSelector(
-        [getMetadata, getEditingParameter, getCard],
+        [getMeta, getEditingParameter, getCard],
         (metadata, parameter: Parameter, card: Card): Array<ParameterMappingUIOption> => {
             return Dashboard.getParameterMappingOptions(metadata, parameter, card);
         }

@@ -9,6 +9,7 @@
              [query-processor :as qp]
              [sync-database :as sync-database]
              [util :as u]]
+            metabase.driver.h2
             [metabase.models
              [database :refer [Database]]
              [field :as field :refer [Field]]
@@ -19,6 +20,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]
+             h2
              [interface :as i]]
             [schema.core :as s]
             [toucan.db :as db])

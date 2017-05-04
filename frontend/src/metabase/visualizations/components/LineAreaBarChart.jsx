@@ -180,7 +180,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     }
 
     render() {
-        const { series, hovered, showTitle, actionButtons, linkToCard, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { series, hovered, showTitle, actionButtons, onChangeCardAndRun, onVisualizationClick, visualizationIsClickable } = this.props;
 
         const settings = this.getSettings();
 
@@ -208,7 +208,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         series={titleHeaderSeries}
                         description={settings["card.description"]}
                         actionButtons={actionButtons}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={onChangeCardAndRun}
                     />
                 : null }
                 { multiseriesHeaderSeries || (!titleHeaderSeries && actionButtons) ? // always show action buttons if we have them
@@ -219,7 +219,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
                         actionButtons={!titleHeaderSeries ? actionButtons : null}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={onChangeCardAndRun}
                         onVisualizationClick={onVisualizationClick}
                         visualizationIsClickable={visualizationIsClickable}
                     />
