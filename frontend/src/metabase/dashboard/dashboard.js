@@ -499,7 +499,7 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
 // TODO Atte Keinänen 5/2/17: This could be combined with `setCardAndRun` of query_builder/actions.js
 // Having two separate actions for very similar behavior was a source of initial confusion for me
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
-export const navigateToNewCard = createThunkAction(NAVIGATE_TO_NEW_CARD, (card: UnsavedCard|Card, dashcard: DashCard) =>
+export const navigateToNewCard = createThunkAction(NAVIGATE_TO_NEW_CARD, (card: UnsavedCard, dashcard: DashCard) =>
     (dispatch, getState) => {
         const { metadata } = getState();
         const { dashboardId, dashboards, parameterValues } = getState().dashboard;

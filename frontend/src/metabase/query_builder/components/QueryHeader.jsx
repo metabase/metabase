@@ -288,6 +288,10 @@ export default class QueryHeader extends Component {
                         <MoveToCollection
                             questionId={this.props.card.id}
                             initialCollectionId={this.props.card && this.props.card.collection_id}
+                            setCollection={(questionId, collection) => {
+                                this.props.onSetCardAttribute('collection', collection)
+                                this.props.onSetCardAttribute('collection_id', collection.id)
+                            }}
                         />
                     </ModalWithTrigger>
                 ]);

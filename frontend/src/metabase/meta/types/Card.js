@@ -10,16 +10,19 @@ export type UnsavedCard = {
     dataset_query: DatasetQuery,
     display: string,
     visualization_settings: VisualizationSettings,
-    parameters?: Array<Parameter>
+    parameters?: Array<Parameter>,
+    original_card_id?: CardId
 }
 
-export type SavedCardFields = {
+export type Card = {
     id: CardId,
-    name?: string,
-    description?: string,
-}
-
-export type Card = UnsavedCard & SavedCardFields;
+    name: ?string,
+    description: ?string,
+    dataset_query: DatasetQuery,
+    display: string,
+    visualization_settings: VisualizationSettings,
+    parameters?: Array<Parameter>,
+};
 
 export type StructuredDatasetQuery = {
     type: "query",
