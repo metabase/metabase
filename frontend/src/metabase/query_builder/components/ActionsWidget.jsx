@@ -66,15 +66,28 @@ export default class ActionsWidget extends Component<*, Props, *> {
         });
     };
 
+    handleOnChangeCardAndRun(nextCard) {
+        const { card } = this.props;
+
+        // Include the original card id if present for showing the lineage next to title
+        const nextCardWithOriginalId = {
+            ...nextCard,
+            original_card_id: card.id || card.original_card_id
+        };
+        if (nextCardWithOriginalId) {
+            this.props.setCardAndRun(nextCardWithOriginalId);
+        }
+    }
+
     handleActionClick = (index: number) => {
         const { mode, card, tableMetadata } = this.props;
         const action = getModeActions(mode, card, tableMetadata)[index];
         if (action && action.popover) {
             this.setState({ selectedActionIndex: index });
         } else if (action && action.card) {
-            const card = action.card();
-            if (card) {
-                this.props.setCardAndRun(card);
+            const nextCard = action.card();
+            if (nextCard) {
+                this.handleOnChangeCardAndRun(nextCard);
             }
             this.close();
         }
@@ -149,7 +162,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
                                       <PopoverComponent
                                           onChangeCardAndRun={(card) => {
                                               if (card) {
-                                                  this.props.setCardAndRun(card);
+                                                  this.handleOnChangeCardAndRun(card)
                                               }
                                           }}
                                           onClose={this.close}

@@ -230,7 +230,6 @@ export default class Visualization extends Component<*, Props, State> {
         // $FlowFixMe
         const hasOriginalCard = series[index] && series[index].card && (series[index].card.id || series[index].card.original_card_id);
         if (hasOriginalCard) {
-            console.log('woohoo has original card', series[index].card, series[index].card.id || series[index].card.original_card_id);
             const cardWithOriginalId: UnsavedCard = {
                 ...card,
                 // $FlowFixMe
