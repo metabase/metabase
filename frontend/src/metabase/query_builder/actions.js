@@ -168,6 +168,9 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                     card = await loadCard(params.cardId);
                     // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
                     originalCard = Utils.copy(card);
+                    // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
+                    // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
+                    card.original_card_id = card.id;
                 } else if (card.original_card_id) {
                     // deserialized card contains the original card id, so just populate originalCard
                     originalCard = await loadCard(card.original_card_id);
