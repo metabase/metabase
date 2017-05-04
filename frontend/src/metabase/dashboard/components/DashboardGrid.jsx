@@ -65,10 +65,6 @@ export default class DashboardGrid extends Component {
         isEditingParameter: false
     };
 
-    shouldComponentUpdate(nextProps, nextState) {
-        return !(shallowEqual(this.props, nextProps) && shallowEqual(this.state, nextState));
-    }
-
     componentWillReceiveProps(nextProps) {
         this.setState({
             dashcards: this.getSortedDashcards(nextProps),
