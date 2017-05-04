@@ -78,7 +78,7 @@ export const card = handleActions({
     [INITIALIZE_QB]: { next: (state, { payload }) => payload ? payload.card : null },
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
     [CANCEL_EDITING]: { next: (state, { payload }) => payload },
-    [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload },
+    [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
     [NOTIFY_CARD_CREATED]: { next: (state, { payload }) => payload },
     [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => payload },
 
@@ -110,7 +110,7 @@ export const originalCard = handleActions({
     [INITIALIZE_QB]: { next: (state, { payload }) => payload.originalCard ? Utils.copy(payload.originalCard) : null },
     [RELOAD_CARD]: { next: (state, { payload }) => payload.id ? Utils.copy(payload) : null },
     [CANCEL_EDITING]: { next: (state, { payload }) => payload.id ? Utils.copy(payload) : null },
-    [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.id ? Utils.copy(payload) : null },
+    [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.originalCard ? Utils.copy(payload.originalCard) : null },
     [NOTIFY_CARD_CREATED]: { next: (state, { payload }) => Utils.copy(payload) },
     [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => Utils.copy(payload) },
 }, null);

@@ -80,13 +80,13 @@ export function serializeCardForUrl(card) {
     }
 
     var cardCopy = {
-        id: card.id,
         name: card.name,
         description: card.description,
         dataset_query: dataset_query,
         display: card.display,
         parameters: card.parameters,
-        visualization_settings: card.visualization_settings
+        visualization_settings: card.visualization_settings,
+        original_card_id: card.original_card_id
     };
 
     return utf8_to_b64url(JSON.stringify(cardCopy));

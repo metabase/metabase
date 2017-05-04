@@ -62,7 +62,7 @@ type Props = {
 
     // for click actions
     metadata: Metadata,
-    onChangeCardAndRun: (card: UnsavedCard|CardObject) => void,
+    onChangeCardAndRun: (card: UnsavedCard) => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -191,9 +191,7 @@ export default class Visualization extends Component<*, Props, State> {
         const seriesIndex = clicked.seriesIndex || 0;
         const card = series[seriesIndex].card;
         const tableMetadata = card && Card.getTableMetadata(card, metadata);
-        // $FlowFixMe
         const mode = getMode(card, tableMetadata);
-        // $FlowFixMe
         return getModeDrills(mode, card, tableMetadata, clicked);
     }
 
@@ -224,20 +222,22 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     handleOnChangeCardAndRun = (card: UnsavedCard) => {
-        // If the current card is saved, carry that information to the new card for showing lineage
         const { series, clicked } = this.state;
 
+        // If the current card is saved or is based on a saved question,
+        // carry that information to the new card for showing lineage
         const index = (clicked && clicked.seriesIndex) || 0;
-
         // $FlowFixMe
-        const cardId = series[index] && series[index].card && series[index].card.id;
-        if (cardId) {
-            const savedCard: CardObject = {
+        const hasOriginalCard = series[index] && series[index].card && (series[index].card.id || series[index].card.original_card_id);
+        if (hasOriginalCard) {
+            console.log('woohoo has original card', series[index].card, series[index].card.id || series[index].card.original_card_id);
+            const cardWithOriginalId: UnsavedCard = {
                 ...card,
-                id: cardId
+                // $FlowFixMe
+                original_card_id: series[index].card.id || series[index].card.original_card_id
             };
 
-            this.props.onChangeCardAndRun(savedCard)
+            this.props.onChangeCardAndRun(cardWithOriginalId)
         } else {
             this.props.onChangeCardAndRun(card)
         }

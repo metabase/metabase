@@ -161,18 +161,16 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             // existing card being loaded
             try {
                 // if we have a serialized card then unpack it and use it
-                card = serializedCard ? deserializeCardFromUrl(serializedCard) : {}
+                card = serializedCard ? deserializeCardFromUrl(serializedCard) : {};
 
                 // load the card either from `cardId` parameter or the serialized card
                 if (params.cardId) {
                     card = await loadCard(params.cardId);
                     // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
                     originalCard = Utils.copy(card);
-                } else if (card.id) {
-                    // deserialized card contains the card id, so just populate originalCard
-                    originalCard = await loadCard(card.id);
-                    // strip the card id from the deserialized card so that we have a correct url and show lineage correctly
-                    card = _.omit(card, "id");
+                } else if (card.original_card_id) {
+                    // deserialized card contains the original card id, so just populate originalCard
+                    originalCard = await loadCard(card.original_card_id);
                 }
 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
@@ -480,13 +478,17 @@ export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
-        let card = Utils.copy(runCard);
+        const card = Utils.copy(runCard);
+        const originalCard = card.original_card_id ? await loadCard(card.original_card_id) : card;
 
         dispatch(loadMetadataForCard(card));
 
         dispatch(runQuery(card, { shouldUpdateUrl: shouldUpdateUrl }));
 
-        return card;
+        return {
+            card,
+            originalCard
+        };
     };
 });
 
@@ -976,7 +978,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 
         if (isPK(coldef.special_type)) {
             // action is on a PK column
-            let newCard = startNewCard("query", card.dataset_query.database);
+            let newCard: Card = startNewCard("query", card.dataset_query.database);
 
             newCard.dataset_query.query.source_table = coldef.table_id;
             newCard.dataset_query.query.aggregation = ["rows"];
