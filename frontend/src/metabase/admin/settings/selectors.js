@@ -215,17 +215,17 @@ const SECTIONS = [
             },
             {
                 key: "ldap-attribute-email",
-                display_name: "User email attribute",
+                display_name: "Email attribute",
                 type: "string"
             },
             {
                 key: "ldap-attribute-firstname",
-                display_name: "User first name attribute",
+                display_name: "First name attribute",
                 type: "string"
             },
             {
                 key: "ldap-attribute-lastname",
-                display_name: "User last name attribute",
+                display_name: "Last name attribute",
                 type: "string"
             },
             {

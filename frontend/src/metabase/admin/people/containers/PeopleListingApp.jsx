@@ -388,7 +388,7 @@ export default class PeopleListingApp extends Component {
                                         </Tooltip> : null}
                                       {user.ldap_auth ?
                                         <Tooltip tooltip="Signed up via LDAP">
-                                            <Icon name='folder' />
+                                            <Icon name='ldap' />
                                         </Tooltip> : null }
                                     </td>
                                     <td>{user.email}</td>
