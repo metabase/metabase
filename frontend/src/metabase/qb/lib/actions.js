@@ -207,7 +207,6 @@ export const pivot = (
     }
 
     let newCard = startNewCard("query");
-    // $FlowFixMe
     newCard.dataset_query = card.dataset_query;
 
     for (const dimension of dimensions) {
@@ -227,6 +226,7 @@ export const pivot = (
     }
 
     newCard.dataset_query.query = Query.addBreakout(
+        // $FlowFixMe
         newCard.dataset_query.query,
         breakout
     );

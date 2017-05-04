@@ -134,7 +134,7 @@ export default class DashCard extends Component {
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                     metadata={metadata}
-                    onChangeCardAndRun={(card: UnsavedCard|Card) => {
+                    onChangeCardAndRun={(card: UnsavedCard) => {
                         navigateToNewCard(card, dashcard)
                     }}
                 />

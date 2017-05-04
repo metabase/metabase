@@ -30,7 +30,7 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type {Card as CardObject, UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
+import type { UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
 import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
 import type { Metadata } from "metabase/meta/types/Metadata";
 
@@ -62,7 +62,7 @@ type Props = {
 
     // for click actions
     metadata: Metadata,
-    onChangeCardAndRun: (card: CardObject) => void,
+    onChangeCardAndRun: (card: UnsavedCard) => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -191,9 +191,7 @@ export default class Visualization extends Component<*, Props, State> {
         const seriesIndex = clicked.seriesIndex || 0;
         const card = series[seriesIndex].card;
         const tableMetadata = card && Card.getTableMetadata(card, metadata);
-        // $FlowFixMe
         const mode = getMode(card, tableMetadata);
-        // $FlowFixMe
         return getModeDrills(mode, card, tableMetadata, clicked);
     }
 
@@ -224,20 +222,22 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     handleOnChangeCardAndRun = (card: UnsavedCard) => {
-        // If the current card is saved, carry that information to the new card for showing lineage
-        const { series } = this.state
+        const { series, clicked } = this.state;
+
+        // If the current card is saved or is based on a saved question,
+        // carry that information to the new card for showing lineage
+        const index = (clicked && clicked.seriesIndex) || 0;
         // $FlowFixMe
-        const currentlyInSavedCard = series[0] && series[0].card && series[0].card.id
-        if (currentlyInSavedCard) {
-            const savedCard: CardObject = {
+        const hasOriginalCard = series[index] && series[index].card && (series[index].card.id || series[index].card.original_card_id);
+        if (hasOriginalCard) {
+            const cardWithOriginalId: UnsavedCard = {
                 ...card,
                 // $FlowFixMe
-                id: series[0].card.id
+                original_card_id: series[index].card.id || series[index].card.original_card_id
             };
 
-            this.props.onChangeCardAndRun(savedCard)
+            this.props.onChangeCardAndRun(cardWithOriginalId)
         } else {
-            // $FlowFixMe
             this.props.onChangeCardAndRun(card)
         }
     }

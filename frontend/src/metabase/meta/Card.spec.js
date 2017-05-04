@@ -1,6 +1,6 @@
 import * as Card from "./Card";
 
-import { assocIn } from "icepick";
+import { assocIn, dissoc } from "icepick";
 
 describe("metabase/meta/Card", () => {
     describe("questionUrlWithParameters", () => {
@@ -59,7 +59,7 @@ describe("metabase/meta/Card", () => {
                 expect(parseUrl(url)).toEqual({
                     pathname: "/question",
                     query: {},
-                    card: card,
+                    card: dissoc(card, "id")
                 });
             });
             it("should return question URL with query string parameter", () => {
@@ -73,7 +73,7 @@ describe("metabase/meta/Card", () => {
                 expect(parseUrl(url)).toEqual({
                     pathname: "/question",
                     query: { baz: "bar" },
-                    card: card,
+                    card: dissoc(card, "id")
                 });
             });
         });
@@ -114,7 +114,7 @@ describe("metabase/meta/Card", () => {
                 expect(parseUrl(url)).toEqual({
                     pathname: "/question",
                     query: {},
-                    card
+                    card: dissoc(card, "id")
                 });
             });
             it("should return question URL with string MBQL filter added", () => {
@@ -129,7 +129,7 @@ describe("metabase/meta/Card", () => {
                     pathname: "/question",
                     query: {},
                     card: assocIn(
-                        card,
+                        dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
                         ["AND", ["=", ["field-id", 1], "bar"]]
                     )
@@ -147,7 +147,7 @@ describe("metabase/meta/Card", () => {
                     pathname: "/question",
                     query: {},
                     card: assocIn(
-                        card,
+                        dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
                         ["AND", ["=", ["field-id", 2], 123]]
                     )
@@ -166,7 +166,7 @@ describe("metabase/meta/Card", () => {
                     pathname: "/question",
                     query: {},
                     card: assocIn(
-                        card,
+                        dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
                         ["AND", ["=", ["datetime-field", ["field-id", 3], "month"], "2017-05-01"]]
                     )
@@ -184,7 +184,7 @@ describe("metabase/meta/Card", () => {
                     pathname: "/question",
                     query: {},
                     card: assocIn(
-                        card,
+                        dissoc(card, "id"),
                         ["dataset_query", "query", "filter"],
                         ["AND", ["=", ["datetime-field", ["fk->", 4, 5], "month"], "2017-05-01"]]
                     )
