@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { shallowEqual } from "recompose"
 
 import GridLayout from "./grid/GridLayout.jsx";
 import DashCard from "./DashCard.jsx";

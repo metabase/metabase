@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import _ from "underscore";
-import { updateIn, setIn } from "icepick";
+import { setIn } from "icepick";
 
 import { createSelector } from 'reselect';
 
