@@ -16,10 +16,10 @@ const mapStateToProps = (state, props) => ({
 
 })
 
-const mapDispatchToProps = (dispatch) => ({
+const mapDispatchToProps = {
     loadCollections,
-    dispatch
-})
+    defaultSetCollection: setCollection
+}
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class MoveToCollection extends Component {
@@ -38,10 +38,11 @@ export default class MoveToCollection extends Component {
     async onMove(collection) {
         try {
             this.setState({ error: null })
-            this.props.setCollection(this.props, collection, true);
+            const setCollection = this.props.setCollection || this.props.defaultSetCollection
+            await setCollection(this.props.questionId, collection, true);
             this.props.onClose();
-        } catch (e) {
-            this.setState({ error: e })
+        } catch (error) {
+            this.setState({ error })
         }
     }
 
@@ -95,8 +96,3 @@ export default class MoveToCollection extends Component {
     }
 }
 
-MoveToCollection.defaultProps = {
-    setCollection: async (props, collection) => {
-        await props.dispatch(setCollection(props.questionId, collection.id, true))
-    }
-}

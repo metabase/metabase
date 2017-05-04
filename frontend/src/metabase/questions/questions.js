@@ -162,9 +162,10 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
 
 const getCardCollectionId = (state, cardId) => getIn(state, ["questions", "entities", "cards", cardId, "collection_id"])
 
-export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collectionId, undoable = false) => {
+export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collection, undoable = false) => {
     return async (dispatch, getState) => {
         const state = getState();
+        const collectionId = collection.id;
         if (cardId == null) {
             // bulk move
             let selected = getSelectedEntities(getState());
