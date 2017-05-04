@@ -29,6 +29,7 @@
     "js-cookie": "^2.1.2",
     "jsrsasign": "^7.1.0",
     "leaflet": "^1.0.1",
+    "leaflet-draw": "^0.4.9",
     "moment": "2.14.1",
     "node-libs-browser": "^2.0.0",
     "normalizr": "^3.0.2",
