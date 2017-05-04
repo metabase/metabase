@@ -30,7 +30,7 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type {Card as CardObject, UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
+import type { UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
 import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
 import type { Metadata } from "metabase/meta/types/Metadata";
 

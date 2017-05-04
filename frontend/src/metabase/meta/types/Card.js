@@ -21,7 +21,8 @@ export type Card = {
     dataset_query: DatasetQuery,
     display: string,
     visualization_settings: VisualizationSettings,
-    parameters?: Array<Parameter>
+    parameters?: Array<Parameter>,
+    original_card_id?: CardId
 };
 
 export type StructuredDatasetQuery = {

@@ -10,7 +10,7 @@ import { getModeActions } from "metabase/qb/lib/modes";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { Card } from "metabase/meta/types/Card";
+import type { Card, UnsavedCard } from "metabase/meta/types/Card";
 import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
@@ -66,7 +66,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
         });
     };
 
-    handleOnChangeCardAndRun(nextCard) {
+    handleOnChangeCardAndRun(nextCard: UnsavedCard|Card) {
         const { card } = this.props;
 
         // Include the original card id if present for showing the lineage next to title
