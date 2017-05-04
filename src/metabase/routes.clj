@@ -15,7 +15,8 @@
             [ring.util
              [io :as ring-io]
              [response :as resp]]
-            [stencil.core :as stencil]))
+            [stencil.core :as stencil]
+            [clojure.tools.logging :as log]))
 
 (defn- load-file-at-path [path]
   (slurp (or (io/resource path)
@@ -50,7 +51,7 @@
   (GET "*" [] embed))
 
 (defn- some-very-long-handler [_]
-  (Thread/sleep 30000)
+  (Thread/sleep 15000)
   {:success true})
 
 (defn- some-naughty-handler-that-barfs [_]
@@ -59,31 +60,49 @@
 (def ^:private ^:const streaming-response-keep-alive-interval-ms
   "Interval between sending whitespace bytes to keep Heroku from terminating
    requests like queries that take a long time to complete."
-  (* 20 1000)) ; every 20 ms
+  (* 1 1000))
+
+;;;;;;;;;;;;; begin messyness ::::::::::::::::::::::::::::::::::::::::::::
+(require '[ring.core.protocols :as protocols])     ;; this next section goes to it's own namespace soon
+(import '[java.util.concurrent LinkedBlockingQueue]
+        'java.io.OutputStream)
+
+(extend-protocol protocols/StreamableResponseBody
+  LinkedBlockingQueue
+  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
+    (log/error (u/format-color 'blue "starting"))
+    (with-open [out (io/writer output-stream)]
+      (.write out "starting")
+      (loop [chunk (.take output-queue)]
+        (log/error (u/format-color 'green "got chunk %s" chunk))
+        (when-not (= chunk ::EOF)
+          (.write out (str chunk))
+          (.flush out)
+          (recur (.take output-queue)))))))
 
 (defn- streaming-response [handler]
   (fn [request]
     ;; TODO - need maximum timeout for requests
     ;; TODO - error response should have status code != 200 (how ?)
     ;; TODO - handle exceptions in JSON encoding as well
-    (-> (fn [^java.io.PipedOutputStream ostream]
-          (let [response       (future (try (handler request)
-                                            (catch Throwable e
-                                              {:error      (.getMessage e)
-                                               :stacktrace (u/filtered-stacktrace e)})))
-                write-response (future (json/generate-stream @response (io/writer ostream))
-                                       (println "Done! closing ostream...")
-                                       (.close ostream))]
-            (loop []
+    (let [output-queue (LinkedBlockingQueue.)
+          response     (future (try (handler request)
+                                    (catch Throwable e
+                                      {:error      (.getMessage e)
+                                       :stacktrace (u/filtered-stacktrace e)})))]
+      (future
+        (loop []
               (Thread/sleep streaming-response-keep-alive-interval-ms)
               (when-not (realized? response)
                 (println "Response not ready, writing one byte & sleeping...")
-                (.write ostream (byte \ ))
-                (.flush ostream)
-                (recur)))))
-        ring-io/piped-input-stream
-        resp/response
-        (resp/content-type "application/json"))))
+                (.put output-queue " ")
+                (recur)))
+        (.put output-queue @response)
+        (.put output-queue ::EOF))
+      {:status 200
+       :body output-queue})))
+
+;;;;;;;;;;;;; end messyness ::::::::::::::::::::::::::::::::::::::::::::
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes

@@ -164,7 +164,7 @@
       (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
                                                                                                                 jetty-config))))
       ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
-      (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
+      (->> (ring-jetty/run-jetty #'app (assoc jetty-config :join? false))
            (reset! jetty-instance)))))
 
 (defn stop-jetty!
