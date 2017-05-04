@@ -478,10 +478,10 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 
 // setCardAndRun
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shouldUpdateUrl = true) => {
+export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
-        const card = Utils.copy(runCard);
+        const card = Utils.copy(nextCard);
         const originalCard = card.original_card_id ? await loadCard(card.original_card_id) : card;
 
         dispatch(loadMetadataForCard(card));
