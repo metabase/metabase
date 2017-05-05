@@ -423,7 +423,7 @@
      ;; -> \"{\\\"$match\\\":[\\\"___ObjectId\\\", \\\"583327789137b2700a1621fb\\\"]}\""
   [fn-name query-string]
   (s/replace query-string
-             (re-pattern (format "%s\\(([^)]+)\\)" (name fn-name)))
+             (re-pattern (format "%s\\(([^)]*)\\)" (name fn-name)))
              (format "[\"___%s\", $1]" (name fn-name))))
 
 (defn- encode-fncalls
