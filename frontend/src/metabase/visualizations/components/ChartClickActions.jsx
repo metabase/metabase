@@ -15,6 +15,9 @@ const SECTIONS = {
     zoom: {
         icon: "zoom"
     },
+    records: {
+        icon: "table2"
+    },
     details: {
         icon: "document"
     },

@@ -22,7 +22,7 @@ export default (
 
     return [
         {
-            section: "zoom",
+            section: "records",
             title: "View " +
                 inflect("these", count, "this", "these") +
                 " " +
