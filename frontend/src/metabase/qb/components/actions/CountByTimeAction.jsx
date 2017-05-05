@@ -20,7 +20,7 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
         {
             title: <span>Count of rows by time</span>,
             section: "sum",
-            icon: "sum",
+            icon: "line",
             card: () =>
                 breakout(
                     summarize(card, ["count"], tableMetadata),

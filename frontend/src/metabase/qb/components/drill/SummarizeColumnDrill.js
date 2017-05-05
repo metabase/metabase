@@ -15,19 +15,19 @@ const AGGREGATIONS = {
         title: "Sum"
     },
     avg: {
-        section: "distribution",
+        section: "averages",
         title: "Avg"
     },
     min: {
-        section: "distribution",
+        section: "averages",
         title: "Min"
     },
     max: {
-        section: "distribution",
+        section: "averages",
         title: "Max"
     },
     distinct: {
-        section: "distribution",
+        section: "averages",
         title: "Distincts"
     }
 };

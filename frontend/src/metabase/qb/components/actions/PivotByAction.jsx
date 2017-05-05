@@ -71,7 +71,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
                 title: clicked
                     ? name
                     : <span>
-                          Pivot by
+                          Break out by
                           {" "}
                           <span className="text-dark">
                               {name.toLowerCase()}
