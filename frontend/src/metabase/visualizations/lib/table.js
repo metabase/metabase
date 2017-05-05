@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { DatasetData } from "metabase/meta/types/Dataset";
+import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { ClickObject } from "metabase/meta/types/Visualization";
 import { isNumber } from "metabase/lib/schema_metadata";
 
