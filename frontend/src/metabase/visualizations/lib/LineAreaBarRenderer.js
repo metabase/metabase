@@ -131,7 +131,10 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
             dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
         }
 
+        // special handling for weeks
+        // TODO: are there any other cases where we should do this?
         if (dataInterval.interval === "week") {
+            // if tick interval is compressed then show months instead of weeks because they're nicer formatted
             const newTickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width(), MIN_PIXELS_PER_TICK.x);
             if (newTickInterval.interval !== tickInterval.interval || newTickInterval.count !== tickInterval.count) {
                 dimensionColumn = { ...dimensionColumn, unit: "month" },
