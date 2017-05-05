@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import _ from "underscore";
-import { updateIn, setIn } from "icepick";
+import { setIn } from "icepick";
 
 import { createSelector } from 'reselect';
 
@@ -109,9 +109,13 @@ export const getMappingsByParameter = createSelector(
                 const fieldId = card && getParameterTargetFieldId(mapping.target, card.dataset_query);
                 const field = metadata.field(fieldId);
                 const values = field && field.values() || [];
-                for (const value of values) {
-                    countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
+                if (values.length) {
+                    countsByParameter[mapping.parameter_id] = countsByParameter[mapping.parameter_id] || {};
                 }
+                for (const value of values) {
+                    countsByParameter[mapping.parameter_id][value] = (countsByParameter[mapping.parameter_id][value] || 0) + 1
+                }
+
                 let augmentedMapping: AugmentedParameterMapping = {
                     ...mapping,
                     parameter_id: mapping.parameter_id,
@@ -130,7 +134,7 @@ export const getMappingsByParameter = createSelector(
             if (mapping.values && mapping.values.length > 0) {
                 let overlapMax = Math.max(...mapping.values.map(value => countsByParameter[mapping.parameter_id][value]))
                 mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, mapping.dashcard_id, mapping.card_id, "overlapMax"], overlapMax);
-                mappingsWithValuesByParameter = updateIn(mappingsWithValuesByParameter, [mapping.parameter_id], (count = 0) => count + 1);
+                mappingsWithValuesByParameter[mapping.parameter_id] = (mappingsWithValuesByParameter[mapping.parameter_id] || 0) + 1;
             }
         }
         // update count of mappings with values
