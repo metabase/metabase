@@ -7,7 +7,6 @@ import QueryModeButton from "./QueryModeButton.jsx";
 import ActionButton from 'metabase/components/ActionButton.jsx';
 import AddToDashSelectDashModal from 'metabase/containers/AddToDashSelectDashModal.jsx';
 import ButtonBar from "metabase/components/ButtonBar.jsx";
-import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.jsx';
 import HeaderBar from "metabase/components/HeaderBar.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -16,6 +15,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
 import Tooltip from "metabase/components/Tooltip.jsx";
 import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
+import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal"
 
 import SaveQuestionModal from 'metabase/containers/SaveQuestionModal.jsx';
 
@@ -29,56 +29,6 @@ import * as Urls from "metabase/lib/urls";
 import cx from "classnames";
 import _ from "underscore";
 
-import Button from "metabase/components/Button";
-import { connect } from "react-redux"
-import { setArchived } from "metabase/questions/questions"
-
-const mapStateToProps = () => ({})
-
-const mapDispatchToProps = {
-    setArchived
-}
-
-@connect(mapStateToProps, mapDispatchToProps)
-class ArchiveQuestionModal extends Component {
-    onArchive = async () => {
-        try {
-            await this.props.setArchived(this.props.questionId, true, true)
-            this.onClose();
-        } catch (error) {
-            console.error('dat error', error)
-            this.setState({ error })
-        }
-    }
-
-    onClose = () => {
-        if (this.refs.archiveModal) {
-            this.refs.archiveModal.close();
-        }
-    }
-
-    render () {
-        return (
-            <ModalWithTrigger
-                ref="archiveModal"
-                triggerElement={
-                    <Tooltip key="archive" tooltip="Archive">
-                        <span className="text-brand-hover">
-                            <Icon name="archive" size={16} />
-                        </span>
-                    </Tooltip>
-                }
-                title="Archive this question"
-                footer={[
-                    <Button key='cancel' onClick={this.onClose}>Cancel</Button>,
-                    <Button key='archive' warning onClick={this.onArchive}>Archive</Button>
-                ]}
-            >
-                <div className="px4 pb4">The saved questions in this collection will also be archived.</div>
-            </ModalWithTrigger>
-        )
-    }
-}
 
 export default class QueryHeader extends Component {
     constructor(props, context) {

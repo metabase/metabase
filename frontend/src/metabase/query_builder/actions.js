@@ -1,5 +1,5 @@
 /*global ace*/
-
+import React from 'react'
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { assocIn } from "icepick";
@@ -19,6 +19,7 @@ import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { applyParameters } from "metabase/meta/Card";
+import { addUndo } from "metabase/redux/undo";
 
 import { getParameters, getNativeDatabases } from "./selectors";
 
@@ -27,8 +28,7 @@ import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
-export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
-const setCurrentState = createAction(SET_CURRENT_STATE);
+export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE"; const setCurrentState = createAction(SET_CURRENT_STATE);
 
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(POP_STATE, (location) =>
@@ -1109,6 +1109,40 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
         return fkReferences;
     };
 });
+
+// TODO - this is pretty much a duplicate of SET_ARCHIVED in questions/questions.js
+// unfortunately we have to do this because that action relies on its part of the store
+// for the card lookup
+// A simplified version of a similar method in questions/questions.js
+function createUndo(type, action) {
+    return {
+        type: type,
+        count: 1,
+        message: (undo) => // eslint-disable-line react/display-name
+                <div> { "Question  was " + type + "."} </div>,
+        actions: [action]
+    };
+}
+
+export const ARCHIVE_QUESTION = 'metabase/qb/ARCHIVE_QUESTION';
+export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, archived = true) =>
+    async (dispatch, getState) => {
+        let card = {
+            ...getState().qb.card, // grab the current card
+            archived
+        }
+        let response = await CardApi.update(card)
+
+        dispatch(addUndo(createUndo(
+            archived ? "archived" : "unarchived",
+            archiveQuestion(card.id, !archived)
+        )));
+
+        dispatch(push('/questions'))
+        return response
+    }
+)
+
 
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
