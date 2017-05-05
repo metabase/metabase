@@ -34,7 +34,8 @@ export default (
 
     return [
         {
-            title: <span>Count of rows by {column.display_name}</span>,
+            title: <span>Distribution</span>,
+            section: "distribution",
             card: () =>
                 pivot(
                     summarize(card, ["count"], tableMetadata),

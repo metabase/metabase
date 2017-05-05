@@ -15,6 +15,9 @@ const SECTIONS = {
     zoom: {
         icon: "zoom"
     },
+    records: {
+        icon: "table2"
+    },
     details: {
         icon: "document"
     },
@@ -27,14 +30,17 @@ const SECTIONS = {
     sum: {
         icon: "sum"
     },
-    distribution: {
-        icon: "distribution"
+    averages: {
+        icon: "curve"
     },
     filter: {
         icon: "funneloutline"
     },
     dashboard: {
         icon: "dashboard"
+    },
+    distribution: {
+        icon: "bar"
     }
 }
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)

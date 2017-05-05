@@ -59,6 +59,14 @@ export function canRun(card: Card): bool {
     }
 }
 
+export function cardIsEquivalent(cardA: Card, cardB: Card): boolean {
+    cardA = updateIn(cardA, ["dataset_query", "parameters"], parameters => parameters || []);
+    cardB = updateIn(cardB, ["dataset_query", "parameters"], parameters => parameters || []);
+    cardA = _.pick(cardA, "dataset_query", "display", "visualization_settings");
+    cardB = _.pick(cardB, "dataset_query", "display", "visualization_settings");
+    return _.isEqual(cardA, cardB);
+}
+
 export function getQuery(card: Card): ?StructuredQuery {
     if (card.dataset_query.type === "query") {
         return card.dataset_query.query;
@@ -76,7 +84,7 @@ export function getTableMetadata(card: Card, metadata: Metadata): ?TableMetadata
 }
 
 export function getTemplateTags(card: ?Card): Array<TemplateTag> {
-    return card && card.dataset_query.type === "native" && card.dataset_query.native.template_tags ?
+    return card && card.dataset_query && card.dataset_query.type === "native" && card.dataset_query.native.template_tags ?
         Object.values(card.dataset_query.native.template_tags) :
         [];
 }
@@ -152,6 +160,10 @@ export function questionUrlWithParameters(
     parameterValues: ParameterValues = {},
     parameterMappings: ParameterMapping[] = []
 ): DatasetQuery {
+    if (!card.dataset_query) {
+        return Urls.question(card.id);
+    }
+
     card = Utils.copy(card);
 
     const cardParameters = getParameters(card);
