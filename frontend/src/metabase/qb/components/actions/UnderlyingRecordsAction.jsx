@@ -27,7 +27,7 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
                         records
                     </span>
                 ),
-                icon: "table",
+                icon: "table2",
                 card: () => toUnderlyingRecords(card)
             }
         ];

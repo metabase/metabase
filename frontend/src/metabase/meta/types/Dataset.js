@@ -3,6 +3,7 @@
 import type { ISO8601Time } from ".";
 import type { FieldId } from "./Field";
 import type { DatasetQuery } from "./Card";
+import type { DatetimeUnit } from "./Query";
 
 export type ColumnName = string;
 
@@ -13,7 +14,8 @@ export type Column = {
     display_name: string,
     base_type: string,
     special_type: ?string,
-    source?: "fields"|"aggregation"|"breakout"
+    source?: "fields"|"aggregation"|"breakout",
+    unit?: DatetimeUnit
 };
 
 export type Value = string|number|ISO8601Time|boolean|null|{};

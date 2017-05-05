@@ -23,7 +23,7 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
     return [
         {
             title: "Summarize this segment",
-            icon: "funnel", // FIXME: icon
+            icon: "sum",
             // eslint-disable-next-line react/display-name
             popover: (
                 { onChangeCardAndRun, onClose }: ClickActionPopoverProps
