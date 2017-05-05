@@ -11,7 +11,7 @@ const SearchHeader = ({ searchText, setSearchText }) =>
     <div className={S.searchHeader}>
         <Icon className={S.searchIcon} name="search" size={18} />
         <input
-            className={cx("input", S.searchBox)}
+            className={cx("input bg-transparent", S.searchBox)}
             type="text"
             placeholder="Filter this list..."
             value={searchText}
