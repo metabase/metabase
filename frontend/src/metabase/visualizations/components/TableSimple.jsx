@@ -121,7 +121,7 @@ export default class TableSimple extends Component<*, Props, State> {
                                                 key={columnIndex}
                                                 style={{ whiteSpace: "nowrap" }}
                                                 className={cx("px1 border-bottom", {
-                                                    "cursor-pointer": isClickable
+                                                    "cursor-pointer text-brand-hover": isClickable
                                                 })}
                                                 onClick={isClickable && ((e) => {
                                                     onVisualizationClick({ ...clicked, element: e.currentTarget });
