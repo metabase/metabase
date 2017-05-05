@@ -64,10 +64,6 @@ export default class DashboardGrid extends Component {
         isEditingParameter: false
     };
 
-    shouldComponentUpdate(nextProps, nextState) {
-        return !(_.isEqual(this.props, nextProps) && _.isEqual(this.state, nextState));
-    }
-
     componentWillReceiveProps(nextProps) {
         this.setState({
             dashcards: this.getSortedDashcards(nextProps),
@@ -197,7 +193,8 @@ export default class DashboardGrid extends Component {
                 onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                 onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(this, dc.id)}
                 onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(this, dc.id)}
-                linkToCard={this.props.linkToCard}
+                navigateToNewCard={this.props.navigateToNewCard}
+                metadata={this.props.metadata}
             />
         )
     }

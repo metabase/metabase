@@ -121,7 +121,7 @@ export const drillDownForDimensions = dimensions => {
     if (timeDimensions.length === 1) {
         const column = timeDimensions[0].column;
         let nextUnit = UNITS[Math.max(0, UNITS.indexOf(column.unit) - 1)];
-        if (nextUnit) {
+        if (nextUnit && nextUnit !== column.unit) {
             return {
                 name: column.unit,
                 breakout: [
@@ -226,7 +226,7 @@ export const pivot = (
     }
 
     newCard.dataset_query.query = Query.addBreakout(
-        // $FlowFixMe: we know newCard is a StructuredDatasetQuery but flow doesn't
+        // $FlowFixMe
         newCard.dataset_query.query,
         breakout
     );

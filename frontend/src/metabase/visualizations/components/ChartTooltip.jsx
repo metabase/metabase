@@ -72,7 +72,12 @@ const TooltipRow = ({ name, value, column }) =>
             { React.isValidElement(value) ?
                 value
             :
-                <Value value={value} column={column} majorWidth={0} />
+                <Value
+                    type="tooltip"
+                    value={value}
+                    column={column}
+                    majorWidth={0}
+                />
             }
         </td>
     </tr>

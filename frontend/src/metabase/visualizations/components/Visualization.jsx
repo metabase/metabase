@@ -18,7 +18,8 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { getModeDrills } from "metabase/qb/lib/modes"
+import { getMode, getModeDrills } from "metabase/qb/lib/modes"
+import * as Card from "metabase/meta/Card";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
@@ -29,9 +30,9 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-import type { HoverObject, ClickObject, Series, QueryMode } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
+import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
+import type { Metadata } from "metabase/meta/types/Metadata";
 
 type Props = {
     series: Series,
@@ -60,9 +61,8 @@ type Props = {
     settings: VisualizationSettings,
 
     // for click actions
-    mode?: QueryMode,
-    tableMetadata: TableMetadata,
-    onChangeCardAndRun: (card: Card) => void,
+    metadata: Metadata,
+    onChangeCardAndRun: (card: UnsavedCard) => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -79,8 +79,6 @@ type Props = {
     gridSize?: { width: number, height: number },
     // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
     gridUnit?: number,
-
-    linkToCard?: bool,
 }
 
 type State = {
@@ -121,7 +119,6 @@ export default class Visualization extends Component<*, Props, State> {
         showTitle: false,
         isDashboard: false,
         isEditing: false,
-        linkToCard: true,
         onUpdateVisualizationSettings: (...args) => console.warn("onUpdateVisualizationSettings", args)
     };
 
@@ -187,7 +184,14 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     getClickActions(clicked: ?ClickObject) {
-        const { mode, series: [{ card }], tableMetadata } = this.props;
+        if (!clicked) {
+            return [];
+        }
+        const { series, metadata } = this.props;
+        const seriesIndex = clicked.seriesIndex || 0;
+        const card = series[seriesIndex].card;
+        const tableMetadata = card && Card.getTableMetadata(card, metadata);
+        const mode = getMode(card, tableMetadata);
         return getModeDrills(mode, card, tableMetadata, clicked);
     }
 
@@ -204,7 +208,6 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     handleVisualizationClick = (clicked: ClickObject) => {
-        console.log("clicked", clicked)
         // needs to be delayed so we don't clear it when switching from one drill through to another
         setTimeout(() => {
             // const { onChangeCardAndRun } = this.props;
@@ -218,6 +221,27 @@ export default class Visualization extends Component<*, Props, State> {
         }, 100)
     }
 
+    handleOnChangeCardAndRun = (card: UnsavedCard) => {
+        const { series, clicked } = this.state;
+
+        // If the current card is saved or is based on a saved question,
+        // carry that information to the new card for showing lineage
+        const index = (clicked && clicked.seriesIndex) || 0;
+        // $FlowFixMe
+        const hasOriginalCard = series[index] && series[index].card && (series[index].card.id || series[index].card.original_card_id);
+        if (hasOriginalCard) {
+            const cardWithOriginalId: UnsavedCard = {
+                ...card,
+                // $FlowFixMe
+                original_card_id: series[index].card.id || series[index].card.original_card_id
+            };
+
+            this.props.onChangeCardAndRun(cardWithOriginalId)
+        } else {
+            this.props.onChangeCardAndRun(card)
+        }
+    }
+
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {
         this.setState({ yAxisSplit, warnings });
     }
@@ -227,7 +251,7 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     render() {
-        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent, linkToCard } = this.props;
+        const { actionButtons, className, showTitle, isDashboard, width, height, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -296,8 +320,6 @@ export default class Visualization extends Component<*, Props, State> {
             };
         }
 
-        console.log("clicked", clicked);
-
         return (
             <div className={cx(className, "flex flex-column")}>
                 { showTitle && (settings["card.title"] || extra) && (loading || error || noResults || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
@@ -314,7 +336,7 @@ export default class Visualization extends Component<*, Props, State> {
                             actionButtons={extra}
                             description={settings["card.description"]}
                             settings={settings}
-                            linkToCard={linkToCard}
+                            onChangeCardAndRun={this.handleOnChangeCardAndRun}
                         />
                     </div>
                 : null
@@ -383,7 +405,7 @@ export default class Visualization extends Component<*, Props, State> {
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
                         gridSize={gridSize}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={this.handleOnChangeCardAndRun}
                     />
                 }
                 <ChartTooltip
@@ -393,7 +415,7 @@ export default class Visualization extends Component<*, Props, State> {
                 <ChartClickActions
                     clicked={clicked}
                     clickActions={clickActions}
-                    onChangeCardAndRun={this.props.onChangeCardAndRun}
+                    onChangeCardAndRun={this.handleOnChangeCardAndRun}
                     onClose={() => this.setState({ clicked: null })}
                 />
             </div>

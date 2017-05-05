@@ -23,6 +23,7 @@ type State = {
     zoom: ?number,
     points: L.Point[],
     bounds: L.Bounds,
+    filtering: boolean,
 };
 
 const MAP_COMPONENTS_BY_TYPE = {
@@ -44,6 +45,7 @@ export default class PinMap extends Component<*, Props, State> {
     }
 
     state: State;
+    _map: ?(LeafletMarkerPinMap|LeafletTilePinMap) = null;
 
     constructor(props: Props) {
         super(props);
@@ -51,6 +53,7 @@ export default class PinMap extends Component<*, Props, State> {
             lat: null,
             lng: null,
             zoom: null,
+            filtering: false,
             ...this._getPoints(props)
         };
     }
@@ -106,10 +109,11 @@ export default class PinMap extends Component<*, Props, State> {
         const { points, bounds } = this.state;//this._getPoints(this.props);
 
         return (
-            <div className={cx(className, "PinMap relative")} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
+            <div className={cx(className, "PinMap relative hover-parent hover--visibility")} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
                 { Map ?
                     <Map
                         {...this.props}
+                        ref={map => this._map = map}
                         className="absolute top left bottom right z1"
                         onMapCenterChange={this.onMapCenterChange}
                         onMapZoomChange={this.onMapZoomChange}
@@ -118,13 +122,30 @@ export default class PinMap extends Component<*, Props, State> {
                         zoom={zoom}
                         points={points}
                         bounds={bounds}
+                        onFiltering={(filtering) => this.setState({ filtering })}
                     />
                 : null }
-                { isEditing || !isDashboard ?
-                    <div className={cx("PinMapUpdateButton Button Button--small absolute top right m1 z2", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
-                        Save as default view
-                    </div>
-                : null }
+                <div className="absolute top right m1 z2 flex flex-column hover-child">
+                    { isEditing || !isDashboard ?
+                        <div className={cx("PinMapUpdateButton Button Button--small mb1", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
+                            Save as default view
+                        </div>
+                    : null }
+                    { !isDashboard &&
+                        <div
+                            className={cx("PinMapUpdateButton Button Button--small mb1")}
+                            onClick={() => {
+                                if (!this.state.filtering && this._map && this._map.startFilter) {
+                                    this._map.startFilter();
+                                } else if (this.state.filtering && this._map && this._map.stopFilter) {
+                                    this._map.stopFilter();
+                                }
+                            }}
+                        >
+                            { !this.state.filtering ? "Draw box to filter" : "Cancel filter" }
+                        </div>
+                    }
+                </div>
             </div>
         );
     }

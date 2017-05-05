@@ -169,24 +169,27 @@
 
 ;;; ------------------------------------------------------------ POST /api/database ------------------------------------------------------------
 
-(defn test-database-connection
+(defn- invalid-connection-response [field m]
+  ;; work with the new {:field error-message} format but be backwards-compatible with the UI as it exists right now
+  {:valid   false
+   field    m
+   :message m})
+
+(defn- test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if connection succeeds."
   [engine {:keys [host port] :as details}]
   (when-not config/is-test?
-    (let [engine           (keyword engine)
-          details          (assoc details :engine engine)
-          response-invalid (fn [field m] {:valid false
-                                          field m        ; work with the new {:field error-message} format
-                                          :message m})]  ; but be backwards-compatible with the UI as it exists right now
+    (let [engine  (keyword engine)
+          details (assoc details :engine engine)]
       (try
         (cond
           (driver/can-connect-with-details? engine details :rethrow-exceptions) nil
-          (and host port (u/host-port-up? host port))                           (response-invalid :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
-          (and host (u/host-up? host))                                          (response-invalid :port   (format "Connection to '%s' successful, but port %d is invalid." port))
-          host                                                                  (response-invalid :host   (format "'%s' is not reachable" host))
-          :else                                                                 (response-invalid :db     "Unable to connect to database."))
+          (and host port (u/host-port-up? host port))                           (invalid-connection-response :dbname (format "Connection to '%s:%d' successful, but could not connect to DB." host port))
+          (and host (u/host-up? host))                                          (invalid-connection-response :port   (format "Connection to '%s' successful, but port %d is invalid." port))
+          host                                                                  (invalid-connection-response :host   (format "'%s' is not reachable" host))
+          :else                                                                 (invalid-connection-response :db     "Unable to connect to database."))
         (catch Throwable e
-          (response-invalid :dbname (.getMessage e)))))))
+          (invalid-connection-response :dbname (.getMessage e)))))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
@@ -197,33 +200,39 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
+(defn- test-connection-details
+  "Try a making a connection to database ENGINE with DETAILS.
+   Tries twice: once with SSL, and a second time without if the first fails.
+   If either attempt is successful, returns the details used to successfully connect.
+   Otherwise returns the connection error message."
+  [engine details]
+  (let [error (test-database-connection engine details)]
+    (println "error:" error) ; NOCOMMIT
+    (if (and error
+             (true? (:ssl details)))
+      (recur engine (assoc details :ssl false))
+      (or error details))))
+
 (api/defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync]} :body}]
-  {name    su/NonBlankString
-   engine  DBEngine
-   details su/Map}
+  {name         su/NonBlankString
+   engine       DBEngine
+   details      su/Map
+   is_full_sync (s/maybe s/Bool)}
   (api/check-superuser)
   ;; this function tries connecting over ssl and non-ssl to establish a connection
   ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
-  (let [try-connection   (fn [engine details]
-                           (let [error (test-database-connection engine details)]
-                             (if (and error
-                                      (true? (:ssl details)))
-                               (recur engine (assoc details :ssl false))
-                               (or error details))))
-        details          (if (supports-ssl? engine)
+  (let [details          (if (supports-ssl? engine)
                            (assoc details :ssl true)
                            details)
-        details-or-error (try-connection engine details)
-        is_full_sync     (if (nil? is_full_sync)
-                           true
-                           (boolean is_full_sync))]
+        details-or-error (test-connection-details engine details)
+        is-full-sync?     (or (nil? is_full_sync)
+                              (boolean is_full_sync))]
     (if-not (false? (:valid details-or-error))
-      ;; no error, proceed with creation
-      (api/let-500 [new-db (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is_full_sync)]
-        (events/publish-event! :database-create new-db)
-        new-db)
+      ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event. Throw a 500 if nothing is inserted
+      (u/prog1 (api/check-500 (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is-full-sync?))
+        (events/publish-event! :database-create <>))
       ;; failed to connect, return error
       {:status 400
        :body   details-or-error})))

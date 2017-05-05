@@ -10,6 +10,10 @@ import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
+import { getIn } from "icepick";
+
+import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+
 export const getUiControls      = state => state.qb.uiControls;
 
 export const getCard            = state => state.qb.card;
@@ -33,12 +37,16 @@ export const getDatabaseId = createSelector(
     (card) => card && card.dataset_query && card.dataset_query.database
 );
 
-export const getDatabases                 = state => state.qb.databases;
+export const getTableId = createSelector(
+    [getCard],
+    (card) => getIn(card, ["dataset_query", "query", "source_table"])
+);
+
 export const getTableForeignKeys          = state => state.qb.tableForeignKeys;
 export const getTableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
 
 export const getTables = createSelector(
-    [getDatabaseId, getDatabases],
+    [getDatabaseId, getDatabasesList],
     (databaseId, databases) => {
         if (databaseId != null && databases && databases.length > 0) {
             let db = _.findWhere(databases, { id: databaseId });
@@ -52,21 +60,18 @@ export const getTables = createSelector(
 );
 
 export const getNativeDatabases = createSelector(
-    [getDatabases],
+    [getDatabasesList],
     (databases) =>
         databases && databases.filter(db => db.native_permissions === "write")
 )
 
 export const getTableMetadata = createSelector(
-    [state => state.qb.tableMetadata, getDatabases],
-    (tableMetadata, databases) => tableMetadata && {
-        ...tableMetadata,
-        db: _.findWhere(databases, { id: tableMetadata.db_id })
-    }
+    [getTableId, getMetadata],
+    (tableId, metadata) => metadata.tables[tableId]
 )
 
 export const getSampleDatasetId = createSelector(
-    [getDatabases],
+    [getDatabasesList],
     (databases) => {
         const sampleDataset = _.findWhere(databases, { is_sample: true });
         return sampleDataset && sampleDataset.id;

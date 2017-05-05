@@ -381,12 +381,19 @@
 ;; 2) Parse Normally
 ;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates, and [:___ObjectId ...] to BSON IDs
 
-;; add more fn handlers here as needed
+;; See https://docs.mongodb.com/manual/core/shell-types/ for a list of different supported types
 (def ^:private fn-name->decoder
-  {:ISODate (fn [arg]
-              (DateTime. arg))
-   :ObjectId (fn [^String arg]
-               (ObjectId. arg))})
+  {:ISODate    (fn [arg]
+                 (DateTime. arg))
+   :ObjectId   (fn [^String arg]
+                 (ObjectId. arg))
+   :Date       (fn [& _]                                       ; it looks like Date() just ignores any arguments
+                 (u/format-date "EEE MMM dd yyyy HH:mm:ss z")) ; return a date string formatted the same way the mongo console does
+   :NumberLong (fn [^String s]
+                 (Long/parseLong s))
+   :NumberInt  (fn [^String s]
+                 (Integer/parseInt s))})
+;; we're missing NumberDecimal but not sure how that's supposed to be converted to a Java type
 
 (defn- form->encoded-fn-name
   "If FORM is an encoded fn call form return the key representing the fn call that was encoded.
@@ -416,7 +423,7 @@
      ;; -> \"{\\\"$match\\\":[\\\"___ObjectId\\\", \\\"583327789137b2700a1621fb\\\"]}\""
   [fn-name query-string]
   (s/replace query-string
-             (re-pattern (format "%s\\(([^)]+)\\)" (name fn-name)))
+             (re-pattern (format "%s\\(([^)]*)\\)" (name fn-name)))
              (format "[\"___%s\", $1]" (name fn-name))))
 
 (defn- encode-fncalls

@@ -157,7 +157,7 @@ export default class DashboardHeader extends Component<*, Props, State> {
             >
                 <ArchiveDashboardModal
                     dashboard={this.props.dashboard}
-                    onClose={() => this.refs.ArchiveDashboardModal.toggle()}
+                    onClose={() => this.refs.archiveDashboardModal.toggle()}
                     onArchive={() => this.onArchive()}
                 />
             </ModalWithTrigger>,

@@ -4,6 +4,7 @@ import Q from "metabase/lib/query"; // legacy query lib
 import { isDate, isAddress, isCategory } from "metabase/lib/schema_metadata";
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
+import Utils from "metabase/lib/utils";
 
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
@@ -86,6 +87,8 @@ export const getModeActions = (
     tableMetadata: ?TableMetadata
 ): ClickAction[] => {
     if (mode && card && tableMetadata) {
+        // FIXME: copy card because it may be frozen and action may mutate it :-/
+        card = Utils.copy(card);
         const props: ClickActionProps = { card, tableMetadata };
         // flatten array of arrays
         return [].concat(
@@ -102,6 +105,8 @@ export const getModeDrills = (
     clicked: ?ClickObject
 ): ClickAction[] => {
     if (mode && card && tableMetadata && clicked) {
+        // FIXME: copy card because it may be frozen and action may mutate it :-/
+        card = Utils.copy(card);
         const props: ClickActionProps = { card, tableMetadata, clicked };
         // flatten array of arrays
         return [].concat(

@@ -109,14 +109,14 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         if (settings["funnel.type"] === "bar") {
             return <FunnelBar {...this.props} />
         } else {
-            const { actionButtons, className, linkToCard, series } = this.props;
+            const { actionButtons, className, onChangeCardAndRun, series } = this.props;
             return (
                 <div className={cx(className, "flex flex-column p1")}>
                     <LegendHeader
                         className="flex-no-shrink"
                         series={series._raw || series}
                         actionButtons={actionButtons}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={onChangeCardAndRun}
                     />
                     <FunnelNormal {...this.props} className="flex-full" />
                 </div>

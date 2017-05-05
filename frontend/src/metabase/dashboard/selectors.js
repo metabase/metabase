@@ -1,13 +1,15 @@
 /* @flow weak */
 
 import _ from "underscore";
-import { updateIn, setIn } from "icepick";
+import { setIn } from "icepick";
 
 import { createSelector } from 'reselect';
 
+import { getMeta } from "metabase/selectors/metadata";
+
 import * as Dashboard from "metabase/meta/Dashboard";
+
 import { getParameterTargetFieldId } from "metabase/meta/Parameter";
-import Metadata from "metabase/meta/metadata/Metadata";
 
 import type { CardId, Card } from "metabase/meta/types/Card";
 import type { DashCardId } from "metabase/meta/types/Dashboard";
@@ -38,13 +40,6 @@ export const getSlowCards         = state => state.dashboard.slowCards;
 export const getCardIdList        = state => state.dashboard.cardList;
 export const getRevisions         = state => state.dashboard.revisions;
 export const getParameterValues   = state => state.dashboard.parameterValues;
-
-export const getDatabases         = state => state.metadata.databases;
-
-export const getMetadata = createSelector(
-    [state => state.metadata],
-    (metadata) => Metadata.fromEntities(metadata)
-)
 
 export const getDashboard = createSelector(
     [getDashboardId, getDashboards],
@@ -98,7 +93,7 @@ export const getParameterTarget = createSelector(
 );
 
 export const getMappingsByParameter = createSelector(
-    [getMetadata, getDashboardComplete],
+    [getMeta, getDashboardComplete],
     (metadata, dashboard) => {
         if (!dashboard) {
             return {};
@@ -114,9 +109,13 @@ export const getMappingsByParameter = createSelector(
                 const fieldId = card && getParameterTargetFieldId(mapping.target, card.dataset_query);
                 const field = metadata.field(fieldId);
                 const values = field && field.values() || [];
-                for (const value of values) {
-                    countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
+                if (values.length) {
+                    countsByParameter[mapping.parameter_id] = countsByParameter[mapping.parameter_id] || {};
                 }
+                for (const value of values) {
+                    countsByParameter[mapping.parameter_id][value] = (countsByParameter[mapping.parameter_id][value] || 0) + 1
+                }
+
                 let augmentedMapping: AugmentedParameterMapping = {
                     ...mapping,
                     parameter_id: mapping.parameter_id,
@@ -135,7 +134,7 @@ export const getMappingsByParameter = createSelector(
             if (mapping.values && mapping.values.length > 0) {
                 let overlapMax = Math.max(...mapping.values.map(value => countsByParameter[mapping.parameter_id][value]))
                 mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, mapping.dashcard_id, mapping.card_id, "overlapMax"], overlapMax);
-                mappingsWithValuesByParameter = updateIn(mappingsWithValuesByParameter, [mapping.parameter_id], (count = 0) => count + 1);
+                mappingsWithValuesByParameter[mapping.parameter_id] = (mappingsWithValuesByParameter[mapping.parameter_id] || 0) + 1;
             }
         }
         // update count of mappings with values
@@ -168,7 +167,7 @@ export const getParameters = createSelector(
 
 export const makeGetParameterMappingOptions = () => {
     const getParameterMappingOptions = createSelector(
-        [getMetadata, getEditingParameter, getCard],
+        [getMeta, getEditingParameter, getCard],
         (metadata, parameter: Parameter, card: Card): Array<ParameterMappingUIOption> => {
             return Dashboard.getParameterMappingOptions(metadata, parameter, card);
         }

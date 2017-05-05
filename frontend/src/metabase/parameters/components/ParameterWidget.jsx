@@ -19,7 +19,7 @@ export default class ParameterWidget extends Component {
 
     static propTypes = {
         parameter: PropTypes.object,
-        commitImmediately: PropTypes.object
+        commitImmediately: PropTypes.bool
     };
 
     static defaultProps = {
