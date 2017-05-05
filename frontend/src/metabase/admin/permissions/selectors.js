@@ -247,6 +247,7 @@ export const getTablesPermissionsGrid = createSelector(
 
         return {
             type: "table",
+            icon: "table",
             crumbs: database.schemaNames().length > 1 ? [
                 ["Databases", "/admin/permissions/databases"],
                 [database.name, "/admin/permissions/databases/"+database.id+"/schemas"],
@@ -308,6 +309,7 @@ export const getSchemasPermissionsGrid = createSelector(
 
         return {
             type: "schema",
+            icon: "folder",
             crumbs: [
                 ["Databases", "/admin/permissions/databases"],
                 [database.name],
@@ -366,6 +368,7 @@ export const getDatabasesPermissionsGrid = createSelector(
 
         return {
             type: "database",
+            icon: "database",
             groups,
             permissions: {
                 "schemas": {
@@ -464,6 +467,7 @@ export const getCollectionsPermissionsGrid = createSelector(
 
         return {
             type: "collection",
+            icon: "collection",
             groups,
             permissions: {
                 "access": {
