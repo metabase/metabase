@@ -16,7 +16,8 @@
              [io :as ring-io]
              [response :as resp]]
             [stencil.core :as stencil]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [metabase.middleware :as middleware]))
 
 (defn- load-file-at-path [path]
   (slurp (or (io/resource path)
@@ -51,58 +52,16 @@
   (GET "*" [] embed))
 
 (defn- some-very-long-handler [_]
-  (Thread/sleep 15000)
+  (log/error (u/format-color 'blue "starting some-very-long-handler"))
+  (Thread/sleep 7000)
+  (log/error (u/format-color 'blue "finished some-very-long-handler"))
   {:success true})
 
 (defn- some-naughty-handler-that-barfs [_]
   (throw (Exception. "BARF!")))
 
-(def ^:private ^:const streaming-response-keep-alive-interval-ms
-  "Interval between sending whitespace bytes to keep Heroku from terminating
-   requests like queries that take a long time to complete."
-  (* 1 1000))
 
-;;;;;;;;;;;;; begin messyness ::::::::::::::::::::::::::::::::::::::::::::
-(require '[ring.core.protocols :as protocols])     ;; this next section goes to it's own namespace soon
-(import '[java.util.concurrent LinkedBlockingQueue]
-        'java.io.OutputStream)
 
-(extend-protocol protocols/StreamableResponseBody
-  LinkedBlockingQueue
-  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
-    (log/error (u/format-color 'blue "starting"))
-    (with-open [out (io/writer output-stream)]
-      (.write out "starting")
-      (loop [chunk (.take output-queue)]
-        (log/error (u/format-color 'green "got chunk %s" chunk))
-        (when-not (= chunk ::EOF)
-          (.write out (str chunk))
-          (.flush out)
-          (recur (.take output-queue)))))))
-
-(defn- streaming-response [handler]
-  (fn [request]
-    ;; TODO - need maximum timeout for requests
-    ;; TODO - error response should have status code != 200 (how ?)
-    ;; TODO - handle exceptions in JSON encoding as well
-    (let [output-queue (LinkedBlockingQueue.)
-          response     (future (try (handler request)
-                                    (catch Throwable e
-                                      {:error      (.getMessage e)
-                                       :stacktrace (u/filtered-stacktrace e)})))]
-      (future
-        (loop []
-              (Thread/sleep streaming-response-keep-alive-interval-ms)
-              (when-not (realized? response)
-                (println "Response not ready, writing one byte & sleeping...")
-                (.put output-queue " ")
-                (recur)))
-        (.put output-queue @response)
-        (.put output-queue ::EOF))
-      {:status 200
-       :body output-queue})))
-
-;;;;;;;;;;;;; end messyness ::::::::::::::::::::::::::::::::::::::::::::
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
@@ -129,7 +88,8 @@
   ;; ^/emebed/ -> Embed frontend and download routes
   (context "/embed" [] embed-routes)
   (context "/stream-test" []
-    (streaming-response some-very-long-handler))
+    (middleware/streaming-response some-very-long-handler))
+
   (context "/stream-test-2" []
       (streaming-response some-naughty-handler-that-barfs))
   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest

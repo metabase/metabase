@@ -1,6 +1,7 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
   (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
+            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -15,10 +16,13 @@
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
             monger.json
+            [ring.core.protocols :as protocols]
             [toucan
              [db :as db]
              [models :as models]])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:import com.fasterxml.jackson.core.JsonGenerator
+           java.io.OutputStream
+           [java.util.concurrent LinkedBlockingQueue]))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
@@ -354,3 +358,75 @@
            (handler request))
          (catch Throwable e
            {:status 400, :body (.getMessage e)}))))
+
+
+;;; ------------------------------------------------------------ EXCEPTION HANDLING ------------------------------------------------------------
+
+
+(def ^:private ^:const streaming-response-keep-alive-interval-ms
+  "Interval between sending newline characters to keep Heroku from terminating
+   requests like queries that take a long time to complete."
+  (* 1 1000))
+
+;; Handle ring response maps that contain a LinkedBlockingQueue in the :body key:
+;;
+;; {:status 200
+;;  :body (LinkedBlockingQueue.)}
+;;
+;; and send each string sent to that queue back to the browser as it arrives
+;; this avoids output buffering in the default stream handling which was not sending
+;; any responses until ~5k characters where in the queue.
+(extend-protocol protocols/StreamableResponseBody
+  LinkedBlockingQueue
+  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
+    (log/debug (u/format-color 'blue "starting streaming request"))
+    (with-open [out (io/writer output-stream)]
+      (loop [chunk (.take output-queue)]
+        (log/error (u/format-color 'green "streaming chunk"))
+        (when-not (= chunk ::EOF)
+          (.write out (str chunk))
+          (try
+            (.flush out)
+            (catch Exception e
+              (log/info (u/format-color 'yellow "connection closed, canceling request %s" (type e)))
+              (throw e)))
+          (recur (.take output-queue)))))))
+
+(def ^:private ^:const streaming-response-keep-alive-interval-ms
+  "Interval between sending whitespace bytes to keep Heroku from terminating
+   requests like queries that take a long time to complete."
+  (* 1 1000))
+
+(defn streaming-response
+  "This midelware assumes handlers fail early or return success
+   Run the handler in a future and send newlines to keep the connection open
+   and help detect when the browser is no longer listening for the response.
+   Waits for one second to see if the handler responds immediately, If it does
+   then there is no need to stream the response and it is sent back directly.
+   In cases where it takes longer than a second, assume the eventual result will
+   be a success and start sending newlines to keep the connection open."
+  [handler]
+  (fn [request]
+    (let [response            (future (handler request))
+          optomistic-response (deref response streaming-response-keep-alive-interval-ms ::no-immediate-response)]
+      (if (= optomistic-response ::no-immediate-response)
+        (let [output-queue (LinkedBlockingQueue.)]
+          (future
+            (try
+              (loop []
+                (Thread/sleep streaming-response-keep-alive-interval-ms)
+                (when-not (realized? response)
+                  (log/error (u/format-color 'blue "Response is %s" (realized? response)))
+                  (log/error (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
+                  (.put output-queue "\n") ;; a newline padding character is used because it forces output flushing in jetty.
+                  (recur)))
+              (log/error (u/format-color 'blue "canceling request %s" (future-cancel response)))
+              (log/error (u/format-color 'red "loop returned" @response))
+              (catch Exception e
+                (log/error (u/format-color 'red "caught exception" e)))))
+          (future
+            (.put output-queue @response)
+            (.put output-queue ::EOF))
+          {:status 200
+           :body output-queue})
+          optomistic-response))))
