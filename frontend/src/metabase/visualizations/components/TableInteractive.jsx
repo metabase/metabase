@@ -286,15 +286,14 @@ export default class TableInteractive extends Component<*, Props, State> {
                 className={cx("TableInteractive-cellWrapper TableInteractive-headerCellData", {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
                     "TableInteractive-headerCellData--sorted": isSorted,
+                    "cursor-pointer": isClickable,
                     "justify-end": isRightAligned
                 })}
+                onClick={isClickable && ((e) => {
+                    onVisualizationClick({ ...clicked, element: e.currentTarget });
+                })}
             >
-                <div
-                    className={cx("cellData", { "cursor-pointer": isClickable })}
-                    onClick={isClickable && ((e) => {
-                        onVisualizationClick({ ...clicked, element: e.currentTarget });
-                    })}
-                >
+                <div className="cellData">
                     {isSortable && isRightAligned &&
                         <Icon className="Icon mr1" name={isAscending ? "chevronup" : "chevrondown"} size={8} />
                     }
