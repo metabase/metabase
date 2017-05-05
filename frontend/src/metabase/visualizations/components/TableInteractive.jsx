@@ -234,7 +234,13 @@ export default class TableInteractive extends Component<*, Props, State> {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
                 })}
             >
-                <Value className="link" value={value} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
+                <Value
+                    className="link"
+                    type="cell"
+                    value={value}
+                    column={column}
+                    onResize={this.onCellResize.bind(this, columnIndex)}
+                />
             </div>
         );
     }
