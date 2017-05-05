@@ -143,18 +143,17 @@ function getRevokingAccessToAllTablesWarningModal(database, permissions, groupId
         getSchemasPermission(permissions, groupId, entityId) === "controlled" &&
         getNativePermission(permissions, groupId, entityId) !== "none"
     ) {
-        // Contains tables from all schemas, making sure that the warning is shown only
-        // if user tries to revoke access to the very last table of all schemas
+        // allTableEntityIds contains tables from all schemas
         const allTableEntityIds = database.tables().map((table) => ({
             databaseId: table.db_id,
             schemaName: table.schema,
             tableId: table.id
-        }))
+        }));
 
+        // Show the warning only if user tries to revoke access to the very last table of all schemas
         const afterChangesNoAccessToAnyTable = _.every(allTableEntityIds, (id) =>
             getFieldsPermission(permissions, groupId, id) === "none" || _.isEqual(id, entityId)
-        )
-
+        );
         if (afterChangesNoAccessToAnyTable) {
             return {
                 title: "Revoke access to all tables?",
