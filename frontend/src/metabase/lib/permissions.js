@@ -1,10 +1,11 @@
 /* @flow */
 
 import { getIn, setIn } from "icepick";
+import _ from "underscore";
 
 import type Database from "metabase/meta/metadata/Database";
 import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName, TableId } from "metabase/meta/types/Table";
+import type { SchemaName, TableId, Table } from "metabase/meta/types/Table";
 import Metadata from "metabase/meta/metadata/Metadata";
 
 import type { Group, GroupId, GroupsPermissions } from "metabase/meta/types/Permissions";
@@ -12,6 +13,7 @@ import type { Group, GroupId, GroupsPermissions } from "metabase/meta/types/Perm
 type TableEntityId = { databaseId: DatabaseId, schemaName: SchemaName, tableId: TableId };
 type SchemaEntityId = { databaseId: DatabaseId, schemaName: SchemaName };
 type DatabaseEntityId = { databaseId: DatabaseId };
+type EntityId = TableEntityId | SchemaEntityId | DatabaseEntityId;
 
 export function getPermission(
     permissions: GroupsPermissions,
@@ -92,17 +94,60 @@ export const getFieldsPermission = (permissions: GroupsPermissions, groupId: Gro
     }
 }
 
-export function updateFieldsPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName, tableId }: TableEntityId, value: string, metadata: Metadata): GroupsPermissions {
+const metadataTableToTableEntityId = (table: Table): TableEntityId => ({ databaseId: table.db_id, schemaName: table.schema, tableId: table.id });
+const entityIdToMetadataTableFields = (entityId: EntityId) => ({
+    ...(entityId.databaseId ? {db_id: entityId.databaseId} : {}),
+    ...(entityId.schemaName ? {schema: entityId.schemaName} : {}),
+    ...(entityId.tableId ? {tableId: entityId.tableId} : {})
+})
+
+function inferEntityPermissionValueFromDescendants(permissions: GroupsPermissions, groupId: GroupId, entityId: TableEntityId, metadata: Metadata) {
+    const { databaseId } = entityId;
+    const database = metadata && metadata.database(databaseId);
+
+    const entityIdsForDescedantTables: TableEntityId[] = _.chain(database.tables())
+        .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
+        .map(metadataTableToTableEntityId)
+        .value();
+
+    const entityIdsByPermValue = _.chain(entityIdsForDescedantTables)
+        .map((id) => getFieldsPermission(permissions, groupId, id))
+        .groupBy(_.identity)
+        .value();
+
+    const keys = Object.keys(entityIdsByPermValue);
+    const allTablesHaveSamePermissions = keys.length === 1;
+
+    if (allTablesHaveSamePermissions) {
+        // either "all" or "none"
+        return keys[0];
+    } else {
+        return "controlled";
+    }
+}
+
+export function updateFieldsPermission(permissions: GroupsPermissions, groupId: GroupId, entityId: TableEntityId, value: string, metadata: Metadata): GroupsPermissions {
+    const { databaseId, schemaName, tableId } = entityId;
 
     permissions = updateTablesPermission(permissions, groupId, { databaseId, schemaName }, "controlled", metadata);
     permissions = updatePermission(permissions, groupId, [databaseId, "schemas", schemaName, tableId], value /* TODO: field ids, when enabled "controlled" fields */);
+
+    /* Hack starts: both tables and schemas had to be set to "controlled" before setting the field value. Now finally infer the real tables/schemas permission values and set them. */
+    const tablesPermissionValue = inferEntityPermissionValueFromDescendants(permissions, groupId, { databaseId, schemaName }, metadata);
+    console.log('tablePermissionsValue', tablesPermissionValue);
+    permissions = updateTablesPermission(permissions, groupId, { databaseId, schemaName }, tablesPermissionValue, metadata);
+
+    const schemasPermissionValue = inferEntityPermissionValueFromDescendants(permissions, groupId, { databaseId }, metadata);
+    console.log('schemasPermissionValue', schemasPermissionValue);
+    permissions = updateSchemasPermission(permissions, groupId, { databaseId }, schemasPermissionValue, metadata);
 
     return permissions;
 }
 
 export function updateTablesPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName }: SchemaEntityId, value: string, metadata: Metadata): GroupsPermissions {
+    // console.log(`changing tables in db ${databaseId} and schema ${schemaName} to value ${value}`);
     const database = metadata && metadata.database(databaseId);
-    const tableIds: ?number[] = database && database.tables().map(t => t.id);
+    const tableIds: ?number[] = database && database.tables().filter(t => t.schema === schemaName).map(t => t.id);
 
     permissions = updateSchemasPermission(permissions, groupId, { databaseId }, "controlled", metadata);
     permissions = updatePermission(permissions, groupId, [databaseId, "schemas", schemaName], value, tableIds);
@@ -111,6 +156,7 @@ export function updateTablesPermission(permissions: GroupsPermissions, groupId: 
 }
 
 export function updateSchemasPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId }: DatabaseEntityId, value: string, metadata: Metadata): GroupsPermissions {
+    // console.log(`changing schemas in db ${databaseId} to value ${value}`);
     let database = metadata.database(databaseId);
     let schemaNames = database && database.schemaNames();
 
