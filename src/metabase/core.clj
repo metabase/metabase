@@ -37,7 +37,7 @@
 
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
-  (-> routes/routes
+  (-> #'routes/routes
       mb-middleware/log-api-call
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request

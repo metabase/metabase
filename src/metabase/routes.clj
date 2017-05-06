@@ -12,12 +12,8 @@
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
             [metabase.util.embed :as embed]
-            [ring.util
-             [io :as ring-io]
-             [response :as resp]]
-            [stencil.core :as stencil]
-            [clojure.tools.logging :as log]
-            [metabase.middleware :as middleware]))
+            [ring.util.response :as resp]
+            [stencil.core :as stencil]))
 
 (defn- load-file-at-path [path]
   (slurp (or (io/resource path)
@@ -51,18 +47,6 @@
        (resp/redirect (format "/api/embed/card/%s/query/%s" token export-format)))
   (GET "*" [] embed))
 
-(defn- some-very-long-handler [_]
-  (log/error (u/format-color 'blue "starting some-very-long-handler"))
-  (Thread/sleep 7000)
-  (log/error (u/format-color 'blue "finished some-very-long-handler"))
-  {:success true})
-
-(defn- some-naughty-handler-that-barfs [_]
-  (throw (Exception. "BARF!")))
-
-
-
-
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
   ;; ^/$ -> index.html
@@ -87,10 +71,5 @@
   (context "/public" [] public-routes)
   ;; ^/emebed/ -> Embed frontend and download routes
   (context "/embed" [] embed-routes)
-  (context "/stream-test" []
-    (middleware/streaming-response some-very-long-handler))
-
-  (context "/stream-test-2" []
-      (streaming-response some-naughty-handler-that-barfs))
   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
   (GET "*" [] index))

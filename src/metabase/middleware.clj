@@ -387,7 +387,7 @@
           (.write out (str chunk))
           (try
             (.flush out)
-            (catch Exception e
+            (catch org.eclipse.jetty.io.EofException e
               (log/info (u/format-color 'yellow "connection closed, canceling request %s" (type e)))
               (async/close! output-queue)
               (throw e)))
@@ -411,23 +411,28 @@
     (let [response            (future (handler request))
           optomistic-response (deref response streaming-response-keep-alive-interval-ms ::no-immediate-response)]
       (if (= optomistic-response ::no-immediate-response)
-        (let [output-queue (async/chan 1)]
+        ;; if we didn't get a normal response in the first poling interval assume it's going to be slow
+        ;; and start sending keepalive packets.
+        (let [output (async/chan 1)]
+          ;; the output channel will be closed by the adapter when the incoming connection is closed.
+          (future
+            (loop []
+              (Thread/sleep streaming-response-keep-alive-interval-ms)
+              (when-not (realized? response)
+                (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
+                ;; a newline padding character is used because it forces output flushing in jetty.
+                ;; if sending this character fails because the connection is closed, the chan will then close
+                (when-not (async/>!! output "\n")
+                  (log/info (u/format-color 'yellow "canceled request %s" (future-cancel response)))
+                  (future-cancel response)) ;; try our best to kill the thread running the query.
+                (recur))))
           (future
             (try
-              (loop []
-                (Thread/sleep streaming-response-keep-alive-interval-ms)
-                (when-not (realized? response)
-                  (log/error (u/format-color 'blue "Response is %s" (realized? response)))
-                  (log/error (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
-                  (when-not (async/>!! output-queue "\n")
-                    (log/error (u/format-color 'yellow "canceled request %s" (future-cancel response)))
-                    (future-cancel response)) ;; a newline padding character is used because it forces output flushing in jetty.
-                  (recur)))
-              #_(catch Exception e
-                (log/error (u/format-color 'red "caught exception" e)))))
-          (future
-            (async/>!! output-queue @response)
-            (async/>!! output-queue ::EOF))
+              (async/>!! output (:body @response))
+              (finally
+                (async/>!! output ::EOF)
+                (async/close! response))))
+          ;; here we assume a successful response will be written to the output channel.
           {:status 200
-           :body output-queue})
+           :body output})
           optomistic-response))))
