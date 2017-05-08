@@ -159,4 +159,4 @@ Questions asked using SQL can be saved, downloaded, or added to a dashboard just
 ---
 
 ## Next: Creating charts
-Once you have an answer to your question, you can now learn more about [visualizing answers](04-visualizing-results.md).
+Once you have an answer to your question, you can now learn more about [visualizing answers](05-visualizing-results.md).
