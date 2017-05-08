@@ -22,6 +22,7 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
 
     return [
         {
+            name: "summarize",
             title: "Summarize this segment",
             icon: "sum",
             // eslint-disable-next-line react/display-name
