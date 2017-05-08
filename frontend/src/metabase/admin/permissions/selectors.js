@@ -25,6 +25,7 @@ import {
     updateSchemasPermission,
     updateNativePermission,
     diffPermissions,
+    inferAndUpdateEntityPermissions
 } from "metabase/lib/permissions";
 
 const getPermissions = (state) => state.admin.permissions.permissions;
@@ -268,7 +269,8 @@ export const getTablesPermissionsGrid = createSelector(
                     },
                     updater(groupId, entityId, value) {
                         MetabaseAnalytics.trackEvent("Permissions", "fields", value);
-                        return updateFieldsPermission(permissions, groupId, entityId, value, metadata);
+                        let updatedPermissions = updateFieldsPermission(permissions, groupId, entityId, value, metadata);
+                        return inferAndUpdateEntityPermissions(updatedPermissions, groupId, entityId, metadata);
                     },
                     confirm(groupId, entityId, value) {
                         return [
@@ -326,7 +328,8 @@ export const getSchemasPermissionsGrid = createSelector(
                     },
                     updater(groupId, entityId, value) {
                         MetabaseAnalytics.trackEvent("Permissions", "tables", value);
-                        return updateTablesPermission(permissions, groupId, entityId, value, metadata);
+                        let updatedPermissions = updateTablesPermission(permissions, groupId, entityId, value, metadata);
+                        return inferAndUpdateEntityPermissions(updatedPermissions, groupId, entityId, metadata);
                     },
                     postAction(groupId, { databaseId, schemaName }, value) {
                         if (value === "controlled") {
