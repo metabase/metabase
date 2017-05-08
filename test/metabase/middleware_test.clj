@@ -222,7 +222,7 @@
 
 ;;slow success
 (expect
-  [\newline \newline "\n\n\n{:success true}"]
+  [\newline \newline "\n\n\n{\"success\":true}"]
   (test-streaming-endpoint streaming-slow-success))
 
 ;; immediate success should have no padding
