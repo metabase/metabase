@@ -74,4 +74,4 @@ Here are a few tips to get the most out of dashboard filters:
 ---
 
 ## Next: Charts with multiple series
-We'll learn how to [create charts with multiple lines, bars, and more](08-multi-series-charting.md) next.
+We'll learn how to [create charts with multiple lines, bars, and more](09-multi-series-charting.md) next.
