@@ -31,7 +31,8 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]])
+             [hydrate :refer [hydrate]]]
+            [metabase.middleware :as middleware])
   (:import java.util.UUID))
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
@@ -468,4 +469,5 @@
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
 
-(api/define-routes)
+(api/define-routes
+  (middleware/streaming-json-response POST_:card-id_query))

@@ -20,7 +20,9 @@
             [toucan
              [db :as db]
              [models :as models]]
-            [clojure.core.async :as async])
+            [clojure.core.async :as async]
+            [ring.util.response :as response]
+            [cheshire.core :as json])
   (:import com.fasterxml.jackson.core.JsonGenerator
            java.io.OutputStream
            [java.util.concurrent LinkedBlockingQueue]))
@@ -398,7 +400,7 @@
    requests like queries that take a long time to complete."
   (* 1 1000))
 
-(defn streaming-response
+(defn streaming-json-response
   "This midelware assumes handlers fail early or return success
    Run the handler in a future and send newlines to keep the connection open
    and help detect when the browser is no longer listening for the response.
@@ -421,18 +423,20 @@
               (when-not (realized? response)
                 (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
                 ;; a newline padding character is used because it forces output flushing in jetty.
-                ;; if sending this character fails because the connection is closed, the chan will then close
+                ;; if sending this character fails because the connection is closed, the chan will then close.
+                ;; Newlines are no-ops when reading JSON which this depends upon.
                 (when-not (async/>!! output "\n")
                   (log/info (u/format-color 'yellow "canceled request %s" (future-cancel response)))
                   (future-cancel response)) ;; try our best to kill the thread running the query.
                 (recur))))
           (future
             (try
-              (async/>!! output (:body @response))
+              ;; This is the part where we make this assume it's a JSON response we are sending.
+              (async/>!! output (json/encode (:body @response)))
               (finally
                 (async/>!! output ::EOF)
                 (async/close! response))))
           ;; here we assume a successful response will be written to the output channel.
-          {:status 200
-           :body output})
+          (assoc (response/response output)
+            :content-type "applicaton/json"))
           optomistic-response))))

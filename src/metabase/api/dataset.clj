@@ -14,7 +14,8 @@
              [query :as query]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [metabase.middleware :as middleware])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
 (def ^:private ^:const max-results-bare-rows
@@ -124,5 +125,5 @@
       (qp/dataset-query (dissoc query :constraints)
         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
-
-(api/define-routes)
+(api/define-routes
+  (middleware/streaming-json-response POST_))

@@ -37,7 +37,7 @@
 
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
-  (-> #'routes/routes
+  (-> routes/routes
       mb-middleware/log-api-call
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
@@ -164,7 +164,7 @@
       (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
                                                                                                                 jetty-config))))
       ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
-      (->> (ring-jetty/run-jetty #'app (assoc jetty-config :join? false))
+      (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
            (reset! jetty-instance)))))
 
 (defn stop-jetty!

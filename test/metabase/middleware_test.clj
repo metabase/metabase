@@ -202,7 +202,7 @@
 (defn- test-streaming-endpoint [handler]
   (let [path (str handler)]
     (with-redefs [metabase.routes/routes (compojure.core/routes
-                                          (GET (str "/" path) [] (middleware/streaming-response
+                                          (GET (str "/" path) [] (middleware/streaming-json-response
                                                                   handler)))]
       (let  [connection (async/chan 1000)
              reader (io/input-stream (str "http://localhost:" (config/config-int :mb-jetty-port) "/" path))]
@@ -257,7 +257,7 @@
   (reset! test-slow-handler-state :initial-state)
   (let [path "test-slow-handler"]
     (with-redefs [metabase.routes/routes (compojure.core/routes
-                                          (GET (str "/" path) [] (middleware/streaming-response
+                                          (GET (str "/" path) [] (middleware/streaming-json-response
                                                                   test-slow-handler)))]
       (let  [reader (io/input-stream (str "http://localhost:" (config/config-int :mb-jetty-port) "/" path))]
         (Thread/sleep 1500)
