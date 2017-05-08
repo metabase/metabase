@@ -481,12 +481,20 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 });
 
 // setCardAndRun
+// Used when navigating browser history, when drilling through in visualizations / action widget,
+// and when having the entity details view open and clicking its cells
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
         const card = Utils.copy(nextCard);
-        const originalCard = card.original_card_id ? await loadCard(card.original_card_id) : card;
+
+        const originalCard = card.original_card_id ?
+            // If the original card id is present, dynamically load its information for showing lineage
+            await loadCard(card.original_card_id)
+            // Otherwise, use a current card as the original card if the card has been saved
+            // This is needed for checking whether the card is in dirty state or not
+            : (card.id ? card : null);
 
         dispatch(loadMetadataForCard(card));
 
