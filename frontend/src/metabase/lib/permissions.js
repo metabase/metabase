@@ -109,6 +109,7 @@ export function downgradeNativePermissionsIfNeeded(permissions: GroupsPermission
     }
 }
 
+// $FlowFixMe
 const metadataTableToTableEntityId = (table: Table): TableEntityId => ({ databaseId: table.db_id, schemaName: table.schema, tableId: table.id });
 const entityIdToMetadataTableFields = (entityId: EntityId) => ({
     ...(entityId.databaseId ? {db_id: entityId.databaseId} : {}),
@@ -116,10 +117,11 @@ const entityIdToMetadataTableFields = (entityId: EntityId) => ({
     ...(entityId.tableId ? {tableId: entityId.tableId} : {})
 })
 
-function inferEntityPermissionValueFromChildTables(permissions: GroupsPermissions, groupId: GroupId, entityId: TableEntityId, metadata: Metadata) {
+function inferEntityPermissionValueFromChildTables(permissions: GroupsPermissions, groupId: GroupId, entityId: DatabaseEntityId|SchemaEntityId, metadata: Metadata) {
     const { databaseId } = entityId;
     const database = metadata && metadata.database(databaseId);
 
+    // $FlowFixMe
     const entityIdsForDescedantTables: TableEntityId[] = _.chain(database.tables())
         .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
         .map(metadataTableToTableEntityId)
@@ -143,11 +145,13 @@ function inferEntityPermissionValueFromChildTables(permissions: GroupsPermission
 
 // Checks the child tables of a given entityId and updates the shared table and/or schema permission values according to table permissions
 // This method was added for keeping the UI in sync when modifying child permissions
-export function inferAndUpdateEntityPermissions(permissions: GroupsPermissions, groupId: GroupId, entityId: TableEntityId, metadata: Metadata) {
+export function inferAndUpdateEntityPermissions(permissions: GroupsPermissions, groupId: GroupId, entityId: DatabaseEntityId|SchemaEntityId, metadata: Metadata) {
+    // $FlowFixMe
     const { databaseId, schemaName } = entityId;
 
     if (schemaName) {
         // Check all tables for current schema if their shared schema-level permission value should be updated
+        // $FlowFixMe
         const tablesPermissionValue = inferEntityPermissionValueFromChildTables(permissions, groupId, { databaseId, schemaName }, metadata);
         permissions = updateTablesPermission(permissions, groupId, { databaseId, schemaName }, tablesPermissionValue, metadata);
     }
@@ -171,7 +175,7 @@ export function updateFieldsPermission(permissions: GroupsPermissions, groupId: 
     return permissions;
 }
 
-export function updateTablesPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName }: SchemaEntityId, value: string, metadata: Metadata, inferAncestorPermissions = false): GroupsPermissions {
+export function updateTablesPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName }: SchemaEntityId, value: string, metadata: Metadata): GroupsPermissions {
     const database = metadata && metadata.database(databaseId);
     const tableIds: ?number[] = database && database.tables().filter(t => t.schema === schemaName).map(t => t.id);
 
