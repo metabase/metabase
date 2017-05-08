@@ -249,19 +249,22 @@ const SECTIONS = [
                 key: "query-caching-min-ttl",
                 display_name: "Minimum Query Duration",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
             },
             {
                 key: "query-caching-ttl-ratio",
                 display_name: "Cache Time-To-Live (TTL)",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
             },
             {
                 key: "query-caching-max-kb",
                 display_name: "Max Cache Entry Size",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
             }
         ]
     }
