@@ -147,6 +147,7 @@ export class Dashboards extends Component {
                 style={{ backgroundColor: "#f9fbfc" }}
                 loading={isLoading}
                 className={cx("relative px4 full-height", {"flex flex-full flex-column": noDashboardsCreated})}
+                noBackground
             >
                 { modalOpen ? this.renderCreateDashboardModal() : null }
                 <div className="flex align-center pt4 pb1">
