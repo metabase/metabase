@@ -6,16 +6,17 @@
             [compojure.core :refer [POST]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase
+             [middleware :as middleware]
              [query-processor :as qp]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.models
              [database :refer [Database]]
              [query :as query]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [metabase.middleware :as middleware])
+            [schema.core :as s])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
 (def ^:private ^:const max-results-bare-rows
@@ -126,4 +127,4 @@
         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
 (api/define-routes
-  (middleware/streaming-json-response POST_))
+  (middleware/streaming-json-response (route-fn-name 'POST "/")))

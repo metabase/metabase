@@ -2,9 +2,11 @@
   (:require [cheshire.core :as json]
             [clojure.core.async :as async]
             [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [expectations :refer :all]
             [metabase
+             [config :as config]
              [middleware :as middleware :refer :all]
              [routes :as routes]
              [util :as u]]
@@ -13,9 +15,7 @@
             [metabase.test.data.users :refer :all]
             [ring.mock.request :as mock]
             [ring.util.response :as resp]
-            [toucan.db :as db]
-            [metabase.config :as config]
-            [clojure.tools.logging :as log]))
+            [toucan.db :as db]))
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 

@@ -1,6 +1,9 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [cheshire.generate :refer [add-encoder encode-nil encode-str]]
+  (:require [cheshire
+             [core :as json]
+             [generate :refer [add-encoder encode-nil encode-str]]]
+            [clojure.core.async :as async]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [metabase
@@ -17,15 +20,12 @@
              [user :as user :refer [User]]]
             monger.json
             [ring.core.protocols :as protocols]
+            [ring.util.response :as response]
             [toucan
              [db :as db]
-             [models :as models]]
-            [clojure.core.async :as async]
-            [ring.util.response :as response]
-            [cheshire.core :as json])
+             [models :as models]])
   (:import com.fasterxml.jackson.core.JsonGenerator
-           java.io.OutputStream
-           [java.util.concurrent LinkedBlockingQueue]))
+           java.io.OutputStream))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
@@ -362,9 +362,7 @@
          (catch Throwable e
            {:status 400, :body (.getMessage e)}))))
 
-
 ;;; ------------------------------------------------------------ EXCEPTION HANDLING ------------------------------------------------------------
-
 
 (def ^:private ^:const streaming-response-keep-alive-interval-ms
   "Interval between sending newline characters to keep Heroku from terminating
@@ -411,8 +409,8 @@
   [handler]
   (fn [request]
     (let [response            (future (handler request))
-          optomistic-response (deref response streaming-response-keep-alive-interval-ms ::no-immediate-response)]
-      (if (= optomistic-response ::no-immediate-response)
+          optimistic-response (deref response streaming-response-keep-alive-interval-ms ::no-immediate-response)]
+      (if (= optimistic-response ::no-immediate-response)
         ;; if we didn't get a normal response in the first poling interval assume it's going to be slow
         ;; and start sending keepalive packets.
         (let [output (async/chan 1)]
@@ -439,4 +437,4 @@
           ;; here we assume a successful response will be written to the output channel.
           (assoc (response/response output)
             :content-type "applicaton/json"))
-          optomistic-response))))
+          optimistic-response))))
