@@ -393,11 +393,6 @@
               (throw e)))
           (recur (async/<!! output-queue)))))))
 
-(def ^:private ^:const streaming-response-keep-alive-interval-ms
-  "Interval between sending whitespace bytes to keep Heroku from terminating
-   requests like queries that take a long time to complete."
-  (* 1 1000))
-
 (defn streaming-json-response
   "This midelware assumes handlers fail early or return success
    Run the handler in a future and send newlines to keep the connection open
