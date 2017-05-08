@@ -39,6 +39,7 @@ export default (
 
     return [
         {
+            name: "object-detail",
             section: "details",
             title: "View details",
             default: true,

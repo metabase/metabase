@@ -11,6 +11,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { duration, formatNumber } from "metabase/lib/formatting";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/visualizations/lib/settings";
@@ -208,17 +209,18 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     handleVisualizationClick = (clicked: ClickObject) => {
+        if (clicked) {
+            MetabaseAnalytics.trackEvent(
+                "Actions",
+                "Clicked",
+                `${clicked.column ? "column" : ""} ${clicked.value ? "value" : ""} ${clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""}`
+            );
+        }
+
         // needs to be delayed so we don't clear it when switching from one drill through to another
         setTimeout(() => {
-            // const { onChangeCardAndRun } = this.props;
-            // let clickActions = this.getClickActions(clicked);
-            // if there's a single drill action (without a popover) execute it immediately
-            // if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
-            //     onChangeCardAndRun(clickActions[0].card());
-            // } else {
-                this.setState({ clicked });
-            // }
-        }, 100)
+            this.setState({ clicked });
+        }, 100);
     }
 
     handleOnChangeCardAndRun = (card: UnsavedCard) => {
