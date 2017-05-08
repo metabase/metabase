@@ -50,7 +50,21 @@ server_name () {
 server_https () {
     cd /etc/nginx/sites-available/
     if [[ "$NGINX_FORCE_SSL" ]] && ! grep -q https elasticbeanstalk-nginx-docker-proxy.conf ; then
-        sed -i 's|location \/ {|location \/ {\n\n        if ($http_x_forwarded_proto != "https") {\n                rewrite ^ https:\/\/$host$request_uri? permanent;\n        }\n|' elasticbeanstalk-nginx-docker-proxy.conf
+        # Adds in ngnix configuration after "location /":
+        #
+        # set $redirect_https 1;
+        # if ($uri ~* "/api/health*") {
+        #   set $redirect_https 0;
+        # }
+        # if ($http_x_forwarded_proto = "https") {
+        #   set $redirect_https 0;
+        # }
+        # if ($redirect_https) {
+        #   rewrite ^ https://$host$request_uri? permanent;
+        # }
+        # 
+        # This command syntax is only working on Linux.
+        sed -r -i'' -e "s|location / \{|location / {\n\n set \$redirect_https 1;\n if (\$uri ~* \"/api/health*\") {\n set \$redirect_https 0;\n }\n if (\$http_x_forwarded_proto = \"https\") {\n set \$redirect_https 0;\n }\n if (\$redirect_https) {\n rewrite ^ https://\$host\$request_uri? permanent;\n }\n\n|" elasticbeanstalk-nginx-docker-proxy.conf
     fi
 }
 
