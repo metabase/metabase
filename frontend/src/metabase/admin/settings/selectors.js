@@ -47,7 +47,8 @@ const SECTIONS = [
                     ...MetabaseSettings.get('timezones')
                 ],
                 placeholder: "Select a timezone",
-                note: "Not all databases support timezones, in which case this setting won't take effect."
+                note: "Not all databases support timezones, in which case this setting won't take effect.",
+                allowValueCollection: true
             },
             {
                 key: "anon-tracking-enabled",
