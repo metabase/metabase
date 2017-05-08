@@ -51,4 +51,4 @@ Clicking on the icon to the left of questions let's you select several at once s
 ---
 
 ## Next: creating dashboards
-Next, we'll learn about [creating dashboards and adding questions to them](06-dashboards.md).
+Next, we'll learn about [creating dashboards and adding questions to them](07-dashboards.md).

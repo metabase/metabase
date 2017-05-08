@@ -67,6 +67,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
 
         return [
             {
+                name: "pivot-by-" + name.toLowerCase(),
                 section: "breakout",
                 title: clicked
                     ? name

@@ -40,7 +40,10 @@ export type ClickAction = {
     title: any, // React Element
     icon?: string,
     popover?: (props: ClickActionPopoverProps) => any, // React Element
-    card?: () => ?Card
+    card?: () => ?Card,
+
+    section?: string,
+    name?: string,
 }
 
 export type ClickActionProps = {

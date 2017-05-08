@@ -50,7 +50,11 @@ export default (
     const { column } = clicked;
 
     // $FlowFixMe
-    return Object.entries(AGGREGATIONS).map(([aggregation, action]) => ({
+    return Object.entries(AGGREGATIONS).map(([aggregation, action]: [string, {
+        section: string,
+        title: string
+    }]) => ({
+        name: action.title.toLowerCase(),
         ...action,
         card: () =>
             summarize(

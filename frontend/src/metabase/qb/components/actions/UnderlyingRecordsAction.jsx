@@ -16,6 +16,7 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
     if (query && !Query.isBareRows(query)) {
         return [
             {
+                name: "underlying-records",
                 title: (
                     <span>
                         View the underlying
