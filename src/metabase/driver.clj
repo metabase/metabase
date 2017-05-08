@@ -127,6 +127,9 @@
           :rows    [[1 \"Lucky Bird\"]
                     [2 \"Rasta Can\"]]}")
 
+  (cancel-query ^java.util.Map [this, ^String query-id]
+    "*OPTIONAL*. Cancel a running query")
+
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
 
@@ -138,7 +141,8 @@
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
-  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"")
+  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"
+  *  `:query-cancelation` - Does the driver support canceling a running query")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -243,6 +247,7 @@
   {:analyze-table                     (constantly nil)
    :date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
+   :cancel-query                      (constantly nil)
    :features                          (constantly nil)
    :format-custom-field-name          (u/drop-first-arg identity)
    :humanize-connection-error-message (u/drop-first-arg identity)
