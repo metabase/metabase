@@ -15,6 +15,8 @@ import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
 
+// TODO: use icepick instead of mutation, make they handle frozen cards
+
 export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
     newCard.dataset_query = card.dataset_query;
@@ -70,8 +72,6 @@ export const filter = (card, operator, column, value) => {
 };
 
 const drillFilter = (card, value, column) => {
-    let newCard = clone(card);
-
     let filter;
     if (isDate(column)) {
         filter = [
@@ -88,12 +88,18 @@ const drillFilter = (card, value, column) => {
         filter = ["=", getFieldClauseFromCol(column), value];
     }
 
+    return addOrUpdateFilter(card, filter);
+};
+
+export const addOrUpdateFilter = (card, filter) => {
+    let newCard = clone(card);
     // replace existing filter, if it exists
     let filters = Query.getFilters(newCard.dataset_query.query);
     for (let index = 0; index < filters.length; index++) {
         if (
             Filter.isFieldFilter(filters[index]) &&
-            Field.getFieldTargetId(filters[index][1]) === column.id
+            Field.getFieldTargetId(filters[index][1]) ===
+                Field.getFieldTargetId(filter[1])
         ) {
             newCard.dataset_query.query = Query.updateFilter(
                 newCard.dataset_query.query,

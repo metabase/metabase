@@ -34,6 +34,9 @@ import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
+import { addOrUpdateFilter } from "metabase/qb/lib/actions";
+
+import { initBrushParent, initBrushChild } from "./graph/brush";
 
 import type { Series, ClickObject } from "metabase/meta/types/Visualization"
 
@@ -49,7 +52,7 @@ const DOT_OVERLAP_COUNT_LIMIT = 8;
 const DOT_OVERLAP_RATIO = 0.10;
 const DOT_OVERLAP_DISTANCE = 8;
 
-const VORONOI_TARGET_RADIUS = 50;
+const VORONOI_TARGET_RADIUS = 25;
 const VORONOI_MAX_POINTS = 300;
 
 // min margin
@@ -94,16 +97,14 @@ function getDcjsChartType(cardType) {
     }
 }
 
+
+
 function initChart(chart, element) {
     // set the bounds
     chart.width(getAvailableCanvasWidth(element));
     chart.height(getAvailableCanvasHeight(element));
     // disable animations
     chart.transitionDuration(0);
-    // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
-    if (chart.brushOn) {
-        chart.brushOn(false);
-    }
 }
 
 function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
@@ -455,11 +456,6 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
 }
 
 function applyChartLineBarSettings(chart, settings, chartType) {
-    // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
-    if (chart.brushOn) {
-        chart.brushOn(false);
-    }
-
     // LINE/AREA:
     // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
     if (chart.interpolate) {
@@ -849,7 +845,17 @@ function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], indexMa
 }
 
 
-export default function lineAreaBar(element, { series, onHoverChange, onVisualizationClick, onRender, chartType, isScalarSeries, settings, maxSeries }) {
+export default function lineAreaBar(element, {
+    series,
+    onHoverChange,
+    onVisualizationClick,
+    onRender,
+    chartType,
+    isScalarSeries,
+    settings,
+    maxSeries,
+    onChangeCardAndRun
+}) {
     const colors = settings["graph.colors"];
 
     const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
@@ -1033,8 +1039,25 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
     let parent = dc.compositeChart(element);
     initChart(parent, element);
 
+    let filter = null;
+    initBrushParent(parent, () => {
+        // workaround for the filter handler firing on mouse move rather than mouse up
+        if (filter) {
+            onChangeCardAndRun(addOrUpdateFilter(series[0].card, filter));
+        }
+    });
+
     let charts = groups.map((group, index) => {
         let chart = dc[getDcjsChartType(chartType)](parent);
+
+        initBrushChild(chart, (start, end) => {
+            // fires on mouse move, just update a local variable for now
+            if (isDimensionTimeseries) {
+                filter = ["BETWEEN", series[0].data.cols[0].id, moment(start).format(), moment(end).format()]
+            } else {
+                filter = ["BETWEEN", series[0].data.cols[0].id, start, end]
+            }
+        });
 
         // disable clicks
         chart.onClick = () => {};
