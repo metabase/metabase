@@ -34,11 +34,10 @@
                                org.slf4j/jcl-over-slf4j
                                org.slf4j/slf4j-api
                                log4j]]
-                 [javax.validation/validation-api "1.1.0.Final"]      ; Fix DRILL-5383
                  [org.spark-project.hive/hive-jdbc "1.2.1.spark2"
-                  :exclusions [org.mortbay.jetty/jetty
+                  :exclusions [org.codehaus.jackson/jackson-xc
                                org.eclipse.jetty.aggregate/jetty-all
-                               org.codehaus.jackson/jackson-xc]
+                               org.mortbay.jetty/jetty]
                   :classifier "standalone"]
                  [cheshire "5.7.0"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.4.1"                                    ; HTTP client
@@ -49,11 +48,11 @@
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.3"                         ; auth library
-                  :exclusions [commons-codec
-                               org.apache.httpcomponents/httpclient
+                  :exclusions [com.google.inject/guice
+                               commons-codec
                                net.sourceforge.nekohtml/nekohtml
-                               ring/ring-core
-                               com.google.inject/guice]]
+                               org.apache.httpcomponents/httpclient
+                               ring/ring-core]]
                  [com.draines/postal "2.0.2"]                         ; SMTP library
                  [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
                   "v3-rev139-1.22.0"]
@@ -69,6 +68,7 @@
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
+                 [javax.validation/validation-api "1.1.0.Final"]      ; Fix DRILL-5383
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -102,8 +102,6 @@
   :java-source-paths ["src-java"]
   :target-path "target/%s"
   :jvm-opts ["-server"                                                ; Run JVM in server mode as opposed to client -- see http://stackoverflow.com/questions/198577/real-differences-between-java-server-and-java-client for a good explanation of this
-             "-Xmx4g"
-             "-Duser.timezone=Etc/UTC"
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
