@@ -371,10 +371,10 @@
    requests like queries that take a long time to complete."
   (* 1 1000))
 
-;; Handle ring response maps that contain a LinkedBlockingQueue in the :body key:
+;; Handle ring response maps that contain a core.async chan in the :body key:
 ;;
 ;; {:status 200
-;;  :body (LinkedBlockingQueue.)}
+;;  :body (async/chan)}
 ;;
 ;; and send each string sent to that queue back to the browser as it arrives
 ;; this avoids output buffering in the default stream handling which was not sending
