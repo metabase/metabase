@@ -84,10 +84,14 @@ export default class SettingsEditorApp extends Component {
 
             this.refs.layout.setSaved();
 
+            const value = prepareAnalyticsValue(setting);
+
             MetabaseAnalytics.trackEvent(
                 "General Settings",
                 setting.display_name || setting.key,
-                prepareAnalyticsValue(setting)
+                value,
+                // pass the actual value if it's a number
+                typeof(value) === 'number' && value
             );
         } catch (error) {
             let message = error && (error.message || (error.data && error.data.message));
