@@ -75,7 +75,7 @@
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
              (set (for [result (jdbc/query {:connection conn}
                                  [(format "show tables in `%s`"
-                                    (dash-to-underscore (:dbname details)))])]
+                                    (dash-to-underscore (:db details)))])]
                     {:name (:tablename result)
                      :schema nil})))})
 
@@ -85,7 +85,7 @@
      :schema nil
      :fields (set (for [result (jdbc/query {:connection conn}
                                  [(format "describe `%s`.`%s`"
-                                    (dash-to-underscore (:dbname details))
+                                    (dash-to-underscore (:db details))
                                     (dash-to-underscore (:name table)))])]
                     {:name (:col_name result)
                      :base-type (hive-like/column->base-type (keyword (:data_type result)))}))}))
@@ -139,7 +139,7 @@
                          :execute-query execute-query
                          :features (constantly #{:basic-aggregations
                                                  :standard-deviation-aggregations
-                                                 :foreign-keys
+                                                 ;:foreign-keys
                                                  :expressions
                                                  :expression-aggregations
                                                  :native-parameters})
