@@ -308,6 +308,7 @@ function transformSingleSeries(s, series, seriesIndex) {
                 cols: rowColumnIndexes.map(i => cols[i]),
                 _rawCols: cols
             },
+            // for when the legend header for the breakout is clicked
             clicked: {
                 dimensions: [{
                     value: breakoutValue,
@@ -330,6 +331,7 @@ function transformSingleSeries(s, series, seriesIndex) {
                         metricColumnIndexes.length > 1 && getFriendlyName(col)
                     ].filter(n => n).join(": "),
                     _transformed: true,
+                    _seriesIndex: seriesIndex,
                 },
                 data: {
                     rows: rows.map((row, rowIndex) => {

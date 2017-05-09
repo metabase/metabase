@@ -226,22 +226,22 @@ export default class Visualization extends Component<*, Props, State> {
     handleOnChangeCardAndRun = (card: UnsavedCard) => {
         const { series, clicked } = this.state;
 
-        // If the current card is saved or is based on a saved question,
-        // carry that information to the new card for showing lineage
         const index = (clicked && clicked.seriesIndex) || 0;
-        // $FlowFixMe
-        const hasOriginalCard = series[index] && series[index].card && (series[index].card.id || series[index].card.original_card_id);
-        if (hasOriginalCard) {
-            const cardWithOriginalId: UnsavedCard = {
-                ...card,
-                // $FlowFixMe
-                original_card_id: series[index].card.id || series[index].card.original_card_id
-            };
+        const originalCard = series && series[index] && series[index].card;
 
-            this.props.onChangeCardAndRun(cardWithOriginalId)
-        } else {
-            this.props.onChangeCardAndRun(card)
+        let cardId = card.id || card.original_card_id;
+        // if the supplied card doesn't have an id, get it from the original card
+        if (cardId == null && originalCard) {
+            // $FlowFixMe
+            cardId = originalCard.id || originalCard.original_card_id;
         }
+
+        this.props.onChangeCardAndRun({
+            ...card,
+            id: cardId,
+            // $FlowFixMe
+            original_card_id: cardId
+        });
     }
 
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {
