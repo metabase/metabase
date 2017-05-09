@@ -220,7 +220,7 @@
 
 (defn- qualify+escape ^clojure.lang.Keyword
   ([table]       (hx/qualify-and-escape-dots (:schema table) (:name table)))
-  ([table field] (hx/qualify-and-escape-dots (:name table) (:name field))))
+  ([table field] (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
 
 
 (defn- query
