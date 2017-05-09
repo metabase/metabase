@@ -76,12 +76,12 @@
 
 ;;; filter != true
 (expect-with-non-timeseries-dbs
- [[3 "The Dentist" false]]
- (->> (data/dataset places-cam-likes
-        (data/run-query places
-          (ql/filter (ql/!= $liked true))
-          (ql/order-by (ql/asc $id))))
-      rows (format-rows-by [int str ->bool] :format-nil-values)))
+  [[3 "The Dentist" false]]
+  (->> (data/dataset places-cam-likes
+         (data/run-query places
+           (ql/filter (ql/!= $liked true))
+           (ql/order-by (ql/asc $id))))
+       rows (format-rows-by [int str ->bool] :format-nil-values)))
 
 
 ;;; FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")

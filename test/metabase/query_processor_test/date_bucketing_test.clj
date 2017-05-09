@@ -60,7 +60,7 @@
      ["2015-06-01T22:37:00.000Z" 1]
      ["2015-06-02T01:20:00.000Z" 1]
      ["2015-06-02T04:11:00.000Z" 1]])
- (sad-toucan-incidents-with-bucketing :default))
+  (sad-toucan-incidents-with-bucketing :default))
 
 (expect-with-non-timeseries-dbs
   (cond
