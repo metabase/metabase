@@ -122,12 +122,12 @@ function inferEntityPermissionValueFromChildTables(permissions: GroupsPermission
     const database = metadata && metadata.database(databaseId);
 
     // $FlowFixMe
-    const entityIdsForDescedantTables: TableEntityId[] = _.chain(database.tables())
+    const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables())
         .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
         .map(metadataTableToTableEntityId)
         .value();
 
-    const entityIdsByPermValue = _.chain(entityIdsForDescedantTables)
+    const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
         .map((id) => getFieldsPermission(permissions, groupId, id))
         .groupBy(_.identity)
         .value();
