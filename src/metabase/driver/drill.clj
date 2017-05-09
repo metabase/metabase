@@ -106,16 +106,43 @@
 
 (defn- describe-database [driver database]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
-             (set (for [result (jdbc/query {:connection conn} ["select table_schema, table_name from INFORMATION_SCHEMA.`VIEWS` union select table_schema, table_name from INFORMATION_SCHEMA.`TABLES` where table_type='TABLE'"])]
-                    {:name (:table_name result)
-                     :schema (:table_schema result)})))})
+             ;; workaround for DRILL-5136 (can't use prepared statements for DDL)
+             ;; instead of prepared statements, we use plain statements.
+             (with-open [sql-statement (.createStatement conn)]
+               ;; we could show all views and tables with this query:
+               ;; select table_schema, table_name from INFORMATION_SCHEMA.`VIEWS` union select table_schema, table_name from INFORMATION_SCHEMA.`TABLES` where table_type='TABLE'
+               ;; the next comment explains why we're not doing this today.
+               (set (for [result (jdbc/result-set-seq
+                                            (.executeQuery sql-statement "show tables"))]
+                      {:name (:table_name result)
+                       ;; we need the schema for describe-table, but then we drop it.
+                       ;; see comments in describe-table.
+                       :schema (:table_schema result)}))))})
 
 (defn- describe-table [driver database table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
     {:name (:name table)
-     :schema (:schema table)
+     ;; Drill is a bit odd in the way it deals with schemas.
+     ;; a schema in Drill is not like schemas in other database, and is more like
+     ;; source for tables, like dfs.tmp (the source is the temporary filesystem)
+     ;; or hive (the source is an external Hive metastore).
+     ;; Drill calls them workspaces, and they're causing some issues for Metabase,
+     ;; because Drill (as of version 1.10) does not support qualifying a column name
+     ;; with the workspace/schema.
+     ;; hence, this works: select `tupac_sightings_cities`.`id` from `hive`.`tupac_sightings_cities`
+     ;; but not this: select `hive`.`tupac_sightings_cities`.`id` from `hive`.`tupac_sightings_cities`
+     ;;
+     ;; for this reason, we ignore the schema/workspace here.
+     ;; it can be specified in the connection string, but this means we can unfortunately
+     ;; do joins between schemas/workspaces with Metabase, though it can be done with
+     ;; table aliases and native SQL.
+     ;; this works: select a.id * b.id from `hive`.`tupac_sightings_cities` as a left join `dfs.tmp`.`tupac_sightings_cities` as b on (a.id = b.id) where a.id=1
+     ;; if Metabase uses table aliases in the future, we could return the workspace here.
+     ;; for now, set the schema to nil and implicitly use the current schema/workspace.
+     ;; change this to (:schema table) if Metabase can be made to accommodate Drill schemas/workspaces
+     :schema nil
      :fields (set (for [result (jdbc/query {:connection conn}
-                                           [(str "select column_name, data_type from INFORMATION_SCHEMA.COLUMNS where table_name='" (:name table) "'")])]
+                                           [(str "select column_name, data_type from INFORMATION_SCHEMA.COLUMNS where table_name='" (:name table) "' and table_schema='" (:schema table) "'")])]
                     {:name (:column_name result)
                      :base-type (column->base-type (keyword (:data_type result)))}))}))
 

@@ -61,26 +61,7 @@
   (format "DROP VIEW IF EXISTS %s" (str "dfs.tmp.`" database-name "_" table-name "`")))
 
 ;; workaround for DRILL-5136 (can't use prepared statements for DDL)
-(defn drill-execute-sql! [driver context dbdef sql]
-  (let [sql (some-> sql s/trim)]
-    (when (and (seq sql)
-               ;; make sure SQL isn't just semicolons
-               (not (s/blank? (s/replace sql #";" ""))))
-      ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
-      (let [sql (s/replace sql #";+" ";")]
-        (try
-          (with-open [conn (jdbc/get-connection (generic/database->spec driver context dbdef))]
-            (with-open [statement (.createStatement conn)]
-              (.execute statement sql)))
-          (catch SQLException e
-            (printf "Caught SQLException:\n%s\n"
-                    (with-out-str (jdbc/print-sql-exception-chain e)))
-            (throw e))
-          (catch Throwable e
-            (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
-                    (with-out-str (.printStackTrace e)))
-            (throw e)))))))
-
+;; instead of prepared statements, we use plain statements.
 (defn sequentially-execute-sql!
   "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
    that don't support executing multiple statements at once.
@@ -183,5 +164,5 @@
                  i/IDatasetLoader
                  (merge generic/IDatasetLoaderMixin
                         {:database->connection-details (u/drop-first-arg database->connection-details)
-                         :default-schema               (constantly "dfs.tmp")
+                         :default-schema               (constantly nil)
                          :engine                       (constantly :drill)}))
