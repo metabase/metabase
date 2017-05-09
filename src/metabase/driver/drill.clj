@@ -104,24 +104,6 @@
                                        3.0)))
     :year (hsql/call :extract "year" (hx/->timestamp expr))))
 
-(defn- humanize-connection-error-message [message]
-  (condp re-matches message
-    #"^FATAL: database \".*\" does not exist$"
-    (driver/connection-error-messages :database-name-incorrect)
-
-    #"^No suitable driver found for.*$"
-    (driver/connection-error-messages :invalid-hostname)
-
-    #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    (driver/connection-error-messages :cannot-connect-check-host-and-port)
-
-    #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
-    (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
-      (str (s/capitalize message) \.))
-
-    #".*" ; default
-    message))
-
 (defn- describe-database [driver database]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
              (set (for [result (jdbc/query {:connection conn} ["select table_schema, table_name from INFORMATION_SCHEMA.`VIEWS` union select table_schema, table_name from INFORMATION_SCHEMA.`TABLES` where table_type='TABLE'"])]
@@ -227,8 +209,7 @@
                                                  :foreign-keys
                                                  :expressions
                                                  :expression-aggregations
-                                                 :native-parameters})
-                         :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
+                                                 :native-parameters})})
                  sql/ISQLDriver
                  (merge (sql/ISQLDriverDefaultsMixin)
                         {:apply-aggregation bigquery/apply-aggregation
