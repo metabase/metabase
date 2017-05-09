@@ -255,7 +255,7 @@ const SECTIONS = [
             },
             {
                 key: "query-caching-ttl-ratio",
-                display_name: "Cache Time-To-Live (TTL)",
+                display_name: "Cache Time-To-Live (TTL) multiplier",
                 type: "number",
                 getHidden: (settings) => !settings["enable-query-caching"],
                 allowValueCollection: true
