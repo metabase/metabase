@@ -23,12 +23,10 @@ export function question(cardId, hash = "", query = "") {
         : `/question${query}${hash}`;
 }
 
-export function dashboard(dashboardId) {
-    return `/dashboard/${dashboardId}`;
-}
-
-export function dashboardWithAddCard(dashboardId, cardId) {
-    return `/dashboard/${dashboardId}#add=${cardId}`;
+export function dashboard(dashboardId, {addCardWithId} = {}) {
+    return addCardWithId != null
+        ? `/dashboard/${dashboardId}#add=${addCardWithId}`
+        : `/dashboard/${dashboardId}`;
 }
 
 export function modelToUrl(model, modelId) {
