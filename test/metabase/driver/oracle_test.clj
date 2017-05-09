@@ -4,7 +4,7 @@
             [metabase.driver :as driver]
             [metabase.driver
              [generic-sql :as sql]
-             oracle])
+             [oracle :as oracle]])
   (:import metabase.driver.oracle.OracleDriver))
 
 ;; make sure we can connect with an SID
@@ -44,3 +44,21 @@
                                                  :port         1521
                                                  :service-name "MyCoolService"
                                                  :sid          "ORCL"}))
+
+
+(expect
+  com.jcraft.jsch.JSchException
+  (let [engine :oracle
+        details {:ssl false,
+                 :password "changeme",
+                 :tunnel-host "localhost",
+                 :tunnel-pass "BOGUS-BOGUS-BOGUS",
+                 :port 12345,
+                 :service-name "test",
+                 :sid "asdf",
+                 :host "localhost",
+                 :tunnel-enabled true,
+                 :tunnel-port 22,
+                 :user "postgres",
+                 :tunnel-user "example"}]
+    (#'oracle/can-connect? details)))

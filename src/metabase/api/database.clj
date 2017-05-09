@@ -207,7 +207,6 @@
    Otherwise returns the connection error message."
   [engine details]
   (let [error (test-database-connection engine details)]
-    (println "error:" error) ; NOCOMMIT
     (if (and error
              (true? (:ssl details)))
       (recur engine (assoc details :ssl false))

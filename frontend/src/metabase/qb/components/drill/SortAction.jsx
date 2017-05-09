@@ -38,8 +38,9 @@ export default (
         sortDirection === "desc"
     ) {
         actions.push({
-            title: "Ascending",
+            name: "sort-ascending",
             section: "sort",
+            title: "Ascending",
             card: () =>
                 assocIn(
                     card,
@@ -54,8 +55,9 @@ export default (
         sortDirection === "asc"
     ) {
         actions.push({
-            title: "Descending",
+            name: "sort-descending",
             section: "sort",
+            title: "Descending",
             card: () =>
                 assocIn(
                     card,

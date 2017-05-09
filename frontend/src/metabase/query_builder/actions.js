@@ -1,5 +1,5 @@
 /*global ace*/
-
+import React from 'react'
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { assocIn } from "icepick";
@@ -17,6 +17,7 @@ import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
+import { addUndo } from "metabase/redux/undo";
 import { applyParameters, cardIsEquivalent } from "metabase/meta/Card";
 
 import { getParameters, getTableMetadata, getNativeDatabases } from "./selectors";
@@ -29,8 +30,7 @@ import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
-export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
-const setCurrentState = createAction(SET_CURRENT_STATE);
+export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE"; const setCurrentState = createAction(SET_CURRENT_STATE);
 
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(POP_STATE, (location) =>
@@ -481,12 +481,20 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
 });
 
 // setCardAndRun
+// Used when navigating browser history, when drilling through in visualizations / action widget,
+// and when having the entity details view open and clicking its cells
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
         const card = Utils.copy(nextCard);
-        const originalCard = card.original_card_id ? await loadCard(card.original_card_id) : card;
+
+        const originalCard = card.original_card_id ?
+            // If the original card id is present, dynamically load its information for showing lineage
+            await loadCard(card.original_card_id)
+            // Otherwise, use a current card as the original card if the card has been saved
+            // This is needed for checking whether the card is in dirty state or not
+            : (card.id ? card : null);
 
         dispatch(loadMetadataForCard(card));
 
@@ -1117,6 +1125,40 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
         return fkReferences;
     };
 });
+
+// TODO - this is pretty much a duplicate of SET_ARCHIVED in questions/questions.js
+// unfortunately we have to do this because that action relies on its part of the store
+// for the card lookup
+// A simplified version of a similar method in questions/questions.js
+function createUndo(type, action) {
+    return {
+        type: type,
+        count: 1,
+        message: (undo) => // eslint-disable-line react/display-name
+                <div> { "Question  was " + type + "."} </div>,
+        actions: [action]
+    };
+}
+
+export const ARCHIVE_QUESTION = 'metabase/qb/ARCHIVE_QUESTION';
+export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, archived = true) =>
+    async (dispatch, getState) => {
+        let card = {
+            ...getState().qb.card, // grab the current card
+            archived
+        }
+        let response = await CardApi.update(card)
+
+        dispatch(addUndo(createUndo(
+            archived ? "archived" : "unarchived",
+            archiveQuestion(card.id, !archived)
+        )));
+
+        dispatch(push('/questions'))
+        return response
+    }
+)
+
 
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs

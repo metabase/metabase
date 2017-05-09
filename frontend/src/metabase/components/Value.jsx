@@ -1,8 +1,17 @@
+/* @flow */
+
 import React from "react";
 
 import { formatValue } from "metabase/lib/formatting";
 
-const Value = ({ value, ...options }) => {
+import type { Value as ValueType } from "metabase/meta/types/Dataset";
+import type { FormattingOptions } from "metabase/lib/formatting"
+
+type Props = {
+    value: ValueType
+} & FormattingOptions;
+
+const Value = ({ value, ...options }: Props) => {
     let formatted = formatValue(value, { ...options, jsx: true });
     if (React.isValidElement(formatted)) {
         return formatted;

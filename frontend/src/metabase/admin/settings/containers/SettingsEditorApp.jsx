@@ -15,9 +15,10 @@ import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
 
+import { prepareAnalyticsValue } from 'metabase/admin/settings/utils'
+
 import _ from "underscore";
 import cx from 'classnames';
-
 
 import {
     getSettings,
@@ -82,8 +83,16 @@ export default class SettingsEditorApp extends Component {
             }
 
             this.refs.layout.setSaved();
-            let val = (setting.key === "report-timezone" || setting.type === "boolean") ? setting.value : "success";
-            MetabaseAnalytics.trackEvent("General Settings", setting.display_name || setting.key, val);
+
+            const value = prepareAnalyticsValue(setting);
+
+            MetabaseAnalytics.trackEvent(
+                "General Settings",
+                setting.display_name || setting.key,
+                value,
+                // pass the actual value if it's a number
+                typeof(value) === 'number' && value
+            );
         } catch (error) {
             let message = error && (error.message || (error.data && error.data.message));
             this.refs.layout.setSaveError(message);

@@ -123,3 +123,23 @@
     0.5)
   (dataset half-valid-urls
     (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))
+
+;;; Make sure invalid ssh credentials are detected if a direct connection is possible
+(expect
+  #"com.jcraft.jsch.JSchException:"
+  (try (let [engine :postgres
+             details {:ssl false,
+                      :password "changeme",
+                      :tunnel-host "localhost", ;; this test works if sshd is running or not
+                      :tunnel-pass "BOGUS-BOGUS-BOGUS",
+                      :port 5432,
+                      :dbname "test",
+                      :host "localhost",
+                      :tunnel-enabled true,
+                      :tunnel-port 22,
+                      :engine :postgres,
+                      :user "postgres",
+                      :tunnel-user "example"}]
+         (driver/can-connect-with-details? engine details :rethrow-exceptions))
+       (catch Exception e
+         (.getMessage e))))
