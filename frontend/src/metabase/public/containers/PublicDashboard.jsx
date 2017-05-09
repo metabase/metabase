@@ -107,6 +107,8 @@ export default class PublicDashboard extends Component<*, Props, *> {
                     <DashboardGrid
                         {...this.props}
                         className={"spread"}
+                        // Don't allow clicking titles on public dashboards
+                        navigateToNewCard={null}
                     />
                 }
                 </LoadingAndErrorWrapper>
