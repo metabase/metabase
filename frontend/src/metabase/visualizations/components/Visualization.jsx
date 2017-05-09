@@ -338,7 +338,7 @@ export default class Visualization extends Component<*, Props, State> {
                             actionButtons={extra}
                             description={settings["card.description"]}
                             settings={settings}
-                            onChangeCardAndRun={this.handleOnChangeCardAndRun}
+                            onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
                         />
                     </div>
                 : null
@@ -397,9 +397,9 @@ export default class Visualization extends Component<*, Props, State> {
                         series={series}
                         settings={settings}
                         // $FlowFixMe
-                        card={series[0].card} // convienence for single-series visualizations
+                        card={series[0].card} // convenience for single-series visualizations
                         // $FlowFixMe
-                        data={series[0].data} // convienence for single-series visualizations
+                        data={series[0].data} // convenience for single-series visualizations
                         hovered={hovered}
                         onHoverChange={this.handleHoverChange}
                         onVisualizationClick={this.handleVisualizationClick}
@@ -407,7 +407,7 @@ export default class Visualization extends Component<*, Props, State> {
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
                         gridSize={gridSize}
-                        onChangeCardAndRun={this.handleOnChangeCardAndRun}
+                        onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
                     />
                 }
                 <ChartTooltip
@@ -417,7 +417,7 @@ export default class Visualization extends Component<*, Props, State> {
                 <ChartClickActions
                     clicked={clicked}
                     clickActions={clickActions}
-                    onChangeCardAndRun={this.handleOnChangeCardAndRun}
+                    onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
                     onClose={() => this.setState({ clicked: null })}
                 />
             </div>
