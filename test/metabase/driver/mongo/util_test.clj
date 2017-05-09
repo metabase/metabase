@@ -1,8 +1,7 @@
 (ns metabase.driver.mongo.util-test
   (:require [expectations :refer :all]
-            metabase.driver.mongo.util
-            [metabase.test.util :as tu]
-            [metabase.driver :as driver])
+            [metabase.driver :as driver]
+            [metabase.test.util :as tu])
   (:import com.mongodb.ReadPreference))
 
 (tu/resolve-private-vars metabase.driver.mongo.util build-connection-options)

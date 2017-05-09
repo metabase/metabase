@@ -1,17 +1,17 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
+            [expectations :refer [expect]]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [rows rows+column-names]]
              [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
-            [expectations :refer [expect]]
             [metabase.models.metric :refer [Metric]]
             [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
-            [toucan.util.test :as tt]
-            [metabase.driver :as driver]))
+            [toucan.util.test :as tt]))
 
 (def ^:const ^:private ^String native-query-1
   (json/generate-string
