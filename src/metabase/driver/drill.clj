@@ -95,6 +95,7 @@
                                      1)
                                3)
                          (hsql/raw "INTERVAL '3' MONTH")))
+    ;; quarter gives incorrect results in Drill 1.10
     ;;:quarter (hsql/call :date_trunc_quarter (hx/->timestamp expr))
     :quarter-of-year (hx/->integer
                       (hsql/call :ceil
