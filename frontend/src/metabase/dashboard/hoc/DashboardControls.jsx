@@ -86,7 +86,6 @@ export default (ComposedComponent: ReactClass<any>) =>
             };
 
             updateDashboardParams = () => {
-                // should I do it here?
                 let options = parseHashOptions(window.location.hash);
                 const setValue = (name, value) => {
                     if (value) {
@@ -206,7 +205,6 @@ export default (ComposedComponent: ReactClass<any>) =>
                         onNightModeChange={this.setNightMode}
                         onFullscreenChange={this.setFullscreen}
                         onRefreshPeriodChange={this.setRefreshPeriod}
-                        addDashboardOnLoad={this.addDashboardOnLoad}
                     />
                 );
             }

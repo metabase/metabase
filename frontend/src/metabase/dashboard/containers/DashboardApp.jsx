@@ -47,12 +47,16 @@ const mapDispatchToProps = {
     onChangeLocation: push
 }
 
+type DashboardAppState = {
+    addCardOnLoad: number|null
+}
+
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ dashboard }) => dashboard && dashboard.name)
 export default class DashboardApp extends Component {
-    state = {
+    state: DashboardAppState = {
         addCardOnLoad: null
-    }
+    };
 
     componentWillMount() {
         let options = parseHashOptions(window.location.hash);
