@@ -16,6 +16,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as dashboardActions from "../dashboard";
 import {archiveDashboard} from "metabase/dashboards/dashboards"
+import {parseHashOptions} from "metabase/lib/browser";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -34,8 +35,6 @@ const mapStateToProps = (state, props) => {
       editingParameter:     getEditingParameter(state, props),
       parameters:           getParameters(state, props),
       parameterValues:      getParameterValues(state, props),
-      addCardOnLoad:        props.location.query.add ? parseInt(props.location.query.add) : null,
-
       metadata:             getMetadata(state)
   }
 }
@@ -51,7 +50,18 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ dashboard }) => dashboard && dashboard.name)
 export default class DashboardApp extends Component {
+    state = {
+        addCardOnLoad: null
+    }
+
+    componentWillMount() {
+        let options = parseHashOptions(window.location.hash);
+        if (options.add) {
+            this.setState({addCardOnLoad: parseInt(options.add)})
+        }
+    }
+
     render() {
-        return <Dashboard {...this.props} />;
+        return <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />;
     }
 }

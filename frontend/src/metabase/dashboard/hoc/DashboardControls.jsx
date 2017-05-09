@@ -86,6 +86,7 @@ export default (ComposedComponent: ReactClass<any>) =>
             };
 
             updateDashboardParams = () => {
+                // should I do it here?
                 let options = parseHashOptions(window.location.hash);
                 const setValue = (name, value) => {
                     if (value) {
@@ -97,7 +98,13 @@ export default (ComposedComponent: ReactClass<any>) =>
                 setValue("refresh", this.state.refreshPeriod);
                 setValue("fullscreen", this.state.isFullscreen);
                 setValue("theme", this.state.isNightMode ? "night" : null);
+
                 delete options.night; // DEPRECATED: options.night
+
+                // Delete the "add card to dashboard" parameter if it's present because we don't
+                // want to add the card again on page refresh. The `add` parameter is already handled in
+                // DashboardApp before this method is called.
+                delete options.add;
 
                 let hash = stringifyHashOptions(options);
                 hash = hash ? "#" + hash : "";
@@ -106,7 +113,7 @@ export default (ComposedComponent: ReactClass<any>) =>
                 if (hash !== location.hash) {
                     replace({
                         pathname: location.pathname,
-                        earch: location.search,
+                        search: location.search,
                         hash
                     });
                 }
@@ -199,6 +206,7 @@ export default (ComposedComponent: ReactClass<any>) =>
                         onNightModeChange={this.setNightMode}
                         onFullscreenChange={this.setFullscreen}
                         onRefreshPeriodChange={this.setRefreshPeriod}
+                        addDashboardOnLoad={this.addDashboardOnLoad}
                     />
                 );
             }

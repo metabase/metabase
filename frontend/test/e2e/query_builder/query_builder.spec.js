@@ -63,7 +63,7 @@ describeE2E("query_builder", () => {
             await d.select("#CreateDashboardModal .Button.Button--primary").wait().click().waitRemoved(); // wait for the modal to be removed
             incrementDashboardCount();
 
-            await d.waitUrl(getLatestDashboardUrl() + "?add=" + cardId);
+            await d.waitUrl(getLatestDashboardUrl() + "#add=" + cardId);
 
             // save dashboard
             await d.select(".EditHeader .Button.Button--primary").wait().click();
