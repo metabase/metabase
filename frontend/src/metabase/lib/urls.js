@@ -27,6 +27,10 @@ export function dashboard(dashboardId) {
     return `/dashboard/${dashboardId}`;
 }
 
+export function dashboardWithAddCard(dashboardId, cardId) {
+    return `/dashboard/${dashboardId}#add=${cardId}`;
+}
+
 export function modelToUrl(model, modelId) {
     switch (model) {
         case "card":
