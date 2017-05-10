@@ -45,14 +45,15 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
 
     static transformSeries(series) {
         if (series.length > 1) {
-            return series.map(s => ({
+            return series.map((s, seriesIndex) => ({
                 card: {
                     ...s.card,
                     display: "funnel",
                     visualization_settings: {
                         ...s.card.visualization_settings,
                         "graph.x_axis.labels_enabled": false
-                    }
+                    },
+                    _seriesIndex: seriesIndex,
                 },
                 data: {
                     cols: [

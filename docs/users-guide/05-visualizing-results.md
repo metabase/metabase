@@ -100,4 +100,4 @@ Metabase now also allows administrators to add custom region maps via GeoJSON fi
 ---
 
 ## Next: Sharing and organizing questions
-Now let's learn about [sharing and organizing your saved questions](05-sharing-answers.md).
+Now let's learn about [sharing and organizing your saved questions](06-sharing-answers.md).
