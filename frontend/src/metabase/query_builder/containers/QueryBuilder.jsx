@@ -1,12 +1,15 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
+import { Link } from "react-router";
 
 import cx from "classnames";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
+
+import EmptyState from "metabase/components/EmptyState";
 
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
@@ -209,6 +212,21 @@ class LegacyQueryBuilder extends Component {
         if (!card || !databases) {
             return (
                 <div></div>
+            );
+        }
+
+        if (card.archived) {
+            return (
+                <div className="flex full layout-centered flex-column">
+                    <EmptyState
+                        message={<div>
+                            <div>This question has been archived</div>
+                            <Link to={"/questions/archive"} className="my2 link" style={{fontSize: "14px"}}>View the
+                                archive</Link>
+                        </div>}
+                        icon="viewArchive"
+                    />
+                </div>
             );
         }
 
