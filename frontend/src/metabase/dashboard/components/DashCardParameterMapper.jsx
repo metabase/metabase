@@ -11,7 +11,7 @@ const DashCardParameterMapper = ({ dashcard }) =>
         }
         <div className="flex mx4 z1" style={{ justifyContent: "space-around" }}>
             {[dashcard.card].concat(dashcard.series || []).map(card =>
-                <DashCardCardParameterMapper dashcard={dashcard} card={card} />
+                <DashCardCardParameterMapper key={`${dashcard.id},${card.id}`} dashcard={dashcard} card={card} />
             )}
         </div>
     </div>

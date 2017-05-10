@@ -50,4 +50,4 @@ If you want to delete a pulse, you can find that option at the bottom of the edi
 
 ## Next: Connecting Metabase to Slack with Metabot 🤖
 
-If your team uses Slack to communicate, you can [use Metabot](10-metabot.md) to display your saved questions directly within Slack whenever you want.
+If your team uses Slack to communicate, you can [use Metabot](11-metabot.md) to display your saved questions directly within Slack whenever you want.

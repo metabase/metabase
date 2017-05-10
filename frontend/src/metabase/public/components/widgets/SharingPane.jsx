@@ -6,6 +6,7 @@ import RetinaImage from "react-retina-image";
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
+import Confirm from "metabase/components/Confirm";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
@@ -67,15 +68,23 @@ export default class SharingPane extends Component<*, Props, State> {
                     <div className="pb2 mb4 border-bottom flex align-center">
                         <h4>Enable sharing</h4>
                         <div className="ml-auto">
-                            <Toggle value={!!resource.public_uuid} onChange={(value) => {
-                                if (value) {
+                            { resource.public_uuid ?
+                                <Confirm
+                                    title="Disable this public link?"
+                                    content="This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link."
+                                    action={() => {
+                                        MetabaseAnalytics.trackEvent("Sharing Modal", "Public Link Disabled", resourceType);
+                                        onDisablePublicLink();
+                                    }}
+                                >
+                                    <Toggle value={true} />
+                                </Confirm>
+                            :
+                                <Toggle value={false} onChange={() => {
                                     MetabaseAnalytics.trackEvent("Sharing Modal", "Public Link Enabled", resourceType);
                                     onCreatePublicLink();
-                                } else {
-                                    MetabaseAnalytics.trackEvent("Sharing Modal", "Public Link Disabled", resourceType);
-                                    onDisablePublicLink();
-                                }
-                            }}/>
+                                }}/>
+                            }
                         </div>
                     </div>
                 }

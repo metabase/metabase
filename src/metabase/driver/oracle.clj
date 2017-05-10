@@ -59,7 +59,7 @@
          (dissoc details :host :port :sid :service-name)))
 
 (defn- can-connect? [details]
-  (let [connection (connection-details->spec details)]
+  (let [connection (connection-details->spec (ssh/include-ssh-tunnel details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
 
 

@@ -15,19 +15,19 @@ const AGGREGATIONS = {
         title: "Sum"
     },
     avg: {
-        section: "distribution",
+        section: "averages",
         title: "Avg"
     },
     min: {
-        section: "distribution",
+        section: "averages",
         title: "Min"
     },
     max: {
-        section: "distribution",
+        section: "averages",
         title: "Max"
     },
     distinct: {
-        section: "distribution",
+        section: "averages",
         title: "Distincts"
     }
 };
@@ -50,7 +50,11 @@ export default (
     const { column } = clicked;
 
     // $FlowFixMe
-    return Object.entries(AGGREGATIONS).map(([aggregation, action]) => ({
+    return Object.entries(AGGREGATIONS).map(([aggregation, action]: [string, {
+        section: string,
+        title: string
+    }]) => ({
+        name: action.title.toLowerCase(),
         ...action,
         card: () =>
             summarize(

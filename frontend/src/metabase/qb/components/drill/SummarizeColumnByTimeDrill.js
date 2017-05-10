@@ -36,8 +36,9 @@ export default (
     const { column } = clicked;
 
     return ["sum", "count"].map(aggregation => ({
-        title: <span>{capitalize(aggregation)} by time</span>,
+        name: "summarize-by-time",
         section: "sum",
+        title: <span>{capitalize(aggregation)} by time</span>,
         card: () =>
             pivot(
                 summarize(

@@ -434,11 +434,11 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                                 column: card._breakoutColumn
                             });
                         }
-                        // series was not transformed
-                        else if (!series._raw) {
-                            // $FlowFixMe
-                            clicked.seriesIndex = seriesIndex;
-                        }
+                    }
+
+                    if (card._seriesIndex != null) {
+                        // $FlowFixMe
+                        clicked.seriesIndex = card._seriesIndex;
                     }
 
                     if (clicked) {
