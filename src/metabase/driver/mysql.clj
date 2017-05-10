@@ -151,7 +151,7 @@
 
 (defrecord MySQLDriver []
   clojure.lang.Named
-  (getName [_] "MySQL"))
+  (getName [_] "MySQL / MariaDB"))
 
 (u/strict-extend MySQLDriver
   driver/IDriver
