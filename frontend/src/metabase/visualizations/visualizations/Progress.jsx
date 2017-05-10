@@ -22,6 +22,8 @@ export default class Progress extends Component<*, VisualizationProps, *> {
     static identifier = "progress";
     static iconName = "progress";
 
+    static supportsSeries = true;
+
     static minSize = { width: 3, height: 3 };
 
     static isSensible(cols, rows) {
@@ -32,6 +34,13 @@ export default class Progress extends Component<*, VisualizationProps, *> {
         if (!isNumeric(cols[0])) {
             throw new Error("Progress visualization requires a number.");
         }
+    }
+
+    static seriesAreCompatible(initialSeries, newSeries) {
+        if (newSeries.data.cols && newSeries.data.cols.length === 1) {
+            return true;
+        }
+        return false;
     }
 
     static settings = {
@@ -104,7 +113,9 @@ export default class Progress extends Component<*, VisualizationProps, *> {
     render() {
         const { series: [{ data: { rows, cols } }], settings, onVisualizationClick, visualizationIsClickable } = this.props;
         const value: number = rows[0][0];
-        const goal = settings["progress.goal"] || 0;
+        const goal = this.props.series.length > 1 ?
+            this.props.series[1].data.rows[0][0] :
+            settings["progress.goal"] || 0;
 
         const mainColor = settings["progress.color"];
         const lightColor = Color(mainColor).lighten(0.25).rgb().string();
