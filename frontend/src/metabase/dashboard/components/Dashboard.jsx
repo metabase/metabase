@@ -20,7 +20,6 @@ import type { Card, CardId, VisualizationSettings } from "metabase/meta/types/Ca
 import type { DashboardWithCards, DashboardId, DashCardId } from "metabase/meta/types/Dashboard";
 import type { RevisionId } from "metabase/meta/types/Revision";
 import type { Parameter, ParameterId, ParameterValues, ParameterOption } from "metabase/meta/types/Parameter";
-import * as Urls from "metabase/lib/urls";
 import Link from "metabase/components/Link";
 
 type Props = {
@@ -74,7 +73,8 @@ type Props = {
 }
 
 type State = {
-    error: ?ApiError
+    error: ?ApiError,
+    isArchived: boolean
 }
 
 @DashboardControls
