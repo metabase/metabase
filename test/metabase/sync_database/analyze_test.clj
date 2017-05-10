@@ -1,10 +1,20 @@
 (ns metabase.sync-database.analyze-test
   (:require [clojure.string :as str]
             [expectations :refer :all]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.models
+             [field :refer [Field]]
+             [table :as table :refer [Table]]]
             [metabase.sync-database.analyze :refer :all]
-            [metabase.test.util :as tu]))
-
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data.users :refer :all]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; test:cardinality-and-extract-field-values
 ;; (#2332) check that if field values are long we skip over them
@@ -22,8 +32,8 @@
 
 ;;; ## mark-json-field!
 
-(tu/resolve-private-vars metabase.sync-database.analyze values-are-valid-json?)
-(tu/resolve-private-vars metabase.sync-database.analyze values-are-valid-emails?)
+(tu/resolve-private-vars metabase.sync-database.analyze
+  values-are-valid-json? values-are-valid-emails?)
 
 (def ^:const ^:private fake-values-seq-json
   "A sequence of values that should be marked is valid JSON.")
@@ -72,3 +82,85 @@
 (expect false (values-are-valid-emails? [100]))
 (expect false (values-are-valid-emails? ["true"]))
 (expect false (values-are-valid-emails? ["false"]))
+
+;; Tests to avoid analyzing hidden tables
+(defn- unanalyzed-fields-count [table]
+  (assert (pos? ;; don't let ourselves be fooled if the test passes because the table is
+           ;; totally broken or has no fields. Make sure we actually test something
+           (db/count Field :table_id (u/get-id table))))
+  (db/count Field :last_analyzed nil, :table_id (u/get-id table)))
+
+(defn- latest-sync-time [table]
+  (db/select-one-field :last_analyzed Field
+    :last_analyzed [:not= nil]
+    :table_id      (u/get-id table)
+    {:order-by [[:last_analyzed :desc]]}))
+
+(defn- set-table-visibility-type! [table visibility-type]
+  ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "hiddentable"
+                                                                       :entity_type     "person"
+                                                                       :visibility_type visibility-type
+                                                                       :description     "What a nice table!"}))
+
+(defn- api-sync! [table]
+  ((user->client :crowberto) :post 200 (format "database/%d/sync" (:db_id table))))
+
+(defn- analyze! [table]
+  (let [db-id (:db_id table)]
+    (analyze-data-shape-for-tables! (driver/database-id->driver db-id) {:id db-id})))
+
+;; expect all the kinds of hidden tables to stay un-analyzed through transitions and repeated syncing
+(expect
+  1
+  (tt/with-temp* [Table [table {:rows 15}]
+                  Field [field {:table_id (:id table)}]]
+    (set-table-visibility-type! table "hidden")
+    (api-sync! table)
+    (set-table-visibility-type! table "cruft")
+    (set-table-visibility-type! table "cruft")
+    (api-sync! table)
+    (set-table-visibility-type! table "technical")
+    (api-sync! table)
+    (set-table-visibility-type! table "technical")
+    (api-sync! table)
+    (api-sync! table)
+    (unanalyzed-fields-count table)))
+
+;; same test not coming through the api
+(expect
+  1
+  (tt/with-temp* [Table [table {:rows 15}]
+                  Field [field {:table_id (:id table)}]]
+    (set-table-visibility-type! table "hidden")
+    (analyze! table)
+    (set-table-visibility-type! table "cruft")
+    (set-table-visibility-type! table "cruft")
+    (analyze! table)
+    (set-table-visibility-type! table "technical")
+    (analyze! table)
+    (set-table-visibility-type! table "technical")
+    (analyze! table)
+    (analyze! table)
+    (unanalyzed-fields-count table)))
+
+;; un-hiding a table should cause it to be analyzed
+(expect
+  0
+  (tt/with-temp* [Table [table {:rows 15}]
+                  Field [field {:table_id (:id table)}]]
+    (set-table-visibility-type! table "hidden")
+    (set-table-visibility-type! table nil)
+    (unanalyzed-fields-count table)))
+
+;; re-hiding a table should not cause it to be analyzed
+(expect
+  ;; create an initially hidden table
+  (tt/with-temp* [Table [table {:rows 15, :visibility_type "hidden"}]
+                  Field [field {:table_id (:id table)}]]
+    ;; switch the table to visible (triggering a sync) and get the last sync time
+    (let [last-sync-time (do (set-table-visibility-type! table nil)
+                             (latest-sync-time table))]
+      ;; now make it hidden again
+      (set-table-visibility-type! table "hidden")
+      ;; sync time shouldn't change
+      (= last-sync-time (latest-sync-time table)))))

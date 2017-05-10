@@ -29,6 +29,7 @@ export default class Popover extends Component {
         // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
         tetherOptions: PropTypes.object,
         sizeToFit: PropTypes.bool,
+        pinInitialAttachment: PropTypes.bool,
     };
 
     static defaultProps = {
@@ -206,39 +207,43 @@ export default class Popover extends Component {
                     ...this.props.tetherOptions
                 });
             } else {
-                let best = {
-                    attachmentX: "center",
-                    attachmentY: "top",
-                    targetAttachmentX: "center",
-                    targetAttachmentY: "bottom",
-                    offsetX: 0,
-                    offsetY: 0
-                };
-
-                // horizontal
-                best = this._getBestAttachmentOptions(
-                    tetherOptions, best, this.props.horizontalAttachments, ["left", "right"],
-                    (best, attachmentX) => ({
-                        ...best,
-                        attachmentX: attachmentX,
+                if (!this._best || !this.props.pinInitialAttachment) {
+                    let best = {
+                        attachmentX: "center",
+                        attachmentY: "top",
                         targetAttachmentX: "center",
-                        offsetX: ({ "center": 0, "left": -(this.props.targetOffsetX), "right": this.props.targetOffsetX })[attachmentX]
-                    })
-                );
+                        targetAttachmentY: "bottom",
+                        offsetX: 0,
+                        offsetY: 0
+                    };
 
-                // vertical
-                best = this._getBestAttachmentOptions(
-                    tetherOptions, best, this.props.verticalAttachments, ["top", "bottom"],
-                    (best, attachmentY) => ({
-                        ...best,
-                        attachmentY: attachmentY,
-                        targetAttachmentY: (attachmentY === "top" ? "bottom" : "top"),
-                        offsetY: ({ "top": this.props.targetOffsetY, "bottom": -(this.props.targetOffsetY) })[attachmentY]
-                    })
-                );
+                    // horizontal
+                    best = this._getBestAttachmentOptions(
+                        tetherOptions, best, this.props.horizontalAttachments, ["left", "right"],
+                        (best, attachmentX) => ({
+                            ...best,
+                            attachmentX: attachmentX,
+                            targetAttachmentX: "center",
+                            offsetX: ({ "center": 0, "left": -(this.props.targetOffsetX), "right": this.props.targetOffsetX })[attachmentX]
+                        })
+                    );
+
+                    // vertical
+                    best = this._getBestAttachmentOptions(
+                        tetherOptions, best, this.props.verticalAttachments, ["top", "bottom"],
+                        (best, attachmentY) => ({
+                            ...best,
+                            attachmentY: attachmentY,
+                            targetAttachmentY: (attachmentY === "top" ? "bottom" : "top"),
+                            offsetY: ({ "top": this.props.targetOffsetY, "bottom": -(this.props.targetOffsetY) })[attachmentY]
+                        })
+                    );
+
+                    this._best = best;
+                }
 
                 // finally set the best options
-                this._setTetherOptions(tetherOptions, best);
+                this._setTetherOptions(tetherOptions, this._best);
             }
 
             if (this.props.sizeToFit) {

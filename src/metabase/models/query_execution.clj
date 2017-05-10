@@ -24,7 +24,8 @@
           :public-dashboard
           :public-question
           :pulse
-          :question))
+          :question
+          :xlsx-download))
 
 (defn- pre-insert [{context :context, :as query-execution}]
   (u/prog1 query-execution

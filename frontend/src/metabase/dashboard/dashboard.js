@@ -10,24 +10,23 @@ import { normalize, schema } from "normalizr";
 import { saveDashboard } from "metabase/dashboards/dashboards";
 
 import { createParameter, setParameterName as setParamName, setParameterDefaultValue as setParamDefaultValue } from "metabase/meta/Dashboard";
-import { applyParameters } from "metabase/meta/Card";
+import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import { getParametersBySlug } from "metabase/meta/Parameter";
 
 import type { DashboardWithCards, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
-import type { Card, CardId } from "metabase/meta/types/Card";
+import type { UnsavedCard, Card, CardId } from "metabase/meta/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
 import { addParamValues, fetchDatabaseMetadata } from "metabase/redux/metadata";
+import { push } from "react-router-redux";
 
-
-import { DashboardApi, MetabaseApi, CardApi, RevisionApi, PublicApi, EmbedApi } from "metabase/services";
+import { DashboardApi, CardApi, RevisionApi, PublicApi, EmbedApi } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
 
-const DATASET_SLOW_TIMEOUT   = 15 * 1000;
-const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
+const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
 // normalizr schemas
 const dashcard = new schema.Entity('dashcard');
@@ -56,19 +55,16 @@ export const SET_DASHCARD_ATTRIBUTES = "metabase/dashboard/SET_DASHCARD_ATTRIBUT
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS = "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
 export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS = "metabase/dashboard/REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS";
 export const UPDATE_DASHCARD_ID = "metabase/dashboard/UPDATE_DASHCARD_ID"
-export const SAVE_DASHCARD = "metabase/dashboard/SAVE_DASHCARD";
 
 export const FETCH_DASHBOARD_CARD_DATA = "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const FETCH_CARD_DATA = "metabase/dashboard/FETCH_CARD_DATA";
-export const FETCH_CARD_DURATION = "metabase/dashboard/FETCH_CARD_DURATION";
+export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
 
 export const FETCH_REVISIONS = "metabase/dashboard/FETCH_REVISIONS";
 export const REVERT_TO_REVISION = "metabase/dashboard/REVERT_TO_REVISION";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
-
-export const FETCH_DATABASE_METADATA = "metabase/dashboard/FETCH_DATABASE_METADATA";
 
 export const SET_EDITING_PARAMETER_ID = "metabase/dashboard/SET_EDITING_PARAMETER_ID";
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
@@ -281,10 +277,10 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
 
         let result = null;
 
-        // start a timer that will fetch the expected card duration if the query takes too long
+        // start a timer that will show the expected card duration if the query takes too long
         let slowCardTimer = setTimeout(() => {
             if (result === null) {
-                dispatch(fetchCardDuration(card, datasetQuery));
+                dispatch(markCardAsSlow(card, datasetQuery));
             }
         }, DATASET_SLOW_TIMEOUT);
 
@@ -316,18 +312,11 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
     };
 });
 
-export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function(card, datasetQuery) {
-    return async function(dispatch, getState) {
-        let result = await MetabaseApi.dataset_duration(datasetQuery);
-        return {
-            id: card.id,
-            result: {
-                fast_threshold: DATASET_USUALLY_FAST_THRESHOLD,
-                ...result
-            }
-        };
-    };
-});
+export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, (card) => ({
+    id: card.id,
+    result: true
+}));
+
 
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId, queryParams, enableDefaultParameters = true) {
     let result;
@@ -502,6 +491,25 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
     return { id };
 });
 
+/** All navigation actions from dashboards to cards (e.x. clicking a title, drill through)
+ *  should go through this action, which merges any currently applied dashboard filters
+ *  into the new card / URL parameters.
+ */
+
+// TODO Atte Keinänen 5/2/17: This could be combined with `setCardAndRun` of query_builder/actions.js
+// Having two separate actions for very similar behavior was a source of initial confusion for me
+const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
+export const navigateToNewCard = createThunkAction(NAVIGATE_TO_NEW_CARD, (card: UnsavedCard, dashcard: DashCard) =>
+    (dispatch, getState) => {
+        const { metadata } = getState();
+        const { dashboardId, dashboards, parameterValues } = getState().dashboard;
+        const dashboard = dashboards[dashboardId];
+
+        // $FlowFixMe
+        const url = questionUrlWithParameters(card, metadata, dashboard.parameters, parameterValues, dashcard && dashcard.parameter_mappings);
+        dispatch(push(url));
+    });
+
 // reducers
 
 const dashboardId = handleActions({
@@ -611,8 +619,8 @@ const dashcardData = handleActions({
     }
 }, {});
 
-const cardDurations = handleActions({
-    [FETCH_CARD_DURATION]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
+const slowCards = handleActions({
+    [MARK_CARD_AS_SLOW]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
 }, {});
 
 const parameterValues = handleActions({
@@ -632,6 +640,6 @@ export default combineReducers({
     editingParameterId,
     revisions,
     dashcardData,
-    cardDurations,
+    slowCards,
     parameterValues
 });

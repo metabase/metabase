@@ -26,6 +26,7 @@
              [pulse :refer [Pulse]]
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
+             [query-cache :refer [QueryCache]]
              [query-execution :refer [QueryExecution]]
              [segment :refer [Segment]]
              [table :refer [Table]]
@@ -62,7 +63,7 @@
     2 "2"
     "3+"))
 
-#_(defn- bin-small-number
+(defn- bin-small-number
   "Return small bin number. Assumes positive inputs."
   [x]
   (cond
@@ -337,24 +338,37 @@
       (update :num_per_user summarize-executions-per-user)))
 
 
+;;; Cache Metrics
+
+(defn- cache-metrics
+  "Metrics based on use of the QueryCache."
+  []
+  (let [{:keys [length count]} (db/select-one [QueryCache [:%avg.%length.results :length] [:%count.* :count]])]
+    {:average_entry_size (int (or length 0))
+     :num_queries_cached (bin-small-number count)}))
+
+
+;;; Combined Stats & Logic for sending them in
+
 (defn anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
          {:uuid anonymous-id, :timestamp (Date.)}
-         {:stats {:user       (user-metrics)
-                  :question   (question-metrics)
+         {:stats {:cache      (cache-metrics)
+                  :collection (collection-metrics)
                   :dashboard  (dashboard-metrics)
                   :database   (database-metrics)
-                  :table      (table-metrics)
+                  :execution  (execution-metrics)
                   :field      (field-metrics)
-                  :pulse      (pulse-metrics)
-                  :segment    (segment-metrics)
-                  :metric     (metric-metrics)
                   :group      (group-metrics)
                   :label      (label-metrics)
-                  :collection (collection-metrics)
-                  :execution  (execution-metrics)}}))
+                  :metric     (metric-metrics)
+                  :pulse      (pulse-metrics)
+                  :question   (question-metrics)
+                  :segment    (segment-metrics)
+                  :table      (table-metrics)
+                  :user       (user-metrics)}}))
 
 
 (defn- send-stats!

@@ -1,6 +1,10 @@
 (ns metabase.api.table
   "/api/table endpoints."
-  (:require [compojure.core :refer [GET PUT]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [GET PUT]]
+            [metabase
+             [sync-database :as sync-database]
+             [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
              [field :refer [Field]]
@@ -37,6 +41,14 @@
   (-> (api/read-check Table id)
       (hydrate :db :pk_field)))
 
+(defn- visible-state?
+  "only the nil state is considered visible."
+  [state]
+  {:pre [(or (nil? state) (table/visibility-types state))]}
+  (if (nil? state)
+    :show
+    :hide))
+
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started]} :body}]
@@ -44,15 +56,25 @@
    entity_type     (s/maybe TableEntityType)
    visibility_type (s/maybe TableVisibilityType)}
   (api/write-check Table id)
-  (api/check-500 (db/update-non-nil-keys! Table id
-                   :display_name            display_name
-                   :caveats                 caveats
-                   :points_of_interest      points_of_interest
-                   :show_in_getting_started show_in_getting_started
-                   :entity_type             entity_type
-                   :description             description))
-  (api/check-500 (db/update! Table id, :visibility_type visibility_type))
-  (Table id))
+  (let [original-visibility-type (:visibility_type (Table :id id))]
+    (api/check-500 (db/update-non-nil-keys! Table id
+                     :display_name            display_name
+                     :caveats                 caveats
+                     :points_of_interest      points_of_interest
+                     :show_in_getting_started show_in_getting_started
+                     :entity_type             entity_type
+                     :description             description))
+    (api/check-500 (db/update! Table id, :visibility_type visibility_type))
+    (let [updated-table (Table id)
+          new-visibility (visible-state? (:visibility_type updated-table))
+          old-visibility (visible-state? original-visibility-type)
+          visibility-changed? (and (not= new-visibility
+                                         old-visibility)
+                                   (= :show new-visibility))]
+      (when visibility-changed?
+        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
+        (sync-database/sync-table! updated-table))
+      updated-table)))
 
 
 (api/defendpoint GET "/:id/query_metadata"

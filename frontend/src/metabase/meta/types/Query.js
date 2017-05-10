@@ -3,9 +3,8 @@
 import type { TableId } from "./Table";
 import type { FieldId } from "./Field";
 import type { SegmentId } from "./Segment";
+import type { MetricId } from "./Metric";
 import type { ParameterType } from "./Parameter";
-
-export type MetricId = number;
 
 export type ExpressionName = string;
 
@@ -22,12 +21,13 @@ export type DatetimeUnit = "default" | "minute" | "minute-of-hour" | "hour" | "h
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;
+export type TemplateTagType = "text" | "number" | "date" | "dimension";
 
 export type TemplateTag = {
     id:           TemplateTagId,
     name:         TemplateTagName,
     display_name: string,
-    type:         string,
+    type:         TemplateTagType,
     dimension?:   LocalFieldReference,
     widget_type?: ParameterType,
     required?:    boolean,
@@ -77,7 +77,8 @@ type StdDevAgg      = ["stddev", ConcreteField];
 type SumAgg         = ["sum", ConcreteField];
 type MinAgg         = ["min", ConcreteField];
 type MaxAgg         = ["max", ConcreteField];
-type MetricAgg      = ["metric", MetricId];
+// NOTE: currently the backend expects METRIC to be uppercase
+type MetricAgg      = ["METRIC", MetricId];
 
 export type BreakoutClause = Array<Breakout>;
 export type Breakout =
@@ -115,7 +116,8 @@ export type NotNullFilter      = ["not-null", ConcreteField];
 export type InsideFilter       = ["inside", ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral];
 export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit];
 
-export type SegmentFilter      = ["segment", SegmentId];
+// NOTE: currently the backend expects SEGMENT to be uppercase
+export type SegmentFilter      = ["SEGMENT", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc"|"desc", Field];

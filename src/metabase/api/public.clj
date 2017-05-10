@@ -8,7 +8,8 @@
             [metabase.api
              [card :as card-api]
              [common :as api]
-             [dataset :as dataset-api]]
+             [dataset :as dataset-api]
+             [dashboard :as dashboard-api]]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -113,18 +114,13 @@
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid uuid parameters))
 
-(api/defendpoint GET "/card/:uuid/query/json"
-  "Fetch a publically-accessible Card and return query results as JSON. Does not require auth credentials. Public sharing must be enabled."
-  [uuid parameters]
-  {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
-
-(api/defendpoint GET "/card/:uuid/query/csv"
-  "Fetch a publically-accessible Card and return query results as CSV. Does not require auth credentials. Public sharing must be enabled."
-  [uuid parameters]
-  {parameters (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
-
+(api/defendpoint GET "/card/:uuid/query/:export-format"
+  "Fetch a publically-accessible Card and return query results in the specified format. Does not require auth credentials. Public sharing must be enabled."
+  [uuid export-format parameters]
+  {parameters    (s/maybe su/JSONString)
+   export-format dataset-api/ExportFormat}
+  (dataset-api/as-format export-format
+    (run-query-for-card-with-public-uuid uuid parameters, :constraints nil)))
 
 ;;; ------------------------------------------------------------ Public Dashboards ------------------------------------------------------------
 
@@ -176,6 +172,7 @@
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
       (hydrate [:ordered_cards :card :series])
       add-field-values-for-parameters
+      dashboard-api/add-query-average-durations
       (update :ordered_cards (fn [dashcards]
                                (for [dashcard dashcards]
                                  (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX :sizeY :parameter_mappings :visualization_settings])

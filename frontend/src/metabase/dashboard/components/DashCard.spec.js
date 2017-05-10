@@ -16,7 +16,7 @@ const DEFAULT_PROPS = {
     dashcardData: {
         1: { cols: [], rows: [] }
     },
-    cardDurations: {},
+    slowCards: {},
     parameterValues: {},
     markNewCardSeen: () => {},
     fetchCardData: () => {}
@@ -36,10 +36,7 @@ describe("DashCard", () => {
         expect(dashCard.find(".Card--slow")).toHaveLength(0);
     });
     it("should render slow card with Card--slow className", () => {
-        const props = assocIn(DEFAULT_PROPS, ["cardDurations", 1], {
-            average: 1,
-            fast_threshold: 1
-        });
+        const props = assocIn(DEFAULT_PROPS, ["slowCards", 1], true);
         const dashCard = render(<DashCard {...props} />);
         expect(dashCard.find(".Card--recent")).toHaveLength(0);
         expect(dashCard.find(".Card--unmapped")).toHaveLength(0);

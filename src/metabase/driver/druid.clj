@@ -47,7 +47,8 @@
 ;;; ### Misc. Driver Fns
 
 (defn- can-connect? [details]
-  (= 200 (:status (http/get (details->url details "/status")))))
+  (ssh/with-ssh-tunnel [details-with-tunnel details]
+    (= 200 (:status (http/get (details->url details-with-tunnel "/status"))))))
 
 
 ;;; ### Query Processing

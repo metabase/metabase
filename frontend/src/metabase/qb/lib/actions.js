@@ -121,7 +121,7 @@ export const drillDownForDimensions = dimensions => {
     if (timeDimensions.length === 1) {
         const column = timeDimensions[0].column;
         let nextUnit = UNITS[Math.max(0, UNITS.indexOf(column.unit) - 1)];
-        if (nextUnit) {
+        if (nextUnit && nextUnit !== column.unit) {
             return {
                 name: column.unit,
                 breakout: [
@@ -161,7 +161,7 @@ export const drillRecord = (databaseId, tableId, fieldId, value) => {
     const newCard = startNewCard("query", databaseId, tableId);
     newCard.dataset_query.query = Query.addFilter(newCard.dataset_query.query, [
         "=",
-        fieldId,
+        ["field-id", fieldId],
         value
     ]);
     return newCard;
@@ -180,6 +180,17 @@ export const summarize = (card, aggregation, tableMetadata) => {
     newCard.dataset_query.query = Query.addAggregation(
         newCard.dataset_query.query,
         aggregation
+    );
+    guessVisualization(newCard, tableMetadata);
+    return newCard;
+};
+
+export const breakout = (card, breakout, tableMetadata) => {
+    const newCard = startNewCard("query");
+    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query.query = Query.addBreakout(
+        newCard.dataset_query.query,
+        breakout
     );
     guessVisualization(newCard, tableMetadata);
     return newCard;
@@ -215,7 +226,7 @@ export const pivot = (
     }
 
     newCard.dataset_query.query = Query.addBreakout(
-        // $FlowFixMe: we know newCard is a StructuredDatasetQuery but flow doesn't
+        // $FlowFixMe
         newCard.dataset_query.query,
         breakout
     );

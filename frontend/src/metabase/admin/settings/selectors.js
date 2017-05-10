@@ -47,7 +47,8 @@ const SECTIONS = [
                     ...MetabaseSettings.get('timezones')
                 ],
                 placeholder: "Select a timezone",
-                note: "Not all databases support timezones, in which case this setting won't take effect."
+                note: "Not all databases support timezones, in which case this setting won't take effect.",
+                allowValueCollection: true
             },
             {
                 key: "anon-tracking-enabled",
@@ -249,19 +250,22 @@ const SECTIONS = [
                 key: "query-caching-min-ttl",
                 display_name: "Minimum Query Duration",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
             },
             {
                 key: "query-caching-ttl-ratio",
-                display_name: "Cache Time-To-Live (TTL)",
+                display_name: "Cache Time-To-Live (TTL) multiplier",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
             },
             {
                 key: "query-caching-max-kb",
                 display_name: "Max Cache Entry Size",
                 type: "number",
-                getHidden: (settings) => !settings["enable-query-caching"]
+                getHidden: (settings) => !settings["enable-query-caching"],
+                allowValueCollection: true
             }
         ]
     }

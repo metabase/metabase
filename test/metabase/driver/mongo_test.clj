@@ -189,6 +189,11 @@
   "[{\"$match\":{\"entityId\":{\"$eq\":[\"___ObjectId\", \"583327789137b2700a1621fb\"]}}}]"
   (encode-fncalls "[{\"$match\":{\"entityId\":{\"$eq\":ObjectId(\"583327789137b2700a1621fb\")}}}]"))
 
+;; make sure fn calls with no arguments work as well (#4996)
+(expect
+  "[{\"$match\":{\"date\":{\"$eq\":[\"___ISODate\"]}}}]"
+  (encode-fncalls "[{\"$match\":{\"date\":{\"$eq\":ISODate()}}}]"))
+
 (expect
   (DateTime. "2012-01-01")
   (maybe-decode-fncall ["___ISODate" "2012-01-01"]))

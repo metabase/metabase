@@ -15,6 +15,7 @@ type EmptyStateProps = {
     title?: string,
     icon?: string,
     image?: string,
+    imageHeight?: string, // for reducing ui flickering when the image is loading
     imageClassName?: string,
     action?: string,
     link?: string,
@@ -22,7 +23,7 @@ type EmptyStateProps = {
     smallDescription?: boolean
 }
 
-const EmptyState = ({title, message, icon, image, imageClassName, action, link, onActionClick, smallDescription = false}: EmptyStateProps) =>
+const EmptyState = ({title, message, icon, image, imageHeight, imageClassName, action, link, onActionClick, smallDescription = false}: EmptyStateProps) =>
     <div className="text-centered text-brand-light my2" style={smallDescription ? {} : {width: "350px"}}>
         { title &&
         <h2 className="text-brand mb4">{title}</h2>
@@ -31,7 +32,7 @@ const EmptyState = ({title, message, icon, image, imageClassName, action, link, 
         <Icon name={icon} size={40}/>
         }
         { image &&
-        <img src={`${image}.png`} width="300px" alt={message} srcSet={`${image}@2x.png 2x`}
+        <img src={`${image}.png`} width="300px" height={imageHeight} alt={message} srcSet={`${image}@2x.png 2x`}
              className={imageClassName}/>
         }
         <div className="flex justify-center">

@@ -6,6 +6,14 @@ import type { Parameter, ParameterInstance } from "./Parameter";
 
 export type CardId = number;
 
+export type UnsavedCard = {
+    dataset_query: DatasetQuery,
+    display: string,
+    visualization_settings: VisualizationSettings,
+    parameters?: Array<Parameter>,
+    original_card_id?: CardId
+}
+
 export type Card = {
     id: CardId,
     name: ?string,
@@ -13,7 +21,7 @@ export type Card = {
     dataset_query: DatasetQuery,
     display: string,
     visualization_settings: VisualizationSettings,
-    parameters?: Array<Parameter>
+    parameters?: Array<Parameter>,
 };
 
 export type StructuredDatasetQuery = {

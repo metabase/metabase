@@ -13,11 +13,6 @@ import ModalContent from "./ModalContent";
 
 import _ from "underscore";
 
-export const MODAL_CHILD_CONTEXT_TYPES = {
-    fullPageModal: PropTypes.bool,
-    formModal: PropTypes.bool
-};
-
 function getModalContent(props) {
     if (React.Children.count(props.children) > 1 ||
         props.title != null || props.footer != null
@@ -37,15 +32,6 @@ export class WindowModal extends Component {
         className: "Modal",
         backdropClassName: "Modal-backdrop"
     };
-
-    static childContextTypes = MODAL_CHILD_CONTEXT_TYPES;
-
-    getChildContext() {
-        return {
-            fullPageModal: false,
-            formModal: !!this.props.form
-        };
-    }
 
     componentWillMount() {
         this._modalElement = document.createElement('span');
@@ -79,7 +65,11 @@ export class WindowModal extends Component {
         return (
             <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
                 <div className={cx(className, 'relative bordered bg-white rounded')}>
-                    {getModalContent(this.props)}
+                    { getModalContent({
+                        ...this.props,
+                        fullPageModal: false,
+                        formModal: !!this.props.form
+                    }) }
                 </div>
             </OnClickOutsideWrapper>
         );
@@ -107,15 +97,6 @@ export class WindowModal extends Component {
 import routeless from "metabase/hoc/Routeless";
 
 export class FullPageModal extends Component {
-    static childContextTypes = MODAL_CHILD_CONTEXT_TYPES;
-
-    getChildContext() {
-        return {
-            fullPageModal: true,
-            formModal: !!this.props.form
-        };
-    }
-
     componentDidMount() {
         this._modalElement = document.createElement("div");
         this._modalElement.className = "Modal--full";
@@ -165,7 +146,11 @@ export class FullPageModal extends Component {
             }>
                 { motionStyle =>
                     <div className="full-height relative scroll-y" style={motionStyle}>
-                    { getModalContent(this.props) }
+                        { getModalContent({
+                            ...this.props,
+                            fullPageModal: true,
+                            formModal: !!this.props.form
+                        }) }
                     </div>
                 }
             </Motion>

@@ -7,10 +7,12 @@ import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import { getModeActions } from "metabase/qb/lib/modes";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import cx from "classnames";
 import _ from "underscore";
 
-import type { Card } from "metabase/meta/types/Card";
+import type { Card, UnsavedCard } from "metabase/meta/types/Card";
 import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
@@ -60,11 +62,28 @@ export default class ActionsWidget extends Component<*, Props, *> {
     };
 
     toggle = () => {
+        if (!this.state.isOpen) {
+            MetabaseAnalytics.trackEvent("Actions", "Opened Action Menu");
+        }
         this.setState({
             isOpen: !this.state.isOpen,
             selectedActionIndex: null
         });
     };
+
+    handleOnChangeCardAndRun(nextCard: UnsavedCard|Card) {
+        const { card } = this.props;
+
+        // Include the original card id if present for showing the lineage next to title
+        const nextCardWithOriginalId = {
+            ...nextCard,
+            // $FlowFixMe
+            original_card_id: card.id || card.original_card_id
+        };
+        if (nextCardWithOriginalId) {
+            this.props.setCardAndRun(nextCardWithOriginalId);
+        }
+    }
 
     handleActionClick = (index: number) => {
         const { mode, card, tableMetadata } = this.props;
@@ -72,9 +91,10 @@ export default class ActionsWidget extends Component<*, Props, *> {
         if (action && action.popover) {
             this.setState({ selectedActionIndex: index });
         } else if (action && action.card) {
-            const card = action.card();
-            if (card) {
-                this.props.setCardAndRun(card);
+            const nextCard = action.card();
+            if (nextCard) {
+                MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
+                this.handleOnChangeCardAndRun(nextCard);
             }
             this.close();
         }
@@ -118,7 +138,10 @@ export default class ActionsWidget extends Component<*, Props, *> {
                     />
                 </div>
                 {isOpen &&
-                    <OnClickOutsideWrapper handleDismissal={this.close}>
+                    <OnClickOutsideWrapper handleDismissal={() => {
+                        MetabaseAnalytics.trackEvent("Actions", "Dismissed Action Menu");
+                        this.close();
+                    }}>
                         <div
                             className="absolute bg-white rounded bordered shadowed py1"
                             style={{
@@ -149,7 +172,10 @@ export default class ActionsWidget extends Component<*, Props, *> {
                                       <PopoverComponent
                                           onChangeCardAndRun={(card) => {
                                               if (card) {
-                                                  this.props.setCardAndRun(card);
+                                                  if (selectedAction) {
+                                                      MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${selectedAction.section||""}:${selectedAction.name||""}`);
+                                                  }
+                                                  this.handleOnChangeCardAndRun(card)
                                               }
                                           }}
                                           onClose={this.close}

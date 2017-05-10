@@ -15,7 +15,7 @@ function getParentWithClass(element, className) {
 }
 
 // HACK: This determines the index of the series the provided element belongs to since DC doesn't seem to provide another way
-export function determineSeriesIndexFromElement(element, isStacked) {
+export function determineSeriesIndexFromElement(element, isStacked): number {
     if (isStacked) {
         if (element.classList.contains("dot")) {
             // .dots are children of dc-tooltip

@@ -390,7 +390,7 @@ var Query = {
                 // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
                 base_type: TYPE.Integer,
                 operators_lookup: {},
-                valid_operators: [],
+                operators: [],
                 active: true,
                 fk_target_field_id: null,
                 parent_id: null,
@@ -399,8 +399,8 @@ var Query = {
                 target: null,
                 visibility_type: "normal"
             };
-            fieldDef.valid_operators = getOperators(fieldDef, tableDef);
-            fieldDef.operators_lookup = createLookupByProperty(fieldDef.valid_operators, "name");
+            fieldDef.operators = getOperators(fieldDef, tableDef);
+            fieldDef.operators_lookup = createLookupByProperty(fieldDef.operators, "name");
 
             return {
                 table: tableDef,

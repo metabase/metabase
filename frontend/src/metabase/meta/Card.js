@@ -1,20 +1,23 @@
 /* @flow */
 
-import type { StructuredQuery, NativeQuery, TemplateTag } from "./types/Query";
-import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "./types/Card";
-import type { Parameter, ParameterMapping, ParameterValues } from "./types/Parameter";
+import { getTemplateTagParameters, getParameterTargetFieldId, parameterToMBQLFilter } from "metabase/meta/Parameter";
 
-import { getTemplateTagParameters, getParameterTargetFieldId } from "metabase/meta/Parameter";
+import * as Query from "metabase/lib/query/query";
+import Q from "metabase/lib/query"; // legacy
+import Utils from "metabase/lib/utils";
+import * as Urls from "metabase/lib/urls";
 
-import { assoc } from "icepick";
+import _ from "underscore";
+import { assoc, updateIn } from "icepick";
+
+import type { StructuredQuery, NativeQuery, TemplateTag } from "metabase/meta/types/Query";
+import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "metabase/meta/types/Card";
+import type { Parameter, ParameterMapping, ParameterValues } from "metabase/meta/types/Parameter";
+import type { Metadata, TableMetadata } from "metabase/meta/types/Metadata";
 
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
 }
-
-import Query from "metabase/lib/query";
-import Utils from "metabase/lib/utils";
-import _ from "underscore";
 
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
     type: "query",
@@ -56,6 +59,14 @@ export function canRun(card: Card): bool {
     }
 }
 
+export function cardIsEquivalent(cardA: Card, cardB: Card): boolean {
+    cardA = updateIn(cardA, ["dataset_query", "parameters"], parameters => parameters || []);
+    cardB = updateIn(cardB, ["dataset_query", "parameters"], parameters => parameters || []);
+    cardA = _.pick(cardA, "dataset_query", "display", "visualization_settings");
+    cardB = _.pick(cardB, "dataset_query", "display", "visualization_settings");
+    return _.isEqual(cardA, cardB);
+}
+
 export function getQuery(card: Card): ?StructuredQuery {
     if (card.dataset_query.type === "query") {
         return card.dataset_query.query;
@@ -64,8 +75,16 @@ export function getQuery(card: Card): ?StructuredQuery {
     }
 }
 
+export function getTableMetadata(card: Card, metadata: Metadata): ?TableMetadata {
+    const query = getQuery(card);
+    if (query && query.source_table != null) {
+        return metadata.tables[query.source_table] || null;
+    }
+    return null;
+}
+
 export function getTemplateTags(card: ?Card): Array<TemplateTag> {
-    return card && card.dataset_query.type === "native" && card.dataset_query.native.template_tags ?
+    return card && card.dataset_query && card.dataset_query.type === "native" && card.dataset_query.native.template_tags ?
         Object.values(card.dataset_query.native.template_tags) :
         [];
 }
@@ -103,7 +122,7 @@ export function applyParameters(
     const datasetQuery = Utils.copy(card.dataset_query);
     // clean the query
     if (datasetQuery.type === "query") {
-        datasetQuery.query = Query.cleanQuery(datasetQuery.query);
+        datasetQuery.query = Q.cleanQuery(datasetQuery.query);
     }
     datasetQuery.parameters = [];
     for (const parameter of parameters || []) {
@@ -131,4 +150,49 @@ export function applyParameters(
     }
 
     return datasetQuery;
+}
+
+/** returns a question URL with parameters added to query string or MBQL filters */
+export function questionUrlWithParameters(
+    card: Card,
+    metadata: Metadata,
+    parameters: Parameter[],
+    parameterValues: ParameterValues = {},
+    parameterMappings: ParameterMapping[] = []
+): DatasetQuery {
+    if (!card.dataset_query) {
+        return Urls.question(card.id);
+    }
+
+    card = Utils.copy(card);
+
+    const cardParameters = getParameters(card);
+    const datasetQuery = applyParameters(
+        card,
+        parameters,
+        parameterValues,
+        parameterMappings
+    );
+
+    const query = {};
+    for (const datasetParameter of datasetQuery.parameters || []) {
+        const cardParameter = _.find(cardParameters, p =>
+            Utils.equals(p.target, datasetParameter.target));
+        if (cardParameter) {
+            // if the card has a real parameter we can use, use that
+            query[cardParameter.slug] = datasetParameter.value;
+        } else if (isStructured(card)) {
+            // if the card is structured, try converting the parameter to an MBQL filter clause
+            const filter = parameterToMBQLFilter(datasetParameter, metadata);
+            if (filter) {
+                card = updateIn(card, ["dataset_query", "query"], query =>
+                    Query.addFilter(query, filter));
+            } else {
+                console.warn("UNHANDLED PARAMETER", datasetParameter);
+            }
+        } else {
+            console.warn("UNHANDLED PARAMETER", datasetParameter);
+        }
+    }
+    return Urls.question(null, card.dataset_query ? card : undefined, query);
 }

@@ -35,7 +35,7 @@ import { parseTimestamp } from "metabase/lib/time";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 
-import type { Series } from "metabase/meta/types/Visualization"
+import type { Series, ClickObject } from "metabase/meta/types/Visualization"
 
 const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
@@ -131,15 +131,26 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
             dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
         }
 
+        // special handling for weeks
+        // TODO: are there any other cases where we should do this?
+        if (dataInterval.interval === "week") {
+            // if tick interval is compressed then show months instead of weeks because they're nicer formatted
+            const newTickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width(), MIN_PIXELS_PER_TICK.x);
+            if (newTickInterval.interval !== tickInterval.interval || newTickInterval.count !== tickInterval.count) {
+                dimensionColumn = { ...dimensionColumn, unit: "month" },
+                tickInterval = { interval: "month", count: 1 };
+            }
+        }
+
         chart.xAxis().tickFormat(timestamp => {
             // timestamp is a plain Date object which discards the timezone,
             // so add it back in so it's formatted correctly
             const timestampFixed = moment(timestamp).utcOffset(dataOffset).format();
-            return formatValue(timestampFixed, { column: dimensionColumn })
+            return formatValue(timestampFixed, { column: dimensionColumn, type: "axis" })
         });
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        tickInterval = computeTimeseriesTicksInterval(xDomain, dataInterval, chart.width(), MIN_PIXELS_PER_TICK.x, );
+        tickInterval = computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width(), MIN_PIXELS_PER_TICK.x);
         chart.xAxis().ticks(d3.time[tickInterval.interval], tickInterval.count);
     } else {
         chart.xAxis().ticks(0);
@@ -308,7 +319,7 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualizationClick) {
+function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverChange, onVisualizationClick) {
     let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll("title").remove();
@@ -373,14 +384,14 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualiza
         }
 
         if (onVisualizationClick) {
-            chart.selectAll(".bar, .dot, .bubble")
+            chart.selectAll(".bar, .dot, .area, .bubble")
                 .style({ "cursor": "pointer" })
                 .on("mouseup", function(d) {
                     const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
                     const card = series[seriesIndex].card;
                     const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
 
-                    let clicked;
+                    let clicked: ?ClickObject;
                     if (Array.isArray(d.key)) { // scatter
                         clicked = {
                             value: d.key[2],
@@ -391,6 +402,12 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualiza
                             ],
                             origin: d.key._origin
                         }
+                    } else if (isScalarSeries) {
+                        // special case for multi-series scalar series, which should be treated as scalars
+                        clicked = {
+                            value: d.data.value,
+                            column: series[seriesIndex].data.cols[1]
+                        };
                     } else if (d.data) { // line, area, bar
                         if (!isSingleSeriesBar) {
                             cols = series[seriesIndex].data.cols;
@@ -402,13 +419,26 @@ function applyChartTooltips(chart, series, isStacked, onHoverChange, onVisualiza
                                 { value: d.data.key, column: cols[0] }
                             ]
                         }
+                    } else {
+                        clicked = {
+                            dimensions: []
+                        };
                     }
 
-                    if (clicked && series.length > 1 && card._breakoutColumn) {
-                        clicked.dimensions.push({
-                            value: card._breakoutValue,
-                            column: card._breakoutColumn
-                        });
+                    // handle multiseries
+                    if (clicked && series.length > 1) {
+                        if (card._breakoutColumn) {
+                            // $FlowFixMe
+                            clicked.dimensions.push({
+                                value: card._breakoutValue,
+                                column: card._breakoutColumn
+                            });
+                        }
+                    }
+
+                    if (card._seriesIndex != null) {
+                        // $FlowFixMe
+                        clicked.seriesIndex = card._seriesIndex;
                     }
 
                     if (clicked) {
@@ -616,7 +646,6 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
 
     function disableClickFiltering() {
         chart.selectAll("rect.bar")
-            .style({ cursor: "inherit" })
             .on("click", (d) => {
                 chart.filter(null);
                 chart.filter(d.key);
@@ -1148,7 +1177,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
     }
     const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
-    applyChartTooltips(parent, series, isStacked, (hovered) => {
+    applyChartTooltips(parent, series, isStacked, isScalarSeries, (hovered) => {
         if (onHoverChange) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {
