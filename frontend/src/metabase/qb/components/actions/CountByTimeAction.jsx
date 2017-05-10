@@ -18,9 +18,10 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
 
     return [
         {
-            title: <span>Count of rows by time</span>,
+            name: "count-by-time",
             section: "sum",
-            icon: "sum",
+            title: <span>Count of rows by time</span>,
+            icon: "line",
             card: () =>
                 breakout(
                     summarize(card, ["count"], tableMetadata),

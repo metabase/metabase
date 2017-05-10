@@ -10,7 +10,7 @@ Have a few key performance indicators that you want to be able to easily check? 
 You can make as many dashboards as you want. Go nuts.
 
 ### How to create a dashboard
-Once you have a question saved, you can create a dashboard. Click the **Dashboards** dropdown at the top of the screen, then **Create a new dashboard**. Give your new dashboard a name and a description, then click **Create**, and you’ll be taken to your shiny new dashboard. You can always get to your dashboards from the dropdown at the very top of the screen.
+Once you have a question saved, you can create a dashboard. Click the **Dashboards** link at the top of the screen, then click the plus icon in the top-right to create a new dashboard. Give your new dashboard a name and a description, then click **Create**, and you’ll be taken to your shiny new dashboard.
 
 ![Create Dashboard](images/dashboards/DashboardCreate.png)
 
@@ -34,11 +34,17 @@ Once you're in edit mode you'll see a grid appear. You can move and resize the c
 
 Questions in your dashboard will automatically update their display based on the size you choose to make sure your data looks great at any size.
 
+### Archiving a dashboard
+Archiving a dashboard does not archive the individual saved questions on it — it just archives the dashboard. To archive a dashboard while viewing it, click the pencil icon to enter edit mode, then click the Archive button.
 
-### Deleting a dashboard
-Deleting a dashboard does not delete the individual saved questions on it — it just deletes the dashboard. Remember — dashboards are shared by everyone on your team, so think twice before you delete something that someone else might be using!
+You can view all of your archived dashboards by clicking the box icon in the top-right of the Dashboards page. Archived dashboards in this list can be unarchived by clicking the icon of the box with the upward arrow next to that dashboard.
 
-To delete a dashboard, click the pencil-looking **Edit** icon in the top right of the dashboard, then click **Delete**.
+(Note: as of Metabase v0.24, dashboards can no longer be permanently deleted; only archived.)
+
+### Finding dashboards
+After a while, your team might have a lot of dashboards. To make it a little easier to find dashboards that you look at often, you can mark a dashboard as a favorite by clicking the star icon on it from the dashboards list. You can use the filter dropdown in the top of the list to view only your favorite dashboards, or only the ones that you created yourself.
+
+![Filter list](images/dashboards/FilterDashboards.png)
 
 ### Fullscreen dashboards
 
@@ -90,4 +96,4 @@ Some tips:
 ---
 
 ## Next: Adding dashboard filters
-Make your dashboards more flexible and powerful by [adding dashboard filters](07-dashboard-filters.md).
+Make your dashboards more flexible and powerful by [adding dashboard filters](08-dashboard-filters.md).

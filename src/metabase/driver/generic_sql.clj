@@ -202,9 +202,9 @@
   ^clojure.lang.Keyword [k]
   (keyword (hx/escape-dots (name k))))
 
-
 (defn- can-connect? [driver details]
-  (let [connection (connection-details->spec driver details)]
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details)
+        connection (connection-details->spec driver details-with-tunnel)]
     (= 1 (first (vals (first (jdbc/query connection ["SELECT 1"])))))))
 
 (defn pattern-based-column->base-type

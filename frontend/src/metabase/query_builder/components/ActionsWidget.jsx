@@ -7,6 +7,8 @@ import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
 import { getModeActions } from "metabase/qb/lib/modes";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -60,6 +62,9 @@ export default class ActionsWidget extends Component<*, Props, *> {
     };
 
     toggle = () => {
+        if (!this.state.isOpen) {
+            MetabaseAnalytics.trackEvent("Actions", "Opened Action Menu");
+        }
         this.setState({
             isOpen: !this.state.isOpen,
             selectedActionIndex: null
@@ -88,6 +93,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
         } else if (action && action.card) {
             const nextCard = action.card();
             if (nextCard) {
+                MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
                 this.handleOnChangeCardAndRun(nextCard);
             }
             this.close();
@@ -132,7 +138,10 @@ export default class ActionsWidget extends Component<*, Props, *> {
                     />
                 </div>
                 {isOpen &&
-                    <OnClickOutsideWrapper handleDismissal={this.close}>
+                    <OnClickOutsideWrapper handleDismissal={() => {
+                        MetabaseAnalytics.trackEvent("Actions", "Dismissed Action Menu");
+                        this.close();
+                    }}>
                         <div
                             className="absolute bg-white rounded bordered shadowed py1"
                             style={{
@@ -163,6 +172,9 @@ export default class ActionsWidget extends Component<*, Props, *> {
                                       <PopoverComponent
                                           onChangeCardAndRun={(card) => {
                                               if (card) {
+                                                  if (selectedAction) {
+                                                      MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${selectedAction.section||""}:${selectedAction.name||""}`);
+                                                  }
                                                   this.handleOnChangeCardAndRun(card)
                                               }
                                           }}

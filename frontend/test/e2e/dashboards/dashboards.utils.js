@@ -3,7 +3,6 @@ export const incrementDashboardCount = () => {
     dashboardCount += 1;
 }
 export const getLatestDashboardUrl = () => {
-    console.log(`/dashboard/${dashboardCount}`)
     return `/dashboard/${dashboardCount}`
 }
 export const getPreviousDashboardUrl = (nFromLatest) => {

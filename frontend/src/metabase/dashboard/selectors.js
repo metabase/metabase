@@ -157,6 +157,7 @@ export const getParameters = createSelector(
                 .flatten()
                 .map(m => m.field_id)
                 .uniq()
+                .filter(fieldId => fieldId != null)
                 .value();
             return {
                 ...parameter,
