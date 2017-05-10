@@ -2,11 +2,13 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import Collapse from "react-collapse";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
+
 import ExpandingSearchField from "../components/ExpandingSearchField";
 import CollectionActions from "../components/CollectionActions";
 
@@ -53,8 +55,9 @@ export default class QuestionIndex extends Component {
         const hasQuestions = questions && questions.length > 0;
         const showCollections = isAdmin || hasCollections;
         const showQuestions = hasQuestions || !showCollections || location.query.f != null;
+        const showNoSavedQuestions = !hasCollections && showCollections && !showQuestions;
         return (
-            <div className="relative mx4">
+            <div className={cx("relative mx4", {"full-height flex flex-column": showNoSavedQuestions})}>
                 <div className="flex align-center pt4 pb2">
                     <TitleAndDescription title={ showCollections ? "Collections of Questions" : "Saved Questions" } />
                     <div className="flex align-center ml-auto">
@@ -79,6 +82,13 @@ export default class QuestionIndex extends Component {
                             :
                             <CollectionEmptyState />
                         }
+                    </div>
+                }
+                { showNoSavedQuestions &&
+                    <div className="mt2 flex-full flex align-center justify-center">
+                        <h2 className="text-grey-2 text-normal">
+                            You don't have any saved questions yet
+                        </h2>
                     </div>
                 }
                 {/* only show title if we're showing the questions AND collections, otherwise title goes in the main header */}
