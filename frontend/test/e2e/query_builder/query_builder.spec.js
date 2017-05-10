@@ -56,14 +56,11 @@ describeE2E("query_builder", () => {
             } catch (e) {
             }
 
-            // get the card ID from the URL
-            const cardId = (await d.wd().getCurrentUrl()).match(/\/question\/(\d+)/)[1];
-
             await d.select("#CreateDashboardModal input[name='name']").wait().sendKeys("Main Dashboard");
             await d.select("#CreateDashboardModal .Button.Button--primary").wait().click().waitRemoved(); // wait for the modal to be removed
             incrementDashboardCount();
 
-            await d.waitUrl(getLatestDashboardUrl() + "?add=" + cardId);
+            await d.waitUrl(getLatestDashboardUrl());
 
             // save dashboard
             await d.select(".EditHeader .Button.Button--primary").wait().click();
