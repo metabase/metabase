@@ -27,3 +27,9 @@ export type ApiError = {
     status: number, // HTTP status
     // TODO: incomplete
 }
+
+// FIXME: actual moment.js type
+export type Moment = {
+    locale: () => Moment,
+    format: (format: string) => string
+};

@@ -14,6 +14,7 @@ import { parseTimestamp } from "metabase/lib/time";
 
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
+import type { Moment } from "metabase/meta/types";
 
 export type FormattingOptions = {
     column?: Column,
@@ -78,6 +79,7 @@ function formatMajorMinor(major, minor, options = {}) {
     }
 }
 
+/** This formats a time with unit as a date range */
 export function formatTimeRangeWithUnit(value: Value, unit: DatetimeUnit, options: FormattingOptions = {}) {
     let m = parseTimestamp(value, unit);
     if (!m.isValid()) {
@@ -100,7 +102,15 @@ export function formatTimeRangeWithUnit(value: Value, unit: DatetimeUnit, option
         } else {
             return start.format(`${monthFormat} D`) + separator + end.format(`D, YYYY`);
         }
+    } else {
+        return formatWeek(m, options);
     }
+}
+
+function formatWeek(m: Moment, options: FormattingOptions = {}) {
+    // force 'en' locale for now since our weeks currently always start on Sundays
+    m = m.locale("en");
+    return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
 export function formatTimeWithUnit(value: Value, unit: DatetimeUnit, options: FormattingOptions = {}) {
@@ -116,15 +126,16 @@ export function formatTimeWithUnit(value: Value, unit: DatetimeUnit, options: Fo
             return m.format("MMMM D, YYYY");
         case "week": // 1st - 2015
             if (options.type === "tooltip") {
+                // tooltip show range like "January 1 - 7, 2017"
                 return formatTimeRangeWithUnit(value, unit, options);
             } else if (options.type === "cell") {
+                // table cells show range like "Jan 1, 2017 - Jan 7, 2017"
                 return formatTimeRangeWithUnit(value, unit, options);
             } else if (options.type === "axis") {
+                // axis ticks show start of the week as "Jan 1"
                 return m.clone().startOf(unit).format(`MMM D`);
             } else {
-                // force 'en' locale for now since our weeks currently always start on Sundays
-                m = m.locale("en");
-                return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
+                return formatWeek(m, options);
             }
         case "month": // January 2015
             return options.jsx ?

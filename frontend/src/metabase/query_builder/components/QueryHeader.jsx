@@ -7,7 +7,6 @@ import QueryModeButton from "./QueryModeButton.jsx";
 import ActionButton from 'metabase/components/ActionButton.jsx';
 import AddToDashSelectDashModal from 'metabase/containers/AddToDashSelectDashModal.jsx';
 import ButtonBar from "metabase/components/ButtonBar.jsx";
-import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.jsx';
 import HeaderBar from "metabase/components/HeaderBar.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -16,6 +15,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
 import Tooltip from "metabase/components/Tooltip.jsx";
 import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
+import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal"
 
 import SaveQuestionModal from 'metabase/containers/SaveQuestionModal.jsx';
 
@@ -28,6 +28,7 @@ import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
+
 
 export default class QueryHeader extends Component {
     constructor(props, context) {
@@ -256,22 +257,7 @@ export default class QueryHeader extends Component {
 
                 // delete button
                 buttonSections.push([
-                    <Tooltip key="delete" tooltip="Delete">
-                        <ModalWithTrigger
-                            ref="deleteModal"
-                            triggerElement={
-                                <span className="text-brand-hover">
-                                    <Icon name="trash" size={16} />
-                                </span>
-                            }
-                        >
-                            <DeleteQuestionModal
-                                card={this.props.card}
-                                deleteCardFn={this.onDelete}
-                                onClose={() => this.refs.deleteModal.toggle()}
-                            />
-                        </ModalWithTrigger>
-                    </Tooltip>
+                    <ArchiveQuestionModal questionId={this.props.card.id} />
                 ]);
 
                 buttonSections.push([
