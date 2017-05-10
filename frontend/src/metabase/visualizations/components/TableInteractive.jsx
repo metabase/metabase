@@ -8,9 +8,7 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import Value from "metabase/components/Value.jsx";
-
-import { capitalize } from "metabase/lib/formatting";
+import { formatValue, capitalize } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { getTableCellClickedObject, isColumnRightAligned } from "metabase/visualizations/lib/table";
 
@@ -236,13 +234,12 @@ export default class TableInteractive extends Component<*, Props, State> {
                 })}
             >
                 <div className="cellData">
-                    <Value
-                        className="link"
-                        type="cell"
-                        value={value}
-                        column={column}
-                        onResize={this.onCellResize.bind(this, columnIndex)}
-                    />
+                    {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */}
+                    {formatValue(value, {
+                        column: column,
+                        type: "cell",
+                        jsx: true
+                    })}
                 </div>
             </div>
         );
