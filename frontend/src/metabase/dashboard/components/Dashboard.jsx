@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-
+import EmptyState from "metabase/components/EmptyState";
 import Parameters from "metabase/parameters/components/Parameters.jsx";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -20,6 +20,8 @@ import type { Card, CardId, VisualizationSettings } from "metabase/meta/types/Ca
 import type { DashboardWithCards, DashboardId, DashCardId } from "metabase/meta/types/Dashboard";
 import type { RevisionId } from "metabase/meta/types/Revision";
 import type { Parameter, ParameterId, ParameterValues, ParameterOption } from "metabase/meta/types/Parameter";
+import * as Urls from "metabase/lib/urls";
+import Link from "metabase/components/Link";
 
 type Props = {
     location:               LocationDescriptor,
@@ -79,6 +81,7 @@ type State = {
 export default class Dashboard extends Component<*, Props, State> {
     state = {
         error: null,
+        isArchived: false
     };
 
     static propTypes = {
@@ -138,9 +141,12 @@ export default class Dashboard extends Component<*, Props, State> {
             }
         } catch (error) {
             if (error.status === 404) {
-                setErrorPage(error);
+                if (error.data === "The object has been archived.") {
+                     this.setState({ isArchived: true })
+                } else {
+                    setErrorPage(error);
+                }
             } else {
-                console.error(error);
                 this.setState({ error });
             }
         }
@@ -160,7 +166,7 @@ export default class Dashboard extends Component<*, Props, State> {
 
     render() {
         let { dashboard, isEditing, editingParameter, parameters, parameterValues, location, isFullscreen, isNightMode } = this.props;
-        let { error } = this.state;
+        let { error, isArchived } = this.state;
         isNightMode = isNightMode && isFullscreen;
 
         let parametersWidget;
@@ -187,41 +193,55 @@ export default class Dashboard extends Component<*, Props, State> {
             );
         }
 
-        return (
-            <LoadingAndErrorWrapper className={cx("Dashboard flex-full pb4", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
-            {() =>
-                <div className="full" style={{ overflowX: "hidden" }}>
-                    <header className="DashboardHeader relative z2">
-                        <DashboardHeader
+        const getDashboardArchivedState = () =>
+            <div className="full flex justify-center" style={{marginTop: "75px"}}>
+                <EmptyState
+                    message={<div>
+                        <div>This dashboard has been archived</div>
+                        <Link to={"/dashboards/archive"} className="my2 link" style={{fontSize: "14px"}}>View the archive</Link>
+                    </div>}
+                    icon="viewArchive"
+                />
+            </div>;
+
+        const getDashboardHeaderAndGrid = () =>
+            <div className="full" style={{overflowX: "hidden"}}>
+                <header className="DashboardHeader relative z2">
+                    <DashboardHeader
+                        {...this.props}
+                        onEditingChange={this.setEditing}
+                        setDashboardAttribute={this.setDashboardAttribute}
+                        addParameter={this.props.addParameter}
+                        parameters={parametersWidget}
+                    />
+                </header>
+                {!isFullscreen && parametersWidget &&
+                <div className="wrapper flex flex-column align-start mt2 relative z2">
+                    {parametersWidget}
+                </div>
+                }
+                <div className="wrapper">
+                    { dashboard.ordered_cards.length === 0 ?
+                        <div className="absolute z1 top bottom left right flex flex-column layout-centered">
+                            <span className="QuestionCircle">?</span>
+                            <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
+                            <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
+                        </div>
+                        :
+                        <DashboardGrid
                             {...this.props}
                             onEditingChange={this.setEditing}
-                            setDashboardAttribute={this.setDashboardAttribute}
-                            addParameter={this.props.addParameter}
-                            parameters={parametersWidget}
                         />
-                    </header>
-                    {!isFullscreen && parametersWidget &&
-                        <div className="wrapper flex flex-column align-start mt2 relative z2">
-                            {parametersWidget}
-                        </div>
                     }
-                    <div className="wrapper">
-
-                        { dashboard.ordered_cards.length === 0 ?
-                            <div className="absolute z1 top bottom left right flex flex-column layout-centered">
-                                <span className="QuestionCircle">?</span>
-                                <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
-                                <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
-                            </div>
-                        :
-                            <DashboardGrid
-                                {...this.props}
-                                onEditingChange={this.setEditing}
-                            />
-                        }
-                    </div>
                 </div>
-            }
+            </div>;
+
+        return (
+            <LoadingAndErrorWrapper className={cx("Dashboard flex-full pb4", {
+                "Dashboard--fullscreen": isFullscreen,
+                "Dashboard--night": isNightMode
+            })} loading={!dashboard && !isArchived} error={error}>
+                {() => isArchived ? getDashboardArchivedState() : getDashboardHeaderAndGrid() }
             </LoadingAndErrorWrapper>
         );
     }
