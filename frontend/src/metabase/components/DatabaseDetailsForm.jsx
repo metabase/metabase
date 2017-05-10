@@ -165,7 +165,7 @@ export default class DatabaseDetailsForm extends Component {
                             <div style={{maxWidth: "40rem"}} className="pt1">
                                  Some database installations can only be accessed by connecting through an SSH bastion host.
                                  This option also provides an extra layer of security when a VPN is not available.
-                                 Enabling this is usually slower than a dirrect connection.
+                                 Enabling this is usually slower than a direct connection.
                             </div>
                         </div>
                     </div>
