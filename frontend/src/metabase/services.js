@@ -1,6 +1,7 @@
 /* @flow */
 
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import api from "metabase/lib/api";
+const { GET, PUT, POST, DELETE } = api;
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
@@ -208,6 +209,7 @@ export const GettingStartedApi = {
 export const SetupApi = {
     create:                     POST("/api/setup"),
     validate_db:                POST("/api/setup/validate"),
+    admin_checklist:             GET("/api/setup/admin_checklist"),
 };
 
 export const UserApi = {
@@ -225,6 +227,11 @@ export const UserApi = {
 export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
     random_token:                GET("/api/util/random_token"),
+    logs:                        GET("/api/util/logs"),
+};
+
+export const GeoJSONApi = {
+    get:                         GET("/api/geojson/:id"),
 };
 
 global.services = exports;

@@ -11,7 +11,7 @@ const QUERY_BUILDER_STEPS = [
         getPortalTarget: () => qs(".GuiBuilder"),
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/question_builder.png" width={186} />
+                <RetinaImage className="mb2" forceOriginalDimensions={false} src="app/assets/img/qb_tutorial/question_builder.png" width={186} />
                 <h3>Welcome to the Query Builder!</h3>
                 <p>The Query Builder lets you assemble questions (or "queries") to ask about your data.</p>
                 <a className="Button Button--primary" onClick={props.onNext}>Tell me more</a>
@@ -22,7 +22,7 @@ const QUERY_BUILDER_STEPS = [
         getModalTarget: () => qs(".GuiBuilder-data"),
         getModal: (props) =>
             <div className="text-centered">
-                <RetinaImage id="QB-TutorialTableImg" className="mb2" forceOriginalDimensions={false} src="/app/img/qb_tutorial/table.png" width={157} />
+                <RetinaImage id="QB-TutorialTableImg" className="mb2" forceOriginalDimensions={false} src="app/assets/img/qb_tutorial/table.png" width={157} />
                 <h3>Start by picking the table with the data that you have a question about.</h3>
                 <p>Go ahead and select the "Orders" table from the dropdown menu.</p>
             </div>,
@@ -48,7 +48,7 @@ const QUERY_BUILDER_STEPS = [
                     className="mb2"
                     forceOriginalDimensions={false}
                     id="QB-TutorialFunnelImg"
-                    src="/app/img/qb_tutorial/funnel.png"
+                    src="app/assets/img/qb_tutorial/funnel.png"
                     width={135}
                 />
                 <h3>Filter your data to get just what you want.</h3>
@@ -81,7 +81,7 @@ const QUERY_BUILDER_STEPS = [
                     className="mb2"
                     forceOriginalDimensions={false}
                     id="QB-TutorialCalculatorImg"
-                    src="/app/img/qb_tutorial/calculator.png"
+                    src="app/assets/img/qb_tutorial/calculator.png"
                     width={115}
                 />
                 <h3>Here's where you can choose to add or average your data, count the number of rows in the table, or just view the raw data.</h3>
@@ -103,7 +103,7 @@ const QUERY_BUILDER_STEPS = [
                     className="mb2"
                     forceOriginalDimensions={false}
                     id="QB-TutorialBananaImg"
-                    src="/app/img/qb_tutorial/banana.png"
+                    src="app/assets/img/qb_tutorial/banana.png"
                     width={232}
                 />
                 <h3>Add a grouping to break out your results by category, day, month, and more.</h3>
@@ -131,7 +131,7 @@ const QUERY_BUILDER_STEPS = [
                     className="mb2"
                     forceOriginalDimensions={false}
                     id="QB-TutorialRocketImg"
-                    src="/app/img/qb_tutorial/rocket.png"
+                    src="app/assets/img/qb_tutorial/rocket.png"
                     width={217}
                 />
                 <h3>Run Your Query.</h3>
@@ -148,7 +148,7 @@ const QUERY_BUILDER_STEPS = [
                     className="mb2"
                     forceOriginalDimensions={false}
                     id="QB-TutorialChartImg"
-                    src="/app/img/qb_tutorial/chart.png"
+                    src="app/assets/img/qb_tutorial/chart.png"
                     width={160}
                 />
                 <h3>You can view your results as a chart instead of a table.</h3>
@@ -169,7 +169,7 @@ const QUERY_BUILDER_STEPS = [
                     className="mb2"
                     forceOriginalDimensions={false}
                     id="QB-TutorialBoatImg"
-                    src="/app/img/qb_tutorial/boat.png" width={190}
+                    src="app/assets/img/qb_tutorial/boat.png" width={190}
                 />
                 <h3>Well done!</h3>
                 <p>That's all! If you still have questions, check out our <a className="link" target="_blank" href="http://www.metabase.com/docs/latest/users-guide/start">User's Guide</a>. Have fun exploring your data!</p>
