@@ -135,7 +135,7 @@ const ItemBody = pure(({ entity, id, name, description, labels, favorite, collec
                         className={cx(
                             "flex cursor-pointer text-brand-hover transition-color",
                             {"hover-child text-light-blue": !favorite},
-                            {"visible text-brand": favorite}
+                            {"visible text-gold": favorite}
                         )}
                         name={favorite ? "star" : "staroutline"}
                         size={ITEM_ICON_SIZE}
