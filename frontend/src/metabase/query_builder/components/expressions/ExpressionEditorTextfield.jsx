@@ -9,20 +9,20 @@ import cx from "classnames";
 import { compile, suggest } from "metabase/lib/expressions/parser";
 import { format } from "metabase/lib/expressions/formatter";
 import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
+import {
+    KEYCODE_ENTER,
+    KEYCODE_ESC,
+    KEYCODE_LEFT,
+    KEYCODE_UP,
+    KEYCODE_RIGHT,
+    KEYCODE_DOWN
+} from "metabase/lib/keyboard";
 
 import Popover from "metabase/components/Popover.jsx";
 
 import TokenizedInput from "./TokenizedInput.jsx";
 
 import { isExpression } from "metabase/lib/expressions";
-
-
-const KEYCODE_ENTER = 13;
-const KEYCODE_ESC   = 27;
-const KEYCODE_LEFT  = 37;
-const KEYCODE_UP    = 38;
-const KEYCODE_RIGHT = 39;
-const KEYCODE_DOWN  = 40;
 
 const MAX_SUGGESTIONS = 30;
 

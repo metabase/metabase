@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
+import { KEYCODE_RETURN, KEYCODE_ESC } from "metabase/lib/keyboard";
+
 export default class TextWidget extends Component {
     constructor(props, context) {
         super(props, context);
@@ -56,9 +58,9 @@ export default class TextWidget extends Component {
                     }
                 }}
                 onKeyUp={(e) => {
-                    if (e.keyCode === 27) {
+                    if (e.keyCode === KEYCODE_ESC) {
                         e.target.blur();
-                    } else if (e.keyCode === 13) {
+                    } else if (e.keyCode === KEYCODE_RETURN) {
                         setValue(this.state.value || null);
                         e.target.blur();
                     }
