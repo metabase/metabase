@@ -37,7 +37,7 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     }
 };
 
-export const getFieldClauseFromCol = col => {
+export const getFieldRefFromColumn = col => {
     if (col.fk_field_id != null) {
         return ["fk->", col.fk_field_id, col.id];
     } else {
@@ -61,7 +61,7 @@ export const filter = (card, operator, column, value) => {
     // $FlowFixMe:
     const filter: FieldFilter = [
         operator,
-        getFieldClauseFromCol(column),
+        getFieldRefFromColumn(column),
         value
     ];
     newCard.dataset_query.query = Query.addFilter(
@@ -78,14 +78,14 @@ const drillFilter = (card, value, column) => {
             "=",
             [
                 "datetime-field",
-                getFieldClauseFromCol(column),
+                getFieldRefFromColumn(column),
                 "as",
                 column.unit
             ],
             moment(value).toISOString()
         ];
     } else {
-        filter = ["=", getFieldClauseFromCol(column), value];
+        filter = ["=", getFieldRefFromColumn(column), value];
     }
 
     return addOrUpdateFilter(card, filter);
@@ -118,7 +118,36 @@ export const addOrUpdateFilter = (card, filter) => {
     return newCard;
 };
 
+export const addOrUpdateBreakout = (card, breakout) => {
+    let newCard = clone(card);
+    // replace existing breakout, if it exists
+    let breakouts = Query.getBreakouts(newCard.dataset_query.query);
+    for (let index = 0; index < breakouts.length; index++) {
+        if (
+            Field.getFieldTargetId(breakouts[index]) ===
+            Field.getFieldTargetId(breakout)
+        ) {
+            newCard.dataset_query.query = Query.updateBreakout(
+                newCard.dataset_query.query,
+                index,
+                breakout
+            );
+            return newCard;
+        }
+    }
+
+    // otherwise add a new breakout
+    newCard.dataset_query.query = Query.addBreakout(
+        newCard.dataset_query.query,
+        breakout
+    );
+    return newCard;
+};
+
 const UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year"];
+const getNextUnit = unit => {
+    return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
+};
 
 export const drillDownForDimensions = dimensions => {
     const timeDimensions = dimensions.filter(
@@ -126,13 +155,13 @@ export const drillDownForDimensions = dimensions => {
     );
     if (timeDimensions.length === 1) {
         const column = timeDimensions[0].column;
-        let nextUnit = UNITS[Math.max(0, UNITS.indexOf(column.unit) - 1)];
+        let nextUnit = getNextUnit(column.unit);
         if (nextUnit && nextUnit !== column.unit) {
             return {
                 name: column.unit,
                 breakout: [
                     "datetime-field",
-                    getFieldClauseFromCol(column),
+                    getFieldRefFromColumn(column),
                     "as",
                     nextUnit
                 ]
@@ -200,6 +229,48 @@ export const breakout = (card, breakout, tableMetadata) => {
     );
     guessVisualization(newCard, tableMetadata);
     return newCard;
+};
+
+// min number of points when switching units
+const MIN_INTERVALS = 4;
+
+export const updateDateTimeFilter = (card, column, start, end) => {
+    let fieldRef = getFieldRefFromColumn(column);
+    start = moment(start);
+    end = moment(end);
+    if (column.unit) {
+        let unit = column.unit;
+
+        // clamp range to unit to ensure we select exactly what's represented by the dots/bars
+        start = start.add(1, unit).startOf(unit);
+        end = end.endOf(unit);
+
+        // find the largest unit with at least MIN_INTERVALS
+        while (
+            unit !== getNextUnit(unit) && end.diff(start, unit) < MIN_INTERVALS
+        ) {
+            unit = getNextUnit(unit);
+        }
+
+        // round to start of the unit
+        start = start.startOf(unit);
+        end = end.startOf(unit);
+
+        fieldRef = ["datetime-field", fieldRef, "as", unit];
+
+        card = addOrUpdateBreakout(card, fieldRef);
+    }
+    return addOrUpdateFilter(card, [
+        "BETWEEN",
+        fieldRef,
+        start.format(),
+        end.format()
+    ]);
+};
+
+export const updateNumericFilter = (card, column, start, end) => {
+    const fieldRef = getFieldRefFromColumn(column);
+    return addOrUpdateFilter(card, ["BETWEEN", fieldRef, start, end]);
 };
 
 export const pivot = (
