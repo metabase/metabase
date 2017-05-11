@@ -36,7 +36,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { addOrUpdateFilter } from "metabase/qb/lib/actions";
 
-import { initBrushParent, initBrushChild } from "./graph/brush";
+import { initBrush } from "./graph/brush";
 
 import type { Series, ClickObject } from "metabase/meta/types/Visualization"
 
@@ -387,7 +387,7 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
         if (onVisualizationClick) {
             chart.selectAll(".bar, .dot, .area, .bubble")
                 .style({ "cursor": "pointer" })
-                .on("mouseup", function(d) {
+                .on("click", function(d) {
                     const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
                     const card = series[seriesIndex].card;
                     const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
@@ -583,9 +583,9 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
                         dispatchUIEvent(e, "mouseleave");
                         d3.select(e).classed("hover", false);
                     })
-                    .on("mouseup", ({ point }) => {
+                    .on("click", ({ point }) => {
                         let e = point[2];
-                        dispatchUIEvent(e, "mouseup");
+                        dispatchUIEvent(e, "click");
                     })
                 .order();
 
@@ -1039,23 +1039,26 @@ export default function lineAreaBar(element, {
     let parent = dc.compositeChart(element);
     initChart(parent, element);
 
-    let filter = null;
-    initBrushParent(parent, () => {
-        // workaround for the filter handler firing on mouse move rather than mouse up
-        if (filter) {
-            onChangeCardAndRun(addOrUpdateFilter(series[0].card, filter));
-        }
-    });
+    let isBrushing = false;
 
     let charts = groups.map((group, index) => {
         let chart = dc[getDcjsChartType(chartType)](parent);
 
-        initBrushChild(chart, (start, end) => {
-            // fires on mouse move, just update a local variable for now
-            if (isDimensionTimeseries) {
-                filter = ["BETWEEN", series[0].data.cols[0].id, moment(start).format(), moment(end).format()]
-            } else {
-                filter = ["BETWEEN", series[0].data.cols[0].id, start, end]
+        initBrush(parent, chart, () => {
+            isBrushing = true;
+        }, (range) => {
+            isBrushing = false;
+            if (range) {
+                const [start, end] = range;
+                let filter;
+                if (isDimensionTimeseries) {
+                    filter = ["BETWEEN", series[0].data.cols[0].id, moment(start).format(), moment(end).format()];
+                } else {
+                    filter = ["BETWEEN", series[0].data.cols[0].id, start, end];
+                }
+                if (filter) {
+                    onChangeCardAndRun(addOrUpdateFilter(series[0].card, filter));
+                }
             }
         });
 
@@ -1201,7 +1204,8 @@ export default function lineAreaBar(element, {
     const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
     applyChartTooltips(parent, series, isStacked, isScalarSeries, (hovered) => {
-        if (onHoverChange) {
+        // disable tooltips while brushing
+        if (onHoverChange && !isBrushing) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {
                 delete hovered.element;
@@ -1279,7 +1283,7 @@ export function rowRenderer(
       }
 
       if (onVisualizationClick) {
-          chart.selectAll(".row rect").on("mouseup", function(d) {
+          chart.selectAll(".row rect").on("click", function(d) {
               onVisualizationClick({
                   value: d.value,
                   column: cols[1],

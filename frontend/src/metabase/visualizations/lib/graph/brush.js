@@ -1,42 +1,93 @@
+import { KEYCODE_ESC } from "metabase/lib/keyboard";
 
-// TODO: better handle paths
-const LEFT_HANDLE_PATH = "M-0.5,76.69275 L-6.5,82.69275 V147.3855 L-0.5,153.3855Z M-2.5,84.69275 V145.3855 M-4.5,84.69275 V145.3855";
-const RIGHT_HANDLE_PATH = "M0.5,76.69275  L6.5,82.69275 V147.3855  L0.5,153.3855Z M2.5,84.69275  V145.3855  M4.5,84.69275 V145.3855";
+export function initBrush(parent, child, onBrushChange, onBrushEnd) {
+    if (!child.brushOn) {
+        return;
+    }
 
-export function initBrushParent(parent, onBrushEnd) {
-    parent.on("pretransition", function(chart) {
-        // move brush to the back so tootips/clicks still work
-        var brushNode = chart.select("g.brush").node();
-        if (brushNode && brushNode.parentNode) {
-            brushNode.parentNode.insertBefore(
-                brushNode,
-                brushNode.parentNode.firstChild
-            );
-        }
-        // customize the handles
-        chart.select(".brush .resize.w path").attr("d", LEFT_HANDLE_PATH);
-        chart.select(".brush .resize.e path").attr("d", RIGHT_HANDLE_PATH);
+    // enable brush
+    child.brushOn(true);
+
+    // normally dots are disabled if brush is on but we want them anyway
+    if (child.xyTipsOn) {
+        child.xyTipsOn("always");
+    }
+
+    // the brush has been cancelled by pressing escape
+    let cancelled = false;
+    // the last updated range when brushing
+    let range = null;
+
+    // start
+    parent.brush().on("brushstart.custom", () => {
+        // reset "cancelled" flag
+        cancelled = false;
+        // add "dragging" class to chart
+        parent.svg().classed("dragging", true);
+        // move the brush element to the front
+        moveToFront(parent.select(".brush").node());
+        // add an escape keydown listener
+        window.addEventListener("keydown", onKeyDown, true);
     });
-    parent.on("renderlet", chart => {
-        chart.svg().on("mouseup", () => {
-            onBrushEnd();
-        });
+
+    // change
+    child.addFilterHandler((filters, r) => {
+        // update "range" with new filter range
+        range = r;
+
+        // emit "onBrushChange" event
+        onBrushChange(range);
+
+        // return filters unmodified
+        return filters;
+    });
+
+    // end
+    parent.brush().on("brushend.custom", () => {
+        // remove the "dragging" classed
+        parent.svg().classed("dragging", false)
+        // reset brush opacity (if the brush was cancelled)
+        parent.select(".brush").style("opacity", 1);
+        // move the brush to the back
+        moveToBack(parent.select(".brush").node());
+        // remove the escape keydown listener
+        window.removeEventListener("keydown", onKeyDown, true);
+        // reset the fitler and redraw
+        child.filterAll();
+        parent.redraw();
+
+        // if not cancelled, emit the onBrushEnd event with the last filter range
+        onBrushEnd(cancelled ? null : range);
+    });
+
+    // cancel
+    const onKeyDown = e => {
+        if (e.keyCode === KEYCODE_ESC) {
+            // set the "cancelled" flag
+            cancelled = true;
+            // hide the brush
+            parent.select(".brush").style("opacity", 0);
+        }
+    };
+
+    parent.on("pretransition.custom", function(chart) {
+        // move brush to the back so tootips/clicks still work
+        moveToBack(chart.select(".brush").node());
+        // remove the handles since we can't adjust them anyway
+        chart.selectAll(".brush .resize").remove();
     });
 }
 
-export function initBrushChild(chart, onDragBrush) {
-    // enable brush
-    if (chart.brushOn) {
-        chart.brushOn(true);
+function moveToBack(element) {
+    if (element && element.parentNode) {
+        element.parentNode.insertBefore(
+            element,
+            element.parentNode.firstChild
+        );
     }
-    // normally dots are disabled if brush is on but we want them anyway
-    if (chart.xyTipsOn) {
-        chart.xyTipsOn("always");
+}
+function moveToFront(element) {
+    if (element && element.parentNode) {
+        element.parentNode.appendChild(element);
     }
-    // fires on mouse move
-    chart.addFilterHandler((filters, [start, end]) => {
-        onDragBrush(start, end);
-        // return existing filters, we don't want to actually change them
-        return filters;
-    });
 }

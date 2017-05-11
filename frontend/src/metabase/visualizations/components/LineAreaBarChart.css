@@ -58,6 +58,17 @@
   display: none;
 }
 
+/* disable pointer events on all chart elements while dragging to avoid weird interactions */
+.LineAreaBarChart .dc-chart .dragging .area,
+.LineAreaBarChart .dc-chart .dragging .bar,
+.LineAreaBarChart .dc-chart .dragging .line,
+.LineAreaBarChart .dc-chart .dragging .dot,
+.LineAreaBarChart .dc-chart .dragging .row,
+.LineAreaBarChart .dc-chart .dragging .bubble,
+.LineAreaBarChart .dc-chart .dragging .voronoi {
+  pointer-events: none !important;
+}
+
 /* disable dc default behavior */
 .LineAreaBarChart .dc-chart rect.bar:hover {
   fill-opacity: 1;
@@ -73,7 +84,7 @@
   opacity: 1 !important;
 }
 
-.LineAreaBarChart .enable-dots .dc-tooltip circle.dot {
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip circle.dot {
   r: 3px !important;
   fill: white;
   stroke: currentColor;
@@ -88,13 +99,13 @@
     stroke: white;
 }
 
-.LineAreaBarChart .enable-dots .dc-tooltip circle.dot:hover,
-.LineAreaBarChart .enable-dots .dc-tooltip circle.dot.hover {
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip circle.dot:hover,
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip circle.dot.hover {
   fill: currentColor;
 }
 
-.LineAreaBarChart .enable-dots-onhover .dc-tooltip circle.dot:hover,
-.LineAreaBarChart .enable-dots-onhover .dc-tooltip circle.dot.hover {
+.LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip circle.dot:hover,
+.LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip circle.dot.hover {
   r: 3px !important;
   fill: white;
   stroke: currentColor;
@@ -131,13 +142,9 @@
   opacity: 0;
 }
 
-.LineAreaBarChart .voronoi {
+.LineAreaBarChart .dc-chart .voronoi {
   fill: transparent;
 }
-
-/*.voronoi path {
-  fill: rgba(255,0,0,0.05);
-}*/
 
 /* we put the brush behind everything so this isn't necessary
 /*.LineAreaBarChart .dc-chart .brush {
