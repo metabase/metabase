@@ -8,7 +8,7 @@ import Popover from "metabase/components/Popover.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { KEYCODE_ESC, KEYCODE_COMMA, KEYCODE_TAB, KEYCODE_UP, KEYCODE_DOWN, KEYCODE_BACKSPACE } from "metabase/lib/keyboard";
+import { KEYCODE_ESCAPE, KEYCODE_COMMA, KEYCODE_TAB, KEYCODE_UP, KEYCODE_DOWN, KEYCODE_BACKSPACE } from "metabase/lib/keyboard";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -81,7 +81,7 @@ export default class RecipientPicker extends Component {
 
     onInputKeyDown(e) {
         // enter, tab, comma
-        if (e.keyCode === KEYCODE_ESC || e.keyCode === KEYCODE_TAB || e.keyCode === KEYCODE_COMMA) {
+        if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_TAB || e.keyCode === KEYCODE_COMMA) {
             this.addCurrentRecipient();
         }
         // up arrow

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import _ from "underscore";
 
-import { KEYCODE_RETURN, KEYCODE_UP, KEYCODE_DOWN } from "metabase/lib/keyboard";
+import { KEYCODE_ENTER, KEYCODE_UP, KEYCODE_DOWN } from "metabase/lib/keyboard";
 
 const DEFAULT_FILTER_OPTIONS = (value, option) => {
     try {
@@ -46,7 +46,7 @@ export default ({ optionFilter = DEFAULT_FILTER_OPTIONS, optionIsEqual = DEFAULT
         } else if (e.keyCode === KEYCODE_DOWN) {
             e.preventDefault();
             this.onPressDown();
-        } else if (e.keyCode === KEYCODE_RETURN) {
+        } else if (e.keyCode === KEYCODE_ENTER) {
             e.preventDefault();
             this.onSuggestionAccepted(this.state.selectedSuggestion);
         }

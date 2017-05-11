@@ -6,7 +6,7 @@ import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
-import { KEYCODE_RETURN } from "metabase/lib/keyboard";
+import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
 import { PermissionsApi } from "metabase/services";
 
@@ -36,7 +36,7 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
                     placeholder="Justice League"
                     onChange={(e) => onTextChange(e.target.value)}
                     onKeyDown={(e) => {
-                        if (e.keyCode === KEYCODE_RETURN) {
+                        if (e.keyCode === KEYCODE_ENTER) {
                             onCreateClicked();
                         }
                     }}

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import { KEYCODE_ESC } from "metabase/lib/keyboard";
+import { KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 // keep track of the order popovers were opened so we only close the last one when clicked outside
 const popoverStack = [];
@@ -57,7 +57,7 @@ export default class OnClickOutsideWrapper extends Component {
     }
 
     _handleKeyPress = (e) => {
-        if (e.keyCode === KEYCODE_ESC) {
+        if (e.keyCode === KEYCODE_ESCAPE) {
             e.preventDefault();
             this._handleDismissal();
         }

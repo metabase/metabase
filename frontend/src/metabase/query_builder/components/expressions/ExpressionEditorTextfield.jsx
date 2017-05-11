@@ -11,7 +11,7 @@ import { format } from "metabase/lib/expressions/formatter";
 import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
 import {
     KEYCODE_ENTER,
-    KEYCODE_ESC,
+    KEYCODE_ESCAPE,
     KEYCODE_LEFT,
     KEYCODE_UP,
     KEYCODE_RIGHT,
@@ -129,7 +129,7 @@ export default class ExpressionEditorTextfield extends Component {
             setTimeout(() => this._triggerAutosuggest());
             return;
         }
-        if (e.keyCode === KEYCODE_ESC) {
+        if (e.keyCode === KEYCODE_ESCAPE) {
             e.stopPropagation();
             e.preventDefault();
             this.clearSuggestions();

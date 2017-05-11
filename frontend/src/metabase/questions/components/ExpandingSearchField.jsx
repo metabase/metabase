@@ -9,7 +9,7 @@ import { Motion, spring } from "react-motion";
 
 import Icon from "metabase/components/Icon";
 
-import { KEYCODE_FORWARD_SLASH, KEYCODE_RETURN, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
+import { KEYCODE_FORWARD_SLASH, KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 export default class ExpandingSearchField extends Component {
     constructor (props, context) {
@@ -41,7 +41,7 @@ export default class ExpandingSearchField extends Component {
     }
 
     onKeyPress = (e) => {
-        if (e.keyCode === KEYCODE_RETURN) {
+        if (e.keyCode === KEYCODE_ENTER) {
             this.props.onSearch(e.target.value)
         } else if (e.keyCode === KEYCODE_ESCAPE) {
             this.setInactive();

@@ -1,4 +1,4 @@
-import { KEYCODE_ESC } from "metabase/lib/keyboard";
+import { KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 export function initBrush(parent, child, onBrushChange, onBrushEnd) {
     if (!child.brushOn) {
@@ -62,7 +62,7 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
 
     // cancel
     const onKeyDown = e => {
-        if (e.keyCode === KEYCODE_ESC) {
+        if (e.keyCode === KEYCODE_ESCAPE) {
             // set the "cancelled" flag
             cancelled = true;
             // hide the brush
