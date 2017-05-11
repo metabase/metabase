@@ -34,7 +34,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { addOrUpdateFilter } from "metabase/qb/lib/actions";
+import { updateDateTimeFilter, updateNumericFilter } from "metabase/qb/lib/actions";
 
 import { initBrush } from "./graph/brush";
 
@@ -1040,39 +1040,30 @@ export default function lineAreaBar(element, {
     initChart(parent, element);
 
     let isBrushing = false;
+    const onBrushChange = () => {
+        isBrushing = true;
+    }
+    const onBrushEnd = (range) => {
+        isBrushing = false;
+        if (range) {
+            const column = series[0].data.cols[0];
+            const card = series[0].card;
+            const [start, end] = range;
+            if (isDimensionTimeseries) {
+                onChangeCardAndRun(updateDateTimeFilter(card, column, start, end));
+            } else {
+                onChangeCardAndRun(updateNumericFilter(card, column, start, end));
+            }
+            onChangeCardAndRun(card);
+        }
+    }
 
     let charts = groups.map((group, index) => {
         let chart = dc[getDcjsChartType(chartType)](parent);
 
-        initBrush(parent, chart, () => {
-            isBrushing = true;
-        }, (range) => {
-            isBrushing = false;
-            if (range) {
-                let [start, end] = range;
-                // TODO: push this logic into function in metabase/qb/lib/action.js
-                const col = series[0].data.cols[0];
-                let filter;
-                if (isDimensionTimeseries) {
-                    start = moment(start);
-                    end = moment(end);
-                    if (col.unit) {
-                        // round to nearest
-                        start = start.add(1, col.unit).startOf(col.unit);
-                        end = end.startOf(col.unit);
-                        const diff = end.diff(start, col.unit);
-                        // TODO: use this to automatically increase granularity at small differences
-                        console.log("diff", diff, col.unit);
-                    }
-                    filter = ["BETWEEN", col.id, start.format(), end.format()];
-                } else {
-                    filter = ["BETWEEN", col.id, start, end];
-                }
-                if (filter) {
-                    onChangeCardAndRun(addOrUpdateFilter(series[0].card, filter));
-                }
-            }
-        });
+        if (onChangeCardAndRun) {
+            initBrush(parent, chart, onBrushChange, onBrushEnd);
+        }
 
         // disable clicks
         chart.onClick = () => {};
