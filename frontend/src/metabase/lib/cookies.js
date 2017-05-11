@@ -10,7 +10,7 @@ var MetabaseCookies = {
     // set the session cookie.  if sessionId is null, clears the cookie
     setSessionCookie: function(sessionId) {
         const options = {
-            path: '/',
+            path: window.MetabaseRoot || '/',
             expires: 14,
             secure: window.location.protocol === "https:"
         };

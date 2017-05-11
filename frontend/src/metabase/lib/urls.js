@@ -1,4 +1,5 @@
 import { serializeCardForUrl } from "metabase/lib/card";
+import MetabaseSettings from "metabase/lib/settings"
 
 // provides functions for building urls to things we care about
 
@@ -69,11 +70,13 @@ export function label(label) {
 }
 
 export function publicCard(uuid, type = null) {
-    return `/public/question/${uuid}` + (type ? `.${type}` : ``);
+    const siteUrl = MetabaseSettings.get("site-url");
+    return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : ``);
 }
 
 export function publicDashboard(uuid) {
-    return `/public/dashboard/${uuid}`;
+    const siteUrl = MetabaseSettings.get("site-url");
+    return `${siteUrl}/public/dashboard/${uuid}`;
 }
 
 export function embedCard(token, type = null) {
