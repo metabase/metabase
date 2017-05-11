@@ -1049,12 +1049,24 @@ export default function lineAreaBar(element, {
         }, (range) => {
             isBrushing = false;
             if (range) {
-                const [start, end] = range;
+                let [start, end] = range;
+                // TODO: push this logic into function in metabase/qb/lib/action.js
+                const col = series[0].data.cols[0];
                 let filter;
                 if (isDimensionTimeseries) {
-                    filter = ["BETWEEN", series[0].data.cols[0].id, moment(start).format(), moment(end).format()];
+                    start = moment(start);
+                    end = moment(end);
+                    if (col.unit) {
+                        // round to nearest
+                        start = start.add(1, col.unit).startOf(col.unit);
+                        end = end.startOf(col.unit);
+                        const diff = end.diff(start, col.unit);
+                        // TODO: use this to automatically increase granularity at small differences
+                        console.log("diff", diff, col.unit);
+                    }
+                    filter = ["BETWEEN", col.id, start.format(), end.format()];
                 } else {
-                    filter = ["BETWEEN", series[0].data.cols[0].id, start, end];
+                    filter = ["BETWEEN", col.id, start, end];
                 }
                 if (filter) {
                     onChangeCardAndRun(addOrUpdateFilter(series[0].card, filter));
