@@ -239,6 +239,7 @@ export const updateDateTimeFilter = (card, column, start, end) => {
     start = moment(start);
     end = moment(end);
     if (column.unit) {
+        // start with the existing breakout unit
         let unit = column.unit;
 
         // clamp range to unit to ensure we select exactly what's represented by the dots/bars
@@ -252,20 +253,42 @@ export const updateDateTimeFilter = (card, column, start, end) => {
             unit = getNextUnit(unit);
         }
 
-        // round to start of the unit
-        start = start.startOf(unit);
-        end = end.startOf(unit);
+        // update the breakout
+        card = addOrUpdateBreakout(card, [
+            "datetime-field",
+            fieldRef,
+            "as",
+            unit
+        ]);
 
-        fieldRef = ["datetime-field", fieldRef, "as", unit];
+        // round to start of the original unit
+        start = start.startOf(column.unit);
+        end = end.startOf(column.unit);
 
-        card = addOrUpdateBreakout(card, fieldRef);
+        if (start.isSame(end, column.unit)) {
+            // is the start and end are the same (in whatever the original unit was) then just do an "="
+            return addOrUpdateFilter(card, [
+                "=",
+                ["datetime-field", fieldRef, "as", column.unit],
+                start.format()
+            ]);
+        } else {
+            // otherwise do a BETWEEN
+            return addOrUpdateFilter(card, [
+                "BETWEEN",
+                ["datetime-field", fieldRef, "as", column.unit],
+                start.format(),
+                end.format()
+            ]);
+        }
+    } else {
+        return addOrUpdateFilter(card, [
+            "BETWEEN",
+            fieldRef,
+            start.format(),
+            end.format()
+        ]);
     }
-    return addOrUpdateFilter(card, [
-        "BETWEEN",
-        fieldRef,
-        start.format(),
-        end.format()
-    ]);
 };
 
 export const updateNumericFilter = (card, column, start, end) => {
