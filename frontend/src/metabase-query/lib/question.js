@@ -54,7 +54,7 @@ class Question {
 
     // Information
     getUrl(){}
-    getLinear(){}
+    getLineage(){}
     getVersionHistory(){}
     revertToVersion(versionIDofSomeKind){}
     getDownloadURL(format){}
