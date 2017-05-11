@@ -18,6 +18,7 @@ export default (
 
     return [
         {
+            name: "timeseries-zoom",
             section: "zoom",
             title: "Zoom in",
             card: () =>

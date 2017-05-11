@@ -176,7 +176,7 @@ export const setCollection = createThunkAction(SET_COLLECTION, (cardId, collecti
                 )));
                 MetabaseAnalytics.trackEvent("Questions", "Bulk Move to Collection");
             }
-            selected.map(item => dispatch(setCollection(item.id, collectionId)));
+            selected.map(item => dispatch(setCollection(item.id, { id: collectionId })));
         } else {
             const collection = _.findWhere(state.collections.collections, { id: collectionId });
 

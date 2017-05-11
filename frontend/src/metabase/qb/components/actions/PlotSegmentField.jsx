@@ -13,6 +13,7 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
     }
     return [
         {
+            name: "plot",
             title: "Plot a field in this segment",
             icon: "bar",
             card: () => plotSegmentField(card)

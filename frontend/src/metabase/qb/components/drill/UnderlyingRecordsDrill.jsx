@@ -22,7 +22,8 @@ export default (
 
     return [
         {
-            section: "zoom",
+            name: "underlying-records",
+            section: "records",
             title: "View " +
                 inflect("these", count, "this", "these") +
                 " " +

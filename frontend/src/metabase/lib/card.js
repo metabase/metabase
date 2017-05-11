@@ -56,7 +56,7 @@ export function isCardDirty(card, originalCard) {
         }
     } else {
         const origCardSerialized = originalCard ? serializeCardForUrl(originalCard) : null;
-        const newCardSerialized = card ? serializeCardForUrl(card) : null;
+        const newCardSerialized = card ? serializeCardForUrl(_.omit(card, 'original_card_id')) : null;
         return (newCardSerialized !== origCardSerialized);
     }
 }

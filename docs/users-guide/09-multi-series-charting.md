@@ -78,4 +78,4 @@ Go forth and start letting your data get to know each other.
 
 ## Next: Getting reports with Pulses
 
-Pulses let you send out a group of saved questions on a schedule via email or Slack. [Get started with Pulses](09-pulses.md).
+Pulses let you send out a group of saved questions on a schedule via email or Slack. [Get started with Pulses](10-pulses.md).

@@ -422,9 +422,11 @@
      (encode-fncalls-for-fn \"ObjectId\" \"{\\\"$match\\\":ObjectId(\\\"583327789137b2700a1621fb\\\")}\")
      ;; -> \"{\\\"$match\\\":[\\\"___ObjectId\\\", \\\"583327789137b2700a1621fb\\\"]}\""
   [fn-name query-string]
-  (s/replace query-string
-             (re-pattern (format "%s\\(([^)]*)\\)" (name fn-name)))
-             (format "[\"___%s\", $1]" (name fn-name))))
+  (-> query-string
+      ;; replace any forms WITH NO args like ISODate() with ones like ["___ISODate"]
+      (s/replace (re-pattern (format "%s\\(\\)" (name fn-name))) (format "[\"___%s\"]" (name fn-name)))
+      ;; now replace any forms WITH args like ISODate("2016-01-01") with ones like ["___ISODate", "2016-01-01"]
+      (s/replace (re-pattern (format "%s\\(([^)]*)\\)" (name fn-name))) (format "[\"___%s\", $1]" (name fn-name)))))
 
 (defn- encode-fncalls
   "Replace occurances of `ISODate(...)` and similary function calls (invalid JSON, but legal in Mongo)

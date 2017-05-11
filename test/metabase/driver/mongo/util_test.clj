@@ -1,6 +1,6 @@
 (ns metabase.driver.mongo.util-test
   (:require [expectations :refer :all]
-            metabase.driver.mongo.util
+            [metabase.driver :as driver]
             [metabase.test.util :as tu])
   (:import com.mongodb.ReadPreference))
 
@@ -28,3 +28,21 @@
 (expect
   IllegalArgumentException
   (build-connection-options :additional-options "readPreference=ternary"))
+
+(expect
+  #"We couldn't connect to the ssh tunnel host"
+  (try
+    (let [engine :mongo
+      details {:ssl false,
+               :password "changeme",
+               :tunnel-host "localhost",
+               :tunnel-pass "BOGUS-BOGUS",
+               :port 5432,
+               :dbname "test",
+               :host "localhost",
+               :tunnel-enabled true,
+               :tunnel-port 22,
+               :tunnel-user "bogus"}]
+      (driver/can-connect-with-details? engine details :rethrow-exceptions))
+       (catch Exception e
+         (.getMessage e))))
