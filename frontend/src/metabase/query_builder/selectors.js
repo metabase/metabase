@@ -2,14 +2,17 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
 
-import { getTemplateTags } from "metabase/meta/Card";
-import { getTemplateTagParameters } from "metabase/meta/Parameter";
+import { getParametersWithExtras } from "metabase/meta/Card";
 
 import { isCardDirty, isCardRunnable } from "metabase/lib/card";
 import { parseFieldTargetId } from "metabase/lib/query_time";
 import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
+
+import { getIn } from "icepick";
+
+import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
 
 export const getUiControls      = state => state.qb.uiControls;
 
@@ -34,12 +37,16 @@ export const getDatabaseId = createSelector(
     (card) => card && card.dataset_query && card.dataset_query.database
 );
 
-export const getDatabases                 = state => state.qb.databases;
+export const getTableId = createSelector(
+    [getCard],
+    (card) => getIn(card, ["dataset_query", "query", "source_table"])
+);
+
 export const getTableForeignKeys          = state => state.qb.tableForeignKeys;
 export const getTableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
 
 export const getTables = createSelector(
-    [getDatabaseId, getDatabases],
+    [getDatabaseId, getDatabasesList],
     (databaseId, databases) => {
         if (databaseId != null && databases && databases.length > 0) {
             let db = _.findWhere(databases, { id: databaseId });
@@ -53,21 +60,18 @@ export const getTables = createSelector(
 );
 
 export const getNativeDatabases = createSelector(
-    [getDatabases],
+    [getDatabasesList],
     (databases) =>
         databases && databases.filter(db => db.native_permissions === "write")
 )
 
 export const getTableMetadata = createSelector(
-    [state => state.qb.tableMetadata, getDatabases],
-    (tableMetadata, databases) => tableMetadata && {
-        ...tableMetadata,
-        db: _.findWhere(databases, { id: tableMetadata.db_id })
-    }
+    [getTableId, getMetadata],
+    (tableId, metadata) => metadata.tables[tableId]
 )
 
 export const getSampleDatasetId = createSelector(
-    [getDatabases],
+    [getDatabasesList],
     (databases) => {
         const sampleDataset = _.findWhere(databases, { is_sample: true });
         return sampleDataset && sampleDataset.id;
@@ -139,32 +143,9 @@ export const getMode = createSelector(
     (card, tableMetadata) => getMode_(card, tableMetadata)
 )
 
-export const getImplicitParameters = createSelector(
-    [getCard],
-    (card) =>
-        getTemplateTagParameters(getTemplateTags(card))
-);
-
-export const getModeParameters = createSelector(
-    [getLastRunCard, getTableMetadata, getMode],
-    (card, tableMetadata, mode) =>
-        (card && tableMetadata && mode && mode.getModeParameters) ?
-            mode.getModeParameters(card, tableMetadata) :
-            []
-);
-
 export const getParameters = createSelector(
-    [getModeParameters, getImplicitParameters],
-    (modeParameters, implicitParameters) => [...modeParameters, ...implicitParameters]
-);
-
-export const getParametersWithValues = createSelector(
-    [getParameters, getParameterValues],
-    (parameters, values) =>
-        parameters.map(parameter => ({
-            ...parameter,
-            value: values[parameter.id] != null ? values[parameter.id] : null
-        }))
+    [getCard, getParameterValues],
+    (card, parameterValues) => getParametersWithExtras(card, parameterValues)
 );
 
 export const getIsRunnable = createSelector(
@@ -177,7 +158,7 @@ const getNextRunDatasetQuery = createSelector([getCard], (card) => card && card.
 
 const getLastRunParameters = createSelector([getQueryResult], (queryResult) => queryResult && queryResult.json_query.parameters || [])
 const getLastRunParameterValues = createSelector([getLastRunParameters], (parameters) => parameters.map(parameter => parameter.value))
-const getNextRunParameterValues = createSelector([getParametersWithValues], (parameters) => parameters.map(parameter => parameter.value))
+const getNextRunParameterValues = createSelector([getParameters], (parameters) => parameters.map(parameter => parameter.value))
 
 export const getIsResultDirty = createSelector(
     [getLastRunDatasetQuery, getNextRunDatasetQuery, getLastRunParameterValues, getNextRunParameterValues],

@@ -1,16 +1,12 @@
 (ns metabase.query-processor.permissions
   "Logic related to whether a given user has permissions to run/edit a given query."
-  ;; TODO - Some functions this namespace predates the newer implementations of Permissions checking on a model-by-model basis (and `*current-user-permissions-set*`)
-  ;;        They essentially do the same thing. This has better logging but the other has more flexibilitiy and is simpler to user.
-  ;;        At some point we should rework this namespace to use the newer approach.
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.api.common :refer [*current-user-permissions-set*]]
-            [toucan.db :as db]
             [metabase.models.permissions :as perms]
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
-
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db]))
 
 ;;; ------------------------------------------------------------ Helper Fns ------------------------------------------------------------
 

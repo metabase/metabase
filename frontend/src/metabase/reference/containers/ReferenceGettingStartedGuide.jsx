@@ -5,7 +5,6 @@ import { Link } from "react-router";
 import { connect } from 'react-redux';
 import { reduxForm } from "redux-form";
 
-import { assoc } from "icepick";
 import cx from "classnames";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -33,15 +32,15 @@ import {
     getGuide,
     getUser,
     getDashboards,
-    getMetrics,
-    getSegments,
-    getTables,
-    getFields,
-    getDatabases,
     getLoading,
     getError,
     getIsEditing,
-    getIsDashboardModalOpen
+    getIsDashboardModalOpen,
+    getDatabases,
+    getTables,
+    getFields,
+    getMetrics,
+    getSegments,
 } from '../selectors';
 
 import {
@@ -71,15 +70,18 @@ const mapStateToProps = (state, props) => {
             {},
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ?
             guide.important_metrics
-                .map(metricId => metrics[metricId] && assoc(metrics[metricId], 'important_fields', guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId]))) :
+                .map(metricId => metrics[metricId] && {
+                    ...metrics[metricId],
+                    important_fields: guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId])
+                }) :
             [],
         important_segments_and_tables:
             (guide.important_segments && guide.important_segments.length > 0) ||
             (guide.important_tables && guide.important_tables.length > 0) ?
                 guide.important_segments
-                    .map(segmentId => segments[segmentId] && assoc(segments[segmentId], 'type', 'segment'))
+                    .map(segmentId => segments[segmentId] && { ...segments[segmentId], type: 'segment' })
                     .concat(guide.important_tables
-                        .map(tableId => tables[tableId] && assoc(tables[tableId], 'type', 'table'))
+                        .map(tableId => tables[tableId] && { ...tables[tableId], type: 'table' })
                     ) :
                 []
     };
@@ -283,7 +285,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             collapsedTitle="Do you have any commonly referenced metrics?"
                             collapsedIcon="ruler"
                             linkMessage="Learn how to define a metric"
-                            link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-metric"
+                            link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-metric"
                             expand={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null, important_fields: null})}
                         >
                             <div className="my2">
@@ -336,7 +338,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             collapsedTitle="Do you have any commonly referenced segments or tables?"
                             collapsedIcon="table2"
                             linkMessage="Learn how to create a segment"
-                            link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-segment"
+                            link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-segment"
                             expand={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                         >
                             <div>

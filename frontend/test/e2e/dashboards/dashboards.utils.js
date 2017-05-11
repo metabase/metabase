@@ -3,7 +3,6 @@ export const incrementDashboardCount = () => {
     dashboardCount += 1;
 }
 export const getLatestDashboardUrl = () => {
-    console.log(`/dashboard/${dashboardCount}`)
     return `/dashboard/${dashboardCount}`
 }
 export const getPreviousDashboardUrl = (nFromLatest) => {
@@ -11,7 +10,7 @@ export const getPreviousDashboardUrl = (nFromLatest) => {
 }
 
 export const createDashboardInEmptyState = async () => {
-    await d.get("/dashboard");
+    await d.get("/dashboards");
 
     // Create a new dashboard in the empty state (EmptyState react component)
     await d.select(".Button.Button--primary").wait().click();

@@ -1,16 +1,15 @@
 (ns metabase.test.data.presto
   (:require [clojure.string :as s]
             [environ.core :refer [env]]
-            (honeysql [core :as hsql]
-                      [helpers :as h])
+            [honeysql
+             [core :as hsql]
+             [helpers :as h]]
             [metabase.driver.generic-sql.util.unprepare :as unprepare]
             [metabase.test.data.interface :as i]
             [metabase.test.util :refer [resolve-private-vars]]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util :as u])
   (:import java.util.Date
-           metabase.driver.presto.PrestoDriver
-           (metabase.query_processor.interface DateTimeValue Value)))
+           metabase.driver.presto.PrestoDriver))
 
 (resolve-private-vars metabase.driver.presto execute-presto-query! presto-type->base-type quote-name quote+combine-names)
 

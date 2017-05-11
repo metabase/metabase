@@ -1,15 +1,16 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase.models [card :refer [Card]]
-                             [collection :refer [Collection]]
-                             [permissions :as perms]
-                             [permissions-group :as group])
+            [metabase.models
+             [card :refer [Card]]
+             [collection :refer [Collection]]
+             [permissions :as perms]
+             [permissions-group :as group]]
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; check that we can get a basic list of collections
 (tt/expect-with-temp [Collection [collection]]
@@ -17,27 +18,27 @@
   ((user->client :crowberto) :get 200 "collection"))
 
 ;; check that we don't see collections if we don't have permissions for them
-(tt/expect-with-temp [Collection [collection-1 {:name "Collection 1"}]
-                      Collection [collection-2 {:name "Collection 2"}]]
+(expect
   ["Collection 1"]
-  (do
+  (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
+                  Collection [collection-2 {:name "Collection 2"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (map :name ((user->client :rasta) :get 200 "collection"))))
 
 ;; check that we don't see collections if they're archived
-(tt/expect-with-temp [Collection [collection-1 {:name "Archived Collection", :archived true}]
-                      Collection [collection-2 {:name "Regular Collection"}]]
+(expect
   ["Regular Collection"]
-  (do
+  (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
+                  Collection [collection-2 {:name "Regular Collection"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
     (map :name ((user->client :rasta) :get 200 "collection"))))
 
 ;; Check that if we pass `?archived=true` we instead see archived cards
-(tt/expect-with-temp [Collection [collection-1 {:name "Archived Collection", :archived true}]
-                      Collection [collection-2 {:name "Regular Collection"}]]
+(expect
   ["Archived Collection"]
-  (do
+  (tt/with-temp* [Collection [collection-1 {:name "Archived Collection", :archived true}]
+                  Collection [collection-2 {:name "Regular Collection"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
     (map :name ((user->client :rasta) :get 200 "collection" :archived :true))))
@@ -99,7 +100,8 @@
    {:name "My Beautiful Collection", :color "#ABCDEF"}))
 
 ;; check that non-admins aren't allowed to update a collection
-(tt/expect-with-temp [Collection [collection]]
+(expect
   "You don't have permissions to do that."
-  ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
-   {:name "My Beautiful Collection", :color "#ABCDEF"}))
+  (tt/with-temp Collection [collection]
+    ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
+     {:name "My Beautiful Collection", :color "#ABCDEF"})))

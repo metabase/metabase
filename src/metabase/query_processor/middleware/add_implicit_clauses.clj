@@ -1,12 +1,12 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require [clojure.tools.logging :as log]
-            [toucan.db :as db]
             [metabase.models.field :refer [Field]]
-            (metabase.query-processor [interface :as i]
-                                      [resolve :as resolve]
-                                      [util :as qputil])))
-
+            [metabase.query-processor
+             [interface :as i]
+             [resolve :as resolve]
+             [util :as qputil]]
+            [toucan.db :as db]))
 
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."

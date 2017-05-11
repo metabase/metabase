@@ -10,13 +10,15 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx"
 
 import Icon from "metabase/components/Icon.jsx";
 
-import DashCardParameterMapper from "../components/parameters/DashCardParameterMapper.jsx";
+import DashCardParameterMapper from "./DashCardParameterMapper.jsx";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
+
+const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
 const HEADER_ICON_SIZE = 16;
 
@@ -28,18 +30,14 @@ export default class DashCard extends Component {
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         dashcardData: PropTypes.object.isRequired,
-        cardDurations: PropTypes.object.isRequired,
+        slowCards: PropTypes.object.isRequired,
         parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
-        linkToCard: PropTypes.bool,
     };
 
     async componentDidMount() {
         const { dashcard, markNewCardSeen } = this.props;
-
-        this.visibilityTimer = window.setInterval(this.updateVisibility, 2000);
-        window.addEventListener("scroll", this.updateVisibility, false);
 
         // HACK: way to scroll to a newly added card
         if (dashcard.justAdded) {
@@ -50,25 +48,21 @@ export default class DashCard extends Component {
 
     componentWillUnmount() {
         window.clearInterval(this.visibilityTimer);
-        window.removeEventListener("scroll", this.updateVisibility, false);
-    }
-
-    updateVisibility = () => {
-        const { isFullscreen } = this.props;
-        const element = ReactDOM.findDOMNode(this);
-        if (element) {
-            const rect = element.getBoundingClientRect();
-            const isOffscreen = (rect.bottom < 0 || rect.bottom > window.innerHeight || rect.top < 0);
-            if (isFullscreen && isOffscreen) {
-                element.style.opacity = 0.05;
-            } else {
-                element.style.opacity = 1.0;
-            }
-        }
     }
 
     render() {
-        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove, linkToCard } = this.props;
+        const {
+            dashcard,
+            dashcardData,
+            slowCards,
+            parameterValues,
+            isEditing,
+            isEditingParameter,
+            onAddSeries,
+            onRemove,
+            navigateToNewCard,
+            metadata
+        } = this.props;
 
         const mainCard = {
             ...dashcard.card,
@@ -79,13 +73,14 @@ export default class DashCard extends Component {
             .map(card => ({
                 ...getIn(dashcardData, [dashcard.id, card.id]),
                 card: card,
-                duration: cardDurations[card.id]
+                isSlow: slowCards[card.id],
+                isUsuallyFast: card.query_average_duration && (card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD)
             }));
 
         const loading = !(series.length > 0 && _.every(series, (s) => s.data));
-        const expectedDuration = Math.max(...series.map((s) => s.duration ? s.duration.average : 0));
-        const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
-        const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
+        const expectedDuration = Math.max(...series.map((s) => s.card.query_average_duration || 0));
+        const usuallyFast = _.every(series, (s) => s.isUsuallyFast);
+        const isSlow = loading && _.some(series, (s) => s.isSlow) && (usuallyFast ? "usually-fast" : "usually-slow");
 
         const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
             .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
@@ -138,7 +133,10 @@ export default class DashCard extends Component {
                     }
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
-                    linkToCard={linkToCard}
+                    metadata={metadata}
+                    onChangeCardAndRun={ navigateToNewCard ? (card: UnsavedCard) => {
+                        navigateToNewCard(card, dashcard)
+                    } : null}
                 />
             </div>
         );

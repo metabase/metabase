@@ -1,10 +1,11 @@
 /* @flow */
 
 import { getIn, setIn } from "icepick";
+import _ from "underscore";
 
 import type Database from "metabase/meta/metadata/Database";
 import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName, TableId } from "metabase/meta/types/Table";
+import type { SchemaName, TableId, Table } from "metabase/meta/types/Table";
 import Metadata from "metabase/meta/metadata/Metadata";
 
 import type { Group, GroupId, GroupsPermissions } from "metabase/meta/types/Permissions";
@@ -12,6 +13,7 @@ import type { Group, GroupId, GroupsPermissions } from "metabase/meta/types/Perm
 type TableEntityId = { databaseId: DatabaseId, schemaName: SchemaName, tableId: TableId };
 type SchemaEntityId = { databaseId: DatabaseId, schemaName: SchemaName };
 type DatabaseEntityId = { databaseId: DatabaseId };
+type EntityId = TableEntityId | SchemaEntityId | DatabaseEntityId;
 
 export function getPermission(
     permissions: GroupsPermissions,
@@ -92,7 +94,80 @@ export const getFieldsPermission = (permissions: GroupsPermissions, groupId: Gro
     }
 }
 
-export function updateFieldsPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName, tableId }: TableEntityId, value: string, metadata: Metadata): GroupsPermissions {
+export function downgradeNativePermissionsIfNeeded(permissions: GroupsPermissions, groupId: GroupId, { databaseId }: DatabaseEntityId, value: string, metadata: Metadata): GroupsPermissions {
+    let currentSchemas = getSchemasPermission(permissions, groupId, { databaseId });
+    let currentNative = getNativePermission(permissions, groupId, { databaseId });
+
+    if (value === "none") {
+        // if changing schemas to none, downgrade native to none
+        return updateNativePermission(permissions, groupId, { databaseId }, "none", metadata);
+    } else if (value === "controlled" && currentSchemas === "all" && currentNative === "write") {
+        // if changing schemas to controlled, downgrade native to read
+        return updateNativePermission(permissions, groupId, { databaseId }, "read", metadata);
+    } else {
+        return permissions;
+    }
+}
+
+// $FlowFixMe
+const metadataTableToTableEntityId = (table: Table): TableEntityId => ({ databaseId: table.db_id, schemaName: table.schema, tableId: table.id });
+const entityIdToMetadataTableFields = (entityId: EntityId) => ({
+    ...(entityId.databaseId ? {db_id: entityId.databaseId} : {}),
+    ...(entityId.schemaName ? {schema: entityId.schemaName} : {}),
+    ...(entityId.tableId ? {tableId: entityId.tableId} : {})
+})
+
+function inferEntityPermissionValueFromChildTables(permissions: GroupsPermissions, groupId: GroupId, entityId: DatabaseEntityId|SchemaEntityId, metadata: Metadata) {
+    const { databaseId } = entityId;
+    const database = metadata && metadata.database(databaseId);
+
+    // $FlowFixMe
+    const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables())
+        .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
+        .map(metadataTableToTableEntityId)
+        .value();
+
+    const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
+        .map((id) => getFieldsPermission(permissions, groupId, id))
+        .groupBy(_.identity)
+        .value();
+
+    const keys = Object.keys(entityIdsByPermValue);
+    const allTablesHaveSamePermissions = keys.length === 1;
+
+    if (allTablesHaveSamePermissions) {
+        // either "all" or "none"
+        return keys[0];
+    } else {
+        return "controlled";
+    }
+}
+
+// Checks the child tables of a given entityId and updates the shared table and/or schema permission values according to table permissions
+// This method was added for keeping the UI in sync when modifying child permissions
+export function inferAndUpdateEntityPermissions(permissions: GroupsPermissions, groupId: GroupId, entityId: DatabaseEntityId|SchemaEntityId, metadata: Metadata) {
+    // $FlowFixMe
+    const { databaseId, schemaName } = entityId;
+
+    if (schemaName) {
+        // Check all tables for current schema if their shared schema-level permission value should be updated
+        // $FlowFixMe
+        const tablesPermissionValue = inferEntityPermissionValueFromChildTables(permissions, groupId, { databaseId, schemaName }, metadata);
+        permissions = updateTablesPermission(permissions, groupId, { databaseId, schemaName }, tablesPermissionValue, metadata);
+    }
+
+    if (databaseId) {
+        // Check all tables for current database if schemas' shared database-level permission value should be updated
+        const schemasPermissionValue = inferEntityPermissionValueFromChildTables(permissions, groupId, { databaseId }, metadata);
+        permissions = updateSchemasPermission(permissions, groupId, { databaseId }, schemasPermissionValue, metadata);
+        permissions = downgradeNativePermissionsIfNeeded(permissions, groupId, { databaseId }, schemasPermissionValue, metadata);
+    }
+
+    return permissions;
+}
+
+export function updateFieldsPermission(permissions: GroupsPermissions, groupId: GroupId, entityId: TableEntityId, value: string, metadata: Metadata): GroupsPermissions {
+    const { databaseId, schemaName, tableId } = entityId;
 
     permissions = updateTablesPermission(permissions, groupId, { databaseId, schemaName }, "controlled", metadata);
     permissions = updatePermission(permissions, groupId, [databaseId, "schemas", schemaName, tableId], value /* TODO: field ids, when enabled "controlled" fields */);
@@ -102,7 +177,7 @@ export function updateFieldsPermission(permissions: GroupsPermissions, groupId: 
 
 export function updateTablesPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName }: SchemaEntityId, value: string, metadata: Metadata): GroupsPermissions {
     const database = metadata && metadata.database(databaseId);
-    const tableIds: ?number[] = database && database.tables().map(t => t.id);
+    const tableIds: ?number[] = database && database.tables().filter(t => t.schema === schemaName).map(t => t.id);
 
     permissions = updateSchemasPermission(permissions, groupId, { databaseId }, "controlled", metadata);
     permissions = updatePermission(permissions, groupId, [databaseId, "schemas", schemaName], value, tableIds);
@@ -114,17 +189,7 @@ export function updateSchemasPermission(permissions: GroupsPermissions, groupId:
     let database = metadata.database(databaseId);
     let schemaNames = database && database.schemaNames();
 
-    let currentSchemas = getSchemasPermission(permissions, groupId, { databaseId });
-    let currentNative = getNativePermission(permissions, groupId, { databaseId });
-
-    if (value === "none") {
-        // if changing schemas to none, downgrade native to none
-        permissions = updateNativePermission(permissions, groupId, { databaseId }, "none", metadata);
-    } else if (value === "controlled" && currentSchemas === "all" && currentNative === "write") {
-        // if changing schemas to controlled, downgrade native to read
-        permissions = updateNativePermission(permissions, groupId, { databaseId }, "read", metadata);
-    }
-
+    permissions = downgradeNativePermissionsIfNeeded(permissions, groupId, { databaseId }, value, metadata);
     return updatePermission(permissions, groupId, [databaseId, "schemas"], value, schemaNames);
 }
 

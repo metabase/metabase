@@ -1,11 +1,10 @@
 (ns metabase.test.data.druid
-  (:require [clojure.java.io :as io]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
             [environ.core :refer [env]]
-            [metabase.driver.druid :as druid]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets]
-                                [interface :as i])
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [interface :as i]]
             [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util :as u])
   (:import metabase.driver.druid.DruidDriver))

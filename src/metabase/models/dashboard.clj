@@ -1,18 +1,19 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
-            (toucan [db :as db]
-                    [hydrate :refer [hydrate]]
-                    [models :as models])
-            [metabase.events :as events]
-            (metabase.models [card :refer [Card], :as card]
-                             [dashboard-card :refer [DashboardCard], :as dashboard-card]
-                             [interface :as i]
-                             [permissions :as perms]
-                             [revision :as revision])
+            [metabase
+             [events :as events]
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.models
+             [card :as card :refer [Card]]
+             [dashboard-card :as dashboard-card :refer [DashboardCard]]
+             [interface :as i]
+             [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]))
-
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 ;;; ---------------------------------------- Perms Checking ----------------------------------------
 
@@ -87,26 +88,6 @@
          :parameters  (or parameters [])
          :creator_id  user-id)
        (events/publish-event! :dashboard-create)))
-
-
-
-(defn update-dashboard!
-  "Update a `Dashboard`"
-  [dashboard user-id]
-  {:pre [(map? dashboard)
-         (u/maybe? u/sequence-of-maps? (:parameters dashboard))
-         (integer? user-id)]}
-  (db/update! Dashboard (u/get-id dashboard)
-    (merge
-     ;; description is allowed to be `nil`
-     (when (contains? dashboard :description)
-       {:description (:description dashboard)})
-     ;; only set everything else if its non-nil
-     (into {} (for [k     [:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params]
-                    :when (k dashboard)]
-                {k (k dashboard)}))))
-  (u/prog1 (Dashboard (u/get-id dashboard))
-    (events/publish-event! :dashboard-update (assoc <> :actor_id user-id))))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------

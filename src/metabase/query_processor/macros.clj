@@ -1,10 +1,17 @@
 (ns metabase.query-processor.macros
-  "TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
-   At some point this ought to be reworked to be case-insensitive and cleaned up."
+  "Code in charge of expanding [\"METRIC\" ...] and [\"SEGMENT\" ...] forms in MBQL queries.
+   (METRIC forms are expanded into aggregations and sometimes filter clauses, while SEGMENT forms
+    are expanded into filter clauses.)
+
+   TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
+   At some point this ought to be reworked to be case-insensitive and cleaned up.
+
+   TODO - The actual middleware that applies these functions lives in `metabase.query-processor.middleware.expand-macros`.
+   Not sure those two namespaces need to be divided. We can probably move all the functions in this namespace into that
+   one; that might require shuffling around some tests as well."
   (:require [clojure.core.match :refer [match]]
             [clojure.walk :as walk]
-            [toucan.db :as db]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 (defn- non-empty-clause? [clause]
   (and clause
@@ -78,10 +85,15 @@
                      (expand-metric form filter-clauses-atom)))
                  query-dict))
 
-(defn- add-metrics-filter-clauses [query-dict filter-clauses]
-  (update-in query-dict [:query :filter] merge-filter-clauses (if (> (count filter-clauses) 1)
-                                                                (cons "AND" filter-clauses)
-                                                                (first filter-clauses))))
+(defn- add-metrics-filter-clauses
+  "Add any FILTER-CLAUSES to the QUERY-DICT. If query has existing filter clauses, the new ones are
+   combined with an `:and` filter clause."
+  [query-dict filter-clauses]
+  (if-not (seq filter-clauses)
+    query-dict
+    (update-in query-dict [:query :filter] merge-filter-clauses (if (> (count filter-clauses) 1)
+                                                                  (cons "AND" filter-clauses)
+                                                                  (first filter-clauses)))))
 
 (defn- expand-metrics [query-dict]
   (let [filter-clauses-atom (atom [])

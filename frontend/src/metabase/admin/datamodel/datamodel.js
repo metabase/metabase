@@ -124,7 +124,7 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
         try {
             // make sure we don't send all the computed metadata
             let slimField = { ...field };
-            slimField = _.omit(slimField, "operators_lookup", "valid_operators", "values");
+            slimField = _.omit(slimField, "operators_lookup", "operators", "values");
 
             // update the field
             let updatedField = await MetabaseApi.field_update(slimField);

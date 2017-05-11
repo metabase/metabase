@@ -1,15 +1,17 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
-            [expectations :refer :all]
-            [toucan.util.test :as tt]
+            [expectations :refer [expect]]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]
+             [query-processor-test :refer [rows rows+column-names]]
+             [timeseries-query-processor-test :as timeseries-qp-test]
+             [util :as u]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [rows rows+column-names]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets, :refer [expect-with-engine]]
-            [metabase.timeseries-query-processor-test :as timeseries-qp-test]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
+            [toucan.util.test :as tt]))
 
 (def ^:const ^:private ^String native-query-1
   (json/generate-string
@@ -246,3 +248,21 @@
                :query    {:source-table (data/id :checkins)
                           :aggregation  [:+ ["METRIC" (u/get-id metric)] 1]
                           :breakout     [(ql/breakout (ql/field-id (data/id :checkins :venue_price)))]}})))))
+
+(expect
+  #"com.jcraft.jsch.JSchException:"
+  (try
+    (let [engine :druid
+      details {:ssl false,
+               :password "changeme",
+               :tunnel-host "localhost",
+               :tunnel-pass "BOGUS-BOGUS",
+               :port 5432,
+               :dbname "test",
+               :host "http://localhost",
+               :tunnel-enabled true,
+               :tunnel-port 22,
+               :tunnel-user "bogus"}]
+      (driver/can-connect-with-details? engine details :rethrow-exceptions))
+       (catch Exception e
+         (.getMessage e))))

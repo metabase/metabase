@@ -1,23 +1,26 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
-            (toucan [db :as db]
-                    [hydrate :as hydrate])
-            [toucan.util.test :as tt]
-            (metabase [driver :as driver]
-                      [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]]
-                             [permissions :as perms]
-                             [permissions-group :as perms-group])
-            [metabase.test.data :refer :all]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets]
-                                [users :refer :all])
-            [metabase.test.util :refer [match-$ resolve-private-vars], :as tu]
-            [metabase.util :as u]))
+            [metabase
+             [driver :as driver]
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]
+             [sync-database :as sync-database]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [permissions :as perms]
+             [permissions-group :as perms-group]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu :refer [match-$ resolve-private-vars]]]
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [users :refer :all]]
+            [toucan.hydrate :as hydrate]
+            [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 
@@ -372,6 +375,26 @@
                                                                            :description     "What a nice table!"})
       (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
               :updated_at)))
+
+(tt/expect-with-temp [Table [table {:rows 15}]]
+  2
+  (let [original-sync-table! sync-database/sync-table!
+        called (atom 0)
+        test-fun (fn [state]
+                   (with-redefs [sync-database/sync-table! (fn [& args] (swap! called inc)
+                                                             (apply original-sync-table! args))]
+                     ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
+                                                                                          :entity_type     "person"
+                                                                                          :visibility_type state
+                                                                                          :description     "What a nice table!"})))]
+    (do (test-fun "hidden")
+        (test-fun nil)
+        (test-fun "hidden")
+        (test-fun "cruft")
+        (test-fun "technical")
+        (test-fun nil)
+        (test-fun "technical")
+        @called)))
 
 
 ;; ## GET /api/table/:id/fks

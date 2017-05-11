@@ -27,18 +27,19 @@ describeE2E("query_builder", () => {
 
             await d.select(":react(AggregationWidget)").wait().click();
 
-            await d.select("#AggregationPopover .List-item:nth-child(2)>a").wait().click();
+            await d.select("#AggregationPopover .List-item a:contains(Count)").wait().click();
 
             await d.select(".Query-section.Query-section-breakout #BreakoutWidget").wait().click();
-            await d.select("#BreakoutPopover .List-section:nth-child(3) .List-section-header").wait().click();
-            await d.select("#BreakoutPopover .List-item:nth-child(12)>a").wait().click();
+            await d.select("#BreakoutPopover .List-section .List-section-header:contains(Product)").wait().click();
+            await d.select("#BreakoutPopover .List-item a:contains(Category)").wait().click();
 
             await d.select(".Query-section.Query-section-breakout #BreakoutWidget .AddButton").wait().click();
-            await d.select("#BreakoutPopover .List-item:first-child .Field-extra>a").wait().click();
-            await d.select("#TimeGroupingPopover .List-item:nth-child(4)>a").wait().click();
+            await d.select("#BreakoutPopover .List-item:contains(Created) .Field-extra > a").wait().click();
+            await d.select("#TimeGroupingPopover .List-item a:contains(Year)").wait().click();
 
             await d.select(".Button.RunButton").wait().click();
 
+            await d.sleep(500);
             await d.select(".Loading").waitRemoved(20000);
             await d.screenshot("screenshots/qb-pivot-table.png");
 
@@ -49,10 +50,17 @@ describeE2E("query_builder", () => {
 
             // add to new dashboard
             await d.select("#QuestionSavedModal .Button.Button--primary").wait().click();
+            try {
+                // this makes the test work wether we have any existing dashboards or not
+                await d.select("#AddToDashSelectDashModal h3:contains(Add)").wait(500).click();
+            } catch (e) {
+            }
+
             await d.select("#CreateDashboardModal input[name='name']").wait().sendKeys("Main Dashboard");
             await d.select("#CreateDashboardModal .Button.Button--primary").wait().click().waitRemoved(); // wait for the modal to be removed
             incrementDashboardCount();
-            await d.waitUrl(getLatestDashboardUrl() + "?add=1");
+
+            await d.waitUrl(getLatestDashboardUrl());
 
             // save dashboard
             await d.select(".EditHeader .Button.Button--primary").wait().click();

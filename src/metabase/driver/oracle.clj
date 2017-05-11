@@ -1,17 +1,18 @@
 (ns metabase.driver.oracle
-  (:require [clojure.java.jdbc :as jdbc]
-            (clojure [set :as set]
-                     [string :as s])
-            [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [helpers :as h])
-            [metabase.config :as config]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
+            [clojure.java.jdbc :as jdbc]
+            [honeysql.core :as hsql]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]]))
 
 (def ^:private ^:const pattern->type
   [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578
@@ -42,17 +43,23 @@
    [#"XML"         :type/*]])
 
 (defn- connection-details->spec
-  "Create a database specification for an Oracle database. DETAILS should include keys
-  for `:user`, `:password`, and `:sid`. You can also optionally set `:host` and `:port`."
-  [{:keys [host port sid]
+  "Create a database specification for an Oracle database. DETAILS should include keys for `:user`,
+   `:password`, and one or both of `:sid` and `:serivce-name`. You can also optionally set `:host` and `:port`."
+  [{:keys [host port sid service-name]
     :or   {host "localhost", port 1521}
     :as   details}]
+  (assert (or sid service-name))
   (merge {:subprotocol "oracle:thin"
-          :subname     (str "@" host ":" port ":" sid)}
-         (dissoc details :host :port)))
+          :subname     (str "@" host
+                            ":" port
+                            (when sid
+                              (str ":" sid))
+                            (when service-name
+                              (str "/" service-name)))}
+         (dissoc details :host :port :sid :service-name)))
 
 (defn- can-connect? [details]
-  (let [connection (connection-details->spec details)]
+  (let [connection (connection-details->spec (ssh/include-ssh-tunnel details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
 
 
@@ -186,6 +193,13 @@
      :rows    (for [row rows]
                 (butlast row))}))
 
+(defn- humanize-connection-error-message [message]
+  ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
+  ;; return a slightly nicer looking version. Otherwise just return message as-is
+  (if (str/includes? message "(or sid service-name)")
+    "You must specify the SID and/or the Service Name."
+    message))
+
 
 (defrecord OracleDriver []
   clojure.lang.Named
@@ -194,27 +208,32 @@
 (u/strict-extend OracleDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:can-connect?   (u/drop-first-arg can-connect?)
-          :date-interval  (u/drop-first-arg date-interval)
-          :details-fields (constantly [{:name         "host"
-                                        :display-name "Host"
-                                        :default      "localhost"}
-                                       {:name         "port"
-                                        :display-name "Port"
-                                        :type         :integer
-                                        :default      1521}
-                                       {:name         "sid"
-                                        :display-name "Oracle System ID"
-                                        :default      "ORCL"}
-                                       {:name         "user"
-                                        :display-name "Database username"
-                                        :placeholder  "What username do you use to login to the database?"
-                                        :required     true}
-                                       {:name         "password"
-                                        :display-name "Database password"
-                                        :type         :password
-                                        :placeholder  "*******"}])
-          :execute-query  (comp remove-rownum-column sqlqp/execute-query)})
+         {:can-connect?                      (u/drop-first-arg can-connect?)
+          :date-interval                     (u/drop-first-arg date-interval)
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      1521}
+                                                            {:name         "sid"
+                                                             :display-name "Oracle system ID (SID)"
+                                                             :placeholder  "Usually something like ORCL or XE. Optional if using service name"}
+                                                            {:name         "service-name"
+                                                             :display-name "Oracle service name"
+                                                             :placeholder  "Optional TNS alias"}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"
+                                                             :required     true}
+                                                            {:name         "password"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "*******"}]))
+          :execute-query                     (comp remove-rownum-column sqlqp/execute-query)
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
@@ -257,9 +276,7 @@
                                           (require 'metabase.test.data.oracle)
                                           ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
           :field-percent-urls        sql/slow-field-percent-urls
-          ;; TODO - we *should* be able to set timezone using the SQL below, but I think the SQL doesn't work with prepared params (i.e., '?')
-          ;; Find some way to work around this for Oracle
-          ;; :set-timezone-sql          (constantly "ALTER session SET time_zone = ?")
+          :set-timezone-sql          (constantly "ALTER session SET time_zone = %s")
           :prepare-value             (u/drop-first-arg prepare-value)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
@@ -267,10 +284,8 @@
 ;; only register the Oracle driver if the JDBC driver is available
 (when (u/ignore-exceptions
         (Class/forName "oracle.jdbc.OracleDriver"))
-
   ;; By default the Oracle JDBC driver isn't compliant with JDBC standards -- instead of returning types like java.sql.Timestamp
   ;; it returns wacky types like oracle.sql.TIMESTAMPT. By setting this System property the JDBC driver will return the appropriate types.
   ;; See this page for more details: http://docs.oracle.com/database/121/JJDBC/datacc.htm#sthref437
   (.setProperty (System/getProperties) "oracle.jdbc.J2EE13Compliant" "TRUE")
-
   (driver/register-driver! :oracle (OracleDriver.)))

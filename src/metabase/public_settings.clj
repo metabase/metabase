@@ -1,11 +1,13 @@
 (ns metabase.public-settings
   (:require [clojure.string :as s]
-            [toucan.db :as db]
-            [metabase.config :as config]
-            (metabase.models [common :as common]
-                             [setting :refer [defsetting], :as setting])
-            [metabase.types :as types]
-            [metabase.util.password :as password])
+            [metabase
+             [config :as config]
+             [types :as types]]
+            [metabase.models
+             [common :as common]
+             [setting :as setting :refer [defsetting]]]
+            [metabase.util.password :as password]
+            [toucan.db :as db])
   (:import java.util.TimeZone))
 
 (defsetting check-for-updates
@@ -60,7 +62,7 @@
   :default false)
 
 (defsetting query-caching-max-kb
-  "The maximum size of the cache per card, in kilobytes:"
+  "The maximum size of the cache, per saved question, in kilobytes:"
   ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)

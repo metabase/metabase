@@ -1,11 +1,12 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
-            (toucan [db :as db]
-                    [models :as models]
-                    [hydrate :refer [hydrate]])
-            [metabase.models.user :refer [User]]
             [metabase.models.revision.diff :refer [diff-string]]
-            [metabase.util :as u]))
+            [metabase.models.user :refer [User]]
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions will be deleted."

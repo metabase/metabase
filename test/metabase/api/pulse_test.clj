@@ -1,17 +1,16 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [expectations :refer :all]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]
-            (metabase [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [card :refer [Card]]
-                             [database :refer [Database]]
-                             [pulse :refer [Pulse], :as pulse])
-            [metabase.test.data :refer :all]
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]]
+            [metabase.models
+             [card :refer [Card]]
+             [pulse :as pulse :refer [Pulse]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; ## Helper Fns
 
@@ -175,9 +174,9 @@
 
 
 ;; ## DELETE /api/pulse/:id
-(tt/expect-with-temp [Pulse [pulse]]
+(expect
   nil
-  (do
+  (tt/with-temp Pulse [pulse]
     ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
     (pulse/retrieve-pulse (:id pulse))))
 

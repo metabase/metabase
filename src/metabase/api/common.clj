@@ -1,16 +1,15 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
-  (:require [clojure.tools.logging :as log]
-            (clojure [string :as s]
-                     [walk :as walk])
-            [cheshire.core :as json]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes]]
             [medley.core :as m]
-            [toucan.db :as db]
+            [metabase
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]))
+            [toucan.db :as db]))
 
 (declare check-403 check-404)
 
@@ -317,4 +316,5 @@
   "Check that the OBJECT is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
   [object]
   (u/prog1 object
-    (check-404 (not (:archived object)))))
+    (check (not (:archived object))
+      [404 "The object has been archived."])))

@@ -45,7 +45,7 @@ export default class AddToDashSelectDashModal extends Component {
 
     addToDashboard = (dashboard: Dashboard) => {
         // we send the user over to the chosen dashboard in edit mode with the current card added
-        this.props.onChangeLocation(Urls.dashboard(dashboard.id)+"?add="+this.props.card.id);
+        this.props.onChangeLocation(Urls.dashboard(dashboard.id, {addCardWithId: this.props.card.id}));
     }
 
     createDashboard = async(newDashboard: Dashboard) => {

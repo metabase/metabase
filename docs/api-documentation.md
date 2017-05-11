@@ -153,24 +153,15 @@ Run the query associated with a Card.
 *  **`ignore_cache`** value may be nil, or if non-nil, value must be a boolean.
 
 
-## `POST /api/card/:card-id/query/csv`
+## `POST /api/card/:card-id/query/:export-format`
 
-Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
-
-##### PARAMS:
-
-*  **`card-id`** 
-
-*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
-
-
-## `POST /api/card/:card-id/query/json`
-
-Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
+Run the query associated with a Card, and return its results as a file in the specified format. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
 
 ##### PARAMS:
 
 *  **`card-id`** 
+
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
@@ -224,7 +215,7 @@ Fetch a list of all Collections that the current user has read permissions for.
 
 ##### PARAMS:
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean (true or false).
+*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 
 ## `GET /api/collection/:id`
@@ -240,10 +231,14 @@ Fetch a specific (non-archived) Collection, including cards that belong to it.
 
 Fetch a graph of all Collection Permissions.
 
+You must be a superuser to do this.
+
 
 ## `POST /api/collection/`
 
 Create a new Collection.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -257,6 +252,8 @@ Create a new Collection.
 ## `PUT /api/collection/:id`
 
 Modify an existing Collection, including archiving or unarchiving it.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -274,6 +271,8 @@ Modify an existing Collection, including archiving or unarchiving it.
 ## `PUT /api/collection/graph`
 
 Do a batch update of Collections Permissions by passing in a modified graph.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -311,16 +310,26 @@ Remove a `DashboardCard` from a `Dashboard`.
 *  **`dashcardId`** value must be a valid integer greater than zero.
 
 
+## `DELETE /api/dashboard/:id/favorite`
+
+Unfavorite a Dashboard.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
 ## `GET /api/dashboard/`
 
 Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
-  *  `all` - Return all `Dashboards`.
-  *  `mine` - Return `Dashboards` created by the current user.
+  *  `all`      - Return all Dashboards.
+  *  `mine`     - Return Dashboards created by the current user.
+  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)
 
 ##### PARAMS:
 
-*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `mine`.
+*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `mine`.
 
 
 ## `GET /api/dashboard/:id`
@@ -398,6 +407,15 @@ Add a `Card` to a `Dashboard`.
 *  **`dashboard-card`** 
 
 
+## `POST /api/dashboard/:id/favorite`
+
+Favorite a Dashboard.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
 ## `POST /api/dashboard/:id/revert`
 
 Revert a `Dashboard` to a prior `Revision`.
@@ -420,17 +438,19 @@ Update a `Dashboard`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a map.
 
-*  **`points_of_interest`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
 
 *  **`description`** value may be nil, or if non-nil, value must be a string.
 
-*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`enable_embedding`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`caveats`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`caveats`** value may be nil, or if non-nil, value must be a string.
 
 *  **`dashboard`** 
 
@@ -438,16 +458,18 @@ Update a `Dashboard`.
 
 *  **`id`** 
 
+*  **`position`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
 
 ## `PUT /api/dashboard/:id/cards`
 
 Update `Cards` on a `Dashboard`. Request body should have the form:
 
-    {:cards [{:id ...
-              :sizeX ...
-              :sizeY ...
-              :row ...
-              :col ...
+    {:cards [{:id     ...
+              :sizeX  ...
+              :sizeY  ...
+              :row    ...
+              :col    ...
               :series [{:id 123
                         ...}]} ...]}
 
@@ -596,11 +618,13 @@ Execute a query and retrieve the results in the usual format.
 *  **`database`** 
 
 
-## `POST /api/dataset/csv`
+## `POST /api/dataset/:export-format`
 
-Execute a query and download the result data as a CSV file.
+Execute a query and download the result data as a file in the specified format.
 
 ##### PARAMS:
+
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
 *  **`query`** value must be a valid JSON string.
 
@@ -614,15 +638,6 @@ Get historical query execution duration.
 *  **`database`** 
 
 *  **`query`** 
-
-
-## `POST /api/dataset/json`
-
-Execute a query and download the result data as a JSON file.
-
-##### PARAMS:
-
-*  **`query`** value must be a valid JSON string.
 
 
 ## `POST /api/email/test`
@@ -674,26 +689,15 @@ Fetch the results of running a Card using a JSON Web Token signed with the `embe
 *  **`query-params`** 
 
 
-## `GET /api/embed/card/:token/query/csv`
+## `GET /api/embed/card/:token/query/:export-format`
 
-Like `GET /api/embed/card/query`, but returns the results as CSV.
-
-##### PARAMS:
-
-*  **`token`** 
-
-*  **`&`** 
-
-*  **`query-params`** 
-
-
-## `GET /api/embed/card/:token/query/json`
-
-Like `GET /api/embed/card/query`, but returns the results as JSOn.
+Like `GET /api/embed/card/query`, but returns the results as a file in the specified format.
 
 ##### PARAMS:
 
 *  **`token`** 
+
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
 *  **`&`** 
 
@@ -934,23 +938,13 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`points_of_interest`** 
-
-*  **`description`** 
+*  **`id`** 
 
 *  **`definition`** value must be a map.
 
-*  **`revision_message`** value must be a non-blank string.
-
-*  **`show_in_getting_started`** 
-
 *  **`name`** value must be a non-blank string.
 
-*  **`caveats`** 
-
-*  **`id`** 
-
-*  **`how_is_this_calculated`** 
+*  **`revision_message`** value must be a non-blank string.
 
 
 ## `PUT /api/metric/:id/important_fields`
@@ -1162,24 +1156,15 @@ Fetch a publically-accessible Card an return query results as well as `:card` in
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 
-## `GET /api/public/card/:uuid/query/csv`
+## `GET /api/public/card/:uuid/query/:export-format`
 
-Fetch a publically-accessible Card and return query results as CSV. Does not require auth credentials. Public sharing must be enabled.
-
-##### PARAMS:
-
-*  **`uuid`** 
-
-*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
-
-
-## `GET /api/public/card/:uuid/query/json`
-
-Fetch a publically-accessible Card and return query results as JSON. Does not require auth credentials. Public sharing must be enabled.
+Fetch a publically-accessible Card and return query results in the specified format. Does not require auth credentials. Public sharing must be enabled.
 
 ##### PARAMS:
 
 *  **`uuid`** 
+
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
@@ -1429,14 +1414,6 @@ You must be a superuser to do this.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`description`** 
-
-*  **`caveats`** 
-
-*  **`points_of_interest`** 
-
-*  **`show_in_getting_started`** 
-
 *  **`definition`** value must be a map.
 
 *  **`revision_message`** value must be a non-blank string.
@@ -1561,7 +1538,7 @@ Special endpoint for creating the first user during setup.
 
 *  **`engine`** 
 
-*  **`allow_tracking`** 
+*  **`allow_tracking`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
 
 *  **`email`** value must be a valid email address.
 
@@ -1649,7 +1626,7 @@ Get metadata about a `Table` useful for running queries.
 
 *  **`id`** 
 
-*  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean (true or false).
+*  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 
 ## `PUT /api/table/:id`

@@ -1,15 +1,15 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            [toucan.db :as db]
             [metabase.driver :as driver]
-            (metabase.driver [generic-sql :refer :all]
-                             h2)
-            (metabase.models [field :refer [Field]]
-                             [table :refer [Table], :as table])
-            [metabase.test.data :refer :all]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets])
-            [metabase.test.util :refer [resolve-private-vars]])
+            [metabase.driver.generic-sql :refer :all]
+            [metabase.models
+             [field :refer [Field]]
+             [table :as table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :refer [resolve-private-vars]]]
+            [metabase.test.data.datasets :as datasets]
+            [toucan.db :as db])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))
@@ -123,3 +123,23 @@
     0.5)
   (dataset half-valid-urls
     (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))
+
+;;; Make sure invalid ssh credentials are detected if a direct connection is possible
+(expect
+  #"com.jcraft.jsch.JSchException:"
+  (try (let [engine :postgres
+             details {:ssl false,
+                      :password "changeme",
+                      :tunnel-host "localhost", ;; this test works if sshd is running or not
+                      :tunnel-pass "BOGUS-BOGUS-BOGUS",
+                      :port 5432,
+                      :dbname "test",
+                      :host "localhost",
+                      :tunnel-enabled true,
+                      :tunnel-port 22,
+                      :engine :postgres,
+                      :user "postgres",
+                      :tunnel-user "example"}]
+         (driver/can-connect-with-details? engine details :rethrow-exceptions))
+       (catch Exception e
+         (.getMessage e))))

@@ -1,17 +1,21 @@
 (ns metabase.api.embed-test
   (:require [buddy.sign.jwt :as jwt]
             [crypto.random :as crypto-random]
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
-            [toucan.util.test :as tt]
-            [metabase.http-client :as http]
+            [metabase
+             [http-client :as http]
+             [util :as u]]
             [metabase.api.public-test :as public-test]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]])
-            (metabase.test [data :as data]
-                           [util :as tu])
-            [metabase.util :as u]
-            [metabase.util.embed :as eu]))
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [toucan.util.test :as tt])
+  (:import java.io.ByteArrayInputStream))
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 
@@ -61,7 +65,13 @@
    (case results-format
      ""      (successful-query-results)
      "/json" [{:count 100}]
-     "/csv"  "count\n100\n")))
+     "/csv"  "count\n100\n"
+     "/xlsx" (fn [body]
+               (->> (ByteArrayInputStream. body)
+                    spreadsheet/load-workbook
+                    (spreadsheet/select-sheet "Query result")
+                    (spreadsheet/select-columns {:A :col})
+                    (= [{:col "count"} {:col 100.0}]))))))
 
 (defn dissoc-id-and-name {:style/indent 0} [obj]
   (dissoc obj :id :name))
@@ -74,7 +84,8 @@
    :display                "table"
    :visualization_settings {}
    :dataset_query          {:type "query"}
-   :parameters             ()})
+   :parameters             ()
+   :param_values           nil})
 
 (def successful-dashboard-info
   {:description nil, :parameters (), :ordered_cards (), :param_values nil})
@@ -127,7 +138,7 @@
       (:parameters (http/client :get 200 (card-url card {:params {:c 100}}))))))
 
 
-;; ------------------------------------------------------------ GET /api/embed/card/:token/query (and JSON and CSV variants)  ------------------------------------------------------------
+;; ------------------------------------------------------------ GET /api/embed/card/:token/query (and JSON/CSV/XLSX variants)  ------------------------------------------------------------
 
 (defn- card-query-url [card response-format & [additional-token-params]]
   (str "embed/card/"
@@ -135,21 +146,23 @@
        "/query"
        response-format))
 
-(defmacro ^:private expect-for-response-formats {:style/indent 1} [[response-format-binding] expected actual]
+(defmacro ^:private expect-for-response-formats {:style/indent 1} [[response-format-binding request-options-binding] expected actual]
   `(do
-     ~@(for [response-format ["" "/json" "/csv"]]
+     ~@(for [[response-format request-options] [[""] ["/json"] ["/csv"] ["/xlsx" {:as :byte-array}]]]
          `(expect
-            (let [~response-format-binding ~response-format]
+            (let [~response-format-binding         ~response-format
+                  ~(or request-options-binding '_) {:request-options ~request-options}]
               ~expected)
-            (let [~response-format-binding ~response-format]
+            (let [~response-format-binding         ~response-format
+                  ~(or request-options-binding '_) {:request-options ~request-options}]
               ~actual)))))
 
 ;; it should be possible to run a Card successfully if you jump through the right hoops...
-(expect-for-response-formats [response-format]
+(expect-for-response-formats [response-format request-options]
   (successful-query-results response-format)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true}]
-      (http/client :get 200 (card-query-url card response-format)))))
+      (http/client :get 200 (card-query-url card response-format) request-options))))
 
 ;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking query info)
 (expect-for-response-formats [response-format]
@@ -190,11 +203,11 @@
       (http/client :get 400 (card-query-url card response-format)))))
 
 ;; if `:locked` param is present, request should succeed
-(expect-for-response-formats [response-format]
+(expect-for-response-formats [response-format request-options]
   (successful-query-results response-format)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "locked"}}]
-      (http/client :get 200 (card-query-url card response-format {:params {:abc 100}})))))
+      (http/client :get 200 (card-query-url card response-format {:params {:abc 100}}) request-options))))
 
 ;; If `:locked` parameter is present in URL params, request should fail
 (expect-for-response-formats [response-format]
@@ -229,18 +242,18 @@
       (http/client :get 400 (str (card-query-url card response-format {:params {:abc 100}}) "?abc=200")))))
 
 ;; If an `:enabled` param is present in the JWT, that's ok
-(expect-for-response-formats [response-format]
+(expect-for-response-formats [response-format request-options]
   (successful-query-results response-format)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "enabled"}}]
-      (http/client :get 200 (card-query-url card response-format {:params {:abc "enabled"}})))))
+      (http/client :get 200 (card-query-url card response-format {:params {:abc "enabled"}}) request-options))))
 
 ;; If an `:enabled` param is present in URL params but *not* the JWT, that's ok
-(expect-for-response-formats [response-format]
+(expect-for-response-formats [response-format request-options]
   (successful-query-results response-format)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-card [card {:enable_embedding true, :embedding_params {:abc "enabled"}}]
-      (http/client :get 200 (str (card-query-url card response-format) "?abc=200")))))
+      (http/client :get 200 (str (card-query-url card response-format) "?abc=200") request-options))))
 
 
 ;; ------------------------------------------------------------ GET /api/embed/dashboard/:token ------------------------------------------------------------

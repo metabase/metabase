@@ -11,6 +11,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { getTableCellClickedObject } from "metabase/visualizations/lib/table";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -19,7 +20,8 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 type Props = VisualizationProps & {
     height: number,
-    className?: string
+    className?: string,
+    isPivoted: boolean,
 }
 
 type State = {
@@ -71,18 +73,19 @@ export default class TableSimple extends Component<*, Props, State> {
     }
 
     render() {
-        const { data } = this.props;
-        const { page, pageSize, sortColumn, sortDescending } = this.state;
+        const { data, onVisualizationClick, visualizationIsClickable, isPivoted } = this.props;
+        const { rows, cols } = data;
 
-        let { rows, cols } = data;
+        const { page, pageSize, sortColumn, sortDescending } = this.state;
 
         let start = pageSize * page;
         let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
+        let rowIndexes = _.range(0, rows.length);
         if (sortColumn != null) {
-            rows = _.sortBy(rows, (row) => row[sortColumn]);
+            rowIndexes = _.sortBy(rowIndexes, (rowIndex) => rows[rowIndex][sortColumn]);
             if (sortDescending) {
-                rows.reverse();
+                rowIndexes.reverse();
             }
         }
 
@@ -108,13 +111,26 @@ export default class TableSimple extends Component<*, Props, State> {
                                 </tr>
                             </thead>
                             <tbody>
-                            {rows.slice(start, end + 1).map((row, rowIndex) =>
-                                <tr key={rowIndex} ref={rowIndex === 0 ? "firstRow" : null}>
-                                    {row.map((cell, colIndex) =>
-                                        <td key={colIndex} style={{ whiteSpace: "nowrap" }} className="px1 border-bottom">
-                                            { cell == null ? "-" : formatValue(cell, { column: cols[colIndex], jsx: true }) }
-                                        </td>
-                                    )}
+                            {rowIndexes.slice(start, end + 1).map((rowIndex, index) =>
+                                <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
+                                    {rows[rowIndex].map((cell, columnIndex) => {
+                                        const clicked = getTableCellClickedObject(data, rowIndex, columnIndex, isPivoted);
+                                        const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+                                        return (
+                                            <td
+                                                key={columnIndex}
+                                                style={{ whiteSpace: "nowrap" }}
+                                                className={cx("px1 border-bottom", {
+                                                    "cursor-pointer text-brand-hover": isClickable
+                                                })}
+                                                onClick={isClickable && ((e) => {
+                                                    onVisualizationClick({ ...clicked, element: e.currentTarget });
+                                                })}
+                                            >
+                                                { cell == null ? "-" : formatValue(cell, { column: cols[columnIndex], jsx: true }) }
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             )}
                             </tbody>
