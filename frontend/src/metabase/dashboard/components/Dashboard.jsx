@@ -141,7 +141,7 @@ export default class Dashboard extends Component<*, Props, State> {
             }
         } catch (error) {
             if (error.status === 404) {
-                if (error.data === "The object has been archived.") {
+                if (error.data.error_code === "archived") {
                      this.setState({ isArchived: true })
                 } else {
                     setErrorPage(error);
@@ -194,7 +194,7 @@ export default class Dashboard extends Component<*, Props, State> {
         }
 
         const getDashboardArchivedState = () =>
-            <div className="full flex justify-center" style={{marginTop: "75px"}}>
+            <div className="full flex justify-center align-center">
                 <EmptyState
                     message={<div>
                         <div>This dashboard has been archived</div>
@@ -205,7 +205,7 @@ export default class Dashboard extends Component<*, Props, State> {
             </div>;
 
         const getDashboardHeaderAndGrid = () =>
-            <div className="full" style={{overflowX: "hidden"}}>
+            <div className="full pb4" style={{overflowX: "hidden"}}>
                 <header className="DashboardHeader relative z2">
                     <DashboardHeader
                         {...this.props}
@@ -237,7 +237,7 @@ export default class Dashboard extends Component<*, Props, State> {
             </div>;
 
         return (
-            <LoadingAndErrorWrapper className={cx("Dashboard flex-full pb4", {
+            <LoadingAndErrorWrapper className={cx("Dashboard flex-full flex", {
                 "Dashboard--fullscreen": isFullscreen,
                 "Dashboard--night": isNightMode
             })} loading={!dashboard && !isArchived} error={error}>
