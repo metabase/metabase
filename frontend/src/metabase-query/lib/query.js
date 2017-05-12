@@ -41,6 +41,14 @@ class Query {
     // Run stuff
     run(someReduxAction){}
 
+    // Parameters
+    // Not the this does NOT include any field based filter clauses. 
+    getAvailableParameters()    
+    setParameter()
+
+    // Parameter maintance
+    createParameter(options)
+    deleteParameter(parameterID)
 }
 
 class QueryResult{

@@ -75,12 +75,10 @@ class Question {
 
     // Parameters
     // Not the this does NOT include any field based filter clauses. 
+    // These should pipe it to the right query
     getAvailableParameters()    
     setParameter()
 
-    // Parameter maintance
-    createParameter(options)
-    deleteParameter(parameterID)
 }
 
 // Should this be a class method ?
