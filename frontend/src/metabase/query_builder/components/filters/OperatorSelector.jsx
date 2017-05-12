@@ -1,12 +1,14 @@
 /* @flow */
 
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
-
-import Icon from "metabase/components/Icon.jsx";
-
 import cx from "classnames";
 import _ from "underscore";
+
+import {forceRedraw} from "metabase/lib/dom";
+
+import Icon from "metabase/components/Icon.jsx";
 
 import type { Operator, OperatorName } from "metabase/meta/types/Metadata"
 
@@ -39,6 +41,15 @@ export default class OperatorSelector extends Component<*, Props, State> {
         onOperatorChange: PropTypes.func.isRequired
     };
 
+    expandOperators = () => {
+        this.setState({ expanded: true });
+
+        // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5075
+        setTimeout(() => {
+            forceRedraw(ReactDOM.findDOMNode(this));
+        }, 0);
+    };
+
     render() {
         let { operator, operators } = this.props;
         let { expanded } = this.state;
@@ -65,7 +76,7 @@ export default class OperatorSelector extends Component<*, Props, State> {
                     </button>
                 )}
                 { !expanded && expandedOperators.length > 0 ?
-                    <div className="text-grey-3 cursor-pointer" onClick={() => this.setState({ expanded: true })}>
+                    <div className="text-grey-3 cursor-pointer" onClick={this.expandOperators}>
                         <Icon className="px1" name="chevrondown" size={14} />
                         More Options
                     </div>

@@ -208,3 +208,10 @@ export function constrainToScreen(element, direction, padding) {
     }
     return false;
 }
+
+// Used for tackling Safari rendering issues
+export function forceRedraw(domNode) {
+    domNode.style.display='none';
+    domNode.offsetHeight;
+    domNode.style.display='';
+}
