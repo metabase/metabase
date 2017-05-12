@@ -1054,7 +1054,6 @@ export default function lineAreaBar(element, {
             } else {
                 onChangeCardAndRun(updateNumericFilter(card, column, start, end));
             }
-            onChangeCardAndRun(card);
         }
     }
 

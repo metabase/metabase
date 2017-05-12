@@ -235,6 +235,8 @@ export const breakout = (card, breakout, tableMetadata) => {
 const MIN_INTERVALS = 4;
 
 export const updateDateTimeFilter = (card, column, start, end) => {
+    card = clone(card);
+
     let fieldRef = getFieldRefFromColumn(column);
     start = moment(start);
     end = moment(end);

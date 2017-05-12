@@ -37,6 +37,8 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
 
         // emit "onBrushChange" event
         onBrushChange(range);
+
+        // fade deselected bars
         parent.fadeDeselectedArea();
 
         // return filters unmodified
