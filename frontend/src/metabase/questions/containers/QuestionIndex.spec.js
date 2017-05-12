@@ -103,7 +103,7 @@ describe('QuestionIndex', () => {
     })
 
     describe('collection actions', () => {
-       xit("should let admins change permissions if collections exist", () => {
+       it("should let admins change permissions if collections exist", () => {
            const component = mount(
                <QuestionIndexHeader
                    collections={someCollections}
@@ -111,7 +111,8 @@ describe('QuestionIndex', () => {
                />
            );
 
-           expect(component.find({ href: "/collections/permissions" }).length).toEqual(1);
+           // Why `find` does not work for matching React props: https://github.com/airbnb/enzyme/issues/582
+           expect(component.findWhere((node) => node.prop('to') === "/collections/permissions" ).length).toEqual(1);
        });
 
         it("should not let admins change permissions if no collections", () => {
@@ -122,7 +123,7 @@ describe('QuestionIndex', () => {
                 />
             );
 
-            expect(component.find({ href: "/collections/permissions" }).length).toEqual(0);
+            expect(component.findWhere((node) => node.prop('to') === "/collections/permissions" ).length).toEqual(0);
         });
 
         it("should not let non-admins change permissions", () => {
@@ -133,7 +134,7 @@ describe('QuestionIndex', () => {
                 />
             );
 
-            expect(component.find({ href: "/collections/permissions" }).length).toEqual(0);
+            expect(component.findWhere((node) => node.prop('to') === "/collections/permissions" ).length).toEqual(0);
         });
     })
 });
