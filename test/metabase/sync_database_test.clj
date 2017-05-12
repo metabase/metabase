@@ -361,7 +361,8 @@
   (tt/with-temp* [Database [database {:details (:details (Database (id))), :engine :h2}]
                   Table    [table    {:db_id (u/get-id database), :name "VENUES"}]]
     (sync-table! table)
-    [(db/select-one-field :min_value Field, :id (id :venues :longitude))
-     (db/select-one-field :max_value Field, :id (id :venues :longitude))
-     (db/select-one-field :min_value Field, :id (id :venues :latitude))
-     (db/select-one-field :max_value Field, :id (id :venues :latitude))]))
+    (map #(u/round-to-decimals 4 %)
+         [(db/select-one-field :min_value Field, :id (id :venues :longitude))
+          (db/select-one-field :max_value Field, :id (id :venues :longitude))
+          (db/select-one-field :min_value Field, :id (id :venues :latitude))
+          (db/select-one-field :max_value Field, :id (id :venues :latitude))])))
