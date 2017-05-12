@@ -110,7 +110,7 @@ export function formatTimeRangeWithUnit(value: Value, unit: DatetimeUnit, option
 function formatWeek(m: Moment, options: FormattingOptions = {}) {
     // force 'en' locale for now since our weeks currently always start on Sundays
     m = m.locale("en");
-    return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
+    return formatMajorMinor(m.format("Wo"), m.format("GGGG"), options);
 }
 
 export function formatTimeWithUnit(value: Value, unit: DatetimeUnit, options: FormattingOptions = {}) {
@@ -153,7 +153,7 @@ export function formatTimeWithUnit(value: Value, unit: DatetimeUnit, options: Fo
         case "day-of-month":
             return moment().date(value).format("D");
         case "week-of-year": // 1st
-            return moment().week(value).format("wo");
+            return moment().week(value).format("Wo");
         case "month-of-year": // January
             // $FlowFixMe:
             return moment().month(value - 1).format("MMMM");

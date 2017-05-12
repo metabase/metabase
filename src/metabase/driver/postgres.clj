@@ -134,9 +134,8 @@
     :day-of-month    (extract-integer :day expr)
     :day-of-year     (extract-integer :doy expr)
     ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-    :week            (hx/- (date-trunc :week (hx/+ (hx/->timestamp expr) one-day))
-                           one-day)
-    :week-of-year    (extract-integer :week (hx/+ (hx/->timestamp expr) one-day))
+    :week            (date-trunc :week expr)
+    :week-of-year    (extract-integer :week expr)
     :month           (date-trunc :month expr)
     :month-of-year   (extract-integer :month expr)
     :quarter         (date-trunc :quarter expr)
