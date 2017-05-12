@@ -376,7 +376,7 @@
 (defn- render:empty [_ _]
   [:div {:style (style {:text-align :center})}
    [:img {:style (style {:width :104px})
-          :src   (render-image-with-filename "frontend_client/app/img/pulse_no_results@2x.png")}]
+          :src   (render-image-with-filename "frontend_client/app/assets/img/pulse_no_results@2x.png")}]
    [:div {:style (style {:margin-top :8px
                          :color      color-gray-4})}
     "No results"]])
@@ -426,7 +426,7 @@
          (when *include-buttons*
            [:img {:style (style {:width :16px})
                   :width 16
-                  :src   (render-image-with-filename "frontend_client/app/img/external_link.png")}])]]]])
+                  :src   (render-image-with-filename "frontend_client/app/assets/img/external_link.png")}])]]]])
   (try
     (when error
       (throw (Exception. (str "Card has errors: " error))))

@@ -200,7 +200,7 @@ export default class SettingsSlackForm extends Component {
                         Metabase
                         <RetinaImage
                             className="mx1"
-                            src="/app/img/slack_emoji.png"
+                            src="app/assets/img/slack_emoji.png"
                             width={79}
                             forceOriginalDimensions={false /* broken in React v0.13 */}
                         />

@@ -11,8 +11,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 
 import SettingHeader from "../SettingHeader.jsx";
 
+import { SettingsApi, GeoJSONApi } from "metabase/services";
+
 import cx from "classnames";
-import fetch from 'isomorphic-fetch';
 
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth.jsx";
 
@@ -52,11 +53,9 @@ export default class CustomGeoJSONWidget extends Component {
             delete value[id];
         }
 
-        await fetch("/api/setting/custom-geojson", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ value }),
-            credentials: "same-origin",
+        await SettingsApi.put({
+            key: "custom-geojson",
+            value: value
         });
 
         await this.props.reloadSettings();
@@ -88,11 +87,9 @@ export default class CustomGeoJSONWidget extends Component {
                 geoJsonError: null,
             });
             await this._saveMap(map.id, map);
-            let geoJsonResponse = await fetch("/api/geojson/" + map.id, {
-                credentials: "same-origin"
-            });
+            let geoJson = await GeoJSONApi.get({ id: map.id });
             this.setState({
-                geoJson: await geoJsonResponse.json(),
+                geoJson: geoJson,
                 geoJsonLoading: false,
                 geoJsonError: null,
             });

@@ -10,13 +10,24 @@ import { Provider } from 'react-redux'
 import MetabaseAnalytics, { registerAnalyticsClickListener } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
+import api from "metabase/lib/api";
+
 import { getStore } from './store'
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
-import { Router, browserHistory } from "react-router";
-import { syncHistoryWithStore } from 'react-router-redux'
+import { Router, useRouterHistory } from "react-router";
+import { createHistory } from 'history'
+import { syncHistoryWithStore } from 'react-router-redux';
 
+// remove trailing slash
+const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
+
+api.basename = BASENAME;
+
+const browserHistory = useRouterHistory(createHistory)({
+    basename: BASENAME
+});
 
 function _init(reducers, getRoutes, callback) {
     const store = getStore(reducers, browserHistory);

@@ -52,7 +52,7 @@ const QueryDownloadWidget = ({ className, card, result, uuid, token }) =>
 const UnsavedQueryButton = ({ className, type, result: { json_query }, card }) =>
     <DownloadButton
         className={className}
-        url={`/api/dataset/${type}`}
+        url={`api/dataset/${type}`}
         params={{ query: JSON.stringify(_.omit(json_query, "constraints")) }}
         extensions={[type]}
     >
@@ -62,7 +62,7 @@ const UnsavedQueryButton = ({ className, type, result: { json_query }, card }) =
 const SavedQueryButton = ({ className, type, result: { json_query }, card }) =>
     <DownloadButton
         className={className}
-        url={`/api/card/${card.id}/query/${type}`}
+        url={`api/card/${card.id}/query/${type}`}
         params={{ parameters: JSON.stringify(json_query.parameters) }}
         extensions={[type]}
     >

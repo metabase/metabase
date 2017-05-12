@@ -264,7 +264,7 @@
                                                            (s/replace #"^metabase\." "")
                                                            (s/replace #"\." "/"))
                                                        (u/pprint-to-str (concat api-routes additional-routes))))
-       ~@api-routes ~@additional-routes)))
+       ~@additional-routes ~@api-routes)))
 
 
 ;;; ------------------------------------------------------------ PERMISSIONS CHECKING HELPER FNS ------------------------------------------------------------
