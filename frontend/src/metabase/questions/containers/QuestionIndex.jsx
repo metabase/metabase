@@ -20,6 +20,7 @@ import { getAllCollections, getAllEntities } from "../selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { replace, push } from "react-router-redux";
+import EmptyState from "metabase/components/EmptyState";
 
 export const CollectionEmptyState = () =>
     <div className="flex align-center p2 mt4 bordered border-med border-brand rounded bg-grey-0 text-brand">
@@ -40,21 +41,31 @@ export const CollectionEmptyState = () =>
     </div>;
 
 export const NoSavedQuestionsState = () =>
-    <div className="mt2 flex-full flex align-center justify-center">
-        <h2 className="text-grey-2 text-normal">
-            You don't have any saved questions yet
-        </h2>
+    <div className="flex-full flex align-center justify-center mb4">
+        <EmptyState
+            message={<span>Explore your data, create charts or maps, and save what you find.</span>}
+            image="/app/img/questions_illustration"
+            action="Ask a question"
+            link="/question"
+        />
     </div>;
 
-
-export const QuestionIndexHeader = ({collections, isAdmin, onSearch}) => {
+export const QuestionIndexHeader = ({questions, collections, isAdmin, onSearch}) => {
+    // Some replication of logic for making writing tests easier
     const hasCollections = collections && collections.length > 0;
+    const hasQuestionsWithoutCollection = questions && questions.length > 0;
+
+    const showTitleAndSearch = hasCollections || hasQuestionsWithoutCollection;
     const showSetPermissionsLink = isAdmin && hasCollections;
 
     return (<div className="flex align-center pt4 pb2">
+        { showTitleAndSearch &&
         <TitleAndDescription title={ hasCollections ? "Collections of Questions" : "Saved Questions" }/>
+        }
         <div className="flex align-center ml-auto">
+            { showTitleAndSearch &&
             <ExpandingSearchField className="mr2" onSearch={onSearch}/>
+            }
 
             <CollectionActions>
                 { showSetPermissionsLink &&
@@ -103,7 +114,12 @@ export class QuestionIndex extends Component {
             <div className={cx("relative mx4", {"full-height flex flex-column": showNoSavedQuestionsState})}>
                 { showNoCollectionsState && <CollectionEmptyState /> }
 
-                <QuestionIndexHeader collections={collections} isAdmin={isAdmin} onSearch={this.props.search} />
+                <QuestionIndexHeader
+                    questions={questions}
+                    collections={collections}
+                    isAdmin={isAdmin}
+                    onSearch={this.props.search}
+                />
 
                 { hasCollections && <CollectionButtons collections={collections} isAdmin={isAdmin} push={push} /> }
 
@@ -111,7 +127,7 @@ export class QuestionIndex extends Component {
 
                 { showEverythingElseTitle && <h2 className="mt2 mb2">Everything Else</h2> }
 
-                <div className={cx({ "hidden": !hasQuestionsWithoutCollection })}>
+                <div className={cx({ "hide": !hasQuestionsWithoutCollection })}>
                     {/* EntityList loads `questions` according to the query specified in the url query string */}
                     <EntityList
                         entityType="cards"
