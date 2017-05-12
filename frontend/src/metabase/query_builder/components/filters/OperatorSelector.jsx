@@ -42,12 +42,10 @@ export default class OperatorSelector extends Component<*, Props, State> {
     };
 
     expandOperators = () => {
-        this.setState({ expanded: true });
-
-        // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5075
-        setTimeout(() => {
+        this.setState({ expanded: true }, () => {
+            // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5075
             forceRedraw(ReactDOM.findDOMNode(this));
-        }, 0);
+        });
     };
 
     render() {
