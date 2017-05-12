@@ -183,7 +183,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
 
                 // if we have deserialized card from the url AND loaded a card by id then the user should be dropped into edit mode
-                uiControls.isEditing = !!options.edit
+                uiControls.isEditing = !!options.edit;
 
                 // if this is the users first time loading a saved card on the QB then show them the newb modal
                 if (params.cardId && currentUser.is_qbnewb) {
@@ -191,9 +191,20 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                     MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
                 }
 
+                if (card.archived) {
+                    // use the error handler in App.jsx for showing "This question has been archived" message
+                    dispatch(setErrorPage({
+                        data: {
+                            error_code: "archived"
+                        },
+                        context: "query-builder"
+                    }));
+                    card = null;
+                }
+
                 preserveParameters = true;
             } catch(error) {
-                console.warn(error)
+                console.warn(error);
                 card = null;
                 dispatch(setErrorPage(error));
             }
