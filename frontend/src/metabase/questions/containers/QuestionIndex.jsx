@@ -47,7 +47,7 @@ export const NoSavedQuestionsState = () =>
     </div>;
 
 
-export const QuestionIndexHeader = (collections, isAdmin, onSearch) => {
+export const QuestionIndexHeader = ({collections, isAdmin, onSearch}) => {
     const hasCollections = collections && collections.length > 0;
     const showSetPermissionsLink = isAdmin && hasCollections;
 
@@ -70,21 +70,27 @@ export const QuestionIndexHeader = (collections, isAdmin, onSearch) => {
     </div>);
 };
 
+const mapStateToProps = (state, props) => ({
+    questions:   getAllEntities(state, props),
+    collections: getAllCollections(state, props),
+    isAdmin:     getUserIsAdmin(state, props),
+});
+
+const mapDispatchToProps = ({
+    search,
+    loadCollections,
+    replace,
+    push,
+});
+
 /* connect() is in the end of this file because of the plain QuestionIndex component is used in Jest tests */
 export class QuestionIndex extends Component {
-    constructor (props) {
-        super(props);
-        this.state = {
-            questionsExpanded: true
-        }
-    }
-    componentWillMount () {
+    componentWillMount() {
         this.props.loadCollections();
     }
 
     render () {
         const { questions, collections, replace, push, location, isAdmin } = this.props;
-        const { questionsExpanded } = this.state;
 
         const hasCollections = collections && collections.length > 0;
         const hasQuestionsWithoutCollection = questions && questions.length > 0;
@@ -92,7 +98,6 @@ export class QuestionIndex extends Component {
         const showNoCollectionsState = isAdmin && !hasCollections;
         const showNoSavedQuestionsState = !hasCollections && !hasQuestionsWithoutCollection;
         const showEverythingElseTitle = hasQuestionsWithoutCollection && hasCollections;
-        const showEverythingElseContents = hasQuestionsWithoutCollection && (questionsExpanded || !showEverythingElseTitle);
 
         return (
             <div className={cx("relative mx4", {"full-height flex flex-column": showNoSavedQuestionsState})}>
@@ -106,7 +111,7 @@ export class QuestionIndex extends Component {
 
                 { showEverythingElseTitle && <h2 className="mt2 mb2">Everything Else</h2> }
 
-                <div className={cx({ "hidden": !showEverythingElseContents })}>
+                <div className={cx({ "hidden": !hasQuestionsWithoutCollection })}>
                     {/* EntityList loads `questions` according to the query specified in the url query string */}
                     <EntityList
                         entityType="cards"
@@ -122,19 +127,6 @@ export class QuestionIndex extends Component {
         )
     }
 }
-
-const mapStateToProps = (state, props) => ({
-    questions:   getAllEntities(state, props),
-    collections: getAllCollections(state, props),
-    isAdmin:     getUserIsAdmin(state, props),
-});
-
-const mapDispatchToProps = ({
-    search,
-    loadCollections,
-    replace,
-    push,
-});
 
 export default connect(mapStateToProps, mapDispatchToProps)(QuestionIndex);
 
