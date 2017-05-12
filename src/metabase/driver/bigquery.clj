@@ -23,7 +23,8 @@
             [metabase.query-processor.util :as qputil]
             [metabase.sync-database.analyze :as analyze]
             [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.sync-database.cached-values :as cached-values])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
@@ -470,7 +471,7 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table            analyze/generic-analyze-table
+         {:analyze-table            cached-values/generic-analyze-table
           :can-connect?             (u/drop-first-arg can-connect?)
           :date-interval            (u/drop-first-arg (comp prepare-value u/relative-date))
           :describe-database        (u/drop-first-arg describe-database)
