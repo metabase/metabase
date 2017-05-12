@@ -75,7 +75,10 @@
       (and (nil? (:special_type field))
            (pos? (count distinct-values))) (assoc :special-type :type/Category))))
 
-(defn numeric-type? [{:keys [base_type] :as field}]
+(defn numeric-type?
+  "Returns true if the `FIELD` has a base_type that inherits
+  from :type/Number"
+  [{:keys [base_type] :as field}]
   (isa? base_type :type/Number))
 
 (defn test:add-min-max

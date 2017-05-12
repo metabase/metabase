@@ -3,6 +3,7 @@
   (:require [metabase.query-processor-test :refer :all]
             [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
+            [metabase.test.util :as tu]
             [metabase.util :as u]))
 
 ;; single column
@@ -92,3 +93,20 @@
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default 20)
                          (ql/binning-strategy $longitude :default 20))))))
+
+;; Currently defaults to 8 bins when the number of bins isn't
+;; specified
+(expect-with-non-timeseries-dbs
+  [[8.0 1] [32.0 61] [36.0 29] [40.0 9]]
+  (format-rows-by [(partial u/round-to-decimals 1) int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :default))))))
+
+(expect-with-non-timeseries-dbs
+  [[10.0 1] [30.0 90] [40.0 9]]
+  (tu/with-temporary-setting-values [breakout-bins-num 3]
+    (format-rows-by [(partial u/round-to-decimals 1) int]
+      (rows (data/run-query venues
+              (ql/aggregation (ql/count))
+              (ql/breakout (ql/binning-strategy $latitude :default)))))))

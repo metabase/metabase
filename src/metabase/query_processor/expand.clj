@@ -6,6 +6,7 @@
              [core :as core]
              [string :as str]]
             [clojure.tools.logging :as log]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -183,7 +184,9 @@
 
 (s/defn ^:ql ^:always-validate binning-strategy :- FieldPlaceholder
   "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and `STRATEGY-PARAM`"
-  ([f strategy-name strategy-param]   (assoc (field f) :binning-strategy strategy-param)))
+  ([f strategy-name & [strategy-param]]   (assoc (field f)
+                                            :binning-strategy (clojure.core/or strategy-param
+                                                                               (public-settings/breakout-bins-num)))))
 
 (defn- fields-list-clause
   ([k query] query)
