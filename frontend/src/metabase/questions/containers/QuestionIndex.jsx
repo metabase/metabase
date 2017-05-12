@@ -1,12 +1,10 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import Collapse from "react-collapse";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
-import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 
 import ExpandingSearchField from "../components/ExpandingSearchField";
@@ -23,8 +21,8 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { replace, push } from "react-router-redux";
 
-const CollectionEmptyState = () =>
-    <div className="flex align-center p2 bordered border-med border-brand rounded bg-grey-0 text-brand">
+export const CollectionEmptyState = () =>
+    <div className="flex align-center p2 mt4 bordered border-med border-brand rounded bg-grey-0 text-brand">
         <Icon name="collection" size={32} className="mr2"/>
         <div className="flex-full">
             <h3>Create collections for your saved questions</h3>
@@ -40,6 +38,37 @@ const CollectionEmptyState = () =>
             <Button primary>Create a collection</Button>
         </Link>
     </div>;
+
+export const NoSavedQuestionsState = () =>
+    <div className="mt2 flex-full flex align-center justify-center">
+        <h2 className="text-grey-2 text-normal">
+            You don't have any saved questions yet
+        </h2>
+    </div>;
+
+
+export const QuestionIndexHeader = (collections, isAdmin, onSearch) => {
+    const hasCollections = collections && collections.length > 0;
+    const showSetPermissionsLink = isAdmin && hasCollections;
+
+    return (<div className="flex align-center pt4 pb2">
+        <TitleAndDescription title={ hasCollections ? "Collections of Questions" : "Saved Questions" }/>
+        <div className="flex align-center ml-auto">
+            <ExpandingSearchField className="mr2" onSearch={onSearch}/>
+
+            <CollectionActions>
+                { showSetPermissionsLink &&
+                <Link to="/collections/permissions">
+                    <Icon name="lock" tooltip="Set permissions for collections"/>
+                </Link>
+                }
+                <Link to="/questions/archive">
+                    <Icon name="viewArchive" tooltip="View the archive"/>
+                </Link>
+            </CollectionActions>
+        </div>
+    </div>);
+};
 
 /* connect() is in the end of this file because of the plain QuestionIndex component is used in Jest tests */
 export class QuestionIndex extends Component {
@@ -61,56 +90,23 @@ export class QuestionIndex extends Component {
         const hasQuestionsWithoutCollection = questions && questions.length > 0;
 
         const showNoCollectionsState = isAdmin && !hasCollections;
-        const showSetPermissionsLink = isAdmin && hasCollections;
-
         const showNoSavedQuestionsState = !hasCollections && !hasQuestionsWithoutCollection;
-        const showEverythingElseToggler = hasQuestionsWithoutCollection && hasCollections;
-        const showEverythingElseContents = hasQuestionsWithoutCollection && (questionsExpanded || !showEverythingElseToggler);
+        const showEverythingElseTitle = hasQuestionsWithoutCollection && hasCollections;
+        const showEverythingElseContents = hasQuestionsWithoutCollection && (questionsExpanded || !showEverythingElseTitle);
 
         return (
             <div className={cx("relative mx4", {"full-height flex flex-column": showNoSavedQuestionsState})}>
-                <div className="flex align-center pt4 pb2">
-                    <TitleAndDescription title={ hasCollections ? "Collections of Questions" : "Saved Questions" } />
-                    <div className="flex align-center ml-auto">
-                        <ExpandingSearchField className="mr2" onSearch={this.props.search} />
+                { showNoCollectionsState && <CollectionEmptyState /> }
 
-                        <CollectionActions>
-                            { showSetPermissionsLink &&
-                                <Link to="/collections/permissions">
-                                    <Icon name="lock" tooltip="Set permissions for collections" />
-                                </Link>
-                            }
-                            <Link to="/questions/archive">
-                                <Icon name="viewArchive" tooltip="View the archive" />
-                            </Link>
-                        </CollectionActions>
-                    </div>
-                </div>
+                <QuestionIndexHeader collections={collections} isAdmin={isAdmin} onSearch={this.props.search} />
 
-                { showNoCollectionsState && <CollectionEmptyState />}
                 { hasCollections && <CollectionButtons collections={collections} isAdmin={isAdmin} push={push} /> }
 
-                { showNoSavedQuestionsState &&
-                    <div className="mt2 flex-full flex align-center justify-center">
-                        <h2 className="text-grey-2 text-normal">
-                            You don't have any saved questions yet
-                        </h2>
-                    </div>
-                }
-                {/* only show title if we're showing the questions AND collections, otherwise title goes in the main header */}
-                { showEverythingElseToggler &&
-                    <div
-                        className="inline-block mt2 mb2 cursor-pointer text-brand-hover"
-                        onClick={() => this.setState({ questionsExpanded: !questionsExpanded })}
-                    >
-                        <div className="flex align-center">
-                            <DisclosureTriangle open={questionsExpanded} />
-                            <h2>Everything Else</h2>
-                        </div>
-                    </div>
-                }
-                <Collapse isOpened={showEverythingElseContents}
-                          keepCollapsedContent={true}>
+                { showNoSavedQuestionsState && <NoSavedQuestionsState /> }
+
+                { showEverythingElseTitle && <h2 className="mt2 mb2">Everything Else</h2> }
+
+                <div className={cx({ "hidden": !showEverythingElseContents })}>
                     {/* EntityList loads `questions` according to the query specified in the url query string */}
                     <EntityList
                         entityType="cards"
@@ -120,10 +116,8 @@ export class QuestionIndex extends Component {
                             ...location,
                             query: {...location.query, f: section}
                         })}
-                        // NOTE Atte Keinänen
-                        defaultEmptyState="Questions that aren’t in a collection will be shown here"
                     />
-                </Collapse>
+                </div>
             </div>
         )
     }
