@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+set -eu
+
+ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
+BUILD_STEPS="checkout version tag build"
+RELEASE_STEPS="$BUILD_STEPS sign s3 docker beanstalk heroku"
+FINALIZE_STEPS="docker-latest mac homebrew docs blog version-info"
+
+export DOCKERHUB_REPOSITORY="metabase/metabase"
+
+export RELEASE_ROOT="$(dirname $(dirname $ABSOLUTE_PATH))"
+export RELEASE_REPO="$RELEASE_ROOT/metabase"
+export RELEASE_REPO_HEROKU="$RELEASE_ROOT/metabase-deploy"
+
+export VERSION="0.24.0";
+export BRANCH="release-0.24.2"
+
+run-step () {
+  cd "$RELEASE_ROOT"
+  step_path="bin/release-steps/$1.sh"
+  step_function="release-$2"
+
+  unset -f "$step_function"
+  . "$step_path"
+
+  echo "$3"
+
+  if [ "$(type -t "$step_function")" = "function" ]; then
+    echo ""
+    if "$step_function"; then
+      echo ""
+      echo "--> ok"
+      echo ""
+      return 0
+    else
+      echo ""
+      echo "--> failed"
+      echo ""
+      return 1
+    fi
+  else
+    echo "--> skipping"
+    echo ""
+  fi
+}
+
+validate=""
+steps=""
+
+for arg in $@; do
+  case $arg in
+    build)      steps="$steps $BUILD_STEPS" ;;
+    release)    steps="$steps $RELEASE_STEPS" ;;
+    finalize)   steps="$steps $FINALIZE_STEPS" ;;
+    --validate) validate="true" ;;
+    --*)        echo "Unknown argument"; exit 1 ;;
+    *)          steps="$steps $arg" ;;
+  esac
+done
+
+if [ $validate ]; then
+  for step in $steps; do
+    run-step "$step" "validate"     "Validating:   $step... " || true
+  done
+else
+  for step in $steps; do
+    run-step "$step" "dependencies" "Dependencies: $step... "
+  done
+  for step in $steps; do
+    run-step "$step" "run"          "Running:      $step... "
+    run-step "$step" "validate"     "Validating:   $step... "
+  done
+fi
