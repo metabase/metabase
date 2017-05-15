@@ -16,6 +16,9 @@ import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
+// fix local to GB so that time and dates follow close to UTC instead of forcing US standards.
+moment.locale('en-gb');
+
 export type FormattingOptions = {
     column?: Column,
     majorWidth?: number,
@@ -109,7 +112,8 @@ export function formatTimeRangeWithUnit(value: Value, unit: DatetimeUnit, option
 
 function formatWeek(m: Moment, options: FormattingOptions = {}) {
     // force 'en' locale for now since our weeks currently always start on Sundays
-    m = m.locale("en");
+//    m = m.locale("en");
+    console.log('yolo', m, options);
     return formatMajorMinor(m.format("Wo"), m.format("GGGG"), options);
 }
 
