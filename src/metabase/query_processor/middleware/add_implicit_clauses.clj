@@ -7,16 +7,20 @@
              [resolve :as resolve]
              [sort :as sort]
              [util :as qputil]]
-            [toucan.db :as db]))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (defn- fetch-fields-for-souce-table-id [source-table-id]
   (map resolve/rename-mb-field-keys
-       (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position :description]
-         :table_id        source-table-id
-         :visibility_type [:not-in ["sensitive" "retired"]]
-         :parent_id       nil
-         {:order-by [[:position :asc]
-                     [:id :desc]]})))
+       (-> (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position :description]
+             :table_id        source-table-id
+             :visibility_type [:not-in ["sensitive" "retired"]]
+             :parent_id       nil
+             {:order-by [[:position :asc]
+                         [:id :desc]]})
+            (hydrate :values)
+            (hydrate :dimensions))))
 
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
@@ -53,8 +57,8 @@
 (defn- add-implicit-breakout-order-by
   "`Fields` specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that field is *explicitly* referenced in `order-by`."
   [{breakout-fields :breakout, order-by :order-by, :as inner-query}]
-  (let [order-by-fields                   (set (map :field order-by))
-        implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
+  (let [order-by-fields                   (set (map (comp #(select-keys % [:field-id :fk-field-id]) :field) order-by))
+        implicit-breakout-order-by-fields (remove (comp order-by-fields #(select-keys % [:field-id :fk-field-id]))
                                                   breakout-fields)]
     (cond-> inner-query
       (seq implicit-breakout-order-by-fields) (update :order-by concat (for [field implicit-breakout-order-by-fields]

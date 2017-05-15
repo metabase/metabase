@@ -6,6 +6,7 @@
              [config :as config]
              [util :as u]]
             [metabase.models
+             [dimensions :refer [Dimensions]]
              [field-values :refer [FieldValues]]
              [humanization :as humanization]
              [interface :as i]
@@ -102,6 +103,17 @@
                                                (db/select FieldValues :field_id [:in field-ids])))]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
+
+(defn with-dimensions
+  "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
+  {:batched-hydrate :dimensions}
+  [fields]
+  (let [field-ids        (set (map :id fields))
+        id->dimensions (u/key-by :field_id (when (seq field-ids)
+                                               (db/select [Dimensions :id :name :field_id]
+                                                 :field_id [:in field-ids])))]
+    (for [field fields]
+      (assoc field :dimensions (get id->dimensions (:id field) [])))))
 
 (defn with-targets
   "Efficiently hydrate the FK target fields for a collection of FIELDS."

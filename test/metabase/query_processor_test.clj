@@ -95,7 +95,7 @@
 
 (defn- target-field [field]
   (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id)))
+    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to)))
 
 (defn categories-col
   "Return column information for the `categories` column named by keyword COL."
@@ -126,16 +126,22 @@
      :id         {:special_type :type/PK
                   :base_type    (data/id-field-type)
                   :name         (data/format-name "id")
-                  :display_name "ID"}
+                  :display_name "ID"
+                  :remapped_from nil,
+                  :remapped_to nil}
      :name       {:special_type :type/Name
                   :base_type    (data/expected-base-type->actual :type/Text)
                   :name         (data/format-name "name")
-                  :display_name "Name"}
+                  :display_name "Name"
+                  :remapped_from nil,
+                  :remapped_to nil}
      :last_login {:special_type nil
                   :base_type    (data/expected-base-type->actual :type/DateTime)
                   :name         (data/format-name "last_login")
                   :display_name "Last Login"
-                  :unit         :default})))
+                  :unit         :default
+                  :remapped_from nil,
+                  :remapped_to nil})))
 
 ;; #### venues
 (defn venues-columns
@@ -154,7 +160,9 @@
      :id          {:special_type :type/PK
                    :base_type    (data/id-field-type)
                    :name         (data/format-name "id")
-                   :display_name "ID"}
+                   :display_name "ID"
+                   :remapped_from nil,
+                   :remapped_to nil}
      :category_id {:extra_info   (if (data/fks-supported?)
                                    {:target_table_id (data/id :categories)}
                                    {})
@@ -164,23 +172,33 @@
                                    :type/Category)
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "category_id")
-                   :display_name "Category ID"}
+                   :display_name "Category ID"
+                   :remapped_from nil,
+                   :remapped_to nil}
      :price       {:special_type :type/Category
                    :base_type    (data/expected-base-type->actual :type/Integer)
                    :name         (data/format-name "price")
-                   :display_name "Price"}
+                   :display_name "Price"
+                   :remapped_from nil,
+                   :remapped_to nil}
      :longitude   {:special_type :type/Longitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "longitude")
-                   :display_name "Longitude"}
+                   :display_name "Longitude"
+                   :remapped_from nil,
+                   :remapped_to nil}
      :latitude    {:special_type :type/Latitude
                    :base_type    (data/expected-base-type->actual :type/Float)
                    :name         (data/format-name "latitude")
-                   :display_name "Latitude"}
+                   :display_name "Latitude"
+                   :remapped_from nil,
+                   :remapped_to nil}
      :name        {:special_type :type/Name
                    :base_type    (data/expected-base-type->actual :type/Text)
                    :name         (data/format-name "name")
-                   :display_name "Name"})))
+                   :display_name "Name"
+                   :remapped_from nil,
+                   :remapped_to nil})))
 
 (defn venues-cols
   "`cols` information for all the columns in `venues`."
@@ -199,7 +217,9 @@
      :id       {:special_type :type/PK
                 :base_type    (data/id-field-type)
                 :name         (data/format-name "id")
-                :display_name "ID"}
+                :display_name "ID"
+                :remapped_from nil,
+                :remapped_to nil}
      :venue_id {:extra_info   (if (data/fks-supported?)
                                 {:target_table_id (data/id :venues)}
                                 {})
@@ -209,7 +229,9 @@
                                 :type/Category)
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "venue_id")
-                :display_name "Venue ID"}
+                :display_name "Venue ID"
+                :remapped_from nil,
+                :remapped_to nil}
      :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
                                   {})
                 :target       (target-field (users-col :id))
@@ -218,7 +240,9 @@
                                 :type/Category)
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "user_id")
-                :display_name "User ID"})))
+                :display_name "User ID"
+                :remapped_from nil,
+                :remapped_to nil})))
 
 
 ;;; #### aggregate columns
@@ -240,7 +264,9 @@
               :description  nil
               :source       :aggregation
               :extra_info   {}
-              :target       nil}))
+              :target       nil
+              :remapped_from nil,
+              :remapped_to nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
    {:pre [base_type special_type]}
    {:base_type    base_type
@@ -252,7 +278,9 @@
     :extra_info   {}
     :target       nil
     :name         (name ag-col-kw)
-    :display_name (name ag-col-kw)}))
+    :display_name (name ag-col-kw)
+    :remapped_from nil,
+    :remapped_to nil}))
 
 (defn breakout-col [column]
   (assoc column :source :breakout))
