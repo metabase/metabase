@@ -1,5 +1,5 @@
 /* @flow */
-
+import MetabaseSettings from "metabase/lib/settings";
 import d3 from "d3";
 import inflection from "inflection";
 import moment from "moment";
@@ -16,8 +16,8 @@ import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
-// fix local to GB so that time and dates follow close to UTC instead of forcing US standards.
-moment.locale('en-gb');
+// use setting value to configure locale for dates
+moment.locale(MetabaseSettings.get("locale"));
 
 export type FormattingOptions = {
     column?: Column,

@@ -36,6 +36,10 @@
 (defsetting admin-email
   "The email address users should be referred to if they encounter a problem.")
 
+(defsetting locale
+            "Locale for displaying dates and times. Default is \"en\" (US)."
+            :default "en")
+
 (defsetting anon-tracking-enabled
   "Enable the collection of anonymous usage data in order to help Metabase improve."
   :type   :boolean
@@ -132,4 +136,5 @@
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
    :types                 (types/types->parents)
-   :version               config/mb-version-info})
+   :version               config/mb-version-info
+   :locale                (locale)})

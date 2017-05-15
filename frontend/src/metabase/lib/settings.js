@@ -35,6 +35,10 @@ const MetabaseSettings = {
         return mb_settings.admin_email;
     },
 
+    locale: function() {
+        return mb_settings.locale;
+    },
+
     isEmailConfigured: function() {
         return mb_settings.email_configured;
     },
