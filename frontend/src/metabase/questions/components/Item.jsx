@@ -133,8 +133,8 @@ const ItemBody = pure(({ entity, id, name, description, labels, favorite, collec
                 <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
                     <Icon
                         className={cx(
-                            "flex cursor-pointer text-brand-hover transition-color",
-                            {"hover-child text-light-blue": !favorite},
+                            "flex cursor-pointer",
+                            {"hover-child text-light-blue text-brand-hover": !favorite},
                             {"visible text-gold": favorite}
                         )}
                         name={favorite ? "star" : "staroutline"}
