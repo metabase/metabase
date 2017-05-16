@@ -8,16 +8,11 @@ import _ from "underscore";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 
-import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
-
-import QueryHeader from "../components/QueryHeader.jsx";
-import GuiQueryEditor from "../components/GuiQueryEditor.jsx";
-import NativeQueryEditor from "../components/NativeQueryEditor.jsx";
+import CardHeader from "metabase/query_builder/components/CardHeader";
+import CardEditor from "metabase/query_builder/components/CardEditor";
 import QueryVisualization from "../components/QueryVisualization.jsx";
 import DataReference from "../components/dataref/DataReference.jsx";
 import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
-import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
-import ActionsWidget from "../components/ActionsWidget.jsx";
 
 import title from "metabase/hoc/Title";
 
@@ -53,8 +48,6 @@ import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import CardHeader from "metabase/query_builder/components/CardHeader";
-import CardEditor from "metabase/query_builder/components/CardEditor";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -162,13 +155,13 @@ export default class CardBuilder extends Component {
             window.setTimeout(this.forceUpdateDebounced, 300);
         }
 
-        // if (nextProps.location.action === "POP" && getURL(nextProps.location) !== getURL(this.props.location)) {
-        //     this.props.popState(nextProps.location);
-        // } else if (this.props.location.hash !== "#?tutorial" && nextProps.location.hash === "#?tutorial") {
-        //     this.props.initializeQB(nextProps.location, nextProps.params);
-        // } else if (getURL(nextProps.location) === "/question" && getURL(this.props.location) !== "/question") {
-        //     this.props.initializeQB(nextProps.location, nextProps.params);
-        // }
+        if (nextProps.location.action === "POP" && getURL(nextProps.location) !== getURL(this.props.location)) {
+            this.props.popState(nextProps.location);
+        } else if (this.props.location.hash !== "#?tutorial" && nextProps.location.hash === "#?tutorial") {
+            this.props.initializeQB(nextProps.location, nextProps.params);
+        } else if (getURL(nextProps.location) === "/question" && getURL(this.props.location) !== "/question") {
+            this.props.initializeQB(nextProps.location, nextProps.params);
+        }
     }
 
     componentDidUpdate() {
@@ -212,10 +205,12 @@ export default class CardBuilder extends Component {
                             </div>
 
                             <div id="react_qb_editor" className="z2 hide sm-show">
-                                <CardEditor
-                                    {...this.props}
-                                    datasetQuery={card && card.dataset_query}
-                                />
+                                <div className="wrapper">
+                                    <CardEditor
+                                        {...this.props}
+                                        datasetQuery={card && card.dataset_query}
+                                    />
+                                </div>
                             </div>
 
                             <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>

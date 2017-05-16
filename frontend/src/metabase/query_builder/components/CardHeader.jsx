@@ -28,6 +28,7 @@ import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
+import Button from "metabase/components/Button";
 
 
 export default class CardHeader extends Component {
@@ -271,7 +272,13 @@ export default class CardHeader extends Component {
                 <ModalWithTrigger
                     ref="addToDashSaveModal"
                     triggerClasses="h4 text-brand-hover text-uppercase"
-                    triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={16} /></span>}
+                    triggerElement={
+                        <Button data-metabase-event="QueryBuilder;AddToDash Modal;pre-save"
+                                icon="addtodash"
+                                iconSize={16}
+                                onlyIcon
+                        />
+                    }
                 >
                     <SaveQuestionModal
                         card={this.props.card}
@@ -289,7 +296,7 @@ export default class CardHeader extends Component {
             <Tooltip key="history" tooltip="Revision history">
                 <ModalWithTrigger
                     ref="cardHistory"
-                    triggerElement={<span className="text-brand-hover"><Icon name="history" size={18} /></span>}
+                    triggerElement={<Button icon="history" onlyIcon />}
                 >
                     <HistoryModal
                         revisions={this.state.revisions}
@@ -367,8 +374,10 @@ export default class CardHeader extends Component {
             isNativeQueryWithParameters && <ToggleTemplateTagsEditorButton />,
             isSaved && !isEditing && <AddSavedCardToDashboardButton />,
             isNewCardThatCanBeSaved && <SaveNewCardAndAddToDashboardButton />,
-            isSaved && <HistoryRevisionsButton />,
-            <QueryModeToggleButton />,
+            // TODO: See what kind of modifications the revisions feature requires
+            // isSaved && <HistoryRevisionsButton />,
+            // TODO: See how SQL will be supported and move this to the CardEditor banner
+            // <QueryModeToggleButton />,
             <DataReferenceButton />
         ].filter(_.isObject);
 
