@@ -45,7 +45,7 @@ export default class CardHeader extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         originalCard: PropTypes.object,
-        // isEditing: PropTypes.bool.isRequired,
+        isEditing: PropTypes.bool.isRequired,
         tableMetadata: PropTypes.object, // can't be required, sometimes null
         onSetCardAttribute: PropTypes.func.isRequired,
         reloadCardFn: PropTypes.func.isRequired,
@@ -58,12 +58,12 @@ export default class CardHeader extends Component {
 
     componentWillUnmount() {
         clearTimeout(this.timeout);
-        if (this.requesetPromise) {
-            this.requesetPromise.cancel();
+        if (this.requestPromise) {
+            this.requestPromise.cancel();
         }
     }
 
-    resetStateOnTimeout() {
+    resetStateOnTimeout = () => {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
         this.timeout = setTimeout(() =>
@@ -71,14 +71,14 @@ export default class CardHeader extends Component {
         , 5000);
     }
 
-    // onCreate(card, addToDash) {
+    // onCreate = (card, addToDash) => {
     //     if (card.dataset_query.query) {
     //         Query.cleanQuery(card.dataset_query.query);
     //     }
     //
     //     // TODO: reduxify
-    //     this.requesetPromise = cancelable(CardApi.create(card));
-    //     return this.requesetPromise.then(newCard => {
+    //     this.requestPromise = cancelable(CardApi.create(card));
+    //     return this.requestPromise.then(newCard => {
     //         this.props.notifyCardCreatedFn(newCard);
     //
     //         this.setState({
@@ -88,7 +88,7 @@ export default class CardHeader extends Component {
     //     });
     // }
 
-    onSave(card, addToDash) {
+    onSave = (card, addToDash) => {
         // MBQL->NATIVE
         // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
         // if (card.dataset_query.type === "native" && card.dataset_query.query) {
@@ -102,8 +102,8 @@ export default class CardHeader extends Component {
         }
 
         // TODO: reduxify
-        this.requesetPromise = cancelable(CardApi.update(card));
-        return this.requesetPromise.then(updatedCard => {
+        this.requestPromise = cancelable(CardApi.update(card));
+        return this.requestPromise.then(updatedCard => {
             if (this.props.fromUrl) {
                 this.onGoBack();
                 return;
@@ -116,56 +116,56 @@ export default class CardHeader extends Component {
                 modal: addToDash ? "add-to-dashboard" : null
             }, this.resetStateOnTimeout);
         });
-    }
+    };
 
-    onBeginEditing() {
+    onBeginEditing = () => {
         this.props.onBeginEditing();
-    }
+    };
 
-    async onCancel() {
+    onCancel = async () => {
         if (this.props.fromUrl) {
             this.onGoBack();
         } else {
             this.props.onCancelEditing();
         }
-    }
+    };
 
-    async onDelete() {
+    onDelete = async () => {
         // TODO: reduxify
         await CardApi.delete({ 'cardId': this.props.card.id });
         this.onGoBack();
         MetabaseAnalytics.trackEvent("QueryBuilder", "Delete");
-    }
+    };
 
-    onFollowBreadcrumb() {
+    onFollowBreadcrumb = () => {
         this.props.onRestoreOriginalQuery();
-    }
+    };
 
-    onToggleDataReference() {
+    onToggleDataReference = () => {
         this.props.toggleDataReferenceFn();
-    }
+    };
 
-    onGoBack() {
+    onGoBack = () => {
         this.props.onChangeLocation(this.props.fromUrl || "/");
-    }
+    };
 
-    async onFetchRevisions({ entity, id }) {
+    onFetchRevisions = async ({ entity, id }) => {
         // TODO: reduxify
         var revisions = await RevisionApi.list({ entity, id });
         this.setState({ revisions });
-    }
+    };
 
-    onRevertToRevision({ entity, id, revision_id }) {
+    onRevertToRevision = ({ entity, id, revision_id }) => {
         // TODO: reduxify
         return RevisionApi.revert({ entity, id, revision_id });
-    }
+    };
 
-    onRevertedRevision() {
+    onRevertedRevision = () => {
         this.props.reloadCardFn();
         this.refs.cardHistory.toggle();
-    }
+    };
 
-    getHeaderButtons() {
+    getHeaderButtons = () => {
         const { card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
         const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
@@ -384,11 +384,11 @@ export default class CardHeader extends Component {
         return (
             <ButtonBar buttons={buttons.map(b => [b])} className="Header-buttonSection borderless" />
         );
-    }
+    };
 
     onCloseModal = () => {
         this.setState({ modal: null });
-    }
+    };
 
     render() {
         const badgeItemStyle = "text-uppercase flex align-center no-decoration text-bold";
