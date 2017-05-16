@@ -138,7 +138,7 @@ export default class Dashboard extends Component<*, Props, State> {
             }
         } catch (error) {
             if (error.status === 404) {
-                setErrorPage(error);
+                setErrorPage({ ...error, context: "dashboard" });
             } else {
                 console.error(error);
                 this.setState({ error });
@@ -189,39 +189,39 @@ export default class Dashboard extends Component<*, Props, State> {
 
         return (
             <LoadingAndErrorWrapper className={cx("Dashboard flex-full pb4", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
-            {() =>
-                <div className="full" style={{ overflowX: "hidden" }}>
-                    <header className="DashboardHeader relative z2">
-                        <DashboardHeader
-                            {...this.props}
-                            onEditingChange={this.setEditing}
-                            setDashboardAttribute={this.setDashboardAttribute}
-                            addParameter={this.props.addParameter}
-                            parameters={parametersWidget}
-                        />
-                    </header>
-                    {!isFullscreen && parametersWidget &&
+                {() =>
+                    <div className="full" style={{ overflowX: "hidden" }}>
+                        <header className="DashboardHeader relative z2">
+                            <DashboardHeader
+                                {...this.props}
+                                onEditingChange={this.setEditing}
+                                setDashboardAttribute={this.setDashboardAttribute}
+                                addParameter={this.props.addParameter}
+                                parameters={parametersWidget}
+                            />
+                        </header>
+                        {!isFullscreen && parametersWidget &&
                         <div className="wrapper flex flex-column align-start mt2 relative z2">
                             {parametersWidget}
                         </div>
-                    }
-                    <div className="wrapper">
-
-                        { dashboard.ordered_cards.length === 0 ?
-                            <div className="absolute z1 top bottom left right flex flex-column layout-centered">
-                                <span className="QuestionCircle">?</span>
-                                <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
-                                <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
-                            </div>
-                        :
-                            <DashboardGrid
-                                {...this.props}
-                                onEditingChange={this.setEditing}
-                            />
                         }
+                        <div className="wrapper">
+
+                            { dashboard.ordered_cards.length === 0 ?
+                                <div className="absolute z1 top bottom left right flex flex-column layout-centered">
+                                    <span className="QuestionCircle">?</span>
+                                    <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
+                                    <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
+                                </div>
+                                :
+                                <DashboardGrid
+                                    {...this.props}
+                                    onEditingChange={this.setEditing}
+                                />
+                            }
+                        </div>
                     </div>
-                </div>
-            }
+                }
             </LoadingAndErrorWrapper>
         );
     }
