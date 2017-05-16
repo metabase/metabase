@@ -16,6 +16,7 @@ import Query from "metabase/lib/query";
 
 import cx from "classnames";
 import _ from "underscore";
+import AddButton from "metabase/components/AddButton";
 
 
 export default class CardEditor extends Component {
@@ -51,33 +52,6 @@ export default class CardEditor extends Component {
         supportMultipleAggregations: true
     };
 
-    renderAdd(text, onClick, targetRefName) {
-        let className = "AddButton text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
-        if (onClick) {
-            return (
-                <a className={className} onClick={onClick}>
-                    { text && <span className="mr1">{text}</span> }
-                    {this.renderAddIcon(targetRefName)}
-                </a>
-            );
-        } else {
-            return (
-                <span className={className}>
-                    { text && <span className="mr1">{text}</span> }
-                    {this.renderAddIcon(targetRefName)}
-                </span>
-            );
-        }
-    }
-
-    renderAddIcon(targetRefName) {
-        return (
-            <IconBorder borderRadius="3px" ref={targetRefName}>
-                <Icon name="add" size={14} />
-            </IconBorder>
-        )
-    }
-
     renderFilters() {
         if (!this.props.features.filter) return;
 
@@ -101,11 +75,17 @@ export default class CardEditor extends Component {
             }
 
             if (Query.canAddFilter(this.props.datasetQuery.query)) {
-                addFilterButton = this.renderAdd((filterList ? null : "Add filters to narrow your answer"), null, "addFilterTarget");
+                addFilterButton =
+                    <AddButton text={filterList ? null : "Add filters to narrow your answer"}
+                               targetRefName="addFilterTarget"
+                    />
             }
         } else {
             enabled = false;
-            addFilterButton = this.renderAdd("Add filters to narrow your answer", null, "addFilterTarget");
+            addFilterButton =
+                <AddButton text={"Add filters to narrow your answer"}
+                           targetRefName="addFilterTarget"
+                />;
         }
 
         return (
@@ -169,7 +149,7 @@ export default class CardEditor extends Component {
                         customFields={Query.getExpressions(this.props.datasetQuery.query)}
                         updateAggregation={(aggregation) => this.props.updateQueryAggregation(index, aggregation)}
                         removeAggregation={canRemoveAggregation ? this.props.removeQueryAggregation.bind(null, index) : null}
-                        addButton={this.renderAdd(null)}
+                        addButton={<AddButton />}
                     />
                 );
                 if (aggregations[index + 1] != null && aggregations[index + 1].length > 0) {
