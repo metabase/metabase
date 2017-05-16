@@ -32,7 +32,8 @@
   [{:keys [base_type special_type visibility_type] :as field}]
   {:pre [visibility_type
          (contains? field :base_type)
-         (contains? field :special_type)]}
+         ;; there is a good change this is going to break something
+         #_(contains? field :special_type)]} ;; requirement set aside in refactor, special type now crated after field values are saved.
   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
        (not (isa? (keyword base_type) :type/DateTime))
        (or (isa? (keyword base_type) :type/Boolean)

@@ -19,10 +19,20 @@
             [toucan.db :as db]))
 
 
+(defn brute-fingerprint [driver table field]
+  {:values-to-test-for-json-and-email (take driver/max-sync-lazy-seq-results ;; can this be combined with :values?
+                                           (driver/field-values-lazy-seq driver field))
+   :percent-urls            (u/try-apply (:field-percent-urls driver) field)
+   :field-avg-length        (u/try-apply (:field-avg-length driver) field)
+   :visibility-type         (:visibility_type field)
+   :values                  (db/select 'FieldValues :table-id (:id table))
+   :base_type               (:base_type field)}) ;; TODO: make this work
+
+
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
   [driver {table-id :id, :as table}]
-  (when-let [table-stats (u/prog1 (classify-table driver table-id) ;; pickup here
+  (when-let [table-stats (u/prog1 (classify/classify-table driver table-id) ;; pickup here
                            (when <>
                              (schema/validate i/AnalyzeTable <>)))]
     (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]

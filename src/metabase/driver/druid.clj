@@ -11,7 +11,8 @@
              [field :as field]
              [table :as table]]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util.ssh :as ssh]))
+            [metabase.util.ssh :as ssh]
+            [metabase.sync-database.cached-values :as cached-values]))
 
 ;;; ### Request helper fns
 
@@ -147,7 +148,7 @@
 (defn- analyze-table
   "Implementation of `analyze-table` for Druid driver."
   [driver table new-table-ids]
-  ((analyze/make-analyze-table driver
+  ((cached-values/make-analyze-table driver
      :field-avg-length-fn   (constantly 0) ; TODO implement this?
      :field-percent-urls-fn (constantly 0)
      :calculate-row-count?  false) driver table new-table-ids))

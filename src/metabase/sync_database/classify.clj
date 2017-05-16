@@ -19,50 +19,32 @@
   "Fields that have at least this percent of values that are valid URLs should be given a special type of `:type/URL`."
   0.95)
 
-(def ^:private ^:const ^Integer low-cardinality-threshold
+(def ^:const ^Integer low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`."
   300)
-
-(def ^:private ^:const ^Integer field-values-entry-max-length
-  "The maximum character length for a stored `FieldValues` entry."
-  100)
-
-(def ^:private ^:const ^Integer field-values-total-max-length
-  "Maximum total length for a FieldValues entry (combined length of all values for the field)."
-  (* low-cardinality-threshold field-values-entry-max-length))
 
 (def ^:private ^:const ^Integer average-length-no-preview-threshold
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
-
+;; save point: trying to remove driver references from here.
 (defn test-for-cardinality?
   "Should FIELD should be tested for cardinality?"
-  [field is-new?]
+  [field #_is-new?]
   (or (field-values/field-should-have-field-values? field)
       (and (nil? (:special_type field))
-           is-new?
+           #_is-new?
            (not (isa? (:base_type field) :type/DateTime))
            (not (isa? (:base_type field) :type/Collection))
            (not (= (:base_type field) :type/*)))))
 
-(defn- field-values-below-low-cardinality-threshold? [non-nil-values]
-  (and (<= (count non-nil-values) low-cardinality-threshold)
-      ;; very simple check to see if total length of field-values exceeds (total values * max per value)
-       (let [total-length (reduce + (map (comp count str) non-nil-values))]
-         (<= total-length field-values-total-max-length))))
-
-(defn test:cardinality-and-extract-field-values
-  "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
+(defn- test:category-special-type
+  "fields wtih less than low-cardinality-threshold default to :type/Category"
+  ;; this used to only apply to new fields and that was removed in refactor, does that break things
   [field field-stats]
-  ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
-  ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
-  (let [non-nil-values  (filter identity (queries/field-distinct-values field (inc low-cardinality-threshold)))
-        ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
-        distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)
-                          non-nil-values)]
-    (cond-> (assoc field-stats :values distinct-values)
-      #_(and (nil? (:special_type field))
-           (pos? (count distinct-values))) #_(assoc :special-type :type/Category))))
+  (cond-> field-stats
+    (and (test-for-cardinality? field)
+         (nil? (:special_type field))
+         (pos? (count (:values field-stats)))) (assoc :special-type :type/Category)))
 
 (defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
@@ -166,6 +148,7 @@
    We only run most of the field analysis work when the field is NEW in order to favor performance of the sync process."
   [driver field field-stats]
   (->> field-stats
+       (test:category-special-type driver field)
        (test:no-preview-display driver field)
        (test:url-special-type   driver field)
        (test:json-special-type  driver field)
@@ -175,5 +158,5 @@
   (for [{:keys [id] :as field} (table/fields table)]
     (let [new-field? #_FIXME true #_(contains? new-field-ids id)]
       (cond->> {:id id}
-        (test-for-cardinality? field new-field?) (test:cardinality-and-extract-field-values field)
+        #_(test-for-cardinality? field new-field?) #_(test:cardinality-and-extract-field-values field)
         new-field?                               (test:new-field driver field)))))

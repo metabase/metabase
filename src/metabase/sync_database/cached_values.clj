@@ -10,7 +10,9 @@
              [table :as table]]
             [metabase.sync-database.interface :as i]
             [schema.core :as schema]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.db.metadata-queries :as queries]
+            [metabase.sync-database.classify :as classify]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Drivers use these to get field values
@@ -23,6 +25,33 @@
     (catch Throwable e
       (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
+(def ^:private ^:const ^Integer field-values-entry-max-length
+  "The maximum character length for a stored `FieldValues` entry."
+  100)
+
+(def ^:private ^:const ^Integer field-values-total-max-length
+  "Maximum total length for a FieldValues entry (combined length of all values for the field)."
+  (* classify/low-cardinality-threshold field-values-entry-max-length))
+
+(defn field-values-below-low-cardinality-threshold? [non-nil-values]
+  (and (<= (count non-nil-values) classify/low-cardinality-threshold)
+      ;; very simple check to see if total length of field-values exceeds (total values * max per value)
+       (let [total-length (reduce + (map (comp count str) non-nil-values))]
+         (<= total-length field-values-total-max-length))))
+
+;; was part of test:cardinality-extract-field-values
+(defn extract-field-values
+  "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
+  [field field-stats]
+  ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
+  ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
+  (let [collecting-field-values-is-allowed? (field-values/field-should-have-field-values? field)
+        non-nil-values  (when collecting-field-values-is-allowed?
+                          (filter identity (queries/field-distinct-values field (inc classify/low-cardinality-threshold))))
+        ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
+        distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)
+                          non-nil-values)]
+    (assoc field-stats :values distinct-values)))
 
 ;; TODO - It's weird that this one function requires other functions as args when the whole rest of the Metabase driver system
 ;;        is built around protocols and record types. These functions should be put back in the `IDriver` protocol (where they
@@ -38,26 +67,13 @@
     (let [fingerprint {:field-avg-length field-avg-length-fn,
                        :field-percent-urls field-percent-urls-fn}]
       {:row_count (when calculate-row-count? (u/try-apply table-row-count table))
-       :fields    (cached-values/test:cardinality-and-extract-field-values)
+       :fields    (extract-field-values)
        #_(classify/classify-table driver table fingerprint)})))
 
 (defn generic-analyze-table
   "An implementation of `analyze-table` using the defaults (`default-field-avg-length` and `field-percent-urls`)."
   [driver table new-field-ids]
   ((make-analyze-table driver) driver table new-field-ids))
-
-(defn test:cardinality-and-extract-field-values
-  "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
-  [field field-stats]
-  ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
-  ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
-  (let [non-nil-values  (filter identity (queries/field-distinct-values field (inc low-cardinality-threshold)))
-        ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
-        distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)
-                          non-nil-values)]
-    (cond-> (assoc field-stats :values distinct-values)
-      #_(and (nil? (:special_type field))
-           (pos? (count distinct-values))) #_(assoc :special-type :type/Category))))
 
 ;;;; End of driver stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -72,7 +88,8 @@
     (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
-      ;; update table row count
+      ;; update table row count @sameer should this be saved here where it happens to be available or calculated as part of making
+      ;; the fingerprints in analyze
       (when (:row_count table-stats)
         (db/update! table/Table table-id, :rows (:row_count table-stats)))
 

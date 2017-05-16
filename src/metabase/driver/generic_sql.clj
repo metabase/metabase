@@ -18,7 +18,8 @@
             [metabase.sync-database.analyze :as analyze]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [metabase.sync-database.cached-values :as cached-values])
   (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
            [java.sql DatabaseMetaData ResultSet]
@@ -428,7 +429,7 @@
 (defn analyze-table
   "Default implementation of `analyze-table` for SQL drivers."
   [driver table new-table-ids]
-  ((analyze/make-analyze-table driver
+  ((cached-values/make-analyze-table driver
      :field-avg-length-fn   (partial field-avg-length driver)
      :field-percent-urls-fn (partial field-percent-urls driver))
    driver

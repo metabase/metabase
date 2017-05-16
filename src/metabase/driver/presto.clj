@@ -19,7 +19,8 @@
             [metabase.sync-database.analyze :as analyze]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [metabase.sync-database.cached-values :as cached-values])
   (:import java.util.Date
            [metabase.query_processor.interface DateTimeValue Value]))
 
@@ -124,7 +125,7 @@
     (if (= v "NaN") 0.0 v)))
 
 (defn- analyze-table [driver table new-table-ids]
-  ((analyze/make-analyze-table driver
+  ((cached-values/make-analyze-table driver
      :field-avg-length-fn   field-avg-length
      :field-percent-urls-fn field-percent-urls) driver table new-table-ids))
 
