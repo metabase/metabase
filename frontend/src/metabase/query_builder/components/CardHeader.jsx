@@ -391,6 +391,9 @@ export default class CardHeader extends Component {
     }
 
     render() {
+        const badgeItemStyle = "text-uppercase flex align-center no-decoration text-bold";
+        const description = this.props.card ? this.props.card.description : null;
+
         return (
             <div className="relative">
                 <HeaderBar
@@ -401,14 +404,25 @@ export default class CardHeader extends Component {
                     buttons={this.getHeaderButtons()}
                     setItemAttributeFn={this.props.onSetCardAttribute}
                     badge={this.props.card.collection &&
-                        <Link
-                            to={Urls.collection(this.props.card.collection)}
-                            className="text-uppercase flex align-center no-decoration"
-                            style={{ color: this.props.card.collection.color, fontSize: 12 }}
-                        >
-                            <Icon name="collection" size={12} style={{ marginRight: "0.5em" }} />
-                            {this.props.card.collection.name}
-                        </Link>
+                        <div className="flex">
+                            <Link
+                                to={Urls.collection(this.props.card.collection)}
+                                className={badgeItemStyle}
+                                style={{color: this.props.card.collection.color, fontSize: 12}}
+                            >
+                                <Icon name="collection" size={14} style={{marginRight: "0.5em"}}/>
+                                {this.props.card.collection.name}
+                            </Link>
+                            { description &&
+                                <div
+                                    className={cx("ml2", badgeItemStyle)}
+                                    style={{fontSize: 12}}
+                                >
+                                    <Icon name="infooutlined" size={14} style={{marginRight: "0.5em"}}/>
+                                    Details
+                                </div>
+                            }
+                        </div>
                     }
                 />
 
