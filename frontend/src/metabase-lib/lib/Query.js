@@ -17,95 +17,95 @@ import Action, { ActionClick } from "./Action";
  * This is a wrapper around a single MBQL or Native query
  */
 export default class Query {
-    @nyi setDatabase(database: Database) {}
+    setDatabase(database: Database) {}
 
-    @nyi setTable(table: Table) {}
+    setTable(table: Table) {}
 
     // AGGREGATIONS
 
-    @nyi aggregations(): Aggregation[] {
+    aggregations(): Aggregation[] {
         return [];
     }
-    @nyi aggregationOptions(): AggregationOption[] {
+    aggregationOptions(): AggregationOption[] {
         return [];
     }
-    @nyi canAddAggregation(): boolean {
+    canAddAggregation(): boolean {
         return false;
     }
 
     // BREAKOUTS
 
-    @nyi breakouts(): Breakout[] {
+    breakouts(): Breakout[] {
         return [];
     }
-    @nyi breakoutableDimensions(unused: boolean = false): Dimension[] {
+    breakoutableDimensions(unused: boolean = false): Dimension[] {
         return [];
     }
-    @nyi canAddBreakout(): boolean {
+    canAddBreakout(): boolean {
         return false;
     }
 
     // FILTERS
 
-    @nyi filters(): Filter[] {
+    filters(): Filter[] {
         return [];
     }
-    @nyi filterableDimensions(): Dimension[] {
+    filterableDimensions(): Dimension[] {
         return [];
     }
-    @nyi canAddFilter(): boolean {
+    canAddFilter(): boolean {
         return false;
     }
 
     // SORTS
 
-    @nyi sorts(): Sort[] {
+    sorts(): Sort[] {
         return [];
     }
-    @nyi sortOptions(): SortOption[] {
+    sortOptions(): SortOption[] {
         return [];
     }
-    @nyi canAddSort(): boolean {
+    canAddSort(): boolean {
         return false;
     }
 
     // LIMIT
 
-    @nyi setLimit(limit: number): void {}
+    setLimit(limit: number): void {}
 
     // NATIVE QUERY
 
-    @nyi getNativeQuery(): string {
+    getNativeQuery(): string {
         // this requires the result dataset, or a call to the server
         return "";
     }
-    @nyi convertToNativeQuery() {
+    convertToNativeQuery() {
         // this requires the result dataset, or a call to the server
     }
 
     /**
      * Top level actions that can be performed on this query
      */
-    @nyi actions(): Action[] {
+    actions(): Action[] {
         return [];
     }
 
     /**
      * Drill through actions that can be performed on a part of the result setParameter
      */
-    @nyi actionsForClick(click: ActionClick): Action[] {
+    actionsForClick(click: ActionClick): Action[] {
         return [];
     }
 
     /**
      * Query is valid (as far as we know) and can be executed
      */
-    @nyi canRun(): boolean {
+    canRun(): boolean {
         return false;
     }
 
     /**
      * Run the query
      */
-    @nyi run() {}
+    run() {}
 }

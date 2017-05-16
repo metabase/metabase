@@ -18,7 +18,7 @@ export default class Table {
 
     fields: Field[];
 
-    @nyi newQuestion(): Question {
+    newQuestion(): Question {
         return new Question();
     }
 }

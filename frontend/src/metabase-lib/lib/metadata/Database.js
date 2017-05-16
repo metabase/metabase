@@ -17,7 +17,7 @@ export default class Database {
     tables: Table[];
     schemas: Schema[];
 
-    @nyi newQuestion(): Question {
+    newQuestion(): Question {
         return new Question();
     }
 }

@@ -52,42 +52,42 @@ export default class Question {
     }
 
     // multiple series can be pivoted
-    @nyi breakouts(): Breakout[] {
+    breakouts(): Breakout[] {
         return [];
     }
-    @nyi breakoutDimensions(unused: boolean = false): Dimension[] {
+    breakoutDimensions(unused: boolean = false): Dimension[] {
         return [];
     }
-    @nyi canAddBreakout(): boolean {
+    canAddBreakout(): boolean {
         return false;
     }
 
     // multiple series can be filtered by shared dimensions
-    @nyi filters(): Filter[] {
+    filters(): Filter[] {
         return [];
     }
-    @nyi filterableDimensions(): Dimension[] {
+    filterableDimensions(): Dimension[] {
         return [];
     }
-    @nyi canAddFilter(): boolean {
+    canAddFilter(): boolean {
         return false;
     }
 
-    // @nyi canAddMetric(): boolean {
+    // canAddMetric(): boolean {
     //     return false;
     // }
-    // @nyi addMetric(datasetQuery: DatasetQuery, dimensionMapping: DimensionMapping): void {
+    // addMetric(datasetQuery: DatasetQuery, dimensionMapping: DimensionMapping): void {
     // }
-    // @nyi getMetrics(): Query[] {
+    // getMetrics(): Query[] {
     //     return this.queries;
     // }
-    // @nyi removeMetric(metricId: number) {
+    // removeMetric(metricId: number) {
     // }
-    // @nyi remapMetricDimension(metricID, newDimensionMapping: DimensionMapping) {
+    // remapMetricDimension(metricID, newDimensionMapping: DimensionMapping) {
     // }
 
     // top-level actions
-    @nyi actions(): Action[] {
+    actions(): Action[] {
         // if this is a single query question, the top level actions are
         // the querys actions
         if (this.queries.length === 1) {
@@ -99,7 +99,7 @@ export default class Question {
     }
 
     // drill-through etc actions
-    @nyi actionsForClick(click: ActionClick): Action[] {
+    actionsForClick(click: ActionClick): Action[] {
         // if this is a single query question, the top level actions are
         // the querys actions
         if (this.queries.length === 1) {
@@ -111,54 +111,54 @@ export default class Question {
     }
 
     // Information
-    @nyi getUrl(): string {
+    getUrl(): string {
         return "";
     }
-    @nyi getLineage(): ?Question {
+    getLineage(): ?Question {
         return null;
     }
 
-    @nyi getPublicUrl(): string {
+    getPublicUrl(): string {
         return "";
     }
-    @nyi getDownloadURL(format: DownloadFormat): string {
+    getDownloadURL(format: DownloadFormat): string {
         return "";
     }
 
     // These methods require integration with Redux actions or REST API
-    @nyi update(): Promise<void> {
+    update(): Promise<void> {
         return new Promise(() => {});
     }
-    @nyi save(): Promise<void> {
+    save(): Promise<void> {
         return new Promise(() => {});
     }
-    @nyi revert(revisionId: RevisionId): Promise<void> {
+    revert(revisionId: RevisionId): Promise<void> {
         return new Promise(() => {});
     }
-    @nyi enablePublicSharing(): Promise<void> {
+    enablePublicSharing(): Promise<void> {
         return new Promise(() => {});
     }
-    @nyi disablePublicSharing(): Promise<void> {
+    disablePublicSharing(): Promise<void> {
         return new Promise(() => {});
     }
-    @nyi publishAsEmbeddable(): Promise<void> {
+    publishAsEmbeddable(): Promise<void> {
         return new Promise(() => {});
     }
-    @nyi getVersionHistory(): Promise<void> {
+    getVersionHistory(): Promise<void> {
         return new Promise(() => {});
     }
-    @nyi run(): Promise<void> {
+    run(): Promise<void> {
         return new Promise(() => {});
     }
 
-    @nyi parameters(): Parameter[] {
+    parameters(): Parameter[] {
         return [];
     }
-    @nyi editableParameters(): Parameter[] {
+    editableParameters(): Parameter[] {
         return [];
     }
 
-    @nyi createParameter(parameter: ParameterOptions) {}
-    @nyi updateParameter(id: ParameterId, parameter: ParameterOptions) {}
-    @nyi deleteParameter(id: ParameterId) {}
+    createParameter(parameter: ParameterOptions) {}
+    updateParameter(id: ParameterId, parameter: ParameterOptions) {}
+    deleteParameter(id: ParameterId) {}
 }

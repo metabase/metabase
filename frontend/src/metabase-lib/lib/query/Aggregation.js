@@ -6,8 +6,8 @@ export default class Aggregation {
     displayName: string;
     icon: string;
 
-    @nyi remove() {}
-    @nyi options(): AggregationOption[] {
+    remove() {}
+    options(): AggregationOption[] {
         return [];
     }
 }
@@ -18,5 +18,5 @@ export class AggregationOption {
     section: string;
     isSelected: ?boolean;
 
-    @nyi add() {}
+    add() {}
 }

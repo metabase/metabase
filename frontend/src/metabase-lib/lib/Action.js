@@ -3,7 +3,7 @@
 import { nyi } from "./utils";
 
 export default class Action {
-    @nyi perform() {}
+    perform() {}
 }
 
 export class ActionClick {}

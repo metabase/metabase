@@ -16,7 +16,7 @@ export default class Metric {
     database: Database;
     table: ?Table;
 
-    @nyi newQuestion(): Question {
+    newQuestion(): Question {
         return new Question();
     }
 }

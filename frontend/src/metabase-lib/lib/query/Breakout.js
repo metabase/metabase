@@ -6,8 +6,8 @@ export default class Breakout {
     displayName: string;
     icon: string;
 
-    @nyi remove() {}
-    @nyi options(): BreakoutOption[] {
+    remove() {}
+    options(): BreakoutOption[] {
         return [];
     }
 }
@@ -18,5 +18,5 @@ export class BreakoutOption {
     section: string;
     isSelected: ?boolean;
 
-    @nyi add() {}
+    add() {}
 }
