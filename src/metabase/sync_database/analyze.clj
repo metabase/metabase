@@ -19,43 +19,21 @@
             [toucan.db :as db]))
 
 
-(defn table-row-count
-  "Determine the count of rows in TABLE by running a simple structured MBQL query."
-  [table]
-  {:pre [(integer? (:id table))]}
-  (try
-    (queries/table-row-count table)
-    (catch Throwable e
-      (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
-
-
-;; TODO - It's weird that this one function requires other functions as args when the whole rest of the Metabase driver system
-;;        is built around protocols and record types. These functions should be put back in the `IDriver` protocol (where they
-;;        were originally) or in a special `IAnalyzeTable` protocol).
-(defn make-analyze-table
-  "Make a generic implementation of `analyze-table`."
-  {:style/indent 1}
-  [driver & {:keys [field-avg-length-fn field-percent-urls-fn calculate-row-count?]
-             :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
-                    field-percent-urls-fn (partial driver/default-field-percent-urls driver)
-                    calculate-row-count?  true}}]
-  (fn [driver table new-field-ids]
-    (let [fingerprint {:field-avg-length field-avg-length-fn,
-                       :field-percent-urls field-percent-urls-fn}]
-      {:row_count (when calculate-row-count? (u/try-apply table-row-count table))
-       :fields    (classify/classify-table driver table fingerprint)})))
-
-(defn generic-analyze-table
-  "An implementation of `analyze-table` using the defaults (`default-field-avg-length` and `field-percent-urls`)."
-  [driver table new-field-ids]
-  ((make-analyze-table driver) driver table new-field-ids))
-
-
-
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
   [driver {table-id :id, :as table}]
-  (let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], :last_analyzed nil)]
+  (when-let [table-stats (u/prog1 (classify-table driver table-id) ;; pickup here
+                           (when <>
+                             (schema/validate i/AnalyzeTable <>)))]
+    (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]
+        ;; set Field metadata we may have detected
+        (when (and id (or preview-display special-type))
+          (db/update-non-nil-keys! field/Field id
+            ;; if a field marked `preview-display` as false then set the visibility
+            ;; type to `:details-only` (see models.field/visibility-types)
+            :visibility_type (when (false? preview-display) :details-only)
+            :special_type    special-type))))
+  #_(let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], :last_analyzed nil)]
     ;; TODO: this call should include the database
     (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
                              (when <>
@@ -78,7 +56,7 @@
           (field-values/clear-field-values! id))))
 
     ;; update :last_analyzed for all fields in the table
-    (db/update-where! field/Field {:table_id        table-id
+    #_(db/update-where! field/Field {:table_id        table-id
                                    :visibility_type [:not= "retired"]}
       :last_analyzed (u/new-sql-timestamp))))
 

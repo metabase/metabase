@@ -61,8 +61,8 @@
         distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)
                           non-nil-values)]
     (cond-> (assoc field-stats :values distinct-values)
-      (and (nil? (:special_type field))
-           (pos? (count distinct-values))) (assoc :special-type :type/Category))))
+      #_(and (nil? (:special_type field))
+           (pos? (count distinct-values))) #_(assoc :special-type :type/Category))))
 
 (defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
