@@ -35,7 +35,8 @@ export default class GuiQueryEditor extends Component {
         setDatasetQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func,
         setSourceTableFn: PropTypes.func,
-        features: PropTypes.object
+        features: PropTypes.object,
+        supportMultipleAggregations: PropTypes.bool
     };
 
     static defaultProps = {
@@ -46,7 +47,8 @@ export default class GuiQueryEditor extends Component {
             breakout: true,
             sort: true,
             limit: true
-        }
+        },
+        supportMultipleAggregations: true
     };
 
     renderAdd(text, onClick, targetRefName) {
@@ -134,7 +136,7 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAggregation() {
-        const { datasetQuery: { query }, tableMetadata } = this.props;
+        const { datasetQuery: { query }, tableMetadata, supportMultipleAggregations } = this.props;
 
         if (!this.props.features.aggregation) {
             return;
@@ -152,7 +154,8 @@ export default class GuiQueryEditor extends Component {
 
             const canRemoveAggregation = aggregations.length > 1;
 
-            if (!isBareRows) {
+            if (supportMultipleAggregations && !isBareRows) {
+                // Placeholder aggregation for showing the add button
                 aggregations.push([]);
             }
 
