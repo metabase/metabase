@@ -29,7 +29,9 @@ type Props = {
     width:          number,
     height:         number,
     setErrorPage:   (error: { status: number }) => void,
-    addParamValues: (any) => void
+    addParamValues: (any) => void,
+
+    instanceIsPremium: boolean,
 };
 
 type State = {
@@ -60,7 +62,7 @@ export default class PublicQuestion extends Component<*, Props, State> {
 
     // $FlowFixMe
     async componentWillMount() {
-        const { setErrorPage, params: { uuid, token }, location: { query }} = this.props;
+        const { setErrorPage, params: { uuid, token }, location: { query } } = this.props;
         try {
             let card;
             if (token) {
@@ -134,7 +136,7 @@ export default class PublicQuestion extends Component<*, Props, State> {
     }
 
     render() {
-        const { params: { uuid, token } } = this.props;
+        const { params: { uuid, token }, instanceIsPremium } = this.props;
         const { card, result, parameterValues } = this.state;
 
         const actionButtons = result && (
@@ -154,6 +156,7 @@ export default class PublicQuestion extends Component<*, Props, State> {
                 actionButtons={actionButtons}
                 parameterValues={parameterValues}
                 setParameterValue={this.setParameterValue}
+                instanceIsPremium={instanceIsPremium}
             >
                 <LoadingAndErrorWrapper loading={!result}>
                 { () =>

@@ -60,6 +60,9 @@
                 "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."))
             (setting/set-string! :embedding-secret-key new-value)))
 
+(setting/defsetting ^:private embedding-premium-key
+  "The key you receive when paying for premium embedding")
+
 (defn- jwt-header
   "Parse a JWT MESSAGE and return the header portion."
   [^String message]

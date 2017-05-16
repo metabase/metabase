@@ -225,6 +225,12 @@ const SECTIONS = [
                 getHidden: (settings) => !settings["enable-embedding"]
             },
             {
+                key: "embedding-premium-key",
+                display_name: "Embedding premium key",
+                type: "string",
+                getHidden: (settings) => !settings["enable-embedding"]
+            },
+            {
                 key: "-embedded-dashboards",
                 display_name: "Embedded Dashboards",
                 widget: EmbeddedDashboardListing,

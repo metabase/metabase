@@ -81,6 +81,7 @@ var config = module.exports = {
         "app-main": './app-main.js',
         "app-public": './app-public.js',
         "app-embed": './app-embed.js',
+        "app-embed-premium": './app-embed-premium.js',
         styles: './css/index.css',
     },
 
@@ -163,6 +164,13 @@ var config = module.exports = {
             inject: 'head',
             alwaysWriteToDisk: true,
         }),
+        new HtmlWebpackPlugin({
+            filename: '../../embed-premium.html',
+            chunks: ["app-embed-premium", "styles"],
+            template: __dirname + '/resources/frontend_client/index_template.html',
+            inject: 'head',
+            alwaysWriteToDisk: true,
+        }),
         new HtmlWebpackHarddiskPlugin({
             outputPath: __dirname + '/resources/frontend_client/app/dist'
         }),
@@ -181,6 +189,9 @@ var config = module.exports = {
                 },
                 'app-embed': {
                     beforeContent: "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE-EMBEDDING.txt', which is part of this source code package.\n */\n",
+                },
+                'app-embed-premium': {
+                    beforeContent: "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE-EMBEDDING-PREMIUM.txt', which is part of this source code package.\n */\n",
                 },
             }
         }),
