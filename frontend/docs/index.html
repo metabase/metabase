@@ -1,0 +1,966 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8' />
+  <title>metabase 0.0.0 | Documentation</title>
+  <meta name='viewport' content='width=device-width,initial-scale=1'>
+  <link href='assets/bass.css' type='text/css' rel='stylesheet' />
+  <link href='assets/style.css' type='text/css' rel='stylesheet' />
+  <link href='assets/github.css' type='text/css' rel='stylesheet' />
+</head>
+<body class='documentation'>
+  <div class='max-width-4 mx-auto'>
+    <div class='clearfix md-mxn2'>
+      <div class='fixed xs-hide fix-3 overflow-auto max-height-100'>
+        <div class='py1 px2'>
+          <h3 class='mb0 no-anchor'>metabase</h3>
+          <div class='mb1'><code>0.0.0</code></div>
+          <input
+            placeholder='Filter'
+            id='filter-input'
+            class='col12 block input'
+            type='text' />
+          <div id='toc'>
+            <ul class='list-reset h5 py1-ul'>
+              
+                
+                <li><a
+                  href='#database'
+                  class="">
+                  Database
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#field'
+                  class="">
+                  Field
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#metadata'
+                  class="">
+                  Metadata
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#metric'
+                  class="">
+                  Metric
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#schema'
+                  class="">
+                  Schema
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#segment'
+                  class="">
+                  Segment
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#query'
+                  class="">
+                  Query
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#nyi'
+                  class="">
+                  nyi
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#nyi'
+                  class="">
+                  nyi
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#nyi'
+                  class="">
+                  nyi
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#nyi'
+                  class="">
+                  nyi
+                  
+                </a>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#question'
+                  class=" toggle-sibling">
+                  Question
+                  <span class='icon'>▸</span>
+                </a>
+                
+                <div class='toggle-target display-none'>
+                  
+                  
+                    <ul class='list-reset py1-ul pl1'>
+                      <li class='h5'><span>Instance members</span></li>
+                      
+                      <li><a
+                        href='#Question#queries'
+                        class='regular pre-open'>
+                        #queries
+                      </a></li>
+                      
+                      <li><a
+                        href='#Question#constructor'
+                        class='regular pre-open'>
+                        #constructor
+                      </a></li>
+                      
+                      <li><a
+                        href='#Question#query'
+                        class='regular pre-open'>
+                        #query
+                      </a></li>
+                      
+                      <li><a
+                        href='#Question#canRun'
+                        class='regular pre-open'>
+                        #canRun
+                      </a></li>
+                      
+                    </ul>
+                  
+                  
+                  
+                </div>
+                
+                </li>
+              
+            </ul>
+          </div>
+          <div class='mt1 h6 quiet'>
+            <a href='http://documentation.js.org/reading-documentation.html'>Need help reading this?</a>
+          </div>
+        </div>
+      </div>
+      <div class='fix-margin-3'>
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='database'>
+      Database
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Wrapper class for database metadata objects. Contains <a href="#schema">Schema</a>s, <a href="Table">Table</a>s, <a href="#metric">Metric</a>s, <a href="#segment">Segment</a>s.</p>
+
+
+  <div class='pre p1 fill-light mt0'>new Database()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='field'>
+      Field
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Wrapper class for field metadata objects. Belongs to a Table.</p>
+
+
+  <div class='pre p1 fill-light mt0'>new Field()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='metadata'>
+      Metadata
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Wrapper class for the entire metadata store</p>
+
+
+  <div class='pre p1 fill-light mt0'>new Metadata()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='metric'>
+      Metric
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Wrapper class for a metric. Belongs to a <a href="#database">Database</a> and possibly a <a href="Table">Table</a></p>
+
+
+  <div class='pre p1 fill-light mt0'>new Metric()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='schema'>
+      Schema
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Wrapper class for a <a href="#database">Database</a> schema. Contains <a href="Table">Table</a>s.</p>
+
+
+  <div class='pre p1 fill-light mt0'>new Schema()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='segment'>
+      Segment
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Wrapper class for a segment. Belongs to a <a href="#database">Database</a> and possibly a <a href="Table">Table</a></p>
+
+
+  <div class='pre p1 fill-light mt0'>new Segment()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='query'>
+      Query
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>This is a wrapper around a single MBQL or Native query</p>
+
+
+  <div class='pre p1 fill-light mt0'>new Query()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='nyi'>
+      nyi
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Top level actions that can be performed on this query</p>
+
+
+  <div class='pre p1 fill-light mt0'>nyi</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='nyi'>
+      nyi
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Drill through actions that can be performed on a part of the result setParameter</p>
+
+
+  <div class='pre p1 fill-light mt0'>nyi</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='nyi'>
+      nyi
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Query is valid (as far as we know) and can be executed</p>
+
+
+  <div class='pre p1 fill-light mt0'>nyi</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='nyi'>
+      nyi
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>Run the query</p>
+
+
+  <div class='pre p1 fill-light mt0'>nyi</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    
+    <h3 class='fl m0' id='question'>
+      Question
+    </h3>
+    
+    
+  </div>
+  
+
+  <p>This is a wrapper around a question/card object, which may contain one or more Query objects</p>
+
+
+  <div class='pre p1 fill-light mt0'>new Question()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Instance Members</div>
+    <div class="clearfix">
+  
+    <div class='border-bottom' id='Question#queries'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>queries</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>A question has one or more queries</p>
+
+
+  <div class='pre p1 fill-light mt0'>queries</div>
+  
+    <p>
+      Type:
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>&#x3C;<a href="#query">Query</a>>
+    </p>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='Question#constructor'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>constructor()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Question constructor</p>
+
+
+  <div class='pre p1 fill-light mt0'>constructor()</div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='Question#query'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>query()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Helper for single query centric cards</p>
+
+
+  <div class='pre p1 fill-light mt0'>query(): <a href="#query">Query</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="#query">Query</a></code>
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='Question#canRun'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>canRun()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>Question is valid (as far as we know) and can be executed</p>
+
+
+  <div class='pre p1 fill-light mt0'>canRun(): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></div>
+  
+  
+
+  
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Boolean">boolean</a></code>
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+</div>
+
+  
+
+  
+</section>
+
+          
+        
+      </div>
+    </div>
+  </div>
+  <script src='assets/anchor.js'></script>
+  <script src='assets/site.js'></script>
+</body>
+</html>
