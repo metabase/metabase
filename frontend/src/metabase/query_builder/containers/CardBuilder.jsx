@@ -50,6 +50,7 @@ import { MetabaseApi } from "metabase/services";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
 import ActionsWidget from "metabase/query_builder/components/ActionsWidget";
+import CardFiltersWidget from "metabase/query_builder/components/CardFiltersWidget";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -198,6 +199,7 @@ export default class CardBuilder extends Component {
         const ModeFooter = mode && mode.ModeFooter;
 
         const isInitializing = !card || !databases;
+        const showVisualizationSettings = !this.props.isObjectDetail;
 
         return (
             <LoadingAndErrorWrapper loading={isInitializing} noBackground={true} showSpinner={false}>
@@ -208,7 +210,7 @@ export default class CardBuilder extends Component {
                                 <CardHeader {...this.props}/>
                             </div>
 
-                            <div id="react_qb_editor" className="z2 hide sm-show">
+                            <div id="react_qb_editor" className="z2 hide sm-show mb2">
                                 <div className="wrapper">
                                     <CardEditor
                                         {...this.props}
@@ -221,9 +223,6 @@ export default class CardBuilder extends Component {
                                 <QueryVisualization {...this.props} noHeader className="full wrapper mb2 z1" />
                             </div>
 
-                            <div className="z4 absolute left bottom hide sm-show mb3 ml4">
-                                { !this.props.isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
-                            </div>
 
                             { ModeFooter &&
                                 <ModeFooter {...this.props} className="flex-no-shrink" />
@@ -238,6 +237,21 @@ export default class CardBuilder extends Component {
                             { uiControls.isShowingTemplateTagsEditor &&
                                 <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                             }
+                        </div>
+
+                        { showVisualizationSettings &&
+                        <div className="z4 absolute left bottom mb3 ml4">
+                            <div style={{backgroundColor: "white"}}>
+                                <VisualizationSettings ref="settings" {...this.props} />
+                            </div>
+                        </div>
+                        }
+
+                        <div className="z2 absolute right bottom mb3" style={{marginRight: "80px"}}>
+                            <CardFiltersWidget
+                                {...this.props}
+                                datasetQuery={card && card.dataset_query}
+                            />
                         </div>
 
                         <ActionsWidget {...this.props} className="z2 absolute bottom right" />

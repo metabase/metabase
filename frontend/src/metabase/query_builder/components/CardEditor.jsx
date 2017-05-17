@@ -5,9 +5,6 @@ import ReactDOM from "react-dom";
 import AggregationWidget from './AggregationWidget.jsx';
 import BreakoutWidget from './BreakoutWidget.jsx';
 import DataSelector from './DataSelector.jsx';
-import FilterList from './filters/FilterList.jsx';
-import FilterPopover from './filters/FilterPopover.jsx';
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import { duration } from "metabase/lib/formatting";
 
 import Query from "metabase/lib/query";
@@ -57,69 +54,6 @@ export default class CardEditor extends Component {
         },
         supportMultipleAggregations: true
     };
-
-    renderFilters() {
-        if (!this.props.features.filter) return;
-
-        let enabled;
-        let filterList;
-        let addFilterButton;
-
-        if (this.props.tableMetadata) {
-            enabled = true;
-
-            let filters = Query.getFilters(this.props.datasetQuery.query);
-            if (filters && filters.length > 0) {
-                filterList = (
-                    <FilterList
-                        filters={filters}
-                        tableMetadata={this.props.tableMetadata}
-                        removeFilter={this.props.removeQueryFilter}
-                        updateFilter={this.props.updateQueryFilter}
-                    />
-                );
-            }
-
-            if (Query.canAddFilter(this.props.datasetQuery.query)) {
-                addFilterButton =
-                    <AddButton text={filterList ? null : "Add filters to narrow your answer"}
-                               targetRefName="addFilterTarget"
-                    />
-            }
-        } else {
-            enabled = false;
-            addFilterButton =
-                <AddButton text={"Add filters to narrow your answer"}
-                           targetRefName="addFilterTarget"
-                />;
-        }
-
-        return (
-            <div className={cx("Query-section", { disabled: !enabled })}>
-                <div className="Query-filters">
-                    {filterList}
-                </div>
-                <div className="mx2">
-                    <PopoverWithTrigger
-                        id="FilterPopover"
-                        ref="filterPopover"
-                        triggerElement={addFilterButton}
-                        triggerClasses="flex align-center"
-                        getTarget={() => this.refs.addFilterTarget}
-                        horizontalAttachments={["left"]}
-                    >
-                        <FilterPopover
-                            isNew={true}
-                            tableMetadata={this.props.tableMetadata || {}}
-                            customFields={Query.getExpressions(this.props.datasetQuery.query)}
-                            onCommitFilter={this.props.addQueryFilter}
-                            onClose={() => this.refs.filterPopover.close()}
-                        />
-                    </PopoverWithTrigger>
-                </div>
-            </div>
-        );
-    }
 
     renderAggregation() {
         const { datasetQuery: { query }, tableMetadata, supportMultipleAggregations } = this.props;
@@ -253,19 +187,6 @@ export default class CardEditor extends Component {
                         {this.props.tableMetadata && this.props.tableMetadata.display_name}
                     </span>
                 }
-            </div>
-        );
-    }
-
-    renderFilterSection() {
-        if (!this.props.features.filter) {
-            return;
-        }
-
-        return (
-            <div className="GuiBuilder-section GuiBuilder-filtered-by flex align-center" ref="filterSection">
-                <span className="GuiBuilder-section-label Query-label">Filtered by</span>
-                {this.renderFilters()}
             </div>
         );
     }
