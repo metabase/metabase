@@ -51,8 +51,10 @@
       (sql/handle-additional-options details)))
 
 (defn- dash-to-underscore [s]
-  (s/replace s #"-" "_"))
+  (when s
+    (s/replace s #"-" "_")))
 
+;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defn describe-database [driver {:keys [details] :as database}]
   {:tables (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
              (set (for [result (jdbc/query {:connection conn}
@@ -61,6 +63,7 @@
                     {:name (:tablename result)
                      :schema nil})))})
 
+;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defn describe-table [driver {:keys [details] :as database} table]
   (with-open [conn (jdbc/get-connection (sql/db->jdbc-connection-spec database))]
     {:name (:name table)

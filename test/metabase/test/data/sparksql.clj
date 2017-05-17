@@ -67,7 +67,6 @@
           (.setAutoCommit conn false)
           (jdbc/execute! {:connection conn} sql+args {:transaction? false}))
         (catch java.sql.SQLException e
-          (println (u/format-color 'red "(sparksql) INSERT FAILED: \n%s\n" sql+args))
           (jdbc/print-sql-exception-chain e))))))
 
 (defn make-load-data-fn
