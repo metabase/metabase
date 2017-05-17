@@ -105,26 +105,26 @@
                                        3.0)))
     :year (hsql/call :extract "year" (hx/->timestamp expr))))
 
-(defprotocol ^:private IUnprepare
-  (unprepare-arg ^String [this]))
+(defprotocol ^:private IDrillUnprepare
+  (drill-unprepare-arg ^String [this]))
 
-(extend-protocol IUnprepare
-  nil     (unprepare-arg [this] "NULL")
-  String  (unprepare-arg [this] (str \' (s/replace this "'" "''") \')) ; escape single-quotes
-  Boolean (unprepare-arg [this] (if this "TRUE" "FALSE"))
-  Number  (unprepare-arg [this] (str this))
-  Date    (unprepare-arg [this] (first (hsql/format
-                                        (hsql/call :to_timestamp
+(extend-protocol IDrillUnprepare
+  nil     (drill-unprepare-arg [this] "NULL")
+  String  (drill-unprepare-arg [this] (str \' (s/replace this "'" "''") \')) ; escape single-quotes
+  Boolean (drill-unprepare-arg [this] (if this "TRUE" "FALSE"))
+  Number  (drill-unprepare-arg [this] (str this))
+  Date    (drill-unprepare-arg [this] (first (hsql/format
+                                                 (hsql/call :to_timestamp
                                                    (hx/literal (u/date->iso-8601 this))
                                                    (hx/literal "YYYY-MM-dd''T''HH:mm:ss.SSSZ"))))))
 
-(defn- unprepare
+(defn- drill-unprepare
   "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement."
   ^String [[sql & args]]
   (loop [sql sql, [arg & more-args, :as args] args]
     (if-not (seq args)
       sql
-      (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-arg arg))
+      (recur (s/replace-first sql #"(?<!\?)\?(?!\?)" (drill-unprepare-arg arg))
              more-args))))
 
 (defn qualified-name-components
@@ -139,13 +139,12 @@
 (defn field->identifier [field]
   (apply hsql/qualify (qualified-name-components field)))
 
-
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native, :as outer-query}]
   (let [query (-> (assoc query :remark (qputil/query->remark outer-query))
                   (assoc :query (if (seq (:params query))
-                                  (unprepare (cons (:query query) (:params query)))
+                                  (drill-unprepare (cons (:query query) (:params query)))
                                   (:query query)))
                   (dissoc :params))]
     (hive-like/do-with-try-catch

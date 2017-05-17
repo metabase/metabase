@@ -96,7 +96,7 @@
 (defn- unprepare [x]
   (if (instance? honeysql.types.SqlRaw x)
     (s/join " " (hsql/format x))
-    (drill-driver/unprepare-arg x)))
+    (drill-driver/drill-unprepare-arg x)))
 
 (defn make-row-formatter [field-definitions]
   (let [field-name->base-type (reduce (fn [acc {:keys [field-name base-type]}]
