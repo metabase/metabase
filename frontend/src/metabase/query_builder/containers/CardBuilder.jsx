@@ -223,9 +223,9 @@ export default class CardBuilder extends Component {
                                 <QueryVisualization {...this.props} noHeader className="full wrapper mb2 z1" />
                             </div>
 
-
-                            { ModeFooter &&
+                            { ModeFooter ?
                                 <ModeFooter {...this.props} className="flex-no-shrink" />
+                                : <div style={{height: "70px"}} />
                             }
                         </div>
 
@@ -240,11 +240,11 @@ export default class CardBuilder extends Component {
                         </div>
 
                         { showVisualizationSettings &&
-                        <div className="z4 absolute left bottom mb3 ml4">
-                            <div style={{backgroundColor: "white"}}>
-                                <VisualizationSettings ref="settings" {...this.props} />
+                            <div className="z4 absolute left bottom mb3 ml4">
+                                <div style={{backgroundColor: "white"}}>
+                                    <VisualizationSettings ref="settings" {...this.props} />
+                                </div>
                             </div>
-                        </div>
                         }
 
                         <div className="z2 absolute right bottom mb3" style={{marginRight: "80px"}}>

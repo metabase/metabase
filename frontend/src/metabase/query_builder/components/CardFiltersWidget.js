@@ -21,12 +21,7 @@ export default class CardFiltersWidget extends Component {
     };
 
     render() {
-        let enabled;
-        let filterList;
-
         if (this.props.tableMetadata) {
-            enabled = true;
-
             let filters = Query.getFilters(this.props.datasetQuery.query);
             if (filters && filters.length > 0) {
                 return (
@@ -37,9 +32,8 @@ export default class CardFiltersWidget extends Component {
                     />
                 );
             }
-        } else {
-            return;
         }
 
+        return null;
     }
 }

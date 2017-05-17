@@ -115,7 +115,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
         return (
             <div className={cx(className, "relative")}>
                 <div
-                    className="circular bg-brand flex layout-centered m4 cursor-pointer"
+                    className="circular bg-brand flex layout-centered m3 cursor-pointer"
                     style={{
                         width: CIRCLE_SIZE,
                         height: CIRCLE_SIZE,
