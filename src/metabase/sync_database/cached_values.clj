@@ -67,7 +67,8 @@
     (let [fingerprint {:field-avg-length field-avg-length-fn,
                        :field-percent-urls field-percent-urls-fn}]
       {:row_count (when calculate-row-count? (u/try-apply table-row-count table))
-       :fields    (extract-field-values)
+       :fields    (for [id new-field-ids]
+                    (extract-field-values id {:id id}))
        #_(classify/classify-table driver table fingerprint)})))
 
 (defn generic-analyze-table
@@ -104,7 +105,7 @@
           (field-values/clear-field-values! id))))
 
     ;; Keep track of how old the cache is on these fields
-    (db/update-where! field/Field {:table_id        table-id
+    #_(db/update-where! field/Field {:table_id        table-id ;;  :TODO fix this
                                    :visibility_type [:not= "retired"]}
       :last_cached (u/new-sql-timestamp))))
 

@@ -19,56 +19,76 @@
             [toucan.db :as db]))
 
 
-(defn brute-fingerprint [driver table field]
-  {:values-to-test-for-json-and-email (take driver/max-sync-lazy-seq-results ;; can this be combined with :values?
-                                           (driver/field-values-lazy-seq driver field))
-   :percent-urls            (u/try-apply (:field-percent-urls driver) field)
-   :field-avg-length        (u/try-apply (:field-avg-length driver) field)
-   :visibility-type         (:visibility_type field)
-   :values                  (db/select 'FieldValues :table-id (:id table))
-   :base_type               (:base_type field)}) ;; TODO: make this work
+(defn- values-are-valid-json?
+  "`true` if at every item in VALUES is `nil` or a valid string-encoded JSON dictionary or array, and at least one of those is non-nil."
+  [values]
+  (try
+    (loop [at-least-one-non-nil-value? false, [val & more] values]
+      (cond
+        (and (not val)
+             (not (seq more))) at-least-one-non-nil-value?
+        (s/blank? val)         (recur at-least-one-non-nil-value? more)
+        ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
+        ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
+        :else                  (do (u/prog1 (json/parse-string val)
+                                     (assert (or (map? <>)
+                                                 (sequential? <>))))
+                                   (recur true more))))
+    (catch Throwable _
+      false)))
 
+(defn- values-are-valid-emails?
+  "`true` if at every item in VALUES is `nil` or a valid email, and at least one of those is non-nil."
+  [values]
+  (try
+    (loop [at-least-one-non-nil-value? false, [val & more] values]
+      (cond
+        (and (not val)
+             (not (seq more))) at-least-one-non-nil-value?
+        (s/blank? val)         (recur at-least-one-non-nil-value? more)
+        ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
+        ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
+        :else                  (do (assert (u/is-email? val))
+                                   (recur true more))))
+    (catch Throwable _
+      false)))
+
+(defn field-fingerprint [driver table field]
+  (let [values (db/select 'FieldValues :id (:id table))
+        #_values-to-test-for-json-and-email #_(take driver/max-sync-lazy-seq-results 
+                                                    (driver/field-values-lazy-seq driver field))]
+      {:id                                (:id field) ;; check if this should be field or table id
+       :field-percent-urls      (u/try-apply (:field-percent-urls driver) field)
+       :field-percent-json      (if (values-are-valid-json? values) 100 0)
+       :field-percent-email     (if (values-are-valid-emails? values) 100 0)
+       :field-avg-length        (u/try-apply (:field-avg-length driver) field)
+       :visibility_type         (:visibility_type field)
+       :values                  values
+       :base_type               (:base_type field) ;; TODO: make this work
+       :qualified-name          (field/qualified-name field)}))
+
+
+(defn table-fingerprint [table]
+  {:row-count (:rows table)}) ;; check this
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
   [driver {table-id :id, :as table}]
-  (when-let [table-stats (u/prog1 (classify/classify-table driver table-id) ;; pickup here
-                           (when <>
-                             (schema/validate i/AnalyzeTable <>)))]
-    (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]
+  (let [fields (table/fields table)
+        field-fingerprints (map #(field-fingerprint driver table %) fields)
+        table-fingerprint (table-fingerprint table)]
+    (when-let [table-stats (u/prog1 (classify/classify-table table-fingerprint field-fingerprints)
+                             (when <>
+                               (schema/validate i/AnalyzeTable <>)))]
+      (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]
         ;; set Field metadata we may have detected
         (when (and id (or preview-display special-type))
           (db/update-non-nil-keys! field/Field id
             ;; if a field marked `preview-display` as false then set the visibility
             ;; type to `:details-only` (see models.field/visibility-types)
             :visibility_type (when (false? preview-display) :details-only)
-            :special_type    special-type))))
-  #_(let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], :last_analyzed nil)]
-    ;; TODO: this call should include the database
-    (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
-                             (when <>
-                               (schema/validate i/AnalyzeTable <>)))]
-      ;; update table row count
-      (when (:row_count table-stats)
-        (db/update! table/Table table-id, :rows (:row_count table-stats)))
-
-      ;; update individual fields
-      (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]
-        ;; set Field metadata we may have detected
-        (when (and id (or preview-display special-type))
-          (db/update-non-nil-keys! field/Field id
-            ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
-            :visibility_type (when (false? preview-display) :details-only)
-            :special_type    special-type))
-        ;; handle field values, setting them if applicable otherwise clearing them
-        (if (and id values (pos? (count (filter identity values))))
-          (field-values/save-field-values! id values)
-          (field-values/clear-field-values! id))))
-
-    ;; update :last_analyzed for all fields in the table
-    #_(db/update-where! field/Field {:table_id        table-id
-                                   :visibility_type [:not= "retired"]}
-      :last_analyzed (u/new-sql-timestamp))))
+            :special_type    special-type)))
+      table-stats)))
 
 (defn analyze-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
