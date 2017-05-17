@@ -25,6 +25,14 @@
    :type/Integer    "INTEGER"
    :type/Text       "VARCHAR"})
 
+(defn- dash-to-underscore [s]
+  (s/replace s #"-" "_"))
+
+(defn- qualified-name-components
+  ([db-name]                       (map dash-to-underscore [db-name]))
+  ([db-name table-name]            (map dash-to-underscore [db-name table-name]))
+  ([db-name table-name field-name] (map dash-to-underscore [table-name field-name])))
+
 (defn database->connection-details [context {:keys [database-name]}]
   (merge {:drill-connect "drillbit=localhost;schema=dfs.tmp"}))
 
@@ -157,6 +165,7 @@
                          ;; Drill doesn't have a concept of databases
                          :create-db-sql             (constantly nil)
                          :drop-db-if-exists-sql     (constantly nil)
+                         :qualified-name-components (u/drop-first-arg qualified-name-components)
 
                          :load-data!                load-data!
                          :pk-sql-type               (constantly "INT")
@@ -164,5 +173,5 @@
                  i/IDatasetLoader
                  (merge generic/IDatasetLoaderMixin
                         {:database->connection-details (u/drop-first-arg database->connection-details)
-                         :default-schema               (constantly nil)
+                         :default-schema               (constantly "dfs.tmp")
                          :engine                       (constantly :drill)}))
