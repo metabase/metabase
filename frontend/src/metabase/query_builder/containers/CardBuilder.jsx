@@ -142,7 +142,9 @@ export default class CardBuilder extends Component {
     }
 
     componentWillMount() {
-        this.props.initializeQB(this.props.location, this.props.params);
+        if (!this.props.qbIsAlreadyInitialized) {
+            this.props.initializeQB(this.props.location, this.props.params);
+        }
     }
 
     componentDidMount() {

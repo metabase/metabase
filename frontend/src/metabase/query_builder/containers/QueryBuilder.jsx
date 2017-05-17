@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 
 import cx from "classnames";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
@@ -52,6 +53,7 @@ import * as actions from "../actions";
 import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
+import CardBuilder from "metabase/query_builder/containers/CardBuilder";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -193,11 +195,19 @@ export default class QueryBuilder extends Component {
     }
 
     render() {
-        return (
-            <div className="flex-full flex relative">
-                <LegacyQueryBuilder {...this.props} />
-            </div>
-        )
+        const isSavedCard = !!getIn(this.props.card, ["id"]);
+        const isDirtySavedCard = !!(getIn(this.props.card, ["original_card_id"]) && this.props.isDirty);
+        const redirectToCardBuilder = isSavedCard || isDirtySavedCard;
+
+        if (redirectToCardBuilder) {
+            return <CardBuilder {...this.props} qbIsAlreadyInitialized />
+        } else {
+            return (
+                <div className="flex-full flex relative">
+                    <LegacyQueryBuilder {...this.props} />
+                </div>
+            )
+        }
     }
 }
 
