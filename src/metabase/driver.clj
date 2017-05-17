@@ -20,7 +20,7 @@
   "The maximum number of values we should return when using `field-values-lazy-seq`.
    This many is probably fine for inferring special types and what-not; we don't want
    to scan millions of values at any rate."
-  10000)
+  1000)
 
 (def ^:const field-values-lazy-seq-chunk-size
   "How many Field values should be fetched at a time for a chunked implementation of `field-values-lazy-seq`?"
@@ -199,44 +199,6 @@
     "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name` and `:schema` keys.
      Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
      There is no expectation that the results be returned in any given order."))
-
-
-(defn- percent-valid-urls
-  "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
-  [vs]
-  (loop [valid-count 0, non-nil-count 0, [v & more :as vs] vs]
-    (cond (not (seq vs)) (if (zero? non-nil-count) 0.0
-                             (float (/ valid-count non-nil-count)))
-          (nil? v)       (recur valid-count non-nil-count more)
-          :else          (let [valid? (and (string? v)
-                                           (u/is-url? v))]
-                           (recur (if valid? (inc valid-count) valid-count)
-                                  (inc non-nil-count)
-                                  more)))))
-
-(defn default-field-percent-urls
-  "Default implementation for optional driver fn `field-percent-urls` that calculates percentage in Clojure-land."
-  [driver field]
-  (->> (field-values-lazy-seq driver field)
-       (filter identity)
-       (take max-sync-lazy-seq-results)
-       percent-valid-urls))
-
-(defn default-field-avg-length
-  "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
-  [driver field]
-  (let [field-values        (->> (field-values-lazy-seq driver field)
-                                 (filter identity)
-                                 (take max-sync-lazy-seq-results))
-        field-values-count (count field-values)]
-    (if (zero? field-values-count)
-      0
-      (int (math/round (/ (->> field-values
-                               (map str)
-                               (map count)
-                               (reduce +))
-                          field-values-count))))))
-
 
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."

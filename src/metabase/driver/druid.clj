@@ -149,8 +149,6 @@
   "Implementation of `analyze-table` for Druid driver."
   [driver table new-table-ids]
   ((cached-values/make-analyze-table driver
-     :field-avg-length-fn   (constantly 0) ; TODO implement this?
-     :field-percent-urls-fn (constantly 0)
      :calculate-row-count?  false) driver table new-table-ids))
 
 

@@ -57,6 +57,7 @@
                                                         :schema nil}
                                      :dest-column-name "studio"}}
                                   #{}))
+          :field-values-lazy-seq (constantly [])
           :features           (constantly #{:foreign-keys})
           :details-fields     (constantly [])}))
 

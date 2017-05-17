@@ -16,7 +16,8 @@
              [classify :as classify]
              [interface :as i]]
             [schema.core :as schema]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.sync-database.cached-values :as cached-values]))
 
 
 (defn- values-are-valid-json?
@@ -53,23 +54,47 @@
     (catch Throwable _
       false)))
 
+(defn- percent-valid-urls
+  "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
+  [vs]
+  (loop [valid-count 0, non-nil-count 0, [v & more :as vs] vs]
+    (cond (not (seq vs)) (if (zero? non-nil-count) 0.0
+                             (float (/ valid-count non-nil-count)))
+          (nil? v)       (recur valid-count non-nil-count more)
+          :else          (let [valid? (and (string? v)
+                                           (u/is-url? v))]
+                           (recur (if valid? (inc valid-count) valid-count)
+                                  (inc non-nil-count)
+                                  more)))))
+
+(defn field-avg-length
+  "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
+  [values]
+  (let [field-values       (filter identity values)
+        field-values-count (count field-values)]
+    (if (zero? field-values-count)
+      0
+      (int (math/round (/ (->> field-values
+                               (map str)
+                               (map count)
+                               (reduce +))
+                          field-values-count))))))
+
 (defn field-fingerprint [driver table field]
-  (let [values (db/select 'FieldValues :id (:id table))
-        #_values-to-test-for-json-and-email #_(take driver/max-sync-lazy-seq-results 
-                                                    (driver/field-values-lazy-seq driver field))]
-      {:id                                (:id field) ;; check if this should be field or table id
-       :field-percent-urls      (u/try-apply (:field-percent-urls driver) field)
-       :field-percent-json      (if (values-are-valid-json? values) 100 0)
-       :field-percent-email     (if (values-are-valid-emails? values) 100 0)
-       :field-avg-length        (u/try-apply (:field-avg-length driver) field)
-       :visibility_type         (:visibility_type field)
-       :values                  values
-       :base_type               (:base_type field) ;; TODO: make this work
-       :qualified-name          (field/qualified-name field)}))
+  (let [values (->> (driver/field-values-lazy-seq driver field)
+                    (take driver/max-sync-lazy-seq-results))]
+    {:id                      (:id field)
+     :field-percent-urls      (percent-valid-urls values)
+     :field-percent-json      (if (values-are-valid-json? values) 100 0)
+     :field-percent-email     (if (values-are-valid-emails? values) 100 0)
+     :field-avg-length        (field-avg-length values)
+     :visibility_type         (:visibility_type field)
+     :base_type               (:base_type field)
+     :qualified-name          (field/qualified-name field)}))
 
 
 (defn table-fingerprint [table]
-  {:row-count (:rows table)}) ;; check this
+  {:rows (:rows table)}) ;; check this
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
@@ -77,7 +102,7 @@
   (let [fields (table/fields table)
         field-fingerprints (map #(field-fingerprint driver table %) fields)
         table-fingerprint (table-fingerprint table)]
-    (when-let [table-stats (u/prog1 (classify/classify-table table-fingerprint field-fingerprints)
+    (when-let [table-stats (u/prog1 (classify/classify-table! table-fingerprint field-fingerprints)
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
       (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]
@@ -103,6 +128,7 @@
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]
       (try
+        (cached-values/cache-table-data-shape! driver table)
         (analyze-table-data-shape! driver table)
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))

@@ -45,6 +45,7 @@
   [field field-stats]
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
   ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
+
   (let [collecting-field-values-is-allowed? (field-values/field-should-have-field-values? field)
         non-nil-values  (when collecting-field-values-is-allowed?
                           (filter identity (queries/field-distinct-values field (inc classify/low-cardinality-threshold))))
@@ -53,23 +54,15 @@
                           non-nil-values)]
     (assoc field-stats :values distinct-values)))
 
-;; TODO - It's weird that this one function requires other functions as args when the whole rest of the Metabase driver system
-;;        is built around protocols and record types. These functions should be put back in the `IDriver` protocol (where they
-;;        were originally) or in a special `IAnalyzeTable` protocol).
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
   {:style/indent 1}
-  [driver & {:keys [field-avg-length-fn field-percent-urls-fn calculate-row-count?]
-             :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
-                    field-percent-urls-fn (partial driver/default-field-percent-urls driver)
-                    calculate-row-count?  true}}]
+  [driver & {:keys [calculate-row-count?]
+             :or   {calculate-row-count?  true}}]
   (fn [driver table new-field-ids]
-    (let [fingerprint {:field-avg-length field-avg-length-fn,
-                       :field-percent-urls field-percent-urls-fn}]
-      {:row_count (when calculate-row-count? (u/try-apply table-row-count table))
-       :fields    (for [id new-field-ids]
-                    (extract-field-values id {:id id}))
-       #_(classify/classify-table driver table fingerprint)})))
+    {:row_count (when calculate-row-count? (u/try-apply table-row-count table))
+     :fields    (for [id new-field-ids]
+                  (extract-field-values (field/Field id) {:id id}))}))
 
 (defn generic-analyze-table
   "An implementation of `analyze-table` using the defaults (`default-field-avg-length` and `field-percent-urls`)."

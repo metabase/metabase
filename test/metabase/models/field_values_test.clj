@@ -37,6 +37,67 @@
 (expect (field-should-have-field-values? {:special_type    nil
                                           :visibility_type :normal
                                           :base_type       "type/Boolean"}))
+;; retired/sensitive/hidden/details-only fields should always be excluded
+(expect false (field-should-have-field-values? {:base_type       :type/Boolean
+                                                :special_type    :type/Category
+                                                :visibility_type :retired}))
+(expect false (field-should-have-field-values? {:base_type       :type/Boolean
+                                                :special_type    :type/Category
+                                                :visibility_type :sensitive}))
+(expect false (field-should-have-field-values? {:base_type       :type/Boolean
+                                                :special_type    :type/Category
+                                                :visibility_type :hidden}))
+(expect false (field-should-have-field-values? {:base_type       :type/Boolean
+                                                :special_type    :type/Category
+                                                :visibility_type :details-only}))
+;; date/time based fields should always be excluded
+(expect false (field-should-have-field-values? {:base_type       :type/Date
+                                                :special_type    :type/Category
+                                                :visibility_type :normal}))
+(expect false (field-should-have-field-values? {:base_type       :type/DateTime
+                                                :special_type    :type/Category
+                                                :visibility_type :normal}))
+(expect false (field-should-have-field-values? {:base_type       :type/Time
+                                                :special_type    :type/Category
+                                                :visibility_type :normal}))
+;; most special types should be excluded
+(expect false (field-should-have-field-values? {:base_type       :type/Text
+                                                :special_type    :type/ImageURL
+                                                :visibility_type :normal}))
+(expect false (field-should-have-field-values? {:base_type       :type/Text
+                                                :special_type    :id
+                                                :visibility_type :normal}))
+(expect false (field-should-have-field-values? {:base_type       :type/Text
+                                                :special_type    :type/FK
+                                                :visibility_type :normal}))
+(expect false (field-should-have-field-values? {:base_type       :type/Text
+                                                :special_type    :type/Latitude
+                                                :visibility_type :normal}))
+(expect false (field-should-have-field-values? {:base_type       :type/Text
+                                                :special_type    :type/Number
+                                                :visibility_type :normal}))
+(expect false (field-should-have-field-values? {:base_type       :type/Text
+                                                :special_type    :type/UNIXTimestampMilliseconds
+                                                :visibility_type :normal}))
+;; boolean fields + category/city/state/country fields are g2g
+(expect true (field-should-have-field-values? {:base_type       :type/Boolean
+                                               :special_type    :type/Number
+                                               :visibility_type :normal}))
+(expect true (field-should-have-field-values? {:base_type       :type/Text
+                                               :special_type    :type/Category
+                                               :visibility_type :normal}))
+(expect true (field-should-have-field-values? {:base_type       :type/Text
+                                               :special_type    :type/City
+                                               :visibility_type :normal}))
+(expect true (field-should-have-field-values? {:base_type       :type/Text
+                                               :special_type    :type/State
+                                               :visibility_type :normal}))
+(expect true (field-should-have-field-values? {:base_type       :type/Text
+                                               :special_type    :type/Country
+                                               :visibility_type :normal}))
+(expect true (field-should-have-field-values? {:base_type       :type/Text
+                                               :special_type    :type/Name
+                                               :visibility_type :normal}))
 
 
 (expect

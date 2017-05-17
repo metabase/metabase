@@ -18,27 +18,23 @@
 (defonce ^:private sync-databases-job (atom nil))
 (defonce ^:private sync-databases-trigger (atom nil))
 
-;; simple job which looks up all databases and runs a sync on them
-(jobs/defjob SyncDatabases [_]
+;; simple job which looks up all databases and caches field_values from them
+(jobs/defjob CacheFieldValues [_]
   (doseq [database (db/select Database, :is_sample false)] ; skip Sample Dataset DB
     (try
       ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-      (if-not (and (zero? (t/hour (t/now)))
-                   (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema))
-        ;; most of the time we do a quick sync and avoid the lengthy analysis process
-        #_(sync-database/sync-database! database :full-sync? false)
-        ;; at midnight we run the full sync
-
-        (cache-database/cache-database! database :full-sync? true))
+      #_(if-not (and (zero? (t/hour (t/now))) ;; re used to not analyze dynamic schema DBs in these cases, why?
+                   (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema)))
+      (cache-database/cache-database-field-values! database :full-sync? true)
       (catch Throwable e
-        (log/error (format "Error syncing database %d: " (:id database)) e)))))
+        (log/error (format "Error caching FieldValues for database %d: " (:id database)) e)))))
 
 (defn task-init
   "Automatically called during startup; start the job for syncing databases."
   []
   ;; build our job
   (reset! sync-databases-job (jobs/build
-                               (jobs/of-type SyncDatabases)
+                               (jobs/of-type CacheFieldValues)
                                (jobs/with-identity (jobs/key sync-databases-job-key))))
   ;; build our trigger
   (reset! sync-databases-trigger (triggers/build
