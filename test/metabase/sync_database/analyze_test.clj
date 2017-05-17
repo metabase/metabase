@@ -18,18 +18,6 @@
 
 ;; test:cardinality-and-extract-field-values
 ;; (#2332) check that if field values are long we skip over them
-(expect
-  {:values nil}
-  (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])}
-    #(test:cardinality-and-extract-field-values {} {})))
-
-(expect
-  {:values       [1 2 3 4]
-   :special-type :type/Category}
-  (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [1 2 3 4])}
-    #(test:cardinality-and-extract-field-values {} {})))
-
-
 ;;; ## mark-json-field!
 
 (tu/resolve-private-vars metabase.sync-database.analyze

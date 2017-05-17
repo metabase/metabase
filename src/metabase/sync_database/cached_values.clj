@@ -45,7 +45,7 @@
   [field field-stats]
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
   ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
-  (let [collecting-field-values-is-allowed? (field-values/field-should-have-field-values? field)
+  (let [collecting-field-values-is-allowed? true #_(field-values/field-should-have-field-values? field)
         non-nil-values  (when collecting-field-values-is-allowed?
                           (filter identity (queries/field-distinct-values field (inc classify/low-cardinality-threshold))))
         ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
