@@ -5,18 +5,24 @@ import ReactDOM from "react-dom";
 import AggregationWidget from './AggregationWidget.jsx';
 import BreakoutWidget from './BreakoutWidget.jsx';
 import DataSelector from './DataSelector.jsx';
-import ExtendedOptions from "./ExtendedOptions.jsx";
 import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
-import Icon from "metabase/components/Icon.jsx";
-import IconBorder from 'metabase/components/IconBorder.jsx';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import { duration } from "metabase/lib/formatting";
 
 import Query from "metabase/lib/query";
+import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 import _ from "underscore";
 import AddButton from "metabase/components/AddButton";
+import QueryModeButton from "metabase/query_builder/components/QueryModeButton";
+import ButtonBar from "metabase/components/ButtonBar";
+import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
+import {REFRESH_TOOLTIP_THRESHOLD} from "metabase/query_builder/components/QueryVisualization";
+import RunButton from "metabase/query_builder/components/RunButton";
+import Tooltip from "metabase/components/Tooltip";
 
 
 export default class CardEditor extends Component {
@@ -229,7 +235,7 @@ export default class CardEditor extends Component {
 
     renderDataSection() {
         return (
-            <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
+            <div className="GuiBuilder-section GuiBuilder-data flex align-center arrow-right">
                 <span className="GuiBuilder-section-label Query-label">Data</span>
                 { this.props.features.data ?
                     <DataSelector
@@ -264,19 +270,91 @@ export default class CardEditor extends Component {
         );
     }
 
-    renderViewSection() {
+     renderMetricSection = () => {
         const { features } = this.props;
         if (!features.aggregation && !features.breakout) {
             return;
         }
 
-        return (
-            <div className="GuiBuilder-section GuiBuilder-view flex align-center px1 pr2" ref="viewSection">
-                <span className="GuiBuilder-section-label Query-label">View</span>
-                {this.renderAggregation()}
-            </div>
+        return this.renderAggregation();
+    };
+
+    renderButtons = () => {
+        // NOTE: Most of stuff is replicated from QueryVisualization header
+        const { isResultDirty, isAdmin, card, result, setQueryModeFn, tableMetadata, isRunnable, isRunning, runQuery, cancelQuery } = this.props;
+
+        const isSaved = card.id != null;
+        const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
+        const isEmbeddingEnabled = MetabaseSettings.get("embedding");
+
+        const getQueryModeButton = () =>
+            <QueryModeButton
+                key="queryModeToggle"
+                mode={card.dataset_query.type}
+                allowNativeToQuery={false}
+                allowQueryToNative={false}
+                /*allowNativeToQuery={isNew && !isDirty}
+                allowQueryToNative={tableMetadata ?
+                    // if a table is selected, only enable if user has native write permissions for THAT database
+                    tableMetadata.db && tableMetadata.db.native_permissions === "write" :
+                    // if no table is selected, only enable if user has native write permissions for ANY database
+                    _.any(databases, (db) => db.native_permissions === "write")
+                }*/
+                nativeForm={result && result.data && result.data.native_form}
+                onSetMode={setQueryModeFn}
+                tableMetadata={tableMetadata}
+            />;
+
+        const getQueryDownloadWidget = () =>
+            <QueryDownloadWidget
+                key="querydownload"
+                className="hide sm-show"
+                card={card}
+                result={result}
+            />;
+
+        const getQueryEmbedWidget = () =>
+            <QuestionEmbedWidget key="questionembed" className="hide sm-show" card={card} />;
+
+        const getRunButton = () => {
+            const runQueryByIgnoringCache = () => runQuery(null, { ignoreCache: true });
+
+            let runButtonTooltip;
+            if (!isResultDirty && result && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
+                runButtonTooltip = `This question will take approximately ${duration(result.average_execution_time)} to refresh`;
+            }
+
+            return (
+                <Tooltip key="runbutton" tooltip={runButtonTooltip}>
+                    <RunButton
+                        isRunnable={isRunnable}
+                        isDirty={isResultDirty}
+                        isRunning={isRunning}
+                        onRun={runQueryByIgnoringCache}
+                        onCancel={cancelQuery}
+                    />
+                </Tooltip>
+            )
+        }
+
+
+        const queryHasCleanResult  = !isResultDirty && result && !result.error;
+        const isEmbeddable = isSaved && (
+                (isPublicLinksEnabled && (isAdmin || card.public_uuid)) ||
+                (isEmbeddingEnabled && isAdmin)
         );
-    }
+
+        const buttons = [
+            getQueryModeButton(),
+            isEmbeddable && getQueryEmbedWidget(),
+            queryHasCleanResult && getQueryDownloadWidget(),
+            getRunButton()
+        ].filter(_.isObject);
+
+        return (
+            <ButtonBar buttons={buttons.map(b => [b])} className="borderless pr1 mr2" />
+        );
+    };
 
     renderGroupedBySection() {
         const { features } = this.props;
@@ -319,20 +397,29 @@ export default class CardEditor extends Component {
         }
 
         return (
-            <div className={cx("GuiBuilder rounded shadowed", { "GuiBuilder--expand": this.state.expanded, disabled: readOnly })} ref="guiBuilder">
-                <div className="GuiBuilder-row flex">
-                    {this.renderDataSection()}
-                    {this.renderFilterSection()}
+            <div className={cx("GuiBuilder rounded shadowed flex", {
+                "GuiBuilder--expand": this.state.expanded,
+                disabled: readOnly
+            })} ref="guiBuilder">
+                <div className="GuiBuilder-section flex-full flex align-center px1 pr2" ref="viewSection">
+                    {this.renderMetricSection()}
                 </div>
-                <div className="GuiBuilder-row flex flex-full">
-                    {this.renderViewSection()}
-                    {this.renderGroupedBySection()}
-                    <div className="flex-full"></div>
-                    {this.props.children}
-                    <ExtendedOptions
-                        {...this.props}
-                    />
+                <div className="GuiBuilder-section flex align-center justify-end">
+                    {this.renderButtons()}
                 </div>
+                {/*<div className="GuiBuilder-row flex">
+                 {this.renderDataSection()}
+                 {this.renderFilterSection()}
+                 </div>
+                 <div className="GuiBuilder-row flex flex-full">
+                 {this.renderMetricSection()}
+                 {this.renderGroupedBySection()}
+                 <div className="flex-full"></div>
+                 {this.props.children}
+                 <ExtendedOptions
+                 {...this.props}
+                 />
+                 </div>*/}
             </div>
         );
     }

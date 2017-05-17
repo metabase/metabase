@@ -2,8 +2,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 
-import QueryModeButton from "./QueryModeButton.jsx";
-
 import ActionButton from 'metabase/components/ActionButton.jsx';
 import AddToDashSelectDashModal from 'metabase/containers/AddToDashSelectDashModal.jsx';
 import ButtonBar from "metabase/components/ButtonBar.jsx";
@@ -29,7 +27,6 @@ import * as Urls from "metabase/lib/urls";
 import cx from "classnames";
 import _ from "underscore";
 import Button from "metabase/components/Button";
-
 
 export default class CardHeader extends Component {
     constructor(props, context) {
@@ -166,10 +163,11 @@ export default class CardHeader extends Component {
     };
 
     getHeaderButtons = () => {
-        const { card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
+        const { card ,isNew, isDirty, isEditing, databases } = this.props;
         const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
-        const SaveNewCardButton = () =>
+        // Don't treat as functional component due to refs
+        const getSaveNewCardButton = () =>
             <ModalWithTrigger
                 form
                 key="save"
@@ -225,7 +223,8 @@ export default class CardHeader extends Component {
         const DeleteCardButton = () =>
             <ArchiveQuestionModal questionId={this.props.card.id}/>;
 
-        const MoveQuestionToCollectionButton = () =>
+        // Don't treat as functional component due to refs
+        const getMoveQuestionToCollectionButton = () =>
             <ModalWithTrigger
                 ref="move"
                 key="move"
@@ -267,7 +266,8 @@ export default class CardHeader extends Component {
                     </span>
             </Tooltip>;
 
-        const SaveNewCardAndAddToDashboardButton = () =>
+        // Don't treat as functional component due to refs
+        const getSaveNewCardAndAddToDashboardButton = () =>
             <Tooltip key="addtodashsave" tooltip="Add to dashboard">
                 <ModalWithTrigger
                     ref="addToDashSaveModal"
@@ -292,7 +292,8 @@ export default class CardHeader extends Component {
                 </ModalWithTrigger>
             </Tooltip>;
 
-        const HistoryRevisionsButton = () =>
+        // Don't treat as functional component due to refs
+        const getHistoryRevisionsButton = () =>
             <Tooltip key="history" tooltip="Revision history">
                 <ModalWithTrigger
                     ref="cardHistory"
@@ -310,24 +311,8 @@ export default class CardHeader extends Component {
                 </ModalWithTrigger>
             </Tooltip>;
 
-        const QueryModeToggleButton = () =>
-            <QueryModeButton
-                key="queryModeToggle"
-                mode={this.props.card.dataset_query.type}
-                allowNativeToQuery={isNew && !isDirty}
-                allowQueryToNative={tableMetadata ?
-                    // if a table is selected, only enable if user has native write permissions for THAT database
-                    tableMetadata.db && tableMetadata.db.native_permissions === "write" :
-                    // if no table is selected, only enable if user has native write permissions for ANY database
-                    _.any(databases, (db) => db.native_permissions === "write")
-                }
-                nativeForm={this.props.result && this.props.result.data && this.props.result.data.native_form}
-                onSetMode={this.props.setQueryModeFn}
-                tableMetadata={tableMetadata}
-            />;
-
         const DataReferenceButton = () => {
-            const dataReferenceButtonClasses = cx('mr1 transition-color', {
+            const dataReferenceButtonClasses = cx('transition-color', {
                 'text-brand': this.props.isShowingDataReference,
                 'text-brand-hover': !this.state.isShowingDataReference
             });
@@ -353,14 +338,14 @@ export default class CardHeader extends Component {
                     if (this.state.recentlySaved) {
                         return [ <ConfirmationOfSavedCard /> ];
                     } else {
-                        return [ <EditCardButton /> ];
+                        return [ <EditCardButton key="edit" /> ];
                     }
                 } else {
                     return [
                         <SaveEditedCardButton />,
                         <CancelEditingButton />,
                         <DeleteCardButton />,
-                        <MoveQuestionToCollectionButton />
+                        getMoveQuestionToCollectionButton()
                     ]
                 }
             } else {
@@ -369,20 +354,20 @@ export default class CardHeader extends Component {
         };
 
         const buttons = [
-            isNewCardThatCanBeSaved && <SaveNewCardButton />,
+            isNewCardThatCanBeSaved && getSaveNewCardButton(),
             ...getPersistenceButtons(),
             isNativeQueryWithParameters && <ToggleTemplateTagsEditorButton />,
-            isSaved && !isEditing && <AddSavedCardToDashboardButton />,
-            isNewCardThatCanBeSaved && <SaveNewCardAndAddToDashboardButton />,
+            isSaved && !isEditing && <AddSavedCardToDashboardButton key="addtodash" />,
+            isNewCardThatCanBeSaved && getSaveNewCardAndAddToDashboardButton(),
             // TODO: See what kind of modifications the revisions feature requires
-            // isSaved && <HistoryRevisionsButton />,
+            isSaved && getHistoryRevisionsButton(),
             // TODO: See how SQL will be supported and move this to the CardEditor banner
             // <QueryModeToggleButton />,
-            <DataReferenceButton />
+            <DataReferenceButton key="datareference" />
         ].filter(_.isObject);
 
         return (
-            <ButtonBar buttons={buttons.map(b => [b])} className="Header-buttonSection borderless" />
+            <ButtonBar buttons={buttons.map(b => [b])} className="mr2 pr1 borderless" />
         );
     };
 

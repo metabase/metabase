@@ -48,6 +48,8 @@ import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import VisualizationSettings from "metabase/query_builder/components/VisualizationSettings";
+import ActionsWidget from "metabase/query_builder/components/ActionsWidget";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -214,23 +216,29 @@ export default class CardBuilder extends Component {
                             </div>
 
                             <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                                <QueryVisualization {...this.props} className="full wrapper mb2 z1" />
+                                <QueryVisualization {...this.props} noHeader className="full wrapper mb2 z1" />
+                            </div>
+
+                            <div className="z4 absolute left bottom hide sm-show mb3 ml4">
+                                { !this.props.isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
                             </div>
 
                             { ModeFooter &&
-                            <ModeFooter {...this.props} className="flex-no-shrink" />
+                                <ModeFooter {...this.props} className="flex-no-shrink" />
                             }
                         </div>
 
                         <div className={cx("SideDrawer hide sm-show", { "SideDrawer--show": showDrawer })}>
                             { uiControls.isShowingDataReference &&
-                            <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
+                                <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                             }
 
                             { uiControls.isShowingTemplateTagsEditor &&
-                            <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
+                                <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                             }
                         </div>
+
+                        <ActionsWidget {...this.props} className="z2 absolute bottom right" />
                     </div>
                 }
             </LoadingAndErrorWrapper>

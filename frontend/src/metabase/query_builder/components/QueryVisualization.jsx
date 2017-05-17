@@ -26,7 +26,7 @@ import cx from "classnames";
 import _ from "underscore";
 import moment from "moment";
 
-const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
+export const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
 export default class QueryVisualization extends Component {
     constructor(props, context) {
