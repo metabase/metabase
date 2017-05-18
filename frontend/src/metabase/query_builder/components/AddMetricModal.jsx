@@ -4,6 +4,7 @@ import cx from "classnames";
 import type {TableMetadata} from "metabase/meta/types/Metadata";
 import ModalContent from "metabase/components/ModalContent";
 import EmptyState from "metabase/components/EmptyState";
+import SavedMetricSelector from "metabase/query_builder/components/SavedMetricSelector";
 
 class AddMetricButton extends Component {
    props: {
@@ -86,16 +87,13 @@ export default class AddMetricModal extends Component {
                 </ol>
             </div>;
 
-        const SavedMetricSelector = () =>
-            <div>Saved metrics chosen here</div>;
-
         return (
             <ModalContent
                 fullPageModal={true}
                 onClose={onClose}
                 className="bg-grey-0"
             >
-                { addingSavedMetric ? <SavedMetricSelector /> : <MetricTypeSelector />}
+                { addingSavedMetric ? <SavedMetricSelector onClose={onClose} /> : <MetricTypeSelector />}
             </ModalContent>
         )
     }
