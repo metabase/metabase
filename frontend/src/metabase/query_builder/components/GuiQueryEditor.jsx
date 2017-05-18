@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
@@ -17,14 +19,55 @@ import Query from "metabase/lib/query";
 import cx from "classnames";
 import _ from "underscore";
 
+import type { TableId } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { StructuredDatasetQuery } from "metabase/meta/types/Card";
+import type { TableMetadata, DatabaseMetadata } from "metabase/meta/types/Metadata";
+import type { Children } from 'react';
+
+type Props = {
+    children?: Children,
+
+    features: {
+        data?: boolean,
+        filter?: boolean,
+        aggregation?: boolean,
+        breakout?: boolean,
+        sort?: boolean,
+        limit?: boolean
+    },
+
+    datasetQuery: StructuredDatasetQuery,
+    tableMetadata: TableMetadata,
+    databases: DatabaseMetadata[],
+    tables: TableMetadata[],
+
+    setDatabaseFn: (id: DatabaseId) => void,
+    setSourceTableFn: (id: TableId) => void,
+    setDatasetQuery: (datasetQuery: StructuredDatasetQuery) => void,
+
+    addQueryFilter: () => void,
+    removeQueryFilter: () => void,
+    updateQueryFilter: () => void,
+    addQueryAggregation: () => void,
+    removeQueryAggregation: () => void,
+    updateQueryAggregation: () => void,
+    addQueryBreakout: () => void,
+    removeQueryBreakout: () => void,
+    updateQueryBreakout: () => void,
+
+    isShowingTutorial: boolean,
+    isShowingDataReference: boolean,
+}
+
+type State = {
+    expanded: boolean
+}
 
 export default class GuiQueryEditor extends Component {
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {
-            expanded: true
-        };
+    props: Props;
+    state: State = {
+        expanded: true
     }
 
     static propTypes = {
@@ -49,7 +92,7 @@ export default class GuiQueryEditor extends Component {
         }
     };
 
-    renderAdd(text, onClick, targetRefName) {
+    renderAdd(text: ?string, onClick: ?(() => void), targetRefName?: string) {
         let className = "AddButton text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
         if (onClick) {
             return (
@@ -68,7 +111,7 @@ export default class GuiQueryEditor extends Component {
         }
     }
 
-    renderAddIcon(targetRefName) {
+    renderAddIcon(targetRefName?: string) {
         return (
             <IconBorder borderRadius="3px" ref={targetRefName}>
                 <Icon name="add" size={14} />

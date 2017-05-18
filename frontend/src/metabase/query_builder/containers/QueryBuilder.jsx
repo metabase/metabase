@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
@@ -128,19 +130,18 @@ const mapDispatchToProps = {
     onChangeLocation: push
 };
 
+
+
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => (card && card.name) || "Question")
 export default class QueryBuilder extends Component {
+    forceUpdateDebounced: () => void;
 
     constructor(props, context) {
         super(props, context);
 
         // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
-
-        this.state = {
-            legacy: true
-        }
     }
 
     componentWillMount() {
