@@ -1,5 +1,6 @@
 (ns metabase.cache-database
-  "The logic for doing DB and Table syncing itself."
+  "The logic for doing DB and Table syncing itself.
+   TODO: move this file under the sync_database directory"
   (:require [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
@@ -41,7 +42,7 @@
     (log/info (u/format-color 'magenta "Finished syncing table '%s' from %s database '%s'. (%s)" (:display_name table) (name driver) (:name database)
                               (u/format-nanoseconds (- (System/nanoTime) start-time))))))
 
-(defn cache-database!
+(defn cache-database-field-values!
   "Analyze DATABASE and all its Tables and Fields."
   [{database-id :id, :as database} & {:keys [full-sync?]}]
   {:pre [(map? database)]}
@@ -59,7 +60,7 @@
             ;; always cleanup our tracking when we are through
             (swap! currently-syncing-dbs disj database-id)))))))
 
-(defn cache-table!
+(defn cache-table-field-values!
   "Analyze a *single* TABLE and all of its Fields.
    This is used *instead* of `analyze-database!` when syncing just one Table is desirable."
   [table & {:keys [full-sync?]}]

@@ -10,6 +10,9 @@
              [field :refer [Field]]
              [interface :as mi]
              [table :as table :refer [Table]]]
+            [metabase.sync-database
+             [analyze :as analyze]
+             [cached-values :as cached-values]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -73,7 +76,10 @@
                                    (= :show new-visibility))]
       (when visibility-changed?
         (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
-        (sync-database/sync-table! updated-table))
+        (sync-database/sync-table! updated-table)
+        (cached-values/cache-table-data-shape! updated-table)
+        (analyze/analyze-table-data-shape! updated-table)
+        #_(classify/classify-table! classify-table))
       updated-table)))
 
 

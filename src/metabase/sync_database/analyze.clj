@@ -77,7 +77,7 @@
   (let [fields (table/fields table)
         field-fingerprints (map #(field-fingerprint driver table %) fields)
         table-fingerprint (table-fingerprint table)]
-    (when-let [table-stats (u/prog1 (classify/classify-table table-fingerprint field-fingerprints)
+    (when-let [table-stats (u/prog1 (classify/classify-table! table-fingerprint field-fingerprints)
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
       (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]

@@ -113,7 +113,7 @@
        (test:json-special-type     fingerprint)
        (test:email-special-type    fingerprint)))
 
-(defn classify-table [table-fingerprint field-fingerprints]
+(defn classify-table! [table-fingerprint field-fingerprints]
   ""
   {:row_count (:row_count table-fingerprint)
    :fields (map #(test:new-field % {:id (:id %)}) field-fingerprints)}
