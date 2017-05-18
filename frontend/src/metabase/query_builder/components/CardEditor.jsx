@@ -113,7 +113,7 @@ export default class CardEditor extends Component {
                             </Tooltip>
                         }
                     >
-                        <AddMetricModal tableMetadata={tableMetadata}/>
+                        <AddMetricModal tableMetadata={tableMetadata} {...this.props} />
                     </ModalWithTrigger>
                 );
             }

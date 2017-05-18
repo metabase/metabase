@@ -9,8 +9,10 @@ import CheckBox from "metabase/components/CheckBox.jsx";
 import cx from "classnames";
 import { getIn } from "icepick";
 import type {Card} from "metabase/meta/types/Card";
+import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
+import Utils from "metabase/lib/utils";
 
-export default class AddSeriesModal extends Component {
+export default class SavedMetricSelector extends Component {
     props: {
         onClose: () => void,
         card: Card
@@ -20,11 +22,19 @@ export default class AddSeriesModal extends Component {
 
     };
 
+    constructor(props, context) {
+        super(props, context);
+
+        this.setState({
+            lastRunDatasetQuery: Utils.copy(props.card.dataset_query)
+        });
+    }
+
     onSearchChange = (e) => {
         this.setState({ searchValue: e.target.value.toLowerCase() });
     };
 
-    onCardChange = async (card, e) => {
+    onToggleMetric = async (metric, e) => {
         // const checked = e.target.checked;
     };
 
@@ -60,7 +70,7 @@ export default class AddSeriesModal extends Component {
         const { metrics } = this.props;
 
         const filteredMetrics = this.filteredMetrics();
-        const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible questions match your search.") : null;
+        const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible metrics match your search.") : null;
         // let enabledCards = _.indexBy(this.state.enabledMetrics, 'id').map(() => true);
         const enabledMetrics = [];
         const badMetrics = [];
@@ -70,7 +80,7 @@ export default class AddSeriesModal extends Component {
                 className={cx("my1 pl2 py1 flex align-center", {disabled: badMetrics[metric.id]})}>
                 <span className="px1 flex-no-shrink">
                     <CheckBox checked={enabledMetrics[metric.id]}
-                              onChange={this.onCardChange.bind(this, metric)}/>
+                              onChange={this.onToggleMetric.bind(this, metric)}/>
                 </span>
                 <span className="px1">
                     {metric.name}
@@ -82,6 +92,13 @@ export default class AddSeriesModal extends Component {
                 <div className="flex flex-column flex-full">
                     <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">Current metrics come here</div>
                     <div className="flex-full mx1 relative">
+                        <VisualizationResult
+                            lastRunDatasetQuery={this.state.lastRunDatasetQuery}
+                            // onUpdateWarnings={(warnings) => this.setState({ warnings })}
+                            // onOpenChartSettings={() => this.refs.settings.open()}
+                            className="spread"
+                            {...this.props}
+                        />
                         {/* Should QueryVisualization be used here? */}
                         {/*<Visualization*/}
                             {/*className="spread"*/}

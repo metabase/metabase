@@ -93,7 +93,7 @@ export default class AddMetricModal extends Component {
                 onClose={onClose}
                 className="bg-grey-0"
             >
-                { addingSavedMetric ? <SavedMetricSelector onClose={onClose} /> : <MetricTypeSelector />}
+                { addingSavedMetric ? <SavedMetricSelector onClose={onClose} {...this.props} /> : <MetricTypeSelector />}
             </ModalContent>
         )
     }
