@@ -11,6 +11,9 @@ import { getIn } from "icepick";
 import type {Card} from "metabase/meta/types/Card";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
 import Utils from "metabase/lib/utils";
+import MetricWidget from "metabase/query_builder/components/MetricWidget";
+import Query from "metabase/lib/query";
+import MetricList from "metabase/query_builder/components/MetricList";
 
 export default class SavedMetricSelector extends Component {
     props: {
@@ -89,14 +92,16 @@ export default class SavedMetricSelector extends Component {
 
         return (
             <div className="spread flex">
-                <div className="flex flex-column flex-full">
-                    <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">Current metrics come here</div>
+                <div className="flex flex-column flex-full bg-white">
+                    <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">
+                        <MetricList {...this.props} />
+                    </div>
                     <div className="flex-full mx1 relative">
                         <VisualizationResult
                             lastRunDatasetQuery={this.state.lastRunDatasetQuery}
                             // onUpdateWarnings={(warnings) => this.setState({ warnings })}
                             // onOpenChartSettings={() => this.refs.settings.open()}
-                            className="spread"
+                            className="spread pb1"
                             {...this.props}
                         />
                         {/* Should QueryVisualization be used here? */}
@@ -116,10 +121,6 @@ export default class SavedMetricSelector extends Component {
                         {/*</div>*/}
                         {/*}*/}
                     </div>
-                    <div className="flex-no-shrink pl4 pb4 pt1">
-                        <button className="Button Button--primary" onClick={this.onDone}>Done</button>
-                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button Button--borderless" onClick={this.props.onClose}>Cancel</button>
-                    </div>
                 </div>
                 <div className="border-left flex flex-column" style={{width: 370, backgroundColor: "#F8FAFA", borderColor: "#DBE1DF" }}>
                     <div className="flex-no-shrink border-bottom flex flex-row align-center" style={{ borderColor: "#DBE1DF" }}>
@@ -133,6 +134,11 @@ export default class SavedMetricSelector extends Component {
                             </ul>
                         }
                     </LoadingAndErrorWrapper>
+                    <div className="flex-no-shrink pr2 pb2 pt1 flex border-top" style={{ borderColor: "#DBE1DF" }}>
+                        <div className="flex-full"></div>
+                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button Button--borderless" onClick={this.props.onClose}>Cancel</button>
+                        <button className="Button Button--primary" onClick={this.onDone}>Done</button>
+                    </div>
                 </div>
             </div>
         );

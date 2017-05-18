@@ -2,15 +2,12 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import MetricWidget from "metabase/query_builder/components/MetricWidget";
 import { duration } from "metabase/lib/formatting";
 
-import Query from "metabase/lib/query";
 import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
 import _ from "underscore";
-import AddButton from "metabase/components/AddButton";
 import QueryModeButton from "metabase/query_builder/components/QueryModeButton";
 import ButtonBar from "metabase/components/ButtonBar";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -18,9 +15,7 @@ import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbed
 import {REFRESH_TOOLTIP_THRESHOLD} from "metabase/query_builder/components/QueryVisualization";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Tooltip from "metabase/components/Tooltip";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import AddMetricModal from "metabase/query_builder/components/AddMetricModal";
-import {getCardColors} from "metabase/visualizations/lib/utils";
+import MetricList from "metabase/query_builder/components/MetricList";
 
 export default class CardEditor extends Component {
     constructor(props, context) {
@@ -56,7 +51,7 @@ export default class CardEditor extends Component {
     };
 
     renderMetricSection() {
-        const { card, features, datasetQuery: { query }, tableMetadata, supportMultipleAggregations } = this.props;
+        const { features, tableMetadata } = this.props;
 
         if (!features.aggregation && !features.breakout) {
             return;
@@ -68,57 +63,7 @@ export default class CardEditor extends Component {
 
         // aggregation clause.  must have table details available
         if (tableMetadata) {
-            const metricColors = getCardColors(card);
-
-            let isBareRows = Query.isBareRows(query);
-            let aggregations = Query.getAggregations(query);
-
-            if (aggregations.length === 0) {
-                // add implicit rows aggregation
-                aggregations.push(["rows"]);
-            }
-
-            const canRemoveAggregation = aggregations.length > 1;
-
-            let aggregationList = [];
-            for (const [index, aggregation] of aggregations.entries()) {
-                aggregationList.push(
-                    <MetricWidget
-                        key={"agg"+index}
-                        aggregation={aggregation}
-                        tableMetadata={tableMetadata}
-                        customFields={Query.getExpressions(this.props.datasetQuery.query)}
-                        updateAggregation={(aggregation) => this.props.updateQueryAggregation(index, aggregation)}
-                        removeAggregation={canRemoveAggregation ? this.props.removeQueryAggregation.bind(null, index) : null}
-                        addMetric={() => {}}
-                        clearable
-                        color={metricColors[index]}
-                    />
-                );
-            }
-
-            if (supportMultipleAggregations && !isBareRows) {
-                const canAddMetricToVisualization = _.contains(["line", "area", "bar"], this.props.card.display);
-
-                aggregationList.push(
-                    <ModalWithTrigger
-                        full
-                        disabled={!canAddMetricToVisualization}
-                        triggerElement={
-                            <Tooltip
-                                key="addmetric"
-                                tooltip={canAddMetricToVisualization ? "Add metric" : "In proto you can only add metrics to line/area/bar visualizations"}
-                            >
-                                <AddButton />
-                            </Tooltip>
-                        }
-                    >
-                        <AddMetricModal tableMetadata={tableMetadata} {...this.props} />
-                    </ModalWithTrigger>
-                );
-            }
-
-            return aggregationList
+            return <MetricList {...this.props} />
         } else {
             // TODO: move this into AggregationWidget?
             return (
