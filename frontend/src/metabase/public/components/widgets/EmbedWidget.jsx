@@ -12,12 +12,29 @@ import EmbedModalContent from "./EmbedModalContent";
 
 import cx from "classnames";
 
+import type { EmbeddableResource, EmbeddingParams } from "metabase/public/lib/types";
+import type { Parameter } from "metabase/meta/types/Parameter";
+
 type Props = {
     className?: string,
-    resourceType: string
+
+    resource: EmbeddableResource,
+    resourceType: string,
+    resourceParameters:  Parameter[],
+
+    siteUrl: string,
+    secretKey: string,
+    isAdmin: boolean,
+
+    getPublicUrl: (resource: EmbeddableResource, extension: ?string) => string,
+
+    onUpdateEnableEmbedding: (enable_embedding: bool) => Promise<void>,
+    onUpdateEmbeddingParams: (embedding_params: EmbeddingParams) => Promise<void>,
+    onCreatePublicLink: () => Promise<void>,
+    onDisablePublicLink: () => Promise<void>,
 };
 
-export default class EmbedWidget extends Component<*, Props, *> {
+export default class EmbedWidget extends Component {
     props: Props;
 
     _modal: ?ModalWithTrigger
@@ -38,7 +55,7 @@ export default class EmbedWidget extends Component<*, Props, *> {
             >
                 <EmbedModalContent
                     {...this.props}
-                    onClose={() => this._modal && this._modal.close()}
+                    onClose={() => { this._modal && this._modal.close() }}
                     className="full-height"
                 />
             </ModalWithTrigger>

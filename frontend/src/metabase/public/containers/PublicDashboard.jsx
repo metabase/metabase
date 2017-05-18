@@ -63,7 +63,9 @@ type Props = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @DashboardControls
-export default class PublicDashboard extends Component<*, Props, *> {
+export default class PublicDashboard extends Component {
+    props: Props;
+
     // $FlowFixMe
     async componentWillMount() {
         const { initialize, fetchDashboard, fetchDashboardCardData, setErrorPage, location, params: { uuid, token }}  = this.props;

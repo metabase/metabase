@@ -32,7 +32,8 @@ type State = {
 }
 
 @ExplicitSize
-export default class TableSimple extends Component<*, Props, State> {
+export default class TableSimple extends Component {
+    props: Props;
     state: State;
 
     constructor(props: Props) {

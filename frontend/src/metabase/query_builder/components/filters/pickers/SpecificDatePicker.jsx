@@ -27,7 +27,7 @@ type State = {
     showCalendar: bool
 }
 
-export default class SpecificDatePicker extends Component<*, Props, State> {
+export default class SpecificDatePicker extends Component {
     props: Props;
     state: State;
 

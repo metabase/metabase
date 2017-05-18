@@ -61,7 +61,8 @@ type Props = {
 
 type State = { filter: FieldFilter };
 
-export default class DateAllOptionsWidget extends Component<*, Props, State> {
+export default class DateAllOptionsWidget extends Component {
+    props: Props;
     state: State;
 
     constructor(props: Props) {
