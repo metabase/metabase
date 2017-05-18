@@ -20,6 +20,7 @@ import RunButton from "metabase/query_builder/components/RunButton";
 import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import AddMetricModal from "metabase/query_builder/components/AddMetricModal";
+import {getVisualizationRaw} from "metabase/visualizations/index";
 
 
 export default class CardEditor extends Component {
@@ -99,15 +100,23 @@ export default class CardEditor extends Component {
             }
 
             if (supportMultipleAggregations && !isBareRows) {
+                const canAddMetricToVisualization = _.contains(["line", "area", "bar"], this.props.card.display);
+
                 aggregationList.push(
-                    <Tooltip key="addmetric" tooltip="Add metric">
                         <ModalWithTrigger
                             full
-                            triggerElement={<AddButton />}
+                            disabled={!canAddMetricToVisualization}
+                            triggerElement={
+                                <Tooltip
+                                    key="addmetric"
+                                    tooltip={canAddMetricToVisualization ? "Add metric" : "In proto you can only add metrics to line/area/bar visualizations"}
+                                >
+                                    <AddButton />
+                                </Tooltip>
+                            }
                         >
                             <AddMetricModal tableMetadata={tableMetadata} />
                         </ModalWithTrigger>
-                    </Tooltip>
                 );
             }
 

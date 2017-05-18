@@ -26,7 +26,8 @@ class AddMetricButton extends Component {
                 style={{
                     border: "1px solid rgba(220,225,228,0.50)",
                     boxShadow: hover ? "0 3px 8px 0 rgba(220,220,220,0.50)" : "0 1px 3px 0 rgba(220,220,220,0.50)",
-                    height: "500px"
+                    height: "500px",
+                    userSelect: "none"
                 }}
                 onMouseOver={() => this.setState({hover: true})}
                 onMouseLeave={() => this.setState({hover: false})}
@@ -55,7 +56,7 @@ export default class AddMetricModal extends Component {
 
     state = {
         addingSavedMetric: false
-    }
+    };
 
     render() {
         const { onClose } = this.props;

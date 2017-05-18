@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Component } from "react";
 import IconBorder from "metabase/components/IconBorder";
 import Icon from "metabase/components/Icon";
 
