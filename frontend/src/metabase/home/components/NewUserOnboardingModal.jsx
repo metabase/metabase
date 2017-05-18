@@ -46,49 +46,33 @@ export default class NewUserOnboardingModal extends Component {
             <div>
                 { step === 1 ?
                     <div className="bordered rounded shadowed">
-                        <div className="pl4 pr4 pt4 pb1 border-bottom">
-                            <h2>{user.first_name}, welcome to Metabase!</h2>
-                            <h2>Analytics you can use by yourself.</h2>
-
-                            <p>Metabase lets you find answers to your questions from data your company already has.</p>
-
-                            <p>It’s easy to use, because it’s designed so you don’t need any analytics knowledge to get started.</p>
+                        <img width="560" height="224" src="app/assets/img/welcome-modal-1.png" />
+                        <div className="pl4 pr4 pt4 pb1">
+                            <h2>Ask questions and explore</h2>
+                            <p>Click on charts or tables to explore, or ask a new question using the easy interface or the powerful SQL editor.</p>
                         </div>
-                        <div className="px4 py2 text-grey-2 flex align-center">
-                            {this.renderStep()}
-                            <button className="Button Button--primary flex-align-right" onClick={() => (this.nextStep())}>Continue</button>
-                        </div>
+                        <button className="Button Button--primary flex-align-right" onClick={() => (this.nextStep())}>Next</button>
                     </div>
                 : step === 2 ?
                     <div className="bordered rounded shadowed">
-                        <div className="pl4 pr4 pt4 pb1 border-bottom">
-                            <h2>Just 3 things worth knowing</h2>
-
-                            <p className="clearfix pt1"><img className="float-left mr2" width="40" height="40" src="app/assets/img/onboarding_illustration_tables.png" />All of your data is organized in Tables. Think of them in terms of Excel spreadsheets with columns and rows.</p>
-
-                            <p className="clearfix"><img className="float-left mr2" width="40" height="40" src="app/assets/img/onboarding_illustration_questions.png" />To get answers, you Ask Questions by picking a table and a few other parameters. You can visualize the answer in many ways, including cool charts.</p>
-
-                            <p className="clearfix"><img className="float-left mr2" width="40" height="40" src="app/assets/img/onboarding_illustration_dashboards.png" />You (and anyone on your team) can save answers in Dashboards, so you can check them often. It's a great way to quickly see a snapshot of your business.</p>
+                        <img width="560" height="262" src="app/assets/img/welcome-modal-2.png" />
+                        <div className="pl4 pr4 pt4 pb1">
+                            <h2>Make your own charts</h2>
+                            <p className="clearfix pt1">Create line charts, scatter plots, maps, and more.</p>
                         </div>
-                        <div className="px4 py2 text-grey-2 flex align-center">
-                            {this.renderStep()}
-                            <button className="Button Button--primary flex-align-right" onClick={() => (this.nextStep())}>Continue</button>
-                        </div>
+                        <button className="Button Button--primary flex-align-right" onClick={() => (this.nextStep())}>Next</button>
                     </div>
                 :
                     <div className="bordered rounded shadowed">
-                        <div className="pl4 pr4 pt4 pb1 border-bottom">
-                            <h2>Let's try asking a question!</h2>
+                        <img width="560" height="295" src="app/assets/img/welcome-modal-3.png" />
+                        <div className="pl4 pr4 pt4 pb1">
+                            <h2>Share what you find</h2>
+                            <p>Create powerful and flexible dashboards, and send regular updates via email or Slack.</p>
+                        </div>
 
-                            <p>We'll take a quick look at the Query Builder, the main tool you'll use in Metabase to ask questions.</p>
-                        </div>
-                        <div className="px4 py2 text-grey-2 flex align-center">
-                            {this.renderStep()}
-                            <span className="flex-align-right">
-                                <a className="text-underline-hover cursor-pointer mr3" onClick={() => (this.closeModal())}>skip for now</a>
-                                <Link to={Urls.question(null, "?tutorial")} className="Button Button--primary">Let's do it!</Link>
-                            </span>
-                        </div>
+                        <span className="flex-align-right">
+                            <a className="text-underline-hover cursor-pointer mr3" onClick={() => (this.closeModal())}>Let's go!</a>
+                        </span>
                     </div>
                 }
             </div>
