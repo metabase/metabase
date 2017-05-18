@@ -384,7 +384,6 @@
 }
 
 .QueryOption {
-    color: color(var(--base-grey) shade(20%));
     font-weight: 700;
 }
 

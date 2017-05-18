@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import AggregationWidget from './AggregationWidget.jsx';
+import MetricWidget from "metabase/query_builder/components/MetricWidget";
 import { duration } from "metabase/lib/formatting";
 
 import Query from "metabase/lib/query";
@@ -20,8 +20,7 @@ import RunButton from "metabase/query_builder/components/RunButton";
 import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import AddMetricModal from "metabase/query_builder/components/AddMetricModal";
-import {getVisualizationRaw} from "metabase/visualizations/index";
-
+import {getCardColors} from "metabase/visualizations/lib/utils";
 
 export default class CardEditor extends Component {
     constructor(props, context) {
@@ -57,7 +56,7 @@ export default class CardEditor extends Component {
     };
 
     renderMetricSection() {
-        const { features, datasetQuery: { query }, tableMetadata, supportMultipleAggregations } = this.props;
+        const { card, features, datasetQuery: { query }, tableMetadata, supportMultipleAggregations } = this.props;
 
         if (!features.aggregation && !features.breakout) {
             return;
@@ -69,6 +68,8 @@ export default class CardEditor extends Component {
 
         // aggregation clause.  must have table details available
         if (tableMetadata) {
+            const metricColors = getCardColors(card);
+
             let isBareRows = Query.isBareRows(query);
             let aggregations = Query.getAggregations(query);
 
@@ -82,7 +83,7 @@ export default class CardEditor extends Component {
             let aggregationList = [];
             for (const [index, aggregation] of aggregations.entries()) {
                 aggregationList.push(
-                    <AggregationWidget
+                    <MetricWidget
                         key={"agg"+index}
                         aggregation={aggregation}
                         tableMetadata={tableMetadata}
@@ -90,33 +91,30 @@ export default class CardEditor extends Component {
                         updateAggregation={(aggregation) => this.props.updateQueryAggregation(index, aggregation)}
                         removeAggregation={canRemoveAggregation ? this.props.removeQueryAggregation.bind(null, index) : null}
                         addMetric={() => {}}
+                        clearable
+                        color={metricColors[index]}
                     />
                 );
-                if (aggregations[index + 1] != null && aggregations[index + 1].length > 0) {
-                    aggregationList.push(
-                        <span key={"and"+index} className="text-bold">and</span>
-                    );
-                }
             }
 
             if (supportMultipleAggregations && !isBareRows) {
                 const canAddMetricToVisualization = _.contains(["line", "area", "bar"], this.props.card.display);
 
                 aggregationList.push(
-                        <ModalWithTrigger
-                            full
-                            disabled={!canAddMetricToVisualization}
-                            triggerElement={
-                                <Tooltip
-                                    key="addmetric"
-                                    tooltip={canAddMetricToVisualization ? "Add metric" : "In proto you can only add metrics to line/area/bar visualizations"}
-                                >
-                                    <AddButton />
-                                </Tooltip>
-                            }
-                        >
-                            <AddMetricModal tableMetadata={tableMetadata} />
-                        </ModalWithTrigger>
+                    <ModalWithTrigger
+                        full
+                        disabled={!canAddMetricToVisualization}
+                        triggerElement={
+                            <Tooltip
+                                key="addmetric"
+                                tooltip={canAddMetricToVisualization ? "Add metric" : "In proto you can only add metrics to line/area/bar visualizations"}
+                            >
+                                <AddButton />
+                            </Tooltip>
+                        }
+                    >
+                        <AddMetricModal tableMetadata={tableMetadata}/>
+                    </ModalWithTrigger>
                 );
             }
 
@@ -239,7 +237,7 @@ export default class CardEditor extends Component {
                 "GuiBuilder--expand": this.state.expanded,
                 disabled: readOnly
             })} ref="guiBuilder">
-                <div className="GuiBuilder-section flex-full flex align-center px1 pr2" ref="viewSection">
+                <div className="GuiBuilder-section flex-full flex align-center px2" ref="viewSection">
                     {this.renderMetricSection()}
                 </div>
                 <div className="GuiBuilder-section flex align-center justify-end">
