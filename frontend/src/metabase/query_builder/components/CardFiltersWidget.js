@@ -1,9 +1,6 @@
 import React, { Component } from "react";
-import cx from "classnames";
 
 import FilterList from './filters/FilterList.jsx';
-import FilterPopover from './filters/FilterPopover.jsx';
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
 import Query from "metabase/lib/query";
 

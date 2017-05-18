@@ -12,7 +12,7 @@
 
 .ml-auto, :local(.ml-auto) { margin-left: auto; }
 .mr-auto, :local(.mr-auto) { margin-right: auto; }
-.mt-auto, { margin-top: auto; }
+.mt-auto { margin-top: auto; }
 
 /* padding */
 

@@ -3,8 +3,6 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import AggregationWidget from './AggregationWidget.jsx';
-import BreakoutWidget from './BreakoutWidget.jsx';
-import DataSelector from './DataSelector.jsx';
 import { duration } from "metabase/lib/formatting";
 
 import Query from "metabase/lib/query";
@@ -20,6 +18,8 @@ import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbed
 import {REFRESH_TOOLTIP_THRESHOLD} from "metabase/query_builder/components/QueryVisualization";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Tooltip from "metabase/components/Tooltip";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import AddMetricModal from "metabase/query_builder/components/AddMetricModal";
 
 
 export default class CardEditor extends Component {
@@ -55,8 +55,12 @@ export default class CardEditor extends Component {
         supportMultipleAggregations: true
     };
 
-    renderAggregation() {
-        const { datasetQuery: { query }, tableMetadata, supportMultipleAggregations } = this.props;
+    renderMetricSection() {
+        const { features, datasetQuery: { query }, tableMetadata, supportMultipleAggregations } = this.props;
+
+        if (!features.aggregation && !features.breakout) {
+            return;
+        }
 
         if (!this.props.features.aggregation) {
             return;
@@ -74,11 +78,6 @@ export default class CardEditor extends Component {
 
             const canRemoveAggregation = aggregations.length > 1;
 
-            if (supportMultipleAggregations && !isBareRows) {
-                // Placeholder aggregation for showing the add button
-                aggregations.push([]);
-            }
-
             let aggregationList = [];
             for (const [index, aggregation] of aggregations.entries()) {
                 aggregationList.push(
@@ -89,7 +88,7 @@ export default class CardEditor extends Component {
                         customFields={Query.getExpressions(this.props.datasetQuery.query)}
                         updateAggregation={(aggregation) => this.props.updateQueryAggregation(index, aggregation)}
                         removeAggregation={canRemoveAggregation ? this.props.removeQueryAggregation.bind(null, index) : null}
-                        addButton={<AddButton />}
+                        addMetric={() => {}}
                     />
                 );
                 if (aggregations[index + 1] != null && aggregations[index + 1].length > 0) {
@@ -98,6 +97,20 @@ export default class CardEditor extends Component {
                     );
                 }
             }
+
+            if (supportMultipleAggregations && !isBareRows) {
+                aggregationList.push(
+                    <Tooltip key="addmetric" tooltip="Add metric">
+                        <ModalWithTrigger
+                            full
+                            triggerElement={<AddButton />}
+                        >
+                            <AddMetricModal tableMetadata={tableMetadata} />
+                        </ModalWithTrigger>
+                    </Tooltip>
+                );
+            }
+
             return aggregationList
         } else {
             // TODO: move this into AggregationWidget?
@@ -108,97 +121,6 @@ export default class CardEditor extends Component {
             );
         }
     }
-
-    renderBreakouts() {
-        const { datasetQuery: { query }, tableMetadata, features } = this.props;
-
-        if (!features.breakout) {
-            return;
-        }
-
-        const enabled = tableMetadata && tableMetadata.breakout_options.fields.length > 0;
-        const breakoutList = [];
-
-        if (enabled) {
-            const breakouts = Query.getBreakouts(query);
-
-            const usedFields = {};
-            for (const breakout of breakouts) {
-                usedFields[Query.getFieldTargetId(breakout)] = true;
-            }
-
-            const remainingFieldOptions = Query.getFieldOptions(tableMetadata.fields, true, tableMetadata.breakout_options.validFieldsFilter, usedFields);
-            if (remainingFieldOptions.count > 0 && (breakouts.length === 0 || breakouts[breakouts.length - 1] != null)) {
-                breakouts.push(null);
-            }
-
-            for (let i = 0; i < breakouts.length; i++) {
-                const breakout = breakouts[i];
-
-                if (breakout == null) {
-                    breakoutList.push(<span key="nullBreakout" className="ml1" />);
-                }
-
-                breakoutList.push(
-                    <BreakoutWidget
-                        key={"breakout"+i}
-                        className="View-section-breakout SelectionModule p1"
-                        fieldOptions={Query.getFieldOptions(tableMetadata.fields, true, tableMetadata.breakout_options.validFieldsFilter, _.omit(usedFields, breakout))}
-                        customFieldOptions={Query.getExpressions(query)}
-                        tableMetadata={tableMetadata}
-                        field={breakout}
-                        setField={(field) => this.props.updateQueryBreakout(i, field)}
-                        addButton={this.renderAdd(i === 0 ? "Add a grouping" : null)}
-                    />
-                );
-
-                if (breakouts[i + 1] != null) {
-                    breakoutList.push(
-                        <span key={"and"+i} className="text-bold">and</span>
-                    );
-                }
-            }
-        }
-
-        return (
-            <div className={cx("Query-section Query-section-breakout", { disabled: !enabled })}>
-                {breakoutList}
-            </div>
-        );
-    }
-
-    renderDataSection() {
-        return (
-            <div className="GuiBuilder-section GuiBuilder-data flex align-center arrow-right">
-                <span className="GuiBuilder-section-label Query-label">Data</span>
-                { this.props.features.data ?
-                    <DataSelector
-                        ref="dataSection"
-                        includeTables={true}
-                        datasetQuery={this.props.datasetQuery}
-                        databases={this.props.databases}
-                        tables={this.props.tables}
-                        setDatabaseFn={this.props.setDatabaseFn}
-                        setSourceTableFn={this.props.setSourceTableFn}
-                        isInitiallyOpen={(!this.props.datasetQuery.database || !this.props.datasetQuery.query.source_table) && !this.props.isShowingTutorial}
-                    />
-                    :
-                    <span className="flex align-center px2 py2 text-bold text-grey">
-                        {this.props.tableMetadata && this.props.tableMetadata.display_name}
-                    </span>
-                }
-            </div>
-        );
-    }
-
-     renderMetricSection = () => {
-        const { features } = this.props;
-        if (!features.aggregation && !features.breakout) {
-            return;
-        }
-
-        return this.renderAggregation();
-    };
 
     renderButtons = () => {
         // NOTE: Most of stuff is replicated from QueryVisualization header
@@ -276,20 +198,6 @@ export default class CardEditor extends Component {
             <ButtonBar buttons={buttons.map(b => [b])} className="borderless pr1 mr2" />
         );
     };
-
-    renderGroupedBySection() {
-        const { features } = this.props;
-        if (!features.aggregation && !features.breakout) {
-            return;
-        }
-
-        return (
-            <div className="GuiBuilder-section GuiBuilder-groupedBy flex align-center px1" ref="viewSection">
-                <span className="GuiBuilder-section-label Query-label">Grouped By</span>
-                {this.renderBreakouts()}
-            </div>
-        );
-    }
 
     componentDidUpdate() {
         const guiBuilder = ReactDOM.findDOMNode(this.refs.guiBuilder);

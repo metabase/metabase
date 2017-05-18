@@ -166,12 +166,10 @@ export default class CardHeader extends Component {
         const { card ,isNew, isDirty, isEditing, databases } = this.props;
         const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
-        // Don't treat as functional component due to refs
-        const getSaveNewCardButton = () =>
+        const SaveNewCardButton = () =>
             <ModalWithTrigger
                 form
                 key="save"
-                ref="saveModal"
                 triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
                 triggerElement="Save"
             >
@@ -182,7 +180,6 @@ export default class CardHeader extends Component {
                     addToDashboard={false}
                     saveFn={this.onSave}
                     createFn={this.onCreate}
-                    onClose={() => this.refs.saveModal.toggle()}
                 />
             </ModalWithTrigger>;
 
@@ -223,10 +220,8 @@ export default class CardHeader extends Component {
         const DeleteCardButton = () =>
             <ArchiveQuestionModal questionId={this.props.card.id}/>;
 
-        // Don't treat as functional component due to refs
-        const getMoveQuestionToCollectionButton = () =>
+        const MoveQuestionToCollectionButton = () =>
             <ModalWithTrigger
-                ref="move"
                 key="move"
                 full
                 triggerElement={
@@ -266,11 +261,9 @@ export default class CardHeader extends Component {
                     </span>
             </Tooltip>;
 
-        // Don't treat as functional component due to refs
-        const getSaveNewCardAndAddToDashboardButton = () =>
+        const SaveNewCardAndAddToDashboardButton = () =>
             <Tooltip key="addtodashsave" tooltip="Add to dashboard">
                 <ModalWithTrigger
-                    ref="addToDashSaveModal"
                     triggerClasses="h4 text-brand-hover text-uppercase"
                     triggerElement={
                         <Button data-metabase-event="QueryBuilder;AddToDash Modal;pre-save"
@@ -287,7 +280,6 @@ export default class CardHeader extends Component {
                         addToDashboard={true}
                         saveFn={this.onSave}
                         createFn={this.onCreate}
-                        onClose={() => this.refs.addToDashSaveModal.toggle()}
                     />
                 </ModalWithTrigger>
             </Tooltip>;
@@ -345,7 +337,7 @@ export default class CardHeader extends Component {
                         <SaveEditedCardButton />,
                         <CancelEditingButton />,
                         <DeleteCardButton />,
-                        getMoveQuestionToCollectionButton()
+                        <MoveQuestionToCollectionButton />
                     ]
                 }
             } else {
@@ -354,11 +346,11 @@ export default class CardHeader extends Component {
         };
 
         const buttons = [
-            isNewCardThatCanBeSaved && getSaveNewCardButton(),
+            isNewCardThatCanBeSaved && <SaveNewCardButton />,
             ...getPersistenceButtons(),
             isNativeQueryWithParameters && <ToggleTemplateTagsEditorButton />,
             isSaved && !isEditing && <AddSavedCardToDashboardButton key="addtodash" />,
-            isNewCardThatCanBeSaved && getSaveNewCardAndAddToDashboardButton(),
+            isNewCardThatCanBeSaved && <SaveNewCardAndAddToDashboardButton />,
             // TODO: See what kind of modifications the revisions feature requires
             isSaved && getHistoryRevisionsButton(),
             // TODO: See how SQL will be supported and move this to the CardEditor banner

@@ -240,7 +240,7 @@ export default class CardBuilder extends Component {
                         </div>
 
                         { showVisualizationSettings &&
-                            <div className="z4 absolute left bottom mb3 ml4">
+                            <div className="z2 absolute left bottom mb3 ml4">
                                 <div style={{backgroundColor: "white"}}>
                                     <VisualizationSettings ref="settings" {...this.props} />
                                 </div>
