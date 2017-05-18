@@ -194,7 +194,7 @@ export default class CardBuilder extends Component {
     };
 
     render() {
-        const { card, isDirty, databases, uiControls, mode } = this.props;
+        const { card, databases, uiControls, mode } = this.props;
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         const ModeFooter = mode && mode.ModeFooter;
 
