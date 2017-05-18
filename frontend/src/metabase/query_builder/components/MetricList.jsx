@@ -11,7 +11,7 @@ import AddButton from "metabase/components/AddButton";
 
 // At the moment this inherits all CardBuilder props
 const MetricList = ({...props}) => {
-    const { card, datasetQuery: { query }, tableMetadata, supportMultipleAggregations, hideAddButton } = props;
+    const { card, datasetQuery: { query }, tableMetadata, supportMultipleAggregations, hideAddButton, hideClearButton } = props;
 
     const metricColors = getCardColors(card);
 
@@ -37,7 +37,7 @@ const MetricList = ({...props}) => {
                 removeAggregation={canRemoveAggregation ? props.removeQueryAggregation.bind(null, index) : null}
                 // TODO Get rid of this placeholder parameter
                 addMetric={() => { }}
-                clearable
+                clearable={!hideClearButton}
                 color={metricColors[index]}
             />
         );

@@ -21,16 +21,18 @@ export default class SavedMetricSelector extends Component {
         card: Card
     };
 
-    state = {
-
-    };
+    // TODO Don't use global state, maintain local query instead
+    // state = {
+    //     currentDataset: null
+    // };
 
     constructor(props, context) {
         super(props, context);
 
-        this.setState({
-            lastRunDatasetQuery: Utils.copy(props.card.dataset_query)
-        });
+        // TODO Don't use global state, maintain local query instead
+        // this.setState({
+        //     currentDataset: Utils.copy(props.card.dataset_query)
+        // });
     }
 
     onSearchChange = (e) => {
@@ -38,7 +40,12 @@ export default class SavedMetricSelector extends Component {
     };
 
     onToggleMetric = async (metric, e) => {
+        console.log('onToggleMetric', metric, e);
         // const checked = e.target.checked;
+        
+        // TODO Don't use global state, maintain local query instead
+        // const datasetQuery = Utils.copy(this.state.currentDataset.query);
+        // Query.updateAggregation(card.dataset_query, metric)
     };
 
     onRemoveSeries = (card) => {
@@ -52,33 +59,41 @@ export default class SavedMetricSelector extends Component {
     };
 
     filteredMetrics = () => {
-        const { metrics, card } = this.props;
+        const currentTableMetrics = getIn(this.props, ["tableMetadata", "metrics"]);
+
+        const { datasetQuery: { query } } = this.props;
+        let aggregations = Query.getAggregations(query);
+        console.log(aggregations);
+
+        const { card } = this.props;
         const { searchValue } = this.state;
 
-        if (!metrics || !card) return [];
+        if (!currentTableMetrics || !card) return [];
 
-        return metrics.filter(metric => {
+        return currentTableMetrics.filter(metric => {
                 // filter out the active metrics somehow
                 // if (card.id === card.id) {
                 //     return false;
                 // }
 
-                // search
-                return !(searchValue && card.name.toLowerCase().indexOf(searchValue) < 0);
-
+            return !(
+                searchValue &&
+                (metric.name || "").toLowerCase().indexOf(searchValue) < 0 &&
+                (metric.description || "").toLowerCase().indexOf(searchValue) < 0
+            );
         });
     };
 
     render() {
-        const { metrics } = this.props;
 
         const filteredMetrics = this.filteredMetrics();
+        console.log(filteredMetrics);
         const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible metrics match your search.") : null;
         // let enabledCards = _.indexBy(this.state.enabledMetrics, 'id').map(() => true);
         const enabledMetrics = [];
         const badMetrics = [];
 
-        const MetricListItem = metric =>
+        const MetricListItem = ({metric}) =>
             <li key={metric.id}
                 className={cx("my1 pl2 py1 flex align-center", {disabled: badMetrics[metric.id]})}>
                 <span className="px1 flex-no-shrink">
@@ -94,25 +109,16 @@ export default class SavedMetricSelector extends Component {
             <div className="spread flex">
                 <div className="flex flex-column flex-full bg-white">
                     <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">
-                        <MetricList {...this.props} />
+                        <MetricList {...this.props} hideAddButton hideClearButton />
                     </div>
                     <div className="flex-full mx1 relative">
                         <VisualizationResult
-                            lastRunDatasetQuery={this.state.lastRunDatasetQuery}
+                            lastRunDatasetQuery={this.state.currentDataset}
                             // onUpdateWarnings={(warnings) => this.setState({ warnings })}
                             // onOpenChartSettings={() => this.refs.settings.open()}
                             className="spread pb1"
                             {...this.props}
                         />
-                        {/* Should QueryVisualization be used here? */}
-                        {/*<Visualization*/}
-                            {/*className="spread"*/}
-                            {/*series={[]}*/}
-                            {/*showTitle*/}
-                            {/*isDashboard*/}
-                            {/*isMultiseries*/}
-                            {/*onRemoveSeries={this.onRemoveSeries}*/}
-                        {/*/>*/}
                         {/*{ this.state.state &&*/}
                         {/*<div className="spred flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>*/}
                             {/*{ this.state.state === "loading" ?*/}
