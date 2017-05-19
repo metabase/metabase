@@ -34,12 +34,12 @@ export default class SavedMetricSelector extends Component {
             addedMetrics: {},
             searchValue: ""
         };
+
     }
 
     // TODO Maybe don't use global state, maintain local query instead; it should make this logic obsolete (copied from QueryVisualization)
     // Or at least figure out that why a local copy is taken in the first place
     componentWillReceiveProps(nextProps) {
-        console.log('`isRunning` changed so updating the understanding of our current query');
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
@@ -52,29 +52,56 @@ export default class SavedMetricSelector extends Component {
         this.setState({ searchValue: e.target.value.toLowerCase() });
     };
 
-    onToggleMetric = async (metric, e) => {
+    addMetric = (metric) => {
+        // TODO Maybe don't use global state, maintain local query instead; this code is helpful for that
         const { addedMetrics } = this.state;
-        const checked = e.target.checked;
 
-        if (checked) {
-            this.props.addQueryAggregation(metric);
-            this.setState({
-                addedMetrics: {
-                    ...addedMetrics,
-                    [metric.id]: metric
-                }
-            })
+        this.props.addQueryAggregation(["METRIC", metric.id]);
+        // this.props.runQuery(null, { ignoreCache: true });
+
+        this.setState({
+            addedMetrics: {
+                ...addedMetrics,
+                [metric.id]: true
+            }
+        })
+    };
+
+    removeMetric = (metric) => {
+        const { addedMetrics } = this.state;
+
+        const aggregations = Query.getAggregations(this.props.card.dataset_query.query);
+        // this.props.runQuery(null, { ignoreCache: true })
+
+        const index = _.findIndex(aggregations, (aggregation) =>
+            AggregationClause.isMetric(aggregation) && AggregationClause.getMetric(aggregation) === metric.id
+        );
+
+        if (index !== -1) {
+            this.props.removeQueryAggregation(index, metric);
         } else {
-            this.setState({
-                addedMetrics: _.omit(addedMetrics, metric.id)
-            });
-            // if (AggregationClause.isMetric(aggregation)) {
-            //     selectedAggregation = _.findWhere(tableMetadata.metrics, { id: AggregationClause.getMetric(aggregation) });
+            console.error("Removing the metric from aggregations failed");
         }
 
-        // TODO Maybe don't use global state, maintain local query instead; this code is helpful for that
-        // const datasetQuery = Utils.copy(this.state.currentDataset.query);
-        // Query.updateAggregation(card.dataset_query, metric)
+        this.setState({
+            addedMetrics: _.omit(addedMetrics, metric.id)
+        });
+    };
+
+    onToggleMetric = (metric, e) => {
+        const checked = e.target.checked;
+
+        try {
+            if (checked) {
+                this.addMetric(metric);
+            } else {
+                this.removeMetric(metric)
+            }
+
+        } catch(e) {
+            console.error("onToggleMetric", e);
+        }
+
     };
 
     onRemoveSeries = (card) => {
@@ -114,7 +141,6 @@ export default class SavedMetricSelector extends Component {
         const { addedMetrics } = this.state;
 
         const filteredMetrics = this.filteredMetrics();
-        console.log("filtered metrics", filteredMetrics);
         const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible metrics match your search.") : null;
         // let enabledCards = _.indexBy(this.state.enabledMetrics, 'id').map(() => true);
         const badMetrics = [];

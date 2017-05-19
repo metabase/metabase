@@ -11,6 +11,7 @@ import AddButton from "metabase/components/AddButton";
 
 // At the moment this inherits all CardBuilder props
 const MetricList = ({...props}) => {
+    console.log('rendering MetricList');
     const { card, datasetQuery: { query }, tableMetadata, supportMultipleAggregations, hideAddButton, hideClearButton } = props;
 
     const metricColors = getCardColors(card);
@@ -48,6 +49,7 @@ const MetricList = ({...props}) => {
 
         aggregationList.push(
             <ModalWithTrigger
+                key="addaggregation"
                 full
                 disabled={!canAddMetricToVisualization}
                 triggerElement={
