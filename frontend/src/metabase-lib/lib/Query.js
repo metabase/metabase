@@ -1,22 +1,71 @@
 /* @flow */
 
-import { nyi } from "./utils";
-
 import Database from "./metadata/Database";
 import Table from "./metadata/Table";
 
-import Aggregation, { AggregationOption } from "./query/Aggregation";
-import Breakout from "./query/Breakout";
-import Filter from "./query/Filter";
-import Sort, { SortOption } from "./query/Sort";
-
+import Question from "./Question";
 import Dimension from "./Dimension";
 import Action, { ActionClick } from "./Action";
+
+import _ from "underscore";
+
+import Q from "metabase/lib/query";
+
+import type { DatasetQuery } from "metabase/meta/types/Card";
+import type {
+    StructuredQuery,
+    Aggregation,
+    Breakout,
+    Filter,
+    OrderBy
+} from "metabase/meta/types/Query";
+import type {
+    Metadata as MetadataObject,
+    TableMetadata
+} from "metabase/meta/types/Metadata";
 
 /**
  * This is a wrapper around a single MBQL or Native query
  */
 export default class Query {
+    _metadata: MetadataObject;
+    _question: Question;
+    _datasetQuery: DatasetQuery;
+
+    constructor(question: Question, datasetQuery: DatasetQuery) {
+        this._metadata = question._metadata;
+        this._question = question;
+        this._datasetQuery = datasetQuery;
+    }
+
+    isStructured(): boolean {
+        return this._datasetQuery.type === "query";
+    }
+    isNative(): boolean {
+        return this._datasetQuery.type === "native";
+    }
+
+    // legacy
+    tableMetadata(): ?TableMetadata {
+        if (this.isStructured()) {
+            // $FlowFixMe
+            return this._metadata.tables[this._datasetQuery.query.source_table];
+        }
+    }
+    // datasetQuery
+    datasetQuery(): DatasetQuery {
+        return this._datasetQuery;
+    }
+
+    query(): StructuredQuery {
+        // $FlowFixMe
+        return this._datasetQuery.query;
+    }
+
+    isEditable(): boolean {
+        return !!this.tableMetadata();
+    }
+
     setDatabase(database: Database) {}
 
     setTable(table: Table) {}
@@ -24,22 +73,43 @@ export default class Query {
     // AGGREGATIONS
 
     aggregations(): Aggregation[] {
-        return [];
+        return Q.getAggregations(this.query());
     }
-    aggregationOptions(): AggregationOption[] {
+    aggregationOptions(): any[] {
         return [];
     }
     canAddAggregation(): boolean {
         return false;
     }
 
+    isBareRows(): boolean {
+        return Q.isBareRows(this.query());
+    }
+
     // BREAKOUTS
 
     breakouts(): Breakout[] {
-        return [];
+        return Q.getBreakouts(this.query());
     }
-    breakoutableDimensions(unused: boolean = false): Dimension[] {
-        return [];
+    breakoutableDimensions(breakout?: any): Dimension[] {
+        const tableMetadata = this.tableMetadata();
+        if (!tableMetadata) {
+            return [];
+        }
+
+        const usedFields = {};
+        for (const b of this.breakouts()) {
+            if (!breakout || !_.isEqual(b, breakout)) {
+                usedFields[Q.getFieldTargetId(b)] = true;
+            }
+        }
+
+        return Q.getFieldOptions(
+            tableMetadata.fields,
+            true,
+            tableMetadata.breakout_options.validFieldsFilter,
+            usedFields
+        );
     }
     canAddBreakout(): boolean {
         return false;
@@ -48,25 +118,29 @@ export default class Query {
     // FILTERS
 
     filters(): Filter[] {
-        return [];
+        return Q.getFilters(this.query());
     }
     filterableDimensions(): Dimension[] {
         return [];
     }
     canAddFilter(): boolean {
-        return false;
+        return Q.canAddFilter(this.query());
     }
 
     // SORTS
 
-    sorts(): Sort[] {
+    sorts(): OrderBy[] {
         return [];
     }
-    sortOptions(): SortOption[] {
+    sortOptions(): any[] {
         return [];
     }
     canAddSort(): boolean {
         return false;
+    }
+
+    expressions(): { [key: string]: any } {
+        return Q.getExpressions(this.query());
     }
 
     // LIMIT

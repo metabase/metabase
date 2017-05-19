@@ -9,9 +9,9 @@ import Filter from "./query/Filter";
 
 import Action, { ActionClick } from "./Action";
 
-import { nyi } from "./utils";
-
 import type { ParameterId } from "metabase/meta/types/Parameter";
+import type { Metadata as MetadataObject } from "metabase/meta/types/Metadata";
+import type { Card as CardObject } from "metabase/meta/types/Card";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -22,28 +22,35 @@ type ParameterOptions = "FIXME";
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 export default class Question {
+    _metadata: MetadataObject;
+    _card: CardObject;
+
     /**
      * A question has one or more queries
      */
-    queries: Query[];
+    _queries: Query[];
 
     /**
      * Question constructor
      */
-    constructor() {}
+    constructor(metadata: MetadataObject, card: CardObject) {
+        this._metadata = metadata;
+        this._card = card;
+        this._queries = [new Query(this, card.dataset_query)];
+    }
 
     /**
      * Helper for single query centric cards
      */
     query(): Query {
-        return this.queries[0];
+        return this._queries[0];
     }
 
     /**
      * Question is valid (as far as we know) and can be executed
      */
     canRun(): boolean {
-        for (const query of this.queries) {
+        for (const query of this._queries) {
             if (!query.canRun()) {
                 return false;
             }
@@ -90,7 +97,7 @@ export default class Question {
     actions(): Action[] {
         // if this is a single query question, the top level actions are
         // the querys actions
-        if (this.queries.length === 1) {
+        if (this._queries.length === 1) {
             return this.query().actions();
         } else {
             // do something smart
@@ -102,7 +109,7 @@ export default class Question {
     actionsForClick(click: ActionClick): Action[] {
         // if this is a single query question, the top level actions are
         // the querys actions
-        if (this.queries.length === 1) {
+        if (this._queries.length === 1) {
             return this.query().actions();
         } else {
             // do something smart

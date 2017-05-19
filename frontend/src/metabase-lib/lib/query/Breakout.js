@@ -1,7 +1,5 @@
 /* @flow */
 
-import { nyi } from "../utils";
-
 export default class Breakout {
     displayName: string;
     icon: string;

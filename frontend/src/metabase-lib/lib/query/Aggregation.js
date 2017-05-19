@@ -1,7 +1,5 @@
 /* @flow */
 
-import { nyi } from "../utils";
-
 export default class Aggregation {
     displayName: string;
     icon: string;
