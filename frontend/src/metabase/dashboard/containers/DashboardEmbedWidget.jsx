@@ -32,7 +32,7 @@ export default class DashboardEmbedWidget extends Component {
                 onDisablePublicLink={() => deletePublicLink(dashboard)}
                 onUpdateEnableEmbedding={(enableEmbedding) => updateEnableEmbedding(dashboard, enableEmbedding)}
                 onUpdateEmbeddingParams={(embeddingParams) => updateEmbeddingParams(dashboard, embeddingParams)}
-                getPublicUrl={({ public_uuid }) => window.location.origin + Urls.publicDashboard(public_uuid)}
+                getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
             />
         );
     }

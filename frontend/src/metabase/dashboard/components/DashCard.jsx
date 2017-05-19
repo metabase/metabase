@@ -168,7 +168,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     </ModalWithTrigger>
 
 const RemoveButton = ({ onRemove }) =>
-    <a className="text-grey-2 text-grey-4-hover " data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove} style={HEADER_ACTION_STYLE}>
+    <a className="text-grey-2 text-grey-4-hover " data-metabase-event="Dashboard;Remove Card Modal" onClick={onRemove} style={HEADER_ACTION_STYLE}>
         <Icon name="close" size={HEADER_ICON_SIZE} />
     </a>
 
