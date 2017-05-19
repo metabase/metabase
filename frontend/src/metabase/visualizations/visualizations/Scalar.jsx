@@ -204,7 +204,7 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
 
                     </Ellipsified>
                     { description &&
-                      <div className="hover-child">
+                      <div className="hover-child" style={{marginLeft: '5px'}}>
                           <Tooltip tooltip={description} maxWidth={'22em'}>
                               <Icon name='info' />
                           </Tooltip>
