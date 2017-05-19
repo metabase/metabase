@@ -30,14 +30,14 @@ export default class OnClickOutsideWrapper extends Component {
                 document.addEventListener("keydown", this._handleKeyPress, false);
             }
             if (this.props.dismissOnClickOutside) {
-                window.addEventListener("click", this._handleClick, true);
+                window.addEventListener("mousedown", this._handleClick, true);
             }
         }, 0);
     }
 
     componentWillUnmount() {
         document.removeEventListener("keydown", this._handleKeyPress, false);
-        window.removeEventListener("click", this._handleClick, true);
+        window.removeEventListener("mousedown", this._handleClick, true);
         clearTimeout(this._timeout);
 
         // remove from the stack after a delay, if it is removed through some other

@@ -68,8 +68,8 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
         if (e.keyCode === KEYCODE_ESCAPE) {
             // set the "cancelled" flag
             cancelled = true;
-            // hide the brush
-            parent.select(".brush").style("opacity", 0);
+            // dispatch a mouseup to end brushing early
+            window.dispatchEvent(new MouseEvent("mouseup"));
         }
     };
 
