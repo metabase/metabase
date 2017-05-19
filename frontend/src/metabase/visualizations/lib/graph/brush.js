@@ -1,4 +1,5 @@
 import { KEYCODE_ESCAPE } from "metabase/lib/keyboard";
+import { moveToBack, moveToFront } from "metabase/lib/dom";
 
 export function initBrush(parent, child, onBrushChange, onBrushEnd) {
     if (!child.brushOn) {
@@ -20,6 +21,8 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
 
     // start
     parent.brush().on("brushstart.custom", () => {
+        // reset "range"
+        range = null;
         // reset "cancelled" flag
         cancelled = false;
         // add "dragging" class to chart
@@ -61,6 +64,7 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
 
         // if not cancelled, emit the onBrushEnd event with the last filter range
         onBrushEnd(cancelled ? null : range);
+        range = null;
     });
 
     // cancel
@@ -79,18 +83,4 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
         // remove the handles since we can't adjust them anyway
         chart.selectAll(".brush .resize").remove();
     });
-}
-
-function moveToBack(element) {
-    if (element && element.parentNode) {
-        element.parentNode.insertBefore(
-            element,
-            element.parentNode.firstChild
-        );
-    }
-}
-function moveToFront(element) {
-    if (element && element.parentNode) {
-        element.parentNode.appendChild(element);
-    }
 }
