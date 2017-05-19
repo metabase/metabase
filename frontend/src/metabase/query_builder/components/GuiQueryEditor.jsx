@@ -246,7 +246,7 @@ export default class GuiQueryEditor extends Component {
             const breakouts = query.breakouts();
 
             const dimensions = query.breakoutableDimensions();
-            if (dimensions.length > 0 && (breakouts.length === 0 || breakouts[breakouts.length - 1] != null)) {
+            if (dimensions.count > 0 && (breakouts.length === 0 || breakouts[breakouts.length - 1] != null)) {
                 // $FlowFixMe
                 breakouts.push(null);
             }

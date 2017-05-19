@@ -9,7 +9,8 @@ import Action, { ActionClick } from "./Action";
 
 import _ from "underscore";
 
-import Q from "metabase/lib/query";
+import Q_deprecated from "metabase/lib/query";
+import * as Q from "metabase/lib/query/query";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type {
@@ -21,8 +22,19 @@ import type {
 } from "metabase/meta/types/Query";
 import type {
     Metadata as MetadataObject,
+    FieldMetadata,
     TableMetadata
 } from "metabase/meta/types/Metadata";
+
+// TODO: replace this with a list of Dimension objects
+type FieldOptions = {
+    count: 0,
+    fields: FieldMetadata[],
+    fks: Array<{
+        field: FieldMetadata,
+        fields: FieldMetadata[]
+    }>
+};
 
 /**
  * This is a wrapper around a single MBQL or Native query
@@ -91,20 +103,20 @@ export default class Query {
     breakouts(): Breakout[] {
         return Q.getBreakouts(this.query());
     }
-    breakoutableDimensions(breakout?: any): Dimension[] {
+    breakoutableDimensions(breakout?: any): FieldOptions {
         const tableMetadata = this.tableMetadata();
         if (!tableMetadata) {
-            return [];
+            return { count: 0, fields: [], fks: [] };
         }
 
         const usedFields = {};
         for (const b of this.breakouts()) {
             if (!breakout || !_.isEqual(b, breakout)) {
-                usedFields[Q.getFieldTargetId(b)] = true;
+                usedFields[Q_deprecated.getFieldTargetId(b)] = true;
             }
         }
 
-        return Q.getFieldOptions(
+        return Q_deprecated.getFieldOptions(
             tableMetadata.fields,
             true,
             tableMetadata.breakout_options.validFieldsFilter,
@@ -120,8 +132,8 @@ export default class Query {
     filters(): Filter[] {
         return Q.getFilters(this.query());
     }
-    filterableDimensions(): Dimension[] {
-        return [];
+    filterableDimensions(): FieldOptions {
+        return { count: 0, fields: [], fks: [] };
     }
     canAddFilter(): boolean {
         return Q.canAddFilter(this.query());
