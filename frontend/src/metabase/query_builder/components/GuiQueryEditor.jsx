@@ -19,7 +19,7 @@ import _ from "underscore";
 
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
-import type { StructuredDatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { TableMetadata, DatabaseMetadata } from "metabase/meta/types/Metadata";
 import type { Children } from 'react';
 
@@ -44,17 +44,7 @@ type Props = {
 
     setDatabaseFn: (id: DatabaseId) => void,
     setSourceTableFn: (id: TableId) => void,
-    setDatasetQuery: (datasetQuery: StructuredDatasetQuery) => void,
-
-    addQueryFilter: () => void,
-    removeQueryFilter: () => void,
-    updateQueryFilter: () => void,
-    addQueryAggregation: () => void,
-    removeQueryAggregation: () => void,
-    updateQueryAggregation: () => void,
-    addQueryBreakout: () => void,
-    removeQueryBreakout: () => void,
-    updateQueryBreakout: () => void,
+    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
 
     isShowingTutorial: boolean,
     isShowingDataReference: boolean,
@@ -118,7 +108,7 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderFilters() {
-        const { query, features } = this.props;
+        const { query, features, setDatasetQuery } = this.props;
 
         if (!features.filter) return;
 
@@ -135,8 +125,8 @@ export default class GuiQueryEditor extends Component {
                     <FilterList
                         filters={filters}
                         tableMetadata={query.tableMetadata()}
-                        removeFilter={this.props.removeQueryFilter}
-                        updateFilter={this.props.updateQueryFilter}
+                        removeFilter={(index) => query.removeFilter(index).update(setDatasetQuery)}
+                        updateFilter={(index, filter) => query.updateFilter(index, filter).update(setDatasetQuery)}
                     />
                 );
             }
@@ -167,7 +157,7 @@ export default class GuiQueryEditor extends Component {
                             isNew={true}
                             tableMetadata={query.tableMetadata() || {}}
                             customFields={query.expressions()}
-                            onCommitFilter={this.props.addQueryFilter}
+                            onCommitFilter={(filter) => query.addFilter(filter).update(setDatasetQuery)}
                             onClose={() => this.refs.filterPopover.close()}
                         />
                     </PopoverWithTrigger>
@@ -177,7 +167,7 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAggregation() {
-        const { query, features } = this.props;
+        const { query, features, setDatasetQuery } = this.props;
 
         if (!features.aggregation) {
             return;
@@ -208,8 +198,8 @@ export default class GuiQueryEditor extends Component {
                         aggregation={aggregation}
                         tableMetadata={query.tableMetadata()}
                         customFields={query.expressions()}
-                        updateAggregation={(aggregation) => this.props.updateQueryAggregation(index, aggregation)}
-                        removeAggregation={canRemoveAggregation ? this.props.removeQueryAggregation.bind(null, index) : null}
+                        updateAggregation={(aggregation) => query.updateAggregation(index, aggregation).update(setDatasetQuery)}
+                        removeAggregation={canRemoveAggregation ? (() => query.removeAggregation(index).update(setDatasetQuery)) : null}
                         addButton={this.renderAdd(null)}
                     />
                 );
@@ -231,7 +221,7 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderBreakouts() {
-        const { query, features } = this.props;
+        const { query, setDatasetQuery, features } = this.props;
 
         if (!features.breakout) {
             return;
@@ -266,7 +256,7 @@ export default class GuiQueryEditor extends Component {
                         customFieldOptions={query.expressions()}
                         tableMetadata={tableMetadata}
                         field={breakout}
-                        setField={(field) => this.props.updateQueryBreakout(i, field)}
+                        setField={(field) => query.updateBreakout(i, field).update(setDatasetQuery)}
                         addButton={this.renderAdd(i === 0 ? "Add a grouping" : null)}
                     />
                 );

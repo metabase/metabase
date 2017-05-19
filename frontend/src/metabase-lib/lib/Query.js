@@ -8,6 +8,7 @@ import Dimension from "./Dimension";
 import Action, { ActionClick } from "./Action";
 
 import _ from "underscore";
+import { updateIn } from "icepick";
 
 import Q_deprecated from "metabase/lib/query";
 import * as Q from "metabase/lib/query/query";
@@ -18,6 +19,7 @@ import type {
     Aggregation,
     Breakout,
     Filter,
+    LimitClause,
     OrderBy
 } from "metabase/meta/types/Query";
 import type {
@@ -98,6 +100,19 @@ export default class Query {
         return Q.isBareRows(this.query());
     }
 
+    addAggregation(aggregation: Aggregation) {
+        return this._updateQuery(Q.addAggregation, arguments);
+    }
+    updateAggregation(index: number, aggregation: Aggregation) {
+        return this._updateQuery(Q.updateAggregation, arguments);
+    }
+    removeAggregation(index: number) {
+        return this._updateQuery(Q.removeAggregation, arguments);
+    }
+    clearAggregations() {
+        return this._updateQuery(Q.clearAggregations, arguments);
+    }
+
     // BREAKOUTS
 
     breakouts(): Breakout[] {
@@ -127,6 +142,19 @@ export default class Query {
         return false;
     }
 
+    addBreakout(breakout: Breakout) {
+        return this._updateQuery(Q.addBreakout, arguments);
+    }
+    updateBreakout(index: number, breakout: Breakout) {
+        return this._updateQuery(Q.updateBreakout, arguments);
+    }
+    removeBreakout(index: number) {
+        return this._updateQuery(Q.removeBreakout, arguments);
+    }
+    clearBreakouts() {
+        return this._updateQuery(Q.clearBreakouts, arguments);
+    }
+
     // FILTERS
 
     filters(): Filter[] {
@@ -139,7 +167,22 @@ export default class Query {
         return Q.canAddFilter(this.query());
     }
 
+    addFilter(filter: Filter) {
+        return this._updateQuery(Q.addFilter, arguments);
+    }
+    updateFilter(index: number, filter: Filter) {
+        return this._updateQuery(Q.updateFilter, arguments);
+    }
+    removeFilter(index: number) {
+        return this._updateQuery(Q.removeFilter, arguments);
+    }
+    clearFilters() {
+        return this._updateQuery(Q.clearFilters, arguments);
+    }
+
     // SORTS
+
+    // TODO: standardize SORT vs ORDER_BY terminology
 
     sorts(): OrderBy[] {
         return [];
@@ -151,13 +194,33 @@ export default class Query {
         return false;
     }
 
-    expressions(): { [key: string]: any } {
-        return Q.getExpressions(this.query());
+    addOrderBy(order_by: OrderBy) {
+        return this._updateQuery(Q.addOrderBy, arguments);
+    }
+    updateOrderBy(index: number, order_by: OrderBy) {
+        return this._updateQuery(Q.updateOrderBy, arguments);
+    }
+    removeOrderBy(index: number) {
+        return this._updateQuery(Q.removeOrderBy, arguments);
+    }
+    clearOrderBy() {
+        return this._updateQuery(Q.clearOrderBy, arguments);
     }
 
     // LIMIT
 
-    setLimit(limit: number): void {}
+    updateLimit(limit: LimitClause) {
+        return this._updateQuery(Q.updateLimit, arguments);
+    }
+    clearLimit() {
+        return this._updateQuery(Q.clearLimit, arguments);
+    }
+
+    // EXPRESSIONS
+
+    expressions(): { [key: string]: any } {
+        return Q.getExpressions(this.query());
+    }
 
     // NATIVE QUERY
 
@@ -190,8 +253,23 @@ export default class Query {
         return false;
     }
 
-    /**
-     * Run the query
-     */
-    run() {}
+    update(fn: (datasetQuery: DatasetQuery) => void) {
+        return fn(this.datasetQuery());
+    }
+
+    // INTERNAL
+
+    _updateQuery(
+        updateFunction: (
+            query: StructuredQuery,
+            ...args: any[]
+        ) => StructuredQuery,
+        args: any[]
+    ) {
+        return new Query(
+            this._question,
+            updateIn(this._datasetQuery, ["query"], query =>
+                updateFunction(query, ...args))
+        );
+    }
 }
