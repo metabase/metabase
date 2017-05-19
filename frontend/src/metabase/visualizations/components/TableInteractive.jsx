@@ -20,7 +20,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
 const HEADER_HEIGHT = 36;
-const ROW_HEIGHT = 28;
+const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
