@@ -57,19 +57,18 @@
   (let [values (db/select 'FieldValues :id (:id table))
         #_values-to-test-for-json-and-email #_(take driver/max-sync-lazy-seq-results 
                                                     (driver/field-values-lazy-seq driver field))]
-      {:id                                (:id field) ;; check if this should be field or table id
-       :field-percent-urls      (u/try-apply (:field-percent-urls driver) field)
-       :field-percent-json      (if (values-are-valid-json? values) 100 0)
-       :field-percent-email     (if (values-are-valid-emails? values) 100 0)
-       :field-avg-length        (u/try-apply (:field-avg-length driver) field)
-       :visibility_type         (:visibility_type field)
-       :values                  values
-       :base_type               (:base_type field) ;; TODO: make this work
-       :qualified-name          (field/qualified-name field)}))
+    {:id                      (:id field) ;; check if this should be field or table id
+     :field-percent-urls      (u/try-apply (:field-percent-urls driver) field)
+     :field-percent-json      (if (values-are-valid-json? values) 100 0)
+     :field-percent-email     (if (values-are-valid-emails? values) 100 0)
+     :field-avg-length        (u/try-apply (:field-avg-length driver) field)
+     :visibility_type         (:visibility_type field)
+     :base_type               (:base_type field) ;; TODO: make this work
+     :qualified-name          (field/qualified-name field)}))
 
 
 (defn table-fingerprint [table]
-  {:row-count (:rows table)}) ;; check this
+  {:rows (:rows table)}) ;; check this
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
