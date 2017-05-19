@@ -77,7 +77,6 @@ export default class SavedMetricSelector extends Component {
         const { addedMetrics } = this.state;
 
         const aggregations = Query.getAggregations(this.props.card.dataset_query.query);
-        // this.props.runQuery(null, { ignoreCache: true })
 
         const index = _.findIndex(aggregations, (aggregation) =>
             AggregationClause.isMetric(aggregation) && AggregationClause.getMetric(aggregation) === metric.id
@@ -92,7 +91,7 @@ export default class SavedMetricSelector extends Component {
         this.setState({
             addedMetrics: _.omit(addedMetrics, metric.id)
         });
-        
+
         setTimeout(this.updateResults, 10);
     };
 
@@ -118,8 +117,15 @@ export default class SavedMetricSelector extends Component {
     };
 
     onDone = () => {
-        // call some callback here
         this.props.onClose();
+        // Show the result in normal QB view
+        setTimeout(() => this.props.runQuery(null, { ignoreCache: true }), 100);
+    };
+
+    onClose = () => {
+        this.filteredMetrics().filter((metric) => !!this.state.addedMetrics[metric.id]).forEach(this.removeMetric);
+        this.props.onClose();
+        // No need to update the result for normal QB here as no changes were being made
     };
 
     filteredMetrics = () => {
@@ -203,7 +209,7 @@ export default class SavedMetricSelector extends Component {
                     </LoadingAndErrorWrapper>
                     <div className="flex-no-shrink pr2 pb2 pt1 flex border-top" style={{ borderColor: "#DBE1DF" }}>
                         <div className="flex-full">{/* TODO: How to implement a full-width border-top without this extra component? */}</div>
-                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button Button--borderless" onClick={this.props.onClose}>Cancel</button>
+                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button Button--borderless" onClick={this.onClose}>Cancel</button>
                         <button className="Button Button--primary" onClick={this.onDone}>Done</button>
                     </div>
                 </div>
