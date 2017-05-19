@@ -9,6 +9,7 @@ import * as Field from "metabase/lib/query/field";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
 import { isDate, isState, isCountry } from "metabase/lib/schema_metadata";
+import Utils from "metabase/lib/utils";
 
 import type { Card as CardObject } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
@@ -49,8 +50,8 @@ const clone = card => {
     const newCard = startNewCard("query");
 
     newCard.display = card.display;
-    newCard.dataset_query = card.dataset_query;
-    newCard.visualization_settings = card.visualization_settings;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
+    newCard.visualization_settings = Utils.copy(card.visualization_settings);
 
     return newCard;
 };
@@ -235,7 +236,7 @@ export const breakout = (card, breakout, tableMetadata) => {
 const MIN_INTERVALS = 4;
 
 export const updateDateTimeFilter = (card, column, start, end) => {
-    card = clone(card);
+    let newCard = clone(card);
 
     let fieldRef = getFieldRefFromColumn(column);
     start = moment(start);
@@ -256,7 +257,7 @@ export const updateDateTimeFilter = (card, column, start, end) => {
         }
 
         // update the breakout
-        card = addOrUpdateBreakout(card, [
+        newCard = addOrUpdateBreakout(newCard, [
             "datetime-field",
             fieldRef,
             "as",
@@ -267,16 +268,19 @@ export const updateDateTimeFilter = (card, column, start, end) => {
         start = start.startOf(column.unit);
         end = end.startOf(column.unit);
 
+        if (start.isAfter(end)) {
+            return card;
+        }
         if (start.isSame(end, column.unit)) {
             // is the start and end are the same (in whatever the original unit was) then just do an "="
-            return addOrUpdateFilter(card, [
+            return addOrUpdateFilter(newCard, [
                 "=",
                 ["datetime-field", fieldRef, "as", column.unit],
                 start.format()
             ]);
         } else {
             // otherwise do a BETWEEN
-            return addOrUpdateFilter(card, [
+            return addOrUpdateFilter(newCard, [
                 "BETWEEN",
                 ["datetime-field", fieldRef, "as", column.unit],
                 start.format(),
@@ -284,7 +288,7 @@ export const updateDateTimeFilter = (card, column, start, end) => {
             ]);
         }
     } else {
-        return addOrUpdateFilter(card, [
+        return addOrUpdateFilter(newCard, [
             "BETWEEN",
             fieldRef,
             start.format(),
