@@ -22,17 +22,18 @@ export default class SavedMetricSelector extends Component {
         card: Card
     };
 
-    state = {
-        currentDataset: null,
-        searchValue: ""
-    };
-
     constructor(props, context) {
         super(props, context);
 
-        this.setState({
-            currentDataset: Utils.copy(props.card.dataset_query)
-        });
+        const currentDataset = Utils.copy(props.card.dataset_query);
+
+        this.state = {
+            currentDataset,
+            // The initial aggregations are only set when the selector view is opened
+            initialAggregations: Query.getAggregations(currentDataset.query),
+            addedMetrics: {},
+            searchValue: ""
+        };
     }
 
     // TODO Maybe don't use global state, maintain local query instead; it should make this logic obsolete (copied from QueryVisualization)
@@ -52,11 +53,21 @@ export default class SavedMetricSelector extends Component {
     };
 
     onToggleMetric = async (metric, e) => {
+        const { addedMetrics } = this.state;
         const checked = e.target.checked;
 
         if (checked) {
             this.props.addQueryAggregation(metric);
+            this.setState({
+                addedMetrics: {
+                    ...addedMetrics,
+                    [metric.id]: metric
+                }
+            })
         } else {
+            this.setState({
+                addedMetrics: _.omit(addedMetrics, metric.id)
+            });
             // if (AggregationClause.isMetric(aggregation)) {
             //     selectedAggregation = _.findWhere(tableMetadata.metrics, { id: AggregationClause.getMetric(aggregation) });
         }
@@ -79,17 +90,13 @@ export default class SavedMetricSelector extends Component {
     filteredMetrics = () => {
         const currentTableMetrics = getIn(this.props, ["tableMetadata", "metrics"]);
 
-        const { datasetQuery: { query } } = this.props;
-        let aggregations = Query.getAggregations(query);
-        console.log("current aggregations", aggregations);
-
         const { card } = this.props;
-        const { searchValue } = this.state;
+        const { searchValue, initialAggregations } = this.state;
 
         if (!currentTableMetrics || !card) return [];
 
         return currentTableMetrics.filter(metric => {
-            if (_.find(aggregations, (aggregation) =>
+            if (_.find(initialAggregations, (aggregation) =>
                 AggregationClause.isMetric(aggregation) && AggregationClause.getMetric(aggregation) === metric.id
             )) {
                 return false;
@@ -104,19 +111,19 @@ export default class SavedMetricSelector extends Component {
     };
 
     render() {
+        const { addedMetrics } = this.state;
 
         const filteredMetrics = this.filteredMetrics();
         console.log("filtered metrics", filteredMetrics);
         const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible metrics match your search.") : null;
         // let enabledCards = _.indexBy(this.state.enabledMetrics, 'id').map(() => true);
-        const enabledMetrics = [];
         const badMetrics = [];
 
         const MetricListItem = ({metric}) =>
             <li key={metric.id}
                 className={cx("my1 pl2 py1 flex align-center", {disabled: badMetrics[metric.id]})}>
                 <span className="px1 flex-no-shrink">
-                    <CheckBox checked={enabledMetrics[metric.id]}
+                    <CheckBox checked={addedMetrics[metric.id]}
                               onChange={this.onToggleMetric.bind(this, metric)}/>
                 </span>
                 <span className="px1">
