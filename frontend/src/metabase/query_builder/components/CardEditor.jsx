@@ -112,6 +112,7 @@ export default class CardEditor extends Component {
             <QuestionEmbedWidget key="questionembed" className="hide sm-show" card={card} />;
 
         const getRunButton = () => {
+
             const runQueryByIgnoringCache = () => runQuery(null, { ignoreCache: true });
 
             let runButtonTooltip;

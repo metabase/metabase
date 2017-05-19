@@ -919,35 +919,39 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, {
     };
 });
 
+export const getChartTypeForCard = (card, queryResult) => {
+    let cardDisplay = card.display;
+
+    // try a little logic to pick a smart display for the data
+    // TODO: less hard-coded rules for picking chart type
+    const isScalarVisualization = card.display === "scalar" || card.display === "progress";
+    if (!isScalarVisualization &&
+        queryResult.data.rows &&
+        queryResult.data.rows.length === 1 &&
+        queryResult.data.cols.length === 1) {
+        // if we have a 1x1 data result then this should always be viewed as a scalar
+        cardDisplay = "scalar";
+
+    } else if (isScalarVisualization &&
+        queryResult.data.rows &&
+        (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)) {
+        // any time we were a scalar and now have more than 1x1 data switch to table view
+        cardDisplay = "table";
+
+    } else if (!card.display) {
+        // if our query aggregation is "rows" then ALWAYS set the display to "table"
+        cardDisplay = "table";
+    }
+
+    return cardDisplay;
+};
+
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResult) => {
     return async (dispatch, getState) => {
-        let cardDisplay = card.display;
-
-        // try a little logic to pick a smart display for the data
-        // TODO: less hard-coded rules for picking chart type
-        const isScalarVisualization = card.display === "scalar" || card.display === "progress";
-        if (!isScalarVisualization &&
-                queryResult.data.rows &&
-                queryResult.data.rows.length === 1 &&
-                queryResult.data.cols.length === 1) {
-            // if we have a 1x1 data result then this should always be viewed as a scalar
-            cardDisplay = "scalar";
-
-        } else if (isScalarVisualization &&
-                    queryResult.data.rows &&
-                    (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)) {
-            // any time we were a scalar and now have more than 1x1 data switch to table view
-            cardDisplay = "table";
-
-        } else if (!card.display) {
-            // if our query aggregation is "rows" then ALWAYS set the display to "table"
-            cardDisplay = "table";
-        }
-
         return {
             card,
-            cardDisplay,
+            cardDisplay: getChartTypeForCard(card, queryResult),
             queryResult
         }
     };

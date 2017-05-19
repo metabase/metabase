@@ -15,6 +15,8 @@ import Utils from "metabase/lib/utils";
 import MetricWidget from "metabase/query_builder/components/MetricWidget";
 import Query, {AggregationClause} from "metabase/lib/query";
 import MetricList from "metabase/query_builder/components/MetricList";
+import {MetabaseApi} from "metabase/services";
+import {getChartTypeForCard} from "metabase/query_builder/actions";
 
 export default class SavedMetricSelector extends Component {
     props: {
@@ -28,28 +30,30 @@ export default class SavedMetricSelector extends Component {
         const currentDataset = Utils.copy(props.card.dataset_query);
 
         this.state = {
+            result: props.result,
             currentDataset,
             // The initial aggregations are only set when the selector view is opened
             initialAggregations: Query.getAggregations(currentDataset.query),
             addedMetrics: {},
             searchValue: ""
         };
-
-    }
-
-    // TODO Maybe don't use global state, maintain local query instead; it should make this logic obsolete (copied from QueryVisualization)
-    // Or at least figure out that why a local copy is taken in the first place
-    componentWillReceiveProps(nextProps) {
-        // whenever we are told that we are running a query lets update our understanding of the "current" query
-        if (nextProps.isRunning) {
-            this.setState({
-                currentDataset: Utils.copy(this.nextProps.card.dataset_query)
-            });
-        }
     }
 
     onSearchChange = (e) => {
         this.setState({ searchValue: e.target.value.toLowerCase() });
+    };
+
+    updateResults = () => {
+        MetabaseApi.dataset(this.props.card.dataset_query).then((queryResult) => {
+
+            this.props.card.display = getChartTypeForCard(this.props.card, queryResult);
+
+            console.log('ad hoc query result', queryResult, getChartTypeForCard(this.props.card, queryResult), this.state.currentDataset);
+
+            this.setState({result: queryResult});
+            // { ...state, display: payload.cardDisplay }
+        }, () => {
+        });
     };
 
     addMetric = (metric) => {
@@ -64,7 +68,9 @@ export default class SavedMetricSelector extends Component {
                 ...addedMetrics,
                 [metric.id]: true
             }
-        })
+        });
+
+        setTimeout(this.updateResults, 10);
     };
 
     removeMetric = (metric) => {
@@ -86,6 +92,8 @@ export default class SavedMetricSelector extends Component {
         this.setState({
             addedMetrics: _.omit(addedMetrics, metric.id)
         });
+        
+        setTimeout(this.updateResults, 10);
     };
 
     onToggleMetric = (metric, e) => {
@@ -170,6 +178,7 @@ export default class SavedMetricSelector extends Component {
                             // onOpenChartSettings={() => this.refs.settings.open()}
                             className="spread pb1"
                             {...this.props}
+                            result={this.state.result}
                         />
                         {/*{ this.state.state &&*/}
                         {/*<div className="spred flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>*/}
