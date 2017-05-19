@@ -84,7 +84,7 @@
   opacity: 1 !important;
 }
 
-.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip circle.dot {
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot {
   r: 3px !important;
   fill: white;
   stroke: currentColor;
@@ -99,19 +99,26 @@
     stroke: white;
 }
 
-.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip circle.dot:hover,
-.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip circle.dot.hover {
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot:hover,
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot.hover {
   fill: currentColor;
 }
 
-.LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip circle.dot:hover,
-.LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip circle.dot.hover {
+.LineAreaBarChart .dc-chart .dc-tooltip .dot.selected,
+.LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip .dot:hover,
+.LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip .dot.hover {
   r: 3px !important;
   fill: white;
   stroke: currentColor;
   stroke-width: 2;
   fill-opacity: 1 !important;
   stroke-opacity: 1 !important;
+}
+.LineAreaBarChart .dc-chart .dc-tooltip .dot.deselected {
+  opacity: 0;
+}
+.LineAreaBarChart .dc-chart .line.deselected {
+  color: #ccc;
 }
 
 .LineAreaBarChart .dc-chart .area,

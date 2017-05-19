@@ -87,13 +87,15 @@ function adjustTicksIfNeeded(axis, axisSize: number, minPixelsPerTick: number) {
     }
 }
 
-function getDcjsChartType(cardType) {
+import { lineAddons } from "./graph/addons"
+
+function getDcjsChart(cardType, parent) {
     switch (cardType) {
-        case "line": return "lineChart";
-        case "area": return "lineChart";
-        case "bar":     return "barChart";
-        case "scatter": return "bubbleChart";
-        default:     return "barChart";
+        case "line":    return lineAddons(dc.lineChart(parent));
+        case "area":    return lineAddons(dc.lineChart(parent));
+        case "bar":     return dc.barChart(parent);
+        case "scatter": return dc.bubbleChart(parent);
+        default:        return dc.barChart(parent);
     }
 }
 
@@ -453,7 +455,8 @@ function applyChartTooltips(chart, series, isStacked, isScalarSeries, onHoverCha
                 }
             }
 
-            chart.selectAll(".dot, .area, .bubble")
+            // for some reason interaction with brush requires we use click for .dot and .bubble but mousedown for bar
+            chart.selectAll(".dot, .bubble")
                 .style({ "cursor": "pointer" })
                 .on("click", onClick);
             chart.selectAll(".bar")
@@ -1066,7 +1069,7 @@ export default function lineAreaBar(element, {
     }
 
     let charts = groups.map((group, index) => {
-        let chart = dc[getDcjsChartType(chartType)](parent);
+        let chart = getDcjsChart(chartType, parent);
 
         if (onChangeCardAndRun) {
             initBrush(parent, chart, onBrushChange, onBrushEnd);
