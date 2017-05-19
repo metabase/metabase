@@ -1,81 +1,97 @@
+/* @flow */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
-import { Link } from "react-router";
+import StepIndicators from 'metabase/components/StepIndicators';
 
 import MetabaseSettings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
+
+type Props = {
+    onClose: () => void,
+}
+
+type State = {
+    step: number
+}
+
+const STEPS = [
+    {
+        title: 'Ask questions and explore',
+        text: 'Click on charts or tables to explore, or ask a new question using the easy interface or the powerful SQL editor.'
+    },
+    {
+        title: 'Make your own charts',
+        text: 'Create line charts, scatter plots, maps, and more.'
+    },
+    {
+        title: 'Share what you find',
+        text: 'Create powerful and flexible dashboards, and send regular updates via email or Slack.'
+    },
+]
+
 
 export default class NewUserOnboardingModal extends Component {
-    constructor(props, context) {
-        super(props, context);
 
-        this.state = {step: 1};
-    }
-
-    static propTypes = {
-        onClose: PropTypes.func.isRequired,
-        user: PropTypes.object.isRequired
-    }
-
-    getStepCount() {
-        return MetabaseSettings.get("has_sample_dataset") ? 3 : 2
+    props: Props
+    state: State = {
+        step: 1
     }
 
     nextStep() {
-        let nextStep = this.state.step + 1;
-        if (nextStep <= this.getStepCount()) {
-            this.setState({ step: this.state.step + 1 });
+        const stepCount = MetabaseSettings.get("has_sample_dataset") ? 3 : 2
+        const nextStep = this.state.step + 1;
+
+        if (nextStep <= stepCount) {
+            this.setState({ step: nextStep });
         } else {
-            this.closeModal();
+            this.props.onClose();
         }
     }
 
-    closeModal() {
-        this.props.onClose();
-    }
-
-    renderStep() {
-        return <span>STEP {this.state.step} of {this.getStepCount()}</span>;
-    }
-
     render() {
-        const { user } = this.props;
         const { step } = this.state;
 
-        return (
-            <div>
-                { step === 1 ?
-                    <div className="bordered rounded shadowed">
-                        <img width="560" height="224" src="app/assets/img/welcome-modal-1.png" />
-                        <div className="pl4 pr4 pt4 pb1">
-                            <h2>Ask questions and explore</h2>
-                            <p>Click on charts or tables to explore, or ask a new question using the easy interface or the powerful SQL editor.</p>
-                        </div>
-                        <button className="Button Button--primary flex-align-right" onClick={() => (this.nextStep())}>Next</button>
-                    </div>
-                : step === 2 ?
-                    <div className="bordered rounded shadowed">
-                        <img width="560" height="262" src="app/assets/img/welcome-modal-2.png" />
-                        <div className="pl4 pr4 pt4 pb1">
-                            <h2>Make your own charts</h2>
-                            <p className="clearfix pt1">Create line charts, scatter plots, maps, and more.</p>
-                        </div>
-                        <button className="Button Button--primary flex-align-right" onClick={() => (this.nextStep())}>Next</button>
-                    </div>
-                :
-                    <div className="bordered rounded shadowed">
-                        <img width="560" height="295" src="app/assets/img/welcome-modal-3.png" />
-                        <div className="pl4 pr4 pt4 pb1">
-                            <h2>Share what you find</h2>
-                            <p>Create powerful and flexible dashboards, and send regular updates via email or Slack.</p>
-                        </div>
+        const currentStep = STEPS[step -1]
 
-                        <span className="flex-align-right">
-                            <a className="text-underline-hover cursor-pointer mr3" onClick={() => (this.closeModal())}>Let's go!</a>
-                        </span>
+        return (
+            <div style={{ maxHeight: '100%', transition: 'height 300ms linear' }}>
+                <OnboardingImages
+                    currentStep={step}
+                />
+                <div className="p4 pb3 text-centered">
+                    <h2>{currentStep.title}</h2>
+                    <p className="ml-auto mr-auto text-paragraph" style={{ maxWidth: 420 }}>
+                        {currentStep.text}
+                    </p>
+                    <div className="flex align-center py2 relative">
+                        <div className="ml-auto mr-auto">
+                            <StepIndicators
+                                currentStep={step}
+                                steps={STEPS}
+                                goToStep={step => this.setState({ step })}
+                            />
+                        </div>
+                        <a
+                            className="link flex-align-right text-bold absolute right"
+                            onClick={() => (this.nextStep())}
+                        >
+                            Next
+                        </a>
                     </div>
-                }
+                </div>
             </div>
         );
     }
 }
+
+const OnboardingImages = ({ currentStep }, { currentStep: number }) =>
+    <div style={{
+        position: 'relative',
+        backgroundColor: '#F5F9FE',
+        height: 224
+
+    }}>
+        <img
+            width="560"
+            height="224"
+            src={`app/assets/img/welcome-modal${currentStep}.png`}
+        />
+    </div>
