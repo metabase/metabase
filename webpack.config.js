@@ -26,7 +26,7 @@ function hasArg(arg) {
 }
 
 var SRC_PATH = __dirname + '/frontend/src/metabase';
-var LIB_SRC_PATH = __dirname + '/frontend/src/metabase-lib/lib';
+var LIB_SRC_PATH = __dirname + '/frontend/src/metabase-lib';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
 // default NODE_ENV to development

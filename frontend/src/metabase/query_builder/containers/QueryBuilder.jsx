@@ -44,10 +44,10 @@ import {
     getIsRunnable,
     getIsResultDirty,
     getMode,
+    getQuery,
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
-
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
@@ -79,6 +79,8 @@ const mapStateToProps = (state, props) => {
     return {
         isAdmin:                   getUserIsAdmin(state, props),
         fromUrl:                   props.location.query.from,
+
+        query:                     getQuery(state),
 
         mode:                      getMode(state),
 

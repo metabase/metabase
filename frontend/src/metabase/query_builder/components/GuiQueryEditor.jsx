@@ -14,8 +14,6 @@ import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
-import Query from "metabase/lib/query";
-
 import cx from "classnames";
 import _ from "underscore";
 
@@ -24,6 +22,8 @@ import type { DatabaseId } from "metabase/meta/types/Database";
 import type { StructuredDatasetQuery } from "metabase/meta/types/Card";
 import type { TableMetadata, DatabaseMetadata } from "metabase/meta/types/Metadata";
 import type { Children } from 'react';
+
+import QueryWrapper from "metabase-lib/lib/Query";
 
 type Props = {
     children?: Children,
@@ -37,8 +37,8 @@ type Props = {
         limit?: boolean
     },
 
-    datasetQuery: StructuredDatasetQuery,
-    tableMetadata: TableMetadata,
+    query: QueryWrapper,
+
     databases: DatabaseMetadata[],
     tables: TableMetadata[],
 
@@ -72,8 +72,6 @@ export default class GuiQueryEditor extends Component {
 
     static propTypes = {
         databases: PropTypes.array,
-        datasetQuery: PropTypes.object.isRequired,
-        tableMetadata: PropTypes.object, // can't be required, sometimes null
         isShowingDataReference: PropTypes.bool.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func,
@@ -120,28 +118,30 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderFilters() {
-        if (!this.props.features.filter) return;
+        const { query, features } = this.props;
+
+        if (!features.filter) return;
 
         let enabled;
         let filterList;
         let addFilterButton;
 
-        if (this.props.tableMetadata) {
+        if (query.isEditable()) {
             enabled = true;
 
-            let filters = Query.getFilters(this.props.datasetQuery.query);
+            let filters = query.filters();
             if (filters && filters.length > 0) {
                 filterList = (
                     <FilterList
                         filters={filters}
-                        tableMetadata={this.props.tableMetadata}
+                        tableMetadata={query.tableMetadata()}
                         removeFilter={this.props.removeQueryFilter}
                         updateFilter={this.props.updateQueryFilter}
                     />
                 );
             }
 
-            if (Query.canAddFilter(this.props.datasetQuery.query)) {
+            if (query.canAddFilter()) {
                 addFilterButton = this.renderAdd((filterList ? null : "Add filters to narrow your answer"), null, "addFilterTarget");
             }
         } else {
@@ -165,8 +165,8 @@ export default class GuiQueryEditor extends Component {
                     >
                         <FilterPopover
                             isNew={true}
-                            tableMetadata={this.props.tableMetadata || {}}
-                            customFields={Query.getExpressions(this.props.datasetQuery.query)}
+                            tableMetadata={query.tableMetadata() || {}}
+                            customFields={query.expressions()}
                             onCommitFilter={this.props.addQueryFilter}
                             onClose={() => this.refs.filterPopover.close()}
                         />
@@ -177,16 +177,16 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAggregation() {
-        const { datasetQuery: { query }, tableMetadata } = this.props;
+        const { query, features } = this.props;
 
-        if (!this.props.features.aggregation) {
+        if (!features.aggregation) {
             return;
         }
 
         // aggregation clause.  must have table details available
-        if (tableMetadata) {
-            let isBareRows = Query.isBareRows(query);
-            let aggregations = Query.getAggregations(query);
+        if (query.isEditable()) {
+            let isBareRows = query.isBareRows();
+            let aggregations = query.aggregations();
 
             if (aggregations.length === 0) {
                 // add implicit rows aggregation
@@ -196,6 +196,7 @@ export default class GuiQueryEditor extends Component {
             const canRemoveAggregation = aggregations.length > 1;
 
             if (!isBareRows) {
+                // $FlowFixMe
                 aggregations.push([]);
             }
 
@@ -205,8 +206,8 @@ export default class GuiQueryEditor extends Component {
                     <AggregationWidget
                         key={"agg"+index}
                         aggregation={aggregation}
-                        tableMetadata={tableMetadata}
-                        customFields={Query.getExpressions(this.props.datasetQuery.query)}
+                        tableMetadata={query.tableMetadata()}
+                        customFields={query.expressions()}
                         updateAggregation={(aggregation) => this.props.updateQueryAggregation(index, aggregation)}
                         removeAggregation={canRemoveAggregation ? this.props.removeQueryAggregation.bind(null, index) : null}
                         addButton={this.renderAdd(null)}
@@ -230,25 +231,23 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderBreakouts() {
-        const { datasetQuery: { query }, tableMetadata, features } = this.props;
+        const { query, features } = this.props;
 
         if (!features.breakout) {
             return;
         }
 
-        const enabled = tableMetadata && tableMetadata.breakout_options.fields.length > 0;
+        const tableMetadata = query.tableMetadata();
+
         const breakoutList = [];
 
-        if (enabled) {
-            const breakouts = Query.getBreakouts(query);
+        const enabled = tableMetadata && tableMetadata.breakout_options.fields.length > 0;
+        if (enabled && tableMetadata) {
+            const breakouts = query.breakouts();
 
-            const usedFields = {};
-            for (const breakout of breakouts) {
-                usedFields[Query.getFieldTargetId(breakout)] = true;
-            }
-
-            const remainingFieldOptions = Query.getFieldOptions(tableMetadata.fields, true, tableMetadata.breakout_options.validFieldsFilter, usedFields);
-            if (remainingFieldOptions.count > 0 && (breakouts.length === 0 || breakouts[breakouts.length - 1] != null)) {
+            const dimensions = query.breakoutableDimensions();
+            if (dimensions.length > 0 && (breakouts.length === 0 || breakouts[breakouts.length - 1] != null)) {
+                // $FlowFixMe
                 breakouts.push(null);
             }
 
@@ -263,8 +262,8 @@ export default class GuiQueryEditor extends Component {
                     <BreakoutWidget
                         key={"breakout"+i}
                         className="View-section-breakout SelectionModule p1"
-                        fieldOptions={Query.getFieldOptions(tableMetadata.fields, true, tableMetadata.breakout_options.validFieldsFilter, _.omit(usedFields, breakout))}
-                        customFieldOptions={Query.getExpressions(query)}
+                        fieldOptions={query.breakoutableDimensions(breakout)}
+                        customFieldOptions={query.expressions()}
                         tableMetadata={tableMetadata}
                         field={breakout}
                         setField={(field) => this.props.updateQueryBreakout(i, field)}
@@ -288,6 +287,8 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderDataSection() {
+        const { query } = this.props;
+        const tableMetadata = query.tableMetadata();
         return (
             <div className={"GuiBuilder-section GuiBuilder-data flex align-center arrow-right"}>
                 <span className="GuiBuilder-section-label Query-label">Data</span>
@@ -295,16 +296,16 @@ export default class GuiQueryEditor extends Component {
                     <DataSelector
                         ref="dataSection"
                         includeTables={true}
-                        datasetQuery={this.props.datasetQuery}
+                        datasetQuery={query.datasetQuery()}
                         databases={this.props.databases}
                         tables={this.props.tables}
                         setDatabaseFn={this.props.setDatabaseFn}
                         setSourceTableFn={this.props.setSourceTableFn}
-                        isInitiallyOpen={(!this.props.datasetQuery.database || !this.props.datasetQuery.query.source_table) && !this.props.isShowingTutorial}
+                        isInitiallyOpen={(!query.datasetQuery().database || !query.query().source_table) && !this.props.isShowingTutorial}
                     />
                     :
                     <span className="flex align-center px2 py2 text-bold text-grey">
-                        {this.props.tableMetadata && this.props.tableMetadata.display_name}
+                        {tableMetadata && tableMetadata.display_name}
                     </span>
                 }
             </div>
@@ -372,7 +373,8 @@ export default class GuiQueryEditor extends Component {
     }
 
     render() {
-        const { datasetQuery, databases } = this.props;
+        const { databases, query } = this.props;
+        const datasetQuery = query.datasetQuery()
         const readOnly = datasetQuery.database != null && !_.findWhere(databases, { id: datasetQuery.database });
         if (readOnly) {
             return <div className="border-bottom border-med" />
