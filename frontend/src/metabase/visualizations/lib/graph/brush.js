@@ -2,11 +2,12 @@ import { KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 import { moveToBack, moveToFront } from "metabase/lib/dom";
 
 export function initBrush(parent, child, onBrushChange, onBrushEnd) {
-    if (!child.brushOn) {
+    if (!parent.brushOn || !child.brushOn) {
         return;
     }
 
     // enable brush
+    parent.brushOn(true);
     child.brushOn(true);
 
     // normally dots are disabled if brush is on but we want them anyway

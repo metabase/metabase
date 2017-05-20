@@ -32,6 +32,7 @@ import { determineSeriesIndexFromElement } from "./tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
+import { isStructured } from "metabase/meta/Card";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { updateDateTimeFilter, updateNumericFilter } from "metabase/qb/lib/actions";
@@ -107,6 +108,8 @@ function initChart(chart, element) {
     chart.height(getAvailableCanvasHeight(element));
     // disable animations
     chart.transitionDuration(0);
+    // disable brush
+    chart.brushOn(false);
 }
 
 function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
@@ -873,6 +876,12 @@ export default function lineAreaBar(element, {
     const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
     const isOrdinal = !isTimeseries && !isQuantitative;
 
+    // is this a dashboard multiseries?
+    // TODO: better way to detect this?
+    const isMultiCardSeries = series.length > 1 && series[0].card.id !== series[1].card.id;
+
+    const enableBrush = !!(onChangeCardAndRun && !isMultiCardSeries && isStructured(series[0].card));
+
     // find the first nonempty single series
     // $FlowFixMe
     const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
@@ -1071,7 +1080,7 @@ export default function lineAreaBar(element, {
     let charts = groups.map((group, index) => {
         let chart = getDcjsChart(chartType, parent);
 
-        if (onChangeCardAndRun) {
+        if (enableBrush) {
             initBrush(parent, chart, onBrushChange, onBrushEnd);
         }
 
