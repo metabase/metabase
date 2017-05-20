@@ -6,12 +6,20 @@
 
 (def ^:private default-ssh-timeout 30000)
 
+(defn ssh-add-key
+  "Adds SSH private key to Jsch class."
+  [jsch key-file-name]
+  (log/debug "Adding ssh key:" key-file-name)
+  (when-not (string/blank? key-file-name) (doto ^com.jcraft.jsch.JSch jsch (.addIdentity key-file-name)))
+)
+
 (defn start-ssh-tunnel
   "Opens a new ssh tunnel and returns the connection along with the dynamically
    assigned tunnel entrance port. It's the callers responsibility to call .disconnect
    on the returned connection object."
-  [{:keys [tunnel-host tunnel-port tunnel-user tunnel-pass host port]}]
-  (let [connection (doto ^com.jcraft.jsch.Session (.getSession (new com.jcraft.jsch.JSch)
+  [{:keys [tunnel-host tunnel-port tunnel-user tunnel-pass tunnel-private-key-file-name host port]}]
+  (let [connection (doto ^com.jcraft.jsch.Session (.getSession (doto (new com.jcraft.jsch.JSch)
+                                                                     (ssh-add-key ^String tunnel-private-key-file-name))
                                                                ^String tunnel-user
                                                                ^String tunnel-host
                                                                tunnel-port)
@@ -52,13 +60,12 @@
    {:name         "tunnel-pass"
     :display-name "SSH tunnel password"
     :type         :password
-    :placeholder  "******"
-    :required     true}
+    :placeholder  "******"}
    #_{:name         "tunnel-private-key"
     :display-name "SSH private key to connect to the tunnel"
     :type         :string
     :placeholder  "Paste the contents of an ssh private key here"}
-   #_{:name         "tunnel-private-key-file-name"
+   {:name         "tunnel-private-key-file-name"
     :display-name "Path on the Metabase server to a SSH private key file to connect to the tunnel"
     :type         :string
     :placeholder  "/home/YOUR-USERNAME/.ssh/id_rsa"}])
@@ -82,7 +89,7 @@
           [connection tunnel-entrance-port] (start-ssh-tunnel (assoc details :host host)) ;; don't include L7 protocol in ssh tunnel
           details-with-tunnel (assoc details
                                 :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
-                                :host (str proto "localhost")
+                                :host (str proto "localhost") ;; SSH tunnel will always be through localhost
                                 :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
                                 :tunnel-connection connection)]
       details-with-tunnel)
