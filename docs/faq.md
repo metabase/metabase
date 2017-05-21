@@ -45,6 +45,7 @@ Metabase currently supports:
 * MongoDB (version 3.0 or higher)
 * MySQL (and MariaDB)
 * PostgreSQL
+* Presto
 * SQL Server
 * SQLite 
 
