@@ -81,4 +81,5 @@ We are experimenting with offering paid support to a limited number of companies
 
 ### Can I embed charts or dashboards in another application?
 
-Not yet. We're working on it however, and you should expect it in the near future. (Late summer/early fall 2016). Keep tabs on it at the main [tracking issue](https://github.com/metabase/metabase/issues/1380)
+Yes, Metabase offers two solutions for sharing charts and dashboards.
+[Public links](http://www.metabase.com/docs/latest/administration-guide/12-public-links.html) let you share or embed charts with simplicity. A powerful [application embedding](http://www.metabase.com/docs/latest/administration-guide/13-embedding.html) let you to embed and customize charts in your own web applications. 
