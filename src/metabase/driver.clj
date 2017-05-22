@@ -140,6 +140,9 @@
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
   *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"")
 
+  (field-avg-length [this field]
+    "*OPTIONAL*. calculate the average length for a field.")
+
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
      This is used to implement some methods of the database sync process which require rows of data during execution.
@@ -201,27 +204,6 @@
      There is no expectation that the results be returned in any given order."))
 
 
-(defn- percent-valid-urls
-  "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
-  [vs]
-  (loop [valid-count 0, non-nil-count 0, [v & more :as vs] vs]
-    (cond (not (seq vs)) (if (zero? non-nil-count) 0.0
-                             (float (/ valid-count non-nil-count)))
-          (nil? v)       (recur valid-count non-nil-count more)
-          :else          (let [valid? (and (string? v)
-                                           (u/is-url? v))]
-                           (recur (if valid? (inc valid-count) valid-count)
-                                  (inc non-nil-count)
-                                  more)))))
-
-(defn default-field-percent-urls
-  "Default implementation for optional driver fn `field-percent-urls` that calculates percentage in Clojure-land."
-  [driver field]
-  (->> (field-values-lazy-seq driver field)
-       (filter identity)
-       (take max-sync-lazy-seq-results)
-       percent-valid-urls))
-
 (defn default-field-avg-length
   "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
   [driver field]
@@ -237,13 +219,13 @@
                                (reduce +))
                           field-values-count))))))
 
-
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
   {:analyze-table                     (constantly nil)
    :date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
+   :field-avg-length                  (constantly 0)
    :format-custom-field-name          (u/drop-first-arg identity)
    :humanize-connection-error-message (u/drop-first-arg identity)
    :notify-database-updated           (constantly nil)

@@ -81,6 +81,9 @@
      The default implementation is `fast-field-percent-urls`, which avoids a full table scan. Substitue this with `slow-field-percent-urls` for databases
      where this doesn't work, such as SQL Server.")
 
+  (field-avg-length [this field]
+    "*OPTIONAL*. calculate the average length for a field, the default implementation is in `field-avg-length`.")
+
   (field->alias ^String [this, ^Field field]
     "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation calls `name`, which
      returns the *unqualified* name of `Field`.
@@ -456,6 +459,7 @@
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
    :field-percent-urls   fast-field-percent-urls
+   :field-avg-length     (u/drop-first-arg field-avg-length)
    :prepare-sql-param    (u/drop-first-arg identity)
    :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
