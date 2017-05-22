@@ -228,49 +228,44 @@ export default class GuiQueryEditor extends Component {
             return;
         }
 
-        const tableMetadata = query.tableMetadata();
-
         const breakoutList = [];
 
-        const enabled = tableMetadata && tableMetadata.breakout_options.fields.length > 0;
-        if (enabled && tableMetadata) {
-            const breakouts = query.breakouts();
+        const breakouts = query.breakouts();
 
-            // Placeholder breakout for showing the add button
-            if (query.canAddBreakout() && breakouts.length === 0) {
-                // $FlowFixMe
-                breakouts.push(null);
+        // Placeholder breakout for showing the add button
+        if (query.canAddBreakout() && breakouts.length === 0) {
+            // $FlowFixMe
+            breakouts.push(null);
+        }
+
+        for (let i = 0; i < breakouts.length; i++) {
+            const breakout = breakouts[i];
+
+            if (breakout == null) {
+                breakoutList.push(<span key="nullBreakout" className="ml1" />);
             }
 
-            for (let i = 0; i < breakouts.length; i++) {
-                const breakout = breakouts[i];
+            breakoutList.push(
+                <BreakoutWidget
+                    key={"breakout"+i}
+                    className="View-section-breakout SelectionModule p1"
+                    index={i}
+                    breakout={breakout}
+                    query={query}
+                    updateQuery={setDatasetQuery}
+                    addButton={this.renderAdd(i === 0 ? "Add a grouping" : null)}
+                />
+            );
 
-                if (breakout == null) {
-                    breakoutList.push(<span key="nullBreakout" className="ml1" />);
-                }
-
+            if (breakouts[i + 1] != null) {
                 breakoutList.push(
-                    <BreakoutWidget
-                        key={"breakout"+i}
-                        className="View-section-breakout SelectionModule p1"
-                        index={i}
-                        breakout={breakout}
-                        query={query}
-                        updateQuery={setDatasetQuery}
-                        addButton={this.renderAdd(i === 0 ? "Add a grouping" : null)}
-                    />
+                    <span key={"and"+i} className="text-bold">and</span>
                 );
-
-                if (breakouts[i + 1] != null) {
-                    breakoutList.push(
-                        <span key={"and"+i} className="text-bold">and</span>
-                    );
-                }
             }
         }
 
         return (
-            <div className={cx("Query-section Query-section-breakout", { disabled: !enabled })}>
+            <div className={cx("Query-section Query-section-breakout", { disabled: !breakoutList.length > 0 })}>
                 {breakoutList}
             </div>
         );
