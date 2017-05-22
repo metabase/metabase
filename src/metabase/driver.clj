@@ -225,7 +225,7 @@
    :date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
-   :field-avg-length                  (constantly 0)
+   :field-avg-length                  (u/drop-first-arg default-field-avg-length)
    :format-custom-field-name          (u/drop-first-arg identity)
    :humanize-connection-error-message (u/drop-first-arg identity)
    :notify-database-updated           (constantly nil)

@@ -432,9 +432,7 @@
 (defn analyze-table
   "Default implementation of `analyze-table` for SQL drivers."
   [driver table new-table-ids]
-  ((cached-values/make-analyze-table driver
-     :field-avg-length-fn   (partial field-avg-length driver)
-     :field-percent-urls-fn (partial field-percent-urls driver))
+  ((cached-values/make-analyze-table driver)
    driver
    table
    new-table-ids))
