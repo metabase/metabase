@@ -95,6 +95,9 @@ export default class Query {
     canAddAggregation(): boolean {
         return false;
     }
+    canRemoveAggregation(): boolean {
+        return this.aggregations().length > 1;
+    }
 
     isBareRows(): boolean {
         return Q.isBareRows(this.query());
@@ -139,7 +142,7 @@ export default class Query {
         );
     }
     canAddBreakout(): boolean {
-        return false;
+        return this.breakoutableDimensions().count > 0;
     }
 
     addBreakout(breakout: Breakout) {

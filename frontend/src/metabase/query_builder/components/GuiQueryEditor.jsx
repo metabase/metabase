@@ -4,8 +4,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import AggregationWidget from './AggregationWidget.jsx';
-import BreakoutWidget from './BreakoutWidget.jsx';
+import AggregationWidget_LEGACY from './AggregationWidget.jsx';
+import BreakoutWidget_LEGACY from './BreakoutWidget.jsx';
 import DataSelector from './DataSelector.jsx';
 import ExtendedOptions from "./ExtendedOptions.jsx";
 import FilterList from './filters/FilterList.jsx';
@@ -41,6 +41,8 @@ type Props = {
 
     databases: DatabaseMetadata[],
     tables: TableMetadata[],
+
+    supportMultipleAggregations?: boolean,
 
     setDatabaseFn: (id: DatabaseId) => void,
     setSourceTableFn: (id: TableId) => void,
@@ -184,8 +186,6 @@ export default class GuiQueryEditor extends Component {
                 aggregations.push(["rows"]);
             }
 
-            const canRemoveAggregation = aggregations.length > 1;
-
             // Placeholder aggregation for showing the add button
             if (supportMultipleAggregations && !query.isBareRows()) {
                 // $FlowFixMe
@@ -197,11 +197,10 @@ export default class GuiQueryEditor extends Component {
                 aggregationList.push(
                     <AggregationWidget
                         key={"agg"+index}
+                        index={index}
                         aggregation={aggregation}
-                        tableMetadata={query.tableMetadata()}
-                        customFields={query.expressions()}
-                        updateAggregation={(aggregation) => query.updateAggregation(index, aggregation).update(setDatasetQuery)}
-                        removeAggregation={canRemoveAggregation ? (() => query.removeAggregation(index).update(setDatasetQuery)) : null}
+                        query={query}
+                        updateQuery={setDatasetQuery}
                         addButton={this.renderAdd(null)}
                     />
                 );
@@ -237,8 +236,8 @@ export default class GuiQueryEditor extends Component {
         if (enabled && tableMetadata) {
             const breakouts = query.breakouts();
 
-            const dimensions = query.breakoutableDimensions();
-            if (dimensions.count > 0 && (breakouts.length === 0 || breakouts[breakouts.length - 1] != null)) {
+            // Placeholder breakout for showing the add button
+            if (query.canAddBreakout() && breakouts.length === 0) {
                 // $FlowFixMe
                 breakouts.push(null);
             }
@@ -254,11 +253,10 @@ export default class GuiQueryEditor extends Component {
                     <BreakoutWidget
                         key={"breakout"+i}
                         className="View-section-breakout SelectionModule p1"
-                        fieldOptions={query.breakoutableDimensions(breakout)}
-                        customFieldOptions={query.expressions()}
-                        tableMetadata={tableMetadata}
-                        field={breakout}
-                        setField={(field) => query.updateBreakout(i, field).update(setDatasetQuery)}
+                        index={i}
+                        breakout={breakout}
+                        query={query}
+                        updateQuery={setDatasetQuery}
                         addButton={this.renderAdd(i === 0 ? "Add a grouping" : null)}
                     />
                 );
@@ -391,3 +389,24 @@ export default class GuiQueryEditor extends Component {
         );
     }
 }
+
+const AggregationWidget = ({ index, aggregation, query, updateQuery, addButton }) =>
+    <AggregationWidget_LEGACY
+        aggregation={aggregation}
+        tableMetadata={query.tableMetadata()}
+        customFields={query.expressions()}
+        updateAggregation={(aggregation) => query.updateAggregation(index, aggregation).update(updateQuery)}
+        removeAggregation={query.canRemoveAggregation() ? (() => query.removeAggregation(index).update(updateQuery)) : null}
+        addButton={addButton}
+    />
+
+const BreakoutWidget = ({ className, index, breakout, query, updateQuery, addButton }) =>
+    <BreakoutWidget_LEGACY
+        className={className}
+        field={breakout}
+        fieldOptions={query.breakoutableDimensions(breakout)}
+        customFieldOptions={query.expressions()}
+        tableMetadata={query.tableMetadata()}
+        setField={(field) => query.updateBreakout(index, field).update(updateQuery)}
+        addButton={addButton}
+    />
