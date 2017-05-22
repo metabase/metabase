@@ -17,6 +17,7 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Creating a Getting Started Guide for your team](11-getting-started-guide.md)
 * [Sharing dashboards and questions with public links](12-public-links.md)
 * [Embedding Metabase in other Applications](13-embedding.md)
+* [Caching query results](14-caching.md)
 
 First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.md#installing-and-running-metabase) will help you through the process.
 

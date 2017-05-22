@@ -6,6 +6,8 @@ import cx from 'classnames'
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import type { ClickObject, ClickAction } from "metabase/meta/types/Visualization";
 import type { Card } from "metabase/meta/types/Card";
 
@@ -14,6 +16,9 @@ import _ from "underscore";
 const SECTIONS = {
     zoom: {
         icon: "zoom"
+    },
+    records: {
+        icon: "table2"
     },
     details: {
         icon: "document"
@@ -27,14 +32,17 @@ const SECTIONS = {
     sum: {
         icon: "sum"
     },
-    distribution: {
-        icon: "distribution"
+    averages: {
+        icon: "curve"
     },
     filter: {
         icon: "funneloutline"
     },
     dashboard: {
         icon: "dashboard"
+    },
+    distribution: {
+        icon: "bar"
     }
 }
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
@@ -71,7 +79,9 @@ export default class ChartClickActions extends Component<*, Props, State> {
         if (action.popover) {
             this.setState({ popoverAction: action });
         } else if (action.card) {
-            onChangeCardAndRun(action.card());
+            const card = action.card();
+            MetabaseAnalytics.trackEvent("Actions", "Executed Click Action", `${action.section||""}:${action.name||""}`);
+            onChangeCardAndRun(card);
             this.close();
         }
     }
@@ -89,8 +99,16 @@ export default class ChartClickActions extends Component<*, Props, State> {
             const PopoverContent = popoverAction.popover;
             popover = (
                 <PopoverContent
-                    onChangeCardAndRun={onChangeCardAndRun}
-                    onClose={this.close}
+                    onChangeCardAndRun={(card) => {
+                        if (popoverAction) {
+                            MetabaseAnalytics.trackEvent("Action", "Executed Click Action", `${popoverAction.section||""}:${popoverAction.name||""}`);
+                        }
+                        onChangeCardAndRun(card);
+                    }}
+                    onClose={() => {
+                        MetabaseAnalytics.trackEvent("Action", "Dismissed Click Action Menu");
+                        this.close();
+                    }}
                 />
             );
         }
@@ -105,7 +123,10 @@ export default class ChartClickActions extends Component<*, Props, State> {
             <Popover
                 target={clicked.element}
                 targetEvent={clicked.event}
-                onClose={this.close}
+                onClose={() => {
+                    MetabaseAnalytics.trackEvent("Action", "Dismissed Click Action Menu");
+                    this.close();
+                }}
                 verticalAttachments={["top", "bottom"]}
                 horizontalAttachments={["left", "center", "right"]}
                 sizeToFit

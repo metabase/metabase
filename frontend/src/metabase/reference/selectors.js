@@ -50,7 +50,7 @@ const referenceSections = {
             title: "Metrics are the official numbers that your team cares about",
             adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
             message: "Metrics will appear here once your admins have created some",
-            image: "/app/img/metrics-list",
+            image: "app/assets/img/metrics-list",
             adminAction: "Learn how to create metrics",
             adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
         },
@@ -70,7 +70,7 @@ const referenceSections = {
             title: "Segments are interesting subsets of tables",
             adminMessage: "Defining common segments for your team makes it even easier to ask questions",
             message: "Segments will appear here once your admins have created some",
-            image: "/app/img/segments-list",
+            image: "app/assets/img/segments-list",
             adminAction: "Learn how to create segments",
             adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
         },
@@ -89,7 +89,7 @@ const referenceSections = {
             title: "Metabase is no fun without any data",
             adminMessage: "Your databses will appear here once you connect one",
             message: "Databases will appear here once your admins have added some",
-            image: "/app/img/databases-list",
+            image: "app/assets/img/databases-list",
             adminAction: "Connect a database",
             adminLink: "/admin/databases/create"
         },

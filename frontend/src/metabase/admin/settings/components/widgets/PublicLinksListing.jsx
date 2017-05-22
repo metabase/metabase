@@ -152,7 +152,7 @@ export const PublicLinksDashboardListing = () =>
         revoke={DashboardApi.deletePublicLink}
         type='Public Dashboard Listing'
         getUrl={({ id }) => Urls.dashboard(id)}
-        getPublicUrl={({ public_uuid }) => window.location.origin + Urls.publicDashboard(public_uuid)}
+        getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
         noLinksMessage="No dashboards have been publicly shared yet."
     />;
 
@@ -162,7 +162,7 @@ export const PublicLinksQuestionListing = () =>
         revoke={CardApi.deletePublicLink}
         type='Public Card Listing'
         getUrl={({ id }) => Urls.question(id)}
-        getPublicUrl={({ public_uuid }) => window.location.origin + Urls.publicCard(public_uuid)}
+        getPublicUrl={({ public_uuid }) => Urls.publicCard(public_uuid)}
         noLinksMessage="No questions have been publicly shared yet."
     />;
 

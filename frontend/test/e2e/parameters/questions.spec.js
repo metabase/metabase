@@ -106,22 +106,27 @@ describeE2E("parameters", () => {
             // public url
             await d.get(publicUrl);
             await d::checkScalar(COUNT_ALL);
+            await d.sleep(1000); // making sure that the previous api call has finished
 
             // manually click parameter
             await d::setCategoryParameter("Doohickey");
             await d::checkScalar(COUNT_DOOHICKEY);
+            await d.sleep(1000);
 
             // set parameter via url
             await d.get(publicUrl + "?category=Gadget");
             await d::checkScalar(COUNT_GADGET);
+            await d.sleep(1000);
 
             // embed
             await d.get(embedUrl);
             await d::checkScalar(COUNT_ALL);
+            await d.sleep(1000);
 
             // manually click parameter
             await d::setCategoryParameter("Doohickey");
             await d::checkScalar(COUNT_DOOHICKEY);
+            await d.sleep(1000);
 
             // set parameter via url
             await d.get(embedUrl + "?category=Gadget");

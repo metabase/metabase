@@ -6,13 +6,11 @@
   font-weight: 700;
 }
 
-.TableInteractive-headerCellData:hover {
-    cursor: pointer;
+.TableInteractive-headerCellData .Icon {
+  opacity: 0;
 }
 
-.TableInteractive-headerCellData .Icon       { opacity: 0; }
-.TableInteractive-headerCellData:hover .Icon,
-.TableInteractive-headerCellData--sorted .Icon     {
+.TableInteractive-headerCellData--sorted .Icon {
     opacity: 1;
     transition: opacity .3s linear;
 }

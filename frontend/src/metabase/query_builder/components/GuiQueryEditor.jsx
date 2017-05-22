@@ -66,7 +66,8 @@ export default class GuiQueryEditor extends Component {
         setDatasetQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func,
         setSourceTableFn: PropTypes.func,
-        features: PropTypes.object
+        features: PropTypes.object,
+        supportMultipleAggregations: PropTypes.bool
     };
 
     static defaultProps = {
@@ -77,7 +78,8 @@ export default class GuiQueryEditor extends Component {
             breakout: true,
             sort: true,
             limit: true
-        }
+        },
+        supportMultipleAggregations: true
     };
 
     renderAdd(text: ?string, onClick: ?(() => void), targetRefName?: string) {
@@ -167,7 +169,7 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAggregation() {
-        const { query, features, setDatasetQuery } = this.props;
+        const { query, features, setDatasetQuery, supportMultipleAggregations } = this.props;
 
         if (!features.aggregation) {
             return;
@@ -175,7 +177,6 @@ export default class GuiQueryEditor extends Component {
 
         // aggregation clause.  must have table details available
         if (query.isEditable()) {
-            let isBareRows = query.isBareRows();
             let aggregations = query.aggregations();
 
             if (aggregations.length === 0) {
@@ -185,7 +186,8 @@ export default class GuiQueryEditor extends Component {
 
             const canRemoveAggregation = aggregations.length > 1;
 
-            if (!isBareRows) {
+            // Placeholder aggregation for showing the add button
+            if (supportMultipleAggregations && !query.isBareRows()) {
                 // $FlowFixMe
                 aggregations.push([]);
             }

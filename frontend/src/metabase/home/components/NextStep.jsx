@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
-import fetch from 'isomorphic-fetch';
+import { SetupApi } from "metabase/services";
 
 import SidebarSection from "./SidebarSection.jsx";
 
@@ -13,15 +13,12 @@ export default class NextStep extends Component {
     }
 
     async componentWillMount() {
-        let response = await fetch("/api/setup/admin_checklist", { credentials: 'same-origin' });
-        if (response.status === 200) {
-            let sections = await response.json();
-            for (let section of sections) {
-                for (let task of section.tasks) {
-                    if (task.is_next_step) {
-                        this.setState({ next: task });
-                        break;
-                    }
+        const sections = await SetupApi.admin_checklist(null, { noEvent: true });
+        for (let section of sections) {
+            for (let task of section.tasks) {
+                if (task.is_next_step) {
+                    this.setState({ next: task });
+                    break;
                 }
             }
         }

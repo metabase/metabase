@@ -73,6 +73,7 @@ export default class PartialQueryBuilder extends Component {
                     databases={tableMetadata && [tableMetadata.db]}
                     setDatasetQuery={this.setDatasetQuery}
                     isShowingDataReference={false}
+                    supportMultipleAggregations={false}
                     setDatabaseFn={null}
                     setSourceTableFn={null}
                     addQueryFilter={(filter) => onChange(Query.addFilter(datasetQuery.query, filter))}

@@ -47,7 +47,7 @@
     #"^com.jcraft.jsch.JSchException: Auth fail$"
     (driver/connection-error-messages :ssh-tunnel-auth-fail)
 
-    #"j^ava.net.ConnectException: Connection refused (Connection refused)$"
+    #".*JSchException: java.net.ConnectException: Connection refused.*"
     (driver/connection-error-messages :ssh-tunnel-connection-fail)
 
     #".*"                               ; default

@@ -1,6 +1,7 @@
 (ns metabase.routes
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [compojure
              [core :refer [context defroutes GET]]
              [route :as route]]
@@ -15,6 +16,14 @@
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
 
+(defn- base-href []
+  (str (.getPath (io/as-url (public-settings/site-url))) "/"))
+
+(defn- escape-script [s]
+  ;; Escapes text to be included in an inline <script> tag, in particular the string '</script'
+  ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
+  (str/replace s #"</script" "</scr\\\\ipt"))
+
 (defn- load-file-at-path [path]
   (slurp (or (io/resource path)
              (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
@@ -25,7 +34,9 @@
 (defn- entrypoint [entry embeddable? {:keys [uri]}]
   (-> (if (init-status/complete?)
         (load-template (str "frontend_client/" entry ".html")
-                       {:bootstrap_json (json/generate-string (public-settings/public-settings))
+                       {:bootstrap_json (escape-script (json/generate-string (public-settings/public-settings)))
+                        :uri            (escape-script (json/generate-string uri))
+                        :base_href      (escape-script (json/generate-string (base-href)))
                         :embed_code     (when embeddable? (embed/head uri))})
         (load-file-at-path "frontend_client/init.html"))
       resp/response

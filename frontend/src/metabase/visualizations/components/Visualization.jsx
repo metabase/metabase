@@ -11,6 +11,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { duration, formatNumber } from "metabase/lib/formatting";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/visualizations/lib/settings";
@@ -208,38 +209,39 @@ export default class Visualization extends Component<*, Props, State> {
     }
 
     handleVisualizationClick = (clicked: ClickObject) => {
+        if (clicked) {
+            MetabaseAnalytics.trackEvent(
+                "Actions",
+                "Clicked",
+                `${clicked.column ? "column" : ""} ${clicked.value ? "value" : ""} ${clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""}`
+            );
+        }
+
         // needs to be delayed so we don't clear it when switching from one drill through to another
         setTimeout(() => {
-            // const { onChangeCardAndRun } = this.props;
-            // let clickActions = this.getClickActions(clicked);
-            // if there's a single drill action (without a popover) execute it immediately
-            // if (clickActions.length === 1 && clickActions[0].default && clickActions[0].card) {
-            //     onChangeCardAndRun(clickActions[0].card());
-            // } else {
-                this.setState({ clicked });
-            // }
-        }, 100)
+            this.setState({ clicked });
+        }, 100);
     }
 
     handleOnChangeCardAndRun = (card: UnsavedCard) => {
         const { series, clicked } = this.state;
 
-        // If the current card is saved or is based on a saved question,
-        // carry that information to the new card for showing lineage
         const index = (clicked && clicked.seriesIndex) || 0;
-        // $FlowFixMe
-        const hasOriginalCard = series[index] && series[index].card && (series[index].card.id || series[index].card.original_card_id);
-        if (hasOriginalCard) {
-            const cardWithOriginalId: UnsavedCard = {
-                ...card,
-                // $FlowFixMe
-                original_card_id: series[index].card.id || series[index].card.original_card_id
-            };
+        const originalCard = series && series[index] && series[index].card;
 
-            this.props.onChangeCardAndRun(cardWithOriginalId)
-        } else {
-            this.props.onChangeCardAndRun(card)
+        let cardId = card.id || card.original_card_id;
+        // if the supplied card doesn't have an id, get it from the original card
+        if (cardId == null && originalCard) {
+            // $FlowFixMe
+            cardId = originalCard.id || originalCard.original_card_id;
         }
+
+        this.props.onChangeCardAndRun({
+            ...card,
+            id: cardId,
+            // $FlowFixMe
+            original_card_id: cardId
+        });
     }
 
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -347,7 +349,7 @@ export default class Visualization extends Component<*, Props, State> {
                 : isDashboard && noResults ?
                     <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
                         <Tooltip tooltip="No results!" isEnabled={small}>
-                            <img src="/app/img/no_results.svg" />
+                            <img src="app/assets/img/no_results.svg" />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
