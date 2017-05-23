@@ -83,18 +83,22 @@
 (defn field-fingerprint [driver table field]
   (let [values (->> (driver/field-values-lazy-seq driver field)
                     (take driver/max-sync-lazy-seq-results))]
-    {:id                      (:id field)
+    {:base_type               (:base_type field)
+     :cardinality             (count (distinct values))
      :field-percent-urls      (percent-valid-urls values)
      :field-percent-json      (if (values-are-valid-json? values) 100 0)
      :field-percent-email     (if (values-are-valid-emails? values) 100 0)
      :field-avg-length        (field-avg-length values)
-     :visibility_type         (:visibility_type field)
-     :base_type               (:base_type field)
-     :qualified-name          (field/qualified-name field)}))
+     :id                      (:id field)
+     :name                    (:name field)
+     :qualified-name          (field/qualified-name field)
+     :visibility_type         (:visibility_type field)}))
 
 
 (defn table-fingerprint [table]
   {:rows (:rows table)}) ;; check this
+
+
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
@@ -102,7 +106,8 @@
   (let [fields (table/fields table)
         field-fingerprints (map #(field-fingerprint driver table %) fields)
         table-fingerprint (table-fingerprint table)]
-    (when-let [table-stats (u/prog1 (classify/classify-table! table-fingerprint field-fingerprints)
+    ;; this will be moved to classify.clj once the fingerprint format is settled
+    (when-let [table-stats (u/prog1 (classify/classify-table! table-fingerprint field-fingerprints) ;; this is here temporarily
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
       (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]

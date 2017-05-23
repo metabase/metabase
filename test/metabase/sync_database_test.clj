@@ -327,7 +327,7 @@
          (get-field-values))]))
 
 
-;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.analyze/low-cardinality-threshold` (currently 300) (#3215) --------------------
+;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.classify/low-cardinality-threshold` (currently 300) (#3215) --------------------
 (defn- insert-range-sql [rang]
   (str "INSERT INTO blueberries_consumed (num) VALUES "
        (str/join ", " (for [n rang]
@@ -352,6 +352,6 @@
             (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
                        100))
             ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
-            (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold))))])
+            (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sync-database.classify/low-cardinality-threshold))))])
             (sync-database! db, :full-sync? true)
             (db/exists? FieldValues :field_id field-id)))))))
