@@ -4,14 +4,18 @@ import Database from "./metadata/Database";
 import Table from "./metadata/Table";
 
 import Question from "./Question";
-import Dimension from "./Dimension";
 import Action, { ActionClick } from "./Action";
+
+import * as Q from "metabase/lib/query/query";
+import Q_deprecated, {
+    AggregationClause,
+    NamedClause
+} from "metabase/lib/query";
+import { format as formatExpression } from "metabase/lib/expressions/formatter";
+import { getAggregator } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
 import { updateIn } from "icepick";
-
-import Q_deprecated from "metabase/lib/query";
-import * as Q from "metabase/lib/query/query";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type {
@@ -101,6 +105,45 @@ export default class Query {
 
     isBareRows(): boolean {
         return Q.isBareRows(this.query());
+    }
+
+    aggregationName(index: number = 0): string {
+        if (this.isStructured()) {
+            const aggregation = this.aggregations()[0];
+            if (NamedClause.isNamed(aggregation)) {
+                return NamedClause.getName(aggregation);
+            } else if (AggregationClause.isCustom(aggregation)) {
+                return formatExpression(aggregation, {
+                    tableMetadata: this.tableMetadata(),
+                    customFields: this.expressions()
+                });
+            } else if (AggregationClause.isMetric(aggregation)) {
+                const metricId = AggregationClause.getMetric(aggregation);
+                const metric = this._metadata.metrics[metricId];
+                if (metric) {
+                    return metric.name;
+                }
+            } else {
+                const selectedAggregation = getAggregator(
+                    AggregationClause.getOperator(aggregation)
+                );
+                if (selectedAggregation) {
+                    let aggregationName = selectedAggregation.name.replace(
+                        " of ...",
+                        ""
+                    );
+                    const fieldId = Q_deprecated.getFieldTargetId(
+                        AggregationClause.getField(aggregation)
+                    );
+                    const field = fieldId && this._metadata.fields[fieldId];
+                    if (field) {
+                        aggregationName += " of " + field.display_name;
+                    }
+                    return aggregationName;
+                }
+            }
+        }
+        return "";
     }
 
     addAggregation(aggregation: Aggregation) {
@@ -253,6 +296,7 @@ export default class Query {
      * Query is valid (as far as we know) and can be executed
      */
     canRun(): boolean {
+        // TODO:
         return false;
     }
 

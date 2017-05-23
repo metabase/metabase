@@ -13,6 +13,10 @@ import type { ParameterId } from "metabase/meta/types/Parameter";
 import type { Metadata as MetadataObject } from "metabase/meta/types/Metadata";
 import type { Card as CardObject } from "metabase/meta/types/Card";
 
+import * as Q from "metabase/lib/query/query";
+
+import { updateIn } from "icepick";
+
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
 type RevisionId = number;
@@ -36,7 +40,39 @@ export default class Question {
     constructor(metadata: MetadataObject, card: CardObject) {
         this._metadata = metadata;
         this._card = card;
-        this._queries = [new Query(this, card.dataset_query)];
+        // TODO: real multiple metric persistence
+        this._queries = Q.getAggregations(card.dataset_query.query).map(
+            aggregation =>
+                new Query(this, {
+                    ...card.dataset_query,
+                    query: Q.addAggregation(
+                        Q.clearAggregations(card.dataset_query.query),
+                        aggregation
+                    )
+                })
+        );
+    }
+
+    updateQuery(index: number, newQuery: Query): Question {
+        // TODO: real multiple metric persistence
+        let query = Q.clearAggregations(newQuery.query());
+        for (let i = 0; i < this._queries.length; i++) {
+            query = Q.addAggregation(
+                query,
+                (i === index ? newQuery : this._queries[i]).aggregations()[0]
+            );
+        }
+        return new Question(this._metadata, {
+            ...this._card,
+            dataset_query: {
+                ...newQuery.datasetQuery(),
+                query: query
+            }
+        });
+    }
+
+    card() {
+        return this._card;
     }
 
     /**
@@ -58,40 +94,76 @@ export default class Question {
         return true;
     }
 
+    metrics(): Query[] {
+        return this._queries;
+    }
+    availableMetrics(): MetricMetadata[] {
+        return Object.values(this._metadata.metrics);
+    }
+    canAddMetric(): boolean {
+        // only structured queries with 0 or 1 breakouts can have multiple series
+        return this.query().isStructured() &&
+            this.query().breakouts().length <= 1;
+    }
+    canRemoveMetric(): boolean {
+        // can't remove last metric
+        return this.metrics().length > 1;
+    }
+
+    addSavedMetric(metric: Metric): Question {
+        return this.addMetric({
+            type: "query",
+            database: metric.table.db.id,
+            query: {
+                aggregation: ["METRIC", metric.id]
+            }
+        });
+    }
+    addMetric(datasetQuery: DatasetQuery): Question {
+        // TODO: multiple metrics persistence
+        return new Question(
+            this._metadata,
+            updateIn(this.card(), ["dataset_query", "query"], query =>
+                Q.addAggregation(
+                    query,
+                    Q.getAggregations(datasetQuery.query)[0]
+                ))
+        );
+    }
+    removeMetric(index: number): Question {
+        // TODO: multiple metrics persistence
+        return new Question(
+            this._metadata,
+            updateIn(this.card(), ["dataset_query", "query"], query =>
+                Q.removeAggregation(query, index))
+        );
+    }
+
     // multiple series can be pivoted
     breakouts(): Breakout[] {
-        return [];
+        // TODO: real multiple metric persistence
+        return this.query().breakouts();
     }
     breakoutDimensions(unused: boolean = false): Dimension[] {
-        return [];
+        // TODO: real multiple metric persistence
+        return this.query().breakoutDimensions();
     }
     canAddBreakout(): boolean {
-        return false;
+        return this.breakouts() === 0;
     }
 
     // multiple series can be filtered by shared dimensions
     filters(): Filter[] {
-        return [];
+        // TODO: real multiple metric persistence
+        return this.query().filters();
     }
     filterableDimensions(): Dimension[] {
-        return [];
+        // TODO: real multiple metric persistence
+        return this.query().filterableDimensions();
     }
     canAddFilter(): boolean {
         return false;
     }
-
-    // canAddMetric(): boolean {
-    //     return false;
-    // }
-    // addMetric(datasetQuery: DatasetQuery, dimensionMapping: DimensionMapping): void {
-    // }
-    // getMetrics(): Query[] {
-    //     return this.queries;
-    // }
-    // removeMetric(metricId: number) {
-    // }
-    // remapMetricDimension(metricID, newDimensionMapping: DimensionMapping) {
-    // }
 
     // top-level actions
     actions(): Action[] {
