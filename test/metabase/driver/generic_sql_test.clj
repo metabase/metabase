@@ -79,10 +79,10 @@
                {:id (id :venues :price), :values [1 2 3 4]}]}
   (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
 
-(resolve-private-vars metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq)
+(resolve-private-vars metabase.driver.generic-sql #_field-avg-length field-values-lazy-seq table-rows-seq)
 
-;;; FIELD-AVG-LENGTH
-(datasets/expect-with-engines @generic-sql-engines
+;;; FIELD-AVG-LENGTH ;; TODO delete-me
+#_(datasets/expect-with-engines @generic-sql-engines
   ;; Not sure why some databases give different values for this but they're close enough that I'll allow them
   (if (contains? #{:redshift :sqlserver} datasets/*engine*)
     15
@@ -116,7 +116,7 @@
         (update :id int))))
 
 ;;; FIELD-PERCENT-URLS
-(datasets/expect-with-engines @generic-sql-engines
+#_(datasets/expect-with-engines @generic-sql-engines
   (if (= datasets/*engine* :oracle)
     ;; Oracle considers empty strings to be NULL strings; thus in this particular test `percent-valid-urls` gives us 4/7 valid valid where other DBs give us 4/8
     0.5714285714285714
