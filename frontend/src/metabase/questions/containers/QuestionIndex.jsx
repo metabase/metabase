@@ -111,7 +111,7 @@ export class QuestionIndex extends Component {
         const showEverythingElseTitle = hasQuestionsWithoutCollection && hasCollections;
 
         return (
-            <div className={cx("relative mx4", {"full-height flex flex-column": showNoSavedQuestionsState})}>
+            <div className={cx("relative px4", {"full-height flex flex-column bg-slate-extra-light": showNoSavedQuestionsState})}>
                 { showNoCollectionsState && <CollectionEmptyState /> }
 
                 <QuestionIndexHeader
