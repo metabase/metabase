@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
@@ -43,10 +45,10 @@ import {
     getIsRunnable,
     getIsResultDirty,
     getMode,
+    getQuery,
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
-
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
@@ -79,6 +81,8 @@ const mapStateToProps = (state, props) => {
     return {
         isAdmin:                   getUserIsAdmin(state, props),
         fromUrl:                   props.location.query.from,
+
+        query:                     getQuery(state),
 
         mode:                      getMode(state),
 
@@ -130,19 +134,18 @@ const mapDispatchToProps = {
     onChangeLocation: push
 };
 
+
+
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => (card && card.name) || "Question")
 export default class QueryBuilder extends Component {
+    forceUpdateDebounced: () => void;
 
     constructor(props, context) {
         super(props, context);
 
         // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
-
-        this.state = {
-            legacy: true
-        }
     }
 
     componentWillMount() {

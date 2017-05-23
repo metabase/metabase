@@ -206,7 +206,7 @@
 
    see https://github.com/metabase/metabase/issues/3715"
   [conn]
-  (let [liquibases-table-name (if (= (db-type) :h2)
+  (let [liquibases-table-name (if (#{:h2 :mysql} (db-type))
                                 "DATABASECHANGELOG"
                                 "databasechangelog")
         fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install

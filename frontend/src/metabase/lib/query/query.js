@@ -120,9 +120,9 @@ function setExpressionClause(query: SQ, expressionClause: ?ExpressionClause): SQ
     return setClause("expressions", query, expressionClause);
 }
 
-// TODO: remove mutation
 type FilterClauseName = "filter"|"aggregation"|"breakout"|"order_by"|"limit"|"expressions";
 function setClause(clauseName: FilterClauseName, query: SQ, clause: ?any): SQ {
+    query = { ...query };
     if (clause == null) {
         delete query[clauseName];
     } else {

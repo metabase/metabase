@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isa, isFK, TYPE } from "metabase/lib/types";
+import { isa, isFK as isTypeFK, isPK as isTypePK, TYPE } from "metabase/lib/types";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -107,6 +107,9 @@ export const isCategory = isFieldType.bind(null, CATEGORY);
 
 export const isDimension = (col) => (col && col.source !== "aggregation");
 export const isMetric    = (col) => (col && col.source !== "breakout") && isSummable(col);
+
+export const isFK = (field) => field && isTypeFK(field.special_type);
+export const isPK = (field) => field && isTypePK(field.special_type);
 
 export const isAny = (col) => true;
 
@@ -550,7 +553,7 @@ export function computeMetadataStrength(table) {
         table.fields.forEach(function(field) {
             score(field.description);
             score(field.special_type);
-            if (isFK(field.special_type)) {
+            if (isFK(field)) {
                 score(field.target);
             }
         });

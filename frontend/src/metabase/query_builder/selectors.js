@@ -166,3 +166,17 @@ export const getIsResultDirty = createSelector(
         return !Utils.equals(lastDatasetQuery, nextDatasetQuery) || !Utils.equals(lastParameters, nextParameters);
     }
 )
+
+import Question from "metabase-lib/lib/Question";
+
+export const getQuestion = createSelector(
+    [getMetadata, getCard],
+    (metadata, card) => {
+        return metadata && card && new Question(metadata, card)
+    }
+)
+
+export const getQuery = createSelector(
+    [getQuestion],
+    (question) => question && question.query()
+)
