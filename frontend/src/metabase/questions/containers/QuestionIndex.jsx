@@ -110,7 +110,7 @@ export class QuestionIndex extends Component {
         const showNoCollectionsState = !loading && isAdmin && !hasCollections;
         const showNoSavedQuestionsState = !loading && !hasCollections && !hasQuestionsWithoutCollection;
 
-        const hasEntityListSectionQuery = !!location.query.f;
+        const hasEntityListSectionQuery = !!(location.query && location.query.f);
         const showEntityList = hasQuestionsWithoutCollection || hasEntityListSectionQuery;
         const showEverythingElseTitle = showEntityList && hasCollections;
 
