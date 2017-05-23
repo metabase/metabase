@@ -16,11 +16,12 @@ import EntityList from "./EntityList";
 
 import { search } from "../questions";
 import { loadCollections } from "../collections";
-import { getAllCollections, getAllEntities } from "../selectors";
+import { getLoadingInitialEntities, getAllCollections, getAllEntities } from "../selectors";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { replace, push } from "react-router-redux";
 import EmptyState from "metabase/components/EmptyState";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const CollectionEmptyState = () =>
     <div className="flex align-center p2 mt4 bordered border-med border-brand rounded bg-grey-0 text-brand">
@@ -55,26 +56,25 @@ export const QuestionIndexHeader = ({questions, collections, isAdmin, onSearch})
     const hasCollections = collections && collections.length > 0;
     const hasQuestionsWithoutCollection = questions && questions.length > 0;
 
-    const showTitleAndSearch = hasCollections || hasQuestionsWithoutCollection;
+    const showSearch = hasCollections || hasQuestionsWithoutCollection;
     const showSetPermissionsLink = isAdmin && hasCollections;
 
     return (<div className="flex align-center pt4 pb2">
-        { showTitleAndSearch &&
         <TitleAndDescription title={ hasCollections ? "Collections of Questions" : "Saved Questions" }/>
-        }
+
         <div className="flex align-center ml-auto">
-            { showTitleAndSearch &&
+            { showSearch &&
             <ExpandingSearchField className="mr2" onSearch={onSearch}/>
             }
 
             <CollectionActions>
                 { showSetPermissionsLink &&
                 <Link to="/collections/permissions">
-                    <Icon name="lock" tooltip="Set permissions for collections"/>
+                    <Icon size={18} name="lock" tooltip="Set permissions for collections"/>
                 </Link>
                 }
                 <Link to="/questions/archive">
-                    <Icon name="viewArchive" tooltip="View the archive"/>
+                    <Icon size={20} name="viewArchive" tooltip="View the archive"/>
                 </Link>
             </CollectionActions>
         </div>
@@ -82,9 +82,10 @@ export const QuestionIndexHeader = ({questions, collections, isAdmin, onSearch})
 };
 
 const mapStateToProps = (state, props) => ({
+    loading:     getLoadingInitialEntities(state, props),
     questions:   getAllEntities(state, props),
     collections: getAllCollections(state, props),
-    isAdmin:     getUserIsAdmin(state, props),
+    isAdmin:     getUserIsAdmin(state, props)
 });
 
 const mapDispatchToProps = ({
@@ -101,25 +102,31 @@ export class QuestionIndex extends Component {
     }
 
     render () {
-        const { questions, collections, replace, push, location, isAdmin } = this.props;
+        const { loading, questions, collections, replace, push, location, isAdmin } = this.props;
 
         const hasCollections = collections && collections.length > 0;
         const hasQuestionsWithoutCollection = questions && questions.length > 0;
 
-        const showNoCollectionsState = isAdmin && !hasCollections;
-        const showNoSavedQuestionsState = !hasCollections && !hasQuestionsWithoutCollection;
-        const showEverythingElseTitle = hasQuestionsWithoutCollection && hasCollections;
+        const showNoCollectionsState = !loading && isAdmin && !hasCollections;
+        const showNoSavedQuestionsState = !loading && !hasCollections && !hasQuestionsWithoutCollection;
+
+        const hasEntityListSectionQuery = !!location.query.f;
+        const showEntityList = hasQuestionsWithoutCollection || hasEntityListSectionQuery;
+        const showEverythingElseTitle = showEntityList && hasCollections;
 
         return (
             <div className={cx("relative px4", {"full-height flex flex-column bg-slate-extra-light": showNoSavedQuestionsState})}>
+                {/* Use loading wrapper only for displaying the loading indicator as EntityList component should always be in DOM */}
+                { loading && <LoadingAndErrorWrapper loading={true} noBackground /> }
+
                 { showNoCollectionsState && <CollectionEmptyState /> }
 
-                <QuestionIndexHeader
+                { !loading && <QuestionIndexHeader
                     questions={questions}
                     collections={collections}
                     isAdmin={isAdmin}
                     onSearch={this.props.search}
-                />
+                /> }
 
                 { hasCollections && <CollectionButtons collections={collections} isAdmin={isAdmin} push={push} /> }
 
@@ -127,7 +134,7 @@ export class QuestionIndex extends Component {
 
                 { showEverythingElseTitle && <h2 className="mt2 mb2">Everything Else</h2> }
 
-                <div className={cx({ "hide": !hasQuestionsWithoutCollection })}>
+                <div className={cx({ "hide": !showEntityList })}>
                     {/* EntityList loads `questions` according to the query specified in the url query string */}
                     <EntityList
                         entityType="cards"

@@ -43,7 +43,7 @@ export default class ArchiveCollectionWidget extends Component {
                 ref="modal"
                 triggerElement={
                     <Tooltip tooltip="Archive collection">
-                        <Icon name="archive" />
+                        <Icon size={18} name="archive" />
                     </Tooltip>
                 }
                 title="Archive this collection?"
