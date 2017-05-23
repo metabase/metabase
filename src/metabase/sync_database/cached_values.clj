@@ -57,7 +57,7 @@
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
   {:style/indent 1}
-  [driver & {:keys [field-avg-length-fn field-percent-urls-fn calculate-row-count?]
+  [driver & {:keys [calculate-row-count?]
              :or   {calculate-row-count?  true}}]
   (fn [driver table new-field-ids]
     {:row_count (when calculate-row-count? (u/try-apply table-row-count table))

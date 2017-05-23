@@ -16,7 +16,8 @@
              [classify :as classify]
              [interface :as i]]
             [schema.core :as schema]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.sync-database.cached-values :as cached-values]))
 
 
 (defn- values-are-valid-json?
@@ -66,16 +67,29 @@
                                   (inc non-nil-count)
                                   more)))))
 
+(defn field-avg-length
+  "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
+  [values]
+  (let [field-values       (filter identity values)
+        field-values-count (count field-values)]
+    (if (zero? field-values-count)
+      0
+      (int (math/round (/ (->> field-values
+                               (map str)
+                               (map count)
+                               (reduce +))
+                          field-values-count))))))
+
 (defn field-fingerprint [driver table field]
-  (let [values (take driver/max-sync-lazy-seq-results
-                     (driver/field-values-lazy-seq driver field))]
-    {:id                      (:id field) ;; check if this should be field or table id
+  (let [values (->> (driver/field-values-lazy-seq driver field)
+                    (take driver/max-sync-lazy-seq-results))]
+    {:id                      (:id field)
      :field-percent-urls      (percent-valid-urls values)
      :field-percent-json      (if (values-are-valid-json? values) 100 0)
      :field-percent-email     (if (values-are-valid-emails? values) 100 0)
-     :field-avg-length        (driver/field-avg-length driver field)
+     :field-avg-length        (field-avg-length values)
      :visibility_type         (:visibility_type field)
-     :base_type               (:base_type field) ;; TODO: make this work
+     :base_type               (:base_type field)
      :qualified-name          (field/qualified-name field)}))
 
 
@@ -114,6 +128,7 @@
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]
       (try
+        (cached-values/cache-table-data-shape! driver table)
         (analyze-table-data-shape! driver table)
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))

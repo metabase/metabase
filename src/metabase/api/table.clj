@@ -17,7 +17,9 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]))
+             [hydrate :refer [hydrate]]]
+            [metabase.sync-database.classify :as classify]
+            [metabase.driver :as driver]))
 
 ;; TODO - I don't think this is used for anything any more
 (def ^:private ^:deprecated TableEntityType
@@ -69,6 +71,7 @@
                      :description             description))
     (api/check-500 (db/update! Table id, :visibility_type visibility_type))
     (let [updated-table (Table id)
+          driver (->> id table/table-id->database-id driver/database-id->driver) ;; is this the easy way to do this?
           new-visibility (visible-state? (:visibility_type updated-table))
           old-visibility (visible-state? original-visibility-type)
           visibility-changed? (and (not= new-visibility
@@ -77,8 +80,8 @@
       (when visibility-changed?
         (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
         (sync-database/sync-table! updated-table)
-        (cached-values/cache-table-data-shape! updated-table)
-        (analyze/analyze-table-data-shape! updated-table)
+        (cached-values/cache-table-data-shape! driver updated-table)
+        (analyze/analyze-table-data-shape! driver updated-table)
         #_(classify/classify-table! classify-table))
       updated-table)))
 

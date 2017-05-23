@@ -20,7 +20,7 @@
   "The maximum number of values we should return when using `field-values-lazy-seq`.
    This many is probably fine for inferring special types and what-not; we don't want
    to scan millions of values at any rate."
-  10000)
+  1000)
 
 (def ^:const field-values-lazy-seq-chunk-size
   "How many Field values should be fetched at a time for a chunked implementation of `field-values-lazy-seq`?"
@@ -140,9 +140,6 @@
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
   *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"")
 
-  (field-avg-length [this field]
-    "*OPTIONAL*. calculate the average length for a field.")
-
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
      This is used to implement some methods of the database sync process which require rows of data during execution.
@@ -203,29 +200,12 @@
      Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
      There is no expectation that the results be returned in any given order."))
 
-
-(defn default-field-avg-length
-  "Default implementation of optional driver fn `field-avg-length` that calculates the average length in Clojure-land via `field-values-lazy-seq`."
-  [driver field]
-  (let [field-values        (->> (field-values-lazy-seq driver field)
-                                 (filter identity)
-                                 (take max-sync-lazy-seq-results))
-        field-values-count (count field-values)]
-    (if (zero? field-values-count)
-      0
-      (int (math/round (/ (->> field-values
-                               (map str)
-                               (map count)
-                               (reduce +))
-                          field-values-count))))))
-
 (def IDriverDefaultsMixin
   "Default implementations of `IDriver` methods marked *OPTIONAL*."
   {:analyze-table                     (constantly nil)
    :date-interval                     (u/drop-first-arg u/relative-date)
    :describe-table-fks                (constantly nil)
    :features                          (constantly nil)
-   :field-avg-length                  (u/drop-first-arg default-field-avg-length)
    :format-custom-field-name          (u/drop-first-arg identity)
    :humanize-connection-error-message (u/drop-first-arg identity)
    :notify-database-updated           (constantly nil)

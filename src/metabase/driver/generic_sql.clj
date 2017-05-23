@@ -76,14 +76,6 @@
      Other drivers like BigQuery need to do additional qualification, e.g. the dataset name as well.
      (At the time of this writing, this is only used by the SQL parameters implementation; in the future it will probably be used in more places as well.)")
 
-  (field-percent-urls [this field]
-    "*OPTIONAL*. Implementation of the `:field-percent-urls-fn` to be passed to `make-analyze-table`.
-     The default implementation is `fast-field-percent-urls`, which avoids a full table scan. Substitue this with `slow-field-percent-urls` for databases
-     where this doesn't work, such as SQL Server.")
-
-  (field-avg-length [this field]
-    "*OPTIONAL*. calculate the average length for a field, the default implementation is in `field-avg-length`.")
-
   (field->alias ^String [this, ^Field field]
     "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation calls `name`, which
      returns the *unqualified* name of `Field`.
@@ -284,7 +276,7 @@
 (defn- table-rows-seq [driver database table]
   (query driver database table {:select [:*]}))
 
-(defn- field-avg-length [driver field]
+#_(defn- field-avg-length [driver field]
   (let [table (field/table field)
         db    (table/database table)]
     (or (some-> (query driver db table {:select [[(hsql/call :avg (string-length-fn driver (qualify+escape table field))) :len]]})
@@ -294,7 +286,7 @@
                 int)
         0)))
 
-(defn- url-percentage [url-count total-count]
+#_(defn- url-percentage [url-count total-count]
   (double (if (and total-count (pos? total-count) url-count)
             ;; make sure to coerce to Double before dividing because if it's a BigDecimal division can fail for non-terminating floating-point numbers
             (/ (double url-count)
@@ -302,7 +294,7 @@
             0.0)))
 
 ;; TODO - Full table scan!?! Maybe just fetch first N non-nil values and do in Clojure-land instead
-(defn slow-field-percent-urls
+#_(defn slow-field-percent-urls
   "Slow implementation of `field-percent-urls` that (probably) requires a full table scan.
    Only use this for DBs where `fast-field-percent-urls` doesn't work correctly, like SQLServer."
   [driver field]
@@ -316,7 +308,7 @@
     (url-percentage url-count total-count)))
 
 
-(defn fast-field-percent-urls
+#_(defn fast-field-percent-urls
   "Fast, default implementation of `field-percent-urls` that avoids a full table scan."
   [driver field]
   (let [table       (field/table field)
@@ -456,8 +448,8 @@
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
-   :field-percent-urls   fast-field-percent-urls
-   :field-avg-length     (u/drop-first-arg field-avg-length)
+;   :field-percent-urls   fast-field-percent-urls
+;   :field-avg-length     (u/drop-first-arg field-avg-length)
    :prepare-sql-param    (u/drop-first-arg identity)
    :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
