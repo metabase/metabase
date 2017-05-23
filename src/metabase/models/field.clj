@@ -2,18 +2,16 @@
   (:require [clojure
              [data :as d]
              [string :as s]]
-            [metabase
-             [config :as config]
-             [util :as u]]
             [metabase.models
              [field-values :refer [FieldValues]]
              [humanization :as humanization]
              [interface :as i]
              [permissions :as perms]]
+            [metabase.sync-database.infer-special-type :as infer-special-type]
+            [metabase.util :as u]
             [toucan
              [db :as db]
-             [models :as models]]
-            [metabase.sync-database.classify :as classify]))
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Type Mappings ------------------------------------------------------------
 
@@ -156,7 +154,7 @@
                                special-type
                                (when pk?
                                  :type/PK)
-                               (classify/infer-field-special-type field-name base-type))
+                               (infer-special-type/infer-field-special-type field-name base-type))
 
              :parent_id    parent-id)
     ;; if we have a different base-type or special-type, then update
@@ -173,8 +171,8 @@
   [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id]}]
   {:pre [(integer? table-id) (string? field-name) (isa? base-type :type/*)]}
   (let [special-type (or special-type
-                       (when pk? :type/PK)
-                       (classify/infer-field-special-type field-name base-type))]
+                       (when pk? :type/PK)                       
+                       (infer-special-type/infer-field-special-type field-name base-type))]
     (db/insert! Field
       :table_id      table-id
       :raw_column_id raw-column-id

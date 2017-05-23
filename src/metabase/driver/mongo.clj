@@ -154,7 +154,7 @@
   ;; We only care about 1) table counts and 2) field values
   {:row_count (cached-values/table-row-count table)
    :fields    (for [{:keys [id] :as field} (table/fields table)
-                    :when (classify/test-for-cardinality? field (contains? new-field-ids (:id field)))]
+                    #_:when #_(classify/test-for-cardinality? field (contains? new-field-ids (:id field)))]
                 (cached-values/extract-field-values field {:id id}))})
 
 (defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]

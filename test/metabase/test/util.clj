@@ -46,7 +46,7 @@
                                {k (condp = v
                                     '$ `(~k ~source##)
                                     '$$ source##
-                                        v)}))]
+                                    v)}))]
     `(let [~source## ~source-obj]
        ~(clojure.walk/prewalk (partial $->prop source##)
                               dest-object))))

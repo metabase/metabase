@@ -83,18 +83,24 @@
 (defn field-fingerprint [driver table field]
   (let [values (->> (driver/field-values-lazy-seq driver field)
                     (take driver/max-sync-lazy-seq-results))]
-    {:id                      (:id field)
+    {:base_type               (:base_type field)
+     :is-pk?                  (isa? (:special_type field) :type/PK)
+     :is-fk?                  (isa? (:special_type field) :type/FK)
+     :cardinality             (count (distinct values))
      :field-percent-urls      (percent-valid-urls values)
      :field-percent-json      (if (values-are-valid-json? values) 100 0)
      :field-percent-email     (if (values-are-valid-emails? values) 100 0)
      :field-avg-length        (field-avg-length values)
-     :visibility_type         (:visibility_type field)
-     :base_type               (:base_type field)
-     :qualified-name          (field/qualified-name field)}))
+     :id                      (:id field)
+     :name                    (:name field)
+     :qualified-name          (field/qualified-name field)
+     :visibility_type         (:visibility_type field)}))
 
 
 (defn table-fingerprint [table]
   {:rows (:rows table)}) ;; check this
+
+
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
@@ -102,7 +108,8 @@
   (let [fields (table/fields table)
         field-fingerprints (map #(field-fingerprint driver table %) fields)
         table-fingerprint (table-fingerprint table)]
-    (when-let [table-stats (u/prog1 (classify/classify-table! table-fingerprint field-fingerprints)
+    ;; this will be moved to classify.clj once the fingerprint format is settled
+    (when-let [table-stats (u/prog1 (classify/classify-table! table-fingerprint field-fingerprints) ;; this is here temporarily
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
       (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]
@@ -113,7 +120,19 @@
             ;; type to `:details-only` (see models.field/visibility-types)
             :visibility_type (when (false? preview-display) :details-only)
             :special_type    special-type)))
+      (db/update-where! field/Field {:table_id        table-id
+                                     :visibility_type [:not= "retired"]}
+      :last_analyzed (u/new-sql-timestamp))
       table-stats)))
+
+(defn analyze-table
+  "analyze only one table"
+  [table]
+  (analyze-table-data-shape! (->> table
+                                  table/database
+                                  :id
+                                  driver/database-id->driver)
+                             table))
 
 (defn analyze-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
@@ -128,7 +147,7 @@
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]
       (try
-        (cached-values/cache-table-data-shape! driver table)
+        #_(cached-values/cache-table-data-shape! driver table)
         (analyze-table-data-shape! driver table)
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))
@@ -137,3 +156,11 @@
             (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
 
     (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
+
+(defn analyze-database
+  "analyze all the tables in one database"
+  [db]
+  (analyze-data-shape-for-tables! (->> db
+                                       :id
+                                       driver/database-id->driver)
+                                  db))

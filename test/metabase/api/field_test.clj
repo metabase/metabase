@@ -179,7 +179,7 @@
                             :3 "$$$"
                             :4 "$$$$"}
     :values                [1 2 3 4]
-    :id                    (field-values-id :venues :price)}]
+    :id                    #_(id :venues :price) (field-values-id :venues :price)}]
   [((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
                                                                                                                :2 "$$"
                                                                                                                :3 "$$$"

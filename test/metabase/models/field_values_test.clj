@@ -26,7 +26,7 @@
                                                 :visibility_type          :details-only
                                                 :base_type                :type/Text}))
 
-(expect false (field-should-have-field-values? {:special_type    nil
+(expect true (field-should-have-field-values? {:special_type    nil
                                                 :visibility_type :normal
                                                 :base_type       :type/Text}))
 
