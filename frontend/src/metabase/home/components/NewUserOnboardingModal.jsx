@@ -1,6 +1,7 @@
 /* @flow */
 import React, { Component } from "react";
 import StepIndicators from 'metabase/components/StepIndicators';
+import RetinaImage from 'react-retina-image'
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -15,15 +16,35 @@ type State = {
 const STEPS = [
     {
         title: 'Ask questions and explore',
-        text: 'Click on charts or tables to explore, or ask a new question using the easy interface or the powerful SQL editor.'
+        text: 'Click on charts or tables to explore, or ask a new question using the easy interface or the powerful SQL editor.',
+        image: (
+            <RetinaImage
+                className="absolute full"
+                src={`app/assets/img/welcome-modal-1.png`}
+            />
+        )
     },
     {
         title: 'Make your own charts',
-        text: 'Create line charts, scatter plots, maps, and more.'
+        text: 'Create line charts, scatter plots, maps, and more.',
+        image: (
+            <RetinaImage
+                className="absolute ml-auto mr-auto inline-block left right"
+                style={{ bottom: -20,}}
+                src={`app/assets/img/welcome-modal-2.png`}
+            />
+        )
     },
     {
         title: 'Share what you find',
-        text: 'Create powerful and flexible dashboards, and send regular updates via email or Slack.'
+        text: 'Create powerful and flexible dashboards, and send regular updates via email or Slack.',
+        image: (
+            <RetinaImage
+                className="absolute ml-auto mr-auto inline-block left right"
+                style={{ bottom: -40 }}
+                src={`app/assets/img/welcome-modal-3.png`}
+            />
+        )
     },
 ]
 
@@ -54,7 +75,7 @@ export default class NewUserOnboardingModal extends Component {
         return (
             <div style={{ maxHeight: '100%', transition: 'height 300ms linear' }}>
                 <OnboardingImages
-                    currentStep={step}
+                    currentStep={currentStep}
                 />
                 <div className="p4 pb3 text-centered">
                     <h2>{currentStep.title}</h2>
@@ -86,12 +107,9 @@ const OnboardingImages = ({ currentStep }, { currentStep: number }) =>
     <div style={{
         position: 'relative',
         backgroundColor: '#F5F9FE',
+        borderBottom: '1px solid #DCE1E4',
         height: 224
 
     }}>
-        <img
-            width="560"
-            height="224"
-            src={`app/assets/img/welcome-modal${currentStep}.png`}
-        />
+        { currentStep.image }
     </div>

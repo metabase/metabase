@@ -49,8 +49,7 @@ export default class HomepageApp extends Component {
 
         this.state = {
             greeting: Greeting.sayHello(props.user && props.user.first_name),
-            // onboarding: props.showOnboarding
-            onboarding: true
+            onboarding: props.showOnboarding
         };
 
         this.styles = {

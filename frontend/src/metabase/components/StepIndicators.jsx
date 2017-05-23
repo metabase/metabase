@@ -27,12 +27,14 @@ const StepIndicators = ({
                         width: dotSize,
                         height: dotSize,
                         borderRadius: 99,
+                        cursor: 'pointer',
                         marginLeft: 2,
                         marginRight: 2,
                         backgroundColor: index + 1 === currentStep ? activeDotColor : '#D8D8D8',
                         transition: 'background 600ms ease-in'
                     }}
-                    key={index}>
+                    key={index}
+                >
                 </li>
             )
         }
