@@ -40,17 +40,22 @@ export default class Question {
     constructor(metadata: MetadataObject, card: CardObject) {
         this._metadata = metadata;
         this._card = card;
-        // TODO: real multiple metric persistence
-        this._queries = Q.getAggregations(card.dataset_query.query).map(
-            aggregation =>
-                new Query(this, {
-                    ...card.dataset_query,
-                    query: Q.addAggregation(
-                        Q.clearAggregations(card.dataset_query.query),
-                        aggregation
-                    )
-                })
-        );
+        const aggregations = Q.getAggregations(card.dataset_query.query);
+        if (aggregations.length > 1) {
+            // TODO: real multiple metric persistence
+            this._queries = aggregations.map(
+                aggregation =>
+                    new Query(this, {
+                        ...card.dataset_query,
+                        query: Q.addAggregation(
+                            Q.clearAggregations(card.dataset_query.query),
+                            aggregation
+                        )
+                    })
+            );
+        } else {
+            this._queries = [new Query(this, card.dataset_query)];
+        }
     }
 
     updateQuery(index: number, newQuery: Query): Question {
