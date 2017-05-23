@@ -7,7 +7,7 @@ type Props = {
     activeDotColor?: string,
     currentStep: number,
     dotSize?: number,
-    goToStep?: () => number,
+    goToStep?: (step: number) => void,
     steps: []
 }
 
@@ -22,7 +22,7 @@ const StepIndicators = ({
         {
             steps.map((step, index) =>
                 <li
-                    onClick={() => goToStep(index + 1)}
+                    onClick={() => goToStep && goToStep(index + 1)}
                     style={{
                         width: dotSize,
                         height: dotSize,

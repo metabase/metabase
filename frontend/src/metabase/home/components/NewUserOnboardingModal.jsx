@@ -35,7 +35,7 @@ export default class NewUserOnboardingModal extends Component {
         step: 1
     }
 
-    nextStep() {
+    nextStep = () => {
         const stepCount = MetabaseSettings.get("has_sample_dataset") ? 3 : 2
         const nextStep = this.state.step + 1;
 
