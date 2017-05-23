@@ -147,7 +147,7 @@ function getRevokingAccessToAllTablesWarningModal(database, permissions, groupId
         // allTableEntityIds contains tables from all schemas
         const allTableEntityIds = database.tables().map((table) => ({
             databaseId: table.db_id,
-            schemaName: table.schema,
+            schemaName: table.schema || "",
             tableId: table.id
         }));
 
