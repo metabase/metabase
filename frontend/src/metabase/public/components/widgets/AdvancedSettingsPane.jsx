@@ -16,7 +16,8 @@ const getIconForParameter = (parameter) =>
     parameter.type.indexOf("date/") === 0 ? "calendar" :
     "unknown";
 
-import type { EmbedType, EmbeddableResource, EmbeddingParams, DisplayOptions } from "./EmbedModalContent";
+import type { EmbedType, DisplayOptions } from "./EmbedModalContent";
+import type { EmbeddableResource, EmbeddingParams } from "metabase/public/lib/types";
 import type { Parameter, ParameterId } from "metabase/meta/types/Parameter";
 
 type Props = {

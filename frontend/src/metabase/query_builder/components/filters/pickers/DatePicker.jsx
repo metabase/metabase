@@ -69,7 +69,7 @@ type CurrentPickerState = {
     showUnits: boolean
 };
 
-class CurrentPicker extends Component<*, CurrentPickerProps, CurrentPickerState> {
+class CurrentPicker extends Component {
     props: CurrentPickerProps;
     state: CurrentPickerState;
 
@@ -223,13 +223,21 @@ type Props = {
     className?: string,
     filter: FieldFilter,
     onFilterChange: (filter: FieldFilter) => void,
-    className: ?string,
-    hideEmptinessOperators: boolean, // Don't show is empty / not empty dialog
+    hideEmptinessOperators?: boolean, // Don't show is empty / not empty dialog
     hideTimeSelectors?: boolean,
     includeAllTime?: boolean,
 }
 
-export default class DatePicker extends Component<*, Props, *> {
+type State = {
+    operators: Operator[]
+}
+
+export default class DatePicker extends Component {
+    props: Props;
+    state: State = {
+        operators: []
+    };
+
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
@@ -244,7 +252,7 @@ export default class DatePicker extends Component<*, Props, *> {
         const operator = this._getOperator(operators) || operators[0];
         this.props.onFilterChange(operator.init(this.props.filter));
 
-        this.setState({operators})
+        this.setState({ operators })
     }
 
     _getOperator(operators: Operator[]) {

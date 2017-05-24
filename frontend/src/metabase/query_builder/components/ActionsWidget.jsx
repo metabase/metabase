@@ -24,12 +24,19 @@ type Props = {
     setCardAndRun: (card: Card) => void
 };
 
+type State = {
+    isVisible: boolean,
+    isOpen: boolean,
+    selectedActionIndex: ?number
+};
+
 const CIRCLE_SIZE = 48;
 const NEEDLE_SIZE = 20;
 const POPOVER_WIDTH = 350;
 
-export default class ActionsWidget extends Component<*, Props, *> {
-    state = {
+export default class ActionsWidget extends Component {
+    props: Props;
+    state: State = {
         isVisible: false,
         isOpen: false,
         selectedActionIndex: null

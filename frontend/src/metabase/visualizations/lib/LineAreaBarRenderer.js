@@ -35,7 +35,7 @@ import { parseTimestamp } from "metabase/lib/time";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 
-import type { Series, ClickObject } from "metabase/meta/types/Visualization"
+import type { SingleSeries, ClickObject } from "metabase/meta/types/Visualization"
 
 const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
@@ -109,7 +109,7 @@ function initChart(chart, element) {
 function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
     // find the first nonempty single series
     // $FlowFixMe
-    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+    const firstSeries: SingleSeries = _.find(series, (s) => !datasetContainsNoResults(s.data));
 
     // setup an x-axis where the dimension is a timeseries
     let dimensionColumn = firstSeries.data.cols[0];
@@ -170,7 +170,7 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
 function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval) {
     // find the first nonempty single series
     // $FlowFixMe
-    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+    const firstSeries: SingleSeries = _.find(series, (s) => !datasetContainsNoResults(s.data));
     const dimensionColumn = firstSeries.data.cols[0];
 
     if (settings["graph.x_axis.labels_enabled"]) {
@@ -211,7 +211,7 @@ function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, 
 function applyChartOrdinalXAxis(chart, settings, series, xValues) {
     // find the first nonempty single series
     // $FlowFixMe
-    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+    const firstSeries: SingleSeries = _.find(series, (s) => !datasetContainsNoResults(s.data));
 
     const dimensionColumn = firstSeries.data.cols[0];
 
@@ -858,7 +858,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onVisualiz
 
     // find the first nonempty single series
     // $FlowFixMe
-    const firstSeries: Series = _.find(series, (s) => !datasetContainsNoResults(s.data));
+    const firstSeries: SingleSeries = _.find(series, (s) => !datasetContainsNoResults(s.data));
 
     const isDimensionTimeseries = dimensionIsTimeseries(firstSeries.data);
     const isDimensionNumeric = dimensionIsNumeric(firstSeries.data);
