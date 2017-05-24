@@ -60,26 +60,21 @@ export default class FieldList extends Component {
             })));
         }
 
+        const getSectionItems = (sectionOptions) =>
+            sectionOptions.dimensions.map(dimension => ({
+                name: dimension.displayName(),
+                value: dimension.mbql(),
+                field: dimension.field()
+            }))
+
         let mainSection = {
             name: singularize(tableName),
-            items: specialOptions.concat(fieldOptions.fields.map(field => ({
-                name: Query.getFieldPathName(field.id, tableMetadata),
-                value: typeof field.id === "number" ? ["field-id", field.id] : field.id,
-                field: field
-            })))
+            items: specialOptions.concat(getSectionItems(fieldOptions))
         };
 
-        let fkSections = fieldOptions.fks.map(fk => ({
-            name: stripId(fk.field.display_name),
-            items: fk.fields.map(field => {
-                const value = ["fk->", fk.field.id, field.id];
-                const target = Query.getFieldTarget(value, tableMetadata);
-                return {
-                    name: Query.getFieldPathName(target.field.id, target.table),
-                    value: value,
-                    field: field
-                };
-            })
+        let fkSections = fieldOptions.fks.map(fkOptions => ({
+            name: stripId(fkOptions.field.display_name),
+            items: getSectionItems(fkOptions)
         }));
 
         let sections = []

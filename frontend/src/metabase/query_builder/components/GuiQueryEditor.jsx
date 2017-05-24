@@ -399,7 +399,7 @@ const BreakoutWidget = ({ className, index, breakout, query, updateQuery, addBut
     <BreakoutWidget_LEGACY
         className={className}
         field={breakout}
-        fieldOptions={query.breakoutableDimensions(breakout)}
+        fieldOptions={query.breakoutOptions(breakout)}
         customFieldOptions={query.expressions()}
         tableMetadata={query.tableMetadata()}
         setField={(field) => query.updateBreakout(index, field).update(updateQuery)}

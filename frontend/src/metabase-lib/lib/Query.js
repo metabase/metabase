@@ -2,10 +2,14 @@
 
 import Database from "./metadata/Database";
 import Table from "./metadata/Table";
+import Field from "./metadata/Field";
 
 import Question from "./Question";
 import Action, { ActionClick } from "./Action";
 
+import { ExpressionDimension } from "./Dimension";
+
+import { TYPE } from "metabase/lib/types";
 import * as Q from "metabase/lib/query/query";
 import Q_deprecated, {
     AggregationClause,
@@ -164,28 +168,56 @@ export default class Query {
     breakouts(): Breakout[] {
         return Q.getBreakouts(this.query());
     }
-    breakoutableDimensions(breakout?: any): FieldOptions {
-        const tableMetadata = this.tableMetadata();
-        if (!tableMetadata) {
-            return { count: 0, fields: [], fks: [] };
-        }
+    breakoutOptions(breakout?: any): FieldOptions {
+        const fieldOptions = {
+            count: 0,
+            fields: [],
+            fks: [],
+            dimensions: []
+        };
 
-        const usedFields = {};
-        for (const b of this.breakouts()) {
-            if (!breakout || !_.isEqual(b, breakout)) {
-                usedFields[Q_deprecated.getFieldTargetId(b)] = true;
+        const table = this.tableMetadata();
+        if (table) {
+            // the set of field ids being used by other breakouts
+            const usedFields = new Set(
+                this.breakouts()
+                    .filter(b => !_.isEqual(b, breakout))
+                    .map(b => Q_deprecated.getFieldTargetId(b))
+            );
+
+            const dimensionFilter = dimension => {
+                const field = dimension.field();
+                return field.isDimension() && !usedFields.has(field.id);
+            };
+
+            for (const dimension of this.dimensions().filter(dimensionFilter)) {
+                if (dimension.field().isFK()) {
+                    const fkDimensions = dimension
+                        .dimensions()
+                        .filter(dimensionFilter);
+                    if (fkDimensions.length > 0) {
+                        fieldOptions.count += fkDimensions.length;
+                        fieldOptions.fks.push({
+                            field: dimension.field(),
+                            fields: fkDimensions.map(fkDimension =>
+                                fkDimension.field()),
+
+                            dimension: dimension,
+                            dimensions: fkDimensions
+                        });
+                    }
+                } else {
+                    fieldOptions.count++;
+                    fieldOptions.fields.push(dimension.field());
+                    fieldOptions.dimensions.push(dimension);
+                }
             }
         }
 
-        return Q_deprecated.getFieldOptions(
-            tableMetadata.fields,
-            true,
-            tableMetadata.breakout_options.validFieldsFilter,
-            usedFields
-        );
+        return fieldOptions;
     }
     canAddBreakout(): boolean {
-        return this.breakoutableDimensions().count > 0;
+        return this.breakoutOptions().count > 0;
     }
 
     addBreakout(breakout: Breakout) {
@@ -206,7 +238,7 @@ export default class Query {
     filters(): Filter[] {
         return Q.getFilters(this.query());
     }
-    filterableDimensions(): FieldOptions {
+    filterOptions(): FieldOptions {
         return { count: 0, fields: [], fks: [] };
     }
     canAddFilter(): boolean {
@@ -266,6 +298,30 @@ export default class Query {
 
     expressions(): { [key: string]: any } {
         return Q.getExpressions(this.query());
+    }
+
+    // DIMENSIONS
+
+    dimensions(): Dimension[] {
+        return [...this.expressionDimensions(), ...this.tableDimensions()];
+    }
+
+    tableDimensions(): Dimension[] {
+        const table = this.tableMetadata();
+        return table ? table.dimensions() : [];
+    }
+
+    expressionDimensions(): Dimension[] {
+        return Object.entries(this.expressions()).map(([
+            expressionName,
+            expression
+        ]) => {
+            // FIXME: expressions shouldn't require a field object
+            const expressionField = new Field({});
+            return new ExpressionDimension(expressionField, null, [
+                expressionName
+            ]);
+        });
     }
 
     // NATIVE QUERY

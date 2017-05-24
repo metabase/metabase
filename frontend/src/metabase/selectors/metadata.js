@@ -2,7 +2,15 @@
 
 import { createSelector } from "reselect";
 
-import Metadata from "metabase/meta/metadata/Metadata";
+// DEPRECATED
+import Metadata_DEPRECATED from "metabase/meta/metadata/Metadata";
+
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Database from "metabase-lib/lib/metadata/Database";
+import Table from "metabase-lib/lib/metadata/Table";
+import Field from "metabase-lib/lib/metadata/Field";
+import Metric from "metabase-lib/lib/metadata/Metric";
+import Segment from "metabase-lib/lib/metadata/Segment";
 
 import { getIn } from "icepick";
 import { getFieldValues } from "metabase/lib/query/field";
@@ -16,7 +24,7 @@ import {
 export const getNormalizedMetadata = state => state.metadata;
 
 export const getMeta = createSelector([getNormalizedMetadata], metadata =>
-    Metadata.fromEntities(metadata));
+    Metadata_DEPRECATED.fromEntities(metadata));
 
 // fully denomalized, raw "entities"
 export const getNormalizedDatabases = state => state.metadata.databases;
@@ -60,13 +68,13 @@ export const getMetadata = createSelector(
         getNormalizedMetrics
     ],
     (databases, tables, fields, segments, metrics) => {
-        const meta = {
-            databases: copyObjects(databases),
-            tables: copyObjects(tables),
-            fields: copyObjects(fields),
-            segments: copyObjects(segments),
-            metrics: copyObjects(metrics)
-        };
+        const meta = new Metadata({
+            databases: copyObjects(databases, Database),
+            tables: copyObjects(tables, Table),
+            fields: copyObjects(fields, Field),
+            segments: copyObjects(segments, Segment),
+            metrics: copyObjects(metrics, Metric)
+        });
 
         hydrateList(meta.databases, "tables", meta.tables);
 
@@ -127,11 +135,11 @@ export const getParameterFieldValues = (state, props) => {
 // UTILS:
 
 // clone each object in the provided mapping of objects
-function copyObjects(objects) {
+function copyObjects(objects, Klass) {
     let copies = {};
     for (const object of Object.values(objects)) {
         // $FlowFixMe
-        copies[object.id] = { ...object };
+        copies[object.id] = new Klass(object);
     }
     return copies;
 }
