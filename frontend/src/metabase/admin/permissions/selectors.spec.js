@@ -44,8 +44,8 @@ const initialPermissions: GroupsPermissions = {
     2: {
         // Sample dataset
         1: {
-            "native": "write",
-            "schemas": "all"
+            "native": "none",
+            "schemas": "none"
         },
         // Imaginary multi-schema
         2: {
@@ -61,8 +61,8 @@ const initialPermissions: GroupsPermissions = {
         },
         // Imaginary schemaless
         3: {
-            "native": "write",
-            "schemas": "all"
+            "native": "none",
+            "schemas": "none"
         }
     }
 };
@@ -83,7 +83,9 @@ const initialState = {
 
 var state = initialState;
 const resetState = () => { state = initialState };
-const getPermissions = () => state.admin.permissions.permissions;
+const getPermissionsTree = () => state.admin.permissions.permissions;
+const getPermissionsForDb = ({ entityId, groupId }) => getPermissionsTree()[groupId][entityId.databaseId];
+
 const updatePermissionsInState = (permissions) => {
     state = setIn(state, ["admin", "permissions", "permissions"], permissions);
 };
@@ -97,92 +99,113 @@ const getProps = ({ databaseId, schemaName }) => ({
 
 /******** HIGH-LEVEL METHODS FOR UPDATING PERMISSIONS ********/
 
-const changePermissionsForEntityInGrid = (grid, category, entityId, permission) => {
-    const newPermissions = grid.permissions[category].updater(entityId.databaseId, entityId, permission);
+const changePermissionsForEntityInGrid = ({ grid, category, entityId, groupId, permission }) => {
+    const newPermissions = grid.permissions[category].updater(groupId, entityId, permission);
     updatePermissionsInState(newPermissions);
     return newPermissions;
 };
 
-const changeDbDataPermissionsForEntity = (entityId, permission) => {
+const changeDbNativePermissionsForEntity = ({ entityId, groupId, permission }) => {
     const grid = getDatabasesPermissionsGrid(state, getProps(entityId));
-    changePermissionsForEntityInGrid(grid, "schemas", entityId, permission);
+    return changePermissionsForEntityInGrid({ grid, category: "native", entityId, groupId, permission });
 };
 
-const changeSchemaPermissionsForEntity = (entityId, permission) => {
+const changeDbDataPermissionsForEntity = ({ entityId, groupId, permission }) => {
+    const grid = getDatabasesPermissionsGrid(state, getProps(entityId));
+    return changePermissionsForEntityInGrid({ grid, category: "schemas", entityId, groupId, permission });
+};
+
+const changeSchemaPermissionsForEntity = ({ entityId, groupId, permission }) => {
     const grid = getSchemasPermissionsGrid(state, getProps(entityId));
-    changePermissionsForEntityInGrid(grid, "tables", entityId, permission);
+    return changePermissionsForEntityInGrid({ grid, category: "tables", entityId, groupId, permission });
 };
 
-const changeTablePermissionsForEntity = (entityId, permission) => {
+const changeTablePermissionsForEntity = ({ entityId, groupId, permission }) => {
     const grid = getTablesPermissionsGrid(state, getProps(entityId));
-    changePermissionsForEntityInGrid(grid, "fields", entityId, permission);
+    return changePermissionsForEntityInGrid({ grid, category: "fields", entityId, groupId, permission });
 };
+
+const getMethodsForDbAndSchema = (entityId) => ({
+    changeDbNativePermissions: ({ groupId, permission }) =>
+        changeDbNativePermissionsForEntity({ entityId, groupId, permission }),
+    changeDbDataPermissions: ({ groupId, permission }) =>
+        changeDbDataPermissionsForEntity({ entityId, groupId, permission }),
+    changeTablePermissions: ({ tableId, groupId, permission }) =>
+        changeTablePermissionsForEntity({ entityId: {...entityId, tableId}, groupId, permission }),
+    getPermissions: ({ groupId }) =>
+        getPermissionsForDb({ entityId, groupId })
+});
 
 /******** ACTUAL TESTS ********/
 
 describe("permissions selectors", () => {
     describe("for sample dataset", () => {
-        // Local helpers for current database
-        const sampleDatasetEntityId = {databaseId: 1, schemaName: "PUBLIC"};
-        const changeDbDataPermissions = (permission) =>
-            changeDbDataPermissionsForEntity(sampleDatasetEntityId, permission);
-        const changeTablePermissions = (tableId, permission) =>
-            changeTablePermissionsForEntity({...sampleDatasetEntityId, tableId}, permission);
+        const sampleDataset = getMethodsForDbAndSchema({ databaseId: 1, schemaName: "PUBLIC" });
 
-        it("should restrict access correctly", () => {
-            // Revoking access to one table...
-            changeTablePermissions(1, "none");
-
-            expect(getPermissions()).toMatchObject({
-                "1": {
-                    "1": {
-                        // ...should downgrade the native permissions to "read"
-                        "native": "read",
-                        "schemas": {
-                            "PUBLIC": {
-                                "1": "none",
-                                "2": "all",
-                                "3": "all",
-                                "4": "all"
-                            }
-                        }
+        it("should restrict access correctly on table level", () => {
+            // Revoking access to one table should downgrade the native permissions to "read"
+            sampleDataset.changeTablePermissions({ tableId: 1, groupId: 1, permission: "none" });
+            expect(sampleDataset.getPermissions({ groupId: 1})).toMatchObject({
+                "native": "read",
+                "schemas": {
+                    "PUBLIC": {
+                        "1": "none",
+                        "2": "all",
+                        "3": "all",
+                        "4": "all"
                     }
                 }
             });
 
             // Revoking access to the rest of tables one-by-one...
-            changeTablePermissions(2, "none");
-            changeTablePermissions(3, "none");
-            changeTablePermissions(4, "none");
+            sampleDataset.changeTablePermissions({ tableId: 2, groupId: 1, permission: "none" });
+            sampleDataset.changeTablePermissions({ tableId: 3, groupId: 1, permission: "none" });
+            sampleDataset.changeTablePermissions({ tableId: 4, groupId: 1, permission: "none" });
+            expect(sampleDataset.getPermissions({groupId: 1})).toMatchObject({
+                // ...should revoke all permissions for that database
+                "native": "none",
+                "schemas": "none"
+            });
 
-            expect(getPermissions()).toMatchObject({
-                "1": {
-                    "1": {
-                        // ...should revoke all permissions for that database
-                        "native": "none",
-                        "schemas": "none"
+        });
+
+        it("should restrict access correctly on db level", () => {
+            // Revoking the data access to the database at once should revoke all permissions for that database
+            resetState();
+            sampleDataset.changeDbDataPermissions({ groupId: 1, permission: "none" });
+            expect(sampleDataset.getPermissions({groupId: 1})).toMatchObject({
+                "native": "none",
+                "schemas": "none"
+            });
+        });
+
+        it("should grant more access correctly on table level", () => {
+            // Simply grant an access to a single table
+            resetState();
+            sampleDataset.changeTablePermissions({ tableId: 3, groupId: 2, permission: "all" });
+            expect(sampleDataset.getPermissions({groupId: 2})).toMatchObject({
+                "native": "none",
+                "schemas": {
+                    "PUBLIC": {
+                        "1": "none",
+                        "2": "none",
+                        "3": "all",
+                        "4": "none"
                     }
                 }
             });
 
-            // Expect a similar result also when revoking the data access to the database at once
-            resetState();
-            changeDbDataPermissions("none");
-            expect(getPermissions()).toMatchObject({
-                "1": {
-                    "1": {
-                        // ...should revoke all permissions for that database
-                        "native": "none",
-                        "schemas": "none"
-                    }
-                }
+            // Grant the access to rest of tables
+            sampleDataset.changeTablePermissions({ tableId: 1, groupId: 2, permission: "all" });
+            sampleDataset.changeTablePermissions({ tableId: 2, groupId: 2, permission: "all" });
+            sampleDataset.changeTablePermissions({ tableId: 4, groupId: 2, permission: "all" });
+            expect(sampleDataset.getPermissions({groupId: 2})).toMatchObject({
+                "native": "none",
+                "schemas": "all"
             });
         });
     });
 
-    it("should behave correctly when granting more access to the sample dataset", () => {
-
-    });
     //
     // it("should behave correctly when restricting access to a multi-schema dataset", () => {
     //
