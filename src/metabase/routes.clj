@@ -12,6 +12,7 @@
              [dataset :as dataset-api]
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
+            [metabase.models.setting :as setting]
             [metabase.util.embed :as embed]
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
@@ -42,9 +43,19 @@
       resp/response
       (resp/content-type "text/html; charset=utf-8")))
 
-(def ^:private index  (partial entrypoint "index"  (not :embeddable)))
-(def ^:private public (partial entrypoint "public" :embeddable))
-(def ^:private embed  (partial entrypoint "embed"  :embeddable))
+(def ^:private index          (partial entrypoint "index"         (not :embeddable)))
+(def ^:private public         (partial entrypoint "public"        :embeddable))
+(def ^:private embed-standard (partial entrypoint "embed"         :embeddable))
+(def ^:private embed-premium  (partial entrypoint "embed-premium" :embeddable))
+
+(defn premium-embedding-enabled? []
+  (setting/get :embedding-premium-key))
+
+(defn embed
+  [request]
+  (if (premium-embedding-enabled?)
+    (embed-premium request)
+    (embed-standard request)))
 
 (defroutes ^:private public-routes
   (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format dataset-api/export-format-regex]

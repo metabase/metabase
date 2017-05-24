@@ -29,13 +29,19 @@ type Props = {
     location: { query: {[key:string]: string}, hash: string },
     parameters?: Parameter[],
     parameterValues?: {[key:string]: string},
-    setParameterValue: (id: string, value: string) => void
+    setParameterValue: (id: string, value: string) => void,
+
+    instanceIsPremium: boolean,
 }
 
 @withRouter
 export default class EmbedFrame extends Component<*, Props, *> {
     state = {
         innerScroll: true
+    }
+
+    static defaultProps = {
+        instanceIsPremium: false
     }
 
     componentWillMount() {
@@ -57,7 +63,7 @@ export default class EmbedFrame extends Component<*, Props, *> {
     }
 
     render() {
-        const { className, children, actionButtons, location, parameters, parameterValues, setParameterValue } = this.props;
+        const { className, children, actionButtons, location, parameters, parameterValues, setParameterValue, instanceIsPremium } = this.props;
         const { innerScroll } = this.state;
 
         const footer = true;
@@ -97,8 +103,10 @@ export default class EmbedFrame extends Component<*, Props, *> {
                 </div>
                 { footer &&
                     <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
-                        <LogoBadge dark={theme} />
-                        {actionButtons &&
+                        { !instanceIsPremium &&
+                            <LogoBadge dark={theme} />
+                        }
+                        { actionButtons &&
                             <div className="flex-align-right text-grey-3">{actionButtons}</div>
                         }
                     </div>

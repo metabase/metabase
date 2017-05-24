@@ -59,11 +59,17 @@ type Props = {
     fetchDashboardCardData: (options: { reload: bool, clear: bool }) => Promise<void>,
     setParameterValue:      (id: string, value: string) => void,
     setErrorPage:           (error: { status: number }) => void,
+
+    instanceIsPremium:      boolean,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
 @DashboardControls
 export default class PublicDashboard extends Component<*, Props, *> {
+    static defaultProps = {
+        instanceIsPremium: false
+    };
+
     // $FlowFixMe
     async componentWillMount() {
         const { initialize, fetchDashboard, fetchDashboardCardData, setErrorPage, location, params: { uuid, token }}  = this.props;
@@ -84,7 +90,7 @@ export default class PublicDashboard extends Component<*, Props, *> {
     }
 
     render() {
-        const { dashboard, parameters, parameterValues, isFullscreen, isNightMode } = this.props;
+        const { dashboard, parameters, parameterValues, isFullscreen, isNightMode, instanceIsPremium } = this.props;
         const buttons = !IFRAMED ? getDashboardActions(this.props) : [];
 
         return (
@@ -101,6 +107,7 @@ export default class PublicDashboard extends Component<*, Props, *> {
                         )}
                     </div>
                 }
+                instanceIsPremium={instanceIsPremium}
             >
                 <LoadingAndErrorWrapper className={cx("Dashboard p1 flex-full", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode })} loading={!dashboard}>
                 { () =>
