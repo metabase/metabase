@@ -12,7 +12,7 @@ First, choose a name for your pulse. This will show up in the email subject line
 ![Giving it a name](images/pulses/02-name-it.png)
 
 ### Pick Your Data
-Before you can create a pulse, you’ll need to have some [saved questions](05-sharing-answers.md). You can choose up to five of them to put into a single pulse. Click the dropdown to see a list of all your saved questions. You can type in the dropdown to help filter and find the question you’re looking for.
+Before you can create a pulse, you’ll need to have some [saved questions](06-sharing-answers.md). You can choose up to five of them to put into a single pulse. Click the dropdown to see a list of all your saved questions. You can type in the dropdown to help filter and find the question you’re looking for.
 
 ![Pick your data](images/pulses/03-pick-your-data.png)
 
