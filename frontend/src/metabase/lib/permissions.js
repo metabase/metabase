@@ -113,9 +113,9 @@ export function downgradeNativePermissionsIfNeeded(permissions: GroupsPermission
 const metadataTableToTableEntityId = (table: Table): TableEntityId => ({ databaseId: table.db_id, schemaName: table.schema || "", tableId: table.id });
 const entityIdToMetadataTableFields = (entityId: EntityId) => ({
     ...(entityId.databaseId ? {db_id: entityId.databaseId} : {}),
-    ...(entityId.schemaName ? {schema: entityId.schemaName} : {}),
+    ...(entityId.schemaName ? {schema: entityId.schemaName !== "" ? entityId.schemaName : null} : {}),
     ...(entityId.tableId ? {tableId: entityId.tableId} : {})
-})
+});
 
 function inferEntityPermissionValueFromChildTables(permissions: GroupsPermissions, groupId: GroupId, entityId: DatabaseEntityId|SchemaEntityId, metadata: Metadata) {
     const { databaseId } = entityId;

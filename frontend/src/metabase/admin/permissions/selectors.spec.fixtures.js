@@ -52,7 +52,8 @@ export const normalizedMetadata = {
             "tables": [
                 10,
                 11,
-                12
+                12,
+                13
             ],
             "id": 3
         }
@@ -161,42 +162,56 @@ export const normalizedMetadata = {
         "5": {
             "schema": "schema_1",
             "name": "Avian Singles Messages",
-            "id": 5
+            "id": 5,
+            "db_id": 2
         },
         "6": {
             "schema": "schema_1",
             "name": "Avian Singles Users",
-            "id": 6
+            "id": 6,
+            "db_id": 2
         },
         "7": {
             "schema": "schema_2",
             "name": "Tupac Sightings Sightings",
-            "id": 7
+            "id": 7,
+            "db_id": 2
         },
         "8": {
             "schema": "schema_2",
             "name": "Tupac Sightings Categories",
-            "id": 8
+            "id": 8,
+            "db_id": 2
         },
         "9": {
             "schema": "schema_2",
             "name": "Tupac Sightings Cities",
-            "id": 9
+            "id": 9,
+            "db_id": 2
         },
         "10": {
             "schema": null,
             "name": "Badminton Men's Double Results",
-            "id": 10
+            "id": 10,
+            "db_id": 3
         },
         "11": {
             "schema": null,
             "name": "Badminton Mixed Double Results",
-            "id": 11
+            "id": 11,
+            "db_id": 3
         },
         "12": {
             "schema": null,
             "name": "Badminton Women's Singles Results",
-            "id": 12
+            "id": 12,
+            "db_id": 3
+        },
+        "13": {
+            "schema": null,
+            "name": "Badminton Mixed Singles Results",
+            "id": 13,
+            "db_id": 3
         },
     },
     "fields": {/* stripped out */},

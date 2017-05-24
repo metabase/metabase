@@ -457,7 +457,7 @@ export const getDatabasesPermissionsGrid = createSelector(
 
 const getCollections = (state) => state.admin.permissions.collections;
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>
-    getIn(permissions, [groupId, collectionId])
+    getIn(permissions, [groupId, collectionId]);
 
 export const getCollectionsPermissionsGrid = createSelector(
     getCollections, getGroups, getPermissions,
@@ -504,7 +504,6 @@ export const getCollectionsPermissionsGrid = createSelector(
         }
     }
 );
-
 
 export const getDiff = createSelector(
     getMeta, getGroups, getPermissions, getOriginalPermissions,
