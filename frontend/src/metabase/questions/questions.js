@@ -217,6 +217,7 @@ const initialState = {
     lastEntityType: null,
     lastEntityQuery: null,
     entities: {},
+    loadingInitialEntities: true,
     itemsBySection: {},
     searchText: "",
     selectedIds: {},
@@ -240,6 +241,7 @@ export default function(state = initialState, { type, payload, error }) {
                 return assocIn(state, ["itemsBySection", payload.entityType, payload.entityQuery, "error"], payload.error);
             } else {
                 return (chain(state)
+                    .assoc("loadingInitialEntities", false)
                     .assoc("lastEntityType", payload.entityType)
                     .assoc("lastEntityQuery", payload.entityQuery)
                     .assoc("selectedIds", {})
