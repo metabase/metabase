@@ -1,10 +1,8 @@
 import React, { Component } from "react";
 import _ from "underscore";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 
 import cx from "classnames";
@@ -12,7 +10,6 @@ import { getIn } from "icepick";
 import type {Card} from "metabase/meta/types/Card";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
 import Utils from "metabase/lib/utils";
-import MetricWidget from "metabase/query_builder/components/MetricWidget";
 import Query, {AggregationClause} from "metabase/lib/query";
 import MetricList from "metabase/query_builder/components/MetricList";
 import {MetabaseApi} from "metabase/services";

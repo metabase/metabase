@@ -30,8 +30,8 @@ export default class MetricWidget extends Component {
         color: PropTypes.string,
         tableMetadata: PropTypes.object.isRequired,
         customFields: PropTypes.object,
-        updateAggregation: PropTypes.func.isRequired,
-        removeAggregation: PropTypes.func,
+        updateMetric: PropTypes.func.isRequired,
+        removeMetric: PropTypes.func,
         editable: PropTypes.bool,
         clearable: PropTypes.bool
     };
@@ -42,7 +42,7 @@ export default class MetricWidget extends Component {
     };
 
     setAggregation(aggregation) {
-        this.props.updateAggregation(aggregation);
+        this.props.updateMetric(aggregation);
     }
 
     open() {
@@ -124,7 +124,7 @@ export default class MetricWidget extends Component {
     }
 
     render() {
-        const { aggregation, addButton, name, editable, color, clearable } = this.props;
+        const { aggregation, name, editable, color, clearable } = this.props;
         if (aggregation && aggregation.length > 0) {
             let aggregationName = NamedClause.isNamed(aggregation) ?
                 NamedClause.getName(aggregation)
@@ -155,16 +155,9 @@ export default class MetricWidget extends Component {
             return (
                 <div className={cx("Query-section Query-section-aggregation mr1", { "selected": this.state.isOpen })}>
                     <div>
-                        {clearable ? <Clearable className="pr1" onClear={this.props.removeAggregation}>{metricTitle}</Clearable> : metricTitle}
+                        {clearable ? <Clearable className="pr1" onClear={this.props.removeMetric}>{metricTitle}</Clearable> : metricTitle}
                         {this.renderPopover()}
                     </div>
-                </div>
-            );
-        } else if (addButton) {
-            return (
-                <div className="Query-section Query-section-aggregation" onClick={this.open}>
-                    {addButton}
-                    {this.renderPopover()}
                 </div>
             );
         } else {

@@ -9,64 +9,51 @@ import AddMetricModal from "metabase/query_builder/components/AddMetricModal";
 import Tooltip from "metabase/components/Tooltip";
 import AddButton from "metabase/components/AddButton";
 
-// At the moment this inherits all CardBuilder props
+// TODO: Containerize this component to reduce the props passing in QB
 const MetricList = ({...props}) => {
-    console.log('rendering MetricList');
-    const { card, datasetQuery: { query }, tableMetadata, supportMultipleAggregations, hideAddButton, hideClearButton } = props;
+    const { card, datasetQuery: { query }, tableMetadata, hideAddButton, hideClearButton } = props;
 
+    const aggregations = Query.getAggregations(query);
     const metricColors = getCardColors(card);
 
-    let isBareRows = Query.isBareRows(query);
-    let aggregations = Query.getAggregations(query);
-
-    if (aggregations.length === 0) {
-        // add implicit rows aggregation
-        aggregations.push(["rows"]);
-    }
-
+    const isBareRows = Query.isBareRows(query);
     const canRemoveAggregation = aggregations.length > 1;
+    const showAddMetricButton = !hideAddButton && !isBareRows;
+    const canAddMetricToVisualization = _.contains(["line", "area", "bar"], props.card.display);
 
-    let aggregationList = [];
-    for (const [index, aggregation] of aggregations.entries()) {
-        aggregationList.push(
-            <MetricWidget
-                key={"agg" + index}
-                aggregation={aggregation}
-                tableMetadata={tableMetadata}
-                customFields={Query.getExpressions(props.datasetQuery.query)}
-                updateAggregation={(aggregation) => props.updateQueryAggregation(index, aggregation)}
-                removeAggregation={canRemoveAggregation ? props.removeQueryAggregation.bind(null, index) : null}
-                // TODO Get rid of this placeholder parameter
-                addMetric={() => { }}
-                clearable={!hideClearButton}
-                color={metricColors[index]}
-            />
-        );
-    }
+    const addMetricButton =
+        <ModalWithTrigger
+            full
+            disabled={!canAddMetricToVisualization}
+            triggerElement={
+                <Tooltip
+                    key="addmetric"
+                    tooltip={canAddMetricToVisualization ? "Add metric" : "In proto you can only add metrics to line/area/bar visualizations"}
+                >
+                    <AddButton />
+                </Tooltip>
+            }
+        >
+            <AddMetricModal tableMetadata={tableMetadata} {...props} />
+        </ModalWithTrigger>;
 
-    if (!hideAddButton && supportMultipleAggregations && !isBareRows) {
-        const canAddMetricToVisualization = _.contains(["line", "area", "bar"], props.card.display);
-
-        aggregationList.push(
-            <ModalWithTrigger
-                key="addaggregation"
-                full
-                disabled={!canAddMetricToVisualization}
-                triggerElement={
-                    <Tooltip
-                        key="addmetric"
-                        tooltip={canAddMetricToVisualization ? "Add metric" : "In proto you can only add metrics to line/area/bar visualizations"}
-                    >
-                        <AddButton />
-                    </Tooltip>
-                }
-            >
-                <AddMetricModal tableMetadata={tableMetadata} {...props} />
-            </ModalWithTrigger>
-        );
-    }
-
-    return <div className="align-center flex flex-full">{aggregationList}</div>;
+    return (
+        <div className="align-center flex flex-full">
+            { [...aggregations.entries()].map(([index, aggregation]) =>
+                <MetricWidget
+                    key={"agg" + index}
+                    aggregation={aggregation}
+                    tableMetadata={tableMetadata}
+                    customFields={Query.getExpressions(props.datasetQuery.query)}
+                    updateMetric={(aggregation) => props.updateQueryAggregation(index, aggregation)}
+                    removeMetric={canRemoveAggregation ? props.removeQueryAggregation.bind(null, index) : null}
+                    clearable={!hideClearButton}
+                    color={metricColors[index]}
+                />
+            )}
+            {showAddMetricButton && addMetricButton}
+        </div>
+    )
 };
 
 export default MetricList;

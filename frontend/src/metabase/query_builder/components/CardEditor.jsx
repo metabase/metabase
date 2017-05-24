@@ -68,7 +68,7 @@ export default class CardEditor extends Component {
             // TODO: move this into AggregationWidget?
             return (
                 <div className="Query-section Query-section-aggregation disabled">
-                    <a className="QueryOption p1 flex align-center">Raw data</a>
+                    <a className="QueryOption p1 flex align-center"></a>
                 </div>
             );
         }
