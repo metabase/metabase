@@ -30,7 +30,6 @@ function getAggregationClause(aggregations: Aggregation[]): ?AggregationClause {
 }
 
 export function addAggregation(aggregation: ?AggregationClause, newAggregation: Aggregation): ?AggregationClause {
-    console.log('addAggregation', aggregation, newAggregation);
     return getAggregationClause(add(getAggregations(aggregation), newAggregation));
 }
 export function updateAggregation(aggregation: ?AggregationClause, index: number, updatedAggregation: Aggregation): ?AggregationClause {

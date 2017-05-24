@@ -1,35 +1,67 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
-import { duration } from "metabase/lib/formatting";
-
-import MetabaseSettings from "metabase/lib/settings";
-
 import cx from "classnames";
 import _ from "underscore";
+
+import { duration } from "metabase/lib/formatting";
+import MetabaseSettings from "metabase/lib/settings";
+
 import QueryModeButton from "metabase/query_builder/components/QueryModeButton";
 import ButtonBar from "metabase/components/ButtonBar";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
-import {REFRESH_TOOLTIP_THRESHOLD} from "metabase/query_builder/components/QueryVisualization";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Tooltip from "metabase/components/Tooltip";
 import MetricList from "metabase/query_builder/components/MetricList";
+import {REFRESH_TOOLTIP_THRESHOLD} from "metabase/query_builder/components/QueryVisualization";
+
+import type { TableId } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { TableMetadata, DatabaseMetadata } from "metabase/meta/types/Metadata";
+import type { Children } from 'react';
+import QueryWrapper from "metabase-lib/lib/Query";
+
+type Props = {
+    children?: Children,
+
+    features: {
+        data?: boolean,
+        filter?: boolean,
+        aggregation?: boolean,
+        breakout?: boolean,
+        sort?: boolean,
+        limit?: boolean
+    },
+
+    query: QueryWrapper,
+
+    databases: DatabaseMetadata[],
+    tables: TableMetadata[],
+
+    supportMultipleAggregations?: boolean,
+
+    setDatabaseFn: (id: DatabaseId) => void,
+    setSourceTableFn: (id: TableId) => void,
+    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+
+    isShowingTutorial: boolean,
+    isShowingDataReference: boolean,
+}
+
+type State = {
+    expanded: boolean
+}
 
 export default class CardEditor extends Component {
-    constructor(props, context) {
-        super(props, context);
-
-        this.state = {
-            expanded: true
-        };
-    }
+    props: Props;
+    state: State = {
+        expanded: true
+    };
 
     static propTypes = {
         databases: PropTypes.array,
-        datasetQuery: PropTypes.object.isRequired,
-        tableMetadata: PropTypes.object, // can't be required, sometimes null
         isShowingDataReference: PropTypes.bool.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func,
@@ -51,18 +83,13 @@ export default class CardEditor extends Component {
     };
 
     renderMetricSection() {
-        const { features, tableMetadata } = this.props;
+        const { features, query } = this.props;
 
         if (!features.aggregation && !features.breakout) {
             return;
         }
 
-        if (!this.props.features.aggregation) {
-            return;
-        }
-
-        // aggregation clause.  must have table details available
-        if (tableMetadata) {
+        if (query.isEditable()) {
             return <MetricList {...this.props} />
         } else {
             // TODO: move this into AggregationWidget?

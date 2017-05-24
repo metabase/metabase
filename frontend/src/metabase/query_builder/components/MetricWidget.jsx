@@ -7,6 +7,7 @@ import Clearable from './Clearable.jsx';
 
 import Popover from "metabase/components/Popover.jsx";
 
+import QueryWrapper from "metabase-lib/lib/Query";
 import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
 import { getAggregator } from "metabase/lib/schema_metadata";
 import { format } from "metabase/lib/expressions/formatter";
@@ -14,35 +15,44 @@ import { format } from "metabase/lib/expressions/formatter";
 import cx from "classnames";
 import _ from "underscore";
 
+import type Aggregation from "metabase-lib/lib/query/Aggregation";
+
+type Props = {
+    aggregationIndex: number,
+    aggregation: Aggregation[],
+    query: QueryWrapper,
+    updateQuery: (datasetQuery: DatasetQuery) => void,
+    editable: boolean,
+    clearable: boolean,
+    color: string,
+};
+
 export default class MetricWidget extends Component {
+    props: Props;
+
     constructor(props, context) {
         super(props, context);
 
         this.state = {
             isOpen: false
         };
-
-        _.bindAll(this, "open", "close", "setAggregation");
     }
-
-    static propTypes = {
-        aggregation: PropTypes.array,
-        color: PropTypes.string,
-        tableMetadata: PropTypes.object.isRequired,
-        customFields: PropTypes.object,
-        updateMetric: PropTypes.func.isRequired,
-        removeMetric: PropTypes.func,
-        editable: PropTypes.bool,
-        clearable: PropTypes.bool
-    };
 
     static defaultProps = {
         editable: false,
         clearable: false
     };
 
-    setAggregation(aggregation) {
-        this.props.updateMetric(aggregation);
+    // TODO: Will setting an aggregation in MetricWidget be possible anymore
+    // setAggregation = (aggregation) => {
+    //     const { query, aggregationIndex, updateQuery } = this.props;
+    //     // Should be in a Redux action rather than in a component
+    //     query.updateAggregation(aggregationIndex, aggregation).update(updateQuery);
+    // };
+
+    removeMetric = () => {
+        const { query, aggregationIndex, updateQuery } = this.props;
+        query.removeAggregation(aggregationIndex).update(updateQuery)
     }
 
     open() {
@@ -56,7 +66,8 @@ export default class MetricWidget extends Component {
     }
 
     renderStandardAggregation() {
-        const { aggregation, tableMetadata, editable } = this.props;
+        const { aggregation, query, editable } = this.props;
+        const tableMetadata = query.tableMetadata();
         const fieldId = AggregationClause.getField(aggregation);
 
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
@@ -83,7 +94,8 @@ export default class MetricWidget extends Component {
     }
 
     renderMetricAggregation() {
-        const { aggregation, tableMetadata } = this.props;
+        const { aggregation, query } = this.props;
+        const tableMetadata = query.tableMetadata();
         const metricId = AggregationClause.getMetric(aggregation);
 
         let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
@@ -97,35 +109,11 @@ export default class MetricWidget extends Component {
         return format(aggregation, { tableMetadata, customFields });
     }
 
-    renderPopover() {
-        const { aggregation, tableMetadata } = this.props;
-
-        if (this.state.isOpen) {
-            return (
-                <Popover
-                    id="AggregationPopover"
-                    ref="aggregationPopover"
-                    className="FilterPopover"
-                    isInitiallyOpen={true}
-                    onClose={this.close}
-                    dismissOnEscape={false} // disable for expression editor
-                >
-                    <AggregationPopover
-                        aggregation={aggregation}
-                        availableAggregations={tableMetadata.aggregation_options}
-                        tableMetadata={tableMetadata}
-                        customFields={this.props.customFields}
-                        onCommitAggregation={this.setAggregation}
-                        onClose={this.close}
-                    />
-                </Popover>
-            );
-        }
-    }
-
     render() {
-        const { aggregation, name, editable, color, clearable } = this.props;
+        const { aggregation, query, name, editable, color, clearable } = this.props;
         if (aggregation && aggregation.length > 0) {
+            const showClearButton = clearable && query.canRemoveAggregation();
+
             let aggregationName = NamedClause.isNamed(aggregation) ?
                 NamedClause.getName(aggregation)
             : AggregationClause.isCustom(aggregation) ?
@@ -155,8 +143,10 @@ export default class MetricWidget extends Component {
             return (
                 <div className={cx("Query-section Query-section-aggregation mr1", { "selected": this.state.isOpen })}>
                     <div>
-                        {clearable ? <Clearable className="pr1" onClear={this.props.removeMetric}>{metricTitle}</Clearable> : metricTitle}
-                        {this.renderPopover()}
+                        {showClearButton ?
+                            <Clearable className="pr1" onClear={this.removeMetric}>{metricTitle}</Clearable>
+                            : metricTitle
+                        }
                     </div>
                 </div>
             );
