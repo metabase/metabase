@@ -12,7 +12,8 @@
             [schema.core :as schema]
             [toucan.db :as db]
             [metabase.db.metadata-queries :as queries]
-            [metabase.sync-database.classify :as classify]))
+            [metabase.sync-database.classify :as classify]
+            [metabase.sync-database.infer-special-type :as infer-special-type]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Drivers use these to get field values
@@ -42,12 +43,14 @@
 ;; was part of test:cardinality-extract-field-values
 (defn extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
-  [field field-stats]
+  [{:keys [name base_type] :as field} field-stats]
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
   ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
 
-  (let [collecting-field-values-is-allowed? (field-values/field-should-have-field-values? field)
-        non-nil-values  (when collecting-field-values-is-allowed?
+  (let [#_name-type-guess #_(infer-special-type/infer-field-special-type name base_type)
+        collecting-field-values-is-allowed? (field-values/field-should-have-field-values? field)
+;        _ (log/errorf (u/format-color 'green "name: %s :type %s" name name-type-guess))
+        non-nil-values  (when #_(nil? name-type-guess) collecting-field-values-is-allowed?
                           (filter identity (queries/field-distinct-values field (inc classify/low-cardinality-threshold))))
         ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
         distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)

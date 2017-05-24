@@ -114,7 +114,7 @@
   [fingerprint field-stats]
   (->> field-stats
        (test:initial-guess         fingerprint)
-       (test:category-special-type fingerprint)
+       #_(test:category-special-type fingerprint)
        (test:no-preview-display    fingerprint)
        (test:url-special-type      fingerprint)
        (test:json-special-type     fingerprint)

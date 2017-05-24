@@ -118,6 +118,9 @@
             ;; type to `:details-only` (see models.field/visibility-types)
             :visibility_type (when (false? preview-display) :details-only)
             :special_type    special-type)))
+      (db/update-where! field/Field {:table_id        table-id
+                                     :visibility_type [:not= "retired"]}
+      :last_analyzed (u/new-sql-timestamp))
       table-stats)))
 
 (defn analyze-data-shape-for-tables!
