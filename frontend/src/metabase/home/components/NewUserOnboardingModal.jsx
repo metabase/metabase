@@ -20,6 +20,7 @@ const STEPS = [
         image: (
             <RetinaImage
                 className="absolute full"
+                style={{ top: 30 }}
                 src={`app/assets/img/welcome-modal-1.png`}
             />
         )
@@ -41,7 +42,7 @@ const STEPS = [
         image: (
             <RetinaImage
                 className="absolute ml-auto mr-auto inline-block left right"
-                style={{ bottom: -40 }}
+                style={{ bottom: -30 }}
                 src={`app/assets/img/welcome-modal-3.png`}
             />
         )
@@ -107,8 +108,9 @@ const OnboardingImages = ({ currentStep }, { currentStep: object }) =>
         position: 'relative',
         backgroundColor: '#F5F9FE',
         borderBottom: '1px solid #DCE1E4',
-        height: 224
-
+        height: 254,
+        paddingTop: '3em',
+        paddingBottom: '3em'
     }}>
         { currentStep.image }
     </div>
