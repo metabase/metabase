@@ -21,9 +21,11 @@ describe('new user onboarding modal', () => {
             const wrapper = shallow(
                 <NewUserOnboardingModal onClose={onClose} />
             )
-            const nextButton = wrapper.find('a')
+            // go to the last step
+            wrapper.setState({ step: 3 })
 
-            wrapper.setState({ step: 2 })
+            const nextButton = wrapper.find('a')
+            expect(nextButton.text()).toEqual('Let\'s go')
             nextButton.simulate('click')
             expect(onClose.called).toEqual(true)
         })

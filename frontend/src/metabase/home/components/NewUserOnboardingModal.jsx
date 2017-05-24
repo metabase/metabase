@@ -69,11 +69,10 @@ export default class NewUserOnboardingModal extends Component {
 
     render() {
         const { step } = this.state;
-
         const currentStep = STEPS[step -1]
 
         return (
-            <div style={{ maxHeight: '100%', transition: 'height 300ms linear' }}>
+            <div>
                 <OnboardingImages
                     currentStep={currentStep}
                 />
@@ -94,7 +93,7 @@ export default class NewUserOnboardingModal extends Component {
                             className="link flex-align-right text-bold absolute right"
                             onClick={() => (this.nextStep())}
                         >
-                            Next
+                            { step === 3 ? 'Let\'s go' : 'Next' }
                         </a>
                     </div>
                 </div>
@@ -103,7 +102,7 @@ export default class NewUserOnboardingModal extends Component {
     }
 }
 
-const OnboardingImages = ({ currentStep }, { currentStep: number }) =>
+const OnboardingImages = ({ currentStep }, { currentStep: object }) =>
     <div style={{
         position: 'relative',
         backgroundColor: '#F5F9FE',
