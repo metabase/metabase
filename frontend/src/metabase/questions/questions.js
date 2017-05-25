@@ -1,5 +1,5 @@
 
-import { createAction, createThunkAction, momentifyArraysTimestamps } from "metabase/lib/redux";
+import {createAction, createThunkAction, mergeEntities, momentifyArraysTimestamps} from "metabase/lib/redux";
 
 import { normalize, schema } from "normalizr";
 import { getIn, assoc, assocIn, updateIn, merge, chain } from "icepick";
@@ -238,7 +238,7 @@ export default function(state = initialState, { type, payload, error }) {
             } else {
                 return (chain(state)
                     .assoc("loadingInitialEntities", false)
-                    .assoc("entities", merge(state.entities, payload.entities))
+                    .assoc("entities", mergeEntities(state.entities, payload.entities))
                     .assoc("lastEntityType", payload.entityType)
                     .assoc("lastEntityQuery", payload.entityQuery)
                     .assoc("selectedIds", {})

@@ -1,5 +1,5 @@
 
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import {createAction, createThunkAction, mergeEntities} from "metabase/lib/redux";
 import { reset } from 'redux-form';
 import { normalize, schema } from "normalizr";
 
@@ -83,10 +83,7 @@ export default function(state = initialState, { type, payload, error }) {
             } else {
                 return {
                     ...state,
-                    entities: {
-                        ...state.entities,
-                        ...payload.entities
-                    },
+                    entities: mergeEntities(state.entities, payload.entities),
                     labelIds: payload.result,
                     error: null
                 };
