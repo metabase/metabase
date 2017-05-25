@@ -100,9 +100,8 @@ export default class ExtendedOptions extends Component {
     }
 
     handleSubmitCacheTTL() {
-      console.log("cache_ttl: " + this.state.cache_ttl);
       this.onSave({id: this.props.card.id,
-                   cache_ttl: +this.state.cache_ttl});
+                   cache_ttl: +this.state.cache_ttl > 0 ? +this.state.cache_ttl : null});
       this.setState({ isOpen: false });
     }
 
@@ -235,7 +234,7 @@ export default class ExtendedOptions extends Component {
                     { features.cache &&
                         <div>
                             <br/>
-                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Cache TTL, seconds (0 - default)</div>
+                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Cache TTL, seconds (0 - defaults)</div>
                             <div className="flex align-center">
                               <input className="input block border-gray" type="text" defaultValue={this.props.card.cache_ttl ? this.props.card.cache_ttl : 0} onChange={(e) => this.handleChangeCacheTTL(e)}/>
                               <span className="Header-buttonSection borderless">
