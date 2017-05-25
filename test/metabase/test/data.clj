@@ -14,9 +14,8 @@
              [database :refer [Database]]
              [field :as field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor
-             [expand :as ql]
-             [interface :as qi]]
+            [metabase.query-processor.interface :as qi]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [*driver*]]

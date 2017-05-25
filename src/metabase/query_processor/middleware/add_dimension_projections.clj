@@ -20,9 +20,9 @@
 
 (defn row-map-fn [dim-seq]
   (fn [row]
-    (into row (map (fn [{:keys [col-index xform-fn]}]
-                     (xform-fn (get row col-index)))
-                   dim-seq))))
+    (concat row (map (fn [{:keys [col-index xform-fn]}]
+                       (xform-fn (nth row col-index)))
+                     dim-seq))))
 
 (defn assoc-remapped-to [from->to]
   (fn [col]
@@ -34,6 +34,8 @@
 (defn add-inline-remaps
   [qp]
   (fn [query]
+    (println "before inline remap")
+    (clojure.pprint/pprint query)
     (let [results (qp query)
           indexed-dims (keep-indexed (fn [idx col]
                                        (when (seq (:dimensions col))

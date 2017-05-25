@@ -1,7 +1,7 @@
 (ns metabase.query-processor.interface
   "Definitions of `Field`, `Value`, and other record types present in an expanded query.
    This namespace should just contain definitions of various protocols and record types; associated logic
-   should go in `metabase.query-processor.expand`."
+   should go in `metabase.query-processor.middleware.expand`."
   (:require [metabase.models.field :as field]
             [metabase.util :as u]
             [metabase.util.schema :as su]

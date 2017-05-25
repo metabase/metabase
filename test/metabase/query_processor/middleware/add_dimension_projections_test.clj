@@ -5,7 +5,7 @@
             [metabase.query-processor.interface :as i]
             [metabase.test.util :as tu]
             [toucan.db :as db]
-            [metabase.query-processor.expand :as ql]))
+            [metabase.query-processor.middleware.expand :as ql]))
 
 (def example-resultset
   {:rows

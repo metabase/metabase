@@ -9,7 +9,7 @@
              [timeseries-query-processor-test :as timeseries-qp-test]
              [util :as u]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets :refer [expect-with-engine]]
             [toucan.util.test :as tt]))

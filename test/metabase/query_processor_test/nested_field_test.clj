@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.nested-field-test
   "Tests for nested field access."
   (:require [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 

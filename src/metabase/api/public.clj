@@ -16,7 +16,7 @@
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [field-values :refer [FieldValues]]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.util
              [embed :as embed]
              [schema :as su]]

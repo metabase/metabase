@@ -1,8 +1,10 @@
 (ns metabase.query-processor.expand-resolve-test
   "Tests query expansion/resolution"
   (:require [expectations :refer :all]
-            (metabase.query-processor [expand :as ql]
-                                      [resolve :as resolve])
+            [metabase.query-processor.middleware
+             [expand :as ql]
+             [resolve :as resolve]
+             [source-table :as st]]
             [metabase.test.data :refer :all]
             [metabase.util :as u]))
 
@@ -19,6 +21,8 @@
                                {k (obj->map v)}))
     :else           o))
 
+(def ^:private resolve'
+  (comp resolve/resolve (st/resolve-source-table-middleware identity)))
 
 ;; basic rows query w/ filter
 (expect
@@ -76,7 +80,7 @@
   (let [expanded-form (ql/expand (wrap-inner-query (query venues
                                                         (ql/filter (ql/and (ql/> $price 1))))))]
     (mapv obj->map [expanded-form
-                    (resolve/resolve expanded-form)])))
+                    (resolve' expanded-form)])))
 
 
 ;; basic rows query w/ FK filter
@@ -143,7 +147,7 @@
                                                         (ql/filter (ql/= $category_id->categories.name
                                                                          "abc")))))]
     (mapv obj->map [expanded-form
-                    (resolve/resolve expanded-form)])))
+                    (resolve' expanded-form)])))
 
 
 ;; basic rows query w/ FK filter on datetime
@@ -212,7 +216,7 @@
                                                         (ql/filter (ql/> (ql/datetime-field $user_id->users.last_login :year)
                                                                          "1980-01-01")))))]
     (mapv obj->map [expanded-form
-                    (resolve/resolve expanded-form)])))
+                    (resolve' expanded-form)])))
 
 
 ;; sum aggregation w/ datetime breakout
@@ -280,4 +284,4 @@
                                                      (ql/aggregation (ql/sum $venue_id->venues.price))
                                                      (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
     (mapv obj->map [expanded-form
-                    (resolve/resolve expanded-form)])))
+                    (resolve' expanded-form)])))

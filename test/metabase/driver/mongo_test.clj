@@ -10,7 +10,7 @@
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.expand :as ql]
             [metabase.test
              [data :as data]
              [util :as tu]]
