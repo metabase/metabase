@@ -36,13 +36,15 @@ import type {
     TableMetadata
 } from "metabase/meta/types/Metadata";
 
+import Dimension from "metabase-lib/lib/Dimension";
+
 // TODO: replace this with a list of Dimension objects
 type FieldOptions = {
     count: 0,
-    fields: FieldMetadata[],
+    dimensions: Dimension[],
     fks: Array<{
         field: FieldMetadata,
-        fields: FieldMetadata[]
+        dimensions: Dimension[]
     }>
 };
 
@@ -171,7 +173,6 @@ export default class Query {
     breakoutOptions(breakout?: any): FieldOptions {
         const fieldOptions = {
             count: 0,
-            fields: [],
             fks: [],
             dimensions: []
         };
@@ -186,31 +187,30 @@ export default class Query {
             );
 
             const dimensionFilter = dimension => {
-                const field = dimension.field();
-                return field.isDimension() && !usedFields.has(field.id);
+                const field = dimension.field && dimension.field();
+                return !field ||
+                    (field.isDimension() && !usedFields.has(field.id));
             };
 
             for (const dimension of this.dimensions().filter(dimensionFilter)) {
-                if (dimension.field().isFK()) {
+                const field = dimension.field && dimension.field();
+                if (field && field.isFK()) {
                     const fkDimensions = dimension
                         .dimensions()
                         .filter(dimensionFilter);
                     if (fkDimensions.length > 0) {
                         fieldOptions.count += fkDimensions.length;
                         fieldOptions.fks.push({
-                            field: dimension.field(),
-                            fields: fkDimensions.map(fkDimension =>
-                                fkDimension.field()),
-
+                            field: field,
                             dimension: dimension,
                             dimensions: fkDimensions
                         });
                     }
-                } else {
-                    fieldOptions.count++;
-                    fieldOptions.fields.push(dimension.field());
-                    fieldOptions.dimensions.push(dimension);
                 }
+                // else {
+                fieldOptions.count++;
+                fieldOptions.dimensions.push(dimension);
+                // }
             }
         }
 
@@ -239,7 +239,7 @@ export default class Query {
         return Q.getFilters(this.query());
     }
     filterOptions(): FieldOptions {
-        return { count: 0, fields: [], fks: [] };
+        return { count: 0, dimensions: [], fks: [] };
     }
     canAddFilter(): boolean {
         return Q.canAddFilter(this.query());
@@ -307,7 +307,8 @@ export default class Query {
     }
 
     tableDimensions(): Dimension[] {
-        const table = this.tableMetadata();
+        // $FlowFixMe
+        const table: Table = this.tableMetadata();
         return table ? table.dimensions() : [];
     }
 
@@ -316,11 +317,7 @@ export default class Query {
             expressionName,
             expression
         ]) => {
-            // FIXME: expressions shouldn't require a field object
-            const expressionField = new Field({});
-            return new ExpressionDimension(expressionField, null, [
-                expressionName
-            ]);
+            return new ExpressionDimension(null, [expressionName]);
         });
     }
 

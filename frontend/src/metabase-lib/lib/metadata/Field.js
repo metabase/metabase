@@ -3,10 +3,11 @@
 import Base from "./Base";
 import Table from "./Table";
 
-import { FieldDimension } from "../Dimension";
+import { FieldIDDimension } from "../Dimension";
 
 import {
     isDate,
+    isNumber,
     isNumeric,
     isBoolean,
     isString,
@@ -15,7 +16,8 @@ import {
     isDimension,
     isMetric,
     isPK,
-    isFK
+    isFK,
+    getIconForField
 } from "metabase/lib/schema_metadata";
 
 /**
@@ -29,6 +31,9 @@ export default class Field extends Base {
 
     isDate() {
         return isDate(this);
+    }
+    isNumber() {
+        return isNumber(this);
     }
     isNumeric() {
         return isNumeric(this);
@@ -61,7 +66,11 @@ export default class Field extends Base {
         return isFK(this);
     }
 
+    icon() {
+        return getIconForField(this);
+    }
+
     dimension() {
-        return new FieldDimension(this, null, [this.id]);
+        return new FieldIDDimension(null, [this.id], this.metadata);
     }
 }

@@ -68,13 +68,12 @@ export const getMetadata = createSelector(
         getNormalizedMetrics
     ],
     (databases, tables, fields, segments, metrics) => {
-        const meta = new Metadata({
-            databases: copyObjects(databases, Database),
-            tables: copyObjects(tables, Table),
-            fields: copyObjects(fields, Field),
-            segments: copyObjects(segments, Segment),
-            metrics: copyObjects(metrics, Metric)
-        });
+        const meta = new Metadata();
+        meta.databases = copyObjects(meta, databases, Database)
+        meta.tables    = copyObjects(meta, tables, Table)
+        meta.fields    = copyObjects(meta, fields, Field)
+        meta.segments  = copyObjects(meta, segments, Segment)
+        meta.metrics   = copyObjects(meta, metrics, Metric)
 
         hydrateList(meta.databases, "tables", meta.tables);
 
@@ -135,11 +134,12 @@ export const getParameterFieldValues = (state, props) => {
 // UTILS:
 
 // clone each object in the provided mapping of objects
-function copyObjects(objects, Klass) {
+function copyObjects(metadata, objects, Klass) {
     let copies = {};
     for (const object of Object.values(objects)) {
         // $FlowFixMe
         copies[object.id] = new Klass(object);
+        copies[object.id].metadata = metadata;
     }
     return copies;
 }
