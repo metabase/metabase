@@ -18,9 +18,9 @@ import _ from "underscore";
 import type Aggregation from "metabase-lib/lib/query/Aggregation";
 
 type Props = {
-    aggregationIndex: number,
-    aggregation: Aggregation[],
-    query: QueryWrapper,
+    question: Question
+    metric: Query,
+    metricIndex: number,
     updateQuery: (datasetQuery: DatasetQuery) => void,
     editable: boolean,
     clearable: boolean,
@@ -51,8 +51,8 @@ export default class MetricWidget extends Component {
     // };
 
     removeMetric = () => {
-        const { query, aggregationIndex, updateQuery } = this.props;
-        query.removeAggregation(aggregationIndex).update(updateQuery)
+        const { metric, metricIndex, updateQuery } = this.props;
+        metric.removeMetric(metricIndex).update(updateQuery);
     }
 
     open() {
@@ -66,13 +66,14 @@ export default class MetricWidget extends Component {
     }
 
     renderStandardAggregation() {
-        const { aggregation, query, editable } = this.props;
-        const tableMetadata = query.tableMetadata();
+        const { metric, editable } = this.props;
+        const tableMetadata = metric.tableMetadata();
+        const aggregation = metric.aggregation();
         const fieldId = AggregationClause.getField(aggregation);
 
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
         // if this table doesn't support the selected aggregation, prompt the user to select a different one
-        if (selectedAggregation && _.findWhere(tableMetadata.aggregation_options, { short: selectedAggregation.short })) {
+        if (selectedAggregation && _.findWhere(metric.aggregationOptions(), { short: selectedAggregation.short })) {
             return (
                 <span className="flex align-center">
                     { selectedAggregation.name.replace(" of ...", "") }
@@ -94,20 +95,20 @@ export default class MetricWidget extends Component {
     }
 
     renderMetricAggregation() {
-        const { aggregation, query } = this.props;
-        const tableMetadata = query.tableMetadata();
+        const { question, metric } = this.props;
+        const aggregation = metric.aggregation();
         const metricId = AggregationClause.getMetric(aggregation);
 
-        let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
+        let selectedMetric = _.findWhere(question.availableMetrics(), { id: metricId });
         if (selectedMetric) {
             return selectedMetric.name.replace(" of ...", "")
         }
     }
 
-    renderCustomAggregation() {
-        const { aggregation, tableMetadata, customFields } = this.props;
-        return format(aggregation, { tableMetadata, customFields });
-    }
+    // renderCustomAggregation() {
+    //     const { metric, tableMetadata, customFields } = this.props;
+    //     return format(aggregation, { tableMetadata, customFields });
+    // }
 
     render() {
         const { aggregation, query, name, editable, color, clearable } = this.props;

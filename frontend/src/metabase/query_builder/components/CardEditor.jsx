@@ -83,13 +83,14 @@ export default class CardEditor extends Component {
     };
 
     renderMetricSection() {
-        const { features, query } = this.props;
+        const { features, question } = this.props;
 
         if (!features.aggregation && !features.breakout) {
             return;
         }
 
-        if (query.isEditable()) {
+        // TODO Atte Keinänen 5/25/17 How should `isEditable` work for multimetric questions?
+        if (question.query().isEditable()) {
             return <MetricList {...this.props} />
         } else {
             // TODO: move this into AggregationWidget?
@@ -103,16 +104,15 @@ export default class CardEditor extends Component {
 
     renderButtons = () => {
         // NOTE: Most of stuff is replicated from QueryVisualization header
-        const { isResultDirty, isAdmin, card, result, setQueryModeFn, tableMetadata, isRunnable, isRunning, runQuery, cancelQuery } = this.props;
+        const { question, isResultDirty, isAdmin, result, setQueryModeFn, tableMetadata, isRunnable, isRunning, runQuery, cancelQuery } = this.props;
 
-        const isSaved = card.id != null;
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
         const isEmbeddingEnabled = MetabaseSettings.get("embedding");
 
         const getQueryModeButton = () =>
             <QueryModeButton
                 key="queryModeToggle"
-                mode={card.dataset_query.type}
+                mode={question.datasetQuery().type}
                 allowNativeToQuery={false}
                 allowQueryToNative={false}
                 /*allowNativeToQuery={isNew && !isDirty}
@@ -131,12 +131,12 @@ export default class CardEditor extends Component {
             <QueryDownloadWidget
                 key="querydownload"
                 className="hide sm-show"
-                card={card}
+                card={question.card()}
                 result={result}
             />;
 
         const getQueryEmbedWidget = () =>
-            <QuestionEmbedWidget key="questionembed" className="hide sm-show" card={card} />;
+            <QuestionEmbedWidget key="questionembed" className="hide sm-show" card={question.card()} />;
 
         const getRunButton = () => {
 
@@ -162,8 +162,8 @@ export default class CardEditor extends Component {
 
 
         const queryHasCleanResult  = !isResultDirty && result && !result.error;
-        const isEmbeddable = isSaved && (
-                (isPublicLinksEnabled && (isAdmin || card.public_uuid)) ||
+        const isEmbeddable = question.isSaved() && (
+                (isPublicLinksEnabled && (isAdmin || question.card().public_uuid)) ||
                 (isEmbeddingEnabled && isAdmin)
         );
 

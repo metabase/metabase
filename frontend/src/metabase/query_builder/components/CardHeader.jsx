@@ -27,8 +27,31 @@ import * as Urls from "metabase/lib/urls";
 import cx from "classnames";
 import _ from "underscore";
 import Button from "metabase/components/Button";
+import type Question from "metabase-lib/lib/Question";
+import type {Card} from "metabase/meta/types/Card";
+
+type Props = {
+    question: Question,
+    // TODO Atte Keinänen 5/25/17: Replace originalCard with `Question` object
+    originalCard?: Card,
+    isEditing: boolean,
+    // tableMetadata isn't present if the query is a native query or the metadata is still loading
+    tableMetadata?: TableMetadata,
+    onSetCardAttribute: (string, any) => void,
+    reloadCardFn: () => void,
+    // TODO Atte Keinänen 5/25/17: Define a union type for allowed query modes
+    setQueryModeFn: (string) => void,
+    isShowingDataReference: boolean,
+    toggleDataReferenceFn: () => void,
+    onChangeLocation: (string) => void,
+    isNew: boolean,
+    isEditing: boolean,
+    isDirty: boolean
+}
 
 export default class CardHeader extends Component {
+    props: Props;
+    
     constructor(props, context) {
         super(props, context);
 
@@ -38,21 +61,7 @@ export default class CardHeader extends Component {
             revisions: null
         };
     }
-
-    static propTypes = {
-        card: PropTypes.object.isRequired,
-        originalCard: PropTypes.object,
-        isEditing: PropTypes.bool.isRequired,
-        tableMetadata: PropTypes.object, // can't be required, sometimes null
-        onSetCardAttribute: PropTypes.func.isRequired,
-        reloadCardFn: PropTypes.func.isRequired,
-        setQueryModeFn: PropTypes.func.isRequired,
-        isShowingDataReference: PropTypes.bool.isRequired,
-        toggleDataReferenceFn: PropTypes.func.isRequired,
-        // isNew: PropTypes.bool.isRequired,
-        // isDirty: PropTypes.bool.isRequired
-    };
-
+    
     componentWillUnmount() {
         clearTimeout(this.timeout);
         if (this.requestPromise) {
@@ -66,11 +75,11 @@ export default class CardHeader extends Component {
         this.timeout = setTimeout(() =>
             this.setState({ recentlySaved: null })
         , 5000);
-    }
+    };
 
-    // onCreate = (card, addToDash) => {
-    //     if (card.dataset_query.query) {
-    //         Query.cleanQuery(card.dataset_query.query);
+    // onCreate = (question, addToDash) => {
+    //     if (question.datasetQuery().query) {
+    //         Query.cleanQuery(question.datasetQuery().query);
     //     }
     //
     //     // TODO: reduxify
@@ -88,25 +97,28 @@ export default class CardHeader extends Component {
     onSave = (card, addToDash) => {
         // MBQL->NATIVE
         // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
-        // if (card.dataset_query.type === "native" && card.dataset_query.query) {
-        //     delete card.dataset_query.query;
-        // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
-        //     delete card.dataset_query.native;
+        // if (question.datasetQuery().type === "native" && question.datasetQuery().query) {
+        //     delete question.datasetQuery().query;
+        // } else if (question.datasetQuery().type === "query" && question.datasetQuery().native) {
+        //     delete question.datasetQuery().native;
         // }
 
-        if (card.dataset_query.query) {
-            Query.cleanQuery(card.dataset_query.query);
+        const { fromUrl, notifyCardUpdatedFn } = this.props;
+
+        const datasetQuery = card.dataset_query;
+        if (datasetQuery.query) {
+            Query.cleanQuery(datasetQuery.query);
         }
 
         // TODO: reduxify
         this.requestPromise = cancelable(CardApi.update(card));
         return this.requestPromise.then(updatedCard => {
-            if (this.props.fromUrl) {
+            if (fromUrl) {
                 this.onGoBack();
                 return;
             }
 
-            this.props.notifyCardUpdatedFn(updatedCard);
+            notifyCardUpdatedFn(updatedCard);
 
             this.setState({
                 recentlySaved: "updated",
@@ -163,8 +175,26 @@ export default class CardHeader extends Component {
     };
 
     getHeaderButtons = () => {
-        const { card ,isNew, isDirty, isEditing, databases } = this.props;
-        const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
+        const {
+            question,
+            originalCard,
+            isNew,
+            isDirty,
+            isEditing,
+            databases,
+            uiControls,
+            toggleTemplateTagsEditor,
+            isShowingDataReference,
+            onSetCardAttribute
+        } = this.props;
+
+        const databaseId = question && question.datasetQuery() && question.datasetQuery().database;
+        const database = _.findWhere(databases, { id: card && databaseId });
+        const card = question.card();
+
+        // TODO Atte Keinänen 5/20/17 Add multi-query support to all components that need metadata
+        // This only fetches the table metadata of first available query
+        const tableMetadata = question.query().tableMetadata();
 
         const SaveNewCardButton = () =>
             <ModalWithTrigger
@@ -174,9 +204,9 @@ export default class CardHeader extends Component {
                 triggerElement="Save"
             >
                 <SaveQuestionModal
-                    card={this.props.card}
-                    originalCard={this.props.originalCard}
-                    tableMetadata={this.props.tableMetadata}
+                    card={card}
+                    originalCard={originalCard}
+                    tableMetadata={tableMetadata}
                     addToDashboard={false}
                     saveFn={this.onSave}
                     createFn={this.onCreate}
@@ -204,7 +234,7 @@ export default class CardHeader extends Component {
         const SaveEditedCardButton = () =>
             <ActionButton
                 key="save"
-                actionFn={() => this.onSave(this.props.card, false)}
+                actionFn={() => this.onSave(card, false)}
                 className="cursor-pointer text-brand-hover bg-white text-grey-4 text-uppercase"
                 normalText="SAVE CHANGES"
                 activeText="Saving…"
@@ -218,7 +248,7 @@ export default class CardHeader extends Component {
             </a>;
 
         const DeleteCardButton = () =>
-            <ArchiveQuestionModal questionId={this.props.card.id}/>;
+            <ArchiveQuestionModal questionId={card.id}/>;
 
         const MoveQuestionToCollectionButton = () =>
             <ModalWithTrigger
@@ -231,24 +261,24 @@ export default class CardHeader extends Component {
                 }
             >
                 <MoveToCollection
-                    questionId={this.props.card.id}
-                    initialCollectionId={this.props.card && this.props.card.collection_id}
+                    questionId={card.id}
+                    initialCollectionId={card && card.collection_id}
                     setCollection={(questionId, collection) => {
-                        this.props.onSetCardAttribute('collection', collection)
-                        this.props.onSetCardAttribute('collection_id', collection.id)
+                        onSetCardAttribute('collection', collection)
+                        onSetCardAttribute('collection_id', collection.id)
                     }}
                 />
             </ModalWithTrigger>;
 
         const ToggleTemplateTagsEditorButton = () => {
             const parametersButtonClasses = cx('transition-color', {
-                'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
-                'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor
+                'text-brand': uiControls.isShowingTemplateTagsEditor,
+                'text-brand-hover': !uiControls.isShowingTemplateTagsEditor
             });
             return (
                 <Tooltip key="parameterEdititor" tooltip="Variables">
                     <a className={parametersButtonClasses}>
-                        <Icon name="variable" size={16} onClick={this.props.toggleTemplateTagsEditor}/>
+                        <Icon name="variable" size={16} onClick={toggleTemplateTagsEditor}/>
                     </a>
                 </Tooltip>
             );
@@ -274,9 +304,9 @@ export default class CardHeader extends Component {
                     }
                 >
                     <SaveQuestionModal
-                        card={this.props.card}
-                        originalCard={this.props.originalCard}
-                        tableMetadata={this.props.tableMetadata}
+                        card={card}
+                        originalCard={originalCard}
+                        tableMetadata={tableMetadata}
                         addToDashboard={true}
                         saveFn={this.onSave}
                         createFn={this.onCreate}
@@ -294,7 +324,7 @@ export default class CardHeader extends Component {
                     <HistoryModal
                         revisions={this.state.revisions}
                         entityType="card"
-                        entityId={this.props.card.id}
+                        entityId={card.id}
                         onFetchRevisions={this.onFetchRevisions}
                         onRevertToRevision={this.onRevertToRevision}
                         onClose={() => this.refs.cardHistory.toggle()}
@@ -305,7 +335,7 @@ export default class CardHeader extends Component {
 
         const DataReferenceButton = () => {
             const dataReferenceButtonClasses = cx('transition-color', {
-                'text-brand': this.props.isShowingDataReference,
+                'text-brand': isShowingDataReference,
                 'text-brand-hover': !this.state.isShowingDataReference
             });
 
@@ -320,8 +350,8 @@ export default class CardHeader extends Component {
 
         const isNewCardThatCanBeSaved = isNew && isDirty;
         const isSaved = !isNew;
-        const isEditableSavedCard = isSaved && card.can_write;
-        const isNativeQuery = Query.isNative(card && card.dataset_query);
+        const isEditableSavedCard = isSaved && question.canWrite();
+        const isNativeQuery = Query.isNative(question && question.datasetQuery());
         const isNativeQueryWithParameters = isNativeQuery && database && _.contains(database.features, "native-parameters");
 
         const getPersistenceButtons = () => {
@@ -368,27 +398,28 @@ export default class CardHeader extends Component {
     };
 
     render() {
+        const { question, originalCard, isEditing, isNew, onSetCardAttribute, onChangeLocation } = this.props;
         const badgeItemStyle = "text-uppercase flex align-center no-decoration text-bold";
-        const description = this.props.card ? this.props.card.description : null;
+        const description = question.card().description;
 
         return (
             <div className="relative">
                 <HeaderBar
-                    isEditing={this.props.isEditing}
-                    name={this.props.isNew ? "New question" : this.props.card.name}
-                    description={this.props.card ? this.props.card.description : null}
-                    breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
+                    isEditing={isEditing}
+                    name={isNew ? "New question" : question.card().name}
+                    description={description}
+                    breadcrumb={(!question.card().id && originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
-                    setItemAttributeFn={this.props.onSetCardAttribute}
-                    badge={this.props.card.collection &&
+                    setItemAttributeFn={onSetCardAttribute}
+                    badge={question.card().collection &&
                         <div className="flex">
                             <Link
-                                to={Urls.collection(this.props.card.collection)}
+                                to={Urls.collection(question.card().collection)}
                                 className={badgeItemStyle}
-                                style={{color: this.props.card.collection.color, fontSize: 12}}
+                                style={{color: question.card().collection.color, fontSize: 12}}
                             >
                                 <Icon name="collection" size={14} style={{marginRight: "0.5em"}}/>
-                                {this.props.card.collection.name}
+                                {question.card().collection.name}
                             </Link>
                             { description &&
                                 <div
@@ -412,9 +443,9 @@ export default class CardHeader extends Component {
 
                 <Modal isOpen={this.state.modal === "add-to-dashboard"} onClose={this.onCloseModal}>
                     <AddToDashSelectDashModal
-                        card={this.props.card}
+                        card={question.card()}
                         onClose={this.onCloseModal}
-                        onChangeLocation={this.props.onChangeLocation}
+                        onChangeLocation={onChangeLocation}
                     />
                 </Modal>
             </div>

@@ -10,6 +10,8 @@ import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
+import Question from "metabase-lib/lib/Question";
+
 import { getIn } from "icepick";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
@@ -167,7 +169,6 @@ export const getIsResultDirty = createSelector(
     }
 )
 
-import Question from "metabase-lib/lib/Question";
 
 export const getQuestion = createSelector(
     [getMetadata, getCard],

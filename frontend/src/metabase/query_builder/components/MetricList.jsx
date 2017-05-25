@@ -10,13 +10,13 @@ import AddButton from "metabase/components/AddButton";
 
 // TODO: Containerize this component in order to reduce the props passing in QB
 const MetricList = ({...props}) => {
-    const { card, query, setDatasetQuery, tableMetadata, hideAddButton, hideClearButton } = props;
+    const { question, setDatasetQuery, tableMetadata, hideAddButton, hideClearButton } = props;
 
-    const aggregations = query.aggregations();
-    const metricColors = getCardColors(card);
+    const metrics = question.metrics();
+    const metricColors = getCardColors(question.card());
 
-    const showAddMetricButton = !hideAddButton && !query.isBareRows();
-    const canAddMetricToVisualization = _.contains(["line", "area", "bar"], props.card.display);
+    const showAddMetricButton = !hideAddButton && !question.query().isBareRows();
+    const canAddMetricToVisualization = _.contains(["line", "area", "bar"], question.display());
 
     const addMetricButton =
         <ModalWithTrigger
@@ -36,12 +36,12 @@ const MetricList = ({...props}) => {
 
     return (
         <div className="align-center flex flex-full">
-            { [...aggregations.entries()].map(([index, aggregation]) =>
+            { metrics.map((metric, index) =>
                 <MetricWidget
-                    key={"agg" + index}
-                    aggregation={aggregation}
-                    index={index}
-                    query={query}
+                    key={"metric" + index}
+                    question={question}
+                    metric={metric}
+                    metricIndex={index}
                     updateQuery={setDatasetQuery}
                     clearable={!hideClearButton}
                     color={metricColors[index]}

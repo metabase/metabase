@@ -19,7 +19,6 @@ import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
 import title from "metabase/hoc/Title";
 
 import {
-    getCard,
     getOriginalCard,
     getLastRunCard,
     getQueryResult,
@@ -39,7 +38,7 @@ import {
     getIsRunnable,
     getIsResultDirty,
     getMode,
-    getQuery
+    getQuestion
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
@@ -80,10 +79,9 @@ const mapStateToProps = (state, props) => {
         isAdmin:                   getUserIsAdmin(state, props),
         fromUrl:                   props.location.query.from,
 
-        query:                     getQuery(state),
+        question:                  getQuestion(state),
         mode:                      getMode(state),
 
-        card:                      getCard(state),
         originalCard:              getOriginalCard(state),
         lastRunCard:               getLastRunCard(state),
 
@@ -132,7 +130,7 @@ const mapDispatchToProps = {
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-@title(({ card }) => (card && card.name) || "Question")
+@title(({ question }) => (question && question.displayName()) || "Question")
 export default class CardBuilder extends Component {
     forceUpdateDebounced: () => void;
 
@@ -195,11 +193,12 @@ export default class CardBuilder extends Component {
     };
 
     render() {
-        const { card, databases, uiControls, mode } = this.props;
+        const { question, databases, uiControls, mode } = this.props;
+        const datasetQuery = question && question.datasetQuery();
+
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         const ModeFooter = mode && mode.ModeFooter;
-
-        const isInitializing = !card || !databases;
+        const isInitializing = !question || !databases;
         const showVisualizationSettings = !this.props.isObjectDetail;
 
         return (
@@ -215,13 +214,18 @@ export default class CardBuilder extends Component {
                                 <div className="wrapper">
                                     <CardEditor
                                         {...this.props}
-                                        datasetQuery={card && card.dataset_query}
+                                        datasetQuery={datasetQuery}
                                     />
                                 </div>
                             </div>
 
                             <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                                <QueryVisualization {...this.props} noHeader className="full wrapper mb2 z1" />
+                                <QueryVisualization
+                                    {...this.props}
+                                    card={question.card()}
+                                    noHeader
+                                    className="full wrapper mb2 z1"
+                                />
                             </div>
 
                             { ModeFooter ?
@@ -243,7 +247,11 @@ export default class CardBuilder extends Component {
                         { showVisualizationSettings &&
                             <div className="z2 absolute left bottom mb3 ml4">
                                 <div style={{backgroundColor: "white"}}>
-                                    <VisualizationSettings ref="settings" {...this.props} />
+                                    <VisualizationSettings
+                                        ref="settings"
+                                        {...this.props}
+                                        card={question.card()}
+                                    />
                                 </div>
                             </div>
                         }
@@ -251,7 +259,7 @@ export default class CardBuilder extends Component {
                         <div className="z2 absolute right bottom mb3" style={{marginRight: "80px"}}>
                             <CardFiltersWidget
                                 {...this.props}
-                                datasetQuery={card && card.dataset_query}
+                                datasetQuery={datasetQuery}
                             />
                         </div>
 

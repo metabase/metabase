@@ -96,11 +96,17 @@ export default class Query {
 
     // AGGREGATIONS
 
+    /* convenience for questions with a single aggregation */
+    aggregation(): Aggregation {
+        return aggregations()[0];
+    }
+
     aggregations(): Aggregation[] {
         return Q.getAggregations(this.query());
     }
     aggregationOptions(): any[] {
-        return [];
+        // legacy
+        return this.tableMetadata().aggregation_options;
     }
     canAddAggregation(): boolean {
         return false;

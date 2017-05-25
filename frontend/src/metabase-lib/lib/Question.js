@@ -11,7 +11,7 @@ import Action, { ActionClick } from "./Action";
 
 import type { ParameterId } from "metabase/meta/types/Parameter";
 import type { Metadata as MetadataObject } from "metabase/meta/types/Metadata";
-import type { Card as CardObject } from "metabase/meta/types/Card";
+import type {Card as CardObject, DatasetQuery} from "metabase/meta/types/Card";
 
 import * as Q from "metabase/lib/query/query";
 
@@ -87,6 +87,15 @@ export default class Question {
         return this._queries[0];
     }
 
+    datasetQuery(): DatasetQuery {
+        return this._card && this._card.dataset_query;
+    }
+
+    display(): string {
+        return this._card && this._card.display;
+    }
+
+
     /**
      * Question is valid (as far as we know) and can be executed
      */
@@ -97,6 +106,10 @@ export default class Question {
             }
         }
         return true;
+    }
+
+    canWrite(): boolean {
+        return this._card && this._card.can_write;
     }
 
     metrics(): Query[] {
@@ -194,7 +207,25 @@ export default class Question {
         }
     }
 
-    // Information
+    /**
+     * A user-defined name for the question
+     */
+    displayName(): string {
+        return this._card && this._card.name;
+    }
+
+    id(): string {
+        return this._card && this._card.id
+    }
+
+    isSaved(): boolean {
+        return !!this.id();
+    }
+
+    publicUUID(): string {
+        return this._card && this._card.public_uuid;
+    }
+
     getUrl(): string {
         return "";
     }
