@@ -162,9 +162,9 @@ export default class Question {
         // TODO: real multiple metric persistence
         return this.query().filters();
     }
-    filterableDimensions(): Dimension[] {
+    filterOptions(): Dimension[] {
         // TODO: real multiple metric persistence
-        return this.query().filterableDimensions();
+        return this.query().filterOptions();
     }
     canAddFilter(): boolean {
         return false;

@@ -2,10 +2,14 @@
 
 import Database from "./metadata/Database";
 import Table from "./metadata/Table";
+import Field from "./metadata/Field";
 
 import Question from "./Question";
 import Action, { ActionClick } from "./Action";
 
+import { ExpressionDimension } from "./Dimension";
+
+import { TYPE } from "metabase/lib/types";
 import * as Q from "metabase/lib/query/query";
 import Q_deprecated, {
     AggregationClause,
@@ -32,13 +36,15 @@ import type {
     TableMetadata
 } from "metabase/meta/types/Metadata";
 
+import Dimension from "metabase-lib/lib/Dimension";
+
 // TODO: replace this with a list of Dimension objects
 type FieldOptions = {
     count: 0,
-    fields: FieldMetadata[],
+    dimensions: Dimension[],
     fks: Array<{
         field: FieldMetadata,
-        fields: FieldMetadata[]
+        dimensions: Dimension[]
     }>
 };
 
@@ -164,28 +170,54 @@ export default class Query {
     breakouts(): Breakout[] {
         return Q.getBreakouts(this.query());
     }
-    breakoutableDimensions(breakout?: any): FieldOptions {
-        const tableMetadata = this.tableMetadata();
-        if (!tableMetadata) {
-            return { count: 0, fields: [], fks: [] };
-        }
+    breakoutOptions(breakout?: any): FieldOptions {
+        const fieldOptions = {
+            count: 0,
+            fks: [],
+            dimensions: []
+        };
 
-        const usedFields = {};
-        for (const b of this.breakouts()) {
-            if (!breakout || !_.isEqual(b, breakout)) {
-                usedFields[Q_deprecated.getFieldTargetId(b)] = true;
+        const table = this.tableMetadata();
+        if (table) {
+            // the set of field ids being used by other breakouts
+            const usedFields = new Set(
+                this.breakouts()
+                    .filter(b => !_.isEqual(b, breakout))
+                    .map(b => Q_deprecated.getFieldTargetId(b))
+            );
+
+            const dimensionFilter = dimension => {
+                const field = dimension.field && dimension.field();
+                return !field ||
+                    (field.isDimension() && !usedFields.has(field.id));
+            };
+
+            for (const dimension of this.dimensions().filter(dimensionFilter)) {
+                const field = dimension.field && dimension.field();
+                if (field && field.isFK()) {
+                    const fkDimensions = dimension
+                        .dimensions()
+                        .filter(dimensionFilter);
+                    if (fkDimensions.length > 0) {
+                        fieldOptions.count += fkDimensions.length;
+                        fieldOptions.fks.push({
+                            field: field,
+                            dimension: dimension,
+                            dimensions: fkDimensions
+                        });
+                    }
+                }
+                // else {
+                fieldOptions.count++;
+                fieldOptions.dimensions.push(dimension);
+                // }
             }
         }
 
-        return Q_deprecated.getFieldOptions(
-            tableMetadata.fields,
-            true,
-            tableMetadata.breakout_options.validFieldsFilter,
-            usedFields
-        );
+        return fieldOptions;
     }
     canAddBreakout(): boolean {
-        return this.breakoutableDimensions().count > 0;
+        return this.breakoutOptions().count > 0;
     }
 
     addBreakout(breakout: Breakout) {
@@ -206,8 +238,8 @@ export default class Query {
     filters(): Filter[] {
         return Q.getFilters(this.query());
     }
-    filterableDimensions(): FieldOptions {
-        return { count: 0, fields: [], fks: [] };
+    filterOptions(): FieldOptions {
+        return { count: 0, dimensions: [], fks: [] };
     }
     canAddFilter(): boolean {
         return Q.canAddFilter(this.query());
@@ -266,6 +298,27 @@ export default class Query {
 
     expressions(): { [key: string]: any } {
         return Q.getExpressions(this.query());
+    }
+
+    // DIMENSIONS
+
+    dimensions(): Dimension[] {
+        return [...this.expressionDimensions(), ...this.tableDimensions()];
+    }
+
+    tableDimensions(): Dimension[] {
+        // $FlowFixMe
+        const table: Table = this.tableMetadata();
+        return table ? table.dimensions() : [];
+    }
+
+    expressionDimensions(): Dimension[] {
+        return Object.entries(this.expressions()).map(([
+            expressionName,
+            expression
+        ]) => {
+            return new ExpressionDimension(null, [expressionName]);
+        });
     }
 
     // NATIVE QUERY
