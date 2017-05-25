@@ -21,13 +21,21 @@
    :type/UUID       "UUID"})
 
 (defn- database->connection-details [context {:keys [database-name]}]
-  (merge {:host     "localhost"
-          :port     5432
+  (merge {:host     (or (env :mb-test-db-host)
+                        "localhost")
+          :port     (or (env :mb-test-db-port)
+                        5432) 
           :timezone :America/Los_Angeles}
          (when (env :circleci)
            {:user "ubuntu"})
          (when (= context :db)
-           {:db database-name})))
+           {:db database-name})
+         (when-let [password (env :mb-test-db-pass)]
+           {:password password})
+         (when-let [user (env :mb-test-db-user)]
+           {:user user})
+         (when-let [db (env :mb-test-db-dbname)]
+           {:db db})))
 
 (defn- kill-connections-to-db-sql
   "Return a SQL `SELECT` statement that will kill all connections to a database with DATABASE-NAME."

@@ -17,7 +17,7 @@
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
 ;; save point: trying to remove driver references from here.
-(defn test-for-cardinality?
+#_(defn test-for-cardinality? trying to move this into cached-values
   "Should FIELD should be tested for cardinality?"
   [fingerprint field-stats #_is-new?]
   (or (field-values/field-should-have-field-values? (assoc fingerprint :special_type (:special_type field-stats)))
@@ -32,7 +32,7 @@
   ;; this used to only apply to new fields and that was removed in refactor, does that break things
   [fingerprint field-stats]
   (cond-> field-stats
-    (and (test-for-cardinality? fingerprint field-stats)
+    (and #_(test-for-cardinality? fingerprint field-stats) ;; figure out how to check for low cardinally directly
          (nil? (:special_type fingerprint))
          (pos? (:cardinality fingerprint))) (assoc :special-type :type/Category)))
 

@@ -75,9 +75,9 @@
                {:id (id :venues :id)}
                {:id (id :venues :latitude)}
                {:id (id :venues :longitude)}
-               {:id (id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (id :venues :name))}
+               {:id (id :venues :name), :values (sort-by :id (db/select-one-field :values 'FieldValues, :field_id (id :venues :name)))}
                {:id (id :venues :price), :values [1 2 3 4]}]}
-  (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
+  (update (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))) :fields #(sort-by :id %)))
 
 (resolve-private-vars metabase.driver.generic-sql #_field-avg-length field-values-lazy-seq table-rows-seq)
 

@@ -40,6 +40,16 @@
        (let [total-length (reduce + (map (comp count str) non-nil-values))]
          (<= total-length field-values-total-max-length))))
 
+(defn test-for-cardinality?
+  "Should FIELD should be tested for cardinality?"
+  [{:keys [base_type] :as field}]
+  (or (field-values/field-should-have-field-values? field)
+      (and #_(nil? (:special_type field))
+           #_is-new? ;; do we actually want to test for this here?
+           (not (isa? base_type :type/DateTime))
+           (not (isa? base_type :type/Collection))
+           (not (= base_type :type/*)))))
+
 ;; was part of test:cardinality-extract-field-values
 (defn extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
@@ -48,14 +58,16 @@
   ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
 
   (let [#_name-type-guess #_(infer-special-type/infer-field-special-type name base_type)
-        collecting-field-values-is-allowed? (field-values/field-should-have-field-values? field)
+        ;collecting-field-values-is-allowed? true (field-values/field-should-have-field-values? field)
 ;        _ (log/errorf (u/format-color 'green "name: %s :type %s" name name-type-guess))
-        non-nil-values  (when #_(nil? name-type-guess) collecting-field-values-is-allowed?
+        non-nil-values  (when (test-for-cardinality? field) #_(nil? name-type-guess) #_collecting-field-values-is-allowed?
                           (filter identity (queries/field-distinct-values field (inc classify/low-cardinality-threshold))))
         ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
         distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)
                           non-nil-values)]
-    (assoc field-stats :values distinct-values)))
+    (if (seq distinct-values)
+      (assoc field-stats :values distinct-values)
+      field-stats)))
 
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
@@ -80,11 +92,13 @@
 (defn cache-table-data-shape!
   "Analyze the data shape for a single `Table`."
   [driver {table-id :id, :as table}]
-  (let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], :last_analyzed nil)]
+  (log/error (u/format-color 'red "cache-table-data-shape! %s" table))
+  (let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], #_:last_analyzed #_nil)]
     ;; TODO: this call should include the database
     (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
+      (log/error (u/format-color 'cyan "table-stats %s" table-stats))
       ;; update table row count @sameer should this be saved here where it happens to be available or calculated as part of making
       ;; the fingerprints in analyze
       (when (:row_count table-stats)
@@ -93,12 +107,16 @@
       ;; update individual fields
       (doseq [{:keys [id preview-display #_special-type values]} (:fields table-stats)]
         ;; set Field metadata we may have detected
-        (log/error (u/format-color 'red (with-out-str (clojure.pprint/pprint {;:special-type special-type
-                                                                              :values values}))))
+        (log/error (u/format-color 'yellow (with-out-str (clojure.pprint/pprint {:id id
+                                                                                 :values values}))))
         ;; handle field values, setting them if applicable otherwise clearing them
         (if (and id values (pos? (count (filter identity values))))
-          (field-values/save-field-values! id values)
-          (field-values/clear-field-values! id))))
+          (do
+            (log/error (u/format-color 'blue "setting: %s %s" id (seq values)))
+            (field-values/save-field-values! id values))
+          (do
+            (u/format-color 'red "clearing: %s" id)
+            (field-values/clear-field-values! id)))))
 
     ;; Keep track of how old the cache is on these fields
     #_(db/update-where! field/Field {:table_id        table-id ;;  :TODO fix this

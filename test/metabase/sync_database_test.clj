@@ -19,7 +19,9 @@
              [data :refer :all]
              [util :as tu]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.sync-database.cached-values :as cached-values]
+            [clojure.tools.logging :as log]))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
@@ -296,7 +298,7 @@
 
 ;;; ## FieldValues Syncing
 
-(let [get-field-values    (fn [] (db/select-one-field :values FieldValues, :field_id (id :venues :price)))
+#_(let [get-field-values    (fn [] (db/select-one-field :values FieldValues, :field_id (id :venues :price)))
       get-field-values-id (fn [] (db/select-one-id FieldValues, :field_id (id :venues :price)))]
   ;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created
   (expect
@@ -329,13 +331,14 @@
 
 ;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.classify/low-cardinality-threshold` (currently 300) (#3215) --------------------
 (defn- insert-range-sql [rang]
-  (str "INSERT INTO blueberries_consumed (num) VALUES "
+  (str "INSERT INTO blueberries_consumed_rating (num) VALUES "
        (str/join ", " (for [n rang]
                         (str "(" n ")")))))
 
 (expect
   false
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
+    (log/error "----------------------------------------------------------------------------------------")
     (binding [mdb/*allow-potentailly-unsafe-connections* true]
       (tt/with-temp Database [db {:engine :h2, :details details}]
         (let [driver (driver/engine->driver :h2)
@@ -343,12 +346,16 @@
               exec!  #(doseq [statement %]
                         (jdbc/execute! spec [statement]))]
           ;; create the `blueberries_consumed` table and insert a 100 values
-          (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
+          (exec! ["CREATE TABLE blueberries_consumed_rating (num INTEGER NOT NULL);"
                   (insert-range-sql (range 100))])
           (sync-database! db, :full-sync? true)
+          (cached-values/cache-data-shape-for-tables! (driver/database-id->driver (u/get-id db)) db)
           (let [table-id (db/select-one-id Table :db_id (u/get-id db))
                 field-id (db/select-one-id Field :table_id table-id)]
             ;; field values should exist...
+            (log/error (u/format-color 'cyan "FieldValues for %s: %s"
+                         field-id
+                         (db/select-one-field :values FieldValues :field_id field-id)))
             (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
                        100))
             ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
