@@ -5,6 +5,7 @@ import Table from "./Table";
 
 import { FieldIDDimension } from "../Dimension";
 
+import { getFieldValues } from "metabase/lib/query/field";
 import {
     isDate,
     isNumber,
@@ -64,6 +65,10 @@ export default class Field extends Base {
     }
     isFK() {
         return isFK(this);
+    }
+
+    values(): Array<string> {
+        return getFieldValues(this._object);
     }
 
     icon() {
