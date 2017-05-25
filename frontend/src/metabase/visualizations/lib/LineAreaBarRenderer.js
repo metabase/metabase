@@ -880,7 +880,8 @@ export default function lineAreaBar(element, {
 
     // is this a dashboard multiseries?
     // TODO: better way to detect this?
-    const isMultiCardSeries = series.length > 1 && series[0].card.id !== series[1].card.id;
+    const isMultiCardSeries = series.length > 1 &&
+        getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
 
     const enableBrush = !!(onChangeCardAndRun && !isMultiCardSeries && isStructured(series[0].card));
 

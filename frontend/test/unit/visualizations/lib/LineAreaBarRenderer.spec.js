@@ -237,6 +237,8 @@ describe("LineAreaBarRenderer", () => {
                 data: {
                     "cols" : [DateTimeColumn({ unit }), NumberColumn()],
                     "rows" : rows
+                },
+                card: {
                 }
             })),
             settings: {
@@ -256,6 +258,8 @@ describe("LineAreaBarRenderer", () => {
                 data: {
                     "cols" : [StringColumn(), NumberColumn()],
                     "rows" : [scalar]
+                },
+                card: {
                 }
             })),
             settings: {
