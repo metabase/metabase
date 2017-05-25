@@ -2,7 +2,7 @@
 import {createAction, createThunkAction, mergeEntities, momentifyArraysTimestamps} from "metabase/lib/redux";
 
 import { normalize, schema } from "normalizr";
-import { getIn, assoc, assocIn, updateIn, merge, chain } from "icepick";
+import { getIn, assocIn, updateIn, chain } from "icepick";
 import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";

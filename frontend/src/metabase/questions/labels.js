@@ -8,7 +8,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 const label = new schema.Entity('labels');
 import { LabelApi } from "metabase/services";
 
-import { assoc, merge } from "icepick";
 import _ from "underscore";
 
 const LOAD_LABELS = 'metabase/labels/LOAD_LABELS';
