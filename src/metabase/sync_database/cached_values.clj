@@ -60,7 +60,7 @@
   (let [#_name-type-guess #_(infer-special-type/infer-field-special-type name base_type)
         ;collecting-field-values-is-allowed? true (field-values/field-should-have-field-values? field)
 ;        _ (log/errorf (u/format-color 'green "name: %s :type %s" name name-type-guess))
-        non-nil-values  (when (test-for-cardinality? field) #_(nil? name-type-guess) #_collecting-field-values-is-allowed?
+        non-nil-values  (when #_(test-for-cardinality? field) #_(nil? name-type-guess) (field-values/field-should-have-field-values? field)
                           (filter identity (queries/field-distinct-values field (inc classify/low-cardinality-threshold))))
         ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
         distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)

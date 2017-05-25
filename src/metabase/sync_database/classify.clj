@@ -27,14 +27,21 @@
            (not (isa? (:base_type fingerprint) :type/Collection))
            (not (= (:base_type fingerprint) :type/*)))))
 
-(defn- test:category-special-type
-  "fields wtih less than low-cardinality-threshold default to :type/Category"
+(defn- test:category-type
+  "When no initial guess of the special type, based on the fields name, was found 
+   and the field has less than `low-cardinality-threshold`
+ default to :type/Category"
   ;; this used to only apply to new fields and that was removed in refactor, does that break things
-  [fingerprint field-stats]
-  (cond-> field-stats
-    (and #_(test-for-cardinality? fingerprint field-stats) ;; figure out how to check for low cardinally directly
-         (nil? (:special_type fingerprint))
-         (pos? (:cardinality fingerprint))) (assoc :special-type :type/Category)))
+  [{:keys [base_type visibility_type name is-fk? is-pk?] :as fingerprint} {:keys [special-type] :as field-stats}]
+  (if (and (not is-fk?) (not is-pk? )
+           (nil? (:special-type field-stats))
+           (< 0 (:cardinality fingerprint) low-cardinality-threshold)
+           (field-values/field-should-have-field-values? {:base_type base_type
+                                                          :special_type special-type
+                                                          :visibility_type visibility_type
+                                                          :name name}))
+    (assoc field-stats :special-type :type/Category)
+    field-stats))
 
 (defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
@@ -108,17 +115,33 @@
     (assoc field-stats :special-type guessed-initial-type)
     field-stats))
 
+(defn- test:primary-key
+  "if a field is a primary key, it's special type must be :type/PK"
+  [fingerprint field-stats]
+  (if (:is-pk? fingerprint)
+    (assoc field-stats :special-type :type/PK)
+    field-stats))
+
+(defn- test:foreign-key
+  "if a field is a foreign key, it's special type must be :type/FK"
+  [fingerprint field-stats]
+  (if (:is-fk? fingerprint)
+    (assoc field-stats :special-type :type/FK)
+    field-stats))
+
 (defn- test:new-field
   "Do the various tests that should only be done for a new `Field`.
    We only run most of the field analysis work when the field is NEW in order to favor performance of the sync process."
   [fingerprint field-stats]
   (->> field-stats
-       (test:initial-guess         fingerprint)
-       #_(test:category-special-type fingerprint)
-       (test:no-preview-display    fingerprint)
-       (test:url-special-type      fingerprint)
-       (test:json-special-type     fingerprint)
-       (test:email-special-type    fingerprint)))
+       (test:initial-guess      fingerprint)
+       (test:no-preview-display fingerprint)
+       (test:url-special-type   fingerprint)
+       (test:json-special-type  fingerprint)
+       (test:email-special-type fingerprint)
+       (test:category-type      fingerprint)
+       (test:primary-key        fingerprint)
+       (test:foreign-key        fingerprint)))
 
 (defn classify-table! [table-fingerprint field-fingerprints]
   ""

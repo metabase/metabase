@@ -84,6 +84,8 @@
   (let [values (->> (driver/field-values-lazy-seq driver field)
                     (take driver/max-sync-lazy-seq-results))]
     {:base_type               (:base_type field)
+     :is-pk?                  (isa? (:special_type field) :type/PK)
+     :is-fk?                  (isa? (:special_type field) :type/FK)
      :cardinality             (count (distinct values))
      :field-percent-urls      (percent-valid-urls values)
      :field-percent-json      (if (values-are-valid-json? values) 100 0)

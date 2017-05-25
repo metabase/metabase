@@ -33,15 +33,18 @@
   [{:keys [base_type special_type visibility_type name] :as field}]
   {:pre [#_visibility_type
          (contains? field :base_type)
-         ;; there is a good change this is going to break something
+         ;; this used to happen both before and after field_values where cached.
          #_(contains? field :special_type)]} ;; requirement set aside in refactor, special type now crated after field values are saved.
-  (let [infered-special-type (or special_type ;; this estimation is based on field name
-                                 (infer-special-type/infer-field-special-type name base_type))]
+  (let [infered-special-type (or special_type
+                                 (infer-special-type/infer-field-special-type name base_type))] ;; based on field name
     (log/error (u/format-color 'green "infered-special-type id: %s name: %s type: %s" (:id field) name infered-special-type))
     (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
          (not (isa? (keyword base_type) :type/DateTime))
+         (not (isa? base_type :type/Collection))
+         (not (= base_type :type/*))
          (or (isa? (keyword base_type) :type/Boolean)
-             (isa? (keyword infered-special-type) :type/Category)))))
+             (isa? (keyword infered-special-type) :type/Category)
+             (nil? infered-special-type))))) ;; This is a case that used to be handled by an implicit coersion to :type/Category
 
 (defn- create-field-values!
   "Create `FieldValues` for a `Field`."

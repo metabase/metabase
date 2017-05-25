@@ -22,7 +22,7 @@
 
 ;; unless they have really large values that would be unreasonable to display
 (expect
-  {:values nil}
+  {}
   (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])}
     #(extract-field-values {:base_type :type/Text :name "type"} {})))
 
