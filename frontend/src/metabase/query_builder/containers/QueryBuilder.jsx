@@ -206,7 +206,7 @@ export default class QueryBuilder extends Component {
 
 class LegacyQueryBuilder extends Component {
     render() {
-        const { card, isDirty, databases, uiControls, mode } = this.props;
+        const { query, card, isDirty, databases, uiControls, mode } = this.props;
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -226,20 +226,20 @@ class LegacyQueryBuilder extends Component {
                     </div>
 
                     <div id="react_qb_editor" className="z2 hide sm-show">
-                        { card && card.dataset_query && card.dataset_query.type === "native" ?
+                        { query.isNative() ?
                             <NativeQueryEditor
                                 {...this.props}
                                 isOpen={!card.dataset_query.native.query || isDirty}
                                 datasetQuery={card && card.dataset_query}
                             />
-                        :
+                        : query.isStructured() ?
                             <div className="wrapper">
                                 <GuiQueryEditor
                                     {...this.props}
                                     datasetQuery={card && card.dataset_query}
                                 />
                             </div>
-                        }
+                        : null }
                     </div>
 
                     <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
