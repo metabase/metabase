@@ -123,6 +123,8 @@ const getMethodsForDbAndSchema = (entityId) => ({
         changeDbNativePermissionsForEntity({ entityId, groupId, permission }),
     changeDbDataPermissions: ({ groupId, permission }) =>
         changeDbDataPermissionsForEntity({ entityId, groupId, permission }),
+    changeSchemaPermissions: ({ groupId, permission }) =>
+        changeSchemaPermissionsForEntity({ entityId, groupId, permission }),
     changeTablePermissions: ({ tableId, groupId, permission }) =>
         changeTablePermissionsForEntity({ entityId: {...entityId, tableId}, groupId, permission }),
     getPermissions: ({ groupId }) =>
@@ -133,122 +135,6 @@ const getMethodsForDbAndSchema = (entityId) => ({
 
 describe("permissions selectors", () => {
     beforeEach(resetState);
-
-    // TODO: Consider the removal of this test as multi-schema scenario is more extensive
-    describe("for a sample dataset", () => {
-        const sampleDataset = getMethodsForDbAndSchema({ databaseId: 1, schemaName: "PUBLIC" });
-
-        it("should restrict access correctly on table level", () => {
-            // Revoking access to one table should downgrade the native permissions to "read"
-            sampleDataset.changeTablePermissions({ tableId: 1, groupId: 1, permission: "none" });
-            expect(sampleDataset.getPermissions({ groupId: 1})).toMatchObject({
-                "native": "read",
-                "schemas": {
-                    "PUBLIC": {
-                        "1": "none",
-                        "2": "all",
-                        "3": "all",
-                        "4": "all"
-                    }
-                }
-            });
-
-            // Revoking access to the rest of tables one-by-one...
-            sampleDataset.changeTablePermissions({ tableId: 2, groupId: 1, permission: "none" });
-            sampleDataset.changeTablePermissions({ tableId: 3, groupId: 1, permission: "none" });
-            sampleDataset.changeTablePermissions({ tableId: 4, groupId: 1, permission: "none" });
-            expect(sampleDataset.getPermissions({groupId: 1})).toMatchObject({
-                // ...should revoke all permissions for that database
-                "native": "none",
-                "schemas": "none"
-            });
-
-        });
-
-        it("should restrict access correctly on db level", () => {
-            // Should let change the native permission to "read"
-            sampleDataset.changeDbNativePermissions({ groupId: 1, permission: "read" });
-            expect(sampleDataset.getPermissions({groupId: 1})).toMatchObject({
-                "native": "read",
-                "schemas": "all"
-            });
-
-            // Should not let change the native permission to none
-            sampleDataset.changeDbNativePermissions({ groupId: 1, permission: "none" });
-            expect(sampleDataset.getPermissions({groupId: 1})).toMatchObject({
-                "native": "none",
-                "schemas": "all"
-            });
-
-            resetState(); // ad-hoc state reset for the next test
-            // Revoking the data access to the database at once should revoke all permissions for that database
-            sampleDataset.changeDbDataPermissions({ groupId: 1, permission: "none" });
-            expect(sampleDataset.getPermissions({groupId: 1})).toMatchObject({
-                "native": "none",
-                "schemas": "none"
-            });
-        });
-
-        it("should grant more access correctly on table level", () => {
-            // Simply grant an access to a single table
-            sampleDataset.changeTablePermissions({ tableId: 3, groupId: 2, permission: "all" });
-            expect(sampleDataset.getPermissions({groupId: 2})).toMatchObject({
-                "native": "none",
-                "schemas": {
-                    "PUBLIC": {
-                        "1": "none",
-                        "2": "none",
-                        "3": "all",
-                        "4": "none"
-                    }
-                }
-            });
-
-            // Grant the access to rest of tables
-            sampleDataset.changeTablePermissions({ tableId: 1, groupId: 2, permission: "all" });
-            sampleDataset.changeTablePermissions({ tableId: 2, groupId: 2, permission: "all" });
-            sampleDataset.changeTablePermissions({ tableId: 4, groupId: 2, permission: "all" });
-            expect(sampleDataset.getPermissions({groupId: 2})).toMatchObject({
-                "native": "none",
-                "schemas": "all"
-            });
-
-
-            // Should pass changes to native permissions through
-            sampleDataset.changeDbNativePermissions({ groupId: 2, permission: "read" });
-            expect(sampleDataset.getPermissions({ groupId: 2 })).toMatchObject({
-                "native": "read",
-                "schemas": "all"
-            });
-        });
-
-        it("should grant more access correctly on db level", () => {
-            // Setting limited access should produce a permission tree where each schema has "none" access
-            // (this is a strange, rather no-op edge case but the UI currently enables this)
-            sampleDataset.changeDbDataPermissions({ groupId: 2, permission: "controlled" });
-            expect(sampleDataset.getPermissions({ groupId: 2 })).toMatchObject({
-                "native": "none",
-                "schemas": {
-                    "PUBLIC": "none"
-                }
-            });
-
-            // Granting native access should also grant a full write access
-            sampleDataset.changeDbNativePermissions({ groupId: 2, permission: "write" });
-            expect(sampleDataset.getPermissions({ groupId: 2 })).toMatchObject({
-                "native": "write",
-                "schemas": "all"
-            });
-
-            resetState(); // ad-hoc reset (normally run before tests)
-            // test that setting full access works too
-            sampleDataset.changeDbDataPermissions({ groupId: 2, permission: "all" });
-            expect(sampleDataset.getPermissions({ groupId: 2 })).toMatchObject({
-                "native": "none",
-                "schemas": "all"
-            });
-        })
-    });
 
     describe("for a schemaless dataset", () => {
         // Schema "name" (better description would be a "permission path identifier") is simply an empty string
@@ -368,7 +254,7 @@ describe("permissions selectors", () => {
         })
     });
 
-    describe("for a dataset with schemas", () => {
+    describe("for a dataset with multiple schemas", () => {
         const schema1 = getMethodsForDbAndSchema({ databaseId: 2, schemaName: "schema_1" });
         const schema2 = getMethodsForDbAndSchema({ databaseId: 2, schemaName: "schema_2" });
 
@@ -420,6 +306,25 @@ describe("permissions selectors", () => {
             });
         });
 
+        it("should restrict access correctly on schema level", () => {
+            // Revoking access to one schema
+            schema2.changeSchemaPermissions({ groupId: 1, permission: "none" });
+            expect(schema2.getPermissions({groupId: 1})).toMatchObject({
+                "native": "read",
+                "schemas": {
+                    "schema_1": "all",
+                    "schema_2": "none"
+                }
+            });
+
+            // Revoking access to other too
+            schema1.changeSchemaPermissions({ groupId: 1, permission: "none" });
+            expect(schema1.getPermissions({groupId: 1})).toMatchObject({
+                "native": "none",
+                "schemas": "none"
+            });
+        });
+
         it("should restrict access correctly on db level", () => {
             // Should let change the native permission to "read"
             schema1.changeDbNativePermissions({ groupId: 1, permission: "read" });
@@ -442,10 +347,6 @@ describe("permissions selectors", () => {
                 "native": "none",
                 "schemas": "none"
             });
-        });
-
-        it("should grant more access correctly on schema level", () => {
-
         });
 
         it("should grant more access correctly on table level", () => {
@@ -490,6 +391,25 @@ describe("permissions selectors", () => {
             });
         });
 
+        it("should grant more access correctly on schema level", () => {
+            // Granting full access to one schema
+            schema1.changeSchemaPermissions({ groupId: 2, permission: "all" });
+            expect(schema1.getPermissions({groupId: 2})).toMatchObject({
+                "native": "none",
+                "schemas": {
+                    "schema_1": "all",
+                    "schema_2": "none"
+                }
+            });
+
+            // Granting access to the other as well
+            schema2.changeSchemaPermissions({ groupId: 2, permission: "all" });
+            expect(schema2.getPermissions({groupId: 2})).toMatchObject({
+                "native": "none",
+                "schemas": "all"
+            });
+        });
+
         it("should grant more access correctly on db level", () => {
             // Setting limited access should produce a permission tree where each schema has "none" access
             // (this is a strange, rather no-op edge case but the UI currently enables this)
@@ -518,19 +438,4 @@ describe("permissions selectors", () => {
             });
         })
     });
-
-    //
-    // it("should behave correctly when restricting access to a multi-schema dataset", () => {
-    //
-    // });
-    // it("should behave correctly when granting more access to a multi-schema dataset", () => {
-    //
-    // });
-    //
-    // it("should behave correctly when restricting access to a schemaless dataset", () => {
-    //
-    // });
-    // it("should behave correctly when granting more access to a schemaless dataset", () => {
-    //
-    // });
 });
