@@ -272,21 +272,28 @@ describe("permissions selectors", () => {
                 }
             });
 
-            // Revoking access to the rest of tables in schema one-by-one
-            schema1.changeTablePermissions({ tableId: 6, groupId: 1, permission: "none" });
-
-            expect(schema1.getPermissions({groupId: 1})).toMatchObject({
-                "native": "read",
-                "schemas": {
-                    "schema_1": "none",
-                    "schema_2": "all"
-                }
-            });
-
-            // An intermediary state
+            // State where both schemas have mixed permissions
             schema2.changeTablePermissions({ tableId: 8, groupId: 1, permission: "none" });
             schema2.changeTablePermissions({ tableId: 9, groupId: 1, permission: "none" });
             expect(schema2.getPermissions({groupId: 1})).toMatchObject({
+                "native": "read",
+                "schemas": {
+                    "schema_1": {
+                        "5": "none",
+                        "6": "all"
+                    },
+                    "schema_2": {
+                        "7": "all",
+                        "8": "none",
+                        "9": "none"
+                    }
+                }
+            });
+
+            // Completely revoke access to the first schema with table-level changes
+            schema1.changeTablePermissions({ tableId: 6, groupId: 1, permission: "none" });
+
+            expect(schema1.getPermissions({groupId: 1})).toMatchObject({
                 "native": "read",
                 "schemas": {
                     "schema_1": "none",
@@ -333,7 +340,7 @@ describe("permissions selectors", () => {
                 "schemas": "all"
             });
 
-            // Should not let change the native permission to none
+            // Should let change the native permission to none
             schema1.changeDbNativePermissions({ groupId: 1, permission: "none" });
             expect(schema1.getPermissions({groupId: 1})).toMatchObject({
                 "native": "none",
@@ -364,13 +371,33 @@ describe("permissions selectors", () => {
                 }
             });
 
-            // Grant the access to rest of tables in that schema
+            // State where both schemas have mixed permissions
+            schema1.changeTablePermissions({ tableId: 5, groupId: 2, permission: "all" });
+            expect(schema1.getPermissions({groupId: 2})).toMatchObject({
+                "native": "none",
+                "schemas": {
+                    "schema_1": {
+                        "5": "all",
+                        "6": "none"
+                    },
+                    "schema_2": {
+                        "7": "all",
+                        "8": "none",
+                        "9": "none"
+                    }
+                }
+            });
+
+            // Grant full access to the second schema
             schema2.changeTablePermissions({ tableId: 8, groupId: 2, permission: "all" });
             schema2.changeTablePermissions({ tableId: 9, groupId: 2, permission: "all" });
             expect(schema2.getPermissions({groupId: 2})).toMatchObject({
                 "native": "none",
                 "schemas": {
-                    "schema_1": "none",
+                    "schema_1": {
+                        "5": "all",
+                        "6": "none"
+                    },
                     "schema_2": "all"
                 }
             });
