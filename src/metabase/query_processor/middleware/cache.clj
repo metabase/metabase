@@ -112,7 +112,8 @@
   (let [start-time-ms (System/currentTimeMillis)
         results       (qp query)
         total-time-ms (- (System/currentTimeMillis) start-time-ms)
-        min-ttl-ms    (* (public-settings/query-caching-min-ttl) 1000)]
+        ;;okilimnik: return default line
+        min-ttl-ms   10];; (* (public-settings/query-caching-min-ttl) 1000)]
     (log/info (format "Query took %d ms to run; miminum for cache eligibility is %d ms" total-time-ms min-ttl-ms))
     (when (>= total-time-ms min-ttl-ms)
       (save-results-if-successful! query-hash results))

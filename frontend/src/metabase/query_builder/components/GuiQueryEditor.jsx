@@ -46,7 +46,8 @@ export default class GuiQueryEditor extends Component {
             aggregation: true,
             breakout: true,
             sort: true,
-            limit: true
+            limit: true,
+            cache: true
         },
         supportMultipleAggregations: true
     };

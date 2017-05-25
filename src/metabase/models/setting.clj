@@ -156,7 +156,9 @@
   "Get integer value of (presumably `:integer`) SETTING-OR-NAME. This is the default getter for `:integer` settings."
   ^Integer [setting-or-name]
   (when-let [s (get-string setting-or-name)]
-    (Integer/parseInt s)))
+    (try
+      (Integer/parseInt s)
+      (catch Exception e (str "caught exception: " (.getMessage e))))))
 
 (defn get-json
   "Get the string value of SETTING-OR-NAME and parse it as JSON."

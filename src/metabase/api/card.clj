@@ -195,12 +195,13 @@
 
 (api/defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name visualization_settings collection_id]} :body}]
+  [:as {{:keys [dataset_query description display name visualization_settings collection_id cache_ttl]} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
    visualization_settings su/Map
-   collection_id          (s/maybe su/IntGreaterThanZero)}
+   collection_id          (s/maybe su/IntGreaterThanZero)
+   cache_ttl              (s/maybe su/IntGreaterThanZero)}
   ;; check that we have permissions to run the query that we're trying to save
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (card/query-perms-set dataset_query :write)))
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
@@ -214,7 +215,8 @@
          :display                display
          :name                   name
          :visualization_settings visualization_settings
-         :collection_id          collection_id)
+         :collection_id          collection_id
+         :cache_ttl              cache_ttl)
        (events/publish-event! :card-create)))
 
 
@@ -241,7 +243,7 @@
 ;; TODO - This endpoint desperately needs to be broken out into smaller, bite-sized chunks
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params], :as body} :body}]
+  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params cache_ttl], :as body} :body}]
   {name                   (s/maybe su/NonBlankString)
    dataset_query          (s/maybe su/Map)
    display                (s/maybe su/NonBlankString)
@@ -250,7 +252,8 @@
    archived               (s/maybe s/Bool)
    enable_embedding       (s/maybe s/Bool)
    embedding_params       (s/maybe su/EmbeddingParams)
-   collection_id          (s/maybe su/IntGreaterThanZero)}
+   collection_id          (s/maybe su/IntGreaterThanZero)
+   cache_ttl              (s/maybe su/IntGreaterThanZero)}
   (let [card (api/write-check Card id)]
     ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
     (when (and (not (nil? collection_id)) (not= (:collection_id card) collection_id))
@@ -272,9 +275,9 @@
       (api/check-superuser))
     ;; ok, now save the Card
     (db/update! Card id
-      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be modified if they're passed in as non-nil
+      ;; `collection_id`, `description` and `cache_ttl` can be `nil` (in order to unset them). Other values should only be modified if they're passed in as non-nil
       (u/select-keys-when body
-        :present #{:collection_id :description}
+        :present #{:collection_id :description :cache_ttl}
         :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params}))
     (let [event (cond
                   ;; card was archived
@@ -406,6 +409,8 @@
                  :context      context
                  :card-id      card-id
                  :dashboard-id dashboard-id}]
+    ;;okilimnik remove log
+    (log/info "card: " card)
     (api/check-not-archived card)
     (qp/dataset-query query options)))
 
