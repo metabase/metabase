@@ -76,19 +76,20 @@ const initialState = {
 };
 
 export default function(state = initialState, { type, payload, error }) {
-    if (payload && payload.entities) {
-        state = assoc(state, "entities", merge(state.entities, payload.entities));
-    }
-    if (payload && payload.message) {
-        state = assoc(state, "message", payload.message);
-    }
-
     switch (type) {
         case LOAD_LABELS:
             if (error) {
                 return { ...state, error: payload };
             } else {
-                return { ...state, labelIds: payload.result, error: null };
+                return {
+                    ...state,
+                    entities: {
+                        ...state.entities,
+                        ...payload.entities
+                    },
+                    labelIds: payload.result,
+                    error: null
+                };
             }
         case SAVE_LABEL:
             if (error || payload == null) {

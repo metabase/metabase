@@ -225,10 +225,6 @@ const initialState = {
 };
 
 export default function(state = initialState, { type, payload, error }) {
-    if (payload && payload.entities) {
-        state = assoc(state, "entities", merge(state.entities, payload.entities));
-    }
-
     switch (type) {
         case SET_SEARCH_TEXT:
             return { ...state, searchText: payload };
@@ -242,6 +238,7 @@ export default function(state = initialState, { type, payload, error }) {
             } else {
                 return (chain(state)
                     .assoc("loadingInitialEntities", false)
+                    .assoc("entities", merge(state.entities, payload.entities))
                     .assoc("lastEntityType", payload.entityType)
                     .assoc("lastEntityQuery", payload.entityQuery)
                     .assoc("selectedIds", {})
