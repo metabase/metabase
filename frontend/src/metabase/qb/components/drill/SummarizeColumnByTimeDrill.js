@@ -5,7 +5,7 @@ import React from "react";
 import {
     pivot,
     summarize,
-    getFieldClauseFromCol
+    getFieldRefFromColumn
 } from "metabase/qb/lib/actions";
 import * as Card from "metabase/meta/Card";
 import { isNumeric, isDate } from "metabase/lib/schema_metadata";
@@ -43,12 +43,12 @@ export default (
             pivot(
                 summarize(
                     card,
-                    [aggregation, getFieldClauseFromCol(column)],
+                    [aggregation, getFieldRefFromColumn(column)],
                     tableMetadata
                 ),
                 [
                     "datetime-field",
-                    getFieldClauseFromCol(dateField),
+                    getFieldRefFromColumn(dateField),
                     "as",
                     "day"
                 ],

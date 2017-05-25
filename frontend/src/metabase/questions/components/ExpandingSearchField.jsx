@@ -9,9 +9,7 @@ import { Motion, spring } from "react-motion";
 
 import Icon from "metabase/components/Icon";
 
-const KEYCODE_FORWARD_SLASH = 191; // focus search
-const KEYCODE_ESCAPE = 27; // blur search
-const KEYCODE_ENTER = 13; // execute search
+import { KEYCODE_FORWARD_SLASH, KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 export default class ExpandingSearchField extends Component {
     constructor (props, context) {
