@@ -5,7 +5,7 @@ import d3 from "d3";
 import dc from "dc";
 import moment from "moment";
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { updateIn, getIn } from "icepick";
 
 import {
     getAvailableCanvasWidth,
@@ -109,7 +109,9 @@ function initChart(chart, element) {
     // disable animations
     chart.transitionDuration(0);
     // disable brush
-    chart.brushOn(false);
+    if (chart.brushOn) {
+        chart.brushOn(false);
+    }
 }
 
 function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
@@ -1277,11 +1279,16 @@ export function rowRenderer(
 
   const colors = settings["graph.colors"];
 
-  const dataset = crossfilter(series[0].data.rows);
+  // format the dimension axis
+  const rows = series[0].data.rows.map(row => [
+      formatValue(row[0], { column: cols[0], type: "axis" }),
+      row[1]
+  ]);
+  const dataset = crossfilter(rows);
   const dimension = dataset.dimension(d => d[0]);
   const group = dimension.group().reduceSum(d => d[1]);
-  const xDomain = d3.extent(series[0].data.rows, d => d[1]);
-  const yValues = series[0].data.rows.map(d => d[0]);
+  const xDomain = d3.extent(rows, d => d[1]);
+  const yValues = rows.map(d => d[0]);
 
   forceSortedGroup(group, makeIndexMap(yValues));
 
