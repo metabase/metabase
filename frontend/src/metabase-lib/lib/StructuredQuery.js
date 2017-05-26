@@ -132,6 +132,14 @@ export default class StructuredQuery extends Query {
         return this._updateQuery(Q.clearAggregations, arguments);
     }
 
+    equalsToMetric(metric: Metric) {
+        const aggregations = this.aggregations();
+        if (aggregations.length !== 1) return false;
+
+        const agg = aggregations[0];
+        return AggregationClause.isMetric(agg) && AggregationClause.getMetric(agg) === metric.id;
+    }
+
     // BREAKOUTS
 
     breakouts(): Breakout[] {

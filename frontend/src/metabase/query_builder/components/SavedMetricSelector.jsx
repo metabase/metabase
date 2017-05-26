@@ -41,6 +41,10 @@ export default class SavedMetricSelector extends Component {
         };
     }
 
+    updateQuestion(question) {
+        this.props.setDatasetQuery(question.datasetQuery());
+    }
+
     onSearchChange = (e) => {
         this.setState({ searchValue: e.target.value.toLowerCase() });
     };
@@ -57,38 +61,35 @@ export default class SavedMetricSelector extends Component {
     addMetric = (metricWrapper) => {
         // TODO Maybe don't use global state, maintain local query instead; this code is helpful for that
         const { addedMetrics } = this.state;
-        const { setDatasetQuery, metric } = this.props;
+        const { question } = this.props;
 
-        setDatasetQuery(metric.addSavedMetric(metricWrapper).datasetQuery());
+        this.updateQuestion(question.addSavedMetric(metricWrapper));
 
         this.setState({
             addedMetrics: {
                 ...addedMetrics,
-                [metric.id]: true
+                [metricWrapper.id]: true
             }
         });
 
         setTimeout(this.updateResults, 10);
     };
 
-    removeMetric = (metric) => {
+    removeMetric = (metricWrapper) => {
         const { addedMetrics } = this.state;
-        cosnt { question } = this.state;
+        const { question } = this.props;
 
-        const aggregations = Query.getAggregations(this.props.card.dataset_query.query);
-
-        const index = _.findIndex(aggregations, (aggregation) =>
-            AggregationClause.isMetric(aggregation) && AggregationClause.getMetric(aggregation) === metric.id
-        );
+        const metrics = question.metrics();
+        const index = _.findIndex(metrics, (metric) => metric.equalsToMetric(metricWrapper));
 
         if (index !== -1) {
-            this.props.removeQueryAggregation(index, metric);
+            this.updateQuestion(question.removeMetric(index));
         } else {
             console.error("Removing the metric from aggregations failed");
         }
 
         this.setState({
-            addedMetrics: _.omit(addedMetrics, metric.id)
+            addedMetrics: _.omit(addedMetrics, metricWrapper.id)
         });
 
         setTimeout(this.updateResults, 10);
@@ -129,21 +130,19 @@ export default class SavedMetricSelector extends Component {
 
     filteredMetrics = () => {
         const { question } = this.props;
-        const { searchValue, initialAggregations } = this.state;
+        const { searchValue, initialMetrics } = this.state;
 
         if (!question) return [];
 
-        return question.availableMetrics().filter(metric => {
-            if (_.find(initialAggregations, (aggregation) =>
-                AggregationClause.isMetric(aggregation) && AggregationClause.getMetric(aggregation) === metric.id
-            )) {
+        return question.availableMetrics().filter(metricWrapper => {
+            if (_.find(initialMetrics, (metric) => metric.equalsToMetric(metricWrapper))) {
                 return false;
             }
 
             return !(
                 searchValue &&
-                (metric.name || "").toLowerCase().indexOf(searchValue) < 0 &&
-                (metric.description || "").toLowerCase().indexOf(searchValue) < 0
+                (metricWrapper.name || "").toLowerCase().indexOf(searchValue) < 0 &&
+                (metricWrapper.description || "").toLowerCase().indexOf(searchValue) < 0
             );
         });
     };
@@ -153,7 +152,6 @@ export default class SavedMetricSelector extends Component {
 
         const filteredMetrics = this.filteredMetrics();
         const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible metrics match your search.") : null;
-        // let enabledCards = _.indexBy(this.state.enabledMetrics, 'id').map(() => true);
         const badMetrics = [];
 
         const MetricListItem = ({metric}) =>

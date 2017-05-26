@@ -138,7 +138,7 @@ export default class Question {
         return this._queries;
     }
     availableMetrics(): MetricMetadata[] {
-        return Object.values(this._metadata.metrics);
+        return Object.values(this._metadata.metrics).filter((m) => m.is_active);
     }
     canAddMetric(): boolean {
         // only structured queries with 0 or 1 breakouts can have multiple series
