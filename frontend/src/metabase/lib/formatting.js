@@ -199,11 +199,17 @@ function formatStringFallback(value: Value, options: FormattingOptions = {}) {
 
 export function formatValue(value: Value, options: FormattingOptions = {}) {
     let column = options.column;
+
     options = {
         jsx: false,
         comma: isNumber(column),
         ...options
     };
+
+    if (column && column.remapping && column.remapping.has(value)) {
+        return column.remapping.get(value);
+    }
+
     if (value == undefined) {
         return null;
     } else if (column && isa(column.special_type, TYPE.URL)) {

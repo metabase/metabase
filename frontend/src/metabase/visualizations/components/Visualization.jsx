@@ -168,7 +168,7 @@ export default class Visualization extends Component {
             error: null,
             warnings: [],
             yAxisSplit: null,
-            ...getVisualizationTransformed(newProps.series)
+            ...getVisualizationTransformed(extractRemappings(newProps.series))
         });
     }
 
@@ -413,5 +413,41 @@ export default class Visualization extends Component {
                 }
             </div>
         );
+    }
+}
+
+//
+const extractRemappings = (series) => {
+    return series.map(s => ({
+        ...s,
+        data: extractRemappedColumns(s.data)
+    }));
+}
+
+// removes columns with `remapped_from` property and adds a `remapping` to the appropriate column
+const extractRemappedColumns = (data) => {
+    const cols = data.cols.map(col => ({
+        ...col,
+        remapped_from_index: col.remapped_from && _.findIndex(data.cols, c => c.name === col.remapped_from),
+        remapping: col.remapped_to && new Map()
+    }));
+    const rows = data.rows.map((row, rowIndex) =>
+        row.filter((value, colIndex) => {
+            const col = cols[colIndex];
+            if (col.remapped_from != null) {
+                cols[col.remapped_from_index].remapping.set(
+                    row[col.remapped_from_index],
+                    row[colIndex]
+                );
+                return false;
+            } else {
+                return true;
+            }
+        })
+    )
+    return {
+        ...data,
+        rows,
+        cols: cols.filter(col => col.remapped_from == null)
     }
 }
