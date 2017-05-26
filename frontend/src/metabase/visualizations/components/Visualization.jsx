@@ -221,27 +221,16 @@ export default class Visualization extends Component<*, Props, State> {
         setTimeout(() => {
             this.setState({ clicked });
         }, 100);
-    }
+    };
 
-    handleOnChangeCardAndRun = (card: UnsavedCard) => {
+    // Add the underlying card of current series to onChangeCardAndRun if available
+    handleOnChangeCardAndRun = (nextCard: UnsavedCard|Card) => {
         const { series, clicked } = this.state;
 
         const index = (clicked && clicked.seriesIndex) || 0;
-        const originalCard = series && series[index] && series[index].card;
+        const previousCard = series && series[index] && series[index].card;
 
-        let cardId = card.id || card.original_card_id;
-        // if the supplied card doesn't have an id, get it from the original card
-        if (cardId == null && originalCard) {
-            // $FlowFixMe
-            cardId = originalCard.id || originalCard.original_card_id;
-        }
-
-        this.props.onChangeCardAndRun({
-            ...card,
-            id: cardId,
-            // $FlowFixMe
-            original_card_id: cardId
-        });
+        this.props.onChangeCardAndRun(nextCard, previousCard);
     }
 
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {

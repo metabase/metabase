@@ -29,6 +29,7 @@ import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
+import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils";
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE"; const setCurrentState = createAction(SET_CURRENT_STATE);
 
@@ -491,9 +492,12 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     };
 });
 
-// setCardAndRun
-// Used when navigating browser history, when drilling through in visualizations / action widget,
-// and when having the entity details view open and clicking its cells
+/**
+ * `setCardAndRun` is used when:
+ *     - navigating browser history
+ *     - clicking in the entity details view
+ *     - `navigateToNewCardInsideQB` is being called (see below)
+ */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
@@ -518,8 +522,23 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
     };
 });
 
+/**
+ * User-triggered events that are handled with this action:
+ *     - clicking a legend:
+ *         * series legend (multi-aggregation, multi-breakout, multiple questions)
+ *     - clicking the visualization itself
+ *         * drill-through (single series, multi-aggregation, multi-breakout, multiple questions)
+ *         * (not in 0.24.2 yet: drag on line/area/bar visualization)
+ *
+ * All these events can be applied either for an unsaved question or a saved question.
+ */
+export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
+export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD, (nextCard, previousCard) => {
+    return (dispatch, getState) => {
+        dispatch(setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)));
+    }
+});
 
-// setDatasetQuery
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {

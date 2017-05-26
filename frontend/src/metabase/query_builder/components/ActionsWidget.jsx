@@ -21,7 +21,7 @@ type Props = {
     mode: QueryMode,
     card: Card,
     tableMetadata: TableMetadata,
-    setCardAndRun: (card: Card) => void
+    navigateToNewCardInsideQB: (nextCard: Card, previousCard: Card) => void
 };
 
 const CIRCLE_SIZE = 48;
@@ -72,17 +72,8 @@ export default class ActionsWidget extends Component<*, Props, *> {
     };
 
     handleOnChangeCardAndRun(nextCard: UnsavedCard|Card) {
-        const { card } = this.props;
-
-        // Include the original card id if present for showing the lineage next to title
-        const nextCardWithOriginalId = {
-            ...nextCard,
-            // $FlowFixMe
-            original_card_id: card.id || card.original_card_id
-        };
-        if (nextCardWithOriginalId) {
-            this.props.setCardAndRun(nextCardWithOriginalId);
-        }
+        const { card: previousCard } = this.props;
+        this.props.navigateToNewCardInsideQB(nextCard, previousCard);
     }
 
     handleActionClick = (index: number) => {

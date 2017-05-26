@@ -25,6 +25,7 @@ import { push } from "react-router-redux";
 import { DashboardApi, CardApi, RevisionApi, PublicApi, EmbedApi } from "metabase/services";
 
 import { getDashboard, getDashboardComplete } from "./selectors";
+import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
@@ -491,24 +492,41 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
     return { id };
 });
 
-/** All navigation actions from dashboards to cards (e.x. clicking a title, drill through)
- *  should go through this action, which merges any currently applied dashboard filters
- *  into the new card / URL parameters.
+/**
+ * All navigation actions from dashboards to cards (e.x. clicking a title, drill through)
+ * should go through this action, which merges any currently applied dashboard filters
+ * into the new card / URL parameters.
+ *
+ * User-triggered events that are handled here:
+ *     - clicking a dashcard legend:
+ *         * question title legend (only for single-question cards)
+ *         * series legend (multi-aggregation, multi-breakout, multiple questions)
+ *     - clicking the visualization inside dashcard
+ *         * drill-through (single series, multi-aggregation, multi-breakout, multiple questions)
+ *         * (not in 0.24.2 yet: drag on line/area/bar visualization)
  */
 
-// TODO Atte Keinänen 5/2/17: This could be combined with `setCardAndRun` of query_builder/actions.js
-// Having two separate actions for very similar behavior was a source of initial confusion for me
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
-export const navigateToNewCard = createThunkAction(NAVIGATE_TO_NEW_CARD, (card: UnsavedCard, dashcard: DashCard) =>
-    (dispatch, getState) => {
-        const { metadata } = getState();
-        const { dashboardId, dashboards, parameterValues } = getState().dashboard;
-        const dashboard = dashboards[dashboardId];
+export const navigateToNewCardFromDashboard = createThunkAction(
+    NAVIGATE_TO_NEW_CARD,
+    (nextCard: UnsavedCard, previousCard: SavedCard, dashcard: DashCard, dirty = true) =>
+        (dispatch, getState) => {
+            const {metadata} = getState();
+            const {dashboardId, dashboards, parameterValues} = getState().dashboard;
+            const dashboard = dashboards[dashboardId];
 
-        // $FlowFixMe
-        const url = questionUrlWithParameters(card, metadata, dashboard.parameters, parameterValues, dashcard && dashcard.parameter_mappings);
-        dispatch(push(url));
-    });
+            // $FlowFixMe
+            const url = questionUrlWithParameters(
+                getCardAfterVisualizationClick(nextCard, previousCard),
+                metadata,
+                dashboard.parameters,
+                parameterValues,
+                dashcard && dashcard.parameter_mappings
+            );
+
+            dispatch(push(url));
+        }
+);
 
 // reducers
 

@@ -249,3 +249,26 @@ function wrapMethod(object, name, method) {
         }
     }
 }
+
+export function getCardAfterVisualizationClick(nextCard, previousCard) {
+    const cardIsDirty = !!nextCard.dataset_query;
+
+    if (cardIsDirty) {
+        const isMultiseriesQuestion = !nextCard.id;
+        const alreadyHadLineage = !!previousCard.original_card_id;
+
+        return {
+            ...nextCard,
+            // Original card id is needed for showing the "started from" lineage in dirty cards.
+            original_card_id: alreadyHadLineage
+                // Just recycle the original card id of previous card if there was one
+                ? previousCard.original_card_id
+                // A multi-aggregation or multi-breakout series legend / drill-through action
+                // should always use the id of the underlying/previous card
+                : (isMultiseriesQuestion ? previousCard.id : nextCard.id)
+        }
+    } else {
+        return nextCard;
+    }
+}
+
