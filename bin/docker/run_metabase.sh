@@ -116,6 +116,10 @@ if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
 fi
 
+if [ ! -z "$MB_HEAP_SIZE" ]; then
+  JAVA_OPTS="${JAVA_OPTS} -Xms{$MB_HEAP_SIZE} -Xmx{$MB_HEAP_SIZE}"
+fi
+
 # Launch the application
 # exec is here twice on purpose to  ensure that metabase runs as PID 1 (the init process)
 # and thus receives signals sent to the container. This allows it to shutdown cleanly on exit
