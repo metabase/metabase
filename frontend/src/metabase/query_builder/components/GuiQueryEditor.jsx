@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import { connect } from "react-redux";
 
 import AggregationWidget from './AggregationWidget.jsx';
 import BreakoutWidget from './BreakoutWidget.jsx';
@@ -17,7 +18,17 @@ import Query from "metabase/lib/query";
 import cx from "classnames";
 import _ from "underscore";
 
+import {
+    getSettingValues,
+} from "../selectors";
 
+const mapStateToProps = (state, props) => {
+    return {
+        settingValues:       getSettingValues(state, props)
+    }
+}
+
+@connect(mapStateToProps)
 export default class GuiQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
@@ -46,8 +57,7 @@ export default class GuiQueryEditor extends Component {
             aggregation: true,
             breakout: true,
             sort: true,
-            limit: true,
-            cache: true
+            limit: true
         },
         supportMultipleAggregations: true
     };

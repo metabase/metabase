@@ -202,7 +202,7 @@ export default class ExtendedOptions extends Component {
     renderPopover() {
         if (!this.state.isOpen) return null;
 
-        const { features, datasetQuery, tableMetadata } = this.props;
+        const { features, datasetQuery, tableMetadata, settingValues } = this.props;
 
         return (
             <Popover onClose={() => this.setState({isOpen: false})}>
@@ -231,7 +231,7 @@ export default class ExtendedOptions extends Component {
                         </div>
                     }
 
-                    { features.cache &&
+                    { settingValues['enable-query-caching'] &&
                         <div>
                             <br/>
                             <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Cache TTL, seconds (0 - defaults)</div>

@@ -409,8 +409,6 @@
                  :context      context
                  :card-id      card-id
                  :dashboard-id dashboard-id}]
-    ;;okilimnik remove log
-    (log/info "card: " card)
     (api/check-not-archived card)
     (qp/dataset-query query options)))
 
