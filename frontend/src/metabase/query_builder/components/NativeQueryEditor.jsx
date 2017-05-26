@@ -4,6 +4,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import { connect } from "react-redux";
 
 import "./NativeQueryEditor.css";
 
@@ -32,6 +33,7 @@ import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import _ from "underscore";
 import { assocIn } from "icepick";
 
+import CacheTTLOptions from "./CacheTTLOptions.jsx";
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
 import Parameters from "metabase/parameters/components/Parameters";
@@ -62,6 +64,17 @@ const MAX_AUTO_SIZE_LINES = 12;
 
 const getEditorLineHeight = (lines) => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 
+import {
+    getSettingValues,
+} from "../selectors";
+
+const mapStateToProps = (state, props) => {
+    return {
+        settingValues:       getSettingValues(state, props)
+    }
+}
+
+@connect(mapStateToProps)
 export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
@@ -354,6 +367,9 @@ export default class NativeQueryEditor extends Component {
                             <span className="mx2">{toggleEditorText}</span>
                             <Icon name={toggleEditorIcon} size={20}/>
                         </a>
+                        <CacheTTLOptions
+                          {...this.props}
+                        />
                     </div>
                     <ResizableBox
                         ref="resizeBox"

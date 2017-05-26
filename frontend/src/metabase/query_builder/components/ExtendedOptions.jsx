@@ -32,7 +32,6 @@ export default class ExtendedOptions extends Component {
 
     static propTypes = {
         card: PropTypes.object.isRequired,
-        onSetCardAttribute: PropTypes.func.isRequired,
         features: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object.isRequired,
         tableMetadata: PropTypes.object,
@@ -101,7 +100,7 @@ export default class ExtendedOptions extends Component {
 
     handleSubmitCacheTTL() {
       this.onSave({id: this.props.card.id,
-                   cache_ttl: +this.state.cache_ttl > 0 ? +this.state.cache_ttl : null});
+                   cache_ttl: +this.state.cache_ttl > 0 ? (+this.state.cache_ttl)*60 : null});
       this.setState({ isOpen: false });
     }
 
@@ -234,9 +233,9 @@ export default class ExtendedOptions extends Component {
                     { settingValues['enable-query-caching'] &&
                         <div>
                             <br/>
-                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Cache TTL, seconds (0 - defaults)</div>
+                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Cache TTL, minutes (0 - defaults)</div>
                             <div className="flex align-center">
-                              <input className="input block border-gray" type="text" defaultValue={this.props.card.cache_ttl ? this.props.card.cache_ttl : 0} onChange={(e) => this.handleChangeCacheTTL(e)}/>
+                              <input className="input block border-gray" type="text" defaultValue={this.props.card.cache_ttl ? this.props.card.cache_ttl/60 : 0} onChange={(e) => this.handleChangeCacheTTL(e)}/>
                               <span className="Header-buttonSection borderless">
                                 <a className="ml1 cursor-pointer text-brand-hover text-grey-4 text-uppercase" onClick={this.handleSubmitCacheTTL}>DONE</a>
                               </span>
