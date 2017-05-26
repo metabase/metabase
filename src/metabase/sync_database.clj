@@ -16,55 +16,7 @@
              [sync-dynamic :as sync-dynamic]]
             [toucan.db :as db]))
 
-(declare sync-database-with-tracking!
-         sync-table-with-tracking!)
-
 (defonce ^:private currently-syncing-dbs (atom #{}))
-
-
-(defn sync-database!
-  "Sync DATABASE and all its Tables and Fields.
-
-   Takes an optional kwarg `:full-sync?` which determines if we execute our table analysis work.  If this is not specified
-   then we default to using the `:is_full_sync` attribute of the database."
-  [{database-id :id, :as database} & {:keys [full-sync?]}]
-  {:pre [(map? database)]}
-  ;; if this database is already being synced then bail now
-  (when-not (contains? @currently-syncing-dbs database-id)
-    (binding [i/*disable-qp-logging*  true
-              db/*disable-db-logging* true]
-      (let [db-driver  (driver/engine->driver (:engine database))
-            full-sync? (if-not (nil? full-sync?)
-                         full-sync?
-                         (:is_full_sync database))]
-        (try
-          ;; mark this database as currently syncing so we can prevent duplicate sync attempts (#2337)
-          (swap! currently-syncing-dbs conj database-id)
-          ;; do our work
-          (driver/sync-in-context db-driver database (partial sync-database-with-tracking! db-driver database full-sync?))
-          (finally
-            ;; always cleanup our tracking when we are through
-            (swap! currently-syncing-dbs disj database-id)))))))
-
-(defn sync-table!
-  "Sync a *single* TABLE and all of its Fields.
-   This is used *instead* of `sync-database!` when syncing just one Table is desirable.
-
-   Takes an optional kwarg `:full-sync?` which determines if we execute our table analysis work.  If this is not specified
-   then we default to using the `:is_full_sync` attribute of the tables parent database."
-  [table & {:keys [full-sync?]}]
-  {:pre [(map? table)]}
-  (binding [i/*disable-qp-logging* true]
-    (let [database   (table/database table)
-          db-driver  (driver/engine->driver (:engine database))
-          full-sync? (if-not (nil? full-sync?)
-                       full-sync?
-                       (:is_full_sync database))]
-      (driver/sync-in-context db-driver database (partial sync-table-with-tracking! db-driver database table full-sync?)))))
-
-
-;;; ## ---------------------------------------- IMPLEMENTATION ----------------------------------------
-
 
 (defn- sync-database-with-tracking! [driver database full-sync?]
   (let [start-time (System/nanoTime)
@@ -115,3 +67,44 @@
     (events/publish-event! :table-sync {:table_id (:id table)})
     (log/info (u/format-color 'magenta "Finished syncing table '%s' from %s database '%s'. (%s)" (:display_name table) (name driver) (:name database)
                               (u/format-nanoseconds (- (System/nanoTime) start-time))))))
+
+(defn sync-database!
+  "Sync DATABASE and all its Tables and Fields.
+
+   Takes an optional kwarg `:full-sync?` which determines if we execute our table analysis work.  If this is not specified
+   then we default to using the `:is_full_sync` attribute of the database."
+  [{database-id :id, :as database} & {:keys [full-sync?]}]
+  {:pre [(map? database)]}
+  ;; if this database is already being synced then bail now
+  (when-not (contains? @currently-syncing-dbs database-id)
+    (binding [i/*disable-qp-logging*  true
+              db/*disable-db-logging* true]
+      (let [db-driver  (driver/engine->driver (:engine database))
+            full-sync? (if-not (nil? full-sync?)
+                         full-sync?
+                         (:is_full_sync database))]
+        (try
+          ;; mark this database as currently syncing so we can prevent duplicate sync attempts (#2337)
+          (swap! currently-syncing-dbs conj database-id)
+          ;; do our work
+          (driver/sync-in-context db-driver database (partial sync-database-with-tracking! db-driver database full-sync?))
+          (finally
+            ;; always cleanup our tracking when we are through
+            (swap! currently-syncing-dbs disj database-id)))))))
+
+(defn sync-table!
+  "Sync a *single* TABLE and all of its Fields.
+   This is used *instead* of `sync-database!` when syncing just one Table is desirable.
+
+   Takes an optional kwarg `:full-sync?` which determines if we execute our table analysis work.  If this is not specified
+   then we default to using the `:is_full_sync` attribute of the tables parent database."
+  [table & {:keys [full-sync?]}]
+  {:pre [(map? table)]}
+  (binding [i/*disable-qp-logging* true]
+    (let [database   (table/database table)
+          db-driver  (driver/engine->driver (:engine database))
+          full-sync? (if-not (nil? full-sync?)
+                       full-sync?
+                       (:is_full_sync database))]
+      (driver/sync-in-context db-driver database (partial sync-table-with-tracking! db-driver database table full-sync?)))))
+

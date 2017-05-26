@@ -20,7 +20,8 @@
              [dataset-definitions :as defs]
              [users :refer :all]]
             [toucan.hydrate :as hydrate]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.sync-database.cached-values :as cached-values]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 
@@ -455,4 +456,5 @@
                                                               :id           $
                                                               :raw_table_id $
                                                               :created_at   $}))}))}])
-  ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
+  (do (cached-values/cache-field-values-for-table! (Table (id :users)))
+      ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users)))))

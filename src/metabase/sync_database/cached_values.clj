@@ -106,9 +106,6 @@
 
       ;; update individual fields
       (doseq [{:keys [id preview-display #_special-type values]} (:fields table-stats)]
-        ;; set Field metadata we may have detected
-        (log/error (u/format-color 'yellow (with-out-str (clojure.pprint/pprint {:id id
-                                                                                 :values values}))))
         ;; handle field values, setting them if applicable otherwise clearing them
         (if (and id values (pos? (count (filter identity values))))
           (do
@@ -122,6 +119,15 @@
     #_(db/update-where! field/Field {:table_id        table-id ;;  :TODO fix this
                                    :visibility_type [:not= "retired"]}
       :last_cached (u/new-sql-timestamp))))
+
+(defn cache-field-values-for-table!
+  "Save the field values for each field in this database"
+  [table]
+  (cache-table-data-shape! (->> table
+                                table/database
+                                :id
+                                driver/database-id->driver)
+                           table))
 
 (defn cache-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
@@ -146,3 +152,11 @@
 
     (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)."
                 (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
+
+(defn cache-field-values-for-database!
+  "Save the field values for each field of each table in this database"
+  [db]
+  (cache-data-shape-for-tables! (->> db
+                                     :id
+                                     driver/database-id->driver)
+                                db))

@@ -125,6 +125,15 @@
       :last_analyzed (u/new-sql-timestamp))
       table-stats)))
 
+(defn analyze-table
+  "analyze only one table"
+  [table]
+  (analyze-table-data-shape! (->> table
+                                  table/database
+                                  :id
+                                  driver/database-id->driver)
+                             table))
+
 (defn analyze-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
    This is dependent on what each database driver supports, but includes things like cardinality testing and table row counting.
@@ -138,7 +147,7 @@
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]
       (try
-        (cached-values/cache-table-data-shape! driver table)
+        #_(cached-values/cache-table-data-shape! driver table)
         (analyze-table-data-shape! driver table)
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))
@@ -147,3 +156,11 @@
             (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
 
     (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
+
+(defn analyze-database
+  "analyze all the tables in one database"
+  [db]
+  (analyze-data-shape-for-tables! (->> db
+                                       :id
+                                       driver/database-id->driver)
+                                  db))
