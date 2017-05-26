@@ -30,7 +30,7 @@ import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { FieldFilter } from "metabase/meta/types/Query";
 
 type Props = {
-    className: string,
+    className?: string,
     card: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (
@@ -45,8 +45,10 @@ type State = {
     currentFilter: any
 };
 
-export default class TimeseriesFilterWidget extends Component<*, Props, State> {
-    state = {
+export default class TimeseriesFilterWidget extends Component {
+    props: Props;
+    state: State = {
+        // $FlowFixMe
         filter: null,
         filterIndex: -1,
         currentFilter: null
@@ -121,12 +123,12 @@ export default class TimeseriesFilterWidget extends Component<*, Props, State> {
                 sizeToFit
             >
                 <DatePicker
-                    className="mt2"
                     filter={this.state.filter}
                     onFilterChange={newFilter => {
                         this.setState({ filter: newFilter });
                     }}
                     tableMetadata={tableMetadata}
+                    includeAllTime
                 />
                 <div className="p1">
                     <Button

@@ -25,7 +25,9 @@ type Props = {
     ) => void
 };
 
-export default class TimeseriesGroupingWidget extends Component<*, Props, *> {
+export default class TimeseriesGroupingWidget extends Component {
+    props: Props;
+
     _popover: ?any;
 
     render() {

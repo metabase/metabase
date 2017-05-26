@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
-import DeleteDashboardModal from "./DeleteDashboardModal.jsx";
+import ArchiveDashboardModal from "./ArchiveDashboardModal.jsx";
 import Header from "metabase/components/Header.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -44,10 +44,10 @@ type Props = {
     refreshPeriod:          ?number,
     refreshElapsed:         ?number,
 
-    parameters:             React$Element<*>[],
+    parametersWidget:       React$Element<*>,
 
     addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
-    deleteDashboard:        (dashboardId: DashboardId) => void,
+    archiveDashboard:        (dashboardId: DashboardId) => void,
     fetchCards:             (filterMode?: string) => void,
     fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
     fetchRevisions:         ({ entity: string, id: number }) => void,
@@ -58,7 +58,7 @@ type Props = {
     addParameter:           (option: ParameterOption) => Promise<Parameter>,
     setEditingParameter:    (parameterId: ?ParameterId) => void,
 
-    onEditingChange:        () => void,
+    onEditingChange:        (isEditing: boolean) => void,
     onRefreshPeriodChange:  (?number) => void,
     onNightModeChange:      (boolean) => void,
     onFullscreenChange:     (boolean) => void,
@@ -70,8 +70,9 @@ type State = {
     modal: null|"parameters",
 }
 
-export default class DashboardHeader extends Component<*, Props, State> {
-    state = {
+export default class DashboardHeader extends Component {
+    props: Props;
+    state: State = {
         modal: null,
     };
 
@@ -87,7 +88,7 @@ export default class DashboardHeader extends Component<*, Props, State> {
         refreshElapsed: PropTypes.number,
 
         addCardToDashboard: PropTypes.func.isRequired,
-        deleteDashboard: PropTypes.func.isRequired,
+        archiveDashboard: PropTypes.func.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchDashboard: PropTypes.func.isRequired,
         fetchRevisions: PropTypes.func.isRequired,
@@ -123,9 +124,9 @@ export default class DashboardHeader extends Component<*, Props, State> {
         this.onDoneEditing();
     }
 
-    async onDelete() {
-        await this.props.deleteDashboard(this.props.dashboard.id);
-        this.props.onChangeLocation("/dashboard");
+    async onArchive() {
+        await this.props.archiveDashboard(this.props.dashboard.id);
+        this.props.onChangeLocation("/dashboards");
     }
 
     // 1. fetch revisions
@@ -150,15 +151,15 @@ export default class DashboardHeader extends Component<*, Props, State> {
                 Cancel
             </a>,
             <ModalWithTrigger
-                key="delete"
-                ref="deleteDashboardModal"
+                key="archive"
+                ref="archiveDashboardModal"
                 triggerClasses="Button Button--small"
-                triggerElement="Delete"
+                triggerElement="Archive"
             >
-                <DeleteDashboardModal
+                <ArchiveDashboardModal
                     dashboard={this.props.dashboard}
-                    onClose={() => this.refs.deleteDashboardModal.toggle()}
-                    onDelete={() => this.onDelete()}
+                    onClose={() => this.refs.archiveDashboardModal.toggle()}
+                    onArchive={() => this.onArchive()}
                 />
             </ModalWithTrigger>,
             <ActionButton
@@ -174,7 +175,7 @@ export default class DashboardHeader extends Component<*, Props, State> {
     }
 
     getHeaderButtons() {
-        const { dashboard, parameters, isEditing, isFullscreen, isEditable, isAdmin } = this.props;
+        const { dashboard, parametersWidget, isEditing, isFullscreen, isEditable, isAdmin } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
         const canEdit = isEditable && !!dashboard;
 
@@ -183,8 +184,8 @@ export default class DashboardHeader extends Component<*, Props, State> {
 
         const buttons = [];
 
-        if (isFullscreen && parameters) {
-            buttons.push(parameters);
+        if (isFullscreen && parametersWidget) {
+            buttons.push(parametersWidget);
         }
 
         if (isEditing) {

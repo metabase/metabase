@@ -54,6 +54,7 @@
                  [com.taoensso/nippy "2.13.0"]                        ; Fast serialization (i.e., GZIP) library for Clojure
                  [compojure "1.5.2"]                                  ; HTTP Routing library built on Ring
                  [crypto-random "1.2.0"]                              ; library for generating cryptographically secure random bytes and strings
+                 [dk.ative/docjure "1.11.0"]                          ; Excel export
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
@@ -76,10 +77,11 @@
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [io.crate/crate-jdbc "2.1.6"]                        ; Crate JDBC driver
                  [prismatic/schema "1.1.5"]                           ; Data schema declaration and validation library
-                 [ring/ring-jetty-adapter "1.5.1"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                 [ring/ring-core "1.6.0"]
+                 [ring/ring-jetty-adapter "1.6.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [toucan "1.0.2"                                      ; Model layer, hydration, and DB utilities
+                 [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
@@ -88,7 +90,10 @@
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
-  :jvm-opts ["-server"                                                ; Run JVM in server mode as opposed to client -- see http://stackoverflow.com/questions/198577/real-differences-between-java-server-and-java-client for a good explanation of this
+  :jvm-opts ["-XX:MaxPermSize=256m"                                   ; give the JVM a little more PermGen space to avoid PermGen OutOfMemoryErrors
+             "-Xverify:none"                                          ; disable bytecode verification when running in dev so it starts slightly faster
+             "-XX:+CMSClassUnloadingEnabled"                          ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
+             "-XX:+UseConcMarkSweepGC"                                ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
@@ -122,10 +127,7 @@
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
-                              "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
-                              "-Xverify:none"                         ; disable bytecode verification when running in dev so it starts slightly faster
-                              "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
-                              "-XX:+UseConcMarkSweepGC"]              ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
+                              "-Xmx2048m"]                            ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                    :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
              :reflection-warnings {:global-vars {*warn-on-reflection* true}} ; run `lein check-reflection-warnings` to check for reflection warnings
              :expectations {:injections [(require 'metabase.test-setup)]

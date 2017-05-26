@@ -18,6 +18,8 @@ import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
 
+const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
+
 const HEADER_ICON_SIZE = 16;
 
 const HEADER_ACTION_STYLE = {
@@ -28,11 +30,10 @@ export default class DashCard extends Component {
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         dashcardData: PropTypes.object.isRequired,
-        cardDurations: PropTypes.object.isRequired,
+        slowCards: PropTypes.object.isRequired,
         parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
-        linkToCard: PropTypes.bool,
     };
 
     async componentDidMount() {
@@ -50,7 +51,18 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove, linkToCard } = this.props;
+        const {
+            dashcard,
+            dashcardData,
+            slowCards,
+            parameterValues,
+            isEditing,
+            isEditingParameter,
+            onAddSeries,
+            onRemove,
+            navigateToNewCard,
+            metadata
+        } = this.props;
 
         const mainCard = {
             ...dashcard.card,
@@ -61,13 +73,14 @@ export default class DashCard extends Component {
             .map(card => ({
                 ...getIn(dashcardData, [dashcard.id, card.id]),
                 card: card,
-                duration: cardDurations[card.id]
+                isSlow: slowCards[card.id],
+                isUsuallyFast: card.query_average_duration && (card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD)
             }));
 
         const loading = !(series.length > 0 && _.every(series, (s) => s.data));
-        const expectedDuration = Math.max(...series.map((s) => s.duration ? s.duration.average : 0));
-        const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
-        const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
+        const expectedDuration = Math.max(...series.map((s) => s.card.query_average_duration || 0));
+        const usuallyFast = _.every(series, (s) => s.isUsuallyFast);
+        const isSlow = loading && _.some(series, (s) => s.isSlow) && (usuallyFast ? "usually-fast" : "usually-slow");
 
         const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
             .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
@@ -120,7 +133,10 @@ export default class DashCard extends Component {
                     }
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
-                    linkToCard={linkToCard}
+                    metadata={metadata}
+                    onChangeCardAndRun={ navigateToNewCard ? (card: UnsavedCard) => {
+                        navigateToNewCard(card, dashcard)
+                    } : null}
                 />
             </div>
         );
@@ -152,7 +168,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     </ModalWithTrigger>
 
 const RemoveButton = ({ onRemove }) =>
-    <a className="text-grey-2 text-grey-4-hover " data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove} style={HEADER_ACTION_STYLE}>
+    <a className="text-grey-2 text-grey-4-hover " data-metabase-event="Dashboard;Remove Card Modal" onClick={onRemove} style={HEADER_ACTION_STYLE}>
         <Icon name="close" size={HEADER_ICON_SIZE} />
     </a>
 

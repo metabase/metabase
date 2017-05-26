@@ -35,10 +35,11 @@ const TICK_PERIOD = 0.25; // seconds
  */
 export default (ComposedComponent: ReactClass<any>) =>
     connect(null, { replace })(
-        class extends Component<*, Props, State> {
+        class extends Component {
             static displayName = "DashboardControls["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
 
-            state = {
+            props: Props;
+            state: State = {
                 isFullscreen: false,
                 isNightMode: false,
 
@@ -97,7 +98,13 @@ export default (ComposedComponent: ReactClass<any>) =>
                 setValue("refresh", this.state.refreshPeriod);
                 setValue("fullscreen", this.state.isFullscreen);
                 setValue("theme", this.state.isNightMode ? "night" : null);
+
                 delete options.night; // DEPRECATED: options.night
+
+                // Delete the "add card to dashboard" parameter if it's present because we don't
+                // want to add the card again on page refresh. The `add` parameter is already handled in
+                // DashboardApp before this method is called.
+                delete options.add;
 
                 let hash = stringifyHashOptions(options);
                 hash = hash ? "#" + hash : "";
@@ -106,7 +113,7 @@ export default (ComposedComponent: ReactClass<any>) =>
                 if (hash !== location.hash) {
                     replace({
                         pathname: location.pathname,
-                        earch: location.search,
+                        search: location.search,
                         hash
                     });
                 }
@@ -134,10 +141,12 @@ export default (ComposedComponent: ReactClass<any>) =>
             };
 
             setNightMode = isNightMode => {
+                isNightMode = !!isNightMode;
                 this.setState({ isNightMode });
             };
 
             setFullscreen = (isFullscreen, browserFullscreen = true) => {
+                isFullscreen = !!isFullscreen;
                 if (isFullscreen !== this.state.isFullscreen) {
                     if (screenfull.enabled && browserFullscreen) {
                         if (isFullscreen) {
@@ -184,7 +193,7 @@ export default (ComposedComponent: ReactClass<any>) =>
             }
 
             _fullScreenChanged = () => {
-                this.setState({ isFullscreen: screenfull.isFullscreen });
+                this.setState({ isFullscreen: !!screenfull.isFullscreen });
             };
 
             render() {

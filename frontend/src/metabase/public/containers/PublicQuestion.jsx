@@ -45,7 +45,7 @@ const mapDispatchToProps = {
 
 @connect(null, mapDispatchToProps)
 @ExplicitSize
-export default class PublicQuestion extends Component<*, Props, State> {
+export default class PublicQuestion extends Component {
     props: Props;
     state: State;
 
@@ -167,7 +167,6 @@ export default class PublicQuestion extends Component<*, Props, State> {
                             })
                         }
                         gridUnit={12}
-                        linkToCard={false}
                         showTitle={false}
                         isDashboard
                     />

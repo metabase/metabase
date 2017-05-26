@@ -62,7 +62,7 @@
   :default false)
 
 (defsetting query-caching-max-kb
-  "The maximum size of the cache per card, in kilobytes:"
+  "The maximum size of the cache, per saved question, in kilobytes:"
   ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)

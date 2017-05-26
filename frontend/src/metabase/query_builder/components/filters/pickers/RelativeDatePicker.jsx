@@ -35,7 +35,7 @@ type State = {
     showUnits: bool
 }
 
-export default class RelativeDatePicker extends Component<*, Props, State> {
+export default class RelativeDatePicker extends Component {
     props: Props;
     state: State;
 

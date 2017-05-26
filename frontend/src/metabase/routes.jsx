@@ -15,12 +15,14 @@ import App from "metabase/App.jsx";
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
-import LogoutApp from "metabase/auth/containers/LogoutApp.jsx"; import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
+import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
+import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
 import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
+import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive.jsx";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
@@ -153,7 +155,8 @@ export const getRoutes = (store) =>
                 <Route path="/" component={HomepageApp} />
 
                 {/* DASHBOARD LIST */}
-                <Route path="/dashboard" title="Dashboards" component={Dashboards} />
+                <Route path="/dashboards" title="Dashboards" component={Dashboards} />
+                <Route path="/dashboards/archive" title="Dashboards" component={DashboardsArchive} />
 
                 {/* INDIVIDUAL DASHBOARDS */}
                 <Route path="/dashboard/:dashboardId" title="Dashboard" component={DashboardApp} />

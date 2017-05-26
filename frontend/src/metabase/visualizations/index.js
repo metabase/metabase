@@ -62,6 +62,7 @@ export function getVisualizationTransformed(series: Series) {
             series = CardVisualization.transformSeries(series);
         }
         if (series !== lastSeries) {
+            // $FlowFixMe
             series = [...series];
             // $FlowFixMe
             series._raw = lastSeries;

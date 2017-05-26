@@ -4,6 +4,7 @@ import Q from "metabase/lib/query"; // legacy query lib
 import { isDate, isAddress, isCategory } from "metabase/lib/schema_metadata";
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
+import Utils from "metabase/lib/utils";
 
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
@@ -86,10 +87,13 @@ export const getModeActions = (
     tableMetadata: ?TableMetadata
 ): ClickAction[] => {
     if (mode && card && tableMetadata) {
+        // FIXME: copy card because it may be frozen and action may mutate it :-/
+        card = Utils.copy(card);
         const props: ClickActionProps = { card, tableMetadata };
-        return mode.actions
-            .map(actionCreator => actionCreator(props))
-            .filter(action => action);
+        // flatten array of arrays
+        return [].concat(
+            ...mode.actions.map(actionCreator => actionCreator(props))
+        );
     }
     return [];
 };
@@ -101,10 +105,13 @@ export const getModeDrills = (
     clicked: ?ClickObject
 ): ClickAction[] => {
     if (mode && card && tableMetadata && clicked) {
+        // FIXME: copy card because it may be frozen and action may mutate it :-/
+        card = Utils.copy(card);
         const props: ClickActionProps = { card, tableMetadata, clicked };
-        return mode.drills
-            .map(actionCreator => actionCreator(props))
-            .filter(action => action);
+        // flatten array of arrays
+        return [].concat(
+            ...mode.drills.map(actionCreator => actionCreator(props))
+        );
     }
     return [];
 };

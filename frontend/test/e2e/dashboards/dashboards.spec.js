@@ -18,18 +18,18 @@ describeE2E("dashboards/dashboards", () => {
         });
 
         xit("should let you create new dashboards, see them, filter them and enter them", async () => {
-            await d.get("/dashboard");
+            await d.get("/dashboards");
             await d.screenshot("screenshots/dashboards.png");
 
             await createDashboardInEmptyState();
 
             // Return to the dashboard list and re-enter the card through the list item
-            await driver.get(`${server.host}/dashboard`);
+            await driver.get(`${server.host}/dashboards`);
             await d.select(".Grid-cell > a").wait().click();
             await d.waitUrl(getLatestDashboardUrl());
 
             // Create another one
-            await d.get(`${server.host}/dashboard`);
+            await d.get(`${server.host}/dashboards`);
             await d.select(".Icon.Icon-add").wait().click();
             await d.select("#CreateDashboardModal input[name='name']").wait().sendKeys("Some Excessively Long Dashboard Title Just For Fun");
             await d.select("#CreateDashboardModal input[name='description']").wait().sendKeys("");
@@ -38,7 +38,7 @@ describeE2E("dashboards/dashboards", () => {
             await d.waitUrl(getLatestDashboardUrl());
 
             // Test filtering
-            await d.get(`${server.host}/dashboard`);
+            await d.get(`${server.host}/dashboards`);
             await d.select("input[type='text']").wait().sendKeys("this should produce no results");
             await d.select("img[src*='empty_dashboard']");
 
@@ -47,7 +47,25 @@ describeE2E("dashboards/dashboards", () => {
             await d.select(".Grid-cell > a").wait().click();
             await d.waitUrl(getPreviousDashboardUrl(1));
 
+            // Should be able to favorite and unfavorite dashboards
+            await d.get("/dashboards")
+            await d.select(".Grid-cell > a .favoriting-button").wait().click();
+
+            await d.select(":react(ListFilterWidget)").wait().click();
+            await d.select(".PopoverBody--withArrow li > h4:contains(Favorites)").wait().click();
+            await d.select(".Grid-cell > a .favoriting-button").wait().click();
+            await d.select("img[src*='empty_dashboard']");
+
+            await d.select(":react(ListFilterWidget)").wait().click();
+            await d.select(".PopoverBody--withArrow li > h4:contains(All dashboards)").wait().click();
+
+            // Should be able to archive and unarchive dashboards
+            // TODO: How to test objects that are in hover?
+            // await d.select(".Grid-cell > a .archival-button").wait().click();
+            // await d.select(".Icon.Icon-viewArchive").wait().click();
+
             // Remove the created dashboards to prevent clashes with other tests
+            await d.get(getPreviousDashboardUrl(1));
             await removeCurrentDash();
             // Should return to dashboard page where only one dash left
             await d.select(".Grid-cell > a").wait().click();

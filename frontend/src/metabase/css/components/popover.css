@@ -19,6 +19,7 @@
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+  max-width: 500px;
 }
 
 .PopoverBody.PopoverBody--tooltip {

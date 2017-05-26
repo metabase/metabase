@@ -15,7 +15,8 @@ import "ace/mode-ruby";
 import "ace/mode-html";
 import "ace/mode-jsx";
 
-import type { EmbedType, EmbeddableResource, EmbeddingParams, DisplayOptions } from "./EmbedModalContent";
+import type { EmbedType, DisplayOptions } from "./EmbedModalContent";
+import type { EmbeddableResource, EmbeddingParams } from "metabase/public/lib/types";
 
 type Props = {
     className: string,
@@ -30,7 +31,9 @@ type Props = {
     displayOptions: DisplayOptions
 }
 
-export default class EmbedCodePane extends Component<*, Props, *> {
+export default class EmbedCodePane extends Component {
+    props: Props;
+
     _embedSample: ?CodeSample;
 
     render() {

@@ -1,7 +1,5 @@
 /* @flow */
 
-import React from "react";
-
 import { pivot, drillDownForDimensions } from "metabase/qb/lib/actions";
 
 import type {
@@ -11,23 +9,20 @@ import type {
 
 export default (
     { card, tableMetadata, clicked }: ClickActionProps
-): ?ClickAction => {
+): ClickAction[] => {
     const dimensions = (clicked && clicked.dimensions) || [];
     const drilldown = drillDownForDimensions(dimensions);
     if (!drilldown) {
-        return;
+        return [];
     }
 
-    return {
-        title: (
-            <span>
-                Drill into this
-                {" "}
-                <span className="text-dark">
-                    {drilldown.name}
-                </span>
-            </span>
-        ),
-        card: () => pivot(card, drilldown.breakout, tableMetadata, dimensions)
-    };
+    return [
+        {
+            name: "timeseries-zoom",
+            section: "zoom",
+            title: "Zoom in",
+            card: () =>
+                pivot(card, drilldown.breakout, tableMetadata, dimensions)
+        }
+    ];
 };

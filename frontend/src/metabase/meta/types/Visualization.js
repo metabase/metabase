@@ -4,7 +4,7 @@ import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
-export type ActionCreator = (props: ClickActionProps) => ?ClickAction
+export type ActionCreator = (props: ClickActionProps) => ClickAction[]
 
 export type QueryMode = {
     name: string,
@@ -29,17 +29,21 @@ export type DimensionValue = {
 
 export type ClickObject = {
     value?: Value,
-    column: Column,
+    column?: Column,
     dimensions?: DimensionValue[],
     event?: MouseEvent,
     element?: HTMLElement,
+    seriesIndex?: number,
 }
 
 export type ClickAction = {
     title: any, // React Element
     icon?: string,
     popover?: (props: ClickActionPopoverProps) => any, // React Element
-    card?: () => ?Card
+    card?: () => ?Card,
+
+    section?: string,
+    name?: string,
 }
 
 export type ClickActionProps = {
@@ -53,10 +57,8 @@ export type ClickActionPopoverProps = {
     onClose: () => void,
 }
 
-// type Visualization = Component<*, VisualizationProps, *>;
-
-// $FlowFixMe
-export type Series = { card: Card, data: DatasetData }[] & { _raw: Series }
+export type SingleSeries = { card: Card, data: DatasetData };
+export type Series = SingleSeries[] & { _raw: Series }
 
 export type VisualizationProps = {
     series: Series,
@@ -74,12 +76,12 @@ export type VisualizationProps = {
     isDashboard: boolean,
     isEditing: boolean,
     actionButtons: Node,
-    linkToCard?: bool,
 
     hovered: ?HoverObject,
     onHoverChange: (?HoverObject) => void,
     onVisualizationClick: (?ClickObject) => void,
     visualizationIsClickable: (?ClickObject) => boolean,
+    onChangeCardAndRun: (card: Card) => void,
 
     onUpdateVisualizationSettings: ({ [key: string]: any }) => void
 }

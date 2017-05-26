@@ -71,7 +71,8 @@
   "Generate a documentation string for a `defendpoint` route."
   [method route docstr args param->schema body]
   (format-route-dox (endpoint-name method route)
-                    (str docstr (when (contains? (set body) '(check-superuser))
+                    (str docstr (when (or (contains? (set body) '(check-superuser))
+                                          (contains? (set body) '(api/check-superuser)))
                                   "\n\nYou must be a superuser to do this."))
                     (merge (args-form-symbols args)
                            param->schema)))

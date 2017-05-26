@@ -18,7 +18,7 @@ import type { LocationDescriptor, ApiError, QueryParams } from "metabase/meta/ty
 
 import type { Card, CardId, VisualizationSettings } from "metabase/meta/types/Card";
 import type { DashboardWithCards, DashboardId, DashCardId } from "metabase/meta/types/Dashboard";
-import type { RevisionId } from "metabase/meta/types/Revision";
+import type { Revision, RevisionId } from "metabase/meta/types/Revision";
 import type { Parameter, ParameterId, ParameterValues, ParameterOption } from "metabase/meta/types/Parameter";
 
 type Props = {
@@ -27,7 +27,9 @@ type Props = {
     dashboardId:            DashboardId,
     dashboard:              DashboardWithCards,
     cards:                  Card[],
+    revisions:              { [key: string]: Revision[] },
 
+    isAdmin:                boolean,
     isEditable:             boolean,
     isEditing:              boolean,
     isEditingParameter:     boolean,
@@ -39,7 +41,7 @@ type Props = {
 
     initialize:             () => Promise<void>,
     addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
-    deleteDashboard:        (dashboardId: DashboardId) => void,
+    archiveDashboard:        (dashboardId: DashboardId) => void,
     fetchCards:             (filterMode?: string) => void,
     fetchDashboard:         (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
     fetchRevisions:         ({ entity: string, id: number }) => void,
@@ -48,7 +50,7 @@ type Props = {
     setDashboardAttributes: ({ [attribute: string]: any }) => void,
     fetchDashboardCardData: (options: { reload: bool, clear: bool }) => Promise<void>,
 
-    setEditingParameter:    (parameterId: ParameterId) => void,
+    setEditingParameter:    (parameterId: ?ParameterId) => void,
     setEditingDashboard:    (isEditing: boolean) => void,
 
     addParameter:               (option: ParameterOption) => Promise<Parameter>,
@@ -59,9 +61,15 @@ type Props = {
 
     editingParameter:       ?Parameter,
 
+    refreshPeriod:          number,
+    refreshElapsed:         number,
     isFullscreen:           boolean,
     isNightMode:            boolean,
+
     onRefreshPeriodChange:  (?number) => void,
+    onNightModeChange:      (boolean) => void,
+    onFullscreenChange:     (boolean) => void,
+
     loadDashboardParams:    () => void,
 
     onReplaceAllDashCardVisualizationSettings: (dashcardId: DashCardId, settings: VisualizationSettings) => void,
@@ -76,8 +84,9 @@ type State = {
 }
 
 @DashboardControls
-export default class Dashboard extends Component<*, Props, State> {
-    state = {
+export default class Dashboard extends Component {
+    props: Props;
+    state: State = {
         error: null,
     };
 
@@ -91,7 +100,7 @@ export default class Dashboard extends Component<*, Props, State> {
         parameters: PropTypes.array,
 
         addCardToDashboard: PropTypes.func.isRequired,
-        deleteDashboard: PropTypes.func.isRequired,
+        archiveDashboard: PropTypes.func.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchDashboard: PropTypes.func.isRequired,
         fetchRevisions: PropTypes.func.isRequired,
@@ -188,7 +197,7 @@ export default class Dashboard extends Component<*, Props, State> {
         }
 
         return (
-            <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard flex-full", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper className={cx("Dashboard flex-full pb4", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
                     <header className="DashboardHeader relative z2">
@@ -197,7 +206,7 @@ export default class Dashboard extends Component<*, Props, State> {
                             onEditingChange={this.setEditing}
                             setDashboardAttribute={this.setDashboardAttribute}
                             addParameter={this.props.addParameter}
-                            parameters={parametersWidget}
+                            parametersWidget={parametersWidget}
                         />
                     </header>
                     {!isFullscreen && parametersWidget &&

@@ -218,6 +218,7 @@
   For the purposes of tracking we record each call to this function as a QueryExecution in the database.
 
   OPTIONS must conform to the `DatasetQueryOptions` schema; refer to that for more details."
+  {:style/indent 1}
   [query, options :- DatasetQueryOptions]
   (run-and-save-query! (assoc query :info (assoc options
                                             :query-hash (qputil/query-hash query)

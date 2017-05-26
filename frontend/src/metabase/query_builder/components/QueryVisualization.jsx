@@ -115,11 +115,11 @@ export default class QueryVisualization extends Component {
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
         const isEmbeddingEnabled = MetabaseSettings.get("embedding");
         return (
-            <div className="relative flex align-center flex-no-shrink mt2 mb1" style={{ minHeight: "2em" }}>
-                <div className="z4 flex-full hide sm-show">
+            <div className="relative flex align-center flex-no-shrink mt2 mb1 sm-py3">
+                <div className="z4 absolute left hide sm-show">
                   { !isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
                 </div>
-                <div className="z3 full">
+                <div className="z3 absolute left right">
                     <Tooltip tooltip={runButtonTooltip}>
                         <RunButton
                             isRunnable={isRunnable}
@@ -130,7 +130,7 @@ export default class QueryVisualization extends Component {
                         />
                     </Tooltip>
                 </div>
-                <div className="z4 flex-full flex align-center justify-end" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
+                <div className="z4 absolute right flex align-center justify-end" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
                     <ShrinkableList
                         className="flex"
                         items={messages}

@@ -19,22 +19,22 @@ import { singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
-import type { FieldFilter, ConcreteField, ExpressionClause } from "metabase/meta/types/Query";
+import type { Filter, FieldFilter, ConcreteField, ExpressionClause } from "metabase/meta/types/Query";
 import type { TableMetadata, FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
-    filter?: FieldFilter,
-    onCommitFilter: () => void,
+    filter?: Filter,
+    onCommitFilter: (filter: Filter) => void,
     onClose: () => void,
     tableMetadata: TableMetadata,
-    customFields: ExpressionClause
+    customFields?: ExpressionClause
 }
 
 type State = {
     filter: FieldFilter
 }
 
-export default class FilterPopover extends Component<*, Props, State> {
+export default class FilterPopover extends Component {
     props: Props;
     state: State;
 
@@ -86,7 +86,7 @@ export default class FilterPopover extends Component<*, Props, State> {
             let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
 
             // let the DatePicker choose the default operator, otherwise use the first one
-            let operator = isDate(field) ? null : field.valid_operators[0].name;
+            let operator = isDate(field) ? null : field.operators[0].name;
 
             // $FlowFixMe
             filter = this._updateOperator(filter, operator);
@@ -199,7 +199,8 @@ export default class FilterPopover extends Component<*, Props, State> {
                 return (
                     <SelectPicker
                         options={operatorField.values}
-                        values={values}
+                        // $FlowFixMe
+                        values={(values: Array<string>)}
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}
@@ -209,7 +210,8 @@ export default class FilterPopover extends Component<*, Props, State> {
             } else if (operatorField.type === "text") {
                 return (
                     <TextPicker
-                        values={values}
+                        // $FlowFixMe
+                        values={(values: Array<string>)}
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}
@@ -219,7 +221,8 @@ export default class FilterPopover extends Component<*, Props, State> {
             } else if (operatorField.type === "number") {
                 return (
                     <NumberPicker
-                        values={values}
+                        // $FlowFixMe
+                        values={(values: Array<number|null>)}
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}
@@ -280,7 +283,7 @@ export default class FilterPopover extends Component<*, Props, State> {
                         <div>
                             <OperatorSelector
                                 operator={filter[0]}
-                                operators={field.valid_operators}
+                                operators={field.operators}
                                 onOperatorChange={this.setOperator}
                             />
                             { this.renderPicker(filter, field) }

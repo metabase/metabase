@@ -43,7 +43,9 @@ for (let i = 0; i < MAX_SERIES; i++) {
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-export default class LineAreaBarChart extends Component<*, VisualizationProps, *> {
+export default class LineAreaBarChart extends Component {
+    props: VisualizationProps;
+
     static identifier: string;
     static renderer: (element: Element, props: VisualizationProps) => any;
 
@@ -180,12 +182,13 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
     }
 
     render() {
-        const { series, hovered, showTitle, actionButtons, linkToCard, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { series, hovered, showTitle, actionButtons, onChangeCardAndRun, onVisualizationClick, visualizationIsClickable } = this.props;
 
         const settings = this.getSettings();
 
         let titleHeaderSeries, multiseriesHeaderSeries;
 
+        // $FlowFixMe
         let originalSeries = series._raw || series;
         let cardIds = _.uniq(originalSeries.map(s => s.card.id))
 
@@ -208,7 +211,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         series={titleHeaderSeries}
                         description={settings["card.description"]}
                         actionButtons={actionButtons}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={onChangeCardAndRun}
                     />
                 : null }
                 { multiseriesHeaderSeries || (!titleHeaderSeries && actionButtons) ? // always show action buttons if we have them
@@ -219,7 +222,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
                         actionButtons={!titleHeaderSeries ? actionButtons : null}
-                        linkToCard={linkToCard}
+                        onChangeCardAndRun={onChangeCardAndRun}
                         onVisualizationClick={onVisualizationClick}
                         visualizationIsClickable={visualizationIsClickable}
                     />
@@ -308,6 +311,7 @@ function transformSingleSeries(s, series, seriesIndex) {
                 cols: rowColumnIndexes.map(i => cols[i]),
                 _rawCols: cols
             },
+            // for when the legend header for the breakout is clicked
             clicked: {
                 dimensions: [{
                     value: breakoutValue,
@@ -330,6 +334,7 @@ function transformSingleSeries(s, series, seriesIndex) {
                         metricColumnIndexes.length > 1 && getFriendlyName(col)
                     ].filter(n => n).join(": "),
                     _transformed: true,
+                    _seriesIndex: seriesIndex,
                 },
                 data: {
                     rows: rows.map((row, rowIndex) => {

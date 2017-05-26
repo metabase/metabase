@@ -45,6 +45,7 @@ Metabase currently supports:
 * MongoDB (version 3.0 or higher)
 * MySQL (and MariaDB)
 * PostgreSQL
+* Presto
 * SQL Server
 * SQLite 
 
@@ -58,9 +59,9 @@ We welcome community contributions of database connectors. If you're able to hel
 
 ### Can Metabase connect to Google Analytics, Salesforce, etc.?
 
-No. Metabase is a fast and easy way for you to access and share information you have in a database. We do not currently offer a way to connect to third-party APIs or services directly. What people do instead in these situations is download data from these services into a database they control and then use Metabase to access that database directly. This can be done either by writing code or more commonly using a third-party service. There are a large number of these services, and you can ask other users and discuss pros and cons at our [user forum](https://discourse.metabase.com).
+Metabase currently supports Google Analytics as a data source. The connection can be set up by an admin the same way database connections are set. If you are using Google Analytics Premium, one of the features is direct access to a BigQuery database with your personal Google Analytics data. BigQuery is also supported by Metabase.
 
-One caveat is that if you are using Google Analytics Premium, one of the features is direct access to a BigQuery database with your personal Google Analytics data. In this situation, you can use Metabase with that BigQuery dataset directly.
+We do not currently offer a way to connect to other third-party APIs or services directly. What people do instead in these situations is download data from these services into a database they control and then use Metabase to access that database directly. This can be done either by writing code or more commonly using a third-party service. There are a large number of these services, and you can ask other users and discuss pros and cons at our [user forum](https://discourse.metabase.com).
 
 ### Can I upload data to Metabase?
 
@@ -80,4 +81,5 @@ We are experimenting with offering paid support to a limited number of companies
 
 ### Can I embed charts or dashboards in another application?
 
-Not yet. We're working on it however, and you should expect it in the near future. (Late summer/early fall 2016). Keep tabs on it at the main [tracking issue](https://github.com/metabase/metabase/issues/1380)
+Yes, Metabase offers two solutions for sharing charts and dashboards.
+[Public links](http://www.metabase.com/docs/latest/administration-guide/12-public-links.html) let you share or embed charts with simplicity. A powerful [application embedding](http://www.metabase.com/docs/latest/administration-guide/13-embedding.html) let you to embed and customize charts in your own web applications. 

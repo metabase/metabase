@@ -8,10 +8,9 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import Value from "metabase/components/Value.jsx";
-
-import { capitalize } from "metabase/lib/formatting";
+import { formatValue, capitalize } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { getTableCellClickedObject, isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -20,8 +19,8 @@ import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
-const HEADER_HEIGHT = 50;
-const ROW_HEIGHT = 35;
+const HEADER_HEIGHT = 36;
+const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
 
@@ -48,7 +47,7 @@ type CellRendererProps = {
 type GridComponent = Component<void, void, void> & { recomputeGridSize: () => void }
 
 @ExplicitSize
-export default class TableInteractive extends Component<*, Props, State> {
+export default class TableInteractive extends Component {
     state: State;
     props: Props;
 
@@ -212,52 +211,36 @@ export default class TableInteractive extends Component<*, Props, State> {
     }
 
     cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-        const { isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
-        // $FlowFixMe: not sure why flow has a problem with this
-        const { rows, cols } = this.props.data;
+        const { data, isPivoted, onVisualizationClick, visualizationIsClickable } = this.props;
+        const { rows, cols } = data;
 
         const column = cols[columnIndex];
         const row = rows[rowIndex];
         const value = row[columnIndex];
 
-        let clicked;
-        if (isPivoted) {
-            // if it's a pivot table, the first column is
-            if (columnIndex === 0) {
-                clicked = row._dimension;
-            } else {
-                clicked = {
-                    value,
-                    column,
-                    dimensions: [row._dimension, column._dimension]
-                };
-            }
-        } else if (column.source === "aggregation") {
-            clicked = {
-                value,
-                column,
-                dimensions: cols
-                    .map((column, index) => ({ value: row[index], column }))
-                    .filter(dimension => dimension.column.source === "breakout")
-            };
-        } else {
-            clicked = { value, column };
-        }
-
+        const clicked = getTableCellClickedObject(data, rowIndex, columnIndex, isPivoted);
         const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
 
         return (
             <div
                 key={key} style={style}
-                className={cx("TableInteractive-cellWrapper cellData", {
+                className={cx("TableInteractive-cellWrapper", {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-                    "cursor-pointer": isClickable
+                    "cursor-pointer": isClickable,
+                    "justify-end": isColumnRightAligned(column)
                 })}
                 onClick={isClickable && ((e) => {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
                 })}
             >
-                <Value className="link" value={value} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
+                <div className="cellData">
+                    {/* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */}
+                    {formatValue(value, {
+                        column: column,
+                        type: "cell",
+                        jsx: true
+                    })}
+                </div>
             </div>
         );
     }
@@ -288,6 +271,10 @@ export default class TableInteractive extends Component<*, Props, State> {
 
         const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
         const isSortable = isClickable && column.source;
+        const isRightAligned = isColumnRightAligned(column);
+
+        const isSorted = sort && sort[0] && sort[0][0] === column.id;
+        const isAscending = sort && sort[0] && sort[0][1] === "ascending";
 
         return (
             <div
@@ -295,22 +282,21 @@ export default class TableInteractive extends Component<*, Props, State> {
                 style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
                 className={cx("TableInteractive-cellWrapper TableInteractive-headerCellData", {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-                    "TableInteractive-headerCellData--sorted": (sort && sort[0] && sort[0][0] === column.id),
+                    "TableInteractive-headerCellData--sorted": isSorted,
+                    "cursor-pointer": isClickable,
+                    "justify-end": isRightAligned
+                })}
+                onClick={isClickable && ((e) => {
+                    onVisualizationClick({ ...clicked, element: e.currentTarget });
                 })}
             >
-                <div
-                    className={cx("cellData", { "cursor-pointer": isClickable })}
-                    onClick={isClickable && ((e) => {
-                        onVisualizationClick({ ...clicked, element: e.currentTarget });
-                    })}
-                >
+                <div className="cellData">
+                    {isSortable && isRightAligned &&
+                        <Icon className="Icon mr1" name={isAscending ? "chevronup" : "chevrondown"} size={8} />
+                    }
                     {columnTitle}
-                    {isSortable &&
-                        <Icon
-                            className="Icon ml1"
-                            name={sort && sort[0] && sort[0][1] === "ascending" ? "chevronup" : "chevrondown"}
-                            size={8}
-                        />
+                    {isSortable && !isRightAligned &&
+                        <Icon className="Icon ml1" name={isAscending ? "chevronup" : "chevrondown"} size={8} />
                     }
                 </div>
                 <Draggable
