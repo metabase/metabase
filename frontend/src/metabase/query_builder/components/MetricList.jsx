@@ -17,6 +17,7 @@ const MetricList = ({...props}) => {
 
     const showAddMetricButton = !hideAddButton && !question.query().isBareRows();
     const canAddMetricToVisualization = _.contains(["line", "area", "bar"], question.display());
+    const metricsAreRemovable = !hideClearButton && question.canRemoveMetric()
 
     const addMetricButton =
         <ModalWithTrigger
@@ -31,7 +32,7 @@ const MetricList = ({...props}) => {
                 </Tooltip>
             }
         >
-            <AddMetricModal tableMetadata={tableMetadata} {...props} />
+            <AddMetricModal {...props} />
         </ModalWithTrigger>;
 
     return (
@@ -42,8 +43,8 @@ const MetricList = ({...props}) => {
                     question={question}
                     metric={metric}
                     metricIndex={index}
-                    updateQuery={setDatasetQuery}
-                    clearable={!hideClearButton}
+                    setDatasetQuery={setDatasetQuery}
+                    clearable={metricsAreRemovable}
                     color={metricColors[index]}
                 />
             )}

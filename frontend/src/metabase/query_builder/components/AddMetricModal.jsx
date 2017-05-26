@@ -1,10 +1,11 @@
 import React, { Component } from "react";
 import cx from "classnames";
 
-import type {TableMetadata} from "metabase/meta/types/Metadata";
 import ModalContent from "metabase/components/ModalContent";
 import EmptyState from "metabase/components/EmptyState";
 import SavedMetricSelector from "metabase/query_builder/components/SavedMetricSelector";
+
+import type Question from "metabase-lib/lib/Question";
 
 class AddMetricButton extends Component {
    props: {
@@ -51,7 +52,7 @@ class AddMetricButton extends Component {
 
 export default class AddMetricModal extends Component {
     props: {
-        tableMetadata: TableMetadata,
+        question: Question,
         onClose: () => void
     };
 

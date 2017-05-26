@@ -1,4 +1,6 @@
 /* eslint "react/prop-types": "warn" */
+/* @flow weak */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -7,7 +9,6 @@ import Select, { Option } from "metabase/components/Select.jsx";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
-import Field from "metabase/meta/metadata/Field";
 
 import _ from "underscore";
 
@@ -61,7 +62,7 @@ export default class TagEditorParam extends Component {
         const dimension = ["field-id", fieldId];
         if (!_.isEqual(tag.dimension !== dimension)) {
             const field = _.findWhere(databaseFields, { id: fieldId });
-            const options = parameterOptionsForField(new Field(field));
+            const options = parameterOptionsForField(field);
             let widget_type;
             if (tag.widget_type && _.findWhere(options, { type: tag.widget_type })) {
                 widget_type = tag.widget_type;
@@ -89,7 +90,7 @@ export default class TagEditorParam extends Component {
         if (tag.type === "dimension" && tag.dimension) {
             const field = _.findWhere(databaseFields, { id: tag.dimension[1] });
             if (field) {
-                widgetOptions = parameterOptionsForField(new Field(field));
+                widgetOptions = parameterOptionsForField(field);
             }
         }
 

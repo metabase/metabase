@@ -13,6 +13,9 @@ import type { ParameterId } from "metabase/meta/types/Parameter";
 import type { Metadata as MetadataObject } from "metabase/meta/types/Metadata";
 import type {Card as CardObject, DatasetQuery} from "metabase/meta/types/Card";
 
+import StructuredQuery from "./StructuredQuery";
+import NativeQuery from "./NativeQuery";
+
 import * as Q from "metabase/lib/query/query";
 
 import { updateIn } from "icepick";
@@ -40,40 +43,59 @@ export default class Question {
     constructor(metadata: MetadataObject, card: CardObject) {
         this._metadata = metadata;
         this._card = card;
-        const aggregations = Q.getAggregations(card.dataset_query.query);
+
+        const aggregations = card.dataset_query.type === "query"
+            ? Q.getAggregations(card.dataset_query.query)
+            : [];
         if (aggregations.length > 1) {
             // TODO: real multiple metric persistence
-            this._queries = aggregations.map(
-                aggregation =>
-                    new Query(this, {
-                        ...card.dataset_query,
-                        query: Q.addAggregation(
-                            Q.clearAggregations(card.dataset_query.query),
-                            aggregation
-                        )
-                    })
-            );
+            this._queries = aggregations.map(aggregation =>
+                this.createQuery({
+                    ...card.dataset_query,
+                    query: Q.addAggregation(
+                        Q.clearAggregations(card.dataset_query.query),
+                        aggregation
+                    )
+                }));
         } else {
-            this._queries = [new Query(this, card.dataset_query)];
+            this._queries = [this.createQuery(card.dataset_query)];
         }
     }
 
-    updateQuery(index: number, newQuery: Query): Question {
-        // TODO: real multiple metric persistence
-        let query = Q.clearAggregations(newQuery.query());
-        for (let i = 0; i < this._queries.length; i++) {
-            query = Q.addAggregation(
-                query,
-                (i === index ? newQuery : this._queries[i]).aggregations()[0]
-            );
+    createQuery(datasetQuery: DatasetQuery): Query {
+        if (datasetQuery.type === "query") {
+            return new StructuredQuery(this, datasetQuery);
+        } else if (datasetQuery.type === "native") {
+            return new NativeQuery(this, datasetQuery);
         }
-        return new Question(this._metadata, {
-            ...this._card,
-            dataset_query: {
-                ...newQuery.datasetQuery(),
-                query: query
+        throw new Error("Unknown query type: " + datasetQuery.type);
+    }
+
+    updateQuery(index: number, newQuery: Query): Question {
+        if (newQuery.isStructured()) {
+            // TODO: real multiple metric persistence
+            let query = Q.clearAggregations(newQuery.query());
+            for (let i = 0; i < this._queries.length; i++) {
+                query = Q.addAggregation(
+                    query,
+                    (i === index ? newQuery : this._queries[i]).aggregations()[
+                        0
+                    ]
+                );
             }
-        });
+            return new Question(this._metadata, {
+                ...this._card,
+                dataset_query: {
+                    ...newQuery.datasetQuery(),
+                    query: query
+                }
+            });
+        } else {
+            return new Question(this._metadata, {
+                ...this._card,
+                dataset_query: newQuery.datasetQuery()
+            });
+        }
     }
 
     card() {
@@ -150,6 +172,7 @@ export default class Question {
     }
     removeMetric(index: number): Question {
         // TODO: multiple metrics persistence
+        console.log('removal happening?');
         return new Question(
             this._metadata,
             updateIn(this.card(), ["dataset_query", "query"], query =>

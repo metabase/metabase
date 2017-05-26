@@ -2,9 +2,6 @@
 
 import { createSelector } from "reselect";
 
-// DEPRECATED
-import Metadata_DEPRECATED from "metabase/meta/metadata/Metadata";
-
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
@@ -22,9 +19,6 @@ import {
 } from "metabase/lib/schema_metadata";
 
 export const getNormalizedMetadata = state => state.metadata;
-
-export const getMeta = createSelector([getNormalizedMetadata], metadata =>
-    Metadata_DEPRECATED.fromEntities(metadata));
 
 // fully denomalized, raw "entities"
 export const getNormalizedDatabases = state => state.metadata.databases;

@@ -15,22 +15,27 @@ import MetricList from "metabase/query_builder/components/MetricList";
 import {MetabaseApi} from "metabase/services";
 import {getChartTypeForCard} from "metabase/query_builder/actions";
 
+type Props = {
+    onClose: () => void,
+    question: Question,
+    // TODO Add correct type for the query result
+    result: any,
+    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+}
+
 export default class SavedMetricSelector extends Component {
-    props: {
-        onClose: () => void,
-        card: Card
-    };
+    props: Props;
 
     constructor(props, context) {
         super(props, context);
 
-        const currentDataset = Utils.copy(props.card.dataset_query);
+        const { question, result } = this.props;
 
         this.state = {
-            result: props.result,
-            currentDataset,
+            currentResult: result,
+            currentDataset: question.datasetQuery(),
             // The initial aggregations are only set when the selector view is opened
-            initialAggregations: Query.getAggregations(currentDataset.query),
+            initialMetrics: question.metrics(),
             addedMetrics: {},
             searchValue: ""
         };
@@ -42,23 +47,19 @@ export default class SavedMetricSelector extends Component {
 
     updateResults = () => {
         MetabaseApi.dataset(this.props.card.dataset_query).then((queryResult) => {
-
-            this.props.card.display = getChartTypeForCard(this.props.card, queryResult);
-
-            console.log('ad hoc query result', queryResult, getChartTypeForCard(this.props.card, queryResult), this.state.currentDataset);
-
-            this.setState({result: queryResult});
-            // { ...state, display: payload.cardDisplay }
-        }, () => {
+            // NOTE: This currently kind of enforces the recommended display type
+            // which is not optimal but a working temporary hack
+            this.props.question.card().display = getChartTypeForCard(this.props.card, queryResult);
+            this.setState({currentResult: queryResult});
         });
     };
 
-    addMetric = (metric) => {
+    addMetric = (metricWrapper) => {
         // TODO Maybe don't use global state, maintain local query instead; this code is helpful for that
         const { addedMetrics } = this.state;
+        const { setDatasetQuery, metric } = this.props;
 
-        this.props.addQueryAggregation(["METRIC", metric.id]);
-        // this.props.runQuery(null, { ignoreCache: true });
+        setDatasetQuery(metric.addSavedMetric(metricWrapper).datasetQuery());
 
         this.setState({
             addedMetrics: {
@@ -72,6 +73,7 @@ export default class SavedMetricSelector extends Component {
 
     removeMetric = (metric) => {
         const { addedMetrics } = this.state;
+        cosnt { question } = this.state;
 
         const aggregations = Query.getAggregations(this.props.card.dataset_query.query);
 
@@ -126,14 +128,12 @@ export default class SavedMetricSelector extends Component {
     };
 
     filteredMetrics = () => {
-        const currentTableMetrics = getIn(this.props, ["tableMetadata", "metrics"]);
-
-        const { card } = this.props;
+        const { question } = this.props;
         const { searchValue, initialAggregations } = this.state;
 
-        if (!currentTableMetrics || !card) return [];
+        if (!question) return [];
 
-        return currentTableMetrics.filter(metric => {
+        return question.availableMetrics().filter(metric => {
             if (_.find(initialAggregations, (aggregation) =>
                 AggregationClause.isMetric(aggregation) && AggregationClause.getMetric(aggregation) === metric.id
             )) {
@@ -181,7 +181,7 @@ export default class SavedMetricSelector extends Component {
                             // onOpenChartSettings={() => this.refs.settings.open()}
                             className="spread pb1"
                             {...this.props}
-                            result={this.state.result}
+                            result={this.state.currentResult}
                         />
                         {/*{ this.state.state &&*/}
                         {/*<div className="spred flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>*/}
