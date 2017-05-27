@@ -122,6 +122,8 @@ export const isCoordinate   = (field) => isa(field && field.special_type, TYPE.C
 export const isLatitude     = (field) => isa(field && field.special_type, TYPE.Latitude);
 export const isLongitude    = (field) => isa(field && field.special_type, TYPE.Longitude);
 
+export const isPoint        = (field) => isa(field && field.base_type, TYPE.Point);
+
 // operator argument constructors:
 
 function freeformArgument(field, table) {
@@ -503,6 +505,10 @@ export function hasLatitudeAndLongitudeColumns(columnDefs) {
         }
     }
     return hasLatitude && hasLongitude;
+}
+
+export function hasPointColumn(columnDefs) {
+    return _.any(columnDefs, isPoint);
 }
 
 export function foreignKeyCountsByOriginTable(fks) {

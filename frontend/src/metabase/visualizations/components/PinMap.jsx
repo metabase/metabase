@@ -31,6 +31,15 @@ const MAP_COMPONENTS_BY_TYPE = {
     "tiles": LeafletTilePinMap,
 }
 
+const pointToLatLon = (value) =>
+    Array.isArray(value) ?
+        value :
+    typeof value === "string" ?
+        // postgres `point`s are (x,y), we want [lat,lon]
+        value.replace(/^\(|\)$/g, "").split(",").map(str => parseFloat(str)).reverse()
+    :
+        []
+
 export default class PinMap extends Component {
     props: Props;
     state: State;
@@ -92,12 +101,26 @@ export default class PinMap extends Component {
 
     _getPoints(props: Props) {
         const { settings, series: [{ data: { cols, rows }}] } = props;
+
+        const pointIndex = _.findIndex(cols, (col) => col.name === settings["map.point_column"]);
         const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
         const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
-        const points = rows.map(row => [
-            row[latitudeIndex],
-            row[longitudeIndex]
-        ]);
+
+        let points;
+        if (pointIndex >= 0) {
+            points = rows.map(row =>
+                pointToLatLon(row[pointIndex])
+            );
+        } else if (latitudeIndex >= 0 && longitudeIndex >= 0) {
+            points = rows.map(row => [
+                row[latitudeIndex],
+                row[longitudeIndex]
+            ]);
+        } else {
+            console.warn("Missing lat/lon fields");
+            points = [];
+        }
+
         const bounds = L.latLngBounds(points);
         return { points, bounds };
     }
