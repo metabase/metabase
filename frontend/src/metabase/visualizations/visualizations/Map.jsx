@@ -6,7 +6,7 @@ import ChoroplethMap from "../components/ChoroplethMap.jsx";
 import PinMap from "../components/PinMap.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { isNumeric, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns, isPoint, hasPointColumn } from "metabase/lib/schema_metadata";
+import { isNumeric, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { metricSetting, dimensionSetting, fieldSetting } from "metabase/visualizations/lib/settings";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -47,7 +47,7 @@ export default class Map extends Component {
                     case "pin_map":
                         return "pin";
                     default:
-                        if (hasLatitudeAndLongitudeColumns(cols) || hasPointColumn(cols)) {
+                        if (hasLatitudeAndLongitudeColumns(cols)) {
                             return "pin";
                         } else {
                             return "region";
@@ -55,23 +55,17 @@ export default class Map extends Component {
                 }
             }
         },
-        "map.point_column": {
-            title: "Latitude and Longitude",
-            ...fieldSetting("map.point_column", isNumeric,
-                ([{ data: { cols }}]) => (_.find(cols, isPoint) || {}).name),
-            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin" || hasPointColumn(series[0].data.cols)
-        },
         "map.latitude_column": {
             title: "Latitude field",
             ...fieldSetting("map.latitude_column", isNumeric,
                 ([{ data: { cols }}]) => (_.find(cols, isLatitude) || {}).name),
-            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin" || !hasLatitudeAndLongitudeColumns(series[0].data.cols)
+            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
         },
         "map.longitude_column": {
             title: "Longitude field",
             ...fieldSetting("map.longitude_column", isNumeric,
                 ([{ data: { cols }}]) => (_.find(cols, isLongitude) || {}).name),
-            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin" || !hasLatitudeAndLongitudeColumns(series[0].data.cols)
+            getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
         },
         "map.region": {
             title: "Region map",
@@ -122,7 +116,7 @@ export default class Map extends Component {
 
     static checkRenderable([{ data: { cols, rows} }], settings) {
         if (settings["map.type"] === "pin") {
-            if (!settings["map.point_column"] && (!settings["map.longitude_column"] || !settings["map.latitude_column"])) {
+            if (!settings["map.longitude_column"] || !settings["map.latitude_column"]) {
                 throw new ChartSettingsError("Please select longitude and latitude columns in the chart settings.", "Data");
             }
         } else if (settings["map.type"] === "region"){

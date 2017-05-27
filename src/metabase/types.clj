@@ -21,8 +21,6 @@
 (derive :type/Latitude :type/Coordinate)
 (derive :type/Longitude :type/Coordinate)
 
-(derive :type/Point :type/*)
-
 
 ;;; Text Types
 

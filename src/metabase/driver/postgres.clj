@@ -46,7 +46,7 @@
    :numeric       :type/Decimal
    :path          :type/*
    :pg_lsn        :type/Integer         ; PG Log Sequence #
-   :point         :type/Point
+   :point         :type/*
    :real          :type/Float
    :serial        :type/Integer
    :serial2       :type/Integer
