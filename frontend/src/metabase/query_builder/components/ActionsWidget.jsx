@@ -12,7 +12,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { Card, UnsavedCard } from "metabase/meta/types/Card";
+import type { Card } from "metabase/meta/types/Card";
 import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
@@ -71,9 +71,9 @@ export default class ActionsWidget extends Component<*, Props, *> {
         });
     };
 
-    handleOnChangeCardAndRun(nextCard: UnsavedCard|Card) {
+    handleOnChangeCardAndRun({ nextCard }) {
         const { card: previousCard } = this.props;
-        this.props.navigateToNewCardInsideQB(nextCard, previousCard);
+        this.props.navigateToNewCardInsideQB({ nextCard, previousCard });
     }
 
     handleActionClick = (index: number) => {
@@ -85,7 +85,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
             const nextCard = action.card();
             if (nextCard) {
                 MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun(nextCard);
+                this.handleOnChangeCardAndRun({ nextCard });
             }
             this.close();
         }
@@ -161,12 +161,12 @@ export default class ActionsWidget extends Component<*, Props, *> {
                                           </div>
                                       </div>
                                       <PopoverComponent
-                                          onChangeCardAndRun={(card) => {
-                                              if (card) {
+                                          onChangeCardAndRun={({ nextCard }) => {
+                                              if (nextCard) {
                                                   if (selectedAction) {
                                                       MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${selectedAction.section||""}:${selectedAction.name||""}`);
                                                   }
-                                                  this.handleOnChangeCardAndRun(card)
+                                                  this.handleOnChangeCardAndRun({ nextCard })
                                               }
                                           }}
                                           onClose={this.close}

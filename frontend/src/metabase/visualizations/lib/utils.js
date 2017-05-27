@@ -251,8 +251,7 @@ function wrapMethod(object, name, method) {
 }
 
 export function getCardAfterVisualizationClick(nextCard, previousCard) {
-    const cardIsDirty = !_.isEqual(previousCard.dataset_query, nextCard.dataset_query);
-    console.log(previousCard, nextCard, cardIsDirty);
+    const cardIsDirty = !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) || previousCard.display !== nextCard.display;
 
     if (cardIsDirty) {
         const isMultiseriesQuestion = !nextCard.id;
@@ -265,11 +264,16 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
                 // Just recycle the original card id of previous card if there was one
                 ? previousCard.original_card_id
                 // A multi-aggregation or multi-breakout series legend / drill-through action
-                // should always use the id of the underlying/previous card
+                // should always use the id of underlying/previous card
                 : (isMultiseriesQuestion ? previousCard.id : nextCard.id)
         }
     } else {
-        return nextCard;
+        // Even though the card is currently clean, we might still apply dashboard parameters to it,
+        // so add the original_card_id to ensure a correct behavior in that context
+        return {
+            ...nextCard,
+            original_card_id: nextCard.id
+        };
     }
 }
 

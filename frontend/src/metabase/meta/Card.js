@@ -164,7 +164,7 @@ export function questionUrlWithParameters(
     parameterMappings: ParameterMapping[] = [],
     cardIsDirty: boolean = true
 ): DatasetQuery {
-    if (!cardIsDirty || !card.dataset_query) {
+    if (!card.dataset_query) {
         return Urls.question(card.id);
     }
 
@@ -177,6 +177,11 @@ export function questionUrlWithParameters(
         parameterValues,
         parameterMappings
     );
+
+    // If we have a clean question without parameters applied, don't add the dataset query hash
+    if (!cardIsDirty && datasetQuery.parameters.length === 0) {
+        return Urls.question(card.id);
+    }
 
     const query = {};
     for (const datasetParameter of datasetQuery.parameters || []) {

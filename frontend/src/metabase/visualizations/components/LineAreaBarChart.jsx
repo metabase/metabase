@@ -193,7 +193,10 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
         if (showTitle && settings["card.title"]) {
             titleHeaderSeries = [{ card: {
                 name: settings["card.title"],
-                id: isComposedOfMultipleQuestions ? null : cardIds[0]
+                ...(isComposedOfMultipleQuestions ? {} : {
+                    id: cardIds[0],
+                    dataset_query: originalSeries[0].card.dataset_query
+                }),
             }}];
         }
 

@@ -71,7 +71,7 @@ export default class LegendHeader extends Component {
                         onClick={s.clicked && visualizationIsClickable(s.clicked) ?
                             ((e) => onVisualizationClick({ ...s.clicked, element: e.currentTarget }))
                         : onChangeCardAndRun ?
-                            ((e) => onChangeCardAndRun(s.card))
+                            (() => onChangeCardAndRun({ nextCard: s.card, seriesIndex: index }))
                         : null }
                     />,
                     onRemoveSeries && index > 0 &&

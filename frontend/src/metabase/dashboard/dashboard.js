@@ -14,7 +14,7 @@ import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import { getParametersBySlug } from "metabase/meta/Parameter";
 
 import type { DashboardWithCards, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
-import type { UnsavedCard, Card, CardId } from "metabase/meta/types/Card";
+import type { Card, CardId } from "metabase/meta/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -504,12 +504,13 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
  *     - clicking the visualization inside dashcard
  *         * drill-through (single series, multi-aggregation, multi-breakout, multiple questions)
  *         * (not in 0.24.2 yet: drag on line/area/bar visualization)
+ *     - those all can be applied without or with a dashboard filter
  */
 
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
     NAVIGATE_TO_NEW_CARD,
-    (nextCard: UnsavedCard, previousCard: SavedCard, dashcard: DashCard) =>
+    ({ nextCard, previousCard, dashcard }) =>
         (dispatch, getState) => {
             const {metadata} = getState();
             const {dashboardId, dashboards, parameterValues} = getState().dashboard;

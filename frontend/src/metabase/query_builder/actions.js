@@ -529,13 +529,14 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
  *     - clicking the visualization itself
  *         * drill-through (single series, multi-aggregation, multi-breakout, multiple questions)
  *         * (not in 0.24.2 yet: drag on line/area/bar visualization)
+ *     - clicking an action widget action
  *
  * All these events can be applied either for an unsaved question or a saved question.
  */
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
-export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD, (nextCard, previousCard) => {
+export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD, ({ nextCard, previousCard }) => {
     return async (dispatch, getState) => {
-        const nextCardIsClean = !nextCard.dataset_query;
+        const nextCardIsClean = _.isEqual(previousCard.dataset_query, nextCard.dataset_query) && previousCard.display === nextCard.display;
 
         if (nextCardIsClean) {
             // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
