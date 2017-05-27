@@ -71,12 +71,12 @@ export default class ActionsWidget extends Component<*, Props, *> {
         });
     };
 
-    handleOnChangeCardAndRun(nextCard: UnsavedCard|Card) {
+    handleOnChangeCardAndRun({ nextCard, clickEvent }) {
         const { card: previousCard } = this.props;
-        this.props.navigateToNewCardInsideQB(nextCard, previousCard);
+        this.props.navigateToNewCardInsideQB({ nextCard, previousCard, clickEvent });
     }
 
-    handleActionClick = (index: number) => {
+    handleActionClick = (clickEvent, index: number) => {
         const { mode, card, tableMetadata } = this.props;
         const action = getModeActions(mode, card, tableMetadata)[index];
         if (action && action.popover) {
@@ -85,7 +85,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
             const nextCard = action.card();
             if (nextCard) {
                 MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun(nextCard);
+                this.handleOnChangeCardAndRun({ nextCard, clickEvent });
             }
             this.close();
         }
@@ -161,12 +161,12 @@ export default class ActionsWidget extends Component<*, Props, *> {
                                           </div>
                                       </div>
                                       <PopoverComponent
-                                          onChangeCardAndRun={(card) => {
-                                              if (card) {
+                                          onChangeCardAndRun={({ nextCard, clickEvent }) => {
+                                              if (nextCard) {
                                                   if (selectedAction) {
                                                       MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${selectedAction.section||""}:${selectedAction.name||""}`);
                                                   }
-                                                  this.handleOnChangeCardAndRun(card)
+                                                  this.handleOnChangeCardAndRun({ nextCard, clickEvent })
                                               }
                                           }}
                                           onClose={this.close}
@@ -176,8 +176,8 @@ export default class ActionsWidget extends Component<*, Props, *> {
                                       <div
                                           key={index}
                                           className="p2 flex align-center text-grey-4 brand-hover cursor-pointer"
-                                          onClick={() =>
-                                              this.handleActionClick(index)}
+                                          onClick={(clickEvent) =>
+                                              this.handleActionClick(clickEvent, index)}
                                       >
                                           {action.icon &&
                                               <Icon

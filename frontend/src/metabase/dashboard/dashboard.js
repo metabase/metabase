@@ -14,7 +14,7 @@ import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
 import { getParametersBySlug } from "metabase/meta/Parameter";
 
 import type { DashboardWithCards, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
-import type { UnsavedCard, Card, CardId } from "metabase/meta/types/Card";
+import type { Card, CardId } from "metabase/meta/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -509,7 +509,7 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
     NAVIGATE_TO_NEW_CARD,
-    (nextCard: UnsavedCard, previousCard: SavedCard, dashcard: DashCard, dirty = true) =>
+    ({ nextCard, previousCard, dashcard, clickEvent }) =>
         (dispatch, getState) => {
             const {metadata} = getState();
             const {dashboardId, dashboards, parameterValues} = getState().dashboard;
@@ -524,8 +524,11 @@ export const navigateToNewCardFromDashboard = createThunkAction(
                 dashcard && dashcard.parameter_mappings
             );
 
-
-            dispatch(push(url));
+            if (clickEvent && (clickEvent.ctrlKey || clickEvent.metaKey)) {
+                window.open(url, '_blank');
+            } else {
+                dispatch(push(url));
+            }
         }
 );
 

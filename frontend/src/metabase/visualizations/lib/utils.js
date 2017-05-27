@@ -264,7 +264,7 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
                 // Just recycle the original card id of previous card if there was one
                 ? previousCard.original_card_id
                 // A multi-aggregation or multi-breakout series legend / drill-through action
-                // should always use the id of the underlying/previous card
+                // should always use the id of underlying/previous card
                 : (isMultiseriesQuestion ? previousCard.id : nextCard.id)
         }
     } else {

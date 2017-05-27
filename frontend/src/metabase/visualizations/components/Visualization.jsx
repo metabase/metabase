@@ -224,13 +224,13 @@ export default class Visualization extends Component<*, Props, State> {
     };
 
     // Add the underlying card of current series to onChangeCardAndRun if available
-    handleOnChangeCardAndRun = (nextCard: UnsavedCard|Card) => {
+    handleOnChangeCardAndRun = ({ nextCard, clickEvent }) => {
         const { series, clicked } = this.state;
 
         const index = (clicked && clicked.seriesIndex) || 0;
         const previousCard = series && series[index] && series[index].card;
 
-        this.props.onChangeCardAndRun(nextCard, previousCard);
+        this.props.onChangeCardAndRun({ nextCard, previousCard, clickEvent });
     }
 
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {

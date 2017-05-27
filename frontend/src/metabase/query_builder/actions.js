@@ -533,7 +533,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
  * All these events can be applied either for an unsaved question or a saved question.
  */
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
-export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD, (nextCard, previousCard) => {
+export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD, ({ nextCard, previousCard, clickEvent }) => {
     return async (dispatch, getState) => {
         const nextCardIsClean = !nextCard.dataset_query;
 

@@ -72,7 +72,7 @@ export default class LegendHeader extends Component {
                             ((e) => onVisualizationClick({ ...s.clicked, element: e.currentTarget }))
                         : onChangeCardAndRun ?
                             // Navigating to a saved, clean card; providing only the card id to `onChangeCardAndRun` is sufficient
-                            ((e) => onChangeCardAndRun({ id: s.card.id }))
+                            ((clickEvent) => onChangeCardAndRun({ nextCard: { id: s.card.id }, clickEvent }))
                         : null }
                     />,
                     onRemoveSeries && index > 0 &&
