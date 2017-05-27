@@ -524,6 +524,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
                 dashcard && dashcard.parameter_mappings
             );
 
+
             dispatch(push(url));
         }
 );

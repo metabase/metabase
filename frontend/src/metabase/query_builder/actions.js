@@ -534,8 +534,15 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
  */
 export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD, (nextCard, previousCard) => {
-    return (dispatch, getState) => {
-        dispatch(setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)));
+    return async (dispatch, getState) => {
+        const nextCardIsClean = !nextCard.dataset_query;
+
+        if (nextCardIsClean) {
+            // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
+            dispatch(setCardAndRun(await loadCard(nextCard.id)));
+        } else {
+            dispatch(setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)));
+        }
     }
 });
 
