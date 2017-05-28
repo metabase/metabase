@@ -19,22 +19,22 @@ import { singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
-import type { FieldFilter, ConcreteField, ExpressionClause } from "metabase/meta/types/Query";
+import type { Filter, FieldFilter, ConcreteField, ExpressionClause } from "metabase/meta/types/Query";
 import type { TableMetadata, FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 
 type Props = {
-    filter?: FieldFilter,
-    onCommitFilter: () => void,
+    filter?: Filter,
+    onCommitFilter: (filter: Filter) => void,
     onClose: () => void,
     tableMetadata: TableMetadata,
-    customFields: ExpressionClause
+    customFields?: ExpressionClause
 }
 
 type State = {
     filter: FieldFilter
 }
 
-export default class FilterPopover extends Component<*, Props, State> {
+export default class FilterPopover extends Component {
     props: Props;
     state: State;
 
@@ -199,7 +199,8 @@ export default class FilterPopover extends Component<*, Props, State> {
                 return (
                     <SelectPicker
                         options={operatorField.values}
-                        values={values}
+                        // $FlowFixMe
+                        values={(values: Array<string>)}
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}
@@ -209,7 +210,8 @@ export default class FilterPopover extends Component<*, Props, State> {
             } else if (operatorField.type === "text") {
                 return (
                     <TextPicker
-                        values={values}
+                        // $FlowFixMe
+                        values={(values: Array<string>)}
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}
@@ -219,7 +221,8 @@ export default class FilterPopover extends Component<*, Props, State> {
             } else if (operatorField.type === "number") {
                 return (
                     <NumberPicker
-                        values={values}
+                        // $FlowFixMe
+                        values={(values: Array<number|null>)}
                         onValuesChange={onValuesChange}
                         placeholder={placeholder}
                         multi={operator.multi}

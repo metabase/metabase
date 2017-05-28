@@ -43,7 +43,9 @@ for (let i = 0; i < MAX_SERIES; i++) {
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-export default class LineAreaBarChart extends Component<*, VisualizationProps, *> {
+export default class LineAreaBarChart extends Component {
+    props: VisualizationProps;
+
     static identifier: string;
     static renderer: (element: Element, props: VisualizationProps) => any;
 
@@ -186,6 +188,7 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
 
         let titleHeaderSeries, multiseriesHeaderSeries;
 
+        // $FlowFixMe
         let originalSeries = series._raw || series;
         let cardIds = _.uniq(originalSeries.map(s => s.card.id))
 

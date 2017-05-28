@@ -14,7 +14,9 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 import _ from "underscore";
 
-export default class Map extends Component<*, VisualizationProps, *> {
+export default class Map extends Component {
+    props: VisualizationProps;
+
     static uiName = "Map";
     static identifier = "map";
     static iconName = "pinmap";

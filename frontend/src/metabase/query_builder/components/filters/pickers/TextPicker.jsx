@@ -9,14 +9,21 @@ import _ from "underscore";
 
 type Props = {
     values: Array<string|null>,
-    onValuesChange: (values: Array<string|null>) => void,
+    onValuesChange: (values: any[]) => void,
     validations: bool[],
     placeholder?: string,
     multi?: bool,
     onCommit: () => void,
 };
 
-export default class TextPicker extends Component<*, Props, *> {
+type State = {
+    fieldString: string,
+}
+
+export default class TextPicker extends Component {
+    props: Props;
+    state: State;
+
     static propTypes = {
         values: PropTypes.array.isRequired,
         onValuesChange: PropTypes.func.isRequired,

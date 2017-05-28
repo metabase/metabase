@@ -20,7 +20,7 @@ type State = {
     expanded: bool
 };
 
-export default class OperatorSelector extends Component<*, Props, State> {
+export default class OperatorSelector extends Component {
     props: Props;
     state: State;
 

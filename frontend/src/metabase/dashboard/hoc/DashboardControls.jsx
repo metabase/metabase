@@ -35,9 +35,10 @@ const TICK_PERIOD = 0.25; // seconds
  */
 export default (ComposedComponent: ReactClass<any>) =>
     connect(null, { replace })(
-        class extends Component<*, Props, State> {
+        class extends Component {
             static displayName = "DashboardControls["+(ComposedComponent.displayName || ComposedComponent.name)+"]";
 
+            props: Props;
             state: State = {
                 isFullscreen: false,
                 isNightMode: false,

@@ -52,7 +52,7 @@ Object.values(SECTIONS).map((section, index) => {
 });
 
 type Props = {
-    clicked: ClickObject,
+    clicked: ?ClickObject,
     clickActions: ?ClickAction[],
     onChangeCardAndRun: (card: ?Card) => void,
     onClose: () => void
@@ -62,7 +62,8 @@ type State = {
     popoverAction: ?ClickAction;
 }
 
-export default class ChartClickActions extends Component<*, Props, State> {
+export default class ChartClickActions extends Component {
+    props: Props;
     state: State = {
         popoverAction: null
     };
