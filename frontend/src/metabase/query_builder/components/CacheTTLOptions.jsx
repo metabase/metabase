@@ -21,7 +21,7 @@ export default class CacheTTLOptions extends Component {
 
         this.state = {
           isOpen: false,
-          cache_ttl: this.props.card.cache_ttl ? this.props.card.cache_ttl : 0
+          cache_ttl: (!this.props.card || !this.props.card.name) ? 0 : (this.props.card.cache_ttl ? this.props.card.cache_ttl : 0)
         };
 
         _.bindAll(this, "onSave", "onGoBack", "handleChangeCacheTTL", "handleSubmitCacheTTL");
@@ -30,7 +30,7 @@ export default class CacheTTLOptions extends Component {
 
 
     static propTypes = {
-        card: PropTypes.object.isRequired
+        card: PropTypes.object
     };
 
     onSave(data) {
@@ -94,8 +94,10 @@ export default class CacheTTLOptions extends Component {
     }
 
     render() {
-        const { settingValues } = this.props;
+        const { card, settingValues } = this.props;
         if(!settingValues['enable-query-caching']) return null;
+        if(!card) return null;
+        if(!card.name) return null;
 
         const onClick = () => this.setState({isOpen: true});
 

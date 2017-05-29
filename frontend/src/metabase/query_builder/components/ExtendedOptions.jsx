@@ -22,7 +22,7 @@ export default class ExtendedOptions extends Component {
         this.state = {
           isOpen: false,
           editExpression: null,
-          cache_ttl: this.props.card.cache_ttl ? this.props.card.cache_ttl : 0
+          cache_ttl: (!this.props.card || !this.props.card.name) ? 0 : (this.props.card.cache_ttl ? this.props.card.cache_ttl : 0)
         };
 
         _.bindAll(this, "onSave", "onGoBack", "handleChangeCacheTTL", "handleSubmitCacheTTL");
@@ -31,7 +31,7 @@ export default class ExtendedOptions extends Component {
 
 
     static propTypes = {
-        card: PropTypes.object.isRequired,
+        card: PropTypes.object,
         features: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object.isRequired,
         tableMetadata: PropTypes.object,
@@ -201,8 +201,8 @@ export default class ExtendedOptions extends Component {
     renderPopover() {
         if (!this.state.isOpen) return null;
 
-        const { features, datasetQuery, tableMetadata, settingValues } = this.props;
-
+        const { card, features, datasetQuery, tableMetadata, settingValues } = this.props;
+        console.log(card);
         return (
             <Popover onClose={() => this.setState({isOpen: false})}>
                 <div className="p3">
@@ -230,12 +230,12 @@ export default class ExtendedOptions extends Component {
                         </div>
                     }
 
-                    { settingValues['enable-query-caching'] &&
+                    { settingValues['enable-query-caching'] && card && card.name &&
                         <div>
                             <br/>
                             <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Cache TTL, minutes (0 - defaults)</div>
                             <div className="flex align-center">
-                              <input className="input block border-gray" type="text" defaultValue={this.props.card.cache_ttl ? this.props.card.cache_ttl/60 : 0} onChange={(e) => this.handleChangeCacheTTL(e)}/>
+                              <input className="input block border-gray" type="text" defaultValue={card.cache_ttl ? card.cache_ttl/60 : 0} onChange={(e) => this.handleChangeCacheTTL(e)}/>
                               <span className="Header-buttonSection borderless">
                                 <a className="ml1 cursor-pointer text-brand-hover text-grey-4 text-uppercase" onClick={this.handleSubmitCacheTTL}>DONE</a>
                               </span>
