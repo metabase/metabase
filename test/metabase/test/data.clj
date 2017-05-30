@@ -32,11 +32,14 @@
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset combos.
 
 (defn get-or-create-test-data-db!
-  "Get or create the Test Data database for DATA-LOADER, which defaults to `*driver*`."
-  ([]            (get-or-create-test-data-db! *driver*))
-  ([data-loader] (get-or-create-database! data-loader defs/test-data)))
+  "Get or create the Test Data database for DRIVER, which defaults to `*driver*`."
+  ([]       (get-or-create-test-data-db! *driver*))
+  ([driver] (get-or-create-database! driver defs/test-data)))
 
-(def ^:dynamic ^:private *get-db* get-or-create-test-data-db!)
+(def ^:dynamic ^:private *get-db*
+  "Implementation of `db` function that should return the current working test database when called, always with no arguments.
+   By default, this is `get-or-create-test-data-db!` for the current `*driver*`, which does exactly what it suggests."
+  get-or-create-test-data-db!)
 
 (defn db
   "Return the current database.
@@ -53,8 +56,6 @@
    Calls to `db` and `id` use this value."
   [db & body]
   `(do-with-db ~db (fn [] ~@body)))
-
-(defn- parts->id [table-name ])
 
 (defn- $->id
   "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
@@ -207,7 +208,7 @@
 
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
-   DRIVER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `driver` for the
+   DRIVER should be an object that implements `IDriverTestExtensions`; it defaults to the value returned by the method `driver` for the
    current dataset (`*driver*`), which is H2 by default."
   ([database-definition]
    (get-or-create-database! *driver* database-definition))

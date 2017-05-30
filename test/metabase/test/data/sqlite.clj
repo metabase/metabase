@@ -41,7 +41,7 @@
           :load-data!                (generic/make-load-data-fn load-data-stringify-dates generic/load-data-chunked)
           :pk-sql-type               (constantly "INTEGER")
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
           :engine                       (constantly :sqlite)}))

@@ -64,8 +64,8 @@
           :drop-db-if-exists-sql     (constantly nil)
           :load-data!                (make-load-data-fn generic/load-data-add-ids)
           :qualified-name-components (partial i/single-db-qualified-name-components "doc")})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details database->connection-details
           :engine                       (constantly :crate)
           :default-schema               (constantly "doc")}))
