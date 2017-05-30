@@ -131,7 +131,10 @@ export function applyParameters(
             continue;
         }
 
-        const mapping = _.findWhere(parameterMappings, { card_id: card.id, parameter_id: parameter.id });
+        const mapping = _.findWhere(parameterMappings, {
+            card_id: card.id || card.original_card_id,
+            parameter_id: parameter.id
+        });
         if (mapping) {
             // mapped target, e.x. on a dashboard
             datasetQuery.parameters.push({
