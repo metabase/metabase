@@ -1,6 +1,6 @@
 /* @flow */
 
-import { summarize, getFieldClauseFromCol } from "metabase/qb/lib/actions";
+import { summarize, getFieldRefFromColumn } from "metabase/qb/lib/actions";
 import * as Card from "metabase/meta/Card";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
@@ -59,7 +59,7 @@ export default (
         card: () =>
             summarize(
                 card,
-                [aggregation, getFieldClauseFromCol(column)],
+                [aggregation, getFieldRefFromColumn(column)],
                 tableMetadata
             )
     }));

@@ -45,7 +45,7 @@ const mapDispatchToProps = {
 
 @connect(null, mapDispatchToProps)
 @ExplicitSize
-export default class PublicQuestion extends Component<*, Props, State> {
+export default class PublicQuestion extends Component {
     props: Props;
     state: State;
 

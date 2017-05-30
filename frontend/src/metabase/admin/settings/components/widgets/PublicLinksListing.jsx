@@ -20,10 +20,10 @@ type PublicLink = {
 };
 
 type Props = {
-    load:         () => Promise<PublicLink[]>,
-    revoke:       (link: PublicLink) => Promise<void>,
-    getUrl:       (link: PublicLink) => string,
-    getPublicUrl: (link: PublicLink) => string,
+    load:           () => Promise<PublicLink[]>,
+    revoke?:        (link: PublicLink) => Promise<void>,
+    getUrl:         (link: PublicLink) => string,
+    getPublicUrl?:  (link: PublicLink) => string,
     noLinksMessage: string,
     type: string
 };
@@ -33,7 +33,7 @@ type State = {
     error: ?any
 };
 
-export default class PublicLinksListing extends Component<*, Props, State> {
+export default class PublicLinksListing extends Component {
     props: Props;
     state: State;
 
@@ -59,6 +59,9 @@ export default class PublicLinksListing extends Component<*, Props, State> {
     }
 
     async revoke(link: PublicLink) {
+        if (!this.props.revoke) {
+            return;
+        }
         try {
             await this.props.revoke(link);
             this.load();
