@@ -66,6 +66,7 @@
 (derive :type/TextLike :type/*)
 (derive :type/IPAddress :type/TextLike)
 (derive :type/MongoBSONID :type/TextLike)
+(derive :type/DruidHyperUnique :type/TextLike)
 
 ;;; "Virtual" Types
 

@@ -83,6 +83,10 @@ export const field_special_types = [{
     'id': TYPE.ZipCode,
     'name': 'Zip Code',
     'section': 'Common'
+}, {
+    'id': TYPE.DruidHyperUnique,
+    'name': 'Druid Hyper Unique',
+    'section': 'Common'
 }];
 
 export const field_special_types_map = field_special_types
