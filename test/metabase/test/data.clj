@@ -208,7 +208,7 @@
 
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
-   DRIVER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `driver` for the
+   DRIVER should be an object that implements `IDriverTestExtensions`; it defaults to the value returned by the method `driver` for the
    current dataset (`*driver*`), which is H2 by default."
   ([database-definition]
    (get-or-create-database! *driver* database-definition))

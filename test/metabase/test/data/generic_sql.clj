@@ -19,8 +19,8 @@
 
 (defprotocol IGenericSQLDatasetLoader
   "Methods for loading `DatabaseDefinition` in a SQL database.
-   A type that implements `IGenericSQLDatasetLoader` can be made to implement most of `IDatasetLoader`
-   by using the `IDatasetLoaderMixin`.
+   A type that implements `IGenericSQLDatasetLoader` can be made to implement most of `IDriverTestExtensions`
+   by using the `IDriverTestExtensionsMixin`.
 
    Methods marked *Optional* below have a default implementation specified in `DefaultsMixin`."
   (field-base-type->sql-type [this, ^Keyword base-type]
@@ -275,7 +275,7 @@
    :quote-name                default-quote-name})
 
 
-;; ## ------------------------------------------------------------ IDatasetLoader impl ------------------------------------------------------------
+;; ## ------------------------------------------------------------ IDriverTestExtensions impl ------------------------------------------------------------
 
 (defn sequentially-execute-sql!
   "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
@@ -315,9 +315,9 @@
   (doseq [tabledef table-definitions]
     (load-data! driver dbdef tabledef)))
 
-(def IDatasetLoaderMixin
-  "Mixin for `IGenericSQLDatasetLoader` types to implement `create-db!` from `IDatasetLoader`."
-  (merge i/IDatasetLoaderDefaultsMixin
+(def IDriverTestExtensionsMixin
+  "Mixin for `IGenericSQLDatasetLoader` types to implement `create-db!` from `IDriverTestExtensions`."
+  (merge i/IDriverTestExtensionsDefaultsMixin
          {:create-db! create-db!}))
 
 

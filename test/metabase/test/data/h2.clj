@@ -69,8 +69,8 @@
             :prepare-identifier        (u/drop-first-arg s/upper-case)
             :quote-name                (u/drop-first-arg quote-name)}))
 
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (u/drop-first-arg database->connection-details)
           :default-schema                     (constantly "PUBLIC")
           :engine                             (constantly :h2)
