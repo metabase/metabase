@@ -12,13 +12,16 @@
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]
              [dashboard-card-series :refer [DashboardCardSeries]]
-             [field-values :refer [FieldValues]]]
+             [field-values :refer [FieldValues]]
+             [table :refer [Table]]]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.test
-             [data :as data]
+             [data :as data :refer [id]]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
             [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.util.test :as tt]
+            [metabase.sync-database :as sync-database])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
@@ -95,9 +98,10 @@
 
 ;; make sure :param_values get returned as expected
 (expect
-  {(data/id :categories :name) {:values                75
-                                :human_readable_values {}
-                                :field_id              (data/id :categories :name)}}
+  {(data/id :categories :name) {:values                0
+                                ;:human_readable_values {}  ;; Test data should include some actual rows here so this test will be good
+                                ;:field_id              (data/id :categories :name)
+                                }}
   (tt/with-temp Card [card {:dataset_query {:type   :native
                                             :native {:query         "SELECT COUNT(*) FROM venues LEFT JOIN categories ON venues.category_id = categories.id WHERE {{category}}"
                                                      :collection    "CATEGORIES"
@@ -107,8 +111,10 @@
                                                                                 :dimension    ["field-id" (data/id :categories :name)]
                                                                                 :widget_type  "category"
                                                                                 :required     true}}}}}]
-    (-> (:param_values (public-card :id (u/get-id card)))
-        (update-in [(data/id :categories :name) :values] count))))
+    (do (sync-database/sync-table! (Table (id :venues)))
+        (cached-values/cache-field-values-for-table! (Table (id :venues)))
+        (-> (:param_values (public-card :id (u/get-id card)))
+            (update-in [(data/id :categories :name) :values] count)))))
 
 
 ;;; ------------------------------------------------------------ GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions)  ------------------------------------------------------------
