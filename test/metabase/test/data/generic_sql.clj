@@ -8,9 +8,7 @@
              [helpers :as h]]
             [medley.core :as m]
             [metabase.driver.generic-sql :as sql]
-            [metabase.test.data
-             [datasets :as datasets]
-             [interface :as i]]
+            [metabase.test.data.interface :as i]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
@@ -330,17 +328,21 @@
    Useful for doing engine-specific setup or teardown."
   {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
-  (datasets/when-testing-engine engine
-    (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
-    (jdbc/execute! (get-connection-spec) sql-and-args)
-    (println (u/format-color 'blue "[OK]"))))
+  ((resolve 'metabase.test.data.datasets/do-when-testing-engine)
+   engine
+   (fn []
+     (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
+     (jdbc/execute! (get-connection-spec) sql-and-args)
+     (println (u/format-color 'blue "[OK]")))))
 
 (defn query-when-testing!
   "Execute a prepared SQL-AND-ARGS **query** against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
    Useful for doing engine-specific setup or teardown where `execute-when-testing!` won't work because the query returns results."
   {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
-  (datasets/when-testing-engine engine
-    (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
-    (u/prog1 (jdbc/query (get-connection-spec) sql-and-args)
-      (println (u/format-color 'blue "[OK] -> %s" (vec <>))))))
+  ((resolve 'metabase.test.data.datasets/do-when-testing-engine)
+   engine
+   (fn []
+     (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
+     (u/prog1 (jdbc/query (get-connection-spec) sql-and-args)
+       (println (u/format-color 'blue "[OK] -> %s" (vec <>)))))))
