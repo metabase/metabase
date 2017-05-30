@@ -132,6 +132,7 @@ export function applyParameters(
         }
 
         const mapping = _.findWhere(parameterMappings, {
+            // $FlowFixMe original_card_id not included in the flow type of card
             card_id: card.id || card.original_card_id,
             parameter_id: parameter.id
         });
@@ -179,7 +180,7 @@ export function questionUrlWithParameters(
     );
 
     // If we have a clean question without parameters applied, don't add the dataset query hash
-    if (!cardIsDirty && datasetQuery.parameters.length === 0) {
+    if (!cardIsDirty && datasetQuery.parameters && datasetQuery.parameters.length === 0) {
         return Urls.question(card.id);
     }
 

@@ -517,7 +517,6 @@ export const navigateToNewCardFromDashboard = createThunkAction(
             const dashboard = dashboards[dashboardId];
             const cardIsDirty = !_.isEqual(previousCard.dataset_query, nextCard.dataset_query);
 
-            // $FlowFixMe
             const url = questionUrlWithParameters(
                 getCardAfterVisualizationClick(nextCard, previousCard),
                 metadata,

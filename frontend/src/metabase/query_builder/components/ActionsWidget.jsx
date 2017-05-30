@@ -12,7 +12,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { Card } from "metabase/meta/types/Card";
+import type { Card, UnsavedCard} from "metabase/meta/types/Card";
 import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
@@ -21,7 +21,7 @@ type Props = {
     mode: QueryMode,
     card: Card,
     tableMetadata: TableMetadata,
-    navigateToNewCardInsideQB: (nextCard: Card, previousCard: Card) => void
+    navigateToNewCardInsideQB: any => void
 };
 
 const CIRCLE_SIZE = 48;
@@ -71,7 +71,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
         });
     };
 
-    handleOnChangeCardAndRun({ nextCard }) {
+    handleOnChangeCardAndRun = ({ nextCard }: { nextCard: Card|UnsavedCard}) => {
         const { card: previousCard } = this.props;
         this.props.navigateToNewCardInsideQB({ nextCard, previousCard });
     }
