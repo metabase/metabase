@@ -227,6 +227,8 @@ export default class Visualization extends Component<*, Props, State> {
     handleOnChangeCardAndRun = (nextCard: UnsavedCard|Card) => {
         const { series, clicked } = this.state;
 
+        console.log(clicked, clicked.seriesIndex);
+
         const index = (clicked && clicked.seriesIndex) || 0;
         const previousCard = series && series[index] && series[index].card;
 

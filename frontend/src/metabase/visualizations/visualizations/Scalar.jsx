@@ -194,8 +194,7 @@ export default class Scalar extends Component<*, VisualizationProps, *> {
                 <div className={styles.Title + " flex align-center"}>
                     <Ellipsified tooltip={card.name}>
                         <span
-                            // Navigating to a saved, clean card; providing only the card id to `onChangeCardAndRun` is sufficient
-                            onClick={onChangeCardAndRun && (() => onChangeCardAndRun({ id: card.id }))}
+                            onClick={onChangeCardAndRun && (() => onChangeCardAndRun(card))}
                             className={cx("fullscreen-normal-text fullscreen-night-text", {
                                 "cursor-pointer": !!onChangeCardAndRun
                             })}

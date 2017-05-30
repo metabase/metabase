@@ -509,11 +509,12 @@ export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, async ({ id }) 
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
     NAVIGATE_TO_NEW_CARD,
-    (nextCard: UnsavedCard, previousCard: SavedCard, dashcard: DashCard, dirty = true) =>
+    (nextCard: UnsavedCard, previousCard: SavedCard, dashcard: DashCard) =>
         (dispatch, getState) => {
             const {metadata} = getState();
             const {dashboardId, dashboards, parameterValues} = getState().dashboard;
             const dashboard = dashboards[dashboardId];
+            const cardIsDirty = !_.isEqual(previousCard.dataset_query, nextCard.dataset_query);
 
             // $FlowFixMe
             const url = questionUrlWithParameters(
@@ -521,9 +522,9 @@ export const navigateToNewCardFromDashboard = createThunkAction(
                 metadata,
                 dashboard.parameters,
                 parameterValues,
-                dashcard && dashcard.parameter_mappings
+                dashcard && dashcard.parameter_mappings,
+                cardIsDirty
             );
-
 
             dispatch(push(url));
         }

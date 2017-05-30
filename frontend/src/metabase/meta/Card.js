@@ -161,9 +161,10 @@ export function questionUrlWithParameters(
     metadata: Metadata,
     parameters: Parameter[],
     parameterValues: ParameterValues = {},
-    parameterMappings: ParameterMapping[] = []
+    parameterMappings: ParameterMapping[] = [],
+    cardIsDirty: boolean = true
 ): DatasetQuery {
-    if (!card.dataset_query) {
+    if (!cardIsDirty || !card.dataset_query) {
         return Urls.question(card.id);
     }
 

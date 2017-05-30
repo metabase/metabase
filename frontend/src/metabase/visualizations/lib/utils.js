@@ -251,7 +251,8 @@ function wrapMethod(object, name, method) {
 }
 
 export function getCardAfterVisualizationClick(nextCard, previousCard) {
-    const cardIsDirty = !!nextCard.dataset_query;
+    const cardIsDirty = !_.isEqual(previousCard.dataset_query, nextCard.dataset_query);
+    console.log(previousCard, nextCard, cardIsDirty);
 
     if (cardIsDirty) {
         const isMultiseriesQuestion = !nextCard.id;
