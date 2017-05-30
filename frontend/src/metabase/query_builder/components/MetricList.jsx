@@ -10,14 +10,14 @@ import AddButton from "metabase/components/AddButton";
 
 // TODO: Containerize this component in order to reduce the props passing in QB
 const MetricList = ({...props}) => {
-    const { question, setDatasetQuery, tableMetadata, hideAddButton, hideClearButton } = props;
+    const { question, setDatasetQuery, hideAddButton, hideClearButton } = props;
 
     const metrics = question.metrics();
     const metricColors = getCardColors(question.card());
 
     const showAddMetricButton = !hideAddButton && !question.query().isBareRows();
     const canAddMetricToVisualization = _.contains(["line", "area", "bar"], question.display());
-    const metricsAreRemovable = !hideClearButton && question.canRemoveMetric()
+    const metricsAreRemovable = !hideClearButton && question.canRemoveMetric();
 
     const addMetricButton =
         <ModalWithTrigger

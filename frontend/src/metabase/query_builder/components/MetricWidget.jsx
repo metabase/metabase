@@ -1,21 +1,7 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
-
-import AggregationPopover from "./AggregationPopover.jsx";
-import FieldName from './FieldName.jsx';
 import Clearable from './Clearable.jsx';
-
-import Popover from "metabase/components/Popover.jsx";
-
-import QueryWrapper from "metabase-lib/lib/Query";
-import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
-import { getAggregator } from "metabase/lib/schema_metadata";
-import { format } from "metabase/lib/expressions/formatter";
-
+import Query from "metabase/lib/query";
 import cx from "classnames";
-import _ from "underscore";
-
-import type Aggregation from "metabase-lib/lib/query/Aggregation";
 
 type Props = {
     question: Question,

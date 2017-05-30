@@ -6,11 +6,7 @@ import Icon from "metabase/components/Icon.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 
 import cx from "classnames";
-import { getIn } from "icepick";
-import type {Card} from "metabase/meta/types/Card";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
-import Utils from "metabase/lib/utils";
-import Query, {AggregationClause} from "metabase/lib/query";
 import MetricList from "metabase/query_builder/components/MetricList";
 import {MetabaseApi} from "metabase/services";
 import {getChartTypeForCard} from "metabase/query_builder/actions";
@@ -50,10 +46,10 @@ export default class SavedMetricSelector extends Component {
     };
 
     updateResults = () => {
-        MetabaseApi.dataset(this.props.card.dataset_query).then((queryResult) => {
+        MetabaseApi.dataset(this.props.question.datasetQuery()).then((queryResult) => {
             // NOTE: This currently kind of enforces the recommended display type
             // which is not optimal but a working temporary hack
-            this.props.question.card().display = getChartTypeForCard(this.props.card, queryResult);
+            this.props.question.card().display = getChartTypeForCard(this.props.question.card(), queryResult);
             this.setState({currentResult: queryResult});
         });
     };
@@ -149,6 +145,7 @@ export default class SavedMetricSelector extends Component {
 
     render() {
         const { addedMetrics } = this.state;
+        const { question } = this.props;
 
         const filteredMetrics = this.filteredMetrics();
         const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible metrics match your search.") : null;
@@ -180,6 +177,7 @@ export default class SavedMetricSelector extends Component {
                             className="spread pb1"
                             {...this.props}
                             result={this.state.currentResult}
+                            card={question.card()}
                         />
                         {/*{ this.state.state &&*/}
                         {/*<div className="spred flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>*/}
