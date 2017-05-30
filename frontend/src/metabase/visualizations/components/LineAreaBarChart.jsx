@@ -188,11 +188,12 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
 
         let originalSeries = series._raw || series;
         let cardIds = _.uniq(originalSeries.map(s => s.card.id))
+        const isComposedOfMultipleQuestions = cardIds.length > 1;
 
         if (showTitle && settings["card.title"]) {
             titleHeaderSeries = [{ card: {
                 name: settings["card.title"],
-                id: cardIds.length === 1 ? cardIds[0] : null
+                id: isComposedOfMultipleQuestions ? null : cardIds[0]
             }}];
         }
 
@@ -208,7 +209,9 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         series={titleHeaderSeries}
                         description={settings["card.description"]}
                         actionButtons={actionButtons}
-                        onChangeCardAndRun={onChangeCardAndRun}
+                        // If a dashboard card is composed of multiple questions, its custom card title
+                        // shouldn't act as a link as it's ambiguous that which question it should open
+                        onChangeCardAndRun={ isComposedOfMultipleQuestions ? null : onChangeCardAndRun }
                     />
                 : null }
                 { multiseriesHeaderSeries || (!titleHeaderSeries && actionButtons) ? // always show action buttons if we have them
