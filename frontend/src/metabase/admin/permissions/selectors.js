@@ -147,7 +147,7 @@ function getRevokingAccessToAllTablesWarningModal(database, permissions, groupId
         // allTableEntityIds contains tables from all schemas
         const allTableEntityIds = database.tables().map((table) => ({
             databaseId: table.db_id,
-            schemaName: table.schema,
+            schemaName: table.schema || "",
             tableId: table.id
         }));
 
@@ -457,7 +457,7 @@ export const getDatabasesPermissionsGrid = createSelector(
 
 const getCollections = (state) => state.admin.permissions.collections;
 const getCollectionPermission = (permissions, groupId, { collectionId }) =>
-    getIn(permissions, [groupId, collectionId])
+    getIn(permissions, [groupId, collectionId]);
 
 export const getCollectionsPermissionsGrid = createSelector(
     getCollections, getGroups, getPermissions,
@@ -504,7 +504,6 @@ export const getCollectionsPermissionsGrid = createSelector(
         }
     }
 );
-
 
 export const getDiff = createSelector(
     getMeta, getGroups, getPermissions, getOriginalPermissions,
