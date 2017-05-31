@@ -1,11 +1,12 @@
-/* @flow */
+/* @flow weak */
 
 import Question from "../Question";
 
 import Base from "./Base";
 import Database from "./Database";
-import Schema from "./Schema";
 import Field from "./Field";
+
+import type { SchemaName } from "metabase/meta/types/Table";
 
 import Dimension from "../Dimension";
 
@@ -14,7 +15,7 @@ export default class Table extends Base {
     displayName: string;
     description: string;
 
-    schema: Schema;
+    schema: SchemaName;
     database: Database;
 
     fields: Field[];

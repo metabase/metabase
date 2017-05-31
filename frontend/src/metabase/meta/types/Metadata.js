@@ -97,3 +97,14 @@ export type FieldOptions = {
         fields: Field[]
     }
 };
+
+import Dimension from "metabase-lib/lib/Dimension";
+
+export type DimensionOptions = {
+    count: 0,
+    dimensions: Dimension[],
+    fks: Array<{
+        field: FieldMetadata,
+        dimensions: Dimension[]
+    }>
+};

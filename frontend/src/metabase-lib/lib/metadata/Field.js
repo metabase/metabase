@@ -1,4 +1,4 @@
-/* @flow */
+/* @flow weak */
 
 import Base from "./Base";
 import Table from "./Table";
@@ -67,7 +67,7 @@ export default class Field extends Base {
         return isFK(this);
     }
 
-    values(): Array<string> {
+    fieldValues(): Array<string> {
         return getFieldValues(this._object);
     }
 

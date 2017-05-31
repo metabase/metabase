@@ -2,7 +2,7 @@
 import React from 'react'
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn } from "icepick";
+import { assocIn, getIn } from "icepick";
 import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
@@ -11,7 +11,7 @@ import { setErrorPage } from "metabase/redux/app";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
-import { formatSQL, humanize } from "metabase/lib/formatting";
+import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
@@ -20,7 +20,7 @@ import { defer } from "metabase/lib/promise";
 import { addUndo } from "metabase/redux/undo";
 import { applyParameters, cardIsEquivalent } from "metabase/meta/Card";
 
-import { getParameters, getTableMetadata, getNativeDatabases } from "./selectors";
+import { getParameters, getTableMetadata, getNativeDatabases, getQuestion } from "./selectors";
 import { getDatabases, getTables, getDatabasesList } from "metabase/selectors/metadata";
 
 import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
@@ -512,101 +512,36 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
-        const { qb: { card, uiControls } } = getState();
-        const databasesList = getDatabasesList(getState());
+        const { qb: { uiControls }} = getState();
+        const question = getQuestion(getState());
 
-        const databaseId = card.dataset_query.database;
-        const database = _.findWhere(databasesList, { id: databaseId });
-        const supportsNativeParameters = database && _.contains(database.features, "native-parameters");
-
-        let updatedCard = Utils.copy(card),
-            openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
+        let newQuestion = question;
 
         // when the query changes on saved card we change this into a new query w/ a known starting point
-        if (!uiControls.isEditing && updatedCard.id) {
-            delete updatedCard.id;
-            delete updatedCard.name;
-            delete updatedCard.description;
+        if (!uiControls.isEditing && question.isSaved()) {
+            newQuestion = newQuestion.newQuestion();
         }
 
-        updatedCard.dataset_query = Utils.copy(dataset_query);
+        // currently only support single query
+        newQuestion = newQuestion.updateQuery(0, newQuestion.query().updateDatasetQuery(dataset_query));
 
-        // special handling for NATIVE cards to automatically detect parameters ... {{varname}}
-        if (Query.isNative(dataset_query) && !_.isEmpty(dataset_query.native.query) && supportsNativeParameters) {
-            let tags = [];
+        const oldTagCount = question.query().isNative() ? question.query().templateTags().length : 0;
+        const newTagCount = newQuestion.query().isNative() ? newQuestion.query().templateTags().length : 0;
 
-            // look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
-            // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
-            // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
-            // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-            let match, re = /\{\{([A-Za-z0-9_]+?)\}\}/g;
-            while((match = re.exec(dataset_query.native.query)) != null) {
-                tags.push(match[1]);
-            }
-
-            // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-            const existingTemplateTags = updatedCard.dataset_query.native.template_tags || {};
-
-            tags = _.uniq(tags);
-            let existingTags = Object.keys(existingTemplateTags);
-
-            // if we ended up with any variables in the query then update the card parameters list accordingly
-            if (tags.length > 0 || existingTags.length > 0) {
-                let newTags = _.difference(tags, existingTags);
-                let oldTags = _.difference(existingTags, tags);
-
-                let templateTags = { ...existingTemplateTags };
-                if (oldTags.length === 1 && newTags.length === 1) {
-                    // renaming
-                    templateTags[newTags[0]] = templateTags[oldTags[0]];
-
-                    if (templateTags[newTags[0]].display_name === humanize(oldTags[0])) {
-                        templateTags[newTags[0]].display_name = humanize(newTags[0])
-                    }
-
-                    templateTags[newTags[0]].name = newTags[0];
-                    delete templateTags[oldTags[0]];
-                } else {
-                    // remove old vars
-                    for (const name of oldTags) {
-                        delete templateTags[name];
-                    }
-
-                    // create new vars
-                    for (let tagName of newTags) {
-                        templateTags[tagName] = {
-                            id: Utils.uuid(),
-                            name: tagName,
-                            display_name: humanize(tagName),
-                            type: null,
-                        };
-                    }
-                }
-
-                // ensure all tags have an id since we need it for parameter values to work
-                for (const tag of Object.values(templateTags)) {
-                    if (tag.id == undefined) {
-                        tag.id = Utils.uuid();
-                    }
-                }
-
-                updatedCard.dataset_query.native.template_tags = templateTags;
-
-                if (newTags.length > 0) {
-                    openTemplateTagsEditor = true;
-                } else if (Object.keys(templateTags) === 0) {
-                    openTemplateTagsEditor = false;
-                }
-            }
+        let openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
+        if (newTagCount > oldTagCount) {
+            openTemplateTagsEditor = true;
+        } else if (newTagCount === 0) {
+            openTemplateTagsEditor = false;
         }
 
         // run updated query
         if (run) {
-            dispatch(runQuery(updatedCard));
+            dispatch(runQuery(newQuestion.card()));
         }
 
         return {
-            card: updatedCard,
+            card: newQuestion.card(),
             openTemplateTagsEditor
         };
     };

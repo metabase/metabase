@@ -1,4 +1,4 @@
-/* @flow */
+/* @flow weak */
 
 import Base from "./Base";
 import Question from "../Question";
@@ -13,7 +13,7 @@ export default class Metric extends Base {
     description: string;
 
     database: Database;
-    table: ?Table;
+    table: Table;
 
     newQuestion(): Question {
         // $FlowFixMe

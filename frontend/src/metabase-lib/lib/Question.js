@@ -1,24 +1,35 @@
-/* @flow */
+/* @flow weak */
 
 import Query from "./Query";
 import Dimension from "./Dimension";
-import Parameter from "./Parameter";
+import Metric from "./metadata/Metric";
+import Metadata from "./metadata/Metadata";
 
 import Breakout from "./query/Breakout";
 import Filter from "./query/Filter";
 
 import Action, { ActionClick } from "./Action";
 
-import type { ParameterId } from "metabase/meta/types/Parameter";
-import type { Metadata as MetadataObject } from "metabase/meta/types/Metadata";
-import type { Card as CardObject } from "metabase/meta/types/Card";
+import type {
+    Parameter as ParameterObject,
+    ParameterId,
+    ParameterValues
+} from "metabase/meta/types/Parameter";
+import type { DimensionOptions } from "metabase/meta/types/Metadata";
+import type {
+    Card as CardObject,
+    DatasetQuery as DatasetQueryObject,
+    StructuredDatasetQuery as StructuredDatasetQueryObject
+} from "metabase/meta/types/Card";
+// import type { StructuredQuery as StructuredQueryObject } from "metabase/meta/types/Query";
 
 import StructuredQuery from "./StructuredQuery";
 import NativeQuery from "./NativeQuery";
 
 import * as Q from "metabase/lib/query/query";
+import { getParametersWithExtras } from "metabase/meta/Card";
 
-import { updateIn } from "icepick";
+import { chain, updateIn } from "icepick";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -29,8 +40,9 @@ type ParameterOptions = "FIXME";
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 export default class Question {
-    _metadata: MetadataObject;
+    _metadata: Metadata;
     _card: CardObject;
+    _parameterValues: ParameterValues;
 
     /**
      * A question has one or more queries
@@ -40,50 +52,77 @@ export default class Question {
     /**
      * Question constructor
      */
-    constructor(metadata: MetadataObject, card: CardObject) {
+    constructor(
+        metadata: Metadata,
+        card: CardObject,
+        parameterValues?: ParameterValues
+    ) {
         this._metadata = metadata;
         this._card = card;
+        this._parameterValues = parameterValues || {};
 
-        const aggregations = card.dataset_query.type === "query"
-            ? Q.getAggregations(card.dataset_query.query)
-            : [];
-        if (aggregations.length > 1) {
+        if (
+            card.dataset_query.type === "query" &&
+            Q.getAggregations(card.dataset_query.query).length > 1
+        ) {
+            const datasetQuery: StructuredDatasetQueryObject = card.dataset_query;
+
             // TODO: real multiple metric persistence
-            this._queries = aggregations.map(aggregation =>
-                this.createQuery({
-                    ...card.dataset_query,
-                    query: Q.addAggregation(
-                        Q.clearAggregations(card.dataset_query.query),
-                        aggregation
-                    )
-                }));
+            this._queries = Q.getAggregations(
+                card.dataset_query.query
+            ).map((aggregation, index) =>
+                this.createQuery(
+                    {
+                        ...datasetQuery,
+                        query: Q.addAggregation(
+                            Q.clearAggregations(datasetQuery.query),
+                            aggregation
+                        )
+                    },
+                    index
+                ));
         } else {
-            this._queries = [this.createQuery(card.dataset_query)];
+            this._queries = [this.createQuery(card.dataset_query, 0)];
         }
     }
 
-    createQuery(datasetQuery: DatasetQuery): Query {
+    updateCard(card: CardObject) {
+        return new Question(this._metadata, card, this._parameterValues);
+    }
+
+    newQuestion() {
+        return this.updateCard(
+            chain(this.card())
+                .dissoc("id")
+                .dissoc("name")
+                .dissoc("description")
+                .value()
+        );
+    }
+
+    createQuery(datasetQuery: DatasetQueryObject, index: number): Query {
         if (datasetQuery.type === "query") {
-            return new StructuredQuery(this, datasetQuery);
+            return new StructuredQuery(this, index, datasetQuery);
         } else if (datasetQuery.type === "native") {
-            return new NativeQuery(this, datasetQuery);
+            return new NativeQuery(this, index, datasetQuery);
         }
         throw new Error("Unknown query type: " + datasetQuery.type);
     }
 
     updateQuery(index: number, newQuery: Query): Question {
-        if (newQuery.isStructured()) {
+        if (newQuery instanceof StructuredQuery) {
             // TODO: real multiple metric persistence
             let query = Q.clearAggregations(newQuery.query());
             for (let i = 0; i < this._queries.length; i++) {
                 query = Q.addAggregation(
                     query,
+                    // $FlowFixMe
                     (i === index ? newQuery : this._queries[i]).aggregations()[
                         0
                     ]
                 );
             }
-            return new Question(this._metadata, {
+            return this.updateCard({
                 ...this._card,
                 dataset_query: {
                     ...newQuery.datasetQuery(),
@@ -91,7 +130,7 @@ export default class Question {
                 }
             });
         } else {
-            return new Question(this._metadata, {
+            return this.updateCard({
                 ...this._card,
                 dataset_query: newQuery.datasetQuery()
             });
@@ -109,6 +148,10 @@ export default class Question {
         return this._queries[0];
     }
 
+    isSaved(): boolean {
+        return this.card().id != null;
+    }
+
     /**
      * Question is valid (as far as we know) and can be executed
      */
@@ -124,13 +167,14 @@ export default class Question {
     metrics(): Query[] {
         return this._queries;
     }
-    availableMetrics(): MetricMetadata[] {
-        return Object.values(this._metadata.metrics);
+    availableMetrics(): Metric[] {
+        return this._metadata.metricsList();
     }
     canAddMetric(): boolean {
         // only structured queries with 0 or 1 breakouts can have multiple series
-        return this.query().isStructured() &&
-            this.query().breakouts().length <= 1;
+        const query = this.query();
+        return query instanceof StructuredQuery &&
+            query.breakouts().length <= 1;
     }
     canRemoveMetric(): boolean {
         // can't remove last metric
@@ -138,18 +182,20 @@ export default class Question {
     }
 
     addSavedMetric(metric: Metric): Question {
-        return this.addMetric({
-            type: "query",
-            database: metric.table.db.id,
-            query: {
-                aggregation: ["METRIC", metric.id]
-            }
-        });
+        return this.addMetric(
+            ({
+                type: "query",
+                database: metric.table.db.id,
+                query: {
+                    source_table: metric.table.id,
+                    aggregation: [["METRIC", metric.id]]
+                }
+            }: StructuredDatasetQueryObject)
+        );
     }
-    addMetric(datasetQuery: DatasetQuery): Question {
+    addMetric(datasetQuery: StructuredDatasetQueryObject): Question {
         // TODO: multiple metrics persistence
-        return new Question(
-            this._metadata,
+        return this.updateCard(
             updateIn(this.card(), ["dataset_query", "query"], query =>
                 Q.addAggregation(
                     query,
@@ -157,10 +203,12 @@ export default class Question {
                 ))
         );
     }
+    updateMetric(index: number, metric: Query): Question {
+        return this.updateQuery(index, metric);
+    }
     removeMetric(index: number): Question {
         // TODO: multiple metrics persistence
-        return new Question(
-            this._metadata,
+        return this.updateCard(
             updateIn(this.card(), ["dataset_query", "query"], query =>
                 Q.removeAggregation(query, index))
         );
@@ -169,11 +217,25 @@ export default class Question {
     // multiple series can be pivoted
     breakouts(): Breakout[] {
         // TODO: real multiple metric persistence
-        return this.query().breakouts();
+        const query = this.query();
+        if (query instanceof StructuredQuery) {
+            return query.breakouts();
+        } else {
+            return [];
+        }
     }
-    breakoutDimensions(unused: boolean = false): Dimension[] {
+    breakoutOptions(breakout?: any): DimensionOptions {
         // TODO: real multiple metric persistence
-        return this.query().breakoutDimensions();
+        const query = this.query();
+        if (query instanceof StructuredQuery) {
+            return query.breakoutOptions(breakout);
+        } else {
+            return {
+                count: 0,
+                fks: [],
+                dimensions: []
+            };
+        }
     }
     canAddBreakout(): boolean {
         return this.breakouts() === 0;
@@ -182,11 +244,13 @@ export default class Question {
     // multiple series can be filtered by shared dimensions
     filters(): Filter[] {
         // TODO: real multiple metric persistence
-        return this.query().filters();
+        const query = this.query();
+        return query instanceof StructuredQuery ? query.filters() : [];
     }
     filterOptions(): Dimension[] {
         // TODO: real multiple metric persistence
-        return this.query().filterOptions();
+        const query = this.query();
+        return query instanceof StructuredQuery ? query.filterOptions() : [];
     }
     canAddFilter(): boolean {
         return false;
@@ -257,11 +321,8 @@ export default class Question {
         return new Promise(() => {});
     }
 
-    parameters(): Parameter[] {
-        return [];
-    }
-    editableParameters(): Parameter[] {
-        return [];
+    parameters(): ParameterObject[] {
+        return getParametersWithExtras(this.card(), this._parameterValues);
     }
 
     createParameter(parameter: ParameterOptions) {}

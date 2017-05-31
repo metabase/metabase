@@ -28,7 +28,7 @@ declare module "underscore" {
   declare function some<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
   declare function all<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
   declare function any<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
-  declare function contains<T>(a: Array<T>, pred: (val: T)=>boolean): boolean;
+  declare function contains<T>(a: Array<T>, val: T): boolean;
 
   declare function initial<T>(a: Array<T>, n?: number): Array<T>;
   declare function rest<T>(a: Array<T>, index?: number): Array<T>;
@@ -53,6 +53,8 @@ declare module "underscore" {
   declare function pick(o: {[key: any]: any}, ...properties: string[]): {[key: any]: any};
   declare function pick(o: {[key: any]: any}, predicate: (val: any, key: any, object: {[key: any]: any})=>boolean): {[key: any]: any};
   declare function pluck(o: Array<{[key: any]: any}>, propertyNames: string): Array<any>;
+
+  declare function difference<T>(array: T[], ...others: T[][]): T[];
 
   declare function flatten(a: Array<any>): Array<any>;
 

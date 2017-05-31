@@ -108,7 +108,7 @@ export const getMappingsByParameter = createSelector(
                 const card = _.findWhere(cards, { id: mapping.card_id });
                 const fieldId = card && getParameterTargetFieldId(mapping.target, card.dataset_query);
                 const field = metadata.fields[fieldId];
-                const values = field && field.values() || [];
+                const values = field && field.fieldValues() || [];
                 if (values.length) {
                     countsByParameter[mapping.parameter_id] = countsByParameter[mapping.parameter_id] || {};
                 }

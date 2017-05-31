@@ -1,4 +1,4 @@
-/* @flow */
+/* @flow weak */
 
 import Question from "../Question";
 
@@ -7,6 +7,8 @@ import Table from "./Table";
 import Schema from "./Schema";
 
 import _ from "underscore";
+
+import type { SchemaName } from "metabase/meta/types/Table";
 
 /**
  * Wrapper class for database metadata objects. Contains {@link Schema}s, {@link Table}s, {@link Metric}s, {@link Segment}s.
@@ -23,7 +25,6 @@ export default class Database extends Base {
     }
 
     schemaNames(): Array<SchemaName> {
-        // $FlowFixMe: flow doesn't understand our null filtering
         return _.uniq(
             this.tables
                 .map(table => table.schema)

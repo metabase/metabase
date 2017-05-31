@@ -1,3 +1,3 @@
-/* @flow */
+/* @flow weak */
 
 export class QuestionResult {}

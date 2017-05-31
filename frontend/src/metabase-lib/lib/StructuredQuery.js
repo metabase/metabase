@@ -1,8 +1,5 @@
 import Query from "./Query";
 
-import { ExpressionDimension } from "./Dimension";
-
-import { TYPE } from "metabase/lib/types";
 import * as Q from "metabase/lib/query/query";
 import Q_deprecated, {
     AggregationClause,
@@ -23,21 +20,11 @@ import type {
     OrderBy
 } from "metabase/meta/types/Query";
 import type {
-    FieldMetadata,
-    TableMetadata
+    TableMetadata,
+    DimensionOptions
 } from "metabase/meta/types/Metadata";
 
-import Dimension from "metabase-lib/lib/Dimension";
-
-// TODO: replace this with a list of Dimension objects
-type FieldOptions = {
-    count: 0,
-    dimensions: Dimension[],
-    fks: Array<{
-        field: FieldMetadata,
-        dimensions: Dimension[]
-    }>
-};
+import Dimension, { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 export default class StructuredQuery extends Query {
     isStructured(): boolean {
@@ -137,7 +124,7 @@ export default class StructuredQuery extends Query {
     breakouts(): Breakout[] {
         return Q.getBreakouts(this.query());
     }
-    breakoutOptions(breakout?: any): FieldOptions {
+    breakoutOptions(breakout?: any): DimensionOptions {
         const fieldOptions = {
             count: 0,
             fks: [],
@@ -205,7 +192,7 @@ export default class StructuredQuery extends Query {
     filters(): Filter[] {
         return Q.getFilters(this.query());
     }
-    filterOptions(): FieldOptions {
+    filterOptions(): DimensionOptions {
         return { count: 0, dimensions: [], fks: [] };
     }
     canAddFilter(): boolean {
@@ -299,6 +286,7 @@ export default class StructuredQuery extends Query {
     ) {
         return new StructuredQuery(
             this._question,
+            this._index,
             updateIn(this._datasetQuery, ["query"], query =>
                 updateFunction(query, ...args))
         );
