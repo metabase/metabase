@@ -20,7 +20,8 @@
              [dataset-definitions :as defs]
              [users :refer :all]]
             [toucan.hydrate :as hydrate]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.sync-database.cached-values :as cached-values]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 
@@ -34,6 +35,13 @@
 
 
 ;; Helper Fns
+
+(defn- dissoc-walk [map key]
+  "walk a tree and remove a key from every map."
+  (clojure.walk/prewalk #(if (map? %)
+                           (dissoc % key)
+                           %)
+                        map))
 
 (defn- db-details []
   (match-$ (db)
@@ -81,15 +89,15 @@
 (expect
   #{{:name         (format-name "categories")
      :display_name "Categories"
-     :rows         75
+     :rows         0
      :id           (id :categories)}
     {:name         (format-name "checkins")
      :display_name "Checkins"
-     :rows         1000
+     :rows         0
      :id           (id :checkins)}
     {:name         (format-name "users")
      :display_name "Users"
-     :rows         15
+     :rows         0
      :id           (id :users)}
     {:name         (format-name "venues")
      :display_name "Venues"
@@ -160,13 +168,13 @@
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))])
-            :rows         75
+            :rows         nil ;; this is cleared when field values are cached because there are actually no rows in the test data
             :updated_at   $
             :id           (id :categories)
             :raw_table_id $
             :created_at   $
             :field_values (tu/obj->json->obj (:field_values $$))}))
-  ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
+   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories))))
 
 
 (def ^:private user-last-login-date-strs
@@ -190,147 +198,158 @@
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
-  (merge (table-defaults)
-         (match-$ (Table (id :users))
-           {:schema       "PUBLIC"
-            :name         "USERS"
-            :display_name "Users"
-            :fields       (let [defaults (assoc field-defaults :table_id (id :users))]
-                            [(merge defaults (match-$ (Field (id :users :id))
-                                               {:special_type       "type/PK"
-                                                :name               "ID"
-                                                :display_name       "ID"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/BigInteger"
-                                                :visibility_type    "normal"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $}))
-                             (merge defaults (match-$ (Field (id :users :last_login))
-                                               {:special_type       nil
-                                                :name               "LAST_LOGIN"
-                                                :display_name       "Last Login"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/DateTime"
-                                                :visibility_type    "normal"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $}))
-                             (merge defaults (match-$ (Field (id :users :name))
-                                               {:special_type       "type/Name"
-                                                :name               "NAME"
-                                                :display_name       "Name"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/Text"
-                                                :visibility_type    "normal"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $}))
-                             (merge defaults (match-$ (Field :table_id (id :users), :name "PASSWORD")
-                                               {:special_type       "type/Category"
-                                                :name               "PASSWORD"
-                                                :display_name       "Password"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/Text"
-                                                :visibility_type    "sensitive"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $}))])
-            :rows         15
-            :updated_at   $
-            :id           (id :users)
-            :raw_table_id $
-            :field_values {(keyword (str (id :users :name)))
-                           ["Broen Olujimi"
-                            "Conchúr Tihomir"
-                            "Dwight Gresham"
-                            "Felipinho Asklepios"
-                            "Frans Hevel"
-                            "Kaneonuskatew Eiran"
-                            "Kfir Caj"
-                            "Nils Gotam"
-                            "Plato Yeshua"
-                            "Quentin Sören"
-                            "Rüstem Hebel"
-                            "Shad Ferdynand"
-                            "Simcha Yan"
-                            "Spiros Teofil"
-                            "Szymon Theutrich"]}
-            :created_at   $}))
-  ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
+  (dissoc-walk
+   (merge (table-defaults)
+          (match-$ (Table (id :users))
+            {:schema       "PUBLIC"
+             :name         "USERS"
+             :display_name "Users"
+             :fields       (let [defaults (assoc field-defaults :table_id (id :users))]
+                             [(merge defaults (match-$ (Field (id :users :id))
+                                                {:special_type       "type/PK"
+                                                 :name               "ID"
+                                                 :display_name       "ID"
+                                                 :updated_at         $
+                                                 :id                 $
+                                                 :created_at         $
+                                                 :base_type          "type/BigInteger"
+                                                 :visibility_type    "normal"
+                                                 :fk_target_field_id $
+                                                 :raw_column_id      $
+                                                 :last_analyzed      $}))
+                              (merge defaults (match-$ (Field (id :users :last_login))
+                                                {:special_type       nil
+                                                 :name               "LAST_LOGIN"
+                                                 :display_name       "Last Login"
+                                                 :updated_at         $
+                                                 :id                 $
+                                                 :created_at         $
+                                                 :base_type          "type/DateTime"
+                                                 :visibility_type    "normal"
+                                                 :fk_target_field_id $
+                                                 :raw_column_id      $
+                                                 :last_analyzed      $}))
+                              (merge defaults (match-$ (Field (id :users :name))
+                                                {:special_type       "type/Name"
+                                                 :name               "NAME"
+                                                 :display_name       "Name"
+                                                 :updated_at         $
+                                                 :id                 $
+                                                 :created_at         $
+                                                 :base_type          "type/Text"
+                                                 :visibility_type    "normal"
+                                                 :fk_target_field_id $
+                                                 :raw_column_id      $
+                                                 :last_analyzed      $}))
+                              (merge defaults (match-$ (Field :table_id (id :users), :name "PASSWORD")
+                                                {:special_type       "type/Category"
+                                                 :name               "PASSWORD"
+                                                 :display_name       "Password"
+                                                 :updated_at         $
+                                                 :id                 $
+                                                 :created_at         $
+                                                 :base_type          "type/Text"
+                                                 :visibility_type    "sensitive"
+                                                 :fk_target_field_id $
+                                                 :raw_column_id      $
+                                                 :last_analyzed      $}))])
+             :rows         15
+             :updated_at   $
+             :id           (id :users)
+             :raw_table_id $
+             :field_values {(keyword (str (id :users :name)))
+                            ["Broen Olujimi"
+                             "Conchúr Tihomir"
+                             "Dwight Gresham"
+                             "Felipinho Asklepios"
+                             "Frans Hevel"
+                             "Kaneonuskatew Eiran"
+                             "Kfir Caj"
+                             "Nils Gotam"
+                             "Plato Yeshua"
+                             "Quentin Sören"
+                             "Rüstem Hebel"
+                             "Shad Ferdynand"
+                             "Simcha Yan"
+                             "Spiros Teofil"
+                             "Szymon Theutrich"]}
+             :created_at   $}))
+   :updated_at)
+  (do
+    (cached-values/cache-field-values-for-table! (Table (id :users)))
+    (dissoc-walk
+     ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users)))
+     :updated_at)))
 
 ;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
-  (merge (table-defaults)
-         (match-$ (Table (id :users))
-           {:schema       "PUBLIC"
-            :name         "USERS"
-            :display_name "Users"
-            :fields       (let [defaults (assoc field-defaults :table_id (id :users))]
-                            [(merge defaults (match-$ (Field (id :users :id))
-                                               {:special_type       "type/PK"
-                                                :name               "ID"
-                                                :display_name       "ID"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/BigInteger"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $}))
-                             (merge defaults (match-$ (Field (id :users :last_login))
-                                               {:special_type       nil
-                                                :name               "LAST_LOGIN"
-                                                :display_name       "Last Login"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/DateTime"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $}))
-                             (merge defaults (match-$ (Field (id :users :name))
-                                               {:special_type       "type/Name"
-                                                :name               "NAME"
-                                                :display_name       "Name"
-                                                :updated_at         $
-                                                :id                 $
-                                                :created_at         $
-                                                :base_type          "type/Text"
-                                                :fk_target_field_id $
-                                                :raw_column_id      $
-                                                :last_analyzed      $}))])
-            :rows         15
-            :updated_at   $
-            :id           (id :users)
-            :raw_table_id $
-            :field_values {(keyword (str (id :users :name)))
-                           ["Broen Olujimi"
-                            "Conchúr Tihomir"
-                            "Dwight Gresham"
-                            "Felipinho Asklepios"
-                            "Frans Hevel"
-                            "Kaneonuskatew Eiran"
-                            "Kfir Caj"
-                            "Nils Gotam"
-                            "Plato Yeshua"
-                            "Quentin Sören"
-                            "Rüstem Hebel"
-                            "Shad Ferdynand"
-                            "Simcha Yan"
-                            "Spiros Teofil"
-                            "Szymon Theutrich"]}
-            :created_at   $}))
-  ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users))))
+  (dissoc-walk
+   (merge (table-defaults)
+          (match-$ (Table (id :users))
+            {:schema       "PUBLIC"
+             :name         "USERS"
+             :display_name "Users"
+             :fields       (let [defaults (assoc field-defaults :table_id (id :users))]
+                             [(merge defaults (match-$ (Field (id :users :id))
+                                                {:special_type       "type/PK"
+                                                 :name               "ID"
+                                                 :display_name       "ID"
+                                                 :updated_at         $
+                                                 :id                 $
+                                                 :created_at         $
+                                                 :base_type          "type/BigInteger"
+                                                 :fk_target_field_id $
+                                                 :raw_column_id      $
+                                                 :last_analyzed      $}))
+                              (merge defaults (match-$ (Field (id :users :last_login))
+                                                {:special_type       nil
+                                                 :name               "LAST_LOGIN"
+                                                 :display_name       "Last Login"
+                                                 :updated_at         $
+                                                 :id                 $
+                                                 :created_at         $
+                                                 :base_type          "type/DateTime"
+                                                 :fk_target_field_id $
+                                                 :raw_column_id      $
+                                                 :last_analyzed      $}))
+                              (merge defaults (match-$ (Field (id :users :name))
+                                                {:special_type       "type/Name"
+                                                 :name               "NAME"
+                                                 :display_name       "Name"
+                                                 :updated_at         $
+                                                 :id                 $
+                                                 :created_at         $
+                                                 :base_type          "type/Text"
+                                                 :fk_target_field_id $
+                                                 :raw_column_id      $
+                                                 :last_analyzed      $}))])
+             :rows         15
+             :updated_at   $
+             :id           (id :users)
+             :raw_table_id $
+             :field_values {(keyword (str (id :users :name)))
+                            ["Broen Olujimi"
+                             "Conchúr Tihomir"
+                             "Dwight Gresham"
+                             "Felipinho Asklepios"
+                             "Frans Hevel"
+                             "Kaneonuskatew Eiran"
+                             "Kfir Caj"
+                             "Nils Gotam"
+                             "Plato Yeshua"
+                             "Quentin Sören"
+                             "Rüstem Hebel"
+                             "Shad Ferdynand"
+                             "Simcha Yan"
+                             "Spiros Teofil"
+                             "Szymon Theutrich"]}
+             :created_at   $}))
+   :updated_at)
+  (do (cached-values/cache-field-values-for-table! (Table (id :users)))
+      (dissoc-walk
+       ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users)))
+       :updated_at)))
 
 ;; Check that FK fields belonging to Tables we don't have permissions for don't come back as hydrated `:target`(#3867)
 (expect
@@ -396,63 +415,66 @@
         (test-fun "technical")
         @called)))
 
-
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect
   (let [checkins-user-field (Field (id :checkins :user_id))
         users-id-field      (Field (id :users :id))]
-    [{:origin_id      (:id checkins-user-field)
-      :destination_id (:id users-id-field)
-      :relationship   "Mt1"
-      :origin         (merge (dissoc field-defaults :target)
-                             (match-$ checkins-user-field
-                               {:id                 $
-                                :table_id           $
-                                :raw_column_id      $
-                                :name               "USER_ID"
-                                :display_name       "User ID"
-                                :base_type          "type/Integer"
-                                :preview_display    $
-                                :position           $
-                                :special_type       "type/FK"
-                                :fk_target_field_id $
-                                :created_at         $
-                                :updated_at         $
-                                :last_analyzed      $
-                                :table              (merge (dissoc (table-defaults) :segments :field_values :metrics)
-                                                           (match-$ (Table (id :checkins))
-                                                             {:schema       "PUBLIC"
-                                                              :name         "CHECKINS"
-                                                              :display_name "Checkins"
-                                                              :rows         1000
-                                                              :updated_at   $
-                                                              :id           $
-                                                              :raw_table_id $
-                                                              :created_at   $}))}))
-      :destination    (merge (dissoc field-defaults :target)
-                             (match-$ users-id-field
-                               {:id                 $
-                                :table_id           $
-                                :raw_column_id      $
-                                :name               "ID"
-                                :display_name       "ID"
-                                :base_type          "type/BigInteger"
-                                :preview_display    $
-                                :position           $
-                                :special_type       "type/PK"
-                                :fk_target_field_id $
-                                :created_at         $
-                                :updated_at         $
-                                :last_analyzed      $
-                                :table              (merge (dissoc (table-defaults) :db :segments :field_values :metrics)
-                                                           (match-$ (Table (id :users))
-                                                             {:schema       "PUBLIC"
-                                                              :name         "USERS"
-                                                              :display_name "Users"
-                                                              :rows         15
-                                                              :updated_at   $
-                                                              :id           $
-                                                              :raw_table_id $
-                                                              :created_at   $}))}))}])
-  ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
+    
+    (dissoc-walk
+     [{:origin_id      (:id checkins-user-field)
+       :destination_id (:id users-id-field)
+       :relationship   "Mt1"
+       :origin         (merge (dissoc field-defaults :target)
+                              (match-$ checkins-user-field
+                                {:id                 $
+                                 :table_id           $
+                                 :raw_column_id      $
+                                 :name               "USER_ID"
+                                 :display_name       "User ID"
+                                 :base_type          "type/Integer"
+                                 :preview_display    $
+                                 :position           $
+                                 :special_type       "type/FK"
+                                 :fk_target_field_id $
+                                 :created_at         $
+                                 ;;:updated_at       $
+                                 :last_analyzed      $
+                                 :table              (merge (dissoc (table-defaults) :segments :field_values :metrics)
+                                                            (match-$ (Table (id :checkins))
+                                                              {:schema       "PUBLIC"
+                                                               :name         "CHECKINS"
+                                                               :display_name "Checkins"
+                                                               :rows         nil ;; cache-field-values-for-table! will see this is not real
+                                                               ;;:updated_at   $
+                                                               :id           $
+                                                               :raw_table_id $
+                                                               :created_at   $}))}))
+       :destination    (merge (dissoc field-defaults :target)
+                              (match-$ users-id-field
+                                {:id                 $
+                                 :table_id           $
+                                 :raw_column_id      $
+                                 :name               "ID"
+                                 :display_name       "ID"
+                                 :base_type          "type/BigInteger"
+                                 :preview_display    $
+                                 :position           $
+                                 :special_type       "type/PK"
+                                 :fk_target_field_id $
+                                 :created_at         $
+                                 ;;:updated_at       $
+                                 :last_analyzed      $
+                                 :table              (merge (dissoc (table-defaults) :db :segments :field_values :metrics)
+                                                            (match-$ (Table (id :users))
+                                                              {:schema       "PUBLIC"
+                                                               :name         "USERS"
+                                                               :display_name "Users"
+                                                               :rows         15
+                                                               ;:updated_at  $
+                                                               :id           $
+                                                               :raw_table_id $
+                                                               :created_at   $}))}))}]
+     :updated_at))
+  (do (cached-values/cache-field-values-for-table! (Table (id :users)))
+      (dissoc-walk ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))) :updated_at)))

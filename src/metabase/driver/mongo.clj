@@ -21,7 +21,9 @@
              [conversion :as conv]
              [db :as mdb]
              [query :as mq]]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.sync-database.classify :as classify]
+            [metabase.sync-database.cached-values :as cached-values])
   (:import com.mongodb.DB))
 
 ;;; ## MongoDriver
@@ -148,11 +150,12 @@
                       (describe-table-field field (field parsed-rows))))})))
 
 (defn- analyze-table [table new-field-ids]
+  ;; this is actually for caching values.
   ;; We only care about 1) table counts and 2) field values
-  {:row_count (analyze/table-row-count table)
+  {:row_count (cached-values/table-row-count table)
    :fields    (for [{:keys [id] :as field} (table/fields table)
-                    :when (analyze/test-for-cardinality? field (contains? new-field-ids (:id field)))]
-                (analyze/test:cardinality-and-extract-field-values field {:id id}))})
+                    #_:when #_(classify/test-for-cardinality? field (contains? new-field-ids (:id field)))]
+                (cached-values/extract-field-values field {:id id}))})
 
 (defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)

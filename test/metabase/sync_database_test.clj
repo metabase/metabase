@@ -19,7 +19,10 @@
              [data :refer :all]
              [util :as tu]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.sync-database.cached-values :as cached-values]
+            [clojure.tools.logging :as log]
+            [metabase.sync-database.analyze :as analyze]))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
@@ -57,6 +60,7 @@
                                                         :schema nil}
                                      :dest-column-name "studio"}}
                                   #{}))
+          :field-values-lazy-seq (constantly [])
           :features           (constantly #{:foreign-keys})
           :details-fields     (constantly [])}))
 
@@ -178,6 +182,7 @@
                                        :schema       "default"
                                        :db_id        (u/get-id db)}]]
     (sync-table! table)
+    (cached-values/cache-field-values-for-table! table)
     (table-details (Table (:id table)))))
 
 
@@ -252,6 +257,7 @@
          (get-special-type))
      ;; Calling sync-table! should set the special type again
      (do (sync-table! @venues-table)
+         (cached-values/cache-field-values-for-table! @venues-table)
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
      (do (db/update! Field (id :venues :id), :special_type :type/Latitude)
@@ -259,6 +265,7 @@
      ;; Make sure that sync-table runs set-table-pks-if-needed!
      (do (db/update! Field (id :venues :id), :special_type nil)
          (sync-table! @venues-table)
+         (cached-values/cache-field-values-for-table! @venues-table)
          (get-special-type))]))
 
 ;; ## FK SYNCING
@@ -294,8 +301,8 @@
 
 
 ;;; ## FieldValues Syncing
-
-(let [get-field-values    (fn [] (db/select-one-field :values FieldValues, :field_id (id :venues :price)))
+;; moved to cached_values_test
+#_(let [get-field-values    (fn [] (db/select-one-field :values FieldValues, :field_id (id :venues :price)))
       get-field-values-id (fn [] (db/select-one-id FieldValues, :field_id (id :venues :price)))]
   ;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created
   (expect
@@ -326,15 +333,16 @@
          (get-field-values))]))
 
 
-;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.analyze/low-cardinality-threshold` (currently 300) (#3215) --------------------
+;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.classify/low-cardinality-threshold` (currently 300) (#3215) --------------------
 (defn- insert-range-sql [rang]
-  (str "INSERT INTO blueberries_consumed (num) VALUES "
+  (str "INSERT INTO blueberries_consumed_rating (num) VALUES "
        (str/join ", " (for [n rang]
                         (str "(" n ")")))))
 
 (expect
   false
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
+    (log/error "----------------------------------------------------------------------------------------")
     (binding [mdb/*allow-potentailly-unsafe-connections* true]
       (tt/with-temp Database [db {:engine :h2, :details details}]
         (let [driver (driver/engine->driver :h2)
@@ -342,15 +350,20 @@
               exec!  #(doseq [statement %]
                         (jdbc/execute! spec [statement]))]
           ;; create the `blueberries_consumed` table and insert a 100 values
-          (exec! ["CREATE TABLE blueberries_consumed (num INTEGER NOT NULL);"
+          (exec! ["CREATE TABLE blueberries_consumed_rating (num INTEGER NOT NULL);"
                   (insert-range-sql (range 100))])
           (sync-database! db, :full-sync? true)
+          (cached-values/cache-field-values-for-database! db)
           (let [table-id (db/select-one-id Table :db_id (u/get-id db))
                 field-id (db/select-one-id Field :table_id table-id)]
             ;; field values should exist...
+            (log/error (u/format-color 'cyan "FieldValues for %s: %s"
+                         field-id
+                         (db/select-one-field :values FieldValues :field_id field-id)))
             (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
                        100))
             ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values
-            (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold))))])
+            (exec! [(insert-range-sql (range 100 (+ 100 @(resolve 'metabase.sync-database.classify/low-cardinality-threshold))))])
             (sync-database! db, :full-sync? true)
+            (cached-values/cache-field-values-for-database! db)
             (db/exists? FieldValues :field_id field-id)))))))

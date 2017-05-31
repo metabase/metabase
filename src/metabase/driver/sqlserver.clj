@@ -186,7 +186,6 @@
           :current-datetime-fn       (constantly :%getutcdate)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
-          :field-percent-urls        sql/slow-field-percent-urls
           :prepare-value             (u/drop-first-arg prepare-value)
           :stddev-fn                 (constantly :stdev)
           :string-length-fn          (u/drop-first-arg string-length-fn)

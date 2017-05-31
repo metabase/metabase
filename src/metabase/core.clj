@@ -191,7 +191,7 @@
     (catch Throwable e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
-      (System/exit 1))))
+      #_(System/exit 1))))
 
 ;;; ---------------------------------------- Special Commands ----------------------------------------
 
