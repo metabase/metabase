@@ -1,43 +1,58 @@
 (ns metabase.query-processor.middleware.add-dimension-projections
   "Middleware for adding remapping and other dimension related projections"
-  (:require (metabase.query-processor [interface :as i]
-                                      [util :as qputil])
-            [metabase.models.field :refer [with-dimensions with-values]])
-  (:import [metabase.query_processor.interface RemapExpression]))
+  (:require [metabase.models.field :refer [with-dimensions with-values]]
+            [metabase.query-processor
+             [interface :as i]
+             [util :as qputil]]))
 
-(defn create-expression-col [alias remapped-from]
+(defn- create-remapped-col [col-name remapped-from]
   {:description nil,
    :id nil,
    :table_id nil,
-   :expression-name alias,
+   :expression-name col-name,
    :source :fields,
-   :name alias,
-   :display_name alias,
+   :name col-name,
+   :display_name col-name,
    :target nil,
    :extra_info {}
    :remapped_from remapped-from
    :remapped_to nil})
 
-(defn create-fk-remap-col [fk-field-id dest-field-id remapped-from field-display-name]
+(defn- create-fk-remap-col [fk-field-id dest-field-id remapped-from field-display-name]
   (i/map->FieldPlaceholder {:fk-field-id fk-field-id
                             :field-id dest-field-id
                             :remapped-from remapped-from
                             :remapped-to nil
                             :field-display-name field-display-name}))
 
-(defn row-map-fn [dim-seq]
+(defn- row-map-fn [dim-seq]
   (fn [row]
     (concat row (map (fn [{:keys [col-index xform-fn]}]
                        (xform-fn (nth row col-index)))
                      dim-seq))))
 
-(defn assoc-remapped-to [from->to]
+(defn- assoc-remapped-to [from->to]
   (fn [col]
     (-> col
         (update :remapped_to #(or % (from->to (:name col))))
         (update :remapped_from #(or % nil)))))
 
-(defn add-fk-remaps
+(defn- col->dim-map
+  [idx {{remap-to :name remap-type :type field-id :field_id} :dimensions :as col}]
+  (when field-id
+    (let [remap-from (:name col)]
+      {:col-index idx
+       :from remap-from
+       :to remap-to
+       :xform-fn (zipmap (get-in col [:values :values])
+                         (get-in col [:values :human_readable_values]))
+       :new-column (create-remapped-col remap-to remap-from)
+       :type remap-type})))
+
+(defn- add-fk-remaps
+  "Function that will include FK references needed for external
+  remappings. This will then flow through to the resolver to get the
+  new tables included in the join."
   [query]
   (update-in query [:query :fields]
              (fn [fields]
@@ -49,19 +64,13 @@
                                               field-name
                                               name))))))
 
-(defn col->dim-map
-  [idx {{remap-to :name remap-type :type field-id :field_id} :dimensions :as col}]
-  (when field-id
-    (let [remap-from (:name col)]
-      {:col-index idx
-       :from remap-from
-       :to remap-to
-       :xform-fn (zipmap (get-in col [:values :values])
-                         (get-in col [:values :human_readable_values]))
-       :new-column (create-expression-col remap-to remap-from)
-       :type remap-type})))
-
-(defn remap-results
+(defn- remap-results
+  "Munges results for remapping after the query has been executed. For
+  internal remappings, a new column needs to be added and each row
+  flowing through needs to include the remapped data for the new
+  column. For external remappings, the column information needs to be
+  updated with what it's being remapped from and the user specified
+  name for the remapped column."
   [results]
   (let [indexed-dims (keep-indexed col->dim-map (:cols results))
         internal-only-dims (filter #(= "internal" (:type %)) indexed-dims)
@@ -81,7 +90,13 @@
                               columns)))
         (update :rows #(map remap-fn %)))))
 
-(defn add-remapping [qp]
+(defn add-remapping
+  "Query processor middleware. `QP` is the query processor, returns a
+  function that works on a `QUERY` map. Delgates to `add-fk-remaps`
+  for making remapping changes to the query (before executing the
+  query). Then delegates to `remap-results` to munge the results after
+  query execution."
+  [qp]
   (fn [query]
     (-> query
         add-fk-remaps

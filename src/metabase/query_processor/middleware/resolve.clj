@@ -107,10 +107,9 @@
   (apply merge-with #(or %2 %1) maps))
 
 (defn- field-ph-resolve-field [{:keys [field-id datetime-unit], :as this} field-id->field]
-  (if-let [{:keys [base-type special-type], :as field} (do
-                                                         (some-> (field-id->field field-id)
-                                                                 i/map->Field
-                                                                 (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name]))))]
+  (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
+                                                               i/map->Field
+                                                               (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
     ;; try to resolve the Field with the ones available in field-id->field
     (let [datetime-field? (or (isa? base-type :type/DateTime)
                               (isa? special-type :type/DateTime))]
