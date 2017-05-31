@@ -73,7 +73,9 @@
    :visibility_type    "normal"
    :caveats            nil
    :points_of_interest nil
-   :parent_id          nil})
+   :parent_id          nil
+   :min_value          nil
+   :max_value          nil})
 
 
 ;; ## GET /api/table
@@ -147,7 +149,9 @@
                                                 :base_type          "type/BigInteger"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))
+                                                :last_analyzed      $
+                                                :min_value          1.0
+                                                :max_value          75.0}))
                              (merge defaults (match-$ (Field (id :categories :name))
                                                {:special_type       "type/Name"
                                                 :name               "NAME"
@@ -207,7 +211,9 @@
                                                 :visibility_type    "normal"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))
+                                                :last_analyzed      $
+                                                :min_value          1.0
+                                                :max_value          15.0}))
                              (merge defaults (match-$ (Field (id :users :last_login))
                                                {:special_type       nil
                                                 :name               "LAST_LOGIN"
@@ -286,7 +292,9 @@
                                                 :base_type          "type/BigInteger"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))
+                                                :last_analyzed      $
+                                                :min_value          1.0
+                                                :max_value          15.0}))
                              (merge defaults (match-$ (Field (id :users :last_login))
                                                {:special_type       nil
                                                 :name               "LAST_LOGIN"
@@ -420,6 +428,8 @@
                                 :created_at         $
                                 :updated_at         $
                                 :last_analyzed      $
+                                :min_value          1.0
+                                :max_value          15.0
                                 :table              (merge (dissoc (table-defaults) :segments :field_values :metrics)
                                                            (match-$ (Table (id :checkins))
                                                              {:schema       "PUBLIC"
@@ -445,6 +455,8 @@
                                 :created_at         $
                                 :updated_at         $
                                 :last_analyzed      $
+                                :min_value          1.0
+                                :max_value          15.0
                                 :table              (merge (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                            (match-$ (Table (id :users))
                                                              {:schema       "PUBLIC"

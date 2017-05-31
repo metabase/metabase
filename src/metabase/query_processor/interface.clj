@@ -87,7 +87,9 @@
                     description        :- (s/maybe su/NonBlankString)
                     parent-id          :- (s/maybe su/IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
-                    parent             :- s/Any]
+                    parent             :- s/Any
+                    min-value          :- (s/maybe s/Num)
+                    max-value          :- (s/maybe s/Num)]
   clojure.lang.Named
   (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 
@@ -125,6 +127,11 @@
 ;; wrapper around Field
 (s/defrecord DateTimeField [field :- Field
                             unit  :- DatetimeFieldUnit]
+  clojure.lang.Named
+  (getName [_] (name field)))
+
+(s/defrecord BinnedField [field :- Field
+                          num-bins  :- s/Int]
   clojure.lang.Named
   (getName [_] (name field)))
 
@@ -174,7 +181,8 @@
                                fk-field-id   :- (s/maybe (s/constrained su/IntGreaterThanZero
                                                                         (fn [_] (or (assert-driver-supports :foreign-keys) true))
                                                                         "foreign-keys is not supported by this driver."))
-                               datetime-unit :- (s/maybe (apply s/enum datetime-field-units))])
+                               datetime-unit :- (s/maybe (apply s/enum datetime-field-units))
+                               binning-strategy :- (s/maybe s/Int)])
 
 (s/defrecord AgFieldRef [index :- s/Int])
 

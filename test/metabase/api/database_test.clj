@@ -278,7 +278,9 @@
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
-                                                       :values             $})
+                                                       :values             $
+                                                       :min_value          1.0
+                                                       :max_value          75.0})
                                                     (match-$ (hydrate/hydrate (Field (id :categories :name)) :values)
                                                       {:description        nil
                                                        :table_id           (id :categories)
@@ -300,7 +302,9 @@
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
-                                                       :values             $})]
+                                                       :values             $
+                                                       :min_value          nil
+                                                       :max_value          nil})]
                           :segments                []
                           :metrics                 []
                           :rows                    75
