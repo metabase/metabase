@@ -32,7 +32,7 @@
                                (hsql/call :datetime (hx/literal (u/date->iso-8601 v))))]))))))
 
 (u/strict-extend SQLiteDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:add-fk-sql                (constantly nil) ; TODO - fix me
           :create-db-sql             (constantly nil)

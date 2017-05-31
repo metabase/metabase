@@ -48,7 +48,7 @@
 
 
 (u/strict-extend RedshiftDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:create-db-sql             (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)

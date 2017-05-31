@@ -75,7 +75,7 @@
 
 
 (u/strict-extend SQLServerDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     (u/drop-first-arg drop-db-if-exists-sql)
           :drop-table-if-exists-sql  (u/drop-first-arg drop-table-if-exists-sql)
