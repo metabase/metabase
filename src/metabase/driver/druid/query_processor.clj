@@ -218,7 +218,7 @@
 (defn- ag:filtered  [filtr aggregator] {:type :filtered, :filter filtr, :aggregator aggregator})
 
 (defn- ag:distinct [field output-name]
-  (if (= (:special-type field) :type/DruidHyperUnique)
+  (if (= (:base-type field) :type/DruidHyperUnique)
     {:type      :hyperUnique
      :name      output-name
      :fieldName (->rvalue field)}
