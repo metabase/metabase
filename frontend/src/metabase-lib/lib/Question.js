@@ -148,7 +148,7 @@ export default class Question {
         return this._queries[0];
     }
 
-    datasetQuery(): DatasetQuery {
+    datasetQuery(): DatasetQueryObject {
         return this._card && this._card.dataset_query;
     }
 
@@ -291,11 +291,11 @@ export default class Question {
     /**
      * A user-defined name for the question
      */
-    displayName(): string {
+    displayName(): ?string {
         return this._card && this._card.name;
     }
 
-    id(): string {
+    id(): number {
         return this._card && this._card.id
     }
 

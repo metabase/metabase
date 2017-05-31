@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
@@ -26,31 +28,46 @@ import cx from "classnames";
 import _ from "underscore";
 import moment from "moment";
 
+import Question from "metabase-lib/lib/Question";
+import type  { Database } from "metabase/meta/types/Database";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+
 const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
+type Props = {
+    question: Question,
+    result?: Object,
+    databases?: Database[],
+    tableMetadata?: TableMetadata,
+    tableForeignKeys?: [],
+    tableForeignKeyReferences?: {},
+    setDisplayFn: (any) => void,
+    onUpdateVisualizationSettings: (any) => void,
+    onReplaceAllVisualizationSettings: (any) => void,
+    cellIsClickableFn?: (any) => void,
+    cellClickedFn?: (any) => void,
+    isRunning: boolean,
+    isRunnable: boolean,
+    isAdmin: boolean,
+    isObjectDetail: boolean,
+    isResultDirty: boolean,
+    runQuery: (any) => void,
+    cancelQuery?: (any) => void,
+    className: string
+};
+
 export default class QueryVisualization extends Component {
+    props: Props;
+    state = {
+        lastRunDatasetQuery: null,
+        lastRunParameterValues: null,
+        warnings: null
+    };
+
     constructor(props, context) {
         super(props, context);
         this.state = this._getStateFromProps(props);
     }
-
-    static propTypes = {
-        card: PropTypes.object.isRequired,
-        result: PropTypes.object,
-        databases: PropTypes.array,
-        tableMetadata: PropTypes.object,
-        tableForeignKeys: PropTypes.array,
-        tableForeignKeyReferences: PropTypes.object,
-        setDisplayFn: PropTypes.func.isRequired,
-        onUpdateVisualizationSettings: PropTypes.func.isRequired,
-        onReplaceAllVisualizationSettings: PropTypes.func.isRequired,
-        cellIsClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func,
-        isRunning: PropTypes.bool.isRequired,
-        isRunnable: PropTypes.bool.isRequired,
-        runQuery: PropTypes.func.isRequired,
-        cancelQuery: PropTypes.func
-    };
 
     static defaultProps = {
         // NOTE: this should be more dynamic from the backend, it's set based on the query lang
@@ -59,7 +76,7 @@ export default class QueryVisualization extends Component {
 
     _getStateFromProps(props) {
         return {
-            lastRunDatasetQuery: Utils.copy(props.card.dataset_query),
+            lastRunDatasetQuery: Utils.copy(props.question.datasetQuery()),
             lastRunParameterValues: Utils.copy(props.parameterValues)
         };
     }
@@ -80,8 +97,7 @@ export default class QueryVisualization extends Component {
     }
 
     renderHeader() {
-        const { isObjectDetail, isRunnable, isRunning, isResultDirty, isAdmin, card, result, cancelQuery } = this.props;
-        const isSaved = card.id != null;
+        const { question, isObjectDetail, isRunnable, isRunning, isResultDirty, isAdmin, result, cancelQuery } = this.props;
 
         let runButtonTooltip;
         if (!isResultDirty && result && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
@@ -99,7 +115,7 @@ export default class QueryVisualization extends Component {
                 )
             })
         }
-        if (result && result.data && !isObjectDetail && card.display === "table") {
+        if (result && result.data && !isObjectDetail && question.display() === "table") {
             messages.push({
                 icon: "table2",
                 message: (
@@ -152,17 +168,17 @@ export default class QueryVisualization extends Component {
                     { !isResultDirty && result && !result.error ?
                         <QueryDownloadWidget
                             className="mx1 hide sm-show"
-                            card={card}
+                            card={question.card()}
                             result={result}
                         />
                     : null }
-                    { isSaved && (
-                        (isPublicLinksEnabled && (isAdmin || card.public_uuid)) ||
+                    { question.isSaved() && (
+                        (isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
                         (isEmbeddingEnabled && isAdmin)
                     ) ?
                         <QuestionEmbedWidget
                             className="mx1 hide sm-show"
-                            card={card}
+                            card={question.card()}
                         />
                     : null }
                 </div>
@@ -171,7 +187,7 @@ export default class QueryVisualization extends Component {
     }
 
     render() {
-        const { className, card, databases, isObjectDetail, isRunning, result } = this.props
+        const { className, question, databases, isObjectDetail, isRunning, result } = this.props;
         let viz;
 
         if (!result) {
@@ -181,7 +197,7 @@ export default class QueryVisualization extends Component {
             let error = result.error;
 
             if (error) {
-                viz = <VisualizationError error={error} card={card} duration={result.duration} />
+                viz = <VisualizationError error={error} card={question.card()} duration={result.duration} />
             } else if (result.data) {
                 viz = (
                     <VisualizationResult
