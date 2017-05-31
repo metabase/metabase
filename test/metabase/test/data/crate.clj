@@ -54,7 +54,7 @@
   (constantly {:hosts "localhost:5200"}))
 
 (extend CrateDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:execute-sql!              generic/sequentially-execute-sql!
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)

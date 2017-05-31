@@ -40,7 +40,7 @@
 
 
 (u/strict-extend VerticaDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:create-db-sql             (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)

@@ -51,7 +51,7 @@
 
 
 (u/strict-extend H2Driver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (let [{:keys [execute-sql!], :as mixin} generic/DefaultsMixin]
     (merge mixin
            {:create-db-sql             (constantly create-db-sql)

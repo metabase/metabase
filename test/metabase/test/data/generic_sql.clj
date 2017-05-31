@@ -17,9 +17,9 @@
 
 ;;; ## ------------------------------------------------------------ IGenericDatasetLoader + default impls ------------------------------------------------------------
 
-(defprotocol IGenericSQLDatasetLoader
+(defprotocol IGenericSQLTestExtensions
   "Methods for loading `DatabaseDefinition` in a SQL database.
-   A type that implements `IGenericSQLDatasetLoader` can be made to implement most of `IDriverTestExtensions`
+   A type that implements `IGenericSQLTestExtensions` can be made to implement most of `IDriverTestExtensions`
    by using the `IDriverTestExtensionsMixin`.
 
    Methods marked *Optional* below have a default implementation specified in `DefaultsMixin`."
@@ -259,7 +259,7 @@
 
 
 (def DefaultsMixin
-  "Default implementations for methods marked *Optional* in `IGenericSQLDatasetLoader`."
+  "Default implementations for methods marked *Optional* in `IGenericSQLTestExtensions`."
   {:add-fk-sql                default-add-fk-sql
    :create-db-sql             default-create-db-sql
    :create-table-sql          default-create-table-sql
@@ -316,7 +316,7 @@
     (load-data! driver dbdef tabledef)))
 
 (def IDriverTestExtensionsMixin
-  "Mixin for `IGenericSQLDatasetLoader` types to implement `create-db!` from `IDriverTestExtensions`."
+  "Mixin for `IGenericSQLTestExtensions` types to implement `create-db!` from `IDriverTestExtensions`."
   (merge i/IDriverTestExtensionsDefaultsMixin
          {:create-db! create-db!}))
 

@@ -46,7 +46,7 @@
 
 
 (u/strict-extend PostgresDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     drop-db-if-exists-sql
           :drop-table-if-exists-sql  generic/drop-table-if-exists-cascade-sql
