@@ -266,7 +266,7 @@ class LegacyQueryBuilder extends Component {
                         <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
 
-                    { uiControls.isShowingTemplateTagsEditor &&
+                    { uiControls.isShowingTemplateTagsEditor && query.isNative() &&
                         <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                     }
                 </div>

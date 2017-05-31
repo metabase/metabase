@@ -10,7 +10,7 @@ Before you've even created your guide, this page gives you some links that you c
 
 ![Sections](images/gsg/sections.png)
 
-You can highlight your company's most important dashboard, [metrics](06-segments-and-metrics.md) that you commonly refer to (and the dimensions by which they're most often grouped), and tables and [segments](06-segments-and-metrics.md) that are useful or interesting. There's also a place to write a little bit more about "gotchas" or caveats with your data that your users should know about before they start exploring things and drawing conclusions. Lastly, you can optionally include an email address for your users to contact in case they're still confused about things.
+You can highlight your company's most important dashboard, [metrics](07-segments-and-metrics.md) that you commonly refer to (and the dimensions by which they're most often grouped), and tables and [segments](07-segments-and-metrics.md) that are useful or interesting. There's also a place to write a little bit more about "gotchas" or caveats with your data that your users should know about before they start exploring things and drawing conclusions. Lastly, you can optionally include an email address for your users to contact in case they're still confused about things.
 
 If you click on a section, it'll expand and let you select the items that you want to include in that section:
 

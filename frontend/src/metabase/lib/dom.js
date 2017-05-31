@@ -208,3 +208,18 @@ export function constrainToScreen(element, direction, padding) {
     }
     return false;
 }
+
+export function moveToBack(element) {
+    if (element && element.parentNode) {
+        element.parentNode.insertBefore(
+            element,
+            element.parentNode.firstChild
+        );
+    }
+}
+
+export function moveToFront(element) {
+    if (element && element.parentNode) {
+        element.parentNode.appendChild(element);
+    }
+}

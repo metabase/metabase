@@ -14,8 +14,8 @@ type Props = {
     className?:                 string,
 
     parameters:                 Parameter[],
-    editingParameter:           ?Parameter,
-    parameterValues:            ParameterValues,
+    editingParameter?:          ?Parameter,
+    parameterValues?:           ParameterValues,
 
     isFullscreen?:              boolean,
     isNightMode?:               boolean,
@@ -24,16 +24,18 @@ type Props = {
     vertical?:                  boolean,
     commitImmediately?:         boolean,
 
-    query:                      QueryParams,
+    query?:                     QueryParams,
 
-    setParameterName:           (parameterId: ParameterId, name: string) => void,
-    setParameterValue:          (parameterId: ParameterId, value: string) => void,
-    setParameterDefaultValue:   (parameterId: ParameterId, defaultValue: string) => void,
-    removeParameter:            (parameterId: ParameterId) => void,
-    setEditingParameter:        (parameterId: ParameterId) => void,
+    setParameterName?:          (parameterId: ParameterId, name: string) => void,
+    setParameterValue?:         (parameterId: ParameterId, value: string) => void,
+    setParameterDefaultValue?:  (parameterId: ParameterId, defaultValue: string) => void,
+    removeParameter?:           (parameterId: ParameterId) => void,
+    setEditingParameter?:       (parameterId: ParameterId) => void,
 }
 
-export default class Parameters extends Component<*, Props, *> {
+export default class Parameters extends Component {
+    props: Props;
+
     defaultProps = {
         syncQueryString: false,
         vertical: false,
@@ -43,11 +45,13 @@ export default class Parameters extends Component<*, Props, *> {
     componentWillMount() {
         // sync parameters from URL query string
         const { parameters, setParameterValue, query } = this.props;
-        for (const parameter of parameters) {
-            if (query && query[parameter.slug] != null) {
-                setParameterValue(parameter.id, query[parameter.slug]);
-            } else if (parameter.default != null) {
-                setParameterValue(parameter.id, parameter.default);
+        if (setParameterValue) {
+            for (const parameter of parameters) {
+                if (query && query[parameter.slug] != null) {
+                    setParameterValue(parameter.id, query[parameter.slug]);
+                } else if (parameter.default != null) {
+                    setParameterValue(parameter.id, parameter.default);
+                }
             }
         }
     }
@@ -112,10 +116,10 @@ export default class Parameters extends Component<*, Props, *> {
                         editingParameter={editingParameter}
                         setEditingParameter={setEditingParameter}
 
-                        setName={(name) => setParameterName(parameter.id, name)}
-                        setValue={(value) => setParameterValue(parameter.id, value)}
-                        setDefaultValue={(value) => setParameterDefaultValue(parameter.id, value)}
-                        remove={() => removeParameter(parameter.id)}
+                        setName={setParameterName && ((name) => setParameterName(parameter.id, name))}
+                        setValue={setParameterValue && ((value) => setParameterValue(parameter.id, value))}
+                        setDefaultValue={setParameterDefaultValue && ((value) => setParameterDefaultValue(parameter.id, value))}
+                        remove={removeParameter && (() => removeParameter(parameter.id))}
 
                         commitImmediately={commitImmediately}
                     />

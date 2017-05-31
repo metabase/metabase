@@ -6,21 +6,21 @@ import { findDOMNode } from 'react-dom';
 import FilterWidget from './FilterWidget.jsx';
 
 import type { Filter } from "metabase/meta/types/Query";
-import type { Table } from "metabase/meta/types/Table";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 type Props = {
     filters: Array<Filter>,
-    tableMetadata: Table,
-    removeFilter: (index: number) => void,
-    updateFilter: (index: number, filter: Filter) => void,
-    maxDisplayValues?: bool
+    tableMetadata: TableMetadata,
+    removeFilter?: (index: number) => void,
+    updateFilter?: (index: number, filter: Filter) => void,
+    maxDisplayValues?: number
 };
 
 type State = {
     shouldScroll: bool
 };
 
-export default class FilterList extends Component<*, Props, State> {
+export default class FilterList extends Component {
     props: Props;
     state: State;
 

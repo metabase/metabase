@@ -61,7 +61,7 @@ export const getMetadata = createSelector(
         getNormalizedSegments,
         getNormalizedMetrics
     ],
-    (databases, tables, fields, segments, metrics) => {
+    (databases, tables, fields, segments, metrics): Metadata => {
         const meta = new Metadata();
         meta.databases = copyObjects(meta, databases, Database)
         meta.tables    = copyObjects(meta, tables, Table)
@@ -133,6 +133,7 @@ function copyObjects(metadata, objects, Klass) {
     for (const object of Object.values(objects)) {
         // $FlowFixMe
         copies[object.id] = new Klass(object);
+        // $FlowFixMe
         copies[object.id].metadata = metadata;
     }
     return copies;

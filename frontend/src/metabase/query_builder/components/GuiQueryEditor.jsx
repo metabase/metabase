@@ -23,7 +23,7 @@ import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { TableMetadata, DatabaseMetadata } from "metabase/meta/types/Metadata";
 import type { Children } from 'react';
 
-import QueryWrapper from "metabase-lib/lib/Query";
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
 
 type Props = {
     children?: Children,
@@ -37,7 +37,7 @@ type Props = {
         limit?: boolean
     },
 
-    query: QueryWrapper,
+    query: StructuredQuery,
 
     databases: DatabaseMetadata[],
     tables: TableMetadata[],
@@ -188,7 +188,6 @@ export default class GuiQueryEditor extends Component {
 
             // Placeholder aggregation for showing the add button
             if (supportMultipleAggregations && !query.isBareRows()) {
-                // $FlowFixMe
                 aggregations.push([]);
             }
 
@@ -234,7 +233,6 @@ export default class GuiQueryEditor extends Component {
 
         // Placeholder breakout for showing the add button
         if (query.canAddBreakout() && breakouts.length === 0) {
-            // $FlowFixMe
             breakouts.push(null);
         }
 
@@ -265,7 +263,7 @@ export default class GuiQueryEditor extends Component {
         }
 
         return (
-            <div className={cx("Query-section Query-section-breakout", { disabled: !breakoutList.length > 0 })}>
+            <div className={cx("Query-section Query-section-breakout", { disabled: breakoutList.length === 0 })}>
                 {breakoutList}
             </div>
         );

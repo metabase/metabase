@@ -1,5 +1,3 @@
-/* @flow */
-
 import Query_DEPRECATED from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
 import _ from "underscore";
@@ -24,9 +22,9 @@ type IconName = string;
 export default class Dimension {
     _parent: ?Dimension;
     _args: any[];
-    _metadata: Metadata;
+    _metadata: ?Metadata;
 
-    constructor(parent: ?Dimension, args: any[], metadata: Metadata) {
+    constructor(parent: ?Dimension, args: any[], metadata?: Metadata) {
         this._parent = parent;
         this._args = args;
         this._metadata = metadata || (parent && parent._metadata);
@@ -43,14 +41,14 @@ export default class Dimension {
     }
 
     static isEqual(a: ?Dimension | ConcreteField, b: ?Dimension): boolean {
-        // $FlowFixMe
         let dimensionA: ?Dimension = a instanceof Dimension
             ? a
-            : Dimension.parseMBQL(a);
-        // $FlowFixMe
+            : // $FlowFixMe
+              Dimension.parseMBQL(a, this._metadata);
         let dimensionB: ?Dimension = b instanceof Dimension
             ? b
-            : Dimension.parseMBQL(b);
+            : // $FlowFixMe
+              Dimension.parseMBQL(b, this._metadata);
         return !!dimensionA && !!dimensionB && dimensionA.isEqual(dimensionB);
     }
 
@@ -97,7 +95,7 @@ export default class Dimension {
 
         let otherDimension: ?Dimension = other instanceof Dimension
             ? other
-            : Dimension.parseMBQL(other);
+            : Dimension.parseMBQL(other, this._metadata);
         if (!otherDimension) {
             return false;
         }
@@ -127,7 +125,7 @@ export default class Dimension {
 
         let otherDimension: ?Dimension = other instanceof Dimension
             ? other
-            : Dimension.parseMBQL(other);
+            : Dimension.parseMBQL(other, this._metadata);
 
         const baseDimensionA = this.baseDimension();
         const baseDimensionB = otherDimension && otherDimension.baseDimension();
@@ -153,8 +151,11 @@ export class FieldDimension extends Dimension {
     //         return super.displayName();
     //     }
     // }
-    field() {
-        return this._parent.field();
+    field(): ?Field {
+        if (this._parent instanceof FieldDimension) {
+            return this._parent.field();
+        }
+        return null;
     }
     displayName(): string {
         return Query_DEPRECATED.getFieldPathName(
@@ -171,7 +172,7 @@ export class FieldDimension extends Dimension {
 }
 
 export class FieldIDDimension extends FieldDimension {
-    static parseMBQL(mbql: ConcreteField, metadata: Metadata) {
+    static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata) {
         if (typeof mbql === "number") {
             // DEPRECATED: bare field id
             return new FieldIDDimension(null, [mbql], metadata);
@@ -189,7 +190,7 @@ export class FieldIDDimension extends FieldDimension {
 }
 
 export class FKDimension extends FieldDimension {
-    static parseMBQL(mbql: ConcreteField, metadata: Metadata): ?Dimension {
+    static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata): ?Dimension {
         if (Array.isArray(mbql) && mbqlEq(mbql[0], "fk->")) {
             // $FlowFixMe
             const fkRef: ForeignFieldReference = mbql;
@@ -228,7 +229,7 @@ const isFieldDimension = dimension =>
     dimension instanceof FieldIDDimension || dimension instanceof FKDimension;
 
 export class DatetimeFieldDimension extends FieldDimension {
-    static parseMBQL(mbql: ConcreteField, metadata: Metadata): ?Dimension {
+    static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata): ?Dimension {
         if (Array.isArray(mbql) && mbqlEq(mbql[0], "datetime-field")) {
             const parent = Dimension.parseMBQL(mbql[1], metadata);
             // DEPRECATED: ["datetime-field", id, "of", unit]
@@ -274,7 +275,7 @@ export class DatetimeFieldDimension extends FieldDimension {
 }
 
 export class BinnedDimension extends FieldDimension {
-    static parseMBQL(mbql: ConcreteField, metadata) {
+    static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata) {
         if (Array.isArray(mbql) && mbqlEq(mbql[0], "binning-strategy")) {
             const parent = Dimension.parseMBQL(mbql[1], metadata);
             return new BinnedDimension(parent, mbql.slice(2));
@@ -307,7 +308,7 @@ export class BinnedDimension extends FieldDimension {
 export class ExpressionDimension extends Dimension {
     tag = "Custom";
 
-    static parseMBQL(mbql): ?Dimension {
+    static parseMBQL(mbql: any, metadata?: ?Metadata): ?Dimension {
         if (Array.isArray(mbql) && mbqlEq(mbql[0], "expression")) {
             return new ExpressionDimension(null, mbql.slice(1));
         }

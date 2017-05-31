@@ -111,7 +111,6 @@ export function downgradeNativePermissionsIfNeeded(permissions: GroupsPermission
     }
 }
 
-// $FlowFixMe
 const metadataTableToTableEntityId = (table: Table): TableEntityId => ({ databaseId: table.db_id, schemaName: table.schema, tableId: table.id });
 const entityIdToMetadataTableFields = (entityId: EntityId) => ({
     ...(entityId.databaseId ? {db_id: entityId.databaseId} : {}),
@@ -123,7 +122,6 @@ function inferEntityPermissionValueFromChildTables(permissions: GroupsPermission
     const { databaseId } = entityId;
     const database = metadata && metadata.databases[databaseId];
 
-    // $FlowFixMe
     const entityIdsForDescendantTables: TableEntityId[] = _.chain(database.tables)
         .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
         .map(metadataTableToTableEntityId)
@@ -266,7 +264,7 @@ function diffDatabasePermissions(newPerms: GroupsPermissions, oldPerms: GroupsPe
 
 function diffGroupPermissions(newPerms: GroupsPermissions, oldPerms: GroupsPermissions, groupId: GroupId, metadata: Metadata): GroupPermissionsDiff {
     let groupDiff: GroupPermissionsDiff = { databases: {} };
-    for (const database of Object.values(metadata.databases)) {
+    for (const database of metadata.databasesList()) {
         groupDiff.databases[database.id] = diffDatabasePermissions(newPerms, oldPerms, groupId, database);
         deleteIfEmpty(groupDiff.databases, database.id);
         if (groupDiff.databases[database.id]) {

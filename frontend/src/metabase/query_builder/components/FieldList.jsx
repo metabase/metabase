@@ -1,4 +1,4 @@
-/* @flow */
+/* @flow weak */
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
@@ -13,7 +13,41 @@ import { stripId, singularize } from "metabase/lib/formatting";
 
 import Dimension from "metabase-lib/lib/Dimension";
 
+import type { ConcreteField } from "metabase/meta/types/Query";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+
+// import type { Section } from "metabase/components/AccordianList";
+export type AccordianListItem = {
+}
+
+export type AccordianListSection = {
+    name: string;
+    items: AccordianListItem[]
+}
+
+type Props = {
+    className?: string,
+
+    field: ?ConcreteField,
+    onFieldChange: (field: ConcreteField) => void,
+
+    // HACK: for segments
+    onFilterChange?: (filter: any) => void,
+
+    tableMetadata: TableMetadata,
+    alwaysExpanded?: boolean
+}
+
+type State = {
+    sections: AccordianListSection[]
+}
+
 export default class FieldList extends Component {
+    props: Props;
+    state: State = {
+        sections: []
+    }
+
     static propTypes = {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
         fieldOptions: PropTypes.object.isRequired,
@@ -154,9 +188,9 @@ export default class FieldList extends Component {
     }
 
     onChange = (item) => {
-        if (item.segment) {
+        if (item.segment && this.props.onFilterChange) {
             this.props.onFilterChange(item.value);
-        } else if (this.itemIsSelected(item)) {
+        } else if (this.props.field != null && this.itemIsSelected(item)) {
             // ensure if we select the same item we don't reset datetime-field's unit
             this.props.onFieldChange(this.props.field);
         } else {

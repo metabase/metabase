@@ -1,27 +1,28 @@
-/* @flow */
+/* @flow weak */
 
 import Database from "./metadata/Database";
 import Table from "./metadata/Table";
+import Metadata from "./metadata/Metadata";
 
 import Question from "./Question";
 import Action, { ActionClick } from "./Action";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { Metadata as MetadataObject } from "metabase/meta/types/Metadata";
-
-import Dimension from "metabase-lib/lib/Dimension";
+import type { DatabaseId, DatabaseEngine } from "metabase/meta/types/Database";
 
 /**
  * This is a wrapper around a single MBQL or Native query
  */
 export default class Query {
-    _metadata: MetadataObject;
+    _metadata: Metadata;
     _question: Question;
     _datasetQuery: DatasetQuery;
+    _index: number;
 
-    constructor(question: Question, datasetQuery: DatasetQuery) {
+    constructor(question: Question, index: number, datasetQuery: DatasetQuery) {
         this._metadata = question._metadata;
         this._question = question;
+        this._index = index;
         this._datasetQuery = datasetQuery;
     }
 
@@ -32,13 +33,42 @@ export default class Query {
         return false;
     }
 
-    // datasetQuery
+    question(): Question {
+        return this._question.updateQuery(this._index, this);
+    }
+
+    /**
+     * Returns the dataset_query object underlying this Query
+     */
     datasetQuery(): DatasetQuery {
         return this._datasetQuery;
     }
 
-    dimensions(): Dimension[] {
-        return [];
+    /**
+     * Databases this query could use
+     */
+    databases(): Database[] {
+        return this._metadata.databasesList();
+    }
+
+    /** Tables this query could use, if the database is set
+     */
+    tables(): ?(Table[]) {
+        const database = this.database();
+        return (database && database.tables) || null;
+    }
+
+    databaseId(): ?DatabaseId {
+        // same for both structured and native
+        return this.datasetQuery().database;
+    }
+    database(): ?Database {
+        const databaseId = this.databaseId();
+        return databaseId != null ? this._metadata.databases[databaseId] : null;
+    }
+    engine(): ?DatabaseEngine {
+        const database = this.database();
+        return database && database.engine;
     }
 
 
@@ -78,6 +108,13 @@ export default class Query {
         return false;
     }
 
+    updateDatasetQuery(datasetQuery: DatasetQuery): Query {
+        return this.question().createQuery(datasetQuery, this._index);
+    }
+
+    /**
+     * Helper for updating with functions that expect a DatasetQuery
+     */
     update(fn: (datasetQuery: DatasetQuery) => void) {
         return fn(this.datasetQuery());
     }

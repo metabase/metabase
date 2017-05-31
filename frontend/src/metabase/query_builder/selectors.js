@@ -171,9 +171,9 @@ export const getIsResultDirty = createSelector(
 
 
 export const getQuestion = createSelector(
-    [getMetadata, getCard],
-    (metadata, card) => {
-        return metadata && card && new Question(metadata, card)
+    [getMetadata, getCard, getParameterValues],
+    (metadata, card, parameterValues) => {
+        return metadata && card && new Question(metadata, card, parameterValues)
     }
 )
 

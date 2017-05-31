@@ -17,7 +17,9 @@ import cx from "classnames";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-export default class Funnel extends Component<*, VisualizationProps, *> {
+export default class Funnel extends Component {
+    props: VisualizationProps;
+
     static uiName = "Funnel";
     static identifier = "funnel";
     static iconName = "funnel";
@@ -114,6 +116,7 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
                 <div className={cx(className, "flex flex-column p1")}>
                     <LegendHeader
                         className="flex-no-shrink"
+                        // $FlowFixMe
                         series={series._raw || series}
                         actionButtons={actionButtons}
                         onChangeCardAndRun={onChangeCardAndRun}

@@ -2,10 +2,10 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
+import { KEYCODE_ESCAPE } from "metabase/lib/keyboard";
+
 // keep track of the order popovers were opened so we only close the last one when clicked outside
 const popoverStack = [];
-
-const ESC_KEY = 27;
 
 export default class OnClickOutsideWrapper extends Component {
     static propTypes = {
@@ -30,14 +30,14 @@ export default class OnClickOutsideWrapper extends Component {
                 document.addEventListener("keydown", this._handleKeyPress, false);
             }
             if (this.props.dismissOnClickOutside) {
-                window.addEventListener("click", this._handleClick, true);
+                window.addEventListener("mousedown", this._handleClick, true);
             }
         }, 0);
     }
 
     componentWillUnmount() {
         document.removeEventListener("keydown", this._handleKeyPress, false);
-        window.removeEventListener("click", this._handleClick, true);
+        window.removeEventListener("mousedown", this._handleClick, true);
         clearTimeout(this._timeout);
 
         // remove from the stack after a delay, if it is removed through some other
@@ -57,7 +57,7 @@ export default class OnClickOutsideWrapper extends Component {
     }
 
     _handleKeyPress = (e) => {
-        if (e.keyCode === ESC_KEY) {
+        if (e.keyCode === KEYCODE_ESCAPE) {
             e.preventDefault();
             this._handleDismissal();
         }

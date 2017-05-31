@@ -34,9 +34,11 @@ export type TemplateTag = {
     default?:     string,
 };
 
+export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
+
 export type NativeQuery = {
     query: string,
-    template_tags: { [key: TemplateTagName]: TemplateTag }
+    template_tags: TemplateTags
 };
 
 export type StructuredQuery = {

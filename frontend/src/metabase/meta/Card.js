@@ -98,7 +98,7 @@ export function getParameters(card: ?Card): Parameter[] {
     return getTemplateTagParameters(tags);
 }
 
-export function getParametersWithExtras(card: Card, parameterValues?: ParameterValues) {
+export function getParametersWithExtras(card: Card, parameterValues?: ParameterValues): Parameter[] {
     return getParameters(card).map(parameter => {
         // if we have a parameter value for this parameter, set "value"
         if (parameterValues && parameter.id in parameterValues) {

@@ -22,4 +22,4 @@ In addition to looking at a table's fields, you can also look at its connections
 ---
 
 ## Next: powering up your SQL questions with variables
-Find out [how to use variables in your native SQL queries](12-sql-parameters.md) to create powerful filter widgets and more.
+Find out [how to use variables in your native SQL queries](13-sql-parameters.md) to create powerful filter widgets and more.
