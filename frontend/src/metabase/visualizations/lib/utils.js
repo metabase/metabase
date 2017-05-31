@@ -249,11 +249,12 @@ function wrapMethod(object, name, method) {
         }
     }
 }
+// TODO Atte Keinänen 5/30/17 Extract to metabase-lib card/question logic
+export const cardHasBecomeDirty = (nextCard, previousCard) =>
+    !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) || previousCard.display !== nextCard.display;
 
 export function getCardAfterVisualizationClick(nextCard, previousCard) {
-    const cardIsDirty = !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) || previousCard.display !== nextCard.display;
-
-    if (cardIsDirty) {
+    if (cardHasBecomeDirty(nextCard, previousCard)) {
         const isMultiseriesQuestion = !nextCard.id;
         const alreadyHadLineage = !!previousCard.original_card_id;
 
