@@ -194,7 +194,7 @@
         ;; Otherwise fetch + resolve the Fields in question
         (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
                                           :visibility_type [:not= "sensitive"]
-                                          :id [:in field-ids]))
+                                          :id              [:in field-ids]))
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
                                                           (i/map->FieldPlaceholder {:field-id parent-id})))))]
@@ -207,7 +207,11 @@
            ;; Recurse in case any new (nested) unresolved fields were found.
            (recur (dec max-iterations))))))))
 
-(defn- fk-field-ids->info [source-table-id fk-field-ids]
+(defn- fk-field-ids->info
+  "Given a SOURCE-TABLE-ID and collection of FK-FIELD-IDS, return a sequence of maps containing IDs and identifiers for those FK fields and their target tables and fields.
+   FK-FIELD-IDS are IDs of fields that belong to the source table. For example, SOURCE-TABLE-ID might be 'checkins' and FK-FIELD-IDS might have the IDs for 'checkins.user_id'
+   and the like."
+  [source-table-id fk-field-ids]
   (when (seq fk-field-ids)
     (db/query {:select    [[:source-fk.name      :source-field-name]
                            [:source-fk.id        :source-field-id]
@@ -219,8 +223,8 @@
                :from      [[field/Field :source-fk]]
                :left-join [[field/Field :target-pk] [:= :source-fk.fk_target_field_id :target-pk.id]
                            [Table :target-table]    [:= :target-pk.table_id :target-table.id]]
-               :where     [:and [:in :source-fk.id      (set fk-field-ids)]
-                                [:=  :source-fk.table_id     source-table-id]
+               :where     [:and [:in :source-fk.id       (set fk-field-ids)]
+                                [:=  :source-fk.table_id source-table-id]
                                 (mdb/isa :source-fk.special_type :type/FK)]})))
 
 (defn- fk-field-ids->joined-tables

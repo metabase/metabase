@@ -134,15 +134,18 @@
                        (expression-aggregate-field-info ag)
                        (aggregate-field-info ag))))))
 
-
 (defn- generic-info-for-missing-key
-  "Return a set of bare-bones metadata for a Field named K when all else fails."
-  [k]
-  {:base-type          :type/*
+  "Return a set of bare-bones metadata for a Field named K when all else fails.
+   Scan the INITIAL-VALUES of K in an attempt to determine the `base-type`."
+  [k & [initial-values]]
+  {:base-type          (if (seq initial-values)
+                         (driver/values->base-type initial-values)
+                         :type/*)
    :preview-display    true
    :special-type       nil
    :field-name         k
    :field-display-name k})
+
 
 (defn- info-for-duplicate-field
   "The Clojure JDBC driver automatically appends suffixes like `count_2` to duplicate columns if multiple columns come back with the same name;
@@ -159,14 +162,14 @@
 (defn- info-for-missing-key
   "Metadata for a field named K, which we weren't able to resolve normally.
    If possible, we work around This defaults to generic information "
-  [fields k]
+  [fields k initial-values]
   (or (info-for-duplicate-field fields k)
-      (generic-info-for-missing-key k)))
+      (generic-info-for-missing-key k initial-values)))
 
 (defn- add-unknown-fields-if-needed
   "When create info maps for any fields we didn't expect to come back from the query.
    Ideally, this should never happen, but on the off chance it does we still want to return it in the results."
-  [actual-keys fields]
+  [actual-keys initial-rows fields]
   {:pre [(set? actual-keys) (every? keyword? actual-keys)]}
   (let [expected-keys (u/prog1 (set (map :field-name fields))
                         (assert (every? keyword? <>)))
@@ -175,7 +178,7 @@
       (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
                   missing-keys expected-keys actual-keys)))
     (concat fields (for [k missing-keys]
-                     (info-for-missing-key fields k)))))
+                     (info-for-missing-key fields k (map k initial-rows))))))
 
 (defn- convert-field-to-expected-format
   "Rename keys, provide default values, etc. for FIELD so it is in the format expected by the frontend."
@@ -238,14 +241,14 @@
 (defn- resolve-sort-and-format-columns
   "Collect the Fields referenced in QUERY, sort them according to the rules at the top
    of this page, format them as expected by the frontend, and return the results."
-  [query result-keys]
+  [query result-keys initial-rows]
   {:pre [(set? result-keys)]}
   (when (seq result-keys)
     (->> (collect-fields (dissoc query :expressions))
          (map qualify-field-name)
          (add-aggregate-fields-if-needed query)
          (map (u/rpartial update :field-name keyword))
-         (add-unknown-fields-if-needed result-keys)
+         (add-unknown-fields-if-needed result-keys initial-rows)
          (sort/sort-fields query)
          (map convert-field-to-expected-format)
          (filter (comp (partial contains? result-keys) :name))
@@ -261,7 +264,7 @@
   [query {:keys [columns rows], :as results}]
   (let [row-maps (for [row rows]
                    (zipmap columns row))
-        cols    (resolve-sort-and-format-columns (:query query) (set columns))
+        cols    (resolve-sort-and-format-columns (:query query) (set columns) (take 10 row-maps))
         columns (mapv :name cols)]
     (assoc results
       :cols    (vec (for [col cols]
