@@ -120,7 +120,12 @@
   `(run-query* (query ~table ~@forms)))
 
 
-(defn format-name [nm]
+(defn format-name
+  "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the
+   driver's implementation of `format-name`.
+   (Most databases use the default implementation of `identity`; H2 uses `clojure.string/upper-case`.)
+   This function DOES NOT quote the identifier."
+  [nm]
   (i/format-name *driver* (name nm)))
 
 (defn- get-table-id-or-explode [db-id table-name]
