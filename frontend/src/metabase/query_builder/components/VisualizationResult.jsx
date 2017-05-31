@@ -6,8 +6,15 @@ import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetai
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
+import type { DatasetQuery } from "metabase/meta/types/Card";
 
-const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result, ...props}) => {
+type Props = {
+    question: Question,
+    isObjectDetail: boolean,
+    lastRunDatasetQuery: DatasetQuery,
+    result?: Object
+}
+const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, result, ...props}: Props) => {
     const noResults = datasetContainsNoResults(result.data);
 
     if (isObjectDetail) {
@@ -29,7 +36,7 @@ const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result,
         // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
         // BUT the last executed "dataset_query" (to ensure data matches the query)
         let vizCard = {
-            ...card,
+            ...question.card(),
             dataset_query: lastRunDatasetQuery
         };
         return <Visualization

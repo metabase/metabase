@@ -31,6 +31,8 @@ import moment from "moment";
 import Question from "metabase-lib/lib/Question";
 import type  { Database } from "metabase/meta/types/Database";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { ParameterValues } from "metabase/meta/types/Parameter";
 
 const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
@@ -56,13 +58,15 @@ type Props = {
     className: string
 };
 
+type State = {
+    lastRunDatasetQuery: DatasetQuery,
+    lastRunParameterValues: ParameterValues,
+    warnings: string[]
+}
+
 export default class QueryVisualization extends Component {
     props: Props;
-    state = {
-        lastRunDatasetQuery: null,
-        lastRunParameterValues: null,
-        warnings: null
-    };
+    state: State;
 
     constructor(props, context) {
         super(props, context);
@@ -94,7 +98,7 @@ export default class QueryVisualization extends Component {
 
     runQuery = () => {
         this.props.runQuery(null, { ignoreCache: true });
-    }
+    };
 
     renderHeader() {
         const { question, isObjectDetail, isRunnable, isRunning, isResultDirty, isAdmin, result, cancelQuery } = this.props;
@@ -242,4 +246,4 @@ const VisualizationEmptyState = ({showTutorialLink}) =>
     <div className="flex full layout-centered text-grey-1 flex-column">
         <h1>If you give me some data I can show you something cool. Run a Query!</h1>
         { showTutorialLink && <Link to={Urls.question(null, "?tutorial")} className="link cursor-pointer my2">How do I use this thing?</Link> }
-    </div>
+    </div>;
