@@ -1,12 +1,12 @@
 ## What are you having trouble with?
 
-### [Logging in?](/troubleshooting/loggingin)
+### [Logging in?](loggingin.md)
 
-### [Running Metabase on Docker?](/troubleshooting/docker)
+### [Running Metabase on Docker?](docker.md)
 
 
-### [Connecting to databases and data warehouses with Metabase?](/troubleshooting/datawarehouse)
+### [Connecting to databases and data warehouses with Metabase?](datawarehouse.md)
 
-### [Incorrect results due to Timezones](/troubleshooting/timezones)
+### [Incorrect results due to Timezones](timezones.md)
 
-### [I think I found a bug?](/troubleshooting/bugs)
+### [I think I found a bug?](bugs.md)
