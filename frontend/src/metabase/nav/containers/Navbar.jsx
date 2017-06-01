@@ -91,7 +91,7 @@ export default class Navbar extends Component {
                     <ul className="sm-ml4 flex flex-full text-strong">
                         <AdminNavItem name="Settings"    path="/admin/settings"     currentPath={this.props.path} />
                         <AdminNavItem name="People"      path="/admin/people"       currentPath={this.props.path} />
-                        <AdminNavItem name="Data Model"  path="/admin/datamodel"    currentPath={this.props.path} />
+                        <AdminNavItem name="Data Model"  path="/admin/dm"    currentPath={this.props.path} />
                         <AdminNavItem name="Databases"   path="/admin/databases"    currentPath={this.props.path} />
                         <AdminNavItem name="Permissions" path="/admin/permissions"  currentPath={this.props.path} />
                     </ul>

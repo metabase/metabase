@@ -106,6 +106,14 @@ export const getDatabasesList = createSelector(
     (databases, ids) => ids.map(id => databases[id])
 );
 
+export const getDatabaseById = createSelector(
+    [
+        getDatabases,
+        (_, id) => id
+    ],
+    (databases, id) => databases[id]
+)
+
 export const getTables = createSelector([getMetadata], ({ tables }) => tables);
 
 export const getFields = createSelector([getMetadata], ({ fields }) => fields);
@@ -113,6 +121,47 @@ export const getMetrics = createSelector(
     [getMetadata],
     ({ metrics }) => metrics
 );
+
+export const getField = createSelector(
+    [getFields, (_, id) => Number(id)],
+    (fields, id) => fields[id]
+)
+
+export const getTableById = createSelector(
+    [getTables, (_, id) => Number(id)],
+    (tables, id) => tables[id]
+)
+
+export const getFieldsByTableId = createSelector(
+    [getFields, (_, id) => Number(id)],
+    (fields, tableId) => Object.values(fields).filter(field => field.table_id === tableId)
+)
+
+export const getTablesByDatabaseId = createSelector(
+    [
+        getTables,
+        (_, id) => Number(id)
+    ],
+    (tables, databaseId) => {
+        const tablesForDB = Object.values(tables).filter(table =>
+           table.db_id === databaseId
+        )
+        return tablesForDB
+    }
+)
+
+export const getMetricsByDatabaseId = createSelector(
+    [
+        getMetrics,
+        (_, id) => Number(id)
+    ],
+    (metrics, databaseId) => {
+        const metricsForDB = Object.values(metrics).filter(metric =>
+           metric.database_id === databaseId
+        )
+        return metricsForDB
+    }
+)
 
 export const getSegments = createSelector(
     [getMetadata],
