@@ -6,9 +6,11 @@
             [compojure.core :refer [POST]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase
+             [middleware :as middleware]
              [query-processor :as qp]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.models
              [database :refer [Database]]
              [query :as query]]
@@ -124,5 +126,5 @@
       (qp/dataset-query (dissoc query :constraints)
         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
-
-(api/define-routes)
+(api/define-routes
+  (middleware/streaming-json-response (route-fn-name 'POST "/")))

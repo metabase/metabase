@@ -4,14 +4,10 @@ import { createSelector } from 'reselect';
 
 import { push } from "react-router-redux";
 
-import Metadata from "metabase/meta/metadata/Metadata";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import type { DatabaseId } from "metabase/meta/types/Database";
-import type { SchemaName } from "metabase/meta/types/Table";
-import type { Group, GroupsPermissions } from "metabase/meta/types/Permissions";
-
 import { isDefaultGroup, isAdminGroup, isMetaBotGroup } from "metabase/lib/groups";
+
 import _ from "underscore";
 import { getIn, assocIn } from "icepick";
 
@@ -28,16 +24,19 @@ import {
     inferAndUpdateEntityPermissions
 } from "metabase/lib/permissions";
 
+import { getMeta } from "metabase/selectors/metadata";
+
+import Metadata from "metabase/meta/metadata/Metadata";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { SchemaName } from "metabase/meta/types/Table";
+import type { Group, GroupsPermissions } from "metabase/meta/types/Permissions";
+
 const getPermissions = (state) => state.admin.permissions.permissions;
 const getOriginalPermissions = (state) => state.admin.permissions.originalPermissions;
 
 const getDatabaseId = (state, props) => props.params.databaseId ? parseInt(props.params.databaseId) : null
 const getSchemaName = (state, props) => props.params.schemaName
 
-const getMeta = createSelector(
-    [(state) => state.admin.permissions.databases],
-    (databases) => databases && new Metadata(databases)
-);
 
 // reorder groups to be in this order
 const SPECIAL_GROUP_FILTERS = [isAdminGroup, isDefaultGroup, isMetaBotGroup].reverse();

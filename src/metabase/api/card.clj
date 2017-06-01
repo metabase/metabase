@@ -5,6 +5,7 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [events :as events]
+             [middleware :as middleware]
              [public-settings :as public-settings]
              [query-processor :as qp]
              [util :as u]]
@@ -12,6 +13,7 @@
              [common :as api]
              [dataset :as dataset-api]
              [label :as label-api]]
+            [metabase.api.common.internal :refer [route-fn-name]]
             [metabase.models
              [card :as card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -467,5 +469,5 @@
   (api/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
-
-(api/define-routes)
+(api/define-routes
+  (middleware/streaming-json-response (route-fn-name 'POST "/:card-id/query")))

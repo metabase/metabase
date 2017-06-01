@@ -5,12 +5,14 @@
             [metabase.util :as u]))
 
 (defn- check-query-permissions* [query]
-  ;; TODO - should we do anything if there is no *current-user-id* (for something like a pulse?)
   (u/prog1 query
     (when *current-user-id*
       (perms/check-query-permissions *current-user-id* query))))
 
 (defn check-query-permissions
-  "Middleware that check that the current user has permissions to run the current query."
+  "Middleware that check that the current user has permissions to run the current query.
+   This only applies if `*current-user-id*` is bound. In other cases, like when running
+   public Cards or sending pulses, permissions need to be checked separately before allowing
+   the relevant objects to be create (e.g., when saving a new Pulse or 'publishing' a Card)."
   [qp]
   (comp qp check-query-permissions*))

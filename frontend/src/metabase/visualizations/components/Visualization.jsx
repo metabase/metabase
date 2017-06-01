@@ -84,7 +84,7 @@ type Props = {
 
 type State = {
     series: ?Series,
-    CardVisualization: ?(Component<*, VisualizationSettings, *> & {
+    CardVisualization: ?(Component<void, VisualizationSettings, void> & {
         checkRenderable: (any, any) => void,
         noHeader: boolean
     }),
@@ -98,7 +98,7 @@ type State = {
 }
 
 @ExplicitSize
-export default class Visualization extends Component<*, Props, State> {
+export default class Visualization extends Component {
     state: State;
     props: Props;
 
@@ -338,7 +338,7 @@ export default class Visualization extends Component<*, Props, State> {
                 : isDashboard && noResults ?
                     <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
                         <Tooltip tooltip="No results!" isEnabled={small}>
-                            <img src="/app/img/no_results.svg" />
+                            <img src="app/assets/img/no_results.svg" />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
@@ -403,12 +403,14 @@ export default class Visualization extends Component<*, Props, State> {
                     series={series}
                     hovered={hovered}
                 />
-                <ChartClickActions
-                    clicked={clicked}
-                    clickActions={clickActions}
-                    onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
-                    onClose={() => this.setState({ clicked: null })}
-                />
+                { this.props.onChangeCardAndRun &&
+                    <ChartClickActions
+                        clicked={clicked}
+                        clickActions={clickActions}
+                        onChangeCardAndRun={this.handleOnChangeCardAndRun}
+                        onClose={() => this.setState({ clicked: null })}
+                    />
+                }
             </div>
         );
     }

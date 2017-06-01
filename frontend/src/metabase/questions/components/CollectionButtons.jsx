@@ -10,12 +10,12 @@ const COLLECTION_ICON_SIZE = 64;
 const COLLECTION_BOX_CLASSES = "relative block p4 hover-parent hover--visibility cursor-pointer text-centered transition-background";
 
 const CollectionButtons = ({ collections, isAdmin, push }) =>
-    <ol className="flex flex-wrap">
+    <ol className="Grid Grid--gutters Grid--fit small-Grid--1of3 md-Grid--1of4 large-Grid--guttersLg">
         { collections
             .map(collection => <CollectionButton {...collection} push={push} isAdmin={isAdmin} />)
             .concat(isAdmin ? [<NewCollectionButton push={push} />] : [])
             .map((element, index) =>
-                <li key={index} className="mr4 mb4">
+                <li key={index} className="Grid-cell">
                     {element}
                 </li>
             )
@@ -40,8 +40,6 @@ class CollectionButton extends Component {
                 <div
                     className={cx(COLLECTION_BOX_CLASSES, 'text-white-hover')}
                     style={{
-                        width: 290,
-                        height: 180,
                         borderRadius: 10,
                         backgroundColor: this.state.hovered ? color : '#fafafa'
                     }}
@@ -71,8 +69,6 @@ const NewCollectionButton = ({ push }) =>
     <div
         className={cx(COLLECTION_BOX_CLASSES, 'bg-brand-hover', 'text-brand', 'text-white-hover', 'bg-grey-0')}
         style={{
-            width: 290,
-            height: 180,
             borderRadius: 10
         }}
         onClick={() => push(`/collections/create`)}

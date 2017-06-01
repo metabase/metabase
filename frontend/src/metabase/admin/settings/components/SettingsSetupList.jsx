@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { Link } from "react-router";
 import Icon from "metabase/components/Icon.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import { SetupApi } from "metabase/services";
 
 const TaskList = ({tasks}) =>
   <ol>
@@ -57,11 +58,11 @@ export default class SettingsSetupList extends Component {
     }
 
     async componentWillMount() {
-        let response = await fetch("/api/setup/admin_checklist", { credentials: 'same-origin' });
-        if (response.status !== 200) {
-            this.setState({ error: await response.json() })
-        } else {
-            this.setState({ tasks: await response.json() });
+        try {
+            const tasks = await SetupApi.admin_checklist();
+            this.setState({ tasks: tasks });
+        } catch (e) {
+            this.setState({ error: e });
         }
     }
 

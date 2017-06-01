@@ -1,4 +1,3 @@
-import {getMetadata} from "metabase/selectors/metadata";
 // Database 2 contains an imaginary multi-schema database (like Redshift for instance)
 // Database 3 contains an imaginary database which doesn't have any schemas (like MySQL)
 // (A single-schema database was originally Database 1 but it got removed as testing against it felt redundant)
@@ -92,4 +91,3 @@ export const normalizedMetadata = {
     "databasesList": [2, 3]
 };
 
-export const denormalizedMetadata = getMetadata({metadata: normalizedMetadata});

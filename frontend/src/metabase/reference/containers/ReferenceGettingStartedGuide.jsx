@@ -285,7 +285,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             collapsedTitle="Do you have any commonly referenced metrics?"
                             collapsedIcon="ruler"
                             linkMessage="Learn how to define a metric"
-                            link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-metric"
+                            link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-metric"
                             expand={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null, important_fields: null})}
                         >
                             <div className="my2">
@@ -338,7 +338,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             collapsedTitle="Do you have any commonly referenced segments or tables?"
                             collapsedIcon="table2"
                             linkMessage="Learn how to create a segment"
-                            link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-segment"
+                            link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-segment"
                             expand={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                         >
                             <div>

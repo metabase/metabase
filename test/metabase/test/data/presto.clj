@@ -21,7 +21,7 @@
                                  (s/upper-case (s/replace (name env-var) #"-" "_")))))))
 
 
-;;; IDatasetLoader implementation
+;;; IDriverTestExtensions implementation
 
 (defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host (get-env-var :host)
@@ -92,11 +92,11 @@
         (execute-presto-query! details (insert-sql dbdef tabledef batch))))))
 
 
-;;; IDatasetLoader implementation
+;;; IDriverTestExtensions implementation
 
 (u/strict-extend PrestoDriver
-  i/IDatasetLoader
-  (merge i/IDatasetLoaderDefaultsMixin
+  i/IDriverTestExtensions
+  (merge i/IDriverTestExtensionsDefaultsMixin
          {:engine                             (constantly :presto)
           :database->connection-details       (u/drop-first-arg database->connection-details)
           :create-db!                         (u/drop-first-arg create-db!)

@@ -5,7 +5,7 @@ import React from "react";
 import {
     summarize,
     pivot,
-    getFieldClauseFromCol
+    getFieldRefFromColumn
 } from "metabase/qb/lib/actions";
 import * as Card from "metabase/meta/Card";
 import { isCategory } from "metabase/lib/schema_metadata";
@@ -40,7 +40,7 @@ export default (
             card: () =>
                 pivot(
                     summarize(card, ["count"], tableMetadata),
-                    getFieldClauseFromCol(column),
+                    getFieldRefFromColumn(column),
                     tableMetadata
                 )
         }

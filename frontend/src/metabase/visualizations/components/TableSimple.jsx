@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { getTableCellClickedObject } from "metabase/visualizations/lib/table";
+import { getTableCellClickedObject, isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -32,7 +32,8 @@ type State = {
 }
 
 @ExplicitSize
-export default class TableSimple extends Component<*, Props, State> {
+export default class TableSimple extends Component {
+    props: Props;
     state: State;
 
     constructor(props: Props) {
@@ -97,7 +98,14 @@ export default class TableSimple extends Component<*, Props, State> {
                             <thead ref="header">
                                 <tr>
                                     {cols.map((col, colIndex) =>
-                                        <th key={colIndex} className={cx("TableInteractive-headerCellData cellData text-brand-hover", { "TableInteractive-headerCellData--sorted": sortColumn === colIndex })} onClick={() => this.setSort(colIndex)}>
+                                        <th
+                                            key={colIndex}
+                                            className={cx("TableInteractive-headerCellData cellData text-brand-hover", {
+                                                "TableInteractive-headerCellData--sorted": sortColumn === colIndex,
+                                                "text-right": isColumnRightAligned(col)
+                                            })}
+                                            onClick={() => this.setSort(colIndex)}
+                                        >
                                             <div className="relative">
                                                 <Icon
                                                     name={sortDescending ? "chevrondown" : "chevronup"}
@@ -120,14 +128,16 @@ export default class TableSimple extends Component<*, Props, State> {
                                             <td
                                                 key={columnIndex}
                                                 style={{ whiteSpace: "nowrap" }}
-                                                className={cx("px1 border-bottom", {
-                                                    "cursor-pointer text-brand-hover": isClickable
-                                                })}
-                                                onClick={isClickable && ((e) => {
-                                                    onVisualizationClick({ ...clicked, element: e.currentTarget });
-                                                })}
+                                                className={cx("px1 border-bottom", { "text-right": isColumnRightAligned(cols[columnIndex]) })}
                                             >
-                                                { cell == null ? "-" : formatValue(cell, { column: cols[columnIndex], jsx: true }) }
+                                                <span
+                                                    className={cx({ "cursor-pointer text-brand-hover": isClickable })}
+                                                    onClick={isClickable && ((e) => {
+                                                        onVisualizationClick({ ...clicked, element: e.currentTarget });
+                                                    })}
+                                                >
+                                                    { cell == null ? "-" : formatValue(cell, { column: cols[columnIndex], jsx: true }) }
+                                                </span>
                                             </td>
                                         );
                                     })}

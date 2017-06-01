@@ -246,6 +246,7 @@
   (sample-data/add-sample-dataset!)
   (Database :is_sample true))
 
+
 ;;; ------------------------------------------------------------ PUT /api/database/:id ------------------------------------------------------------
 
 (api/defendpoint PUT "/:id"

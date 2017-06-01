@@ -57,10 +57,8 @@ export type ClickActionPopoverProps = {
     onClose: () => void,
 }
 
-// type Visualization = Component<*, VisualizationProps, *>;
-
-// $FlowFixMe
-export type Series = { card: Card, data: DatasetData }[] & { _raw: Series }
+export type SingleSeries = { card: Card, data: DatasetData };
+export type Series = SingleSeries[] & { _raw: Series }
 
 export type VisualizationProps = {
     series: Series,

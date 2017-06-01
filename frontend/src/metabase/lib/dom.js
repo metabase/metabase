@@ -216,3 +216,18 @@ export function forceRedraw(domNode) {
     domNode.offsetHeight;
     domNode.style.display='';
 }
+
+export function moveToBack(element) {
+    if (element && element.parentNode) {
+        element.parentNode.insertBefore(
+            element,
+            element.parentNode.firstChild
+        );
+    }
+}
+
+export function moveToFront(element) {
+    if (element && element.parentNode) {
+        element.parentNode.appendChild(element);
+    }
+}

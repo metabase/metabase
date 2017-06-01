@@ -44,7 +44,7 @@ type Props = {
     refreshPeriod:          ?number,
     refreshElapsed:         ?number,
 
-    parameters:             React$Element<*>[],
+    parametersWidget:       React$Element<*>,
 
     addCardToDashboard:     ({ dashId: DashCardId, cardId: CardId }) => void,
     archiveDashboard:        (dashboardId: DashboardId) => void,
@@ -58,7 +58,7 @@ type Props = {
     addParameter:           (option: ParameterOption) => Promise<Parameter>,
     setEditingParameter:    (parameterId: ?ParameterId) => void,
 
-    onEditingChange:        () => void,
+    onEditingChange:        (isEditing: boolean) => void,
     onRefreshPeriodChange:  (?number) => void,
     onNightModeChange:      (boolean) => void,
     onFullscreenChange:     (boolean) => void,
@@ -70,8 +70,9 @@ type State = {
     modal: null|"parameters",
 }
 
-export default class DashboardHeader extends Component<*, Props, State> {
-    state = {
+export default class DashboardHeader extends Component {
+    props: Props;
+    state: State = {
         modal: null,
     };
 
@@ -174,7 +175,7 @@ export default class DashboardHeader extends Component<*, Props, State> {
     }
 
     getHeaderButtons() {
-        const { dashboard, parameters, isEditing, isFullscreen, isEditable, isAdmin } = this.props;
+        const { dashboard, parametersWidget, isEditing, isFullscreen, isEditable, isAdmin } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
         const canEdit = isEditable && !!dashboard;
 
@@ -183,8 +184,8 @@ export default class DashboardHeader extends Component<*, Props, State> {
 
         const buttons = [];
 
-        if (isFullscreen && parameters) {
-            buttons.push(parameters);
+        if (isFullscreen && parametersWidget) {
+            buttons.push(parametersWidget);
         }
 
         if (isEditing) {

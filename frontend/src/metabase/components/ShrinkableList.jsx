@@ -17,7 +17,8 @@ type State = {
 };
 
 @ExplicitSize
-export default class ShrinkableList extends Component<*, Props, State> {
+export default class ShrinkableList extends Component {
+    props: Props;
     state: State = {
         isShrunk: null
     }
