@@ -71,8 +71,8 @@
   [id]
   (let [field (api/read-check Field id)]
     (if-not (field-should-have-field-values? field)
-      {:values {} :human_readable_values {}}
-      (create-field-values-if-needed! field))))
+      {:values []}
+      {:values (create-field-values-if-needed! field)})))
 
 
 ;; TODO - not sure this is used anymore

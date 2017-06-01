@@ -104,11 +104,24 @@
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
+(defn with-normal-values
+  "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
+  {:batched-hydrate :normal_values}
+  [fields]
+  (let [field-ids        (set (for [{:keys [id visibility_type]} fields
+                                    :when (= :normal visibility_type)]
+                                id))
+        id->field-values (u/key-by :field_id (when (seq field-ids)
+                                               (db/select [FieldValues :id :human_readable_values :values :field_id]
+                                                 :field_id [:in field-ids])))]
+    (for [field fields]
+      (assoc field :values (get id->field-values (:id field) [])))))
+
 (defn with-dimensions
   "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
   {:batched-hydrate :dimensions}
   [fields]
-  (let [field-ids        (set (map :id fields))
+  (let [field-ids      (set (map :id fields))
         id->dimensions (u/key-by :field_id (when (seq field-ids)
                                                (db/select [Dimensions :id :name :field_id :human_readable_field_id :type]
                                                  :field_id [:in field-ids])))]

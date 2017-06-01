@@ -149,22 +149,17 @@
 ;; ## GET /api/field/:id/values
 ;; Should return something useful for a field that has special_type :type/Category
 (expect
-  {:field_id              (id :venues :price)
-   :human_readable_values {}
-   :values                [1 2 3 4]
-   :id                    (field-values-id :venues :price)}
+  {:values (mapv vector [1 2 3 4])}
   (do
     ;; clear out existing human_readable_values in case they're set
     (db/update! FieldValues (field-values-id :venues :price)
       :human_readable_values nil)
     ;; now update the values via the API
-    (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
-        (dissoc :created_at :updated_at))))
+    ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))))
 
 ;; Should return nothing for a field whose special_type is *not* :type/Category
 (expect
-  {:values                {}
-   :human_readable_values {}}
+  {:values []}
   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
 
 
@@ -173,36 +168,26 @@
 ;; Check that we can set values
 (expect
   [{:status "success"}
-   {:field_id              (id :venues :price)
-    :human_readable_values {:1 "$"
-                            :2 "$$"
-                            :3 "$$$"
-                            :4 "$$$$"}
-    :values                [1 2 3 4]
-    :id                    (field-values-id :venues :price)}]
+   {:values (mapv (fn [idx]
+                    (vector idx [(str idx) (apply str (repeat idx \$))]))
+                  [1 2 3 4])}]
   [((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
                                                                                                                :2 "$$"
                                                                                                                :3 "$$$"
                                                                                                                :4 "$$$$"}})
-   (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
-       (dissoc :created_at :updated_at))])
+   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
 
 ;; Check that we can unset values
 (expect
   [{:status "success"}
-   (tu/match-$ (FieldValues :field_id (id :venues :price))
-     {:field_id              (id :venues :price)
-      :human_readable_values {}
-      :values                [1 2 3 4]
-      :id                    (field-values-id :venues :price)})]
+   {:values (mapv vector [1 2 3 4])}]
   [(do (db/update! FieldValues (:id (field->field-values :venues :price))
          :human_readable_values {:1 "$" ; make sure they're set
                                  :2 "$$"
                                  :3 "$$$"
                                  :4 "$$$$"})
        ((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {}}))
-   (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
-       (dissoc :created_at :updated_at))])
+   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
 
 ;; Check that we get an error if we call value_map_update on something that isn't a category
 (expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."

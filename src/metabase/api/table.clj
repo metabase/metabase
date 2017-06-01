@@ -11,6 +11,7 @@
              [card :refer [Card]]
              [database :as database]
              [field :refer [Field]]
+             [field-values :as fv]
              [interface :as mi]
              [table :as table :refer [Table]]]
             [metabase.util.schema :as su]
@@ -79,6 +80,14 @@
         (sync-database/sync-table! updated-table))
       updated-table)))
 
+(defn- format-fields-for-response [resp]
+  (update resp :fields
+          (fn [fields]
+            (map (fn [{:keys [values] :as field}]
+                   (if (seq values)
+                     (update field :values fv/field-values->pairs)
+                     field))
+                 fields))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -89,8 +98,9 @@
   [id include_sensitive_fields]
   {include_sensitive_fields (s/maybe su/BooleanString)}
   (-> (api/read-check Table id)
-      (hydrate :db [:fields :target] :field_values :segments :metrics)
+      (hydrate :db [:fields :target :normal_values :dimensions] :segments :metrics)
       (m/dissoc-in [:db :details])
+      format-fields-for-response
       (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
                              ;; If someone passes include_sensitive_fields return hydrated :fields as-is
                              identity

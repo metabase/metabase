@@ -59,6 +59,14 @@
       :values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field))
     (create-field-values! field)))
 
+(defn field-values->pairs
+  "Returns a list of pairs (or single element vectors if there are no
+  human_readable_values) for the given `FIELD-VALUES` instance"
+  [{:keys [values human_readable_values] :as field-values}]
+  (if (seq human_readable_values)
+    (map vector values human_readable_values)
+    (map vector values)))
+
 (defn create-field-values-if-needed!
   "Create `FieldValues` for a `Field` if they *should* exist but don't already exist.
    Returns the existing or newly created `FieldValues` for `Field`."
@@ -66,8 +74,9 @@
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (or (FieldValues :field_id field-id)
-        (create-field-values! field human-readable-values))))
+    (field-values->pairs
+     (or (db/select-one [FieldValues :values :human_readable_values] :field_id field-id)
+         (create-field-values! field human-readable-values)))))
 
 (defn save-field-values!
   "Save the `FieldValues` for FIELD-ID, creating them if needed, otherwise updating them."
