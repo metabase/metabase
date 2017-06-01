@@ -180,7 +180,6 @@ export default class CardHeader extends Component {
             isNew,
             isDirty,
             isEditing,
-            databases,
             uiControls,
             toggleTemplateTagsEditor,
             isShowingDataReference,

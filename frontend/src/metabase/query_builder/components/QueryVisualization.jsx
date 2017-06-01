@@ -98,7 +98,7 @@ export default class QueryVisualization extends Component {
 
     runQuery = () => {
         const { question, originalQuestion } = this.props;
-        this.props.runQuery(question.card(), { originalQuestion, ignoreCache: true });
+        this.props.runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card(), ignoreCache: true });
     };
 
     renderHeader() {

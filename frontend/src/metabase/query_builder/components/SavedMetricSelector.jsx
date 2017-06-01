@@ -50,7 +50,7 @@ export default class SavedMetricSelector extends Component {
         MetabaseApi.dataset(this.props.question.datasetQuery()).then((queryResult) => {
             // NOTE: This currently kind of enforces the recommended display type
             // which is not optimal but a working temporary hack
-            this.props.question.card().display = getChartTypeForCard(this.props.question.card(), queryResult);
+            this.props.question.card().display = getChartTypeForCard(this.props.question.card(), [queryResult]);
             this.setState({currentResult: queryResult});
         });
     };
@@ -117,7 +117,7 @@ export default class SavedMetricSelector extends Component {
         const { onClose, question, originalQuestion } = this.props;
         onClose();
         // Show the result in normal QB view
-        setTimeout(() => this.props.runQuery(question, { originalQuestion, ignoreCache: true }), 100);
+        setTimeout(() => this.props.runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card(), ignoreCache: true }), 100);
     };
 
     onClose = () => {

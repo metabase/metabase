@@ -81,10 +81,10 @@ const mapStateToProps = (state, props) => {
         fromUrl:                   props.location.query.from,
 
         question:                  getQuestion(state),
-        originalQuestion:          getOriginalQuestion(state),
         mode:                      getMode(state),
 
         originalCard:              getOriginalCard(state),
+        originalQuestion:          getOriginalQuestion(state),
         lastRunCard:               getLastRunCard(state),
 
         parameterValues:           getParameterValues(state),

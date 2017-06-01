@@ -142,18 +142,20 @@ export default class NativeQueryEditor extends Component {
     }
 
     handleKeyDown = (e: KeyboardEvent) => {
+        const { query, runQuery, question, originalQuestion } = this.props;
+
         const ENTER_KEY = 13;
-        if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && this.props.query.canRun()) {
+        if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && query.canRun()) {
             const { query } = this.props;
             if (e.altKey) {
                 // run just the selected text, if any
                 const selectedText = this._editor.getSelectedText();
                 if (selectedText) {
                     const temporaryCard = query.updateQueryText(selectedText).question().card();
-                    this.props.runQuery(temporaryCard, { shouldUpdateUrl: false });
+                    runQuery(temporaryCard, { originalCard: originalQuestion && originalQuestion.card(), shouldUpdateUrl: false });
                 }
             } else {
-                this.props.runQuery();
+                runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card() });
             }
         }
     }

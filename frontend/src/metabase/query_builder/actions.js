@@ -20,10 +20,10 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
-import { applyParameters, cardIsEquivalent } from "metabase/meta/Card";
+import { cardIsEquivalent } from "metabase/meta/Card";
 
-import { getParameters, getTableMetadata, getNativeDatabases, getQuestion } from "./selectors";
-import {getDatabases, getTables, getDatabasesList, getMetadata} from "metabase/selectors/metadata";
+import { getTableMetadata, getNativeDatabases, getQuestion } from "./selectors";
+import { getDatabases, getTables, getDatabasesList, getMetadata } from "metabase/selectors/metadata";
 
 import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
 
@@ -555,6 +555,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
+        // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
         const { qb: { card, queryResult, uiControls } } = getState();
         const tableMetadata = getTableMetadata(getState());
 
@@ -818,7 +819,9 @@ export const runQuery = createThunkAction(RUN_QUERY, (card: Card, {
     parameterValues
 } : RunQuerySettings = {}) => {
     return async (dispatch, getState) => {
-        console.log(card)
+        // NOTE Atte Keinänen 6/1/17: We decided with Tom that the QB actions should now take raw card objects
+        // as parameters and wrap them with Question class when useful
+        console.log('runQuery', card);
         const question = new Question(getMetadata(getState()), card);
         const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
 
@@ -841,20 +844,17 @@ export const runQuery = createThunkAction(RUN_QUERY, (card: Card, {
         //     }, {cancelled: cancelQueryDeferred.promise}).then(onQuerySuccess, onQueryError);
         // }
 
-        // make our api call
-        function onQuerySuccess(queryResult) {
-            dispatch(queryCompleted(question.card(), queryResult));
-        }
-
         const startTime = new Date();
-        function onQueryError(error) {
-            dispatch(queryErrored(startTime, error));
-        }
-
         const cancelQueryDeferred = defer();
-        console.log(question);
+        const queries = question.metrics();
 
-        MetabaseApi.dataset(question.datasetQuery(), { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+        // Note that triggering cancelQueryDeferred will cancel every distinct query API call
+        const getQueryResult = (query) =>
+            MetabaseApi.dataset(query.datasetQuery(), { cancelled: cancelQueryDeferred.promise });
+
+        Promise.all(queries.map(getQueryResult))
+            .then((queryResults) => dispatch(queryCompleted(question.card(), queryResults)))
+            .catch((error) => dispatch(queryErrored(startTime, error)));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", question.datasetQuery().type);
 
@@ -866,7 +866,11 @@ export const runQuery = createThunkAction(RUN_QUERY, (card: Card, {
     };
 });
 
-export const getChartTypeForCard = (card, queryResult) => {
+export const getChartTypeForCard = (card, queryResults) => {
+    // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
+    // This method seems to has been a candidate for a rewrite anyway
+    const queryResult = queryResults[0];
+
     let cardDisplay = card.display;
 
     // try a little logic to pick a smart display for the data
@@ -894,12 +898,13 @@ export const getChartTypeForCard = (card, queryResult) => {
 };
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResult) => {
+export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResults) => {
     return async (dispatch, getState) => {
+        console.log('queryCompleted', queryResults);
         return {
             card,
-            cardDisplay: getChartTypeForCard(card, queryResult),
-            queryResult
+            cardDisplay: getChartTypeForCard(card, queryResults),
+            queryResults
         }
     };
 });
@@ -932,6 +937,7 @@ export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
 export const CELL_CLICKED = "metabase/qb/CELL_CLICKED";
 export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnIndex, filter) => {
     return async (dispatch, getState) => {
+        // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
         const { qb: { card, queryResult } } = getState();
         if (!queryResult) return false;
 
@@ -998,6 +1004,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
     return async (dispatch, getState) => {
+        // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
         const { qb: { card, queryResult } } = getState();
 
         if (!queryResult || !fk) return false;
@@ -1026,6 +1033,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
 export const LOAD_OBJECT_DETAIL_FK_REFERENCES = "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL_FK_REFERENCES, () => {
     return async (dispatch, getState) => {
+        // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
         const { qb: { card, queryResult, tableForeignKeys } } = getState();
 
         function getObjectDetailIdValue(data) {
