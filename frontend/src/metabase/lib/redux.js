@@ -110,6 +110,36 @@ export const updateData = async ({
     }
 }
 
+// helper for working with normalizr
+// merge each entity from newEntities with existing entity, if any
+// this ensures partial entities don't overwrite existing entities with more properties
+export function mergeEntities(entities, newEntities) {
+    entities = { ...entities };
+    for (const id in newEntities) {
+        if (id in entities) {
+            entities[id] = { ...entities[id], ...newEntities[id] };
+        } else {
+            entities[id] = newEntities[id];
+        }
+    }
+    return entities;
+}
+
+// helper for working with normalizr
+// reducer that merges payload.entities
+export function handleEntities(actionPattern, entityType, reducer) {
+    return (state, action) => {
+        if (state === undefined) {
+            state = {};
+        }
+        let entities = getIn(action, ["payload", "entities", entityType]);
+        if (actionPattern.test(action.type) && entities) {
+            state = mergeEntities(state, entities);
+        }
+        return reducer(state, action);
+    }
+}
+
 // for filtering non-DOM props from redux-form field objects
 // https://github.com/erikras/redux-form/issues/1441
 export const formDomOnlyProps = ({

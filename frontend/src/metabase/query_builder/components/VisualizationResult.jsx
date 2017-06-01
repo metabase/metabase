@@ -7,7 +7,7 @@ import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 
-const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result, ...props}) => {
+const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, navigateToNewCardInsideQB, result, ...props}) => {
     const noResults = datasetContainsNoResults(result.data);
 
     if (isObjectDetail) {
@@ -34,7 +34,7 @@ const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result,
         };
         return <Visualization
                   series={[{ card: vizCard, data: result.data }]}
-                  onChangeCardAndRun={props.setCardAndRun}
+                  onChangeCardAndRun={navigateToNewCardInsideQB}
                   isEditing={true}
                   // Table:
                   {...props}
@@ -43,11 +43,11 @@ const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result,
 }
 
 VisualizationResult.propTypes = {
-    card:                   PropTypes.object.isRequired,
-    isObjectDetail:         PropTypes.bool.isRequired,
-    lastRunDatasetQuery:    PropTypes.object.isRequired,
-    result:                 PropTypes.object.isRequired,
-    setCardAndRun:          PropTypes.func,
+    card:                     PropTypes.object.isRequired,
+    isObjectDetail:           PropTypes.bool.isRequired,
+    lastRunDatasetQuery:      PropTypes.object.isRequired,
+    result:                   PropTypes.object.isRequired,
+    navigateToNewCardInsideQB:  PropTypes.func,
 }
 
 export default VisualizationResult;
