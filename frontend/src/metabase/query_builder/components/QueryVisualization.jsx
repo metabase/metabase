@@ -44,8 +44,6 @@ export default class QueryVisualization extends Component {
         setDisplayFn: PropTypes.func.isRequired,
         onUpdateVisualizationSettings: PropTypes.func.isRequired,
         onReplaceAllVisualizationSettings: PropTypes.func.isRequired,
-        cellIsClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func,
         isRunning: PropTypes.bool.isRequired,
         isRunnable: PropTypes.bool.isRequired,
         runQuery: PropTypes.func.isRequired,

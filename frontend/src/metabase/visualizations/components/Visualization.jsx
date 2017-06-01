@@ -68,10 +68,6 @@ type Props = {
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
 
-    // used by TableInteractive
-    cellIsClickableFn: (number, number) => boolean,
-    cellClickedFn: (number, number) => void,
-
     // misc
     onUpdateWarnings: (string[]) => void,
     onOpenChartSettings: () => void,
@@ -435,6 +431,7 @@ const extractRemappedColumns = (data) => {
         row.filter((value, colIndex) => {
             const col = cols[colIndex];
             if (col.remapped_from != null) {
+                cols[col.remapped_from_index].remapped_to_column = col;
                 cols[col.remapped_from_index].remapping.set(
                     row[col.remapped_from_index],
                     row[colIndex]

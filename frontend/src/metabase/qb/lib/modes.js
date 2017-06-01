@@ -1,11 +1,12 @@
 /* @flow weak */
 
-import Q from "metabase/lib/query"; // legacy query lib
-import { isDate, isAddress, isCategory } from "metabase/lib/schema_metadata";
+import Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
+import { isDate, isAddress, isCategory, isPK } from "metabase/lib/schema_metadata";
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
 import Utils from "metabase/lib/utils";
 
+import ObjectMode from "../components/modes/ObjectMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
 import TimeseriesMode from "../components/modes/TimeseriesMode";
@@ -22,6 +23,8 @@ import type {
     ClickActionProps,
     ClickObject
 } from "metabase/meta/types/Visualization";
+
+import _ from "underscore";
 
 export function getMode(
     card: CardObject,
@@ -43,9 +46,24 @@ export function getMode(
 
         const aggregations = Query.getAggregations(query);
         const breakouts = Query.getBreakouts(query);
+        const filters = Query.getFilters(query);
 
         if (aggregations.length === 0 && breakouts.length === 0) {
-            return SegmentMode;
+            const isPKFilter = (filter) => {
+                if (Array.isArray(filter) && filter[0] === "=") {
+                    const fieldId = Q_DEPRECATED.getFieldTargetId(filter[1]);
+                    const field = tableMetadata.fields_lookup[fieldId];
+                    if (field && isPK(field) && field.table.id === query.source_table) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            if (_.any(filters, isPKFilter)) {
+                return ObjectMode;
+            } else {
+                return SegmentMode;
+            }
         }
         if (aggregations.length > 0 && breakouts.length === 0) {
             return MetricMode;
@@ -53,7 +71,7 @@ export function getMode(
         if (aggregations.length > 0 && breakouts.length > 0) {
             let breakoutFields = breakouts.map(
                 breakout =>
-                    (Q.getFieldTarget(breakout, tableMetadata) || {}).field
+                    (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {}).field
             );
             if (
                 (breakoutFields.length === 1 && isDate(breakoutFields[0])) ||

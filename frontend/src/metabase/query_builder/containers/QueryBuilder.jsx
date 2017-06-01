@@ -53,17 +53,6 @@ import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
 
-function cellIsClickable(queryResult, rowIndex, columnIndex) {
-    if (!queryResult) return false;
-
-    // lookup the coldef and cell value of the cell we are curious about
-    var coldef = queryResult.data.cols[columnIndex];
-
-    if (!coldef || !coldef.special_type) return false;
-
-    return (coldef.table_id != null && (isPK(coldef.special_type) || (isFK(coldef.special_type) && coldef.target)));
-}
-
 function autocompleteResults(card, prefix) {
     let databaseId = card && card.dataset_query && card.dataset_query.database;
     let apiCall = MetabaseApi.db_autocomplete_suggestions({
@@ -115,7 +104,6 @@ const mapStateToProps = (state, props) => {
 
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
-        cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
     }
 }
 

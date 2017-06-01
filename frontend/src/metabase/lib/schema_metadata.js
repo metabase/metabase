@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isa, isFK, TYPE } from "metabase/lib/types";
+import { isa, isFK as isFKType, isPK as isPKType, TYPE } from "metabase/lib/types";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -121,6 +121,10 @@ export const isCountry      = (field) => isa(field && field.special_type, TYPE.C
 export const isCoordinate   = (field) => isa(field && field.special_type, TYPE.Coordinate);
 export const isLatitude     = (field) => isa(field && field.special_type, TYPE.Latitude);
 export const isLongitude    = (field) => isa(field && field.special_type, TYPE.Longitude);
+
+export const isFK           = (field) => isFKType(field && field.special_type);
+export const isPK           = (field) => isPKType(field && field.special_type);
+export const isID           = (field) => isFK(field) || isPK(field);
 
 // operator argument constructors:
 
@@ -550,7 +554,7 @@ export function computeMetadataStrength(table) {
         table.fields.forEach(function(field) {
             score(field.description);
             score(field.special_type);
-            if (isFK(field.special_type)) {
+            if (isFK(field)) {
                 score(field.target);
             }
         });

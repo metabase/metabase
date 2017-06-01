@@ -11,6 +11,7 @@ import AreaChart   from "./visualizations/AreaChart.jsx";
 import MapViz      from "./visualizations/Map.jsx";
 import ScatterPlot from "./visualizations/ScatterPlot.jsx";
 import Funnel      from "./visualizations/Funnel.jsx";
+import ObjectDetail from "./visualizations/ObjectDetail.jsx";
 
 import _ from "underscore";
 
@@ -83,5 +84,6 @@ registerVisualization(ScatterPlot);
 registerVisualization(PieChart);
 registerVisualization(MapViz);
 registerVisualization(Funnel);
+registerVisualization(ObjectDetail);
 
 export default visualizations;

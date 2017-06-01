@@ -116,10 +116,8 @@ export function getXValues(datas, chartType) {
     return xValues;
 }
 
-export function getFriendlyName(col) {
-    let name = col.display_name || col.name;
-    let friendlyName = FRIENDLY_NAME_MAP[name.toLowerCase().trim()];
-    return friendlyName || name;
+export function getFriendlyName(column) {
+    return column.display_name || FRIENDLY_NAME_MAP[column.name.toLowerCase().trim()] || column.name;
 }
 
 export function getCardColors(card) {

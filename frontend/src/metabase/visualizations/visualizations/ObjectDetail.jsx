@@ -1,28 +1,34 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+/* @flow weak */
 
-import ExpandableString from './ExpandableString.jsx';
+import React, { Component } from "react";
+
+import ExpandableString from 'metabase/query_builder/components/ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
-import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
-import { TYPE, isa, isPK } from "metabase/lib/types";
+
+import { isID, isPK, foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
+import { TYPE, isa } from "metabase/lib/types";
 import { singularize, inflect } from 'inflection';
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isQueryable } from "metabase/lib/table";
 
 import cx from "classnames";
+import _ from "underscore";
 
-export default class QueryVisualizationObjectDetailTable extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.cellClicked = this.cellClicked.bind(this);
-        this.clickedForeignKey = this.clickedForeignKey.bind(this);
-    }
+import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-    static propTypes = {
-        data: PropTypes.object
-    };
+type Props = VisualizationProps;
+
+export default class ObjectDetail extends Component {
+    props: Props;
+
+    static uiName = "Object Detail";
+    static identifier = "object";
+    static iconName = "document";
+    static noun = "object";
+
+    static hidden = true;
 
     componentDidMount() {
         // load up FK references
@@ -39,12 +45,9 @@ export default class QueryVisualizationObjectDetailTable extends Component {
     getIdValue() {
         if (!this.props.data) return null;
 
-        for (var i=0; i < this.props.data.cols.length; i++) {
-            var coldef = this.props.data.cols[i];
-            if (isPK(coldef.special_type)) {
-                return this.props.data.rows[0][i];
-            }
-        }
+        const { data: { cols, rows }} = this.props;
+        const columnIndex = _.findIndex(cols, col => isPK(col));
+        return rows[0][columnIndex];
     }
 
     rowGetter(rowIndex) {
@@ -52,74 +55,79 @@ export default class QueryVisualizationObjectDetailTable extends Component {
         return [this.props.data.cols[rowIndex], this.props.data.rows[0][rowIndex]];
     }
 
-    cellClicked(rowIndex, columnIndex) {
-        this.props.cellClickedFn(rowIndex, columnIndex);
+    foreignKeyClicked = (fk) => {
+        this.props.followForeignKey(fk);
     }
 
-    cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        // TODO: should we be casting all values toString()?
-        // Check out the expected format of each row above in the rowGetter() function
-        var row = this.rowGetter(rowIndex),
-            key = 'cl'+rowIndex+'_'+cellDataKey;
+    cellRenderer(column, value, isColumn) {
+        const { onVisualizationClick, visualizationIsClickable } = this.props;
 
-        if (cellDataKey === 'field') {
-            var colValue = (row[0] !== null) ? (row[0].display_name.toString() || row[0].name.toString()) : null;
-            return (<div key={key}>{colValue}</div>);
+        let cellValue;
+        let clicked;
+        let isLink;
+
+        if (isColumn) {
+            cellValue = (column !== null) ? formatColumn(column) : null;
+            clicked = {
+                column
+            };
+            isLink = false;
         } else {
-
-            var cellValue;
-            if (row[1] === null || row[1] === undefined || (typeof row[1] === "string" && row[1].length === 0)) {
+            if (value === null || value === undefined || value === "") {
                 cellValue = (<span className="text-grey-2">Empty</span>);
-            } else if (isa(row[0].special_type, TYPE.SerializedJSON)) {
-                let formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
+            } else if (isa(value.special_type, TYPE.SerializedJSON)) {
+                let formattedJson = JSON.stringify(JSON.parse(value), null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
-            } else if (typeof row[1] === "object") {
-                let formattedJson = JSON.stringify(row[1], null, 2);
+            } else if (typeof value === "object") {
+                let formattedJson = JSON.stringify(value, null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
             } else {
-                cellValue = formatValue(row[1], { column: row[0], jsx: true });
+                cellValue = formatValue(value, { column: column, jsx: true });
                 if (typeof cellValue === "string") {
                     cellValue = (<ExpandableString str={cellValue} length={140}></ExpandableString>);
                 }
             }
-
-            // NOTE: that the values to our function call look off, but that's because we are un-pivoting them
-            if (this.props.cellIsClickableFn(0, rowIndex)) {
-                return (<div key={key}><a className="link" onClick={this.cellClicked.bind(null, 0, rowIndex)}>{cellValue}</a></div>);
-            } else {
-                return (<div key={key}>{cellValue}</div>);
-            }
+            clicked = {
+                column,
+                value
+            };
+            isLink = isID(column);
         }
-    }
 
-    clickedForeignKey(fk) {
-        this.props.followForeignKeyFn(fk);
+        const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+
+        return (
+            <div>
+                <span
+                    className={cx({ "cursor-pointer": isClickable, "link": isClickable && isLink })}
+                    onClick={isClickable && ((e) => {
+                        onVisualizationClick({ ...clicked, element: e.currentTarget });
+                    })}
+                >
+                    {cellValue}
+                </span>
+            </div>
+        );
     }
 
     renderDetailsTable() {
-        var rows = [];
-        for (var i=0; i < this.props.data.cols.length; i++) {
-            var row = this.rowGetter(i),
-                keyCell = this.cellRenderer(row[0], 'field', row, i, 0),
-                valueCell = this.cellRenderer(row[1], 'value', row, i, 0);
-
-            rows[i] = (
-                <div className="Grid mb2" key={i}>
-                    <div className="Grid-cell">{keyCell}</div>
-                    <div style={{wordWrap: 'break-word'}} className="Grid-cell text-bold text-dark">{valueCell}</div>
+        const { data: { cols, rows }} = this.props;
+        return cols.map((column, columnIndex) =>
+            <div className="Grid mb2" key={columnIndex}>
+                <div className="Grid-cell">
+                    {this.cellRenderer(column, rows[0][columnIndex], true)}
                 </div>
-            );
-        }
-
-        return rows;
+                <div style={{wordWrap: 'break-word'}} className="Grid-cell text-bold text-dark">
+                    {this.cellRenderer(column, rows[0][columnIndex], false)}
+                </div>
+            </div>
+        )
     }
 
     renderRelationships() {
         if (!this.props.tableForeignKeys) return false;
 
-        var tableForeignKeys = this.props.tableForeignKeys.filter(function (fk) {
-            return isQueryable(fk.origin.table);
-        });
+        const tableForeignKeys = this.props.tableForeignKeys.filter(fk => isQueryable(fk.origin.table));
 
         if (tableForeignKeys.length < 1) {
             return (<p className="my4 text-centered">No relationships found.</p>);
@@ -127,17 +135,15 @@ export default class QueryVisualizationObjectDetailTable extends Component {
 
         const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
 
-        var component = this;
-        var relationships = tableForeignKeys.sort(function(a, b) {
-            return a.origin.table.display_name.localeCompare(b.origin.table.display_name);
-        }).map(function(fk) {
-            var fkCount = (
-                <LoadingSpinner size={25} />
-            ),
-                fkCountValue = 0,
-                fkClickable = false;
+        const component = this;
+        const relationships = tableForeignKeys.sort((a, b) =>
+            a.origin.table.display_name.localeCompare(b.origin.table.display_name)
+        ).map((fk) => {
+            let fkCount = (<LoadingSpinner size={25} />)
+            let fkCountValue = 0;
+            let fkClickable = false;
             if (component.props.tableForeignKeyReferences) {
-                var fkCountInfo = component.props.tableForeignKeyReferences[fk.origin.id];
+                const fkCountInfo = component.props.tableForeignKeyReferences[fk.origin.id];
                 if (fkCountInfo && fkCountInfo["status"] === 1) {
                     fkCount = (<span>{fkCountInfo["value"]}</span>);
 
@@ -147,37 +153,30 @@ export default class QueryVisualizationObjectDetailTable extends Component {
                     }
                 }
             }
-            var chevron = (
+            const chevron = (
                 <IconBorder className="flex-align-right">
                     <Icon name='chevronright' size={10} />
                 </IconBorder>
             );
 
-            var relationName = inflect(fk.origin.table.display_name, fkCountValue);
+            const relationName = inflect(fk.origin.table.display_name, fkCountValue);
             const via = (fkCountsByTable[fk.origin.table.id] > 1) ? (<span className="text-grey-3 text-normal"> via {fk.origin.display_name}</span>) : null;
 
-            var info = (
+            const info = (
                 <div>
                     <h2>{fkCount}</h2>
                     <h5 className="block">{relationName}{via}</h5>
                  </div>
             );
-            var fkReference;
-            var referenceClasses = cx({
-                'flex': true,
-                'align-center': true,
-                'my2': true,
-                'pb2': true,
-                'border-bottom': true,
-                'text-brand-hover': fkClickable,
-                'cursor-pointer': fkClickable,
-                'text-dark': fkClickable,
+            let fkReference;
+            const referenceClasses = cx('flex align-center my2 pb2 border-bottom', {
+                'text-brand-hover cursor-pointer text-dark': fkClickable,
                 'text-grey-3': !fkClickable
             });
 
             if (fkClickable) {
                 fkReference = (
-                    <div className={referenceClasses} key={fk.id} onClick={component.clickedForeignKey.bind(null, fk)}>
+                    <div className={referenceClasses} key={fk.id} onClick={component.foreignKeyClicked.bind(null, fk)}>
                         {info}
                         {chevron}
                     </div>
@@ -209,9 +208,9 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             return false;
         }
 
-        var tableName = (this.props.tableMetadata) ? singularize(this.props.tableMetadata.display_name) : "Unknown",
-            // TODO: once we nail down the "title" column of each table this should be something other than the id
-            idValue = this.getIdValue();
+        const tableName = (this.props.tableMetadata) ? singularize(this.props.tableMetadata.display_name) : "Unknown";
+        // TODO: once we nail down the "title" column of each table this should be something other than the id
+        const idValue = this.getIdValue();
 
         return (
             <div className="ObjectDetail rounded mt2">

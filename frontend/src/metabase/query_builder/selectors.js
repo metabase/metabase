@@ -5,9 +5,6 @@ import _ from "underscore";
 import { getParametersWithExtras } from "metabase/meta/Card";
 
 import { isCardDirty, isCardRunnable } from "metabase/lib/card";
-import { parseFieldTargetId } from "metabase/lib/query_time";
-import { isPK } from "metabase/lib/types";
-import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
 import { getIn } from "icepick";
@@ -83,57 +80,6 @@ export const getDatabaseFields = createSelector(
     (databaseId, databaseFields) => databaseFields[databaseId]
 );
 
-export const getIsObjectDetail = createSelector(
-    [getQueryResult],
-    (queryResult) => {
-        if (!queryResult || !queryResult.json_query) {
-            return false;
-        }
-
-        const data = queryResult.data,
-              dataset_query = queryResult.json_query;
-
-        let response = false;
-
-        // NOTE: we specifically use only the query result here because we don't want the state of the
-        //       visualization being shown (Object Details) to change as the query/card changes.
-
-        // "rows" type query w/ an '=' filter against the PK column
-        if (dataset_query.query &&
-                dataset_query.query.source_table &&
-                dataset_query.query.filter &&
-                Query.isBareRows(dataset_query.query) &&
-                data.rows &&
-                data.rows.length === 1) {
-
-            // we need to know the PK field of the table that was queried, so find that now
-            let pkField;
-            for (var i=0; i < data.cols.length; i++) {
-                let coldef = data.cols[i];
-                if (coldef.table_id === dataset_query.query.source_table && isPK(coldef.special_type)) {
-                    pkField = coldef.id;
-                }
-            }
-
-            // now check that we have a filter clause w/ '=' filter on PK column
-            if (pkField !== undefined) {
-                for (const filter of Query.getFilters(dataset_query.query)) {
-                    if (Array.isArray(filter) &&
-                            filter.length === 3 &&
-                            filter[0] === "=" &&
-                               parseFieldTargetId(filter[1]) === pkField &&
-                            filter[2] !== null) {
-                        // well, all of our conditions have passed so we have an object detail query here
-                        response = true;
-                    }
-                }
-            }
-        }
-
-        return response;
-    }
-);
-
 
 
 import { getMode as getMode_ } from "metabase/qb/lib/modes";
@@ -142,6 +88,11 @@ export const getMode = createSelector(
     [getLastRunCard, getTableMetadata],
     (card, tableMetadata) => getMode_(card, tableMetadata)
 )
+
+export const getIsObjectDetail = createSelector(
+    [getMode],
+    (mode) => mode && mode.name === "object"
+);
 
 export const getParameters = createSelector(
     [getCard, getParameterValues],

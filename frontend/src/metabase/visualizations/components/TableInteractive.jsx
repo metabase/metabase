@@ -8,8 +8,8 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import { formatValue, capitalize } from "metabase/lib/formatting";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { isID } from "metabase/lib/schema_metadata";
 import { getTableCellClickedObject, isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import _ from "underscore";
@@ -227,7 +227,8 @@ export default class TableInteractive extends Component {
                 className={cx("TableInteractive-cellWrapper", {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
                     "cursor-pointer": isClickable,
-                    "justify-end": isColumnRightAligned(column)
+                    "justify-end": isColumnRightAligned(column),
+                    "link": isClickable && isID(column)
                 })}
                 onClick={isClickable && ((e) => {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
@@ -251,10 +252,7 @@ export default class TableInteractive extends Component {
         const { cols } = this.props.data;
         const column = cols[columnIndex];
 
-        let columnTitle = getFriendlyName(column);
-        if (column.unit && column.unit !== "default") {
-            columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "))
-        }
+        let columnTitle = formatColumn(column);
         if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
             columnTitle = "Unset";
         }

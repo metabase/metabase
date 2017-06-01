@@ -11,6 +11,7 @@ import ExternalLink from "metabase/components/ExternalLink.jsx";
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp } from "metabase/lib/time";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
@@ -233,6 +234,20 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         return JSON.stringify(value);
     } else {
         return String(value);
+    }
+}
+
+export function formatColumn(column: Column): string {
+    if (!column) {
+        return "";
+    } else if (column.remapped_to_column) {
+        return formatColumn(column.remapped_to_column)
+    } else {
+        let columnTitle = getFriendlyName(column);
+        if (column.unit && column.unit !== "default") {
+            columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "))
+        }
+        return columnTitle;
     }
 }
 
