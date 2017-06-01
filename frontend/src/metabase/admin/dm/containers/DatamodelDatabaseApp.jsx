@@ -1,3 +1,4 @@
+/* @flow */
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { Link } from 'react-router'
@@ -11,17 +12,25 @@ class DatamodelDatabaseApp extends Component {
 }
 
 const DatabaseList = ({ databases }) =>
-    <ol>
+    <ol className="Grid Grid--gutters Grid--1of3">
         {databases.map(database =>
-            <Link to={`/admin/dm/database/${database.id}`}>
-                {database.name}
-            </Link>
+            <li
+                className="Grid-cell"
+                key={database.id}
+            >
+                <Link to={`/admin/dm/database/${database.id}`}>
+                    <div className="p3 bordered rounded bg-white shadowed">
+                        <h2>{database.name}</h2>
+                        <span>{database.engine}</span>
+                    </div>
+                </Link>
+            </li>
         )}
     </ol>
 
-export default connect(
-    state => ({
-       databases: getDatabasesList(state)
-    })
-)(DatamodelDatabaseApp)
+const mapStateToProps = state => ({
+   databases: getDatabasesList(state)
+})
+
+export default connect(mapStateToProps)(DatamodelDatabaseApp)
 
