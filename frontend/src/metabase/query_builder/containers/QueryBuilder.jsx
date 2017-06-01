@@ -250,7 +250,12 @@ class LegacyQueryBuilder extends Component {
 
                 <div className={cx("SideDrawer hide sm-show", { "SideDrawer--show": showDrawer })}>
                     { uiControls.isShowingDataReference &&
-                        <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
+                        <DataReference
+                            {...this.props}
+                            datasetQuery={card && card.dataset_query}
+                            query={card && card.dataset_query}
+                            onClose={() => this.props.toggleDataReference()}
+                        />
                     }
 
                     { uiControls.isShowingTemplateTagsEditor &&
