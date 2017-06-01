@@ -4,6 +4,26 @@ import inflection from "inflection";
 import { mbqlEq } from "metabase/lib/query/util";
 import { formatTimeWithUnit } from "metabase/lib/formatting";
 
+export const DATETIME_UNITS = [
+    // "default",
+    "minute",
+    "hour",
+    "day",
+    "week",
+    "month",
+    "quarter",
+    "year",
+    // "minute-of-hour",
+    "hour-of-day",
+    "day-of-week",
+    "day-of-month",
+    // "day-of-year",
+    "week-of-year",
+    "month-of-year",
+    "quarter-of-year",
+]
+
+
 export function computeFilterTimeRange(filter) {
     let expandedFilter;
     if (mbqlEq(filter[0], "time-interval")) {
