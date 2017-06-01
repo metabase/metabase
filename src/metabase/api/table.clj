@@ -2,6 +2,7 @@
   "/api/table endpoints."
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET PUT]]
+            [medley.core :as m]
             [metabase
              [sync-database :as sync-database]
              [util :as u]]
@@ -87,6 +88,7 @@
   {include_sensitive_fields (s/maybe su/BooleanString)}
   (-> (api/read-check Table id)
       (hydrate :db [:fields :target] :field_values :segments :metrics)
+      (m/dissoc-in [:db :details])
       (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
                              ;; If someone passes include_sensitive_fields return hydrated :fields as-is
                              identity

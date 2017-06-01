@@ -198,11 +198,11 @@
           (throw e))))))
 
 
-;;; # ------------------------------------------------------------ IDatasetLoader ------------------------------------------------------------
+;;; # ------------------------------------------------------------ IDriverTestExtensions ------------------------------------------------------------
 
 (u/strict-extend BigQueryDriver
-  i/IDatasetLoader
-  (merge i/IDatasetLoaderDefaultsMixin
+  i/IDriverTestExtensions
+  (merge i/IDriverTestExtensionsDefaultsMixin
          {:engine                       (constantly :bigquery)
           :database->connection-details (u/drop-first-arg database->connection-details)
           :create-db!                   (u/drop-first-arg create-db!)}))
