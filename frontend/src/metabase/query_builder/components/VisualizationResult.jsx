@@ -12,9 +12,9 @@ type Props = {
     question: Question,
     isObjectDetail: boolean,
     lastRunDatasetQuery: DatasetQuery,
-    result?: Object
+    result: any
 }
-const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, result, ...props}: Props) => {
+const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, result, results, ...props}: Props) => {
     const noResults = datasetContainsNoResults(result.data);
 
     if (isObjectDetail) {
@@ -35,12 +35,16 @@ const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, res
         // we want to provide the visualization with a card containing the latest
         // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
         // BUT the last executed "dataset_query" (to ensure data matches the query)
-        let vizCard = {
-            ...question.card(),
-            dataset_query: lastRunDatasetQuery
-        };
+        const series = question.metrics().map((metricQuery, index) => ({
+            card: {
+                ...question.card(),
+                dataset_query: metricQuery.datasetQuery()
+            },
+            data: results[index].data
+        }));
+
         return <Visualization
-                  series={[{ card: vizCard, data: result.data }]}
+                  series={series}
                   onChangeCardAndRun={props.setCardAndRun}
                   isEditing={true}
                   // Table:

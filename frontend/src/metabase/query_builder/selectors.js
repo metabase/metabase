@@ -24,6 +24,7 @@ export const getLastRunCard     = state => state.qb.lastRunCard;
 
 export const getParameterValues = state => state.qb.parameterValues;
 export const getQueryResult     = state => state.qb.queryResult;
+export const getQueryResults    = state => state.qb.queryResults;
 
 export const getIsDirty = createSelector(
     [getCard, getOriginalCard],

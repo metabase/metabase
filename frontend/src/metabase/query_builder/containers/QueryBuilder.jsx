@@ -29,6 +29,7 @@ import {
     getOriginalCard,
     getLastRunCard,
     getQueryResult,
+    getQueryResults,
     getParameterValues,
     getIsDirty,
     getIsNew,
@@ -106,6 +107,7 @@ const mapStateToProps = (state, props) => {
         tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
         result:                    getQueryResult(state),
+        results:                   getQueryResults(state),
 
         isDirty:                   getIsDirty(state),
         isNew:                     getIsNew(state),
