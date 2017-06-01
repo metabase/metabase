@@ -37,6 +37,8 @@
              [dependency :refer [Dependency]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
+             [field-fingerprint :refer [FieldFingerprint]]
+             [table-fingerprint :refer [TableFingerprint]]
              [label :refer [Label]]
              [metric :refer [Metric]]
              [metric-important-field :refer [MetricImportantField]]
@@ -100,6 +102,8 @@
    Collection
    CollectionRevision
    DashboardFavorite
+   FieldFingerprint
+   TableFingerprint
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 

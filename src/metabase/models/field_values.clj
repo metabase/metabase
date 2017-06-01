@@ -35,9 +35,7 @@
          (contains? field :base_type)
          ;; this used to happen both before and after field_values where cached.
          #_(contains? field :special_type)]} ;; requirement set aside in refactor, special type now crated after field values are saved.
-  (let [infered-special-type (or special_type
-                                 (infer-special-type/infer-field-special-type name base_type))] ;; based on field name
-    (log/error (u/format-color 'green "infered-special-type id: %s name: %s type: %s" (:id field) name infered-special-type))
+  (let [infered-special-type (or special_type (infer-special-type/infer-field-special-type name base_type))]
     (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
          (not (isa? (keyword base_type) :type/DateTime))
          (not (isa? base_type :type/Collection))

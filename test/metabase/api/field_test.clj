@@ -152,7 +152,7 @@
   {:field_id              (id :venues :price)
    :human_readable_values {}
    :values                [1 2 3 4]
-   :id                    (field-values-id :venues :price)}
+   :id                    (field-values-id :venues :price)} ;; hey @cam, why does this function very rarely return nil?
   (do
     ;; clear out existing human_readable_values in case they're set
     (db/update! FieldValues (field-values-id :venues :price)

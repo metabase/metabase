@@ -22,7 +22,8 @@
             [toucan.util.test :as tt]
             [metabase.sync-database.cached-values :as cached-values]
             [clojure.tools.logging :as log]
-            [metabase.sync-database.analyze :as analyze]))
+            [metabase.sync-database.analyze :as analyze]
+            [metabase.sync-database.classify :as classify]))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
@@ -146,10 +147,17 @@
                                   :display_name "Studio"
                                   :base_type    :type/Text})]})]
   (tt/with-temp Database [db {:engine :sync-test}]
+    (Thread/sleep 60)
     (sync-database! db)
+    (cached-values/cache-field-values-for-database! db)
+    (analyze/analyze-database db)
+    (classify/classify-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
     ;; on resync of a database, such as adding tables that already exist or duplicating fields
     (sync-database! db)
+    (cached-values/cache-field-values-for-database! db)
+    (analyze/analyze-database db)
+    (classify/classify-database! db)
     (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
 
 
@@ -183,6 +191,8 @@
                                        :db_id        (u/get-id db)}]]
     (sync-table! table)
     (cached-values/cache-field-values-for-table! table)
+    (analyze/analyze-table table)
+    (classify/classify-table! table)
     (table-details (Table (:id table)))))
 
 
@@ -342,7 +352,6 @@
 (expect
   false
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
-    (log/error "----------------------------------------------------------------------------------------")
     (binding [mdb/*allow-potentailly-unsafe-connections* true]
       (tt/with-temp Database [db {:engine :h2, :details details}]
         (let [driver (driver/engine->driver :h2)
@@ -357,9 +366,6 @@
           (let [table-id (db/select-one-id Table :db_id (u/get-id db))
                 field-id (db/select-one-id Field :table_id table-id)]
             ;; field values should exist...
-            (log/error (u/format-color 'cyan "FieldValues for %s: %s"
-                         field-id
-                         (db/select-one-field :values FieldValues :field_id field-id)))
             (assert (= (count (db/select-one-field :values FieldValues :field_id field-id))
                        100))
             ;; ok, now insert enough rows to push the field past the `low-cardinality-threshold` and sync again, there should be no more field values

@@ -21,7 +21,9 @@
              [users :refer :all]]
             [toucan.hydrate :as hydrate]
             [toucan.util.test :as tt]
-            [metabase.sync-database.cached-values :as cached-values]))
+            [metabase.sync-database.cached-values :as cached-values]
+            [metabase.sync-database.classify :as classify]
+            [metabase.sync-database.analyze :as analyze]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 
@@ -35,13 +37,16 @@
 
 
 ;; Helper Fns
+(def ^:private time-based-keys [:updated_at :last_analyzed])
 
-(defn- dissoc-walk [map key]
+(defn- dissoc-time-based-keys [map]
   "walk a tree and remove a key from every map."
   (clojure.walk/prewalk #(if (map? %)
-                           (dissoc % key)
+                           (apply dissoc % time-based-keys)
                            %)
                         map))
+
+
 
 (defn- db-details []
   (match-$ (db)
@@ -89,15 +94,15 @@
 (expect
   #{{:name         (format-name "categories")
      :display_name "Categories"
-     :rows         0
+     :rows         75
      :id           (id :categories)}
     {:name         (format-name "checkins")
      :display_name "Checkins"
-     :rows         0
+     :rows         1000
      :id           (id :checkins)}
     {:name         (format-name "users")
      :display_name "Users"
-     :rows         0
+     :rows         15
      :id           (id :users)}
     {:name         (format-name "venues")
      :display_name "Venues"
@@ -168,7 +173,7 @@
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))])
-            :rows         nil ;; this is cleared when field values are cached because there are actually no rows in the test data
+            :rows         75
             :updated_at   $
             :id           (id :categories)
             :raw_table_id $
@@ -198,7 +203,7 @@
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
-  (dissoc-walk
+  (dissoc-time-based-keys
    (merge (table-defaults)
           (match-$ (Table (id :users))
             {:schema       "PUBLIC"
@@ -242,7 +247,7 @@
                                                  :raw_column_id      $
                                                  :last_analyzed      $}))
                               (merge defaults (match-$ (Field :table_id (id :users), :name "PASSWORD")
-                                                {:special_type       "type/Category"
+                                                {:special_type       nil #_"type/Category" ;; TODO: verify the rules for type/Category on sensitive fields
                                                  :name               "PASSWORD"
                                                  :display_name       "Password"
                                                  :updated_at         $
@@ -273,18 +278,18 @@
                              "Simcha Yan"
                              "Spiros Teofil"
                              "Szymon Theutrich"]}
-             :created_at   $}))
-   :updated_at)
+             :created_at   $})))
   (do
     (cached-values/cache-field-values-for-table! (Table (id :users)))
-    (dissoc-walk
-     ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users)))
-     :updated_at)))
+    (analyze/analyze-table (Table (id :users)))
+    (classify/classify-table! (Table (id :users)))
+    (dissoc-time-based-keys
+     ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))))
 
 ;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
-  (dissoc-walk
+  (dissoc-time-based-keys
    (merge (table-defaults)
           (match-$ (Table (id :users))
             {:schema       "PUBLIC"
@@ -344,12 +349,12 @@
                              "Simcha Yan"
                              "Spiros Teofil"
                              "Szymon Theutrich"]}
-             :created_at   $}))
-   :updated_at)
+             :created_at   $})))
   (do (cached-values/cache-field-values-for-table! (Table (id :users)))
-      (dissoc-walk
-       ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users)))
-       :updated_at)))
+      (analyze/analyze-table (Table (id :users)))
+      (classify/classify-table! (Table (id :users)))
+      (dissoc-time-based-keys
+       ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users))))))
 
 ;; Check that FK fields belonging to Tables we don't have permissions for don't come back as hydrated `:target`(#3867)
 (expect
@@ -420,8 +425,8 @@
 (expect
   (let [checkins-user-field (Field (id :checkins :user_id))
         users-id-field      (Field (id :users :id))]
-    
-    (dissoc-walk
+
+    (dissoc-time-based-keys
      [{:origin_id      (:id checkins-user-field)
        :destination_id (:id users-id-field)
        :relationship   "Mt1"
@@ -445,7 +450,7 @@
                                                               {:schema       "PUBLIC"
                                                                :name         "CHECKINS"
                                                                :display_name "Checkins"
-                                                               :rows         nil ;; cache-field-values-for-table! will see this is not real
+                                                               :rows         1000
                                                                ;;:updated_at   $
                                                                :id           $
                                                                :raw_table_id $
@@ -474,7 +479,8 @@
                                                                ;:updated_at  $
                                                                :id           $
                                                                :raw_table_id $
-                                                               :created_at   $}))}))}]
-     :updated_at))
+                                                               :created_at   $}))}))}]))
   (do (cached-values/cache-field-values-for-table! (Table (id :users)))
-      (dissoc-walk ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))) :updated_at)))
+      (analyze/analyze-table (Table (id :users)))
+      (classify/classify-table! (Table (id :users)))
+      (dissoc-time-based-keys ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))))

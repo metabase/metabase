@@ -81,8 +81,8 @@
         (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
         (sync-database/sync-table! updated-table)
         (cached-values/cache-table-data-shape! driver updated-table)
-        (analyze/analyze-table-data-shape! driver updated-table)
-        #_(classify/classify-table! classify-table))
+        (analyze/analyze-table-data-shape!     driver updated-table)
+        (classify/classify-and-save-table!     driver updated-table))
       updated-table)))
 
 

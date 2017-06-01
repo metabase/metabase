@@ -28,9 +28,7 @@
 
 (def ^:private venues-table (delay (Table (id :venues))))
 
-(let [get-field-values    (fn [] (let [r (db/select-one-field :values FieldValues, :field_id (id :venues :price))]
-                                   (log/error (u/format-color 'green "GOT FIELD %s VALUES: %s" (id :venues :price) (seq r)))
-                                   r))
+(let [get-field-values    (fn [] (db/select-one-field :values FieldValues, :field_id (id :venues :price)))
       get-field-values-id (fn [] (db/select-one-id FieldValues, :field_id (id :venues :price)))
       venues-driver       (fn [] (driver/database-id->driver (:id (table/database @venues-table))))] ;; im a function so i work in cider
   ;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created

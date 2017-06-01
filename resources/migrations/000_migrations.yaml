@@ -3646,3 +3646,158 @@ databaseChangeLog:
             columns:
               - column:
                   name: dashboard_id
+  - changeSet:
+      id: 56
+      author: arthur
+      changes:
+        - createTable:
+            tableName: field_fingerprint
+            remarks: 'tables are sampled periodically to capture a sample of the values in them. These snapshots are then used to make these statistics which will later be used to guess properties of that table'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: 'ID of matching row in the field table.'
+                  constraints:
+                    nullable: false
+                    references: metabase_field(id)
+                    foreignKeyName: fk_field_fingerprint_field_id
+                    deleteCascade: true
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: 'ID of matching row in the field table.'
+                  constraints:
+                    nullable: false
+                    references: metabase_table(id)
+                    foreignKeyName: fk_field_fingerprint_table_id
+                    deleteCascade: true
+              - column:
+                   name: base_type
+                   type: varchar(255)
+                   remarks: 'What is the underlying database type of this field ie: text or boolean.'
+              - column:
+                   name: is_pk
+                   type: boolean
+                   remarks: 'Is this the primary key for this table.'
+              - column:
+                   name: is_fk
+                   type: boolean
+                   remarks: 'Is this field a foreign key reference to another table.'
+              - column:
+                   name: cardinality
+                   type: integer
+                   remarks: 'How many distinct values did we find in our most recent sample of this field.'
+              - column:
+                   name: field_percent_urls
+                   type: integer
+                   remarks: 'What percentage of sample values looked like urls.'
+              - column:
+                   name: field_percent_json
+                   type: integer
+                   remarks: 'What percentage of sample values are valid JSON.'
+              - column:
+                   name: field_percent_email
+                   type: integer
+                   remarks: 'What percentage of sample values looked like email addresses.'
+              - column:
+                   name: field_avg_length
+                   type: integer
+                   remarks: 'How long was the average sample data.'
+              - column:
+                   name: name
+                   type: varchar(255)
+                   remarks: 'What is this fields name in the database.'
+              - column:
+                   name: qualified_name
+                   type: varchar(255)
+                   remarks: 'What is this fields name includeing namespace etc.'
+              - column:
+                   name: visibility_type
+                   type: varchar(32)
+                   remarks: 'Is this field visible, hidden, cruft, etc.'
+              - column:
+                  name: updated_at
+                  type: datetime
+                  remarks: 'The timestamp of when this field fingerprint was last refreshed.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  remarks: 'The timestamp of when this fingerprint was created.'
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: field_fingerprint
+            columnNames: field_id
+            constraintName: unique_field_fingerprint_field_id
+        - createIndex:
+            tableName: field_fingerprint
+            indexName: idx_field_fingerprint_field_id
+            columns:
+              - column:
+                  name: field_id
+        - createIndex:
+            tableName: field_fingerprint
+            indexName: idx_field_fingerprint_table_id
+            columns:
+              - column:
+                  name: table_id
+        - createTable:
+            tableName: table_fingerprint
+            remarks: 'tables are sampled periodically to capture a fingerprint of facts used along with field_fingerprints to classify field values'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: 'ID of matching row in the field table.'
+                  constraints:
+                    nullable: false
+                    references: metabase_table(id)
+                    foreignKeyName: fk_table_fingerprint_table_id
+                    deleteCascade: true
+              - column:
+                   name: rows
+                   type: integer
+                   remarks: 'how many rows did this table have at the time the last fingerprints where generated.'
+              - column:
+                   name: name
+                   type: varchar(255)
+                   remarks: 'What is this tables name in the database.'
+              - column:
+                  name: updated_at
+                  type: datetime
+                  remarks: 'The timestamp of when this field fingerprint was last refreshed.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  remarks: 'The timestamp of when this fingerprint was created.'
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: table_fingerprint
+            columnNames: table_id
+            constraintName: unique_table_fingerprint_table_id
+        - createIndex:
+            tableName: table_fingerprint
+            indexName: idx_table_fingerprint_table_id
+            columns:
+              - column:
+                  name: table_id

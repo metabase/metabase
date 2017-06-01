@@ -152,7 +152,7 @@
 (defn- analyze-table [table new-field-ids]
   ;; this is actually for caching values.
   ;; We only care about 1) table counts and 2) field values
-  {:row_count (cached-values/table-row-count table)
+  {#_:row_count #_(cached-values/table-row-count table)
    :fields    (for [{:keys [id] :as field} (table/fields table)
                     #_:when #_(classify/test-for-cardinality? field (contains? new-field-ids (:id field)))]
                 (cached-values/extract-field-values field {:id id}))})

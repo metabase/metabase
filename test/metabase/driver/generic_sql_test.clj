@@ -9,7 +9,8 @@
              [data :refer :all]
              [util :refer [resolve-private-vars]]]
             [metabase.test.data.datasets :as datasets]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [metabase.sync-database.cached-values :as cached-values])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))
@@ -68,15 +69,16 @@
 
 
 ;; ANALYZE-TABLE
-
+;; This test needs to be re-thought, after splitting sync and analyze it's become somewhat circular in it's reasoning
 (expect
-  {:row_count 100,
-   :fields    [{:id (id :venues :category_id)}
-               {:id (id :venues :id)}
-               {:id (id :venues :latitude)}
-               {:id (id :venues :longitude)}
-               {:id (id :venues :name), :values (sort-by :id (db/select-one-field :values 'FieldValues, :field_id (id :venues :name)))}
-               {:id (id :venues :price), :values [1 2 3 4]}]}
+  (do (cached-values/cache-field-values-for-table! @venues-table)
+      {#_:row_count #_100, ;; drivers are no longer responsible for counting rows when analyzing tables
+       :fields    [{:id (id :venues :category_id)}
+                   {:id (id :venues :id)}
+                   {:id (id :venues :latitude)}
+                   {:id (id :venues :longitude)}
+                   {:id (id :venues :name), :values (sort-by :id (db/select-one-field :values 'FieldValues, :field_id (id :venues :name)))}
+                   {:id (id :venues :price), :values [1 2 3 4]}]})
   (update (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))) :fields #(sort-by :id %)))
 
 (resolve-private-vars metabase.driver.generic-sql #_field-avg-length field-values-lazy-seq table-rows-seq)

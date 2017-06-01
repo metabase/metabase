@@ -7,18 +7,23 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.db.metadata-queries :as queries]
             [metabase.models
              [field :as field]
-             [field-values :as field-values]
-             [table :as table]]
-            [metabase.sync-database
-             [classify :as classify]
-             [interface :as i]]
-            [schema.core :as schema]
-            [toucan.db :as db]
-            [metabase.sync-database.cached-values :as cached-values]))
+             [field-fingerprint :refer [FieldFingerprint]]
+             [table :as table]
+             [table-fingerprint :refer [TableFingerprint]]]
+            [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.sync-database.classify :as classify]
+            [toucan.db :as db]))
 
+(defn- table-row-count
+  "Determine the count of rows in TABLE by running a simple structured MBQL query."
+  [table]
+  {:pre [(integer? (:id table))]}
+  (try
+    (metadata-queries/table-row-count table)
+    (catch Throwable e
+      (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
 (defn- values-are-valid-json?
   "`true` if at every item in VALUES is `nil` or a valid string-encoded JSON dictionary or array, and at least one of those is non-nil."
@@ -81,49 +86,63 @@
                           field-values-count))))))
 
 (defn field-fingerprint [driver table field]
-  (let [values (->> (driver/field-values-lazy-seq driver field)
-                    (take driver/max-sync-lazy-seq-results))]
-    {:base_type               (:base_type field)
-     :is-pk?                  (isa? (:special_type field) :type/PK)
-     :is-fk?                  (isa? (:special_type field) :type/FK)
-     :cardinality             (count (distinct values))
-     :field-percent-urls      (percent-valid-urls values)
-     :field-percent-json      (if (values-are-valid-json? values) 100 0)
-     :field-percent-email     (if (values-are-valid-emails? values) 100 0)
-     :field-avg-length        (field-avg-length values)
-     :id                      (:id field)
-     :name                    (:name field)
-     :qualified-name          (field/qualified-name field)
-     :visibility_type         (:visibility_type field)}))
+  (let [values      (->> (driver/field-values-lazy-seq driver field)
+                         (take driver/max-sync-lazy-seq-results))
+        field-id    (:id field)
+        fingerprint {:base_type               (:base_type field)
+                     :is_pk                   (isa? (:special_type field) :type/PK)
+                     :is_fk                   (isa? (:special_type field) :type/FK)
+                     :cardinality             (count (distinct values))
+                     :field_percent_urls      (percent-valid-urls values)
+                     :field_percent_json      (if (values-are-valid-json? values) 100 0)
+                     :field_percent_email     (if (values-are-valid-emails? values) 100 0)
+                     :field_avg_length        (field-avg-length values)
+                     :field_id                field-id
+                     :table_id                (:id table)
+                     :name                    (:name field)
+                     :qualified_name          (field/qualified-name field)
+                     :visibility_type         (:visibility_type field)}]
+    (log/debug (u/format-color 'green "generated fingerprint for field: %s (%s):%s" field-id (:name field) fingerprint))
+    fingerprint))
 
+(defn- save-field-fingerprints!
+  "store a sequence of fingerprints"
+  [fingerprints]
+  (doseq [fingerprint fingerprints]
+    (let [fingerprint (-> fingerprint
+                          (update :base_type u/keyword->qualified-name)
+                          (update :visibility_type u/keyword->qualified-name))]
+         (log/debug (u/format-color 'cyan "saving fingerprint for field: %s (%s):%s"
+                      (:field_id fingerprint) (:name fingerprint) (keys fingerprint)))
+         (or (db/update! FieldFingerprint {:where [:= :field_id (:field_id fingerprint)]
+                                           :set fingerprint})
+             (db/insert! FieldFingerprint fingerprint)))))
 
-(defn table-fingerprint [table]
-  {:rows (:rows table)}) ;; check this
+(defn- table-fingerprint
+  "generate a fingerprint for a table"
+  [{:keys [rows id name] :as table}]
+  {:rows     rows
+   :table_id id
+   :name     name})
 
-
+(defn- save-table-fingerprint!
+  "store the table fingerprint for a table
+   field values are stored separately"
+  [fingerprint]
+  (or (db/update! TableFingerprint {:where [:= :table_id (:table_id fingerprint)]
+                                    :set fingerprint})
+      (db/insert! TableFingerprint fingerprint)))
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
   [driver {table-id :id, :as table}]
   (let [fields (table/fields table)
+        rows (table-row-count table)
         field-fingerprints (map #(field-fingerprint driver table %) fields)
         table-fingerprint (table-fingerprint table)]
-    ;; this will be moved to classify.clj once the fingerprint format is settled
-    (when-let [table-stats (u/prog1 (classify/classify-table! table-fingerprint field-fingerprints) ;; this is here temporarily
-                             (when <>
-                               (schema/validate i/AnalyzeTable <>)))]
-      (doseq [{:keys [id preview-display special-type]} (:fields table-stats)]
-        ;; set Field metadata we may have detected
-        (when (and id (or preview-display special-type))
-          (db/update-non-nil-keys! field/Field id
-            ;; if a field marked `preview-display` as false then set the visibility
-            ;; type to `:details-only` (see models.field/visibility-types)
-            :visibility_type (when (false? preview-display) :details-only)
-            :special_type    special-type)))
-      (db/update-where! field/Field {:table_id        table-id
-                                     :visibility_type [:not= "retired"]}
-      :last_analyzed (u/new-sql-timestamp))
-      table-stats)))
+    (db/update! table/Table table-id :rows rows)
+    (save-field-fingerprints! field-fingerprints)
+    (save-table-fingerprint! table-fingerprint)))
 
 (defn analyze-table
   "analyze only one table"

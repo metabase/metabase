@@ -303,7 +303,7 @@
                                                        :values             $})]
                           :segments                []
                           :metrics                 []
-                          :rows                    nil
+                          :rows                    75
                           :updated_at              $
                           :entity_name             nil
                           :active                  true
