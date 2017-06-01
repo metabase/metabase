@@ -7,7 +7,7 @@ import type { FieldId, Field as FieldObject } from "metabase/meta/types/Field";
 import type { TableId } from "metabase/meta/types/Table";
 
 import { getFieldValues } from "metabase/lib/query/field";
-import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
+import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isSymbol, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
 import { isPK, isFK } from "metabase/lib/types";
 
 export default class Field extends Base {
@@ -40,6 +40,7 @@ export default class Field extends Base {
     isNumeric()   { return isNumeric(this._object); }
     isBoolean()   { return isBoolean(this._object); }
     isString()    { return isString(this._object); }
+    isSymbol()    { return isSymbol(this._object); }
     isSummable()  { return isSummable(this._object); }
     isCategory()  { return isCategory(this._object); }
     isMetric()    { return isMetric(this._object); }

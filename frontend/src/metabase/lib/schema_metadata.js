@@ -5,6 +5,7 @@ import { isa, isFK, TYPE } from "metabase/lib/types";
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
 export const STRING = "STRING";
+export const SYMBOL = "SYMBOL";
 export const STRING_LIKE = "STRING_LIKE";
 export const BOOLEAN = "BOOLEAN";
 export const DATE_TIME = "DATE_TIME";
@@ -29,6 +30,9 @@ const TYPES = {
     [NUMBER]: {
         base: [TYPE.Number],
         special: [TYPE.Number]
+    },
+    [SYMBOL]: {
+        base: [TYPE.Symbol]
     },
     [STRING]: {
         base: [TYPE.Text],
@@ -93,7 +97,7 @@ export function isFieldType(type, field) {
 
 export function getFieldType(field) {
     // try more specific types first, then more generic types
-    for (const type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, STRING_LIKE, BOOLEAN]) {
+    for (const type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, STRING_LIKE, SYMBOL, BOOLEAN]) {
         if (isFieldType(type, field)) return type;
     }
 }
@@ -102,6 +106,7 @@ export const isDate = isFieldType.bind(null, DATE_TIME);
 export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
+export const isSymbol = isFieldType.bind(null, SYMBOL);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 
@@ -273,6 +278,9 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "<=",               verboseName: "Less than or equal to", advanced: true },
         { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
         { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
+    ],
+    [SYMBOL]: [
+        { name: "=",                verboseName: "Is" },
     ],
     [STRING]: [
         { name: "=",                verboseName: "Is" },
@@ -529,6 +537,7 @@ export const ICON_MAPPING = {
     [COORDINATE]: 'location',
     [STRING]: 'string',
     [STRING_LIKE]: 'string',
+    [SYMBOL]: 'string',
     [NUMBER]: 'int',
     [BOOLEAN]: 'io'
 };

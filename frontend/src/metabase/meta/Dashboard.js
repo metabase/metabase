@@ -73,6 +73,10 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
         type: "category",
         name: "Category"
     },
+    {
+        type: "symbol",
+        name: "Symbol"
+    },
 ];
 
 type ParameterSection = {
@@ -86,7 +90,7 @@ export const PARAMETER_SECTIONS: Array<ParameterSection> = [
     { id: "date",     name: "Time",             description: "Date range, relative date, time of day, etc.", options: [] },
     { id: "location", name: "Location",         description: "City, State, Country, ZIP code.", options: [] },
     { id: "id",       name: "ID",               description: "User ID, product ID, event ID, etc.", options: [] },
-    { id: "category", name: "Other Categories", description: "Category, Type, Model, Rating, etc.", options: [] },
+    { id: "category", name: "Other Categories", description: "Category, Type, Model, Rating, Symbols, etc.", options: [] },
 ];
 
 for (const option of PARAMETER_OPTIONS) {
@@ -216,6 +220,7 @@ export function fieldFilterForParameterType(parameterType: ParameterType): Field
         case "date":        return (field: Field) => field.isDate();
         case "id":          return (field: Field) => field.isID();
         case "category":    return (field: Field) => field.isCategory();
+        case "symbol":      return (field: Field) => field.isSymbol();
     }
     switch (parameterType) {
         case "location/city":     return (field: Field) => isa(field.special_type, TYPE.City);
@@ -237,6 +242,7 @@ function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
         case "location":    return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
         case "id":          return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
         case "category":    return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
+        case "symbol":      return (tag: TemplateTag) =>  tag.type === "symbol";
     }
     return (tag: TemplateTag) => false;
 }
