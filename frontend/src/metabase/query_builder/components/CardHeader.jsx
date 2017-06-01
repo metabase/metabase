@@ -187,8 +187,7 @@ export default class CardHeader extends Component {
             onSetCardAttribute
         } = this.props;
 
-        const databaseId = question && question.datasetQuery() && question.datasetQuery().database;
-        const database = _.findWhere(databases, { id: card && databaseId });
+        const database = question && question.query().database();
         const card = question.card();
 
         // TODO Atte Keinänen 5/20/17 Add multi-query support to all components that need metadata

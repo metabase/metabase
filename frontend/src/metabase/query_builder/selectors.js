@@ -177,6 +177,14 @@ export const getQuestion = createSelector(
     }
 )
 
+export const getOriginalQuestion = createSelector(
+    [getMetadata, getOriginalCard, getParameterValues],
+    (metadata, card) => {
+        // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
+        return metadata && card && new Question(metadata, card)
+    }
+)
+
 export const getQuery = createSelector(
     [getQuestion],
     (question) => question && question.query()

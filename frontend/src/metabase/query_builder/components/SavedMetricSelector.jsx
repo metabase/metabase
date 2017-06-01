@@ -14,6 +14,7 @@ import {getChartTypeForCard} from "metabase/query_builder/actions";
 type Props = {
     onClose: () => void,
     question: Question,
+    originalQuestion: Question,
     // TODO Add correct type for the query result
     result: any,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
@@ -113,9 +114,10 @@ export default class SavedMetricSelector extends Component {
     };
 
     onDone = () => {
-        this.props.onClose();
+        const { onClose, question, originalQuestion } = this.props;
+        onClose();
         // Show the result in normal QB view
-        setTimeout(() => this.props.runQuery(null, { ignoreCache: true }), 100);
+        setTimeout(() => this.props.runQuery(question, { originalQuestion, ignoreCache: true }), 100);
     };
 
     onClose = () => {

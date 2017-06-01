@@ -28,6 +28,7 @@ export default class FieldPane extends Component {
     static propTypes = {
         field: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object,
+        question: PropTypes.boolean,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         runQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
@@ -58,13 +59,13 @@ export default class FieldPane extends Component {
     }
 
     groupBy() {
-        let { datasetQuery } = this.props;
+        let { datasetQuery, question } = this.props;
         if (!Query.hasValidAggregation(datasetQuery.query)) {
             Query.clearAggregations(datasetQuery.query);
         }
         Query.addBreakout(datasetQuery.query, this.props.field.id);
         this.props.setDatasetQuery(datasetQuery);
-        this.props.runQuery();
+        this.props.runQuery(question.card());
     }
 
     newCard() {

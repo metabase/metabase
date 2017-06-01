@@ -38,7 +38,8 @@ import {
     getIsRunnable,
     getIsResultDirty,
     getMode,
-    getQuestion
+    getQuestion,
+    getOriginalQuestion
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
@@ -80,6 +81,7 @@ const mapStateToProps = (state, props) => {
         fromUrl:                   props.location.query.from,
 
         question:                  getQuestion(state),
+        originalQuestion:          getOriginalQuestion(state),
         mode:                      getMode(state),
 
         originalCard:              getOriginalCard(state),

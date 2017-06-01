@@ -1,5 +1,8 @@
 /* @flow weak */
 
+import _ from "underscore";
+import Utils from "metabase/lib/utils";
+
 import Query from "./Query";
 import Dimension from "./Dimension";
 import Metric from "./metadata/Metric";
@@ -30,6 +33,9 @@ import * as Q from "metabase/lib/query/query";
 import { getParametersWithExtras } from "metabase/meta/Card";
 
 import { chain, updateIn } from "icepick";
+import {utf8_to_b64url} from "metabase/lib/card";
+
+import Query_DEPRECATED from "metabase/lib/query";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -354,4 +360,50 @@ export default class Question {
     createParameter(parameter: ParameterOptions) {}
     updateParameter(id: ParameterId, parameter: ParameterOptions) {}
     deleteParameter(id: ParameterId) {}
+
+    // predicate function that dermines if the question is "dirty" compared to the given question
+    isDirtyComparedTo(originalQuestion: Question) {
+        // The rules:
+        //   - if it's new, then it's dirty when
+        //       1) there is a database/table chosen or
+        //       2) when there is any content on the native query
+        //   - if it's saved, then it's dirty when
+        //       1) the current card doesn't match the last saved version
+
+        if (!this._card) {
+            return false;
+        } else if (!this._card.id) {
+            if (this._card.dataset_query.query && this._card.dataset_query.query.source_table) {
+                return true;
+            } else if (this._card.dataset_query.native && !_.isEmpty(this._card.dataset_query.native.query)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            const origCardSerialized = originalQuestion ? originalQuestion.serializeForUrl() : null;
+            const currentCardSerialized = this.serializeForUrl({ includeOriginalCardId: false});
+            return (currentCardSerialized !== origCardSerialized);
+        }
+    }
+
+    serializeForUrl({ includeOriginalCardId = true } = {}) {
+        // TODO Atte Keinänen 5/31/17: Remove code mutation and unnecessary copying
+        const dataset_query = Utils.copy(this._card.dataset_query);
+        if (dataset_query.query) {
+            dataset_query.query = Query_DEPRECATED.cleanQuery(dataset_query.query);
+        }
+
+        const cardCopy = {
+            name: this._card.name,
+            description: this._card.description,
+            dataset_query: dataset_query,
+            display: this._card.display,
+            parameters: this._card.parameters,
+            visualization_settings: this._card.visualization_settings,
+            ...(includeOriginalCardId ? { original_card_id: this._card.original_card_id } : {})
+        };
+
+        return utf8_to_b64url(JSON.stringify(cardCopy));
+    }
 }

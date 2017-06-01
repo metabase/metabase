@@ -1,7 +1,6 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import { Link } from "react-router";
 
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
@@ -38,6 +37,7 @@ const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
 type Props = {
     question: Question,
+    originalQuestion: Question,
     result?: Object,
     databases?: Database[],
     tableMetadata?: TableMetadata,
@@ -97,7 +97,8 @@ export default class QueryVisualization extends Component {
     }
 
     runQuery = () => {
-        this.props.runQuery(null, { ignoreCache: true });
+        const { question, originalQuestion } = this.props;
+        this.props.runQuery(question.card(), { originalQuestion, ignoreCache: true });
     };
 
     renderHeader() {

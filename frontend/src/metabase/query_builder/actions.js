@@ -1,3 +1,4 @@
+/*@flow weak*/
 /*global ace*/
 import React from 'react'
 import { createAction } from "redux-actions";
@@ -18,10 +19,11 @@ import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { addUndo } from "metabase/redux/undo";
+import Question from "metabase-lib/lib/Question";
 import { applyParameters, cardIsEquivalent } from "metabase/meta/Card";
 
 import { getParameters, getTableMetadata, getNativeDatabases, getQuestion } from "./selectors";
-import { getDatabases, getTables, getDatabasesList } from "metabase/selectors/metadata";
+import {getDatabases, getTables, getDatabasesList, getMetadata} from "metabase/selectors/metadata";
 
 import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
 
@@ -29,6 +31,7 @@ import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
+import type { ParameterValues } from "metabase/meta/types/Parameter";
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE"; const setCurrentState = createAction(SET_CURRENT_STATE);
 
@@ -233,7 +236,8 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         if (card && card.dataset_query && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
             // NOTE: timeout to allow Parameters widget to set parameterValues
             setTimeout(() =>
-                dispatch(runQuery(card, { shouldUpdateUrl: false }))
+                // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
+                dispatch(runQuery(card, { originalCard, shouldUpdateUrl: false }))
             , 0);
         }
 
@@ -295,7 +299,7 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, { shouldUpdateUrl: false }));
+        dispatch(runQuery(card, { originalCard, shouldUpdateUrl: false }));
         dispatch(updateUrl(card, { dirty: false }));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Cancel");
@@ -473,7 +477,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, { shouldUpdateUrl: false }));
+        dispatch(runQuery(card, { originalCard, shouldUpdateUrl: false }));
         dispatch(updateUrl(card, { dirty: false }));
 
         return card;
@@ -498,7 +502,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
 
         dispatch(loadMetadataForCard(card));
 
-        dispatch(runQuery(card, { shouldUpdateUrl: shouldUpdateUrl }));
+        dispatch(runQuery(card, { originalCard, shouldUpdateUrl: shouldUpdateUrl }));
 
         return {
             card,
@@ -512,7 +516,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
-        const { qb: { uiControls }} = getState();
+        const { qb: { uiControls, originalCard }} = getState();
         const question = getQuestion(getState());
 
         let newQuestion = question;
@@ -537,7 +541,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 
         // run updated query
         if (run) {
-            dispatch(runQuery(newQuestion.card()));
+            dispatch(runQuery(newQuestion.card(), { originalCard }));
         }
 
         return {
@@ -799,54 +803,62 @@ export const removeQueryExpression = createQueryAction(
     ["QueryBuilder", "Remove Expression"]
 );
 
-// runQuery
+type RunQuerySettings = {
+    shouldUpdateUrl: boolean,
+    ignoreCache: boolean, // currently only implemented for saved cards
+    originalQuestion?: Question, // needed for checking if the question is dirty
+    parameterValues?: ParameterValues
+}
+
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
-export const runQuery = createThunkAction(RUN_QUERY, (card, {
+export const runQuery = createThunkAction(RUN_QUERY, (card: Card, {
     shouldUpdateUrl = true,
-    ignoreCache = false, // currently only implemented for saved cards
+    ignoreCache = false,
+    originalCard,
     parameterValues
-} = {}) => {
+} : RunQuerySettings = {}) => {
     return async (dispatch, getState) => {
-        const state = getState();
-        const parameters = getParameters(state);
+        console.log(card)
+        const question = new Question(getMetadata(getState()), card);
+        const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
 
-        // if we got a query directly on the action call then use it, otherwise take whatever is in our current state
-        card = card || state.qb.card;
-        parameterValues = parameterValues || state.qb.parameterValues || {};
-
-        const cardIsDirty = isCardDirty(card, state.qb.originalCard);
-
+        const cardIsDirty = originalQuestion && question.isDirtyComparedTo(originalQuestion);
         if (shouldUpdateUrl) {
-            dispatch(updateUrl(card, { dirty: cardIsDirty }));
+            dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
         }
 
-        let cancelQueryDeferred = defer();
-        const startTime = new Date();
+        // NOTE: These are disabled as we are working on the multiple queries feature
+        // const parameters = getParameters(state);
+        // parameterValues = parameterValues || state.qb.parameterValues || {};
+        //
+        // const datasetQuery = applyParameters(card, parameters, parameterValues);
+        // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
+        // if (card.id != null && !cardIsDirty) {
+        //     CardApi.query({
+        //         cardId: card.id,
+        //         parameters: datasetQuery.parameters,
+        //         ignore_cache: ignoreCache
+        //     }, {cancelled: cancelQueryDeferred.promise}).then(onQuerySuccess, onQueryError);
+        // }
 
         // make our api call
         function onQuerySuccess(queryResult) {
-            dispatch(queryCompleted(card, queryResult));
+            dispatch(queryCompleted(question.card(), queryResult));
         }
 
+        const startTime = new Date();
         function onQueryError(error) {
             dispatch(queryErrored(startTime, error));
         }
 
-        const datasetQuery = applyParameters(card, parameters, parameterValues);
+        const cancelQueryDeferred = defer();
+        console.log(question);
 
-        // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        if (card.id != null && !cardIsDirty) {
-            CardApi.query({
-                cardId: card.id,
-                parameters: datasetQuery.parameters,
-                ignore_cache: ignoreCache
-            }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
-        } else {
-            MetabaseApi.dataset(datasetQuery, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
-        }
+        MetabaseApi.dataset(question.datasetQuery(), { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
 
-        MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);
+        MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", question.datasetQuery().type);
 
+        // TODO Move this out from Redux action asap
         // HACK: prevent SQL editor from losing focus
         try { ace.edit("id_sql").focus() } catch (e) {}
 
