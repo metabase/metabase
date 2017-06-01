@@ -11,6 +11,7 @@ pom.xml.asc
 /.lein-failures
 /.lein-repl-history
 /.nrepl-port
+.DS_Store
 .idea/
 /docs/uberdoc.html
 profiles.clj

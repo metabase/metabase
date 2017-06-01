@@ -47,6 +47,8 @@
 ;; as in a literal date, defined by date-string S
 (s/defrecord ^:private Date [s :- s/Str])
 
+(s/defrecord ^:private Symbol [s :- s/Str])
+
 (defrecord ^:private DateRange [start end])
 
 ;; convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param values.
@@ -61,7 +63,7 @@
   {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
    :name                         su/NonBlankString
    :display_name                 su/NonBlankString
-   :type                         (s/enum "number" "dimension" "text" "date")
+   :type                         (s/enum "number" "dimension" "text" "date" "symbol")
    (s/optional-key :dimension)   [s/Any]
    (s/optional-key :widget_type) su/NonBlankString
    (s/optional-key :required)    s/Bool
@@ -76,6 +78,7 @@
   (s/named (s/maybe (s/cond-pre NoValue
                                 Dimension
                                 Date
+                                Symbol
                                 s/Num
                                 s/Str
                                 s/Bool))
@@ -143,11 +146,13 @@
     (.parse (NumberFormat/getInstance) ^String value)
     value))
 
+
 ;; TODO - this should probably be converting strings to numbers (issue #3816)
 (s/defn ^:private ^:always-validate parse-value-for-type :- ParamValue
   [param-type value]
   (cond
     (instance? NoValue value)                        value
+    (= param-type "symbol")                          (Symbol. (re-find #"\w+" value))
     (= param-type "number")                          (value->number value)
     (= param-type "date")                            (map->Date {:s value})
     (and (= param-type "dimension")
@@ -245,6 +250,7 @@
 (extend-protocol ISQLParamSubstituion
   nil     (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
   Object  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info (str this)))
+  Symbol  (->replacement-snippet-info [this] {:replacement-snippet (:s this)})
   Number  (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
   Boolean (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
   Keyword (->replacement-snippet-info [this] (honeysql->replacement-snippet-info this))
@@ -277,6 +283,7 @@
       ;; Convert the value to a replacement snippet info map and then tack on the field identifier to the front
       :else
       (update (dimension->replacement-snippet-info param) :replacement-snippet (partial str (field->identifier field (:type param)) " ")))))
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -356,6 +363,8 @@
     :prepared-statement-args (if-let [occurances (u/occurances-of-substring optional-snippet variable-snippet)]
                                (apply concat (repeat occurances prepared-statement-args))
                                prepared-statement-args)))
+
+
 
 (s/defn ^:private ^:always-validate add-replacement-snippet-info :- [ParamSnippetInfo]
   "Add `:replacement-snippet` and `:prepared-statement-args` info to the maps in PARAMS-SNIPPETS-INFO by looking at PARAM-KEY->VALUE

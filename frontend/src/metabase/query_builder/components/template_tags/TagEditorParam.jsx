@@ -120,6 +120,7 @@ export default class TagEditorParam extends Component {
                         <Option value="number">Number</Option>
                         <Option value="date">Date</Option>
                         <Option value="dimension">Field Filter</Option>
+                        <Option value="symbol">Symbol</Option>
                     </Select>
                 </div>
 

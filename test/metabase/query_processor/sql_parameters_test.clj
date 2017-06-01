@@ -291,6 +291,18 @@
                    :parameters [{:type "category", :target ["variable" ["template-tag" "category"]], :value "Gizmo"}]}))
 
 
+
+(expect
+  {:query  "SELECT * FROM products_tablenamepart WHERE a = 1;"
+   :params []}
+  (expand-params* {:native     {:query "SELECT * FROM products_{{symbol1}} WHERE a = 1;"
+                                :template_tags {:symbol1 {:name "symbol1", :display_name "Symbol1", :type "symbol"}}}
+                   :parameters [{:type "symbol", :target ["variable" ["template-tag" "symbol1"]], :value "tablenamepart\"; DROP TABLES"}]}
+                  )
+  )
+
+
+
 ;;; ------------------------------------------------------------ expansion tests: dimensions ------------------------------------------------------------
 
 (defn- expand-with-dimension-param [dimension-param]
