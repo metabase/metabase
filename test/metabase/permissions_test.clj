@@ -129,7 +129,7 @@
      :table_id      (u/get-id table)
      :dataset_query {:database (u/get-id db)
                      :type     "native"
-                     :query    (format "SELECT count(*) FROM \"%s\";" (:name table))}}))
+                     :native   {:query (format "SELECT count(*) FROM \"%s\";" (:name table))}}}))
 
 
 (def ^:dynamic *card:db1-count-of-venues*)

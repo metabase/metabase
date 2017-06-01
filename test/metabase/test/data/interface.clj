@@ -1,7 +1,7 @@
 (ns metabase.test.data.interface
   "`Definition` types for databases, tables, fields; related protocols, helper functions.
 
-   Objects that implement `IDatasetLoader` know how to load a `DatabaseDefinition` into an
+   Objects that implement `IDriverTestExtensions` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as str]
             [metabase
@@ -85,11 +85,11 @@
     (Database :name database-name, :engine (name engine-kw))))
 
 
-;; ## IDatasetLoader
+;; ## IDriverTestExtensions
 
-(defprotocol IDatasetLoader
+(defprotocol IDriverTestExtensions
   "Methods for creating, deleting, and populating *pyhsical* DBMS databases, tables, and fields.
-   Methods marked *OPTIONAL* have default implementations in `IDatasetLoaderDefaultsMixin`."
+   Methods marked *OPTIONAL* have default implementations in `IDriverTestExtensionsDefaultsMixin`."
   (engine ^clojure.lang.Keyword [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
@@ -126,7 +126,8 @@
   (id-field-type ^clojure.lang.Keyword [this]
     "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."))
 
-(def IDatasetLoaderDefaultsMixin
+(def IDriverTestExtensionsDefaultsMixin
+  "Default implementations for the `IDriverTestExtensions` methods marked *OPTIONAL*."
   {:expected-base-type->actual         (u/drop-first-arg identity)
    :default-schema                     (constantly nil)
    :format-name                        (u/drop-first-arg identity)

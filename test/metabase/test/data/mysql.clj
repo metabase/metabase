@@ -35,7 +35,7 @@
   (str \` nm \`))
 
 (u/strict-extend MySQLDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:database->spec            (comp add-connection-params (:database->spec generic/DefaultsMixin))
           :execute-sql!              generic/sequentially-execute-sql! ; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
@@ -43,7 +43,7 @@
           :load-data!                generic/load-data-all-at-once!
           :pk-sql-type               (constantly "INTEGER NOT NULL AUTO_INCREMENT")
           :quote-name                (u/drop-first-arg quote-name)})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
           :engine                       (constantly :mysql)}))

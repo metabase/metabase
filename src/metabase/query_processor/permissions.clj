@@ -62,6 +62,7 @@
 
 
 (defn- ^:deprecated table-id [source-or-join-table]
+  {:post [(integer? %)]}
   (or (:id source-or-join-table)
       (:table-id source-or-join-table)))
 
@@ -75,6 +76,7 @@
   (or (user-can-run-query-referencing-table? user-id (table-id table))
       (throw-permissions-exception "You do not have permissions to run queries referencing table '%s'." (table-identifier table))))
 
+;; TODO - why is this the only function here that takes `user-id`?
 (defn- throw-if-cannot-run-query
   "Throw an exception if USER-ID doesn't have permissions to run QUERY."
   [user-id {:keys [source-table join-tables]}]
@@ -118,8 +120,8 @@
 
 (defn check-query-permissions
   "Check that User with USER-ID has permissions to run QUERY, or throw an exception."
-  [user-id {query-type :type, database :database, query :query, {card-id :card-id} :info}]
-  {:pre [(integer? user-id)]}
+  [user-id {query-type :type, database :database, query :query, {card-id :card-id} :info, :as outer-query}]
+  {:pre [(integer? user-id) (map? outer-query)]}
   (let [native?       (= (keyword query-type) :native)
         collection-id (db/select-one-field :collection_id 'Card :id card-id)]
     (cond

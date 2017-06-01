@@ -70,7 +70,6 @@
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (wait-for-initiailization)
   (or (User :email email)
-      (println "Creating test user:" email) ; DEBUG
       (db/insert! User
         :email        email
         :first_name   first
@@ -139,7 +138,6 @@
         (when-not (= status-code 401)
           (throw e))
         ;; If we got a 401 unauthenticated clear the tokens cache + recur
-        (printf "Got 401 (Unauthenticated) for %s. Clearing cached auth tokens and retrying request.\n" username) ; DEBUG
         (reset! tokens {})
         (apply client-fn username args)))))
 
