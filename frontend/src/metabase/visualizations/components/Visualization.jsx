@@ -31,7 +31,7 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type { UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
+import type { VisualizationSettings} from "metabase/meta/types/Card";
 import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
 import type { Metadata } from "metabase/meta/types/Metadata";
 
@@ -63,7 +63,7 @@ type Props = {
 
     // for click actions
     metadata: Metadata,
-    onChangeCardAndRun: (card: UnsavedCard) => void,
+    onChangeCardAndRun: any => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -221,27 +221,16 @@ export default class Visualization extends Component<*, Props, State> {
         setTimeout(() => {
             this.setState({ clicked });
         }, 100);
-    }
+    };
 
-    handleOnChangeCardAndRun = (card: UnsavedCard) => {
+    // Add the underlying card of current series to onChangeCardAndRun if available
+    handleOnChangeCardAndRun = ({ nextCard, seriesIndex }) => {
         const { series, clicked } = this.state;
 
-        const index = (clicked && clicked.seriesIndex) || 0;
-        const originalCard = series && series[index] && series[index].card;
+        const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
+        const previousCard = series && series[index] && series[index].card;
 
-        let cardId = card.id || card.original_card_id;
-        // if the supplied card doesn't have an id, get it from the original card
-        if (cardId == null && originalCard) {
-            // $FlowFixMe
-            cardId = originalCard.id || originalCard.original_card_id;
-        }
-
-        this.props.onChangeCardAndRun({
-            ...card,
-            id: cardId,
-            // $FlowFixMe
-            original_card_id: cardId
-        });
+        this.props.onChangeCardAndRun({ nextCard, previousCard });
     }
 
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {
