@@ -28,7 +28,8 @@ export default class FieldPane extends Component {
     static propTypes = {
         field: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object,
-        question: PropTypes.boolean,
+        question: PropTypes.object,
+        originalQuestion: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         runQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,

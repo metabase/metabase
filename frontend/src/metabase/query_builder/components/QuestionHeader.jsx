@@ -48,7 +48,7 @@ type Props = {
     isDirty: boolean
 }
 
-export default class CardHeader extends Component {
+export default class QuestionHeader extends Component {
     props: Props;
     
     constructor(props, context) {
@@ -380,7 +380,7 @@ export default class CardHeader extends Component {
             isNewCardThatCanBeSaved && <SaveNewCardAndAddToDashboardButton />,
             // TODO: See what kind of modifications the revisions feature requires
             isSaved && getHistoryRevisionsButton(),
-            // TODO: See how SQL will be supported and move this to the CardEditor banner
+            // TODO: See how SQL will be supported and move this to the QuestionEditor banner
             // <QueryModeToggleButton />,
             <DataReferenceButton key="datareference" />
         ].filter(_.isObject);

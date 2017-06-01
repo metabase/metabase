@@ -54,7 +54,7 @@ type State = {
     expanded: boolean
 }
 
-export default class CardEditor extends Component {
+export default class QuestionEditor extends Component {
     props: Props;
     state: State = {
         expanded: true

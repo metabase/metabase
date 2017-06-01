@@ -10,8 +10,8 @@ import _ from "underscore";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 
-import CardHeader from "metabase/query_builder/components/CardHeader";
-import CardEditor from "metabase/query_builder/components/CardEditor";
+import QuestionHeader from "metabase/query_builder/components/QuestionHeader";
+import QuestionEditor from "metabase/query_builder/components/QuestionEditor";
 import QueryVisualization from "../components/QueryVisualization.jsx";
 import DataReference from "../components/dataref/DataReference.jsx";
 import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
@@ -133,7 +133,7 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ question }) => (question && question.displayName()) || "Question")
-export default class CardBuilder extends Component {
+export default class QuestionBuilder extends Component {
     forceUpdateDebounced: () => void;
 
     constructor(props, context) {
@@ -209,12 +209,12 @@ export default class CardBuilder extends Component {
                     <div className="flex-full flex relative">
                         <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showSideDrawer": showDrawer})}>
                             <div id="react_qb_header">
-                                <CardHeader {...this.props}/>
+                                <QuestionHeader {...this.props}/>
                             </div>
 
                             <div id="react_qb_editor" className="z2 hide sm-show mb2">
                                 <div className="wrapper">
-                                    <CardEditor
+                                    <QuestionEditor
                                         {...this.props}
                                         datasetQuery={datasetQuery}
                                     />

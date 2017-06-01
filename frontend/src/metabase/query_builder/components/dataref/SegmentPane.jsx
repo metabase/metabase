@@ -31,7 +31,8 @@ export default class SegmentPane extends Component {
         runQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired,
-        question: PropTypes.object.isRequired
+        question: PropTypes.object.isRequired,
+        originalQuestion: PropTypes.object.isRequired
     };
 
     componentWillMount() {

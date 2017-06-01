@@ -3,7 +3,7 @@
 import React from 'react'
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, getIn } from "icepick";
+import { assocIn } from "icepick";
 import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";

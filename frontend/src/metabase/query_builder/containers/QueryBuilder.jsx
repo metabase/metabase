@@ -57,7 +57,7 @@ import * as actions from "../actions";
 import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
-import CardBuilder from "metabase/query_builder/containers/CardBuilder";
+import QuestionBuilder from "metabase/query_builder/containers/QuestionBuilder";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -204,10 +204,10 @@ export default class QueryBuilder extends Component {
     render() {
         const isSavedCard = !!getIn(this.props.card, ["id"]);
         const isDirtySavedCard = !!(getIn(this.props.card, ["original_card_id"]) && this.props.isDirty);
-        const redirectToCardBuilder = isSavedCard || isDirtySavedCard;
+        const redirectToQuestionBuilder = isSavedCard || isDirtySavedCard;
 
-        if (redirectToCardBuilder) {
-            return <CardBuilder {...this.props} qbIsAlreadyInitialized />
+        if (redirectToQuestionBuilder) {
+            return <QuestionBuilder {...this.props} qbIsAlreadyInitialized />
         } else {
             return (
                 <div className="flex-full flex relative">
