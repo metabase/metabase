@@ -11,6 +11,7 @@ import FilterPopover from "./FilterPopover.jsx";
 import Query from "metabase/lib/query";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { isDate } from "metabase/lib/schema_metadata";
+import { formatValue } from "metabase/lib/formatting";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -70,13 +71,16 @@ export default class FilterWidget extends Component {
         let fieldDef = target && target.field;
         let operatorDef = fieldDef && fieldDef.operators_lookup[operator];
 
+        let formattedValues;
         // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
         if (operatorDef && operatorDef.multi && values.length > maxDisplayValues) {
-            values = [values.length + " selections"];
-        }
-
-        if (isDate(fieldDef)) {
-            values = generateTimeFilterValuesDescriptions(this.props.filter);
+            formattedValues = [values.length + " selections"];
+        } else if (isDate(fieldDef)) {
+            formattedValues = generateTimeFilterValuesDescriptions(this.props.filter);
+        } else {
+            formattedValues = values.filter(value => value !== undefined).map(value =>
+                formatValue(value, { column: fieldDef })
+            )
         }
 
         return (
@@ -87,25 +91,21 @@ export default class FilterWidget extends Component {
                 <div className="flex align-center" style={{padding: "0.5em", paddingTop: "0.3em", paddingBottom: "0.3em", paddingLeft: 0}}>
                     <FieldName
                         className="Filter-section Filter-section-field"
-                        tableMetadata={this.props.tableMetadata}
                         field={field}
-                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
+                        tableMetadata={this.props.tableMetadata}
                     />
                     <div className="Filter-section Filter-section-operator">
                         &nbsp;
                         <a className="QueryOption flex align-center">{operatorDef && operatorDef.moreVerboseName}</a>
                     </div>
                 </div>
-                { values.length > 0 && (
+                { formattedValues.length > 0 && (
                     <div className="flex align-center flex-wrap">
-                        {values.map((value, valueIndex) => {
-                            var valueString = value != null ? value.toString() : null;
-                            return value != undefined && (
-                                <div key={valueIndex} className="Filter-section Filter-section-value">
-                                    <span className="QueryOption">{valueString}</span>
-                                </div>
-                            );
-                        })}
+                        {formattedValues.map((formattedValue, valueIndex) =>
+                            <div key={valueIndex} className="Filter-section Filter-section-value">
+                                <span className="QueryOption">{formattedValue}</span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

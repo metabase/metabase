@@ -3,7 +3,7 @@
 import Base from "./Base";
 import Table from "./Table";
 
-import type { FieldId, Field as FieldObject } from "metabase/meta/types/Field";
+import type { FieldId, Field as FieldObject, FieldValues } from "metabase/meta/types/Field";
 import type { TableId } from "metabase/meta/types/Table";
 
 import { getFieldValues } from "metabase/lib/query/field";
@@ -48,8 +48,8 @@ export default class Field extends Base {
     isPK()        { return isPK(this.special_type); }
     isFK()        { return isFK(this.special_type); }
 
-    values(): Array<string> {
-        return getFieldValues(this._object)
+    values(): FieldValues {
+        return getFieldValues(this._object);
     }
 
     icon() {

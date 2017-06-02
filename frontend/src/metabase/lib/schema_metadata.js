@@ -2,6 +2,8 @@ import _ from "underscore";
 
 import { isa, isFK as isFKType, isPK as isPKType, TYPE } from "metabase/lib/types";
 
+import { getFieldValues, getHumanReadableValue } from "metabase/lib/query/field";
+
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
 export const STRING = "STRING";
@@ -172,18 +174,17 @@ function equivalentArgument(field, table) {
     }
 
     if (isCategory(field)) {
-        if (table.field_values && field.id in table.field_values && table.field_values[field.id].length > 0) {
-            let validValues = [...table.field_values[field.id]];
-            // this sort function works for both numbers and strings:
-            validValues.sort((a, b) => a === b ? 0 : (a < b ? -1 : 1));
+        const values = getFieldValues(field)
+        if (values && values.length > 0) {
             return {
                 type: "select",
-                values: validValues
-                    .filter(value => value != null)
-                    .map(value => ({
+                values: values
+                    .filter(([value, displayValue]) => value != null)
+                    .map(([value, displayValue]) => ({
                         key: value,
-                        name: value
+                        name: getHumanReadableValue(value, values)
                     }))
+                    .sort((a, b) => a.key === b.key ? 0 : (a.key < b.key ? -1 : 1))
             };
         }
     }

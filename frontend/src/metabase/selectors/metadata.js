@@ -87,6 +87,8 @@ export const getMetadata = createSelector(
             getAggregatorsWithFields(t));
         hydrate(meta.tables, "breakout_options", t => getBreakouts(t.fields));
 
+        hydrate(meta.fields, "remapping", f => new Map(getFieldValues(f)));
+
         hydrateLookup(meta.databases, "tables", "id");
         hydrateLookup(meta.tables, "fields", "id");
         hydrateLookup(meta.fields, "operators", "name");
@@ -121,7 +123,7 @@ export const getSegments = createSelector(
 // MISC
 
 export const getParameterFieldValues = (state, props) => {
-    return getFieldValues(getIn(state, ["metadata", "fields", props.parameter.field_id, "values"]));
+    return getFieldValues(getIn(state, ["metadata", "fields", props.parameter.field_id]));
 }
 
 // UTILS:

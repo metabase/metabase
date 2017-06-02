@@ -161,7 +161,7 @@ export default class ParameterValueWidget extends Component {
                     triggerElement={
                     <div ref="trigger" className={cx(S.parameter, className, { [S.selected]: hasValue })}>
                         { getParameterTypeIcon() }
-                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value) : placeholderText }</div>
+                        <div className="mr1 text-nowrap">{ hasValue ? Widget.format(value, values) : placeholderText }</div>
                         { getWidgetStatusIcon() }
                     </div>
                 }

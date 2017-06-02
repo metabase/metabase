@@ -50,11 +50,6 @@ export default class ObjectDetail extends Component {
         return rows[0][columnIndex];
     }
 
-    rowGetter(rowIndex) {
-        // Remember that we are pivoting the data, so for row 5 we want to return an array with [coldef, value]
-        return [this.props.data.cols[rowIndex], this.props.data.rows[0][rowIndex]];
-    }
-
     foreignKeyClicked = (fk) => {
         this.props.followForeignKey(fk);
     }
@@ -125,9 +120,12 @@ export default class ObjectDetail extends Component {
     }
 
     renderRelationships() {
-        if (!this.props.tableForeignKeys) return false;
+        let { tableForeignKeys, tableForeignKeyReferences } = this.props;
+        if (!tableForeignKeys) {
+            return null;
+        }
 
-        const tableForeignKeys = this.props.tableForeignKeys.filter(fk => isQueryable(fk.origin.table));
+        tableForeignKeys = tableForeignKeys.filter(fk => isQueryable(fk.origin.table));
 
         if (tableForeignKeys.length < 1) {
             return (<p className="my4 text-centered">No relationships found.</p>);
@@ -135,20 +133,19 @@ export default class ObjectDetail extends Component {
 
         const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
 
-        const component = this;
         const relationships = tableForeignKeys.sort((a, b) =>
             a.origin.table.display_name.localeCompare(b.origin.table.display_name)
         ).map((fk) => {
             let fkCount = (<LoadingSpinner size={25} />)
             let fkCountValue = 0;
             let fkClickable = false;
-            if (component.props.tableForeignKeyReferences) {
-                const fkCountInfo = component.props.tableForeignKeyReferences[fk.origin.id];
-                if (fkCountInfo && fkCountInfo["status"] === 1) {
-                    fkCount = (<span>{fkCountInfo["value"]}</span>);
+            if (tableForeignKeyReferences) {
+                const fkCountInfo = tableForeignKeyReferences[fk.origin.id];
+                if (fkCountInfo && fkCountInfo.status === 1) {
+                    fkCount = (<span>{fkCountInfo.value}</span>);
 
-                    if (fkCountInfo["value"]) {
-                        fkCountValue = fkCountInfo["value"];
+                    if (fkCountInfo.value) {
+                        fkCountValue = fkCountInfo.value;
                         fkClickable = true;
                     }
                 }
@@ -176,7 +173,7 @@ export default class ObjectDetail extends Component {
 
             if (fkClickable) {
                 fkReference = (
-                    <div className={referenceClasses} key={fk.id} onClick={component.foreignKeyClicked.bind(null, fk)}>
+                    <div className={referenceClasses} key={fk.id} onClick={this.foreignKeyClicked.bind(null, fk)}>
                         {info}
                         {chevron}
                     </div>

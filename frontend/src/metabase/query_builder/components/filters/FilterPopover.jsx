@@ -15,7 +15,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
 import { isDate } from "metabase/lib/schema_metadata";
-import { singularize } from "metabase/lib/formatting";
+import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
@@ -271,7 +271,7 @@ export default class FilterPopover extends Component {
                             <h3 className="inline-block">{singularize(table.display_name)}</h3>
                         </a>
                         <h3 className="mx1">-</h3>
-                        <h3 className="text-default">{field.display_name}</h3>
+                        <h3 className="text-default">{formatField(field)}</h3>
                     </div>
                     { isDate(field) ?
                         <DatePicker

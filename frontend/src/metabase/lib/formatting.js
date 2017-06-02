@@ -14,6 +14,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import type { Column, Value } from "metabase/meta/types/Dataset";
+import type { Field } from "metabase/meta/types/Field";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
 
@@ -207,7 +208,10 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
         ...options
     };
 
+    // "column" may also be a field object
+    // $FlowFixMe: remapping is a special field added by Visualization.jsx or getMetadata selector
     if (column && column.remapping && column.remapping.has(value)) {
+        // $FlowFixMe
         return column.remapping.get(value);
     }
 
@@ -240,7 +244,8 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
 export function formatColumn(column: Column): string {
     if (!column) {
         return "";
-    } else if (column.remapped_to_column) {
+    } else if (column.remapped_to_column != null) {
+        // $FlowFixMe: remapped_to_column is a special field added by Visualization.jsx
         return formatColumn(column.remapped_to_column)
     } else {
         let columnTitle = getFriendlyName(column);
@@ -248,6 +253,16 @@ export function formatColumn(column: Column): string {
             columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "))
         }
         return columnTitle;
+    }
+}
+
+export function formatField(field: Field): string {
+    if (!field) {
+        return "";
+    } else if (field.dimensions && field.dimensions.name) {
+        return field.dimensions.name;
+    } else {
+        return field.display_name || field.name;
     }
 }
 

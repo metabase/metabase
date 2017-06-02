@@ -50,10 +50,10 @@ export function getMode(
 
         if (aggregations.length === 0 && breakouts.length === 0) {
             const isPKFilter = (filter) => {
-                if (Array.isArray(filter) && filter[0] === "=") {
+                if (tableMetadata && Array.isArray(filter) && filter[0] === "=") {
                     const fieldId = Q_DEPRECATED.getFieldTargetId(filter[1]);
                     const field = tableMetadata.fields_lookup[fieldId];
-                    if (field && isPK(field) && field.table.id === query.source_table) {
+                    if (field && field.table.id === query.source_table && isPK(field)) {
                         return true;
                     }
                 }

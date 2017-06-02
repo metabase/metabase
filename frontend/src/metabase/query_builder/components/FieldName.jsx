@@ -14,8 +14,6 @@ import cx from "classnames";
 export default class FieldName extends Component {
     static propTypes = {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        fieldOptions: PropTypes.object.isRequired,
-        customFieldOptions: PropTypes.object,
         onClick: PropTypes.func,
         removeField: PropTypes.func,
         tableMetadata: PropTypes.object.isRequired

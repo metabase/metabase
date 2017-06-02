@@ -91,10 +91,7 @@ export default class SelectPicker extends Component {
     render() {
         let { values, options, placeholder, multi } = this.props;
 
-        let checked = {};
-        for (let value of values) {
-            checked[value] = true;
-        }
+        let checked = new Set();
 
         let validOptions = [];
         let regex = this.state.searchRegex;
@@ -130,8 +127,8 @@ export default class SelectPicker extends Component {
                        <ul>
                            {validOptions.map((option, index) =>
                                <li key={index}>
-                                   <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked[option.key])}>
-                                       <CheckBox checked={checked[option.key]} />
+                                   <label className="flex align-center cursor-pointer p1" onClick={() => this.selectValue(option.key, !checked.has(option.key))}>
+                                       <CheckBox checked={checked.has(option.key)} />
                                        <h4 className="ml1">{this.nameForOption(option)}</h4>
                                    </label>
                                </li>

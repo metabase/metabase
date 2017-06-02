@@ -2,7 +2,7 @@
 
 import type { ISO8601Time } from ".";
 
-import type { Field, FieldId } from "./Field";
+import type { Field } from "./Field";
 import type { Segment } from "./Segment";
 import type { Metric } from "./Metric";
 import type { DatabaseId } from "./Database";
@@ -11,11 +11,6 @@ export type TableId = number;
 export type SchemaName = string;
 
 type TableVisibilityType = string; // FIXME
-
-type FieldValue = any;
-type FieldValues = {
-    [id: FieldId]: FieldValue[]
-}
 
 // TODO: incomplete
 export type Table = {
@@ -37,8 +32,6 @@ export type Table = {
     fields:                  Field[],
     segments:                Segment[],
     metrics:                 Metric[],
-
-    field_values:            FieldValues,
 
     rows:                    number,
 
