@@ -184,6 +184,6 @@ Start up an instant cheatsheet for the project + dependencies by running
 
 ## License
 
-Copyright © 2016 Metabase, Inc
+Copyright © 2017 Metabase, Inc
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted.  See individual files for details.
