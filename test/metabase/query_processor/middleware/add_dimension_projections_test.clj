@@ -57,7 +57,7 @@
            :id 11,
            :values {:id 1, :human_readable_values ["Foo" "Bar" "Baz" "Qux"],
                     :values [4 11 29 20], :field_id 33}
-           :dimensions {:id 1 :type "internal" :name "Foo" :field_id 10}
+           :dimensions {:id 1 :type :internal :name "Foo" :field_id 10}
            :display_name "Category ID",
            :base_type :type/Integer}
           ;; 3
@@ -78,25 +78,26 @@
                     [5 "Brite Spot Family Restaurant" 20 2 "Qux"]])
       (update :columns conj "Foo")
       (update :cols (fn [cols]
-                      (conj (mapv (fn [col] (dissoc col :dimensions :values)) cols)
-                            {:description nil,
-                             :id nil,
-                             :table_id nil,
-                             :expression-name "Foo",
-                             :source :fields,
-                             :name "Foo",
-                             :display_name "Foo",
-                             :target nil,
-                             :extra_info {}
-                             :remapped_from "CATEGORY_ID"
-                             :remapped_to nil})))
-      (update :cols #(mapv (fn [col]
-                             (if (= "CATEGORY_ID" (:name col))
-                               (assoc col
-                                 :remapped_to "Foo"
-                                 :remapped_from nil)
-                               col))
-                           %)))
+                      (conj
+                       (mapv (fn [col]
+                               (let [new-col (dissoc col :dimensions :values)]
+                                 (if (= "CATEGORY_ID" (:name new-col))
+                                   (assoc new-col
+                                     :remapped_to "Foo"
+                                     :remapped_from nil)
+                                   new-col)))
+                             cols)
+                       {:description nil,
+                        :id nil,
+                        :table_id nil,
+                        :expression-name "Foo",
+                        :source :fields,
+                        :name "Foo",
+                        :display_name "Foo",
+                        :target nil,
+                        :extra_info {}
+                        :remapped_from "CATEGORY_ID"
+                        :remapped_to nil}))))
   (remap-results example-resultset))
 
 (def field-defaults
@@ -143,17 +144,15 @@
             :parent nil,
             :remapped-from nil,
             :remapped-to nil,
-            :dimensions {:id 2, :name "Product", :field_id 32, :human_readable_field_id 27, :type "external"}}])}})
+            :dimensions {:id 2, :name "Product", :field_id 32, :human_readable_field_id 27, :type :external}}])}})
 
 (expect
-  (-> example-query
-      ;; This needs to be fixed, we don't know the name of the new
-      ;; column until it gets resolved, so it doesn't get set here
-      (update-in [:query :fields] conj (i/map->FieldPlaceholder {:fk-field-id 32
-                                                                 :field-id 27
-                                                                 :remapped-from "PRODUCT_ID"
-                                                                 :remapped-to nil
-                                                                 :field-display-name "Product"})))
+  (update-in example-query [:query :fields]
+             conj (i/map->FieldPlaceholder {:fk-field-id 32
+                                            :field-id 27
+                                            :remapped-from "PRODUCT_ID"
+                                            :remapped-to nil
+                                            :field-display-name "Product"}))
   (add-fk-remaps example-query))
 
 (def external-remapped-result
@@ -177,7 +176,7 @@
                  (fn [col]
                    (-> col
                        (update :values merge {:human_readable_values [] })
-                       (update :dimensions merge {:type "external" :human_readable_field_id 27}))))))
+                       (update :dimensions merge {:type :external :human_readable_field_id 27}))))))
 
 (expect
   (-> external-remapped-result

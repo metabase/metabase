@@ -20,7 +20,7 @@
                                 expand/expand
                                 source-table/resolve-source-table-middleware
                                 resolve/resolve
-                                (dissoc :database:driver)
+                                (dissoc :database :driver)
                                 u/ignore-exceptions))}
          (when-let [data (ex-data e)]
            {:ex-data data})

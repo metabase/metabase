@@ -94,13 +94,19 @@
   [{:keys [id]}]
   (db/select [FieldValues :field_id :values], :field_id id))
 
+(defn- keyed-by-field-ids
+  "Queries for `MODEL` instances related by `FIELDS`, returns a map
+  keyed by :field_id"
+  [fields model]
+  (let [field-ids (set (map :id fields))]
+    (u/key-by :field_id (when (seq field-ids)
+                          (db/select model :field_id [:in field-ids])))))
+
 (defn with-values
   "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
   {:batched-hydrate :values}
   [fields]
-  (let [field-ids        (set (map :id fields))
-        id->field-values (u/key-by :field_id (when (seq field-ids)
-                                               (db/select FieldValues :field_id [:in field-ids])))]
+  (let [id->field-values (keyed-by-field-ids fields FieldValues)]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
@@ -108,23 +114,16 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal FIELDS."
   {:batched-hydrate :normal_values}
   [fields]
-  (let [field-ids        (set (for [{:keys [id visibility_type]} fields
-                                    :when (= :normal visibility_type)]
-                                id))
-        id->field-values (u/key-by :field_id (when (seq field-ids)
-                                               (db/select [FieldValues :id :human_readable_values :values :field_id]
-                                                 :field_id [:in field-ids])))]
+  (let [id->field-values (keyed-by-field-ids (filter #(= :normal (:visibility_type %)) fields)
+                                             [FieldValues :id :human_readable_values :values :field_id])]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
 
 (defn with-dimensions
-  "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
+  "Efficiently hydrate the `Dimensions` for a collection of FIELDS."
   {:batched-hydrate :dimensions}
   [fields]
-  (let [field-ids      (set (map :id fields))
-        id->dimensions (u/key-by :field_id (when (seq field-ids)
-                                               (db/select [Dimensions :id :name :field_id :human_readable_field_id :type]
-                                                 :field_id [:in field-ids])))]
+  (let [id->dimensions (keyed-by-field-ids fields Dimensions)]
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 

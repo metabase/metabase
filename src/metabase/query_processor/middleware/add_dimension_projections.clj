@@ -58,7 +58,7 @@
              (fn [fields]
                (concat fields
                        (for [{{:keys [field_id human_readable_field_id type name]} :dimensions, :keys [field-name]} fields
-                             :when (= "external" type)]
+                             :when (= :external type)]
                          (create-fk-remap-col field_id
                                               human_readable_field_id
                                               field-name
@@ -73,7 +73,7 @@
   name for the remapped column."
   [results]
   (let [indexed-dims (keep-indexed col->dim-map (:cols results))
-        internal-only-dims (filter #(= "internal" (:type %)) indexed-dims)
+        internal-only-dims (filter #(= :internal (:type %)) indexed-dims)
         remap-fn (row-map-fn internal-only-dims)
         columns (concat (:cols results)
                         (map :new-column internal-only-dims))

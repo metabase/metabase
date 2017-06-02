@@ -233,16 +233,16 @@
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
    (case ag-col-kw
-     :count  {:base_type    :type/Integer
-              :special_type :type/Number
-              :name         "count"
-              :display_name "count"
-              :id           nil
-              :table_id     nil
-              :description  nil
-              :source       :aggregation
-              :extra_info   {}
-              :target       nil
+     :count  {:base_type       :type/Integer
+              :special_type    :type/Number
+              :name            "count"
+              :display_name    "count"
+              :id              nil
+              :table_id        nil
+              :description     nil
+              :source          :aggregation
+              :extra_info      {}
+              :target          nil
               :remapped_from   nil
               :remapped_to     nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
