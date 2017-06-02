@@ -545,7 +545,7 @@
         (select-keys [:id :table_id :name :values :dimensions])
         (update :dimensions (fn [dim]
                               (if (map? dim)
-                                (dissoc dim :id)
+                                (dissoc dim :id :created_at :updated_at)
                                 dim))))))
 
 ;; ## GET /api/table/:id/query_metadata

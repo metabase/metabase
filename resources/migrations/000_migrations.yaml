@@ -3717,6 +3717,18 @@ databaseChangeLog:
                     initiallyDeferred: false
                     nullable: true
                     references: metabase_field(id)
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  remarks: 'The timestamp of when the dimension was created.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  remarks: 'The timestamp of when these dimension was last updated.'
+                  constraints:
+                    nullable: false
         - addUniqueConstraint:
             tableName: dimensions
             columnNames: field_id, name

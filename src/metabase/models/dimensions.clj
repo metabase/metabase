@@ -12,4 +12,5 @@
 (u/strict-extend (class Dimensions)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:type :keyword})}))
+         {:types      (constantly {:type :keyword})
+          :properties (constantly {:timestamped? true})}))
