@@ -16,7 +16,7 @@
              [label :refer [Label]]
              [permissions :as perms]
              [revision :as revision]]
-            [metabase.query-processor.permissions :as qp-perms]
+            [metabase.query-processor.middleware.permissions :as qp-perms]
             [toucan
              [db :as db]
              [models :as models]]))

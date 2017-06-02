@@ -150,11 +150,11 @@
   "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
   [& {:keys [skip]}]
   (db/delete! Database :id [:not-in (into (set skip)
-                                                  (for [engine datasets/all-valid-engines
-                                                        :let   [id (datasets/when-testing-engine engine
-                                                                     (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
-                                                        :when  id]
-                                                    id))]))
+                                          (for [engine datasets/all-valid-engines
+                                                :let   [id (datasets/when-testing-engine engine
+                                                             (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
+                                                :when  id]
+                                            id))]))
 
 
 ;; ## GET /api/database

@@ -1,4 +1,4 @@
-(ns metabase.query-processor.sql-parameters
+(ns metabase.query-processor.middleware.parameters.sql
   "Param substitution for *SQL* queries.
    This is a new implementation, fondly referred to as 'SQL parameters 2.0', written for v0.23.0.
    The new implementation uses prepared statement args instead of substituting them directly into the query,
@@ -8,6 +8,7 @@
             [honeysql.core :as hsql]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -205,7 +206,7 @@
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private ^:always-validate relative-date-dimension-value->replacement-snippet-info :- ParamSnippetInfo
   [value]
-  (->replacement-snippet-info (map->DateRange ((resolve 'metabase.query-processor.parameters/date-string->range) value *timezone*)))) ; TODO - get timezone from query dict
+  (->replacement-snippet-info (map->DateRange (date-params/date-string->range value *timezone*)))) ; TODO - get timezone from query dict
 
 (s/defn ^:private ^:always-validate dimension-value->equals-clause-sql :- ParamSnippetInfo
   [value]
@@ -402,8 +403,8 @@
   (merge native (when-let [param-snippets-info (seq (add-replacement-snippet-info (sql->params-snippets-info sql) param-key->value))]
                   (substitute sql param-snippets-info))))
 
-(defn expand-params
-  "Expand parameters inside a *native* QUERY."
+(defn expand
+  "Expand parameters inside a *SQL* QUERY."
   [query]
   (binding [*driver*   (:driver query)
             *timezone* (get-in query [:settings :report-timezone])]
