@@ -16,8 +16,7 @@ type Props = {
     question: Question,
     originalQuestion: Question,
     // TODO Add correct type for the query result
-    result: any,
-    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+    result: any
 }
 
 export default class SavedMetricSelector extends Component {
@@ -30,7 +29,7 @@ export default class SavedMetricSelector extends Component {
 
         this.state = {
             currentResult: result,
-            currentDataset: question.datasetQuery(),
+            currentDataset: question.query().datasetQuery(),
             // The initial aggregations are only set when the selector view is opened
             initialMetrics: question.metrics(),
             addedMetrics: {},
@@ -38,16 +37,12 @@ export default class SavedMetricSelector extends Component {
         };
     }
 
-    updateQuestion(question) {
-        this.props.setDatasetQuery(question.datasetQuery());
-    }
-
     onSearchChange = (e) => {
         this.setState({ searchValue: e.target.value.toLowerCase() });
     };
 
     updateResults = () => {
-        MetabaseApi.dataset(this.props.question.datasetQuery()).then((queryResult) => {
+        MetabaseApi.dataset(this.props.question.query().datasetQuery()).then((queryResult) => {
             // NOTE: This currently kind of enforces the recommended display type
             // which is not optimal but a working temporary hack
             this.props.question.card().display = getChartTypeForCard(this.props.question.card(), [queryResult]);
@@ -60,7 +55,7 @@ export default class SavedMetricSelector extends Component {
         const { addedMetrics } = this.state;
         const { question } = this.props;
 
-        this.updateQuestion(question.addSavedMetric(metricWrapper));
+        this.props.updateQuestion(question.addSavedMetric(metricWrapper));
 
         this.setState({
             addedMetrics: {
@@ -80,7 +75,7 @@ export default class SavedMetricSelector extends Component {
         const index = _.findIndex(metrics, (metric) => metric.equalsToMetric(metricWrapper));
 
         if (index !== -1) {
-            this.updateQuestion(question.removeMetric(index));
+            this.props.updateQuestion(question.removeMetric(index));
         } else {
             console.error("Removing the metric from aggregations failed");
         }
@@ -114,10 +109,10 @@ export default class SavedMetricSelector extends Component {
     };
 
     onDone = () => {
-        const { onClose, question, originalQuestion } = this.props;
+        const { onClose, question } = this.props;
         onClose();
         // Show the result in normal QB view
-        setTimeout(() => this.props.runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card(), ignoreCache: true }), 100);
+        setTimeout(() => this.props.runQuery(question.card(), { ignoreCache: true }), 100);
     };
 
     onClose = () => {

@@ -142,7 +142,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     handleKeyDown = (e: KeyboardEvent) => {
-        const { query, runQuery, question, originalQuestion } = this.props;
+        const { query, runQuery, question } = this.props;
 
         const ENTER_KEY = 13;
         if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && query.canRun()) {
@@ -152,10 +152,10 @@ export default class NativeQueryEditor extends Component {
                 const selectedText = this._editor.getSelectedText();
                 if (selectedText) {
                     const temporaryCard = query.updateQueryText(selectedText).question().card();
-                    runQuery(temporaryCard, { originalCard: originalQuestion && originalQuestion.card(), shouldUpdateUrl: false });
+                    runQuery(temporaryCard, { shouldUpdateUrl: false });
                 }
             } else {
-                runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card() });
+                runQuery(question.card());
             }
         }
     }

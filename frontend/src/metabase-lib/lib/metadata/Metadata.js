@@ -31,6 +31,6 @@ export default class Metadata extends Base {
 
     metricsList(): Metric[] {
         // $FlowFixMe
-        return (Object.values(this._metadata.metrics): Metric);
+        return (Object.values(this.metrics): Metric[]);
     }
 }

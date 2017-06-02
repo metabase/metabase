@@ -22,7 +22,7 @@ import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent } from "metabase/meta/Card";
 
-import { getTableMetadata, getNativeDatabases, getQuestion } from "./selectors";
+import { getTableMetadata, getNativeDatabases, getQuestion, getOriginalQuestion, getIsEditing } from "./selectors";
 import { getDatabases, getTables, getDatabasesList, getMetadata } from "metabase/selectors/metadata";
 
 import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
@@ -237,7 +237,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             // NOTE: timeout to allow Parameters widget to set parameterValues
             setTimeout(() =>
                 // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
-                dispatch(runQuery(card, { originalCard, shouldUpdateUrl: false }))
+                dispatch(runQuery(card, { shouldUpdateUrl: false }))
             , 0);
         }
 
@@ -265,6 +265,12 @@ export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
 export const TOGGLE_TEMPLATE_TAGS_EDITOR = "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
 export const toggleTemplateTagsEditor = createAction(TOGGLE_TEMPLATE_TAGS_EDITOR, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Template Tags Editor");
+});
+
+export const SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR = "metabase/qb/SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR";
+export const setIsShowingTemplateTagsEditor = (isShowingTemplateTagsEditor) => ({
+        type: SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
+        isShowingTemplateTagsEditor
 });
 
 export const CLOSE_QB_TUTORIAL = "metabase/qb/CLOSE_QB_TUTORIAL";
@@ -299,7 +305,7 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, { originalCard, shouldUpdateUrl: false }));
+        dispatch(runQuery(card, { shouldUpdateUrl: false }));
         dispatch(updateUrl(card, { dirty: false }));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Cancel");
@@ -477,7 +483,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, { originalCard, shouldUpdateUrl: false }));
+        dispatch(runQuery(card, { shouldUpdateUrl: false }));
         dispatch(updateUrl(card, { dirty: false }));
 
         return card;
@@ -502,7 +508,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
 
         dispatch(loadMetadataForCard(card));
 
-        dispatch(runQuery(card, { originalCard, shouldUpdateUrl: shouldUpdateUrl }));
+        dispatch(runQuery(card, { shouldUpdateUrl: shouldUpdateUrl }));
 
         return {
             card,
@@ -511,12 +517,41 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
     };
 });
 
+// TODO Atte Keinänen 6/2/2017 See if we should stick to `updateX` naming convention instead of `setX` in Redux actions
+// We talked with Tom that `setX` method names could be reserved to metabase-lib classes
+export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
+export const updateQuestion = (newQuestion) => {
+    return (dispatch, getState) => {
+        // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
+        // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
+        if (getIsEditing(getState()) && newQuestion.isSaved()) {
+            newQuestion = newQuestion.newQuestion();
+        }
+
+        // Replace the current question with a new one
+        dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
+
+        // See it the template tags editor should be shown/hidden
+        const getTemplateTagCount = (q) => q.query().isNative() ? q.query().templateTags().length : 0;
+
+        const oldQuestion = getQuestion(getState());
+        const oldTagCount = getTemplateTagCount(oldQuestion);
+        const newTagCount = getTemplateTagCount(newQuestion);
+
+        if (newTagCount > oldTagCount) {
+            dispatch(setIsShowingTemplateTagsEditor(true));
+        } else if (newTagCount === 0) {
+            dispatch(setIsShowingTemplateTagsEditor(false));
+        }
+    };
+};
 
 // setDatasetQuery
+// TODO Atte Keinänen 6/1/17: Deprecated, superseded by updateQuestion
 export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
 export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
-        const { qb: { uiControls, originalCard }} = getState();
+        const { qb: { uiControls }} = getState();
         const question = getQuestion(getState());
 
         let newQuestion = question;
@@ -541,7 +576,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 
         // run updated query
         if (run) {
-            dispatch(runQuery(newQuestion.card(), { originalCard }));
+            dispatch(runQuery(newQuestion.card()));
         }
 
         return {
@@ -811,31 +846,28 @@ type RunQuerySettings = {
     parameterValues?: ParameterValues
 }
 
+/**
+ * Queries the result for a given question card. If no card is provided, the currently active card is used.
+ * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
+ */
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
-export const runQuery = createThunkAction(RUN_QUERY, (card: Card, {
+export const runQuery = (card, {
     shouldUpdateUrl = true,
-    ignoreCache = false,
-    originalCard,
-    parameterValues
+    ignoreCache = false
 } : RunQuerySettings = {}) => {
     return async (dispatch, getState) => {
-        // NOTE Atte Keinänen 6/1/17: We decided with Tom that the QB actions should now take raw card objects
-        // as parameters and wrap them with Question class when useful
-        console.log('runQuery', card);
-        const question = new Question(getMetadata(getState()), card);
-        const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
+        const questionFromCard = (c) => new Question(getMetadata(getState()), c);
+
+        const question = card ? questionFromCard(card) : getQuestion(getState());
+        const originalQuestion = getOriginalQuestion(getState());
 
         const cardIsDirty = originalQuestion && question.isDirtyComparedTo(originalQuestion);
         if (shouldUpdateUrl) {
             dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
         }
 
-        // NOTE: These are disabled as we are working on the multiple queries feature
-        // const parameters = getParameters(state);
-        // parameterValues = parameterValues || state.qb.parameterValues || {};
-        //
-        // const datasetQuery = applyParameters(card, parameters, parameterValues);
-        // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
+        // NOTE: Doesn't support multiple queries yet
+        // Use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
         // if (card.id != null && !cardIsDirty) {
         //     CardApi.query({
         //         cardId: card.id,
@@ -856,15 +888,15 @@ export const runQuery = createThunkAction(RUN_QUERY, (card: Card, {
             .then((queryResults) => dispatch(queryCompleted(question.card(), queryResults)))
             .catch((error) => dispatch(queryErrored(startTime, error)));
 
-        MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", question.datasetQuery().type);
+        MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", question.query().datasetQuery().type);
 
         // TODO Move this out from Redux action asap
         // HACK: prevent SQL editor from losing focus
         try { ace.edit("id_sql").focus() } catch (e) {}
 
-        return cancelQueryDeferred;
+        dispatch.action(RUN_QUERY, { cancelQueryDeferred });
     };
-});
+};
 
 export const getChartTypeForCard = (card, queryResults) => {
     // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
@@ -900,7 +932,6 @@ export const getChartTypeForCard = (card, queryResults) => {
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResults) => {
     return async (dispatch, getState) => {
-        console.log('queryCompleted', queryResults);
         return {
             card,
             cardDisplay: getChartTypeForCard(card, queryResults),

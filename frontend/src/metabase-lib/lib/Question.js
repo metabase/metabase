@@ -154,10 +154,6 @@ export default class Question {
         return this._queries[0];
     }
 
-    datasetQuery(): DatasetQueryObject {
-        return this._card && this._card.dataset_query;
-    }
-
     display(): string {
         return this._card && this._card.display;
     }
@@ -196,6 +192,7 @@ export default class Question {
     }
 
     addSavedMetric(metric: Metric): Question {
+        console.log('adding a saved metric', metric);
         return this.addMetric(
             ({
                 type: "query",

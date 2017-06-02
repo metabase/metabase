@@ -7,6 +7,7 @@ import {
     INITIALIZE_QB,
     TOGGLE_DATA_REFERENCE,
     TOGGLE_TEMPLATE_TAGS_EDITOR,
+    SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
     CLOSE_QB_TUTORIAL,
     CLOSE_QB_NEWB_MODAL,
     BEGIN_EDITING,
@@ -28,6 +29,7 @@ import {
     SET_QUERY_DATABASE,
     SET_QUERY_SOURCE_TABLE,
     SET_QUERY_MODE,
+    UPDATE_QUESTION,
     SET_DATASET_QUERY,
     RUN_QUERY,
     CANCEL_QUERY,
@@ -49,6 +51,7 @@ export const uiControls = handleActions({
 
     [TOGGLE_DATA_REFERENCE]: { next: (state, { payload }) => ({ ...state, isShowingDataReference: !state.isShowingDataReference, isShowingTemplateTagsEditor: false }) },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor, isShowingDataReference: false }) },
+    [SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]: { next: (state, { isShowingTemplateTagsEditor }) => ({ ...state, isShowingTemplateTagsEditor, isShowingDataReference: false }) },
     [SET_DATASET_QUERY]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: payload.openTemplateTagsEditor }) },
     [CLOSE_QB_TUTORIAL]: { next: (state, { payload }) => ({ ...state, isShowingTutorial: false }) },
     [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }) },
@@ -58,7 +61,7 @@ export const uiControls = handleActions({
     [NOTIFY_CARD_UPDATED]: { next: (state, { payload }) => ({ ...state, isEditing: false }) },
     [RELOAD_CARD]: { next: (state, { payload }) => ({ ...state, isEditing: false })},
 
-    [RUN_QUERY]: { next: (state, { payload }) => ({ ...state, isRunning: true }) },
+    [RUN_QUERY]: (state) => ({ ...state, isRunning: true }),
     [CANCEL_QUERY]: { next: (state, { payload }) => ({ ...state, isRunning: false }) },
     [QUERY_COMPLETED]: { next: (state, { payload }) => ({ ...state, isRunning: false }) },
     [QUERY_ERRORED]: { next: (state, { payload }) => ({ ...state, isRunning: false }) },
@@ -93,6 +96,7 @@ export const card = handleActions({
     [SET_QUERY_DATABASE]: { next: (state, { payload }) => payload },
     [SET_QUERY_SOURCE_TABLE]: { next: (state, { payload }) => payload },
     [SET_DATASET_QUERY]: { next: (state, { payload }) => payload.card },
+    [UPDATE_QUESTION]: (state, { payload: {card} }) => card,
 
     [QUERY_COMPLETED]: { next: (state, { payload }) => ({ ...state, display: payload.cardDisplay }) },
 
@@ -151,7 +155,7 @@ export const queryResults = handleActions({
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.
 export const queryExecutionPromise = handleActions({
-    [RUN_QUERY]: { next: (state, { payload }) => payload},
+    [RUN_QUERY]: { next: (state, { cancelQueryDeferred }) => cancelQueryDeferred},
     [CANCEL_QUERY]: { next: (state, { payload }) => null},
     [QUERY_COMPLETED]: { next: (state, { payload }) => null},
     [QUERY_ERRORED]: { next: (state, { payload }) => null},

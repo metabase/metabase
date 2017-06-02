@@ -60,13 +60,13 @@ export default class FieldPane extends Component {
     }
 
     groupBy() {
-        let { datasetQuery, question, originalQuestion } = this.props;
+        let { datasetQuery, question } = this.props;
         if (!Query.hasValidAggregation(datasetQuery.query)) {
             Query.clearAggregations(datasetQuery.query);
         }
         Query.addBreakout(datasetQuery.query, this.props.field.id);
         this.props.setDatasetQuery(datasetQuery);
-        this.props.runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card() });
+        this.props.runQuery(question.card());
     }
 
     newCard() {

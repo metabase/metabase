@@ -12,9 +12,10 @@ type Props = {
     question: Question,
     isObjectDetail: boolean,
     lastRunDatasetQuery: DatasetQuery,
-    result: any
+    result: any,
+    results: any[]
 }
-const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, result, results, ...props}: Props) => {
+const VisualizationResult = ({question, isObjectDetail, result, results, ...props}: Props) => {
     const noResults = datasetContainsNoResults(result.data);
 
     if (isObjectDetail) {
@@ -35,6 +36,8 @@ const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, res
         // we want to provide the visualization with a card containing the latest
         // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
         // BUT the last executed "dataset_query" (to ensure data matches the query)
+
+        // TODO: Atte Keinänen 6/2/17: Should we provide a `lastRunDatasetQueries` or similar?
         const series = question.metrics().map((metricQuery, index) => ({
             card: {
                 ...question.card(),

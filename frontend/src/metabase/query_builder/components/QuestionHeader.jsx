@@ -348,7 +348,7 @@ export default class QuestionHeader extends Component {
         const isNewCardThatCanBeSaved = isNew && isDirty;
         const isSaved = !isNew;
         const isEditableSavedCard = isSaved && question.canWrite();
-        const isNativeQuery = Query.isNative(question && question.datasetQuery());
+        const isNativeQuery = Query.isNative(question && question.query().datasetQuery());
         const isNativeQueryWithParameters = isNativeQuery && database && _.contains(database.features, "native-parameters");
 
         const getPersistenceButtons = () => {

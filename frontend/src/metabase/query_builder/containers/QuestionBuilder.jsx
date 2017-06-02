@@ -44,6 +44,7 @@ import {
 } from "../selectors";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+import { fetchMetrics } from "metabase/redux/metadata";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -130,7 +131,8 @@ location.pathname + location.search + location.hash;
 
 const mapDispatchToProps = {
     ...actions,
-    onChangeLocation: push
+    onChangeLocation: push,
+    fetchMetrics
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -148,6 +150,7 @@ export default class QuestionBuilder extends Component {
     componentWillMount() {
         if (!this.props.qbIsAlreadyInitialized) {
             this.props.initializeQB(this.props.location, this.props.params);
+            this.props.fetchMetrics();
         }
     }
 
@@ -198,7 +201,7 @@ export default class QuestionBuilder extends Component {
 
     render() {
         const { question, databases, uiControls, mode } = this.props;
-        const datasetQuery = question && question.datasetQuery();
+        const datasetQuery = question && question.query().datasetQuery();
 
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         const ModeFooter = mode && mode.ModeFooter;

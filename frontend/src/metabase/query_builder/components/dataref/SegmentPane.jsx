@@ -49,14 +49,14 @@ export default class SegmentPane extends Component {
     }
 
     filterBy() {
-        let { datasetQuery, question, originalQuestion } = this.props;
+        let { datasetQuery, question } = this.props;
         // Add an aggregation so both aggregation and filter popovers aren't visible
         if (!Query.hasValidAggregation(datasetQuery.query)) {
             Query.clearAggregations(datasetQuery.query);
         }
         Query.addFilter(datasetQuery.query, ["SEGMENT", this.props.segment.id]);
         this.props.setDatasetQuery(datasetQuery);
-        this.props.runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card() });
+        this.props.runQuery(question.card());
     }
 
     newCard() {

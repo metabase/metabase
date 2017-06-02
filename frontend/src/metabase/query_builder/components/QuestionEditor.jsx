@@ -112,7 +112,7 @@ export default class QuestionEditor extends Component {
         const getQueryModeButton = () =>
             <QueryModeButton
                 key="queryModeToggle"
-                mode={question.datasetQuery().type}
+                mode={question.query().datasetQuery().type}
                 allowNativeToQuery={false}
                 allowQueryToNative={false}
                 /*allowNativeToQuery={isNew && !isDirty}
@@ -139,8 +139,8 @@ export default class QuestionEditor extends Component {
             <QuestionEmbedWidget key="questionembed" className="hide sm-show" card={question.card()} />;
 
         const getRunButton = () => {
-            const { question, originalQuestion } = this.props;
-            const runQueryByIgnoringCache = () => runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card(), ignoreCache: true });
+            const { question } = this.props;
+            const runQueryByIgnoringCache = () => runQuery(question.card(), { ignoreCache: true });
 
             let runButtonTooltip;
             if (!isResultDirty && result && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {

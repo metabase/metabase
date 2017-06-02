@@ -15,6 +15,7 @@ export function createThunkAction(actionType, actionThunkCreator) {
         var thunk = actionThunkCreator(...actionArgs);
         return async function(dispatch, getState) {
             try {
+
                 let payload = await thunk(dispatch, getState);
                 let dispatchValue = { type: actionType, payload };
                 dispatch(dispatchValue);

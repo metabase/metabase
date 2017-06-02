@@ -16,7 +16,13 @@ import { getIn } from "icepick";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
 
-export const getUiControls      = state => state.qb.uiControls;
+export const getUiControls = state => state.qb.uiControls;
+
+export const getIsShowingTemplateTagsEditor = state => getUiControls(state).isShowingTemplateTagsEditor;
+export const getIsShowingDataReference = state => getUiControls(state).isShowingDataReference;
+export const getIsShowingTutorial = state => getUiControls(state).isShowingTutorial;
+export const getIsEditing = state => getUiControls(state).isEditing;
+export const getIsRunning = state => getUiControls(state).isRunning;
 
 export const getCard            = state => state.qb.card;
 export const getOriginalCard    = state => state.qb.originalCard;
@@ -179,7 +185,7 @@ export const getQuestion = createSelector(
 )
 
 export const getOriginalQuestion = createSelector(
-    [getMetadata, getOriginalCard, getParameterValues],
+    [getMetadata, getOriginalCard],
     (metadata, card) => {
         // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
         return metadata && card && new Question(metadata, card)

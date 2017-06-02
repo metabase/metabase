@@ -80,7 +80,7 @@ export default class QueryVisualization extends Component {
 
     _getStateFromProps(props) {
         return {
-            lastRunDatasetQuery: Utils.copy(props.question.datasetQuery()),
+            lastRunDatasetQuery: Utils.copy(props.question.query().datasetQuery()),
             lastRunParameterValues: Utils.copy(props.parameterValues)
         };
     }
@@ -97,8 +97,8 @@ export default class QueryVisualization extends Component {
     }
 
     runQuery = () => {
-        const { question, originalQuestion } = this.props;
-        this.props.runQuery(question.card(), { originalCard: originalQuestion && originalQuestion.card(), ignoreCache: true });
+        const { question } = this.props;
+        this.props.runQuery(question.card(), { ignoreCache: true });
     };
 
     renderHeader() {
