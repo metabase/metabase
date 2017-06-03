@@ -10,17 +10,17 @@ import withBreadcrumbs from './WithBreadcrumbs'
 class DatabaseData extends Component {
     render () {
         // do some logic here
-        return <TableList tables={this.props.tables} />
+        return <TableList tables={this.props.tables} path={this.props.location.pathname} />
     }
 }
 
 
-const TableList = ({ tables }) =>
+const TableList = ({ tables, path }) =>
     <div>
         <ol className="flex full my2 align-center">
             { tables && Object.keys(tables).map(key =>
                 <li className="flex-full text-align-center">
-                    <Link to={`#${key}`}>
+                    <Link to={{ pathname: path, hash: `#${key}` }}>
                         {key.toUpperCase()}
                     </Link>
                 </li>
@@ -37,10 +37,11 @@ const TableList = ({ tables }) =>
                         <h2>{ key.toUpperCase() }</h2>
                     </div>
                     <ol className="Grid Grid--gutters Grid--1of3">
-                        { tables[key].map(({ id, display_name }) =>
-                            <li className="Grid-cell">
+                        { tables[key].map(({ id, display_name, ...rest }) =>
+                            <li className="Grid-cell" key={id}>
                                  <DataModelTableLink id={id}>
-                                    <h3>{display_name}</h3>
+                                     <h3>{display_name}</h3>
+                                     { rest.segments.length }
                                 </DataModelTableLink>
                             </li>
                         )}
