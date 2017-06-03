@@ -50,7 +50,7 @@ const withBreadcrumbs = (Component, showSearch = true, ExtraNav) => class extend
                 <div className="border-bottom py2">
                     <div className="wrapper flex align-center">
                         <BreadcrumbNav />
-                        <div className="ml-auto">
+                        <div className="ml-auto flex align-center">
                             { showSearch && <DatabaseSearch /> }
                             { ExtraNav && <ExtraNav /> }
                         </div>

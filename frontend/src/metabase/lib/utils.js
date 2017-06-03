@@ -119,4 +119,29 @@ var MetabaseUtils = {
     }
 }
 
+export const sortAlphabeticallyByKey = (array: [], key: string): {} => {
+    // Check the first item in the array provided to make sure the key exists
+    if(!array[0][key]) {
+        throw new Error(`
+            The key you specified: ${key} does not exist. The following keys are valid:
+            ${Object.keys(array[0]).filter(key => array[key] instanceof String)}
+        `)
+    }
+    let sorted = {}
+    array.map(item => {
+        let char = item[key].charAt(0).toLowerCase()
+        if(sorted[char]) {
+            // if the letter is already here we just add an item to the other items
+          sorted[char] = sorted[char].concat([item])
+        } else {
+            // we have to dynamically add the letter to the array
+            sorted = Object.assign({}, sorted, {
+                [char]: [item]
+            })
+        }
+        return false
+    })
+    return sorted
+}
+
 export default MetabaseUtils;
