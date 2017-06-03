@@ -70,6 +70,10 @@ Start the frontend build process with
 
     yarn run build-hot
 
+Caveat - Yarn does not properly support `build-hot` on Windows 8/10. You will need to manually build the frontend client with
+    
+    yarn run build
+
 This will get you a full development server running on port :3000 by default.
 
 
