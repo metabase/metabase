@@ -32,7 +32,7 @@ import NativeQuery from "./NativeQuery";
 import * as Q from "metabase/lib/query/query";
 import { getParametersWithExtras } from "metabase/meta/Card";
 
-import { chain, updateIn } from "icepick";
+import { chain, updateIn, assoc } from "icepick";
 import {utf8_to_b64url} from "metabase/lib/card";
 
 import Query_DEPRECATED from "metabase/lib/query";
@@ -163,7 +163,7 @@ export default class Question {
 
     setDisplay(display) {
         return this.updateCard(
-            updateIn(this.card(), ["display"], display)
+            assoc(this.card(), "display", display)
         );
     }
 

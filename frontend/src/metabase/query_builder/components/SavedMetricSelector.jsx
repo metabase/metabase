@@ -12,7 +12,6 @@ import { getDisplayTypeForCard, getQuestionQueryResults} from "metabase/query_bu
 
 type Props = {
     onClose: () => void,
-    question: Question,
     originalQuestion: Question,
     // TODO Add correct type for the query result
     results: any
@@ -45,7 +44,7 @@ export default class SavedMetricSelector extends Component {
         getQuestionQueryResults(updatedQuestion)
             .then((newResults) => {
                 // TODO: Should the display type be automatically updated when adding a metric? Probably it should?
-                updatedQuestion.setDisplay(getDisplayTypeForCard(this.props.question.card(), newResults));
+                updatedQuestion.setDisplay(getDisplayTypeForCard(updatedQuestion.card(), newResults));
 
                 this.setState({
                     currentQuestion: updatedQuestion,
@@ -53,7 +52,6 @@ export default class SavedMetricSelector extends Component {
                 });
             })
             .catch((error) => {
-                // Update the question regardless of the
                 this.setState({
                     currentQuestion: updatedQuestion,
                     error
@@ -63,10 +61,7 @@ export default class SavedMetricSelector extends Component {
 
     addMetric = (metricWrapper) => {
         // TODO Maybe don't use global state, maintain local query instead; this code is helpful for that
-        const { addedMetrics } = this.state;
-        const { question } = this.props;
-
-        const updatedQuestion = question.addSavedMetric(metricWrapper);
+        const { addedMetrics, currentQuestion } = this.state;
 
         this.setState({
             addedMetrics: {
@@ -75,6 +70,7 @@ export default class SavedMetricSelector extends Component {
             }
         });
 
+        const updatedQuestion = currentQuestion.addSavedMetric(metricWrapper);
         this.updateQuestionAndFetchResults(updatedQuestion);
     };
 
@@ -112,31 +108,24 @@ export default class SavedMetricSelector extends Component {
 
     };
 
-    onRemoveSeries = (card) => {
-        console.log('onRemoveSeries called')
-        // this.setState({ series: this.state.series.filter(c => c.id !== card.id) });
-    };
-
     onDone = () => {
-        const { onClose, question } = this.props;
+        const { currentQuestion } = this.state;
+        const { onClose } = this.props;
+
         onClose();
         // Show the result in normal QB view
-        setTimeout(() => this.props.runQuery(question.card(), { ignoreCache: true }), 100);
-    };
+        setTimeout(() => {
+            this.props.runQuery(currentQuestion.card(), { ignoreCache: true });
 
-    onClose = () => {
-        this.filteredMetrics().filter((metric) => !!this.state.addedMetrics[metric.id]).forEach(this.removeMetric);
-        this.props.onClose();
-        // No need to update the result for normal QB here as no changes were being made
+        });
     };
 
     filteredMetrics = () => {
-        const { question } = this.props;
-        const { searchValue, initialMetrics } = this.state;
+        const { searchValue, initialMetrics, currentQuestion } = this.state;
 
-        if (!question) return [];
+        if (!currentQuestion) return [];
 
-        return question.availableMetrics().filter(metricWrapper => {
+        return currentQuestion.availableMetrics().filter(metricWrapper => {
             if (_.find(initialMetrics, (metric) => metric.equalsToMetric(metricWrapper))) {
                 return false;
             }
@@ -150,7 +139,8 @@ export default class SavedMetricSelector extends Component {
     };
 
     render() {
-        const { currentQuestion, addedMetrics } = this.state;
+        const { onClose } = this.props;
+        const { currentResults, currentQuestion, addedMetrics } = this.state;
 
         const filteredMetrics = this.filteredMetrics();
         const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible metrics match your search.") : null;
@@ -181,8 +171,8 @@ export default class SavedMetricSelector extends Component {
                             // onOpenChartSettings={() => this.refs.settings.open()}
                             className="spread pb1"
                             {...this.props}
-                            result={this.state.currentResults && this.state.currentResults[0]}
-                            results={this.state.currentResults}
+                            result={currentResults && currentResults[0]}
+                            results={currentResults}
                             card={currentQuestion.card()}
                         />
                         {/*{ this.state.state &&*/}
@@ -208,7 +198,7 @@ export default class SavedMetricSelector extends Component {
                     </LoadingAndErrorWrapper>
                     <div className="flex-no-shrink pr2 pb2 pt1 flex border-top" style={{ borderColor: "#DBE1DF" }}>
                         <div className="flex-full">{/* TODO: How to implement a full-width border-top without this extra component? */}</div>
-                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button Button--borderless" onClick={this.onClose}>Cancel</button>
+                        <button data-metabase-event={"Dashboard;Edit Series Modal;cancel"} className="Button Button--borderless" onClick={onClose}>Cancel</button>
                         <button className="Button Button--primary" onClick={this.onDone}>Done</button>
                     </div>
                 </div>
