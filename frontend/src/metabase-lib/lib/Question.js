@@ -154,8 +154,17 @@ export default class Question {
         return this._queries[0];
     }
 
+    /**
+     * The visualization type of the question
+     */
     display(): string {
         return this._card && this._card.display;
+    }
+
+    setDisplay(display) {
+        return this.updateCard(
+            updateIn(this.card(), ["display"], display)
+        );
     }
 
     /**

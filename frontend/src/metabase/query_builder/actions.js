@@ -846,6 +846,21 @@ type RunQuerySettings = {
     parameterValues?: ParameterValues
 }
 
+// TODO: Used also in SavedMetricSelector, should this be part of metabase-lib or not?
+// (Kept temporarily here next to the action that uses it)
+export const getQuestionQueryResults = (question, cancelQueryDeferred) => {
+    const queries = question.metrics();
+
+    // Note that triggering cancelQueryDeferred will cancel every distinct query API call
+    const getQueryResult = (query) =>
+        MetabaseApi.dataset(
+            query.datasetQuery(),
+            cancelQueryDeferred ? {cancelled: cancelQueryDeferred.promise} : {}
+        );
+
+    return Promise.all(queries.map(getQueryResult))
+};
+
 /**
  * Queries the result for a given question card. If no card is provided, the currently active card is used.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
@@ -878,13 +893,8 @@ export const runQuery = (card, {
 
         const startTime = new Date();
         const cancelQueryDeferred = defer();
-        const queries = question.metrics();
 
-        // Note that triggering cancelQueryDeferred will cancel every distinct query API call
-        const getQueryResult = (query) =>
-            MetabaseApi.dataset(query.datasetQuery(), { cancelled: cancelQueryDeferred.promise });
-
-        Promise.all(queries.map(getQueryResult))
+        getQuestionQueryResults(question)
             .then((queryResults) => dispatch(queryCompleted(question.card(), queryResults)))
             .catch((error) => dispatch(queryErrored(startTime, error)));
 
@@ -898,7 +908,7 @@ export const runQuery = (card, {
     };
 };
 
-export const getChartTypeForCard = (card, queryResults) => {
+export const getDisplayTypeForCard = (card, queryResults) => {
     // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
     // This method seems to has been a candidate for a rewrite anyway
     const queryResult = queryResults[0];
@@ -934,7 +944,7 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
     return async (dispatch, getState) => {
         return {
             card,
-            cardDisplay: getChartTypeForCard(card, queryResults),
+            cardDisplay: getDisplayTypeForCard(card, queryResults),
             queryResults
         }
     };

@@ -8,15 +8,14 @@ import CheckBox from "metabase/components/CheckBox.jsx";
 import cx from "classnames";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
 import MetricList from "metabase/query_builder/components/MetricList";
-import {MetabaseApi} from "metabase/services";
-import {getChartTypeForCard} from "metabase/query_builder/actions";
+import { getDisplayTypeForCard, getQuestionQueryResults} from "metabase/query_builder/actions";
 
 type Props = {
     onClose: () => void,
     question: Question,
     originalQuestion: Question,
     // TODO Add correct type for the query result
-    result: any
+    results: any
 }
 
 export default class SavedMetricSelector extends Component {
@@ -24,11 +23,11 @@ export default class SavedMetricSelector extends Component {
 
     constructor(props, context) {
         super(props, context);
-
-        const { question, result } = this.props;
+        const { question, results } = this.props;
 
         this.state = {
-            currentResult: result,
+            currentQuestion: question,
+            currentResults: results,
             currentDataset: question.query().datasetQuery(),
             // The initial aggregations are only set when the selector view is opened
             initialMetrics: question.metrics(),
@@ -41,13 +40,25 @@ export default class SavedMetricSelector extends Component {
         this.setState({ searchValue: e.target.value.toLowerCase() });
     };
 
-    updateResults = () => {
-        MetabaseApi.dataset(this.props.question.query().datasetQuery()).then((queryResult) => {
-            // NOTE: This currently kind of enforces the recommended display type
-            // which is not optimal but a working temporary hack
-            this.props.question.card().display = getChartTypeForCard(this.props.question.card(), [queryResult]);
-            this.setState({currentResult: queryResult});
-        });
+    updateQuestionAndFetchResults = (updatedQuestion) => {
+        // TODO: Should we have some kind of loading state here?
+        getQuestionQueryResults(updatedQuestion)
+            .then((newResults) => {
+                // TODO: Should the display type be automatically updated when adding a metric? Probably it should?
+                updatedQuestion.setDisplay(getDisplayTypeForCard(this.props.question.card(), newResults));
+
+                this.setState({
+                    currentQuestion: updatedQuestion,
+                    currentResults: newResults
+                });
+            })
+            .catch((error) => {
+                // Update the question regardless of the
+                this.setState({
+                    currentQuestion: updatedQuestion,
+                    error
+                });
+            })
     };
 
     addMetric = (metricWrapper) => {
@@ -55,7 +66,7 @@ export default class SavedMetricSelector extends Component {
         const { addedMetrics } = this.state;
         const { question } = this.props;
 
-        this.props.updateQuestion(question.addSavedMetric(metricWrapper));
+        const updatedQuestion = question.addSavedMetric(metricWrapper);
 
         this.setState({
             addedMetrics: {
@@ -64,18 +75,18 @@ export default class SavedMetricSelector extends Component {
             }
         });
 
-        setTimeout(this.updateResults, 10);
+        this.updateQuestionAndFetchResults(updatedQuestion);
     };
 
     removeMetric = (metricWrapper) => {
-        const { addedMetrics } = this.state;
-        const { question } = this.props;
+        const { addedMetrics, currentQuestion } = this.state;
 
-        const metrics = question.metrics();
+        const metrics = currentQuestion.metrics();
         const index = _.findIndex(metrics, (metric) => metric.equalsToMetric(metricWrapper));
 
         if (index !== -1) {
-            this.props.updateQuestion(question.removeMetric(index));
+            const updatedQuestion = currentQuestion.removeMetric(metricWrapper);
+            this.updateQuestionAndFetchResults(updatedQuestion);
         } else {
             console.error("Removing the metric from aggregations failed");
         }
@@ -83,8 +94,6 @@ export default class SavedMetricSelector extends Component {
         this.setState({
             addedMetrics: _.omit(addedMetrics, metricWrapper.id)
         });
-
-        setTimeout(this.updateResults, 10);
     };
 
     onToggleMetric = (metric, e) => {
@@ -141,8 +150,7 @@ export default class SavedMetricSelector extends Component {
     };
 
     render() {
-        const { addedMetrics } = this.state;
-        const { question } = this.props;
+        const { currentQuestion, addedMetrics } = this.state;
 
         const filteredMetrics = this.filteredMetrics();
         const error = filteredMetrics.length === 0 ? new Error("Whoops, no compatible metrics match your search.") : null;
@@ -173,8 +181,9 @@ export default class SavedMetricSelector extends Component {
                             // onOpenChartSettings={() => this.refs.settings.open()}
                             className="spread pb1"
                             {...this.props}
-                            result={this.state.currentResult}
-                            card={question.card()}
+                            result={this.state.currentResults && this.state.currentResults[0]}
+                            results={this.state.currentResults}
+                            card={currentQuestion.card()}
                         />
                         {/*{ this.state.state &&*/}
                         {/*<div className="spred flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>*/}
