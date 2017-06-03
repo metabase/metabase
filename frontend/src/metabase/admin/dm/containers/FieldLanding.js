@@ -4,6 +4,8 @@ import { connect } from 'react-redux'
 import { getField } from 'metabase/selectors/metadata'
 import { fetchTableMetadata } from 'metabase/redux/metadata'
 
+import withBreadcrumbs from './WithBreadcrumbs'
+
 class FieldLanding extends Component {
     componentDidMount () {
         this.props.fetchTableMetadata(this.props.params.tableId)
@@ -22,7 +24,6 @@ const mapStateToProps = (state, { params }) => ({
     field: getField(state, params.fieldId)
 })
 
-export default connect(
-    mapStateToProps,
-    { fetchTableMetadata }
-)(FieldLanding)
+export default withBreadcrumbs(
+    connect(mapStateToProps,{ fetchTableMetadata })(FieldLanding)
+)

@@ -4,6 +4,8 @@ import { connect } from 'react-redux'
 import { getMetricsByDatabaseId } from 'metabase/selectors/metadata'
 import { fetchMetrics } from 'metabase/redux/metadata'
 
+import withBreadcrumbs from './WithBreadcrumbs'
+
 class DatabaseMetrics extends Component {
     componentDidMount() {
         this.props.fetchMetrics()
@@ -14,9 +16,11 @@ class DatabaseMetrics extends Component {
 }
 
 const MetricsList = ({ metrics }) =>
-    <ol>
+    <ol className="Grid Grid--gutters Grid--1of3">
         { metrics && metrics.map(metric =>
-            <li>{metric.name}</li>
+            <li className="Grid-cell">
+                {metric.name}
+            </li>
         )}
     </ol>
 
@@ -24,4 +28,5 @@ const mapStateToProps = (state, { params }) => ({
     metrics: getMetricsByDatabaseId(state, params.databaseId)
 })
 
-export default connect(mapStateToProps,{ fetchMetrics })(DatabaseMetrics)
+export default withBreadcrumbs(
+    connect(mapStateToProps,{ fetchMetrics })(DatabaseMetrics))

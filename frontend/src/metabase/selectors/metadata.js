@@ -132,9 +132,16 @@ export const getTableById = createSelector(
     (tables, id) => tables[id]
 )
 
+    /*
 export const getFieldsByTableId = createSelector(
     [getFields, (_, id) => Number(id)],
     (fields, tableId) => Object.values(fields).filter(field => field.table_id === tableId)
+)
+*/
+
+export const getFieldById = createSelector(
+    [getFields, (_, id) => Number(id)],
+    (fields, id) => fields[id]
 )
 
 export const getTablesByDatabaseId = createSelector(

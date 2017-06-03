@@ -1,42 +1,81 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-
 import { Link, withRouter } from 'react-router'
 
 import { getTablesByDatabaseId } from 'metabase/selectors/metadata'
 
+import DataModelTableLink from './DataModelTableLink'
+import withBreadcrumbs from './WithBreadcrumbs'
 
 class DatabaseData extends Component {
     render () {
+        // do some logic here
         return <TableList tables={this.props.tables} />
     }
 }
 
-@withRouter
-class DataModelTableLink extends Component {
-    render () {
-         const { params, id, children } = this.props
-        return (
-            <Link to={`/admin/dm/database/${params.databaseId}/table/${id}/`}>
-                {children}
-            </Link>
-        )
-    }
-}
 
 const TableList = ({ tables }) =>
-    <ol>
-        { tables && tables.map(table =>
-            <li key={table.id}>
-                <DataModelTableLink id={table.id}>
-                    {table.display_name}
-                </DataModelTableLink>
-            </li>
-        )}
-    </ol>
+    <div>
+        <ol className="flex full my2 align-center">
+            { tables && Object.keys(tables).map(key =>
+                <li className="flex-full text-align-center">
+                    <Link to={`#${key}`}>
+                        {key.toUpperCase()}
+                    </Link>
+                </li>
+            )}
+        </ol>
+        <ol>
+            { tables && Object.keys(tables).map((key) =>
+                <li
+                    id={key}
+                    className="block full"
+                    key={key}
+                >
+                    <div className="border-bottom pb1 mb2">
+                        <h2>{ key.toUpperCase() }</h2>
+                    </div>
+                    <ol className="Grid Grid--gutters Grid--1of3">
+                        { tables[key].map(({ id, display_name }) =>
+                            <li className="Grid-cell">
+                                 <DataModelTableLink id={id}>
+                                    <h3>{display_name}</h3>
+                                </DataModelTableLink>
+                            </li>
+                        )}
+                    </ol>
+                </li>
+            )}
+        </ol>
+    </div>
+
+const alphabet = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+
+
+const sortAlphabetically = (array, key) => {
+    let sorted = {}
+    array.map(item => {
+        let char = item.name.charAt(0)
+        if(sorted[char]) {
+            // if the letter is already here we just add an item to the other items
+          sorted[char] = sorted[char].concat([item])
+        } else {
+            // we have to dynamically add the letter to the array
+            sorted = Object.assign({}, sorted, {
+                [char]: [item]
+            })
+        }
+        return false
+    })
+    return sorted
+}
 
 const mapStateToProps = (state, props) => ({
-    tables: getTablesByDatabaseId(state, props.params.databaseId)
+    tables: sortAlphabetically(
+        getTablesByDatabaseId(state, props.params.databaseId),
+        'name'
+    )
 })
 
-export default connect(mapStateToProps)(DatabaseData)
+export default withBreadcrumbs(connect(mapStateToProps)(DatabaseData))

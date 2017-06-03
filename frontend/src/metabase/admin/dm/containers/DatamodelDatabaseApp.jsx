@@ -5,6 +5,8 @@ import { Link } from 'react-router'
 
 import { getDatabasesList } from 'metabase/selectors/metadata'
 
+import withBreadcrumbs from './WithBreadcrumbs'
+
 class DatamodelDatabaseApp extends Component {
     render () {
         return <DatabaseList databases={this.props.databases} />
@@ -32,5 +34,12 @@ const mapStateToProps = state => ({
    databases: getDatabasesList(state)
 })
 
-export default connect(mapStateToProps)(DatamodelDatabaseApp)
+const ExtraNav = ({ props }) =>
+    <div>Test extra nav</div>
+
+export default withBreadcrumbs(
+    connect(mapStateToProps)(DatamodelDatabaseApp),
+    false,
+    ExtraNav
+)
 
