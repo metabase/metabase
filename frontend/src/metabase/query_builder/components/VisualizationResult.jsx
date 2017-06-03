@@ -1,17 +1,14 @@
 /* eslint "react/prop-types": "warn" */
 
 import React from "react";
-import PropTypes from "prop-types";
 import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import type { DatasetQuery } from "metabase/meta/types/Card";
 
 type Props = {
     question: Question,
     isObjectDetail: boolean,
-    lastRunDatasetQuery: DatasetQuery,
     result: any,
     results: any[]
 }
@@ -50,18 +47,11 @@ const VisualizationResult = ({question, isObjectDetail, result, results, ...prop
                   series={series}
                   onChangeCardAndRun={props.setCardAndRun}
                   isEditing={true}
+                  card={question.card()}
                   // Table:
                   {...props}
               />
     }
-}
-
-VisualizationResult.propTypes = {
-    card:                   PropTypes.object.isRequired,
-    isObjectDetail:         PropTypes.bool.isRequired,
-    lastRunDatasetQuery:    PropTypes.object.isRequired,
-    result:                 PropTypes.object.isRequired,
-    setCardAndRun:          PropTypes.func,
-}
+};
 
 export default VisualizationResult;

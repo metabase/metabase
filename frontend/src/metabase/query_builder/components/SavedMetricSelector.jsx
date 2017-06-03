@@ -27,7 +27,6 @@ export default class SavedMetricSelector extends Component {
         this.state = {
             currentQuestion: question,
             currentResults: results,
-            currentDataset: question.query().datasetQuery(),
             // The initial aggregations are only set when the selector view is opened
             initialMetrics: question.metrics(),
             addedMetrics: {},
@@ -81,7 +80,7 @@ export default class SavedMetricSelector extends Component {
         const index = _.findIndex(metrics, (metric) => metric.equalsToMetric(metricWrapper));
 
         if (index !== -1) {
-            const updatedQuestion = currentQuestion.removeMetric(metricWrapper);
+            const updatedQuestion = currentQuestion.removeMetric(index);
             this.updateQuestionAndFetchResults(updatedQuestion);
         } else {
             console.error("Removing the metric from aggregations failed");
@@ -166,14 +165,12 @@ export default class SavedMetricSelector extends Component {
                     </div>
                     <div className="flex-full mx1 relative">
                         <VisualizationResult
-                            lastRunDatasetQuery={this.state.currentDataset}
                             // onUpdateWarnings={(warnings) => this.setState({ warnings })}
                             // onOpenChartSettings={() => this.refs.settings.open()}
                             className="spread pb1"
                             {...this.props}
-                            result={currentResults && currentResults[0]}
+                            question={currentQuestion}
                             results={currentResults}
-                            card={currentQuestion.card()}
                         />
                         {/*{ this.state.state &&*/}
                         {/*<div className="spred flex layout-centered" style={{ backgroundColor: "rgba(255,255,255,0.80)" }}>*/}
