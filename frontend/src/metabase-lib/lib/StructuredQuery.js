@@ -9,7 +9,7 @@ import { format as formatExpression } from "metabase/lib/expressions/formatter";
 import { getAggregator } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { chain, assoc, updateIn } from "icepick";
 
 import type {
     StructuredQuery as StructuredQueryObject,
@@ -24,11 +24,34 @@ import type {
     DimensionOptions
 } from "metabase/meta/types/Metadata";
 
-import Dimension, { ExpressionDimension } from "metabase-lib/lib/Dimension";
+import Dimension, {
+    ExpressionDimension,
+    AggregationDimension
+} from "metabase-lib/lib/Dimension";
+
+const STRUCTURED_QUERY_TEMPLATE = {
+    database: null,
+    type: "query",
+    query: {
+        source_table: null
+    }
+};
 
 export default class StructuredQuery extends Query {
+    constructor(
+        question: Question,
+        index: number,
+        datasetQuery?: DatasetQuery = STRUCTURED_QUERY_TEMPLATE
+    ) {
+        super(question, index, datasetQuery);
+    }
+
     isStructured(): boolean {
         return true;
+    }
+
+    reset(): StructuredQuery {
+        return new StructuredQuery(this._question, this._index);
     }
 
     isEditable(): boolean {
@@ -46,6 +69,37 @@ export default class StructuredQuery extends Query {
             // $FlowFixMe
             return this._metadata.tables[this._datasetQuery.query.source_table];
         }
+    }
+
+    setDatabase(database: Database) {
+        if (database.id !== this.databaseId()) {
+            return this.reset().setDatasetQuery(
+                assoc(this.datasetQuery(), "database", database.id)
+            );
+        } else {
+            return this;
+        }
+    }
+
+    setTable(table: Table) {
+        if (table.id !== this.tableId()) {
+            return this.reset().setDatasetQuery(
+                chain(this.datasetQuery())
+                    .assoc("database", table.database.id)
+                    .assocIn(["query", "source_table"], table.id)
+                    .value()
+            );
+        } else {
+            return this;
+        }
+    }
+
+    tableId() {
+        return this.query().source_table;
+    }
+
+    table() {
+        return this._metadata.tables[this.tableId()];
     }
 
     // AGGREGATIONS
@@ -69,7 +123,7 @@ export default class StructuredQuery extends Query {
 
     aggregationName(index: number = 0): string {
         if (this.isStructured()) {
-            const aggregation = this.aggregations()[0];
+            const aggregation = this.aggregations()[index];
             if (NamedClause.isNamed(aggregation)) {
                 return NamedClause.getName(aggregation);
             } else if (AggregationClause.isCustom(aggregation)) {
@@ -124,7 +178,8 @@ export default class StructuredQuery extends Query {
         if (aggregations.length !== 1) return false;
 
         const agg = aggregations[0];
-        return AggregationClause.isMetric(agg) && AggregationClause.getMetric(agg) === metric.id;
+        return AggregationClause.isMetric(agg) &&
+            AggregationClause.getMetric(agg) === metric.id;
     }
 
     // BREAKOUTS
@@ -132,7 +187,10 @@ export default class StructuredQuery extends Query {
     breakouts(): Breakout[] {
         return Q.getBreakouts(this.query());
     }
-    breakoutOptions(breakout?: any): DimensionOptions {
+    breakoutOptions(
+        breakout?: any,
+        fieldFilter = () => true
+    ): DimensionOptions {
         const fieldOptions = {
             count: 0,
             fks: [],
@@ -151,7 +209,9 @@ export default class StructuredQuery extends Query {
             const dimensionFilter = dimension => {
                 const field = dimension.field && dimension.field();
                 return !field ||
-                    (field.isDimension() && !usedFields.has(field.id));
+                    (field.isDimension() &&
+                        fieldFilter(field) &&
+                        !usedFields.has(field.id));
             };
 
             for (const dimension of this.dimensions().filter(dimensionFilter)) {
@@ -169,17 +229,19 @@ export default class StructuredQuery extends Query {
                         });
                     }
                 }
-                // else {
                 fieldOptions.count++;
                 fieldOptions.dimensions.push(dimension);
-                // }
             }
         }
 
         return fieldOptions;
     }
+
     canAddBreakout(): boolean {
         return this.breakoutOptions().count > 0;
+    }
+    hasValidBreakout(): boolean {
+        return Q_deprecated.hasValidBreakout(this.query());
     }
 
     addBreakout(breakout: Breakout) {
@@ -224,31 +286,82 @@ export default class StructuredQuery extends Query {
 
     // TODO: standardize SORT vs ORDER_BY terminology
 
-    sorts(): OrderBy[] {
-        return [];
+    aggregationDimensions() {
+        return this.breakouts().map(breakout =>
+            Dimension.parseMBQL(breakout, this._metadata));
     }
-    sortOptions(): any[] {
-        return [];
-    }
-    canAddSort(): boolean {
-        return false;
+    metricDimensions() {
+        return this.aggregations()
+            .entries()
+            .map(
+                ([index, aggregation]) =>
+                    new AggregationDimension(
+                        null,
+                        [index],
+                        this._metadata,
+                        aggregation[0]
+                    )
+            );
     }
 
-    addOrderBy(order_by: OrderBy) {
+    sorts(): OrderBy[] {
+        return Q.getOrderBys(this.query());
+    }
+    sortOptions(sort, fieldFilter): any[] {
+        let sortOptions = { count: 0, dimensions: [], fks: [] };
+        // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
+        if (this.isBareRows()) {
+            sortOptions = this.breakoutOptions(sort, fieldFilter);
+        } else if (this.hasValidBreakout()) {
+            for (const breakout of this.breakouts()) {
+                sortOptions.dimensions.push(
+                    Dimension.parseMBQL(breakout, this._metadata)
+                );
+                sortOptions.count++;
+            }
+            for (const [index, aggregation] of this.aggregations().entries()) {
+                if (Q_deprecated.canSortByAggregateField(this.query(), index)) {
+                    sortOptions.dimensions.push(
+                        new AggregationDimension(
+                            null,
+                            [index],
+                            this._metadata,
+                            aggregation[0]
+                        )
+                    );
+                    sortOptions.count++;
+                }
+            }
+        }
+        return sortOptions;
+    }
+    canAddSort(): boolean {
+        const sorts = this.sorts();
+        return this.sortOptions().count > 0 &&
+            (sorts.length === 0 || sorts[sorts.length - 1][0] != null);
+    }
+
+    addSort(order_by: OrderBy) {
         return this._updateQuery(Q.addOrderBy, arguments);
     }
-    updateOrderBy(index: number, order_by: OrderBy) {
+    updateSort(index: number, order_by: OrderBy) {
         return this._updateQuery(Q.updateOrderBy, arguments);
     }
-    removeOrderBy(index: number) {
+    removeSort(index: number) {
         return this._updateQuery(Q.removeOrderBy, arguments);
     }
-    clearOrderBy() {
+    clearSort() {
         return this._updateQuery(Q.clearOrderBy, arguments);
+    }
+    replaceSort(order_by: OrderBy) {
+        return this.clearSort().addSort(order_by);
     }
 
     // LIMIT
 
+    limit(): ?number {
+        return Q.getLimit(this.query());
+    }
     updateLimit(limit: LimitClause) {
         return this._updateQuery(Q.updateLimit, arguments);
     }
@@ -260,6 +373,14 @@ export default class StructuredQuery extends Query {
 
     expressions(): { [key: string]: any } {
         return Q.getExpressions(this.query());
+    }
+
+    updateExpression(name, expression, oldName) {
+        return this._updateQuery(Q.updateExpression, arguments);
+    }
+
+    removeExpression(name) {
+        return this._updateQuery(Q.removeExpression, arguments);
     }
 
     // DIMENSIONS
@@ -281,6 +402,32 @@ export default class StructuredQuery extends Query {
         ]) => {
             return new ExpressionDimension(null, [expressionName]);
         });
+    }
+
+    fieldReferenceForColumn(column) {
+        if (column.fk_field_id != null) {
+            return ["fk->", column.fk_field_id, column.id];
+        } else if (column.id != null) {
+            return ["field-id", column.id];
+        } else if (column["expression-name"] != null) {
+            return ["expression", column["expression-name"]];
+        } else if (column.source === "aggregation") {
+            // FIXME: aggregations > 0?
+            return ["aggregation", 0];
+        }
+    }
+
+    parseFieldReference(fieldRef) {
+        const dimension = Dimension.parseMBQL(fieldRef, this._metadata);
+        if (dimension) {
+            // HACK
+            if (dimension instanceof AggregationDimension) {
+                dimension._displayName = this.aggregations()[
+                    dimension._args[0]
+                ][0];
+            }
+            return dimension;
+        }
     }
 
     // INTERNAL

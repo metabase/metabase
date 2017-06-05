@@ -59,7 +59,7 @@ type Props = {
     question:               Question,
     query:                  NativeQuery,
 
-    runQuestionQuery:       (RunQueryParams) => void,
+    runQuestionQuery:       (options?: RunQueryParams) => void,
     setDatasetQuery:        (datasetQuery: DatasetQuery) => void,
 
     setDatabaseFn:          (databaseId: DatabaseId) => void,

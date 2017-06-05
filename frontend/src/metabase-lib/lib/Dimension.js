@@ -1,3 +1,5 @@
+import React from "react";
+
 import Query_DEPRECATED from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
 import _ from "underscore";
@@ -129,6 +131,7 @@ export default class Dimension {
 
         const baseDimensionA = this.baseDimension();
         const baseDimensionB = otherDimension && otherDimension.baseDimension();
+
         return !!baseDimensionA &&
             !!baseDimensionB &&
             baseDimensionA.isEqual(baseDimensionB);
@@ -136,6 +139,10 @@ export default class Dimension {
 
     baseDimension(): Dimension {
         return this;
+    }
+
+    render() {
+        return <span>{this.displayName()}</span>;
     }
 }
 
@@ -328,10 +335,36 @@ export class ExpressionDimension extends Dimension {
     }
 }
 
+export class AggregationDimension extends Dimension {
+    static parseMBQL(mbql: any, metadata?: ?Metadata): ?Dimension {
+        if (Array.isArray(mbql) && mbqlEq(mbql[0], "aggregation")) {
+            return new AggregationDimension(null, mbql.slice(1));
+        }
+    }
+
+    constructor(parent, args, metadata, displayName) {
+        super(parent, args, metadata);
+        this._displayName = displayName;
+    }
+
+    displayName(): string {
+        return this._displayName;
+    }
+
+    mbql() {
+        return ["aggregation", this._args[0]];
+    }
+
+    icon() {
+        return "int";
+    }
+}
+
 const DIMENSION_TYPES = [
     FieldIDDimension,
     FKDimension,
     DatetimeFieldDimension,
     ExpressionDimension,
-    BinnedDimension
+    BinnedDimension,
+    AggregationDimension
 ];

@@ -95,7 +95,7 @@ describe("Question", () => {
         const query = question
             .metrics()[0]
             .addFilter(["=", ["field-id", 1], 42]);
-        question = question.updateQuery(0, query);
+        question = question.setQuery(query, 0);
         expect(question.metrics()).toHaveLength(2);
         expect(question.card()).toEqual({
             dataset_query: {

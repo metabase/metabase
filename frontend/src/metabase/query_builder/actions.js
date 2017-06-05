@@ -1,5 +1,6 @@
 /*@flow weak*/
-/*global ace*/
+declare var ace: any;
+
 import React from 'react'
 import { createAction } from "redux-actions";
 import _ from "underscore";
@@ -39,7 +40,16 @@ import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
-import type { ParameterValues } from "metabase/meta/types/Parameter";
+
+import type { Card } from "metabase/meta/types/Card";
+
+type UiControls = {
+    isEditing?: boolean,
+    isShowingTemplateTagsEditor?: boolean,
+    isShowingNewbModal?: boolean,
+    isShowingTutorial?: boolean,
+}
+
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE"; const setCurrentState = createAction(SET_CURRENT_STATE);
 
@@ -135,7 +145,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
         const { currentUser } = getState();
 
         let card, databasesList, originalCard;
-        let uiControls = {
+        let uiControls: UiControls = {
             isEditing: false,
             isShowingTemplateTagsEditor: false
         };
@@ -186,6 +196,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                     // deserialized card contains the card id, so just populate originalCard
                     originalCard = await loadCard(card.original_card_id);
                     // if the cards are equal then show the original
+                    // $FlowFixMe:
                     if (cardIsEquivalent(card, originalCard)) {
                         card = Utils.copy(originalCard);
                     }
@@ -571,7 +582,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
         }
 
         // currently only support single query
-        newQuestion = newQuestion.updateQuery(0, newQuestion.query().updateDatasetQuery(dataset_query));
+        newQuestion = newQuestion.setQuery(newQuestion.query().setDatasetQuery(dataset_query), 0);
 
         const oldTagCount = question.query().isNative() ? question.query().templateTags().length : 0;
         const newTagCount = newQuestion.query().isNative() ? newQuestion.query().templateTags().length : 0;
@@ -869,8 +880,8 @@ export const getQuestionQueryResults = (question, cancelQueryDeferred) => {
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
  */
 export type RunQueryParams = {
-    shouldUpdateUrl: boolean,
-    ignoreCache: boolean, // currently only implemented for saved cards
+    shouldUpdateUrl?: boolean,
+    ignoreCache?: boolean, // currently only implemented for saved cards
     overrideWithCard?: Card // override the current question with the provided card
 }
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
@@ -1002,8 +1013,11 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             // action is on a PK column
             let newCard: Card = startNewCard("query", card.dataset_query.database);
 
+            // $FlowFixMe
             newCard.dataset_query.query.source_table = coldef.table_id;
+            // $FlowFixMe
             newCard.dataset_query.query.aggregation = ["rows"];
+            // $FlowFixMe
             newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
             // run it
@@ -1109,6 +1123,7 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
                 if (result && result.status === "completed" && result.data.rows.length > 0) {
                     info["value"] = result.data.rows[0][0];
                 } else {
+                    // $FlowFixMe
                     info["value"] = "Unknown";
                 }
             } catch (error) {

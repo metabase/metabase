@@ -11,8 +11,8 @@ import { startNewCard } from "metabase/lib/card";
 import { isDate, isState, isCountry } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
+import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
 
@@ -305,7 +305,7 @@ export const updateNumericFilter = (card, column, start, end) => {
 export const pivot = (
     card: CardObject,
     breakout,
-    tableMetadata: TableMetadata,
+    tableMetadata: Table,
     dimensions: DimensionValue[] = []
 ): ?CardObject => {
     if (card.dataset_query.type !== "query") {
@@ -352,7 +352,7 @@ export const pivot = (
 // ]);
 const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
 
-const guessVisualization = (card: CardObject, tableMetadata: TableMetadata) => {
+const guessVisualization = (card: CardObject, tableMetadata: Table) => {
     const query = Card.getQuery(card);
     if (!query) {
         return;

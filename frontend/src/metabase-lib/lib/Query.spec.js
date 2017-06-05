@@ -1,4 +1,14 @@
-import Query from "./Query";
+/* @flow weak */
+
+declare var describe: any;
+declare var it: any;
+declare var xit: any;
+declare var expect: any;
+
+// HACK: needed due to cyclical dependency issue
+import "metabase-lib/lib/Question";
+
+import StructuredQuery from "./StructuredQuery";
 
 const FIELD = {
     id: 1,
@@ -7,21 +17,25 @@ const FIELD = {
 
 const _metadata = {
     fields: {
-        1: FIELD
+        "1": FIELD
     },
     metrics: {
-        1: {
+        "1": {
             name: "Metric"
         }
     },
     tables: {
-        1: {
+        "1": {
             fields: [FIELD]
         }
     }
 };
 
-const makeQuery = agg => ({
+const mockQuestion = {
+    _metadata
+};
+
+const makeDatasetQuery = agg => ({
     type: "query",
     database: 1,
     query: {
@@ -34,46 +48,59 @@ describe("Query", () => {
     describe("aggregationName", () => {
         it("should return a saved metric's name", () => {
             expect(
-                new Query(
-                    { _metadata },
-                    makeQuery(["METRIC", 1])
+                new StructuredQuery(
+                    mockQuestion,
+                    0,
+                    makeDatasetQuery(["METRIC", 1])
                 ).aggregationName()
             ).toBe("Metric");
         });
         it("should return a standard aggregation name", () => {
             expect(
-                new Query({ _metadata }, makeQuery(["count"])).aggregationName()
+                new StructuredQuery(
+                    mockQuestion,
+                    0,
+                    makeDatasetQuery(["count"])
+                ).aggregationName()
             ).toBe("Count of rows");
         });
         it("should return a standard aggregation name with field", () => {
             expect(
-                new Query(
-                    { _metadata },
-                    makeQuery(["sum", ["field-id", 1]])
+                new StructuredQuery(
+                    mockQuestion,
+                    0,
+                    makeDatasetQuery(["sum", ["field-id", 1]])
                 ).aggregationName()
             ).toBe("Sum of Field");
         });
         xit("should return a standard aggregation name with fk field", () => {
             expect(
-                new Query(
-                    { _metadata },
-                    makeQuery(["sum", ["fk", 2, 3]])
+                new StructuredQuery(
+                    mockQuestion,
+                    0,
+                    makeDatasetQuery(["sum", ["fk", 2, 3]])
                 ).aggregationName()
             ).toBe("Sum of Field");
         });
         it("should return a custom expression description", () => {
             expect(
-                new Query(
-                    { _metadata },
-                    makeQuery(["+", 1, ["sum", ["field-id", 1]]])
+                new StructuredQuery(
+                    mockQuestion,
+                    0,
+                    makeDatasetQuery(["+", 1, ["sum", ["field-id", 1]]])
                 ).aggregationName()
             ).toBe("1 + Sum(Field)");
         });
         it("should return a named expression name", () => {
             expect(
-                new Query(
-                    { _metadata },
-                    makeQuery(["named", ["sum", ["field-id", 1]], "Named"])
+                new StructuredQuery(
+                    mockQuestion,
+                    0,
+                    makeDatasetQuery([
+                        "named",
+                        ["sum", ["field-id", 1]],
+                        "Named"
+                    ])
                 ).aggregationName()
             ).toBe("Named");
         });

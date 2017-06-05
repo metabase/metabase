@@ -1,17 +1,38 @@
 /* @flow weak */
 
-import _ from "underscore";
-import Utils from "metabase/lib/utils";
-
 import Query from "./Query";
 import Dimension from "./Dimension";
-import Metric from "./metadata/Metric";
+
 import Metadata from "./metadata/Metadata";
+import Metric from "./metadata/Metric";
+import Table from "./metadata/Table";
+import Field from "./metadata/Field";
 
 import Breakout from "./query/Breakout";
 import Filter from "./query/Filter";
 
-import Action, { ActionClick } from "./Action";
+import StructuredQuery from "./StructuredQuery";
+import NativeQuery from "./NativeQuery";
+
+import Utils from "metabase/lib/utils";
+import { utf8_to_b64url } from "metabase/lib/card";
+import Query_DEPRECATED from "metabase/lib/query";
+
+import { getParametersWithExtras } from "metabase/meta/Card";
+import * as Q from "metabase/lib/query/query";
+
+import {
+    summarize,
+    pivot,
+    filter,
+    breakout,
+    toUnderlyingRecords,
+    drillUnderlyingRecords
+} from "metabase/qb/lib/actions";
+import { getMode } from "metabase/qb/lib/modes";
+
+import _ from "underscore";
+import { chain, updateIn, assoc } from "icepick";
 
 import type {
     Parameter as ParameterObject,
@@ -24,18 +45,12 @@ import type {
     DatasetQuery as DatasetQueryObject,
     StructuredDatasetQuery as StructuredDatasetQueryObject
 } from "metabase/meta/types/Card";
-// import type { StructuredQuery as StructuredQueryObject } from "metabase/meta/types/Query";
 
-import StructuredQuery from "./StructuredQuery";
-import NativeQuery from "./NativeQuery";
-
-import * as Q from "metabase/lib/query/query";
-import { getParametersWithExtras } from "metabase/meta/Card";
-
-import { chain, updateIn, assoc } from "icepick";
-import {utf8_to_b64url} from "metabase/lib/card";
-
-import Query_DEPRECATED from "metabase/lib/query";
+import type {
+    ClickAction,
+    ClickObject,
+    QueryMode
+} from "metabase/meta/types/Visualization";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -92,12 +107,16 @@ export default class Question {
         }
     }
 
-    updateCard(card: CardObject) {
+    metadata(): Metadata {
+        return this._metadata;
+    }
+
+    setCard(card: CardObject): Question {
         return new Question(this._metadata, card, this._parameterValues);
     }
 
     newQuestion() {
-        return this.updateCard(
+        return this.setCard(
             chain(this.card())
                 .dissoc("id")
                 .dissoc("name")
@@ -115,8 +134,8 @@ export default class Question {
         throw new Error("Unknown query type: " + datasetQuery.type);
     }
 
-    updateQuery(index: number, newQuery: Query): Question {
-        if (newQuery instanceof StructuredQuery) {
+    setQuery(newQuery: Query, index?: number): Question {
+        if (index != null && newQuery instanceof StructuredQuery) {
             // TODO: real multiple metric persistence
             let query = Q.clearAggregations(newQuery.query());
             for (let i = 0; i < this._queries.length; i++) {
@@ -128,7 +147,7 @@ export default class Question {
                     ]
                 );
             }
-            return this.updateCard({
+            return this.setCard({
                 ...this._card,
                 dataset_query: {
                     ...newQuery.datasetQuery(),
@@ -136,7 +155,7 @@ export default class Question {
                 }
             });
         } else {
-            return this.updateCard({
+            return this.setCard({
                 ...this._card,
                 dataset_query: newQuery.datasetQuery()
             });
@@ -162,9 +181,7 @@ export default class Question {
     }
 
     setDisplay(display) {
-        return this.updateCard(
-            assoc(this.card(), "display", display)
-        );
+        return this.setCard(assoc(this.card(), "display", display));
     }
 
     /**
@@ -201,7 +218,7 @@ export default class Question {
     }
 
     addSavedMetric(metric: Metric): Question {
-        console.log('adding a saved metric', metric);
+        console.log("adding a saved metric", metric);
         return this.addMetric(
             ({
                 type: "query",
@@ -215,7 +232,7 @@ export default class Question {
     }
     addMetric(datasetQuery: StructuredDatasetQueryObject): Question {
         // TODO: multiple metrics persistence
-        return this.updateCard(
+        return this.setCard(
             updateIn(this.card(), ["dataset_query", "query"], query =>
                 Q.addAggregation(
                     query,
@@ -224,11 +241,11 @@ export default class Question {
         );
     }
     updateMetric(index: number, metric: Query): Question {
-        return this.updateQuery(index, metric);
+        return this.setQuery(metric, index);
     }
     removeMetric(index: number): Question {
         // TODO: multiple metrics persistence
-        return this.updateCard(
+        return this.setCard(
             updateIn(this.card(), ["dataset_query", "query"], query =>
                 Q.removeAggregation(query, index))
         );
@@ -276,26 +293,83 @@ export default class Question {
         return false;
     }
 
-    // top-level actions
-    actions(): Action[] {
-        // if this is a single query question, the top level actions are
-        // the querys actions
-        if (this._queries.length === 1) {
-            return this.query().actions();
+    // drill through / actions
+    // TODO: a lot of this should be moved to StructuredQuery?
+
+    summarize(aggregation) {
+        const tableMetadata = this.tableMetadata();
+        return this.setCard(summarize(this.card(), aggregation, tableMetadata));
+    }
+    breakout(b) {
+        return this.setCard(breakout(this.card(), b));
+    }
+    pivot(breakout, dimensions = []) {
+        const tableMetadata = this.tableMetadata();
+        return this.setCard(
+            // $FlowFixMe: tableMetadata could be null
+            pivot(this.card(), breakout, tableMetadata, dimensions)
+        );
+    }
+    filter(operator, column, value) {
+        return this.setCard(filter(this.card(), operator, column, value));
+    }
+    drillUnderlyingRecords(dimensions) {
+        return this.setCard(drillUnderlyingRecords(this.card(), dimensions));
+    }
+    toUnderlyingRecords(): ?Question {
+        const newCard = toUnderlyingRecords(this.card());
+        if (newCard) {
+            return this.setCard(newCard);
+        }
+    }
+    toUnderlyingData(): Question {
+        return this.setDisplay("table");
+    }
+    drillPK(field: Field, value: Value): ?Question {
+        const query = this.query();
+        if (query instanceof StructuredQuery) {
+            return query
+                .reset()
+                .setTable(field.table)
+                .addFilter(["=", ["field-id", field.id], value])
+                .question();
+        }
+    }
+
+    // deprecated
+    tableMetadata(): ?Table {
+        const query = this.query();
+        if (query instanceof StructuredQuery) {
+            return query.table();
         } else {
-            // do something smart
+            return null;
+        }
+    }
+
+    mode(): ?QueryMode {
+        return getMode(this.card(), this.tableMetadata());
+    }
+
+    actions(): ClickAction[] {
+        const mode = this.mode();
+        if (mode) {
+            return _.flatten(
+                mode.actions.map(actionCreator =>
+                    actionCreator({ question: this }))
+            );
+        } else {
             return [];
         }
     }
 
-    // drill-through etc actions
-    actionsForClick(click: ActionClick): Action[] {
-        // if this is a single query question, the top level actions are
-        // the querys actions
-        if (this._queries.length === 1) {
-            return this.query().actions();
+    actionsForClick(clicked: ?ClickObject): ClickAction[] {
+        const mode = this.mode();
+        if (mode) {
+            return _.flatten(
+                mode.drills.map(actionCreator =>
+                    actionCreator({ question: this, clicked }))
+            );
         } else {
-            // do something smart
             return [];
         }
     }
@@ -308,7 +382,7 @@ export default class Question {
     }
 
     id(): number {
-        return this._card && this._card.id
+        return this._card && this._card.id;
     }
 
     isSaved(): boolean {
@@ -379,17 +453,27 @@ export default class Question {
         if (!this._card) {
             return false;
         } else if (!this._card.id) {
-            if (this._card.dataset_query.query && this._card.dataset_query.query.source_table) {
+            if (
+                this._card.dataset_query.query &&
+                this._card.dataset_query.query.source_table
+            ) {
                 return true;
-            } else if (this._card.dataset_query.native && !_.isEmpty(this._card.dataset_query.native.query)) {
+            } else if (
+                this._card.dataset_query.type === "native" &&
+                !_.isEmpty(this._card.dataset_query.native.query)
+            ) {
                 return true;
             } else {
                 return false;
             }
         } else {
-            const origCardSerialized = originalQuestion ? originalQuestion.serializeForUrl() : null;
-            const currentCardSerialized = this.serializeForUrl({ includeOriginalCardId: false});
-            return (currentCardSerialized !== origCardSerialized);
+            const origCardSerialized = originalQuestion
+                ? originalQuestion.serializeForUrl()
+                : null;
+            const currentCardSerialized = this.serializeForUrl({
+                includeOriginalCardId: false
+            });
+            return currentCardSerialized !== origCardSerialized;
         }
     }
 
@@ -397,7 +481,9 @@ export default class Question {
         // TODO Atte Keinänen 5/31/17: Remove code mutation and unnecessary copying
         const dataset_query = Utils.copy(this._card.dataset_query);
         if (dataset_query.query) {
-            dataset_query.query = Query_DEPRECATED.cleanQuery(dataset_query.query);
+            dataset_query.query = Query_DEPRECATED.cleanQuery(
+                dataset_query.query
+            );
         }
 
         const cardCopy = {
@@ -407,7 +493,10 @@ export default class Question {
             display: this._card.display,
             parameters: this._card.parameters,
             visualization_settings: this._card.visualization_settings,
-            ...(includeOriginalCardId ? { original_card_id: this._card.original_card_id } : {})
+            // $FlowFixMe
+            ...(includeOriginalCardId
+                ? { original_card_id: this._card.original_card_id }
+                : {})
         };
 
         return utf8_to_b64url(JSON.stringify(cardCopy));

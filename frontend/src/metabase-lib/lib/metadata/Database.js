@@ -15,7 +15,7 @@ import type { SchemaName } from "metabase/meta/types/Table";
  */
 export default class Database extends Base {
     displayName: string;
-    description: string;
+    description: ?string;
 
     tables: Table[];
     schemas: Schema[];

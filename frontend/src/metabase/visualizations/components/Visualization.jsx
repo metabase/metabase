@@ -19,8 +19,6 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { getMode, getModeDrills } from "metabase/qb/lib/modes"
-import * as Card from "metabase/meta/Card";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
@@ -33,7 +31,9 @@ export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see
 
 import type { UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
 import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
-import type { Metadata } from "metabase/meta/types/Metadata";
+
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Question from "metabase-lib/lib/Question";
 
 type Props = {
     series: Series,
@@ -188,12 +188,12 @@ export default class Visualization extends Component {
         if (!clicked) {
             return [];
         }
+        // TODO: push this logic into Question?
         const { series, metadata } = this.props;
         const seriesIndex = clicked.seriesIndex || 0;
         const card = series[seriesIndex].card;
-        const tableMetadata = card && Card.getTableMetadata(card, metadata);
-        const mode = getMode(card, tableMetadata);
-        return getModeDrills(mode, card, tableMetadata, clicked);
+        const question = new Question(metadata, card);
+        return question.actionsForClick(clicked);
     }
 
     visualizationIsClickable = (clicked: ClickObject) => {
@@ -204,6 +204,7 @@ export default class Visualization extends Component {
         try {
             return this.getClickActions(clicked).length > 0;
         } catch (e) {
+            console.warn(e);
             return false;
         }
     }

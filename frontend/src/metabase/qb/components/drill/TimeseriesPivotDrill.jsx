@@ -1,15 +1,13 @@
 /* @flow */
 
-import { pivot, drillDownForDimensions } from "metabase/qb/lib/actions";
+import { drillDownForDimensions } from "metabase/qb/lib/actions";
 
 import type {
     ClickAction,
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ClickAction[] => {
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     const dimensions = (clicked && clicked.dimensions) || [];
     const drilldown = drillDownForDimensions(dimensions);
     if (!drilldown) {
@@ -21,8 +19,7 @@ export default (
             name: "timeseries-zoom",
             section: "zoom",
             title: "Zoom in",
-            card: () =>
-                pivot(card, drilldown.breakout, tableMetadata, dimensions)
+            question: () => question.pivot(drilldown.breakout, dimensions)
         }
     ];
 };

@@ -25,17 +25,19 @@ import type { Children } from 'react';
 
 import StructuredQuery from "metabase-lib/lib/StructuredQuery";
 
+export type GuiQueryEditorFeatures = {
+    data?: boolean,
+    filter?: boolean,
+    aggregation?: boolean,
+    breakout?: boolean,
+    sort?: boolean,
+    limit?: boolean
+}
+
 type Props = {
     children?: Children,
 
-    features: {
-        data?: boolean,
-        filter?: boolean,
-        aggregation?: boolean,
-        breakout?: boolean,
-        sort?: boolean,
-        limit?: boolean
-    },
+    features: GuiQueryEditorFeatures,
 
     query: StructuredQuery,
 

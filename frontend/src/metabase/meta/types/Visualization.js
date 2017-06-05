@@ -2,7 +2,7 @@
 
 import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import Question from "metabase-lib/lib/Question";
 
 export type ActionCreator = (props: ClickActionProps) => ClickAction[]
 
@@ -40,15 +40,14 @@ export type ClickAction = {
     title: any, // React Element
     icon?: string,
     popover?: (props: ClickActionPopoverProps) => any, // React Element
-    card?: () => ?Card,
+    question?: () => ?Question,
 
     section?: string,
     name?: string,
 }
 
 export type ClickActionProps = {
-    card: Card,
-    tableMetadata: TableMetadata,
+    question: Question,
     clicked?: ClickObject
 }
 
