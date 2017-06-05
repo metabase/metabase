@@ -53,7 +53,7 @@ type Props = {
     isAdmin: boolean,
     isObjectDetail: boolean,
     isResultDirty: boolean,
-    runQuery: (any) => void,
+    runQuestionQuery: (any) => void,
     cancelQuery?: (any) => void,
     className: string
 };
@@ -97,8 +97,7 @@ export default class QueryVisualization extends Component {
     }
 
     runQuery = () => {
-        const { question } = this.props;
-        this.props.runQuery(question.card(), { ignoreCache: true });
+        this.props.runQuestionQuery({ ignoreCache: true });
     };
 
     renderHeader() {

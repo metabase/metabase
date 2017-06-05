@@ -43,11 +43,12 @@ const getEditorLineHeight = (lines) => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/NativeQuery";
 
-import type { Card, DatasetQuery } from "metabase/meta/types/Card";
+import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { DatabaseId } from "metabase/meta/types/Database";
 import type { TableId } from "metabase/meta/types/Table";
 import type { ParameterId } from "metabase/meta/types/Parameter";
 import type { LocationDescriptor } from "metabase/meta/types";
+import type { RunQueryParams } from "metabase/query_builder/actions";
 
 type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
@@ -58,7 +59,7 @@ type Props = {
     question:               Question,
     query:                  NativeQuery,
 
-    runQuery:               (card?: Card, options?: { shouldUpdateUrl?: boolean }) => void,
+    runQuestionQuery:       (RunQueryParams) => void,
     setDatasetQuery:        (datasetQuery: DatasetQuery) => void,
 
     setDatabaseFn:          (databaseId: DatabaseId) => void,
@@ -142,7 +143,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     handleKeyDown = (e: KeyboardEvent) => {
-        const { query, runQuery, question } = this.props;
+        const { query, runQuestionQuery } = this.props;
 
         const ENTER_KEY = 13;
         if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && query.canRun()) {
@@ -152,10 +153,10 @@ export default class NativeQueryEditor extends Component {
                 const selectedText = this._editor.getSelectedText();
                 if (selectedText) {
                     const temporaryCard = query.updateQueryText(selectedText).question().card();
-                    runQuery(temporaryCard, { shouldUpdateUrl: false });
+                    runQuestionQuery({ overrideWithCard: temporaryCard, shouldUpdateUrl: false });
                 }
             } else {
-                runQuery(question.card());
+                runQuestionQuery();
             }
         }
     }

@@ -104,7 +104,7 @@ export default class QuestionEditor extends Component {
 
     renderButtons = () => {
         // NOTE: Most of stuff is replicated from QueryVisualization header
-        const { question, isResultDirty, isAdmin, result, setQueryModeFn, tableMetadata, isRunnable, isRunning, runQuery, cancelQuery } = this.props;
+        const { question, isResultDirty, isAdmin, result, setQueryModeFn, tableMetadata, isRunnable, isRunning, runQuestionQuery, cancelQuery } = this.props;
 
         const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
         const isEmbeddingEnabled = MetabaseSettings.get("embedding");
@@ -140,7 +140,7 @@ export default class QuestionEditor extends Component {
 
         const getRunButton = () => {
             const { question } = this.props;
-            const runQueryByIgnoringCache = () => runQuery(question.card(), { ignoreCache: true });
+            const runQueryWithoutCache = () => runQuestionQuery({ overrideWithCard: question.card(), ignoreCache: true });
 
             let runButtonTooltip;
             if (!isResultDirty && result && result.cached && result.average_execution_time > REFRESH_TOOLTIP_THRESHOLD) {
@@ -153,7 +153,7 @@ export default class QuestionEditor extends Component {
                         isRunnable={isRunnable}
                         isDirty={isResultDirty}
                         isRunning={isRunning}
-                        onRun={runQueryByIgnoringCache}
+                        onRun={runQueryWithoutCache}
                         onCancel={cancelQuery}
                     />
                 </Tooltip>

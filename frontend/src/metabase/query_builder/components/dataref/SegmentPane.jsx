@@ -28,7 +28,7 @@ export default class SegmentPane extends Component {
         segment: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQuery: PropTypes.func.isRequired,
+        runQuestionQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired,
         question: PropTypes.object.isRequired,
@@ -49,14 +49,14 @@ export default class SegmentPane extends Component {
     }
 
     filterBy() {
-        let { datasetQuery, question } = this.props;
+        let { datasetQuery } = this.props;
         // Add an aggregation so both aggregation and filter popovers aren't visible
         if (!Query.hasValidAggregation(datasetQuery.query)) {
             Query.clearAggregations(datasetQuery.query);
         }
         Query.addFilter(datasetQuery.query, ["SEGMENT", this.props.segment.id]);
         this.props.setDatasetQuery(datasetQuery);
-        this.props.runQuery(question.card());
+        this.props.runQuestionQuery();
     }
 
     newCard() {

@@ -109,13 +109,13 @@ export default class SavedMetricSelector extends Component {
 
     onDone = () => {
         const { currentQuestion } = this.state;
-        const { onClose } = this.props;
+        const { onClose, updateQuestion, runQuestionQuery } = this.props;
 
         onClose();
         // Show the result in normal QB view
         setTimeout(() => {
-            this.props.runQuery(currentQuestion.card(), { ignoreCache: true });
-
+            updateQuestion(currentQuestion);
+            runQuestionQuery({ ignoreCache: true });
         });
     };
 

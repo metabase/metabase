@@ -22,7 +22,15 @@ import { addUndo } from "metabase/redux/undo";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent } from "metabase/meta/Card";
 
-import { getTableMetadata, getNativeDatabases, getQuestion, getOriginalQuestion, getIsEditing } from "./selectors";
+import {
+    getTableMetadata,
+    getNativeDatabases,
+    getQuestion,
+    getOriginalQuestion,
+    getOriginalCard,
+    getIsEditing
+} from "./selectors";
+
 import { getDatabases, getTables, getDatabasesList, getMetadata } from "metabase/selectors/metadata";
 
 import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
@@ -186,7 +194,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
 
                 // if we have deserialized card from the url AND loaded a card by id then the user should be dropped into edit mode
-                uiControls.isEditing = !!options.edit
+                uiControls.isEditing = !!options.edit;
 
                 // if this is the users first time loading a saved card on the QB then show them the newb modal
                 if (params.cardId && currentUser.is_qbnewb) {
@@ -196,7 +204,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
                 preserveParameters = true;
             } catch(error) {
-                console.warn(error)
+                console.warn(error);
                 card = null;
                 dispatch(setErrorPage(error));
             }
@@ -237,7 +245,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             // NOTE: timeout to allow Parameters widget to set parameterValues
             setTimeout(() =>
                 // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
-                dispatch(runQuery(card, { shouldUpdateUrl: false }))
+                dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }))
             , 0);
         }
 
@@ -297,15 +305,13 @@ export const beginEditing = createAction(BEGIN_EDITING, () => {
 export const CANCEL_EDITING = "metabase/qb/CANCEL_EDITING";
 export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     return (dispatch, getState) => {
-        const { qb: { originalCard } } = getState();
-
         // clone
-        let card = Utils.copy(originalCard);
+        let card = Utils.copy(getOriginalCard(getState()));
 
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, { shouldUpdateUrl: false }));
+        dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }));
         dispatch(updateUrl(card, { dirty: false }));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Cancel");
@@ -475,15 +481,13 @@ export const notifyCardUpdatedFn = createThunkAction(NOTIFY_CARD_UPDATED, (card)
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     return async (dispatch, getState) => {
-        const { qb: { originalCard } } = getState();
-
         // clone
-        let card = Utils.copy(originalCard);
+        let card = Utils.copy(getOriginalCard(getState()));
 
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, { shouldUpdateUrl: false }));
+        dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }));
         dispatch(updateUrl(card, { dirty: false }));
 
         return card;
@@ -508,7 +512,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
 
         dispatch(loadMetadataForCard(card));
 
-        dispatch(runQuery(card, { shouldUpdateUrl: shouldUpdateUrl }));
+        dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }));
 
         return {
             card,
@@ -517,8 +521,13 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
     };
 });
 
-// TODO Atte Keinänen 6/2/2017 See if we should stick to `updateX` naming convention instead of `setX` in Redux actions
+// TODO Atte Keinänen 6/2/2017 See if we should stick to `updateX` naming convention instead of `setX` in all Redux actions
 // We talked with Tom that `setX` method names could be reserved to metabase-lib classes
+
+/**
+ * Replaces the currently actived question with the given Question object.
+ * Also shows/hides the template tag editor if the number of template tags has changed.
+ */
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (newQuestion) => {
     return (dispatch, getState) => {
@@ -576,7 +585,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 
         // run updated query
         if (run) {
-            dispatch(runQuery(newQuestion.card()));
+            dispatch(runQuestionQuery({ overrideWithCard: newQuestion.card() }));
         }
 
         return {
@@ -839,12 +848,6 @@ export const removeQueryExpression = createQueryAction(
     ["QueryBuilder", "Remove Expression"]
 );
 
-type RunQuerySettings = {
-    shouldUpdateUrl: boolean,
-    ignoreCache: boolean, // currently only implemented for saved cards
-    originalQuestion?: Question, // needed for checking if the question is dirty
-    parameterValues?: ParameterValues
-}
 
 // TODO: Used also in SavedMetricSelector, should this be part of metabase-lib or not?
 // (Kept temporarily here next to the action that uses it)
@@ -862,18 +865,24 @@ export const getQuestionQueryResults = (question, cancelQueryDeferred) => {
 };
 
 /**
- * Queries the result for a given question card. If no card is provided, the currently active card is used.
+ * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
  */
+export type RunQueryParams = {
+    shouldUpdateUrl: boolean,
+    ignoreCache: boolean, // currently only implemented for saved cards
+    overrideWithCard?: Card // override the current question with the provided card
+}
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
-export const runQuery = (card, {
+export const runQuestionQuery = ({
     shouldUpdateUrl = true,
-    ignoreCache = false
-} : RunQuerySettings = {}) => {
+    ignoreCache = false,
+    overrideWithCard
+} : RunQueryParams = {}) => {
     return async (dispatch, getState) => {
         const questionFromCard = (c) => new Question(getMetadata(getState()), c);
 
-        const question = card ? questionFromCard(card) : getQuestion(getState());
+        const question = overrideWithCard ? questionFromCard(overrideWithCard) : getQuestion(getState());
         const originalQuestion = getOriginalQuestion(getState());
 
         const cardIsDirty = originalQuestion && question.isDirtyComparedTo(originalQuestion);

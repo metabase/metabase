@@ -38,6 +38,7 @@ const VisualizationResult = ({question, isObjectDetail, result, results, ...prop
         const series = question.metrics().map((metricQuery, index) => ({
             card: {
                 ...question.card(),
+                name:
                 dataset_query: metricQuery.datasetQuery()
             },
             data: results[index].data

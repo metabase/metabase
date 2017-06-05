@@ -39,6 +39,7 @@ import {
     getIsRunnable,
     getIsResultDirty,
     getMode,
+    getQuery,
     getQuestion,
     getOriginalQuestion
 } from "../selectors";
@@ -83,6 +84,8 @@ const mapStateToProps = (state, props) => {
         fromUrl:                   props.location.query.from,
 
         question:                  getQuestion(state),
+        // TODO: query is deprecated; all components should be updated to use Question (which can contain multiple queries)
+        query:                     getQuery(state),
         mode:                      getMode(state),
 
         originalCard:              getOriginalCard(state),

@@ -322,6 +322,8 @@ export default class Visualization extends Component {
             };
         }
 
+        console.log('card name in settings', settings["card.title"]);
+
         return (
             <div className={cx(className, "flex flex-column")}>
                 { showTitle && (settings["card.title"] || extra) && (loading || error || noResults || !(CardVisualization && CardVisualization.noHeader)) || replacementContent ?
