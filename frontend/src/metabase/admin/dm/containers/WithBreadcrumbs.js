@@ -11,30 +11,56 @@ type State = {
 
 class DatabaseSearch extends Component {
     state: State = {
-        searchString: ''
+        searchString: '',
+        expanded: false
     }
 
     onSearch = (searchString) => {
         this.setState({ searchString })
     }
 
+    expand = () => {
+        this.setState({ expanded: true })
+    }
+
+    handleSearchPress = (event) => {
+        if(event.key === "/") this.expand()
+    }
+
+    componentDidMount = () => {
+        document.addEventListener('keydown', this.handleSearchPress)
+    }
+
+    componentWillUnMount = () => {
+        document.removeEventListener('keydown', this.handleSearchPress)
+    }
+
     render () {
         return (
             <div
                 className="bordered rounded border-dark relative flex align-center rounded"
-                style={{ width: 300 }}
+                style={{
+                    width: this.state.expanded ? 300 : 'inherit'
+                }}
             >
-                <Icon name="search" />
-                <input
-                    type="text"
-                    style={{ outline: 'none' }}
-                    className="borderless full p2"
-                    placeholder="Search for metrics, tables, or fields"
-                    onChange={event => this.onSearch(event.currentTarget.value)}
+                <Icon
+                    onClick={() => this.expand() }
+                    name="search"
                 />
-                { this.state.searchString && (
-                    <div className="absolute z2 left right" style={{ top: 40 }}>
-                        <SearchResults searchString={this.state.searchString} />
+                { this.state.expanded && (
+                    <div>
+                        <input
+                            type="text"
+                            style={{ outline: 'none' }}
+                            className="borderless full p2"
+                            placeholder="Search for metrics, tables, or fields"
+                            onChange={event => this.onSearch(event.currentTarget.value)}
+                        />
+                        { this.state.searchString && (
+                            <div className="absolute z2 left right" style={{ top: 40 }}>
+                                <SearchResults searchString={this.state.searchString} />
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -44,16 +70,19 @@ class DatabaseSearch extends Component {
 
 
 const withBreadcrumbs = (Component, showSearch = true, ExtraNav) => class extends Component {
+    displayName = 'WithBreadCrumbs'
     render () {
         return (
             <div>
-                <div className="border-bottom py2">
+                <div className="border-bottom py2 flex align-center" style={{ height: 80 }}>
                     <div className="wrapper flex align-center">
                         <BreadcrumbNav />
-                        <div className="ml-auto flex align-center">
-                            { showSearch && <DatabaseSearch /> }
-                            { ExtraNav && <ExtraNav /> }
-                        </div>
+                        <ol className="ml-auto flex align-center">
+                            { showSearch && (
+                                <li className="mx2"><DatabaseSearch /></li>
+                            )}
+                            { ExtraNav && <li><ExtraNav {...this.props} /></li> }
+                        </ol>
                     </div>
                 </div>
                 <div className="wrapper">

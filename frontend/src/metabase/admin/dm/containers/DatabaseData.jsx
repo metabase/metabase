@@ -1,7 +1,7 @@
 /* @flow */
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
-import { Link, withRouter } from 'react-router'
+import { Link } from 'react-router'
 
 import { getTablesByDatabaseId } from 'metabase/selectors/metadata'
 import { fetchSegments } from 'metabase/redux/metadata'
@@ -19,21 +19,31 @@ class DatabaseData extends Component {
     }
     render () {
         const { tables } = this.props
-        return tables.length > 10
-            ? (
-                <AlphabeticalTableList
-                    tables={sortAlphabeticallyByKey(tables, 'name')}
-                    path={this.props.router.path}
-                />
-            )
-            : <TableList tables={tables} />
+        return (
+            <div>
+                <div className="py4">
+                    <h1>Tables</h1>
+                </div>
+                <div className="relative">
+                    { tables.length > 10
+                    ? (
+                        <AlphabeticalTableList
+                            tables={sortAlphabeticallyByKey(tables, 'name')}
+                            path={this.props.router.path}
+                        />
+                    )
+                        : <TableList tables={tables} />
+                    }
+                </div>
+            </div>
+        )
     }
 }
 
 
 const AlphabeticalTableList = ({ tables, path }) =>
     <div>
-        <ol className="flex full my2 align-center">
+        <ol className="absolute top right bottom">
             { tables && Object.keys(tables).map(key =>
                 <li className="flex-full text-align-center" key={key}>
                     <Link to={{ pathname: path, hash: `#${key}` }}>
@@ -104,8 +114,8 @@ class TableList extends Component {
     }
 }
 
-const mapStateToProps = (state, props) => ({
-    tables: getTablesByDatabaseId(state, props.params.databaseId),
+const mapStateToProps = (state, { params }) => ({
+    tables: getTablesByDatabaseId(state, params.databaseId),
 })
 
 export default withBreadcrumbs(connect(mapStateToProps, { fetchSegments })(DatabaseData))

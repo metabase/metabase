@@ -16,7 +16,7 @@ class SearchResults extends Component {
     renderSearchListItem = (item) => {
         if(item instanceof Metric) {
             return (
-                <li>
+                <li key={item.id}>
                     <Link to={``}>
                         {item.name}
                     </Link>
@@ -24,7 +24,7 @@ class SearchResults extends Component {
             )
         }
         return (
-            <li>
+            <li key={item.id}>
                 <DataModelTableLink id={item.id}>
                     <div className="bg-brand-hover text-white-hover py1 cursor-pointer">
                         {item.display_name}

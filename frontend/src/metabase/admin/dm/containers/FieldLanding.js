@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
+import { Link } from 'react-router'
 
 import { getField } from 'metabase/selectors/metadata'
 import { fetchTableMetadata } from 'metabase/redux/metadata'
@@ -14,7 +15,13 @@ class FieldLanding extends Component {
         const { field } = this.props
         return (
             <div>
-                <h2>{ field && field.display_name }</h2>
+                <div className="py4">
+                    <h1>{ field && field.display_name }</h1>
+                </div>
+                <ol className="flex align-center border-bottom mb2 py2">
+                    <li className="mr2"><Link><h4>Display</h4></Link></li>
+                    <li><Link><h4>Binning</h4></Link></li>
+                </ol>
             </div>
         )
     }

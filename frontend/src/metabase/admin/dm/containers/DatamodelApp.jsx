@@ -1,4 +1,4 @@
-import React,{ Component } from 'react'
+import { Component } from 'react'
 import { fetchDatabases } from 'metabase/redux/metadata'
 import { connect } from 'react-redux'
 
@@ -11,4 +11,4 @@ class DatamodelApp extends Component {
     }
 }
 
-export default connect(() => ({}), ({ fetchDatabases }))(DatamodelApp)
+export default connect(null, { fetchDatabases })(DatamodelApp)

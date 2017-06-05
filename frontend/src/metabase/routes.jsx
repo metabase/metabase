@@ -245,6 +245,8 @@ export const getRoutes = (store) =>
                     <Route path="database/:databaseId/table/:tableId/" component={TableLanding} />
                     <Route path="database/:databaseId/table/:tableId/field/:fieldId" component={FieldLanding} />
                     <Route path="database/:databaseId/metrics" component={DatabaseMetrics} />
+                    <Route path="database/:databaseId/metric/create" component={MetricApp} />
+                    <Route path="database/:databaseId/metric/:metricId" component={MetricApp} />
                     <Route path="database/:databaseId/data" component={DatabaseData} />
                 </Route>
 

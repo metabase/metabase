@@ -99,5 +99,8 @@ export const datamodel = {
     },
     db: function (databaseId: number) {
         return `${datamodelPrefix}/${databaseId}`
+    },
+    metric: function (databaseId: number, metricId: number) {
+        return `${datamodelPrefix}/${databaseId}/metric/${metricId}`
     }
 }

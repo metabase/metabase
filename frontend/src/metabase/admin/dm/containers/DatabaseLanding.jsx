@@ -6,7 +6,6 @@ import { Link, withRouter } from 'react-router'
 import {
     getDatabaseById,
     getMetricsByDatabaseId,
-    getTablesByDatabaseId
 } from 'metabase/selectors/metadata'
 
 import { fetchMetrics } from 'metabase/redux/metadata'
@@ -16,6 +15,8 @@ import Database from "metabase-lib/lib/metadata/Database";
 import { datamodel } from 'metabase/lib/urls'
 
 import withBreadcrumbs from './WithBreadcrumbs'
+
+import Icon from 'metabase/components/Icon'
 
 type Props = {
     database: Database,
@@ -71,7 +72,13 @@ const mapStateToProps = (state, { params }) => ({
     database: getDatabaseById(state, params.databaseId)
 })
 
+const SettingsLink = ({ database }) =>
+    <Link to={`/admin/databases/${database.id}`}>
+        <Icon name="gear" />
+    </Link>
+
 export default withBreadcrumbs(
     connect(mapStateToProps,{ fetchMetrics })(DatabaseLanding),
     true,
+    connect(mapStateToProps)(SettingsLink)
 )

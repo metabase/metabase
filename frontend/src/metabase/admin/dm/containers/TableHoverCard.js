@@ -11,8 +11,8 @@ class TableHoverCard extends Component {
     render () {
         const { table } = this.props
         return (
-            <Popover>
-                <div className="p2">
+            <Popover className="full">
+                <div className="p2 full">
                     <h5>Description:</h5>
                     {table.description ? table.description : 'No description'}
                     <ol>
