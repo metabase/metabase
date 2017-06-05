@@ -936,7 +936,8 @@ export const runQuestionQuery = ({
         const question = overrideWithCard ? questionFromCard(overrideWithCard) : getQuestion(getState());
         const originalQuestion = getOriginalQuestion(getState());
 
-        const cardIsDirty = originalQuestion && question.isDirtyComparedTo(originalQuestion);
+        const cardIsDirty = originalQuestion ? question.isDirtyComparedTo(originalQuestion) : true;
+
         if (shouldUpdateUrl) {
             dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
         }

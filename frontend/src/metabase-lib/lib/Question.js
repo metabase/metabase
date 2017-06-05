@@ -467,9 +467,7 @@ export default class Question {
                 return false;
             }
         } else {
-            const origCardSerialized = originalQuestion
-                ? originalQuestion.serializeForUrl()
-                : null;
+            const origCardSerialized = originalQuestion.serializeForUrl();
             const currentCardSerialized = this.serializeForUrl({
                 includeOriginalCardId: false
             });
