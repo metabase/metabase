@@ -2,11 +2,8 @@
 
 import React from "react";
 
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
 import AggregationPopover from "metabase/qb/components/gui/AggregationPopover";
-
-import * as Card from "metabase/meta/Card";
-import Query from "metabase/lib/query";
-import { summarize } from "metabase/qb/lib/actions";
 
 import type {
     ClickAction,
@@ -14,9 +11,9 @@ import type {
     ClickActionPopoverProps
 } from "metabase/meta/types/Visualization";
 
-export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
-    const query = Card.getQuery(card);
-    if (!query) {
+export default ({ question }: ClickActionProps): ClickAction[] => {
+    const query = question.query();
+    if (!(query instanceof StructuredQuery)) {
         return [];
     }
 
@@ -30,12 +27,12 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
                 { onChangeCardAndRun, onClose }: ClickActionPopoverProps
             ) => (
                 <AggregationPopover
-                    tableMetadata={tableMetadata}
-                    customFields={Query.getExpressions(query)}
-                    availableAggregations={tableMetadata.aggregation_options}
+                    tableMetadata={query.table()}
+                    customFields={query.expressions()}
+                    availableAggregations={query.table().aggregation_options}
                     onCommitAggregation={aggregation => {
                         onChangeCardAndRun(
-                            summarize(card, aggregation, tableMetadata)
+                            question.summarize(aggregation).card()
                         );
                         onClose && onClose();
                     }}

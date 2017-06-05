@@ -15,10 +15,14 @@ export default class Table extends Base {
     displayName: string;
     description: string;
 
-    schema: SchemaName;
-    database: Database;
+    schema: ?SchemaName;
+    db: Database;
 
     fields: Field[];
+
+    get database() {
+        return this.db;
+    }
 
     newQuestion(): Question {
         // $FlowFixMe

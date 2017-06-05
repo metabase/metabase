@@ -1,85 +1,138 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
 import { TYPE } from "metabase/lib/types";
+import Question from "metabase-lib/lib/Question";
+import { getMetadata } from "metabase/selectors/metadata";
+import { assocIn } from "icepick";
 
-const FLOAT_FIELD = {
-    id: 1,
-    display_name: "Mock Float Field",
-    base_type: TYPE.Float
-};
+export const DATABASE_ID = 100;
 
-const CATEGORY_FIELD = {
-    id: 2,
-    display_name: "Mock Category Field",
-    base_type: TYPE.Text,
-    special_type: TYPE.Category
-};
+export const MAIN_TABLE_ID = 110;
+export const FOREIGN_TABLE_ID = 120;
 
-const DATE_FIELD = {
-    id: 3,
-    display_name: "Mock Date Field",
-    base_type: TYPE.DateTime
-};
+export const MAIN_FLOAT_FIELD_ID = 111;
+export const MAIN_CATEGORY_FIELD_ID = 112;
+export const MAIN_DATE_FIELD_ID = 113;
+export const MAIN_PK_FIELD_ID = 114;
+export const MAIN_FK_FIELD_ID = 115;
 
-const PK_FIELD = {
-    id: 4,
-    display_name: "Mock PK Field",
-    base_type: TYPE.Integer,
-    special_type: TYPE.PK
-};
+export const MAIN_METRIC_ID = 116;
 
-const foreignTableMetadata = {
-    id: 20,
-    db_id: 100,
-    display_name: "Mock Foreign Table",
-    fields: []
-};
+export const FOREIGN_PK_FIELD_ID = 121;
 
-const FK_FIELD = {
-    id: 5,
-    display_name: "Mock FK Field",
-    base_type: TYPE.Integer,
-    special_type: TYPE.FK,
-    target: {
-        id: 25,
-        table_id: foreignTableMetadata.id,
-        table: foreignTableMetadata
+export const state = {
+    metadata: {
+        databases: {
+            [DATABASE_ID]: {
+                id: DATABASE_ID,
+                name: "Mock Database",
+                tables: [MAIN_TABLE_ID, FOREIGN_TABLE_ID]
+            }
+        },
+        tables: {
+            [MAIN_TABLE_ID]: {
+                id: MAIN_TABLE_ID,
+                db_id: 100,
+                display_name: "Mock Table",
+                fields: [
+                    MAIN_FLOAT_FIELD_ID,
+                    MAIN_CATEGORY_FIELD_ID,
+                    MAIN_DATE_FIELD_ID,
+                    MAIN_PK_FIELD_ID,
+                    MAIN_FK_FIELD_ID
+                ],
+                metrics: [MAIN_METRIC_ID]
+            },
+            [FOREIGN_TABLE_ID]: {
+                id: FOREIGN_TABLE_ID,
+                db_id: 100,
+                display_name: "Mock Foreign Table",
+                fields: [FOREIGN_PK_FIELD_ID]
+            }
+        },
+        fields: {
+            [MAIN_FLOAT_FIELD_ID]: {
+                id: MAIN_FLOAT_FIELD_ID,
+                table_id: MAIN_TABLE_ID,
+                display_name: "Mock Float Field",
+                base_type: TYPE.Float
+            },
+            [MAIN_CATEGORY_FIELD_ID]: {
+                id: MAIN_CATEGORY_FIELD_ID,
+                table_id: MAIN_TABLE_ID,
+                display_name: "Mock Category Field",
+                base_type: TYPE.Text,
+                special_type: TYPE.Category
+            },
+            [MAIN_DATE_FIELD_ID]: {
+                id: MAIN_DATE_FIELD_ID,
+                table_id: MAIN_TABLE_ID,
+                display_name: "Mock Date Field",
+                base_type: TYPE.DateTime
+            },
+            [MAIN_PK_FIELD_ID]: {
+                id: MAIN_PK_FIELD_ID,
+                table_id: MAIN_TABLE_ID,
+                display_name: "Mock PK Field",
+                base_type: TYPE.Integer,
+                special_type: TYPE.PK
+            },
+            [MAIN_FK_FIELD_ID]: {
+                id: MAIN_FK_FIELD_ID,
+                table_id: MAIN_TABLE_ID,
+                display_name: "Mock FK Field",
+                base_type: TYPE.Integer,
+                special_type: TYPE.FK,
+                fk_target_field_id: FOREIGN_PK_FIELD_ID
+            },
+            [FOREIGN_PK_FIELD_ID]: {
+                id: FOREIGN_PK_FIELD_ID,
+                table_id: FOREIGN_TABLE_ID,
+                display_name: "Mock PK Field",
+                base_type: TYPE.Integer,
+                special_type: TYPE.PK
+            }
+        },
+        metrics: {
+            [MAIN_METRIC_ID]: {
+                id: MAIN_METRIC_ID,
+                table_id: MAIN_TABLE_ID,
+                name: "Mock Metric"
+            }
+        },
+        segments: {}
     }
 };
 
-export const tableMetadata = {
-    id: 10,
-    db_id: 100,
-    display_name: "Mock Table",
-    fields: [FLOAT_FIELD, CATEGORY_FIELD, DATE_FIELD, PK_FIELD, FK_FIELD]
-};
+export const metadata = getMetadata(state);
 
 export const card = {
     dataset_query: {
         type: "query",
+        database: DATABASE_ID,
         query: {
-            source_table: 10
+            source_table: MAIN_TABLE_ID
         }
     }
 };
 
 export const clickedFloatHeader = {
     column: {
-        ...FLOAT_FIELD,
+        ...metadata.fields[MAIN_FLOAT_FIELD_ID],
         source: "fields"
     }
 };
 
 export const clickedCategoryHeader = {
     column: {
-        ...CATEGORY_FIELD,
+        ...metadata.fields[MAIN_CATEGORY_FIELD_ID],
         source: "fields"
     }
 };
 
 export const clickedFloatValue = {
     column: {
-        ...CATEGORY_FIELD,
+        ...metadata.fields[MAIN_CATEGORY_FIELD_ID],
         source: "fields"
     },
     value: 1234
@@ -87,7 +140,7 @@ export const clickedFloatValue = {
 
 export const clickedPKValue = {
     column: {
-        ...PK_FIELD,
+        ...metadata.fields[MAIN_PK_FIELD_ID],
         source: "fields"
     },
     value: 42
@@ -95,8 +148,21 @@ export const clickedPKValue = {
 
 export const clickedFKValue = {
     column: {
-        ...FK_FIELD,
+        ...metadata.fields[MAIN_FK_FIELD_ID],
         source: "fields"
     },
     value: 43
 };
+
+export const tableMetadata = metadata.tables[MAIN_TABLE_ID];
+
+export function makeQuestion(fn = (card, state) => ({ card, state })) {
+    const result = fn(card, state);
+    return new Question(getMetadata(result.state), result.card);
+}
+
+export const question = makeQuestion();
+export const questionNoFields = makeQuestion((card, state) => ({
+    card,
+    state: assocIn(state, ["metadata", "tables", MAIN_TABLE_ID, "fields"], [])
+}));

@@ -79,10 +79,12 @@ export default class ChartClickActions extends Component {
         const { onChangeCardAndRun } = this.props;
         if (action.popover) {
             this.setState({ popoverAction: action });
-        } else if (action.card) {
-            const card = action.card();
-            MetabaseAnalytics.trackEvent("Actions", "Executed Click Action", `${action.section||""}:${action.name||""}`);
-            onChangeCardAndRun(card);
+        } else if (action.question) {
+            const nextQuestion = action.question();
+            if (nextQuestion) {
+                MetabaseAnalytics.trackEvent("Actions", "Executed Click Action", `${action.section||""}:${action.name||""}`);
+                onChangeCardAndRun(nextQuestion.card());
+            }
             this.close();
         }
     }

@@ -70,12 +70,14 @@ export default class FieldWidget extends Component {
     }
 
     render() {
+        const { className, field, query } = this.props;
         return (
             <div className="flex align-center">
                 <FieldName
-                    className={this.props.className}
+                    className={className}
+                    field={field}
+                    query={query}
                     tableMetadata={this.props.tableMetadata}
-                    field={this.props.field}
                     fieldOptions={this.props.fieldOptions}
                     customFieldOptions={this.props.customFieldOptions}
                     removeField={this.props.removeField}

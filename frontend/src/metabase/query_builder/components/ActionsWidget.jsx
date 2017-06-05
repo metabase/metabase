@@ -5,22 +5,18 @@ import React, { Component } from "react";
 import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
-import { getModeActions } from "metabase/qb/lib/modes";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import cx from "classnames";
 import _ from "underscore";
 
 import type { Card, UnsavedCard } from "metabase/meta/types/Card";
-import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { ClickAction } from "metabase/meta/types/Visualization";
+import Question from "metabase-lib/lib/Question";
 
 type Props = {
     className?: string,
-    mode: QueryMode,
-    card: Card,
-    tableMetadata: TableMetadata,
+    question: Question,
     setCardAndRun: (card: Card) => void
 };
 
@@ -79,12 +75,13 @@ export default class ActionsWidget extends Component {
     };
 
     handleOnChangeCardAndRun(nextCard: UnsavedCard|Card) {
-        const { card } = this.props;
+        const { question } = this.props;
+        const card = question.card();
 
+        // TODO: move lineage logic to Question?
         // Include the original card id if present for showing the lineage next to title
         const nextCardWithOriginalId = {
             ...nextCard,
-            // $FlowFixMe
             original_card_id: card.id || card.original_card_id
         };
         if (nextCardWithOriginalId) {
@@ -93,24 +90,24 @@ export default class ActionsWidget extends Component {
     }
 
     handleActionClick = (index: number) => {
-        const { mode, card, tableMetadata } = this.props;
-        const action = getModeActions(mode, card, tableMetadata)[index];
+        const { question } = this.props;
+        const action = question.actions()[index];
         if (action && action.popover) {
             this.setState({ selectedActionIndex: index });
-        } else if (action && action.card) {
-            const nextCard = action.card();
-            if (nextCard) {
+        } else if (action && action.question) {
+            const nextQuestion = action.question();
+            if (nextQuestion) {
                 MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun(nextCard);
+                this.handleOnChangeCardAndRun(nextQuestion.card());
             }
             this.close();
         }
     };
     render() {
-        const { className, mode, card, tableMetadata } = this.props;
+        const { className, question } = this.props;
         const { isOpen, isVisible, selectedActionIndex } = this.state;
 
-        const actions: ClickAction[] = getModeActions(mode, card, tableMetadata);
+        const actions = question.actions();
         if (actions.length === 0) {
             return null;
         }

@@ -1,7 +1,5 @@
 import Dimension from "./Dimension";
 
-const metadata = {};
-
 describe("Dimension", () => {
     it("should parse and format MBQL correctly", () => {
         expect(Dimension.parseMBQL(1).mbql()).toEqual(["field-id", 1]);

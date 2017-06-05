@@ -2,7 +2,7 @@
 import React from 'react'
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, getIn } from "icepick";
+import { assocIn } from "icepick";
 import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
@@ -523,7 +523,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
         }
 
         // currently only support single query
-        newQuestion = newQuestion.updateQuery(0, newQuestion.query().updateDatasetQuery(dataset_query));
+        newQuestion = newQuestion.setQuery(newQuestion.query().setDatasetQuery(dataset_query), 0);
 
         const oldTagCount = question.query().isNative() ? question.query().templateTags().length : 0;
         const newTagCount = newQuestion.query().isNative() ? newQuestion.query().templateTags().length : 0;

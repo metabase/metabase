@@ -34,7 +34,7 @@ export default class Query {
     }
 
     question(): Question {
-        return this._question.updateQuery(this._index, this);
+        return this._question.setQuery(this, this._index);
     }
 
     /**
@@ -71,10 +71,6 @@ export default class Query {
         return database && database.engine;
     }
 
-    setDatabase(database: Database) {}
-
-    setTable(table: Table) {}
-
     // NATIVE QUERY
 
     getNativeQuery(): string {
@@ -107,7 +103,7 @@ export default class Query {
         return false;
     }
 
-    updateDatasetQuery(datasetQuery: DatasetQuery): Query {
+    setDatasetQuery(datasetQuery: DatasetQuery): Query {
         return this.question().createQuery(datasetQuery, this._index);
     }
 

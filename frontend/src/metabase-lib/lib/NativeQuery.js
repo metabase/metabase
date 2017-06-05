@@ -1,5 +1,6 @@
 /* @flow weak */
 
+import Question from "./Question";
 import Query from "./Query";
 
 import Database from "metabase-lib/lib/metadata/Database";
@@ -18,9 +19,30 @@ import {
 import { chain, getIn, assocIn } from "icepick";
 import _ from "underscore";
 
+import type {
+    DatasetQuery,
+    NativeDatasetQuery
+} from "metabase/meta/types/Card";
 import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
 
+const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
+    database: null,
+    type: "native",
+    native: {
+        query: "",
+        template_tags: {}
+    }
+};
+
 export default class NativeQuery extends Query {
+    constructor(
+        question: Question,
+        index: number,
+        datasetQuery?: DatasetQuery = NATIVE_QUERY_TEMPLATE
+    ) {
+        super(question, index, datasetQuery);
+    }
+
     isNative() {
         return true;
     }
