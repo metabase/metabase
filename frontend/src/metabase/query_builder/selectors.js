@@ -165,9 +165,11 @@ export const getIsRunnable = createSelector(
 const getLastRunDatasetQuery = createSelector([getLastRunCard], (card) => card && card.dataset_query);
 const getNextRunDatasetQuery = createSelector([getCard], (card) => card && card.dataset_query);
 
-const getLastRunParameters = createSelector([getQueryResult], (queryResult) => queryResult && queryResult.json_query.parameters || [])
-const getLastRunParameterValues = createSelector([getLastRunParameters], (parameters) => parameters.map(parameter => parameter.value))
-const getNextRunParameterValues = createSelector([getParameters], (parameters) => parameters.map(parameter => parameter.value))
+const getLastRunParameters = createSelector([getQueryResult], (queryResult) => queryResult && queryResult.json_query && queryResult.json_query.parameters || []);
+const getLastRunParameterValues = createSelector([getLastRunParameters], (parameters) => parameters.map(parameter => parameter.value));
+const getNextRunParameterValues = createSelector([getParameters], (parameters) =>
+    parameters.map(parameter => parameter.value).filter(p => p !== undefined)
+);
 
 export const getIsResultDirty = createSelector(
     [getLastRunDatasetQuery, getNextRunDatasetQuery, getLastRunParameterValues, getNextRunParameterValues],

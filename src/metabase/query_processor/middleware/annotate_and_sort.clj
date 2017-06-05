@@ -1,8 +1,12 @@
 (ns metabase.query-processor.middleware.annotate-and-sort
   "Middleware for annotating (adding type information to) the results of a query and sorting the columns in the results."
+  ;; TODO - `annotate` and `sort` are technically two seperate steps. We should decouple them and replace
+  ;; `metabase.query-processor.annotate`, ``metabase.query-processor.sort`, and `metabase.query-processor.middleware.annotate-and-sort`
+  ;; with two namespaces called `metabase.query-processor.middleware.annotate` and `metabase.query-processor.middleware.sort`
   (:require [metabase.driver :as driver]
-            (metabase.query-processor [annotate :as annotate]
-                                      [util :as qputil])))
+            [metabase.query-processor
+             [annotate :as annotate]
+             [util :as qputil]]))
 
 (def ^:private ^:const ^Integer max-rows-to-scan-for-column-type-inference
   "Maximum number of rows to scan to look for a non-`nil` value to determine type information.

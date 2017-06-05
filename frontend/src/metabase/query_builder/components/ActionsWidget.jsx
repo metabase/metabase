@@ -17,7 +17,8 @@ import Question from "metabase-lib/lib/Question";
 type Props = {
     className?: string,
     question: Question,
-    setCardAndRun: (card: Card) => void
+    setCardAndRun: (card: Card) => void,
+    navigateToNewCardInsideQB: any => void
 };
 
 type State = {
@@ -74,19 +75,10 @@ export default class ActionsWidget extends Component {
         });
     };
 
-    handleOnChangeCardAndRun(nextCard: UnsavedCard|Card) {
-        const { question } = this.props;
-        const card = question.card();
-
+    handleOnChangeCardAndRun = ({ nextCard }: { nextCard: Card|UnsavedCard}) => {
         // TODO: move lineage logic to Question?
-        // Include the original card id if present for showing the lineage next to title
-        const nextCardWithOriginalId = {
-            ...nextCard,
-            original_card_id: card.id || card.original_card_id
-        };
-        if (nextCardWithOriginalId) {
-            this.props.setCardAndRun(nextCardWithOriginalId);
-        }
+        const { card: previousCard } = this.props;
+        this.props.navigateToNewCardInsideQB({ nextCard, previousCard });
     }
 
     handleActionClick = (index: number) => {
@@ -174,12 +166,12 @@ export default class ActionsWidget extends Component {
                                           </div>
                                       </div>
                                       <PopoverComponent
-                                          onChangeCardAndRun={(card) => {
-                                              if (card) {
+                                          onChangeCardAndRun={({ nextCard }) => {
+                                              if (nextCard) {
                                                   if (selectedAction) {
                                                       MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${selectedAction.section||""}:${selectedAction.name||""}`);
                                                   }
-                                                  this.handleOnChangeCardAndRun(card)
+                                                  this.handleOnChangeCardAndRun({ nextCard })
                                               }
                                           }}
                                           onClose={this.close}

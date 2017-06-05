@@ -209,6 +209,14 @@ export function constrainToScreen(element, direction, padding) {
     return false;
 }
 
+// Used for tackling Safari rendering issues
+// http://stackoverflow.com/a/3485654
+export function forceRedraw(domNode) {
+    domNode.style.display='none';
+    domNode.offsetHeight;
+    domNode.style.display='';
+}
+
 export function moveToBack(element) {
     if (element && element.parentNode) {
         element.parentNode.insertBefore(

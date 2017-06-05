@@ -10,9 +10,10 @@ type Props = {
     question: Question,
     isObjectDetail: boolean,
     result: any,
-    results: any[]
+    results: any[],
+    navigateToNewCardInsideQB: (any) => void
 }
-const VisualizationResult = ({question, isObjectDetail, result, results, ...props}: Props) => {
+const VisualizationResult = ({question, isObjectDetail, navigateToNewCardInsideQB, result, results, ...props}: Props) => {
     const noResults = datasetContainsNoResults(result.data);
 
     if (isObjectDetail) {
@@ -45,7 +46,7 @@ const VisualizationResult = ({question, isObjectDetail, result, results, ...prop
 
         return <Visualization
                   series={series}
-                  onChangeCardAndRun={props.setCardAndRun}
+                  onChangeCardAndRun={navigateToNewCardInsideQB}
                   isEditing={true}
                   card={question.card()}
                   // Table:

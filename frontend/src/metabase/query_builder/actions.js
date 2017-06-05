@@ -40,6 +40,7 @@ import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
+import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils";
 
 import type { Card } from "metabase/meta/types/Card";
 
@@ -211,6 +212,17 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
                 if (params.cardId && currentUser.is_qbnewb) {
                     uiControls.isShowingNewbModal = true;
                     MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
+                }
+
+                if (card.archived) {
+                    // use the error handler in App.jsx for showing "This question has been archived" message
+                    dispatch(setErrorPage({
+                        data: {
+                            error_code: "archived"
+                        },
+                        context: "query-builder"
+                    }));
+                    card = null;
                 }
 
                 preserveParameters = true;
@@ -505,9 +517,12 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     };
 });
 
-// setCardAndRun
-// Used when navigating browser history, when drilling through in visualizations / action widget,
-// and when having the entity details view open and clicking its cells
+/**
+ * `setCardAndRun` is used when:
+ *     - navigating browser history
+ *     - clicking in the entity details view
+ *     - `navigateToNewCardInsideQB` is being called (see below)
+ */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
@@ -530,6 +545,31 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
             originalCard
         };
     };
+});
+
+/**
+ * User-triggered events that are handled with this action:
+ *     - clicking a legend:
+ *         * series legend (multi-aggregation, multi-breakout, multiple questions)
+ *     - clicking the visualization itself
+ *         * drill-through (single series, multi-aggregation, multi-breakout, multiple questions)
+ *         * (not in 0.24.2 yet: drag on line/area/bar visualization)
+ *     - clicking an action widget action
+ *
+ * All these events can be applied either for an unsaved question or a saved question.
+ */
+export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
+export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD, ({ nextCard, previousCard }) => {
+    return async (dispatch, getState) => {
+        const nextCardIsClean = _.isEqual(previousCard.dataset_query, nextCard.dataset_query) && previousCard.display === nextCard.display;
+
+        if (nextCardIsClean) {
+            // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
+            dispatch(setCardAndRun(await loadCard(nextCard.id)));
+        } else {
+            dispatch(setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)));
+        }
+    }
 });
 
 // TODO Atte Keinänen 6/2/2017 See if we should stick to `updateX` naming convention instead of `setX` in all Redux actions

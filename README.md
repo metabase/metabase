@@ -118,4 +118,4 @@ Unless otherwise noted, all Metabase source files are made available under the t
 
 See [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt) for details and exceptions.
 
-Unless otherwise noted, all files © 2016 Metabase, Inc.
+Unless otherwise noted, all files © 2017 Metabase, Inc.

@@ -131,7 +131,11 @@ export function applyParameters(
             continue;
         }
 
-        const mapping = _.findWhere(parameterMappings, { card_id: card.id, parameter_id: parameter.id });
+        const mapping = _.findWhere(parameterMappings, {
+            // $FlowFixMe original_card_id not included in the flow type of card
+            card_id: card.id || card.original_card_id,
+            parameter_id: parameter.id
+        });
         if (mapping) {
             // mapped target, e.x. on a dashboard
             datasetQuery.parameters.push({
@@ -158,7 +162,8 @@ export function questionUrlWithParameters(
     metadata: Metadata,
     parameters: Parameter[],
     parameterValues: ParameterValues = {},
-    parameterMappings: ParameterMapping[] = []
+    parameterMappings: ParameterMapping[] = [],
+    cardIsDirty: boolean = true
 ): DatasetQuery {
     if (!card.dataset_query) {
         return Urls.question(card.id);
@@ -173,6 +178,11 @@ export function questionUrlWithParameters(
         parameterValues,
         parameterMappings
     );
+
+    // If we have a clean question without parameters applied, don't add the dataset query hash
+    if (!cardIsDirty && datasetQuery.parameters && datasetQuery.parameters.length === 0) {
+        return Urls.question(card.id);
+    }
 
     const query = {};
     for (const datasetParameter of datasetQuery.parameters || []) {
