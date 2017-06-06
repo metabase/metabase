@@ -28,28 +28,40 @@ class TableLanding extends Component {
         return (
             <div>
                 <div className="py4 flex align-center">
-                    <h1>{ table && table.display_name}</h1>
+                    <div>
+                        <h1>{ table && table.display_name}</h1>
+                        <p>{ table && table.description}</p>
+                    </div>
                     <div className="ml-auto">
                         { editing
 
                             ? (
-                                <Icon
-                                    name="check"
+                                <div
+                                    className="Button flex align-center"
                                     onClick={() => this.setState({ editing: false }) }
-                                />
+                                >
+                                    <Icon
+                                        name="check"
+                                    />
+                                    Save
+                                </div>
                             )
                             : (
-                                <Icon
-                                    name="pencil"
+                                <div
+                                    className="Button flex align-center"
                                     onClick={() => this.setState({ editing: true }) }
-                                />
+                                >
+                                    <Icon
+                                        name="pencil"
+                                    />
+                                    Edit
+                                </div>
                             )
                         }
                     </div>
                 </div>
                 <div className="border-bottom mb2 flex align-center">
                     <h4 className="mb2 mr2">Fields</h4>
-                    <h4 className="mb2">Segments</h4>
                 </div>
                 <ol className="Grid Grid--gutters Grid--1of3">
                     { table && table.fields && table.fields.map(field =>
@@ -66,9 +78,8 @@ class TableLanding extends Component {
                                                     type="text"
                                                     value={field.display_name}
                                                 />
-                                                <input
+                                                <textarea
                                                     className="block full text"
-                                                    type="text"
                                                     value={field.description ? field.description : 'No description yet'}
                                                 />
                                             </div>
