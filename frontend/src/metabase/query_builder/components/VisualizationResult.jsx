@@ -1,13 +1,19 @@
 /* eslint "react/prop-types": "warn" */
 
 import React from "react";
-import PropTypes from "prop-types";
 import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 
-const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result, ...props}) => {
+type Props = {
+    question: Question,
+    isObjectDetail: boolean,
+    result: any,
+    results: any[],
+    navigateToNewCardInsideQB: (any) => void
+}
+const VisualizationResult = ({question, isObjectDetail, navigateToNewCardInsideQB, result, results, ...props}: Props) => {
     const noResults = datasetContainsNoResults(result.data);
 
     if (isObjectDetail) {
@@ -28,26 +34,25 @@ const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result,
         // we want to provide the visualization with a card containing the latest
         // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
         // BUT the last executed "dataset_query" (to ensure data matches the query)
-        let vizCard = {
-            ...card,
-            dataset_query: lastRunDatasetQuery
-        };
+
+        // TODO: Atte Keinänen 6/2/17: Should we provide a `lastRunDatasetQueries` or similar?
+        const series = question.metrics().map((metricQuery, index) => ({
+            card: {
+                ...question.card(),
+                dataset_query: metricQuery.datasetQuery()
+            },
+            data: results[index].data
+        }));
+
         return <Visualization
-                  series={[{ card: vizCard, data: result.data }]}
-                  onChangeCardAndRun={props.setCardAndRun}
+                  series={series}
+                  onChangeCardAndRun={navigateToNewCardInsideQB}
                   isEditing={true}
+                  card={question.card()}
                   // Table:
                   {...props}
               />
     }
-}
-
-VisualizationResult.propTypes = {
-    card:                   PropTypes.object.isRequired,
-    isObjectDetail:         PropTypes.bool.isRequired,
-    lastRunDatasetQuery:    PropTypes.object.isRequired,
-    result:                 PropTypes.object.isRequired,
-    setCardAndRun:          PropTypes.func,
-}
+};
 
 export default VisualizationResult;

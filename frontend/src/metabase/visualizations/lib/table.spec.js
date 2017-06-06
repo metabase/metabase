@@ -1,4 +1,5 @@
-import { getTableCellClickedObject } from "./table";
+import { getTableCellClickedObject, isColumnRightAligned } from "./table";
+import { TYPE } from "metabase/lib/types";
 
 const RAW_COLUMN = {
     source: "fields"
@@ -39,5 +40,25 @@ describe("metabase/visualization/lib/table", () => {
         describe("pivoted table", () => {
             // TODO:
         })
+    })
+
+    describe("isColumnRightAligned", () => {
+        it("should return true for numeric columns without a special type", () => {
+            expect(isColumnRightAligned({ base_type: TYPE.Integer })).toBe(true);
+        });
+        it("should return true for numeric columns with special type Number", () => {
+            expect(isColumnRightAligned({ base_type: TYPE.Integer, special_type: TYPE.Number })).toBe(true);
+        });
+        it("should return true for numeric columns with special type latitude or longitude ", () => {
+            expect(isColumnRightAligned({ base_type: TYPE.Integer, special_type: TYPE.Latitude })).toBe(true);
+            expect(isColumnRightAligned({ base_type: TYPE.Integer, special_type: TYPE.Longitude })).toBe(true);
+        });
+        it("should return false for numeric columns with special type zip code", () => {
+            expect(isColumnRightAligned({ base_type: TYPE.Integer, special_type: TYPE.ZipCode })).toBe(false)
+        });
+        it("should return false for numeric columns with special type FK or PK", () => {
+            expect(isColumnRightAligned({ base_type: TYPE.Integer, special_type: TYPE.FK })).toBe(false);
+            expect(isColumnRightAligned({ base_type: TYPE.Integer, special_type: TYPE.FK })).toBe(false);
+        });
     })
 })

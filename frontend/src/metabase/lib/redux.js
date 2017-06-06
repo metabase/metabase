@@ -15,6 +15,7 @@ export function createThunkAction(actionType, actionThunkCreator) {
         var thunk = actionThunkCreator(...actionArgs);
         return async function(dispatch, getState) {
             try {
+
                 let payload = await thunk(dispatch, getState);
                 let dispatchValue = { type: actionType, payload };
                 dispatch(dispatchValue);
@@ -107,6 +108,36 @@ export const updateData = async ({
         dispatch(setRequestState({ statePath, error }));
         console.error(error);
         return existingData;
+    }
+}
+
+// helper for working with normalizr
+// merge each entity from newEntities with existing entity, if any
+// this ensures partial entities don't overwrite existing entities with more properties
+export function mergeEntities(entities, newEntities) {
+    entities = { ...entities };
+    for (const id in newEntities) {
+        if (id in entities) {
+            entities[id] = { ...entities[id], ...newEntities[id] };
+        } else {
+            entities[id] = newEntities[id];
+        }
+    }
+    return entities;
+}
+
+// helper for working with normalizr
+// reducer that merges payload.entities
+export function handleEntities(actionPattern, entityType, reducer) {
+    return (state, action) => {
+        if (state === undefined) {
+            state = {};
+        }
+        let entities = getIn(action, ["payload", "entities", entityType]);
+        if (actionPattern.test(action.type) && entities) {
+            state = mergeEntities(state, entities);
+        }
+        return reducer(state, action);
     }
 }
 

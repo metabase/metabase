@@ -34,6 +34,7 @@ export default class DashCard extends Component {
         parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
+        navigateToNewCardFromDashboard: PropTypes.func.isRequired
     };
 
     async componentDidMount() {
@@ -60,7 +61,7 @@ export default class DashCard extends Component {
             isEditingParameter,
             onAddSeries,
             onRemove,
-            navigateToNewCard,
+            navigateToNewCardFromDashboard,
             metadata
         } = this.props;
 
@@ -134,8 +135,9 @@ export default class DashCard extends Component {
                     onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                     metadata={metadata}
-                    onChangeCardAndRun={ navigateToNewCard ? (card: UnsavedCard) => {
-                        navigateToNewCard(card, dashcard)
+                    onChangeCardAndRun={ navigateToNewCardFromDashboard ? ({ nextCard, previousCard }) => {
+                        // navigateToNewCardFromDashboard needs `dashcard` for applying active filters to the query
+                        navigateToNewCardFromDashboard({ nextCard, previousCard, dashcard })
                     } : null}
                 />
             </div>

@@ -75,15 +75,15 @@
 
 
 (u/strict-extend SQLServerDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     (u/drop-first-arg drop-db-if-exists-sql)
           :drop-table-if-exists-sql  (u/drop-first-arg drop-table-if-exists-sql)
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :pk-sql-type               (constantly "INT IDENTITY(1,1)")
           :qualified-name-components (u/drop-first-arg qualified-name-components)})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
           :default-schema               (constantly "dbo")
           :engine                       (constantly :sqlserver)}))

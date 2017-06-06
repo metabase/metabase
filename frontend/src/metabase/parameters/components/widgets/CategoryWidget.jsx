@@ -19,7 +19,7 @@ type State = {
     searchRegex: ?RegExp,
 }
 
-export default class CategoryWidget extends Component<*, Props, State> {
+export default class CategoryWidget extends Component {
     props: Props;
     state: State;
 

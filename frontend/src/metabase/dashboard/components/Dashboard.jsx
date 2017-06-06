@@ -18,7 +18,7 @@ import type { LocationDescriptor, ApiError, QueryParams } from "metabase/meta/ty
 
 import type { Card, CardId, VisualizationSettings } from "metabase/meta/types/Card";
 import type { DashboardWithCards, DashboardId, DashCardId } from "metabase/meta/types/Dashboard";
-import type { RevisionId } from "metabase/meta/types/Revision";
+import type { Revision, RevisionId } from "metabase/meta/types/Revision";
 import type { Parameter, ParameterId, ParameterValues, ParameterOption } from "metabase/meta/types/Parameter";
 
 type Props = {
@@ -27,7 +27,9 @@ type Props = {
     dashboardId:            DashboardId,
     dashboard:              DashboardWithCards,
     cards:                  Card[],
+    revisions:              { [key: string]: Revision[] },
 
+    isAdmin:                boolean,
     isEditable:             boolean,
     isEditing:              boolean,
     isEditingParameter:     boolean,
@@ -48,7 +50,7 @@ type Props = {
     setDashboardAttributes: ({ [attribute: string]: any }) => void,
     fetchDashboardCardData: (options: { reload: bool, clear: bool }) => Promise<void>,
 
-    setEditingParameter:    (parameterId: ParameterId) => void,
+    setEditingParameter:    (parameterId: ?ParameterId) => void,
     setEditingDashboard:    (isEditing: boolean) => void,
 
     addParameter:               (option: ParameterOption) => Promise<Parameter>,
@@ -59,9 +61,15 @@ type Props = {
 
     editingParameter:       ?Parameter,
 
+    refreshPeriod:          number,
+    refreshElapsed:         number,
     isFullscreen:           boolean,
     isNightMode:            boolean,
+
     onRefreshPeriodChange:  (?number) => void,
+    onNightModeChange:      (boolean) => void,
+    onFullscreenChange:     (boolean) => void,
+
     loadDashboardParams:    () => void,
 
     onReplaceAllDashCardVisualizationSettings: (dashcardId: DashCardId, settings: VisualizationSettings) => void,
@@ -76,8 +84,9 @@ type State = {
 }
 
 @DashboardControls
-export default class Dashboard extends Component<*, Props, State> {
-    state = {
+export default class Dashboard extends Component {
+    props: Props;
+    state: State = {
         error: null,
     };
 
@@ -138,7 +147,7 @@ export default class Dashboard extends Component<*, Props, State> {
             }
         } catch (error) {
             if (error.status === 404) {
-                setErrorPage(error);
+                setErrorPage({ ...error, context: "dashboard" });
             } else {
                 console.error(error);
                 this.setState({ error });
@@ -189,39 +198,39 @@ export default class Dashboard extends Component<*, Props, State> {
 
         return (
             <LoadingAndErrorWrapper className={cx("Dashboard flex-full pb4", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
-            {() =>
-                <div className="full" style={{ overflowX: "hidden" }}>
-                    <header className="DashboardHeader relative z2">
-                        <DashboardHeader
-                            {...this.props}
-                            onEditingChange={this.setEditing}
-                            setDashboardAttribute={this.setDashboardAttribute}
-                            addParameter={this.props.addParameter}
-                            parameters={parametersWidget}
-                        />
-                    </header>
-                    {!isFullscreen && parametersWidget &&
+                {() =>
+                    <div className="full" style={{ overflowX: "hidden" }}>
+                        <header className="DashboardHeader relative z2">
+                            <DashboardHeader
+                                {...this.props}
+                                onEditingChange={this.setEditing}
+                                setDashboardAttribute={this.setDashboardAttribute}
+                                addParameter={this.props.addParameter}
+                                parametersWidget={parametersWidget}
+                            />
+                        </header>
+                        {!isFullscreen && parametersWidget &&
                         <div className="wrapper flex flex-column align-start mt2 relative z2">
                             {parametersWidget}
                         </div>
-                    }
-                    <div className="wrapper">
-
-                        { dashboard.ordered_cards.length === 0 ?
-                            <div className="absolute z1 top bottom left right flex flex-column layout-centered">
-                                <span className="QuestionCircle">?</span>
-                                <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
-                                <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
-                            </div>
-                        :
-                            <DashboardGrid
-                                {...this.props}
-                                onEditingChange={this.setEditing}
-                            />
                         }
+                        <div className="wrapper">
+
+                            { dashboard.ordered_cards.length === 0 ?
+                                <div className="absolute z1 top bottom left right flex flex-column layout-centered">
+                                    <span className="QuestionCircle">?</span>
+                                    <div className="text-normal mt3 mb1">This dashboard is looking empty.</div>
+                                    <div className="text-normal text-grey-2">Add a question to start making it useful!</div>
+                                </div>
+                                :
+                                <DashboardGrid
+                                    {...this.props}
+                                    onEditingChange={this.setEditing}
+                                />
+                            }
+                        </div>
                     </div>
-                </div>
-            }
+                }
             </LoadingAndErrorWrapper>
         );
     }

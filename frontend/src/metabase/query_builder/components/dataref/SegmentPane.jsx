@@ -28,9 +28,11 @@ export default class SegmentPane extends Component {
         segment: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object,
         loadTableAndForeignKeysFn: PropTypes.func.isRequired,
-        runQuery: PropTypes.func.isRequired,
+        runQuestionQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
-        setCardAndRun: PropTypes.func.isRequired
+        setCardAndRun: PropTypes.func.isRequired,
+        question: PropTypes.object.isRequired,
+        originalQuestion: PropTypes.object.isRequired
     };
 
     componentWillMount() {
@@ -54,7 +56,7 @@ export default class SegmentPane extends Component {
         }
         Query.addFilter(datasetQuery.query, ["SEGMENT", this.props.segment.id]);
         this.props.setDatasetQuery(datasetQuery);
-        this.props.runQuery();
+        this.props.runQuestionQuery();
     }
 
     newCard() {

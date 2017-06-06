@@ -2,12 +2,7 @@
 
 import React from "react";
 
-import {
-    summarize,
-    pivot,
-    getFieldClauseFromCol
-} from "metabase/qb/lib/actions";
-import * as Card from "metabase/meta/Card";
+import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
 import { isCategory } from "metabase/lib/schema_metadata";
 
 import type {
@@ -15,13 +10,8 @@ import type {
     ClickActionProps
 } from "metabase/meta/types/Visualization";
 
-export default (
-    { card, tableMetadata, clicked }: ClickActionProps
-): ClickAction[] => {
-    const query = Card.getQuery(card);
-
+export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     if (
-        !query ||
         !clicked ||
         !clicked.column ||
         clicked.value !== undefined ||
@@ -37,12 +27,10 @@ export default (
             name: "count-by-column",
             section: "distribution",
             title: <span>Distribution</span>,
-            card: () =>
-                pivot(
-                    summarize(card, ["count"], tableMetadata),
-                    getFieldClauseFromCol(column),
-                    tableMetadata
-                )
+            question: () =>
+                question
+                    .summarize(["count"])
+                    .pivot(getFieldRefFromColumn(column))
         }
     ];
 };

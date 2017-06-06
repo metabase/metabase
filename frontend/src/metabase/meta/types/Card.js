@@ -22,6 +22,8 @@ export type Card = {
     display: string,
     visualization_settings: VisualizationSettings,
     parameters?: Array<Parameter>,
+    can_write: boolean,
+    public_uuid: string
 };
 
 export type StructuredDatasetQuery = {

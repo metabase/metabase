@@ -71,7 +71,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(query.order_by).toBe(undefined);
+            expect(query.order_by).toEqual(undefined);
         });
 
         it('should not remove sort clauses on aggregations if that aggregation supports it', () => {
@@ -98,7 +98,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(query.order_by).toBe(undefined);
+            expect(query.order_by).toEqual(undefined);
         });
 
         it('should not remove sort clauses on fields appearing in breakout', () => {
@@ -125,7 +125,7 @@ describe('Query', () => {
                 ]
             };
             Query.cleanQuery(query);
-            expect(query.order_by).toBe(undefined);
+            expect(query.order_by).toEqual(undefined);
         });
 
         it('should not remove sort clauses with foreign keys on fields appearing in breakout', () => {
@@ -186,28 +186,38 @@ describe('Query', () => {
     });
 
     describe('removeBreakout', () => {
+        it('should not mutate the query', () => {
+            let query = {
+                source_table: 0,
+                aggregation: ["count"],
+                breakout: [["field-id", 1]],
+                filter: []
+            };
+            Query.removeBreakout(query, 0);
+            expect(query.breakout).toEqual([["field-id", 1]]);
+        });
         it('should remove the dimension', () => {
             let query = {
                 source_table: 0,
                 aggregation: ["count"],
-                breakout: [1],
+                breakout: [["field-id", 1]],
                 filter: []
             };
-            Query.removeBreakout(query, 0);
-            expect(query.breakout).toBe(undefined);
+            query = Query.removeBreakout(query, 0);
+            expect(query.breakout).toEqual(undefined);
         });
         it('should remove sort clauses for the dimension that was removed', () => {
             let query = {
                 source_table: 0,
                 aggregation: ["count"],
-                breakout: [1],
+                breakout: [["field-id", 1]],
                 filter: [],
                 order_by: [
                     [1, "ascending"]
                 ]
             };
-            Query.removeBreakout(query, 0);
-            expect(query.order_by).toBe(undefined);
+            query = Query.removeBreakout(query, 0);
+            expect(query.order_by).toEqual(undefined);
         });
     });
 

@@ -8,8 +8,9 @@ type Props = {
     value: string
 };
 
-export default class CopyWidget extends Component<*, Props, *> {
+export default class CopyWidget extends Component {
     props: Props;
+
     render() {
         const { value } = this.props;
         return (

@@ -13,8 +13,6 @@ import cx from "classnames";
 export default class FieldName extends Component {
     static propTypes = {
         field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        fieldOptions: PropTypes.object.isRequired,
-        customFieldOptions: PropTypes.object,
         onClick: PropTypes.func,
         removeField: PropTypes.func,
         tableMetadata: PropTypes.object.isRequired
@@ -25,12 +23,15 @@ export default class FieldName extends Component {
     };
 
     render() {
-        let { field, tableMetadata, className } = this.props;
+        let { query, field, tableMetadata, className } = this.props;
         let fieldTarget = Query.getFieldTarget(field, tableMetadata);
 
         let parts = [];
 
-        if (fieldTarget && !fieldTarget.field) {
+        const dimension = query && query.parseFieldReference(field)
+        if (dimension) {
+            parts = dimension.render();
+        } else if (fieldTarget && !fieldTarget.field) {
             parts.push(<span className="text-error" key="field">Missing Field</span>);
         } else if (fieldTarget) {
             // fk path

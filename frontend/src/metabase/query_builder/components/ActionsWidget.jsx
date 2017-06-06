@@ -5,31 +5,35 @@ import React, { Component } from "react";
 import Icon from "metabase/components/Icon";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 
-import { getModeActions } from "metabase/qb/lib/modes";
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import cx from "classnames";
 import _ from "underscore";
 
 import type { Card, UnsavedCard } from "metabase/meta/types/Card";
-import type { QueryMode, ClickAction } from "metabase/meta/types/Visualization";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { ClickAction } from "metabase/meta/types/Visualization";
+import Question from "metabase-lib/lib/Question";
 
 type Props = {
     className?: string,
-    mode: QueryMode,
-    card: Card,
-    tableMetadata: TableMetadata,
-    setCardAndRun: (card: Card) => void
+    question: Question,
+    setCardAndRun: (card: Card) => void,
+    navigateToNewCardInsideQB: any => void
+};
+
+type State = {
+    isVisible: boolean,
+    isOpen: boolean,
+    selectedActionIndex: ?number
 };
 
 const CIRCLE_SIZE = 48;
 const NEEDLE_SIZE = 20;
 const POPOVER_WIDTH = 350;
 
-export default class ActionsWidget extends Component<*, Props, *> {
-    state = {
+export default class ActionsWidget extends Component {
+    props: Props;
+    state: State = {
         isVisible: false,
         isOpen: false,
         selectedActionIndex: null
@@ -71,39 +75,31 @@ export default class ActionsWidget extends Component<*, Props, *> {
         });
     };
 
-    handleOnChangeCardAndRun(nextCard: UnsavedCard|Card) {
-        const { card } = this.props;
-
-        // Include the original card id if present for showing the lineage next to title
-        const nextCardWithOriginalId = {
-            ...nextCard,
-            // $FlowFixMe
-            original_card_id: card.id || card.original_card_id
-        };
-        if (nextCardWithOriginalId) {
-            this.props.setCardAndRun(nextCardWithOriginalId);
-        }
+    handleOnChangeCardAndRun = ({ nextCard }: { nextCard: Card|UnsavedCard}) => {
+        // TODO: move lineage logic to Question?
+        const { card: previousCard } = this.props;
+        this.props.navigateToNewCardInsideQB({ nextCard, previousCard });
     }
 
     handleActionClick = (index: number) => {
-        const { mode, card, tableMetadata } = this.props;
-        const action = getModeActions(mode, card, tableMetadata)[index];
+        const { question } = this.props;
+        const action = question.actions()[index];
         if (action && action.popover) {
             this.setState({ selectedActionIndex: index });
-        } else if (action && action.card) {
-            const nextCard = action.card();
-            if (nextCard) {
+        } else if (action && action.question) {
+            const nextQuestion = action.question();
+            if (nextQuestion) {
                 MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun(nextCard);
+                this.handleOnChangeCardAndRun(nextQuestion.card());
             }
             this.close();
         }
     };
     render() {
-        const { className, mode, card, tableMetadata } = this.props;
+        const { className, question } = this.props;
         const { isOpen, isVisible, selectedActionIndex } = this.state;
 
-        const actions: ClickAction[] = getModeActions(mode, card, tableMetadata);
+        const actions = question.actions();
         if (actions.length === 0) {
             return null;
         }
@@ -115,7 +111,7 @@ export default class ActionsWidget extends Component<*, Props, *> {
         return (
             <div className={cx(className, "relative")}>
                 <div
-                    className="circular bg-brand flex layout-centered m4 cursor-pointer"
+                    className="circular bg-brand flex layout-centered m3 cursor-pointer"
                     style={{
                         width: CIRCLE_SIZE,
                         height: CIRCLE_SIZE,
@@ -170,12 +166,12 @@ export default class ActionsWidget extends Component<*, Props, *> {
                                           </div>
                                       </div>
                                       <PopoverComponent
-                                          onChangeCardAndRun={(card) => {
-                                              if (card) {
+                                          onChangeCardAndRun={({ nextCard }) => {
+                                              if (nextCard) {
                                                   if (selectedAction) {
                                                       MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${selectedAction.section||""}:${selectedAction.name||""}`);
                                                   }
-                                                  this.handleOnChangeCardAndRun(card)
+                                                  this.handleOnChangeCardAndRun({ nextCard })
                                               }
                                           }}
                                           onClose={this.close}

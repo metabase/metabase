@@ -10,11 +10,19 @@ import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 
+import Question from "metabase-lib/lib/Question";
+
 import { getIn } from "icepick";
 
 import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
 
-export const getUiControls      = state => state.qb.uiControls;
+export const getUiControls = state => state.qb.uiControls;
+
+export const getIsShowingTemplateTagsEditor = state => getUiControls(state).isShowingTemplateTagsEditor;
+export const getIsShowingDataReference = state => getUiControls(state).isShowingDataReference;
+export const getIsShowingTutorial = state => getUiControls(state).isShowingTutorial;
+export const getIsEditing = state => getUiControls(state).isEditing;
+export const getIsRunning = state => getUiControls(state).isRunning;
 
 export const getCard            = state => state.qb.card;
 export const getOriginalCard    = state => state.qb.originalCard;
@@ -22,6 +30,7 @@ export const getLastRunCard     = state => state.qb.lastRunCard;
 
 export const getParameterValues = state => state.qb.parameterValues;
 export const getQueryResult     = state => state.qb.queryResult;
+export const getQueryResults    = state => state.qb.queryResults;
 
 export const getIsDirty = createSelector(
     [getCard, getOriginalCard],
@@ -156,13 +165,36 @@ export const getIsRunnable = createSelector(
 const getLastRunDatasetQuery = createSelector([getLastRunCard], (card) => card && card.dataset_query);
 const getNextRunDatasetQuery = createSelector([getCard], (card) => card && card.dataset_query);
 
-const getLastRunParameters = createSelector([getQueryResult], (queryResult) => queryResult && queryResult.json_query.parameters || [])
-const getLastRunParameterValues = createSelector([getLastRunParameters], (parameters) => parameters.map(parameter => parameter.value))
-const getNextRunParameterValues = createSelector([getParameters], (parameters) => parameters.map(parameter => parameter.value))
+const getLastRunParameters = createSelector([getQueryResult], (queryResult) => queryResult && queryResult.json_query && queryResult.json_query.parameters || []);
+const getLastRunParameterValues = createSelector([getLastRunParameters], (parameters) => parameters.map(parameter => parameter.value));
+const getNextRunParameterValues = createSelector([getParameters], (parameters) =>
+    parameters.map(parameter => parameter.value).filter(p => p !== undefined)
+);
 
 export const getIsResultDirty = createSelector(
     [getLastRunDatasetQuery, getNextRunDatasetQuery, getLastRunParameterValues, getNextRunParameterValues],
     (lastDatasetQuery, nextDatasetQuery, lastParameters, nextParameters) => {
         return !Utils.equals(lastDatasetQuery, nextDatasetQuery) || !Utils.equals(lastParameters, nextParameters);
     }
+)
+
+
+export const getQuestion = createSelector(
+    [getMetadata, getCard, getParameterValues],
+    (metadata, card, parameterValues) => {
+        return metadata && card && new Question(metadata, card, parameterValues)
+    }
+)
+
+export const getOriginalQuestion = createSelector(
+    [getMetadata, getOriginalCard],
+    (metadata, card) => {
+        // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
+        return metadata && card && new Question(metadata, card)
+    }
+)
+
+export const getQuery = createSelector(
+    [getQuestion],
+    (question) => question && question.query()
 )

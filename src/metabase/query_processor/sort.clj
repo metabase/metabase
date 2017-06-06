@@ -1,5 +1,6 @@
 (ns metabase.query-processor.sort
   "Code for determining the order columns should be returned in from query results."
+  ;; TODO - This namespace should be called something like `metabase.query-processor.middleware.sort`
   (:require [clojure.tools.logging :as log]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]))

@@ -29,7 +29,7 @@ type Props = {
     lastRunCard: CardObject,
     tableMetadata: TableMetadata,
     setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    runQuery: () => void
+    runQuestionQuery: () => void
 };
 
 export const TimeseriesModeFooter = (props: Props) => {

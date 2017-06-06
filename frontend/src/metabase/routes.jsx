@@ -38,6 +38,7 @@ import EntityList from "metabase/questions/containers/EntityList.jsx";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
+import QuestionBuilder from "metabase/query_builder/containers/QuestionBuilder.jsx";
 import SetupApp from "metabase/setup/containers/SetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
@@ -163,7 +164,7 @@ export const getRoutes = (store) =>
 
                 {/* QUERY BUILDER */}
                 <Route path="/question" component={QueryBuilder} />
-                <Route path="/question/:cardId" component={QueryBuilder} />
+                <Route path="/question/:cardId" component={QuestionBuilder} />
 
                 {/* QUESTIONS */}
                 <Route path="/questions" title="Questions">

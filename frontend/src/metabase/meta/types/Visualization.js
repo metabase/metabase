@@ -2,7 +2,7 @@
 
 import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import Question from "metabase-lib/lib/Question";
 
 export type ActionCreator = (props: ClickActionProps) => ClickAction[]
 
@@ -40,27 +40,24 @@ export type ClickAction = {
     title: any, // React Element
     icon?: string,
     popover?: (props: ClickActionPopoverProps) => any, // React Element
-    card?: () => ?Card,
+    question?: () => ?Question,
 
     section?: string,
     name?: string,
 }
 
 export type ClickActionProps = {
-    card: Card,
-    tableMetadata: TableMetadata,
+    question: Question,
     clicked?: ClickObject
 }
 
 export type ClickActionPopoverProps = {
-    onChangeCardAndRun: (card: ?Card) => void,
+    onChangeCardAndRun: (Object) => void,
     onClose: () => void,
 }
 
-// type Visualization = Component<*, VisualizationProps, *>;
-
-// $FlowFixMe
-export type Series = { card: Card, data: DatasetData }[] & { _raw: Series }
+export type SingleSeries = { card: Card, data: DatasetData };
+export type Series = SingleSeries[] & { _raw: Series }
 
 export type VisualizationProps = {
     series: Series,
@@ -83,7 +80,7 @@ export type VisualizationProps = {
     onHoverChange: (?HoverObject) => void,
     onVisualizationClick: (?ClickObject) => void,
     visualizationIsClickable: (?ClickObject) => boolean,
-    onChangeCardAndRun: (card: Card) => void,
+    onChangeCardAndRun: (Object) => void,
 
     onUpdateVisualizationSettings: ({ [key: string]: any }) => void
 }

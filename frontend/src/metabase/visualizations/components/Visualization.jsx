@@ -19,8 +19,6 @@ import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { getMode, getModeDrills } from "metabase/qb/lib/modes"
-import * as Card from "metabase/meta/Card";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
@@ -31,9 +29,11 @@ import cx from "classnames";
 export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
-import type { UnsavedCard, VisualizationSettings} from "metabase/meta/types/Card";
+import type { VisualizationSettings} from "metabase/meta/types/Card";
 import type { HoverObject, ClickObject, Series } from "metabase/meta/types/Visualization";
-import type { Metadata } from "metabase/meta/types/Metadata";
+
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Question from "metabase-lib/lib/Question";
 
 type Props = {
     series: Series,
@@ -63,7 +63,7 @@ type Props = {
 
     // for click actions
     metadata: Metadata,
-    onChangeCardAndRun: (card: UnsavedCard) => void,
+    onChangeCardAndRun: any => void,
 
     // used for showing content in place of visualization, e.x. dashcard filter mapping
     replacementContent: Element<any>,
@@ -84,7 +84,7 @@ type Props = {
 
 type State = {
     series: ?Series,
-    CardVisualization: ?(Component<*, VisualizationSettings, *> & {
+    CardVisualization: ?(Component<void, VisualizationSettings, void> & {
         checkRenderable: (any, any) => void,
         noHeader: boolean
     }),
@@ -98,7 +98,7 @@ type State = {
 }
 
 @ExplicitSize
-export default class Visualization extends Component<*, Props, State> {
+export default class Visualization extends Component {
     state: State;
     props: Props;
 
@@ -188,12 +188,12 @@ export default class Visualization extends Component<*, Props, State> {
         if (!clicked) {
             return [];
         }
+        // TODO: push this logic into Question?
         const { series, metadata } = this.props;
         const seriesIndex = clicked.seriesIndex || 0;
         const card = series[seriesIndex].card;
-        const tableMetadata = card && Card.getTableMetadata(card, metadata);
-        const mode = getMode(card, tableMetadata);
-        return getModeDrills(mode, card, tableMetadata, clicked);
+        const question = new Question(metadata, card);
+        return question.actionsForClick(clicked);
     }
 
     visualizationIsClickable = (clicked: ClickObject) => {
@@ -204,6 +204,7 @@ export default class Visualization extends Component<*, Props, State> {
         try {
             return this.getClickActions(clicked).length > 0;
         } catch (e) {
+            console.warn(e);
             return false;
         }
     }
@@ -221,27 +222,16 @@ export default class Visualization extends Component<*, Props, State> {
         setTimeout(() => {
             this.setState({ clicked });
         }, 100);
-    }
+    };
 
-    handleOnChangeCardAndRun = (card: UnsavedCard) => {
+    // Add the underlying card of current series to onChangeCardAndRun if available
+    handleOnChangeCardAndRun = ({ nextCard, seriesIndex }) => {
         const { series, clicked } = this.state;
 
-        const index = (clicked && clicked.seriesIndex) || 0;
-        const originalCard = series && series[index] && series[index].card;
+        const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
+        const previousCard = series && series[index] && series[index].card;
 
-        let cardId = card.id || card.original_card_id;
-        // if the supplied card doesn't have an id, get it from the original card
-        if (cardId == null && originalCard) {
-            // $FlowFixMe
-            cardId = originalCard.id || originalCard.original_card_id;
-        }
-
-        this.props.onChangeCardAndRun({
-            ...card,
-            id: cardId,
-            // $FlowFixMe
-            original_card_id: cardId
-        });
+        this.props.onChangeCardAndRun({ nextCard, previousCard });
     }
 
     onRender = ({ yAxisSplit, warnings = [] } = {}) => {
@@ -414,12 +404,14 @@ export default class Visualization extends Component<*, Props, State> {
                     series={series}
                     hovered={hovered}
                 />
-                <ChartClickActions
-                    clicked={clicked}
-                    clickActions={clickActions}
-                    onChangeCardAndRun={this.props.onChangeCardAndRun ? this.handleOnChangeCardAndRun : null}
-                    onClose={() => this.setState({ clicked: null })}
-                />
+                { this.props.onChangeCardAndRun &&
+                    <ChartClickActions
+                        clicked={clicked}
+                        clickActions={clickActions}
+                        onChangeCardAndRun={this.handleOnChangeCardAndRun}
+                        onClose={() => this.setState({ clicked: null })}
+                    />
+                }
             </div>
         );
     }

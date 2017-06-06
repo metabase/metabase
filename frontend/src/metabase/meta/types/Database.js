@@ -19,6 +19,8 @@ export type DatabaseDetails = {
     [key: string]: any
 }
 
+export type DatabaseEngine = string;
+
 export type DatabaseNativePermission = "write" | "read";
 
 export type Database = {

@@ -5,22 +5,22 @@ import { findDOMNode } from 'react-dom';
 
 import FilterWidget from './FilterWidget.jsx';
 
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
 import type { Filter } from "metabase/meta/types/Query";
-import type { Table } from "metabase/meta/types/Table";
 
 type Props = {
+    query: StructuredQuery,
     filters: Array<Filter>,
-    tableMetadata: Table,
-    removeFilter: (index: number) => void,
-    updateFilter: (index: number, filter: Filter) => void,
-    maxDisplayValues?: bool
+    removeFilter?: (index: number) => void,
+    updateFilter?: (index: number, filter: Filter) => void,
+    maxDisplayValues?: number
 };
 
 type State = {
     shouldScroll: bool
 };
 
-export default class FilterList extends Component<*, Props, State> {
+export default class FilterList extends Component {
     props: Props;
     state: State;
 
@@ -49,15 +49,16 @@ export default class FilterList extends Component<*, Props, State> {
     }
 
     render() {
-        const { filters, tableMetadata } = this.props;
+        const { query, filters } = this.props;
         return (
             <div className="Query-filterList scroll-x scroll-show scroll-show--horizontal">
                 {filters.map((filter, index) =>
                     <FilterWidget
                         key={index}
                         placeholder="Item"
+                        // $FlowFixMe: update widgets that are still passing tableMetadata instead of query
+                        query={query || { table: () => this.props.tableMetadata }}
                         filter={filter}
-                        tableMetadata={tableMetadata}
                         index={index}
                         removeFilter={this.props.removeFilter}
                         updateFilter={this.props.updateFilter}
