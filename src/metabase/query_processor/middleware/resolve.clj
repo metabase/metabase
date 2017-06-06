@@ -16,7 +16,8 @@
              [interface :as i]
              [util :as qputil]]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import [metabase.query_processor.interface DateTimeField DateTimeValue ExpressionRef Field FieldPlaceholder RelativeDatetime RelativeDateTimeValue Value ValuePlaceholder]))
 
 ;; # ---------------------------------------------------------------------- UTIL FNS ------------------------------------------------------------
@@ -32,6 +33,41 @@
                                     :base_type       :base-type
                                     :table_id        :table-id
                                     :parent_id       :parent-id}))
+
+(defn- rename-dimension-keys
+  [dimension]
+  (set/rename-keys (into {} dimension)
+                   {:id                      :dimension-id
+                    :name                    :dimension-name
+                    :type                    :dimension-type
+                    :field_id                :field-id
+                    :human_readable_field_id :human-readable-field-id
+                    :created_at              :created-at
+                    :updated_at              :updated-at}))
+
+(defn- rename-field-value-keys
+  [field-values]
+  (set/rename-keys (into {} field-values)
+                   {:id                      :field-value-id
+                    :field_id                :field-id
+                    :human_readable_values   :human-readable-values
+                    :updated_at              :updated-at
+                    :created_at              :created-at}))
+
+(defn convert-db-field
+  "Converts a field map from that database to a Field instance"
+  [db-field]
+  (-> db-field
+      rename-mb-field-keys
+      i/map->Field
+      (update :values (fn [vals]
+                        (if (seq vals)
+                          (-> vals rename-field-value-keys i/map->FieldValues)
+                          vals)))
+      (update :dimensions (fn [dims]
+                            (if (seq dims)
+                              (-> dims rename-dimension-keys i/map->Dimensions )
+                              dims)))))
 
 ;;; # ------------------------------------------------------------ IRESOLVE PROTOCOL ------------------------------------------------------------
 
@@ -108,7 +144,7 @@
 
 (defn- field-ph-resolve-field [{:keys [field-id datetime-unit], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
-                                                               i/map->Field
+                                                               convert-db-field
                                                                (merge-non-nils (select-keys this [:fk-field-id :remapped-from :remapped-to :field-display-name])))]
     ;; try to resolve the Field with the ones available in field-id->field
     (let [datetime-field? (or (isa? base-type :type/DateTime)
@@ -200,9 +236,11 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
-                                          :visibility_type [:not= "sensitive"]
-                                          :id              [:in field-ids]))
+        (let [fields (->> (u/key-by :id (-> (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+                                              :visibility_type [:not= "sensitive"]
+                                              :id              [:in field-ids])
+                                            (hydrate :values)
+                                            (hydrate :dimensions)))
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
                                                           (i/map->FieldPlaceholder {:field-id parent-id})))))]

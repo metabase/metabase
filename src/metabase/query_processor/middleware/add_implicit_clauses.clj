@@ -28,7 +28,9 @@
   ;; Sort the implicit FIELDS so the SQL (or other native query) that gets generated (mostly) approximates the 'magic' sorting
   ;; we do on the results. This is done so when the outer query we generate is a `SELECT *` the order doesn't change
   (for [field (sort/sort-fields inner-query (fetch-fields-for-souce-table-id source-table-id))
-        :let  [field (resolve/resolve-table (i/map->Field field) {[nil source-table-id] source-table})]]
+        :let  [field (-> field
+                         resolve/convert-db-field
+                         (resolve/resolve-table {[nil source-table-id] source-table}))]]
     (if (qputil/datetime-field? field)
       (i/map->DateTimeField {:field field, :unit :default})
       field)))

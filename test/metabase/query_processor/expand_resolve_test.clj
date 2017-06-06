@@ -6,6 +6,8 @@
              [resolve :as resolve]
              [source-table :as st]]
             [metabase.test.data :refer :all]
+            [metabase.test.data.dataset-definitions :as defs]
+            [metabase.test.util :as tu]
             [metabase.util :as u]))
 
 
@@ -40,7 +42,17 @@
    :parent          nil
    :schema-name     nil
    :remapped-from   nil
-   :remapped-to     nil})
+   :remapped-to     nil
+   :dimensions      []
+   :values          []})
+
+(def price-field-values
+  {:field-value-id true
+   :created-at true
+   :updated-at true
+   :values [1 2 3 4]
+   :human-readable-values {}
+   :field-id true})
 
 ;; basic rows query w/ filter
 (expect
@@ -50,44 +62,54 @@
     :query    {:source-table (id :venues)
                :filter       {:filter-type :>
                               :field       (merge field-ph-defaults
-                                                  {:field-id (id :venues :price)})
+                                                  {:field-id true})
                               :value       {:field-placeholder (merge field-ph-defaults
-                                                                      {:field-id (id :venues :price)})
+                                                                      {:field-id true})
                                             :value             1}}}}
    ;; resolved form
    {:database     (id)
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
                                   :name   "VENUES"
-                                  :id     (id :venues)}
+                                  :id     true}
                    :filter       {:filter-type :>
                                   :field       (merge field-defaults
-                                                      {:field-id           (id :venues :price)
+                                                      {:field-id           true
                                                        :field-name         "PRICE"
                                                        :field-display-name "Price"
                                                        :base-type          :type/Integer
                                                        :special-type       :type/Category
                                                        :table-id           (id :venues)
                                                        :schema-name        "PUBLIC"
-                                                       :table-name         "VENUES"})
+                                                       :table-name         "VENUES"
+                                                       :values             price-field-values})
                                   :value       {:value 1
                                                 :field (merge field-defaults
-                                                              {:field-id           (id :venues :price)
+                                                              {:field-id           true
                                                                :field-name         "PRICE"
                                                                :field-display-name "Price"
                                                                :base-type          :type/Integer
                                                                :special-type       :type/Category
                                                                :table-id           (id :venues)
                                                                :schema-name        "PUBLIC"
-                                                               :table-name         "VENUES"})}}
+                                                               :table-name         "VENUES"
+                                                               :values             price-field-values})}}
                    :join-tables  nil}
     :fk-field-ids #{}
     :table-ids    #{(id :venues)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query venues
-                                                        (ql/filter (ql/and (ql/> $price 1))))))]
-    (mapv obj->map [expanded-form
-                    (resolve' expanded-form)])))
+                                                     (ql/filter (ql/and (ql/> $price 1))))))]
+    (tu/boolean-ids-and-timestamps
+     (mapv obj->map [expanded-form
+                     (resolve' expanded-form)]))))
 
+(def category-field-values
+  {:values                (defs/field-values defs/test-data-map "categories" "name")
+   :human-readable-values {}
+   :field-value-id        true
+   :field-id              true
+   :created-at            true
+   :updated-at            true})
 
 ;; basic rows query w/ FK filter
 (expect
@@ -97,10 +119,10 @@
     :query    {:source-table (id :venues)
                :filter       {:filter-type :=
                               :field       (merge field-ph-defaults
-                                                  {:field-id    (id :categories :name)
+                                                  {:field-id    true
                                                    :fk-field-id (id :venues :category_id)})
                               :value       {:field-placeholder (merge field-ph-defaults
-                                                                      {:field-id    (id :categories :name)
+                                                                      {:field-id    true
                                                                        :fk-field-id (id :venues :category_id)})
                                             :value             "abc"}}}}
    ;; resolved form
@@ -108,30 +130,32 @@
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
                                   :name   "VENUES"
-                                  :id     (id :venues)}
+                                  :id     true}
                    :filter       {:filter-type :=
                                   :field       (merge field-defaults
-                                                      {:field-id           (id :categories :name)
+                                                      {:field-id           true
                                                        :fk-field-id        (id :venues :category_id)
                                                        :field-name         "NAME"
                                                        :field-display-name "Name"
                                                        :base-type          :type/Text
                                                        :special-type       :type/Name
                                                        :table-id           (id :categories)
-                                                       :table-name         "CATEGORIES__via__CATEGORY_ID" })
+                                                       :table-name         "CATEGORIES__via__CATEGORY_ID"
+                                                       :values             category-field-values})
                                   :value       {:value "abc"
                                                 :field (merge field-defaults
-                                                              {:field-id           (id :categories :name)
+                                                              {:field-id           true
                                                                :fk-field-id        (id :venues :category_id)
                                                                :field-name         "NAME"
                                                                :field-display-name "Name"
                                                                :base-type          :type/Text
                                                                :special-type       :type/Name
                                                                :table-id           (id :categories)
-                                                               :table-name         "CATEGORIES__via__CATEGORY_ID"})}}
-                   :join-tables  [{:source-field {:field-id   (id :venues :category_id)
+                                                               :table-name         "CATEGORIES__via__CATEGORY_ID"
+                                                               :values             category-field-values})}}
+                   :join-tables  [{:source-field {:field-id   true
                                                   :field-name "CATEGORY_ID"}
-                                   :pk-field     {:field-id   (id :categories :id)
+                                   :pk-field     {:field-id   true
                                                   :field-name "ID"}
                                    :table-id     (id :categories)
                                    :table-name   "CATEGORIES"
@@ -139,11 +163,12 @@
                                    :join-alias   "CATEGORIES__via__CATEGORY_ID"}]}
     :fk-field-ids #{(id :venues :category_id)}
     :table-ids    #{(id :categories)}}]
-  (let [expanded-form (ql/expand (wrap-inner-query (query venues
-                                                        (ql/filter (ql/= $category_id->categories.name
-                                                                         "abc")))))]
-    (mapv obj->map [expanded-form
-                    (resolve' expanded-form)])))
+  (tu/boolean-ids-and-timestamps
+   (let [expanded-form (ql/expand (wrap-inner-query (query venues
+                                                      (ql/filter (ql/= $category_id->categories.name
+                                                                       "abc")))))]
+     (mapv obj->map [expanded-form
+                     (resolve' expanded-form)]))))
 
 
 ;; basic rows query w/ FK filter on datetime
@@ -218,17 +243,17 @@
                :aggregation  [{:aggregation-type :sum
                                :custom-name      nil
                                :field            (merge field-ph-defaults
-                                                        {:field-id           (id :venues :price)
+                                                        {:field-id           true
                                                          :fk-field-id        (id :checkins :venue_id)})}]
                :breakout     [(merge field-ph-defaults
-                                     {:field-id           (id :checkins :date)
+                                     {:field-id           true
                                       :datetime-unit      :day-of-week})]}}
    ;; resolved form
    {:database     (id)
     :type         :query
     :query        {:source-table {:schema "PUBLIC"
                                   :name   "CHECKINS"
-                                  :id     (id :checkins)}
+                                  :id     true}
                    :aggregation  [{:aggregation-type :sum
                                    :custom-name      nil
                                    :field            (merge field-defaults
@@ -237,22 +262,23 @@
                                                              :special-type       :type/Category
                                                              :field-name         "PRICE"
                                                              :field-display-name "Price"
-                                                             :field-id           (id :venues :price)
+                                                             :field-id           true
                                                              :fk-field-id        (id :checkins :venue_id)
-                                                             :table-name         "VENUES__via__VENUE_ID"})}]
+                                                             :table-name         "VENUES__via__VENUE_ID"
+                                                             :values             price-field-values})}]
                    :breakout     [{:field (merge field-defaults
                                                  {:base-type          :type/Date
                                                   :table-id           (id :checkins)
                                                   :special-type       nil
                                                   :field-name         "DATE"
                                                   :field-display-name "Date"
-                                                  :field-id           (id :checkins :date)
+                                                  :field-id           true
                                                   :table-name         "CHECKINS"
                                                   :schema-name        "PUBLIC"})
                                    :unit  :day-of-week}]
-                   :join-tables  [{:source-field {:field-id   (id :checkins :venue_id)
+                   :join-tables  [{:source-field {:field-id   true
                                                   :field-name "VENUE_ID"}
-                                   :pk-field     {:field-id   (id :venues :id)
+                                   :pk-field     {:field-id   true
                                                   :field-name "ID"}
                                    :table-id     (id :venues)
                                    :table-name   "VENUES"
@@ -263,5 +289,6 @@
   (let [expanded-form (ql/expand (wrap-inner-query (query checkins
                                                      (ql/aggregation (ql/sum $venue_id->venues.price))
                                                      (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
-    (mapv obj->map [expanded-form
-                    (resolve' expanded-form)])))
+    (tu/boolean-ids-and-timestamps
+     (mapv obj->map [expanded-form
+                     (resolve' expanded-form)]))))

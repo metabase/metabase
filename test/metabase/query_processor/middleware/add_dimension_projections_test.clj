@@ -55,9 +55,9 @@
            :name "CATEGORY_ID",
            :extra_info {:target_table_id 1},
            :id 11,
-           :values {:id 1, :human_readable_values ["Foo" "Bar" "Baz" "Qux"],
-                    :values [4 11 29 20], :field_id 33}
-           :dimensions {:id 1 :type :internal :name "Foo" :field_id 10}
+           :values {:field-value-id 1, :human-readable-values ["Foo" "Bar" "Baz" "Qux"],
+                    :values [4 11 29 20], :field-id 33}
+           :dimensions {:dimension-id 1 :dimension-type :internal :dimension-name "Foo" :field-id 10}
            :display_name "Category ID",
            :base_type :type/Integer}
           ;; 3
@@ -144,7 +144,7 @@
             :parent nil,
             :remapped-from nil,
             :remapped-to nil,
-            :dimensions {:id 2, :name "Product", :field_id 32, :human_readable_field_id 27, :type :external}}])}})
+            :dimensions {:dimension-id 2, :dimension-name "Product", :field-id 32, :human-readable-field-id 27, :dimension-type :external}}])}})
 
 (expect
   (update-in example-query [:query :fields]
@@ -175,8 +175,8 @@
       (update-in [:cols 2]
                  (fn [col]
                    (-> col
-                       (update :values merge {:human_readable_values [] })
-                       (update :dimensions merge {:type :external :human_readable_field_id 27}))))))
+                       (update :values merge {:human-readable-values []})
+                       (update :dimensions merge {:dimension-type :external :human-readable_field-id 27}))))))
 
 (expect
   (-> external-remapped-result

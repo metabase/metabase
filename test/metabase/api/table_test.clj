@@ -133,10 +133,7 @@
     ((user->client :rasta) :get 403 (str "table/" table-id))))
 
 (def ^:private venue-categories
-  (->> defs/test-data
-       :table-definitions
-       second
-       :rows))
+  (map vector (defs/field-values defs/test-data-map "categories" "name")))
 
 ;; ## GET /api/table/:id/query_metadata
 (expect
@@ -190,22 +187,14 @@
                               (+ (.getYear inst) 1900)
                               (+ (.getMonth inst) 1)
                               (.getDate inst)))]
-    (->> defs/test-data
-         :table-definitions
-         first
-         :rows
-         (map second)
+    (->> (defs/field-values defs/test-data-map "users" "last_login")
          (map format-inst)
          set
          sort
          vec)))
 
 (def ^:private user-full-names
-  (->> defs/test-data
-       :table-definitions
-       first
-       :rows
-       (map first)))
+  (defs/field-values defs/test-data-map "users" "name"))
 
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
@@ -518,27 +507,7 @@
   []
   ((user->client :crowberto) :get 200 "table/card__1000/fks"))
 
-(defn- delete-model-instance!
-  "Allows deleting a row by the model instance toucan returns when
-  it's inserted"
-  [{:keys [id] :as instance}]
-  (db/delete! (-> instance name symbol) :id id))
-
-(defn- call-with-data
-  "Takes a thunk `DATA-LOAD-FN` that returns a seq of toucan model
-  instances that will be deleted after `BODY-FN` finishes"
-  [data-load-fn body-fn]
-  (let [result-instances (data-load-fn)]
-    (try
-      (body-fn)
-      (finally
-        (doseq [instance result-instances]
-          (delete-model-instance! instance))))))
-
-(defmacro ^:private with-data [data-load-fn & body]
-  `(call-with-data ~data-load-fn (fn [] ~@body)))
-
-(defn- narrow-fields [category-names api-response]
+(defn narrow-fields [category-names api-response]
   (for [field (:fields api-response)
         :when (contains? (set category-names) (:name field))]
     (-> field

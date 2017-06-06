@@ -1,8 +1,16 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
-  (:require [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.middleware.expand :as ql]
-            [metabase.test.data :as data]))
+  (:require [cheshire.core :as json]
+            [metabase.query-processor-test :refer :all]
+            [metabase.query-processor.middleware
+             [expand :as ql]
+             [add-dimension-projections :as dim-proj]]
+            [metabase.test.data :as data]
+            [metabase.models
+             [dimensions :refer [Dimensions]]
+             [field-values :refer [FieldValues]]]
+            [toucan.db :as db]
+            [metabase.test.data.dataset-definitions :as defs]))
 
 ;;; single column
 (qp-expect-with-all-engines
@@ -69,3 +77,33 @@
          (ql/limit 10))
        booleanize-native-form
        (format-rows-by [int int int])))
+
+(qp-expect-with-all-engines
+  {:rows  [[2 8 "Artisan"]
+           [3 2 "Asian"]
+           [4 2 "BBQ"]
+           [5 7 "Bakery"]
+           [6 2 "Bar"]]
+   :columns [(data/format-name "category_id")
+             "count"
+             "Foo"]
+   :cols    [(assoc (breakout-col (venues-col :category_id))
+               :remapped_to "Foo")
+             (aggregate-col :count)
+             (#'dim-proj/create-remapped-col "Foo" (data/format-name "category_id"))]
+   :native_form true}
+  (data/with-data
+    (fn []
+      (let [venue-names (defs/field-values defs/test-data-map "categories" "name")]
+        [(db/insert! Dimensions {:field_id (data/id :venues :category_id)
+                                 :name "Foo"
+                                 :type :internal})
+         (db/insert! FieldValues {:field_id (data/id :venues :category_id)
+                                  :values (json/generate-string (range 0 (count venue-names)))
+                                  :human_readable_values (json/generate-string venue-names)})]))
+    (->> (data/run-query venues
+           (ql/aggregation (ql/count))
+           (ql/breakout $category_id)
+           (ql/limit 5))
+         booleanize-native-form
+         (format-rows-by [int int str]))))

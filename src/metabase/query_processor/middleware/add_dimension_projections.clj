@@ -38,16 +38,16 @@
         (update :remapped_from #(or % nil)))))
 
 (defn- col->dim-map
-  [idx {{remap-to :name remap-type :type field-id :field_id} :dimensions :as col}]
+  [idx {{remap-to :dimension-name remap-type :dimension-type field-id :field-id} :dimensions :as col}]
   (when field-id
     (let [remap-from (:name col)]
       {:col-index idx
        :from remap-from
        :to remap-to
        :xform-fn (zipmap (get-in col [:values :values])
-                         (get-in col [:values :human_readable_values]))
+                         (get-in col [:values :human-readable-values]))
        :new-column (create-remapped-col remap-to remap-from)
-       :type remap-type})))
+       :dimension-type remap-type})))
 
 (defn- add-fk-remaps
   "Function that will include FK references needed for external
@@ -57,12 +57,13 @@
   (update-in query [:query :fields]
              (fn [fields]
                (concat fields
-                       (for [{{:keys [field_id human_readable_field_id type name]} :dimensions, :keys [field-name]} fields
-                             :when (= :external type)]
-                         (create-fk-remap-col field_id
-                                              human_readable_field_id
+                       (for [{{:keys [field-id human-readable-field-id dimension-type dimension-name]} :dimensions,
+                              :keys [field-name]} fields
+                             :when (= :external dimension-type)]
+                         (create-fk-remap-col field-id
+                                              human-readable-field-id
                                               field-name
-                                              name))))))
+                                              dimension-name))))))
 
 (defn- remap-results
   "Munges results for remapping after the query has been executed. For
@@ -73,7 +74,7 @@
   name for the remapped column."
   [results]
   (let [indexed-dims (keep-indexed col->dim-map (:cols results))
-        internal-only-dims (filter #(= :internal (:type %)) indexed-dims)
+        internal-only-dims (filter #(= :internal (:dimension-type %)) indexed-dims)
         remap-fn (row-map-fn internal-only-dims)
         columns (concat (:cols results)
                         (map :new-column internal-only-dims))

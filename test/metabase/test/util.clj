@@ -86,21 +86,24 @@
   (str (random-name) "@metabase.com"))
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons. Converts map keys with 'id' or '_at' to booleans."
-  [m]
-  (let [f (fn [v]
-            (cond
-              (map? v) (boolean-ids-and-timestamps v)
-              (coll? v) (mapv boolean-ids-and-timestamps v)
-              :else v))]
-    (into {} (for [[k v] m]
-               (if (or (= :id k)
-                       (.endsWith (name k) "_id")
-                       (= :created_at k)
-                       (= :updated_at k)
-                       (= :last_analyzed k))
-                 [k (not (nil? v))]
-                 [k (f v)])))))
+  "Useful for unit test comparisons. Converts map keys found in `DATA`
+  satisfying `PRED` with booleans when not nil"
+  ([data]
+   (boolean-ids-and-timestamps
+    (every-pred (some-fn keyword? string?)
+                (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id}
+                         #(.endsWith (name %) "_id")))
+    data))
+  ([pred data]
+   (walk/prewalk (fn [maybe-map]
+                   (if (map? maybe-map)
+                     (reduce-kv (fn [acc k v]
+                                  (if (pred k)
+                                    (assoc acc k (not (nil? v)))
+                                    (assoc acc k v)))
+                                {} maybe-map)
+                     maybe-map))
+                 data)))
 
 
 (defn- user-id [username]
