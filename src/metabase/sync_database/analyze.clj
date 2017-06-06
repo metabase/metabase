@@ -102,7 +102,7 @@
                      :name                    (:name field)
                      :qualified_name          (field/qualified-name field)
                      :visibility_type         (:visibility_type field)}]
-    (log/debug (u/format-color 'green "generated fingerprint for field: %s (%s):%s" field-id (:name field) fingerprint))
+    (log/trace (u/format-color 'green "generated fingerprint for field: %s (%s):%s" field-id (:name field) fingerprint))
     fingerprint))
 
 (defn- save-field-fingerprints!
@@ -112,7 +112,7 @@
     (let [fingerprint (-> fingerprint
                           (update :base_type u/keyword->qualified-name)
                           (update :visibility_type u/keyword->qualified-name))]
-         (log/debug (u/format-color 'cyan "saving fingerprint for field: %s (%s):%s"
+         (log/trace (u/format-color 'cyan "saving fingerprint for field: %s (%s):%s"
                       (:field_id fingerprint) (:name fingerprint) (keys fingerprint)))
          (or (db/update! FieldFingerprint {:where [:= :field_id (:field_id fingerprint)]
                                            :set fingerprint})

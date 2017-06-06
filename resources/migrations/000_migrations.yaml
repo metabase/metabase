@@ -3801,3 +3801,18 @@ databaseChangeLog:
             columns:
               - column:
                   name: table_id
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: cache_field_valuse_schedule
+                  type: varchar(100)
+                  remarks: 'The cron-formated schedule for saving cached field values for all tables in this for this DB'
+              - column:
+                  name: analyze_schedule
+                  type: varchar(100)
+                  remarks: 'The cron-formated schedule for producing field fingerprints for this DB'
+              - column:
+                  name: classify_schedule
+                  type: varchar(100)
+                  remarks: 'The cron-formated schedule for using stored fingerprints to classify the special of fields in this DB'
