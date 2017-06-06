@@ -26,8 +26,10 @@
              [query :as query]
              [table :refer [Table]]
              [view-log :refer [ViewLog]]]
+            [metabase.query-processor
+             [interface :as qpi]
+             [util :as qputil]]
             [metabase.query-processor.middleware.cache :as cache]
-            [metabase.query-processor.util :as qputil]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -163,7 +165,7 @@
             cards)))
 
 
-;;; ------------------------------------------------------------ /api/card & /api/card/:id endpoints ------------------------------------------------------------
+;;; ------------------------------------------------------------ Fetching a Card or Cards ------------------------------------------------------------
 
 (def ^:private CardFilterOption
   "Schema for a valid card filter option."
@@ -193,6 +195,17 @@
          (filterv mi/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
 
 
+(api/defendpoint GET "/:id"
+  "Get `Card` with ID."
+  [id]
+  (-> (api/read-check Card id)
+      (hydrate :creator :dashboard_count :labels :can_write :collection)
+      (assoc :actor_id api/*current-user-id*)
+      (->> (events/publish-event! :card-read))
+      (dissoc :actor_id)))
+
+
+;;; ------------------------------------------------------------ Saving Cards ------------------------------------------------------------
 (api/defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [dataset_query description display name visualization_settings collection_id]} :body}]
@@ -218,19 +231,19 @@
        (events/publish-event! :card-create)))
 
 
-(api/defendpoint GET "/:id"
-  "Get `Card` with ID."
-  [id]
-  (-> (api/read-check Card id)
-      (hydrate :creator :dashboard_count :labels :can_write :collection)
-      (assoc :actor_id api/*current-user-id*)
-      (->> (events/publish-event! :card-read))
-      (dissoc :actor_id)))
+;;; ------------------------------------------------------------ Updating Cards ------------------------------------------------------------
 
 (defn- check-permissions-for-collection
   "Check that we have permissions to add or remove cards from `Collection` with COLLECTION-ID."
   [collection-id]
   (api/check-403 (perms/set-has-full-permissions? @api/*current-user-permissions-set* (perms/collection-readwrite-path collection-id))))
+
+(defn- check-allowed-to-change-collection
+  "If we're changing the `collection_id` of the Card, make sure we have write permissions for the new group."
+  [card collection-id]
+  (when (and collection-id
+             (not= collection-id (:collection_id card)))
+    (check-permissions-for-collection collection-id)))
 
 (defn check-data-permissions-for-query
   "Check that we have *data* permissions to run the QUERY in question."
@@ -238,7 +251,43 @@
   {:pre [(map? query)]}
   (api/check-403 (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* (card/query-perms-set query :read))))
 
-;; TODO - This endpoint desperately needs to be broken out into smaller, bite-sized chunks
+(defn- check-allowed-to-modify-query
+  "If the query is being modified, check that we have data permissions to run the query."
+  [card query]
+  (when (and query
+             (not= query (:dataset_query card)))
+    (check-data-permissions-for-query query)))
+
+(defn- check-allowed-to-unarchive
+  "When unarchiving a Card, make sure we have data permissions for the Card query before doing so."
+  [card archived?]
+  (when (and (false? archived?)
+             (:archived card))
+    (check-data-permissions-for-query (:dataset_query card))))
+
+(defn- check-allowed-to-change-embedding
+  "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled."
+  [card enable-embedding? embedding-params]
+  (when (or (and (not (nil? enable-embedding?))
+                 (not= enable-embedding? (:enable_embedding card)))
+            (and embedding-params
+                 (not= embedding-params (:embedding_params card))))
+    (api/check-embedding-enabled)
+    (api/check-superuser)))
+
+(defn- publish-card-update!
+  "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving events)."
+  [card archived?]
+  (let [event (cond
+                ;; card was archived
+                (and archived?
+                     (not (:archived card))) :card-archive
+                ;; card was unarchived
+                (and (false? archived?)
+                     (:archived card))       :card-unarchive
+                :else                        :card-update)]
+    (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
+
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id enable_embedding embedding_params], :as body} :body}]
@@ -252,43 +301,25 @@
    embedding_params       (s/maybe su/EmbeddingParams)
    collection_id          (s/maybe su/IntGreaterThanZero)}
   (let [card (api/write-check Card id)]
-    ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
-    (when (and (not (nil? collection_id)) (not= (:collection_id card) collection_id))
-      (check-permissions-for-collection collection_id))
-    ;; if the query is being modified, check that we have data permissions to run the query
-    (when (and dataset_query
-               (not= dataset_query (:dataset_query card)))
-      (check-data-permissions-for-query dataset_query))
-    ;; the same applies to unarchiving a Card: make sure we have data permissions for the Card query before doing so
-    (when (and (false? archived)
-               (:archived card))
-      (check-data-permissions-for-query (:dataset_query card)))
-    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
-    (when (or (and (not (nil? enable_embedding))
-                   (not= enable_embedding (:enable_embedding card)))
-              (and embedding_params
-                   (not= embedding_params (:embedding_params card))))
-      (api/check-embedding-enabled)
-      (api/check-superuser))
+    ;; Do various permissions checks
+    (check-allowed-to-change-collection card collection_id)
+    (check-allowed-to-modify-query card dataset_query)
+    (check-allowed-to-unarchive card archived)
+    (check-allowed-to-change-embedding card enable_embedding embedding_params)
     ;; ok, now save the Card
     (db/update! Card id
       ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be modified if they're passed in as non-nil
       (u/select-keys-when body
         :present #{:collection_id :description}
         :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding :embedding_params}))
-    (let [event (cond
-                  ;; card was archived
-                  (and archived
-                       (not (:archived card))) :card-archive
-                  ;; card was unarchived
-                  (and (false? archived)
-                       (:archived card))       :card-unarchive
-                  :else                        :card-update)
-          card   (assoc (Card id) :actor_id api/*current-user-id*)]
-      (events/publish-event! event card)
+    ;; Fetch the updated Card from the DB
+    (let [card (Card id)]
+      (publish-card-update! card archived)
       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with returned one -- See #4142
       (hydrate card :creator :dashboard_count :labels :can_write :collection))))
 
+
+;;; ------------------------------------------------------------ Deleting Cards ------------------------------------------------------------
 
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT /api/card/:id) instead of deleted.
 ;;        Should we remove this?
@@ -407,7 +438,7 @@
                  :card-id      card-id
                  :dashboard-id dashboard-id}]
     (api/check-not-archived card)
-    (qp/dataset-query query options)))
+    (qp/process-query-and-save-execution! query options)))
 
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
@@ -427,6 +458,7 @@
         :parameters  (json/parse-string parameters keyword)
         :constraints nil
         :context     (dataset-api/export-format->context export-format)))))
+
 
 ;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
 
