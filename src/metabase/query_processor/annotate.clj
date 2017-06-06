@@ -243,7 +243,9 @@
                           :schema-name        :schema_name
                           :special-type       :special_type
                           :table-id           :table_id
-                          :visibility-type    :visibility_type})
+                          :visibility-type    :visibility_type
+                          :remapped-to        :remapped_to
+                          :remapped-from      :remapped_from})
         (dissoc :position :clause-position :parent :parent-id :table-name))))
 
 (defn- fk-field->dest-fn

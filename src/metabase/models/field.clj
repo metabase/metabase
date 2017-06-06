@@ -110,7 +110,7 @@
   [fields]
   (let [field-ids        (set (map :id fields))
         id->dimensions (u/key-by :field_id (when (seq field-ids)
-                                               (db/select [Dimensions :id :name :field_id]
+                                               (db/select [Dimensions :id :name :field_id :human_readable_field_id :type]
                                                  :field_id [:in field-ids])))]
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))

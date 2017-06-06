@@ -99,7 +99,9 @@
                     description        :- (s/maybe su/NonBlankString)
                     parent-id          :- (s/maybe su/IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
-                    parent             :- s/Any]
+                    parent             :- s/Any
+                    remapped-from      :- (s/maybe s/Str)
+                    remapped-to        :- (s/maybe s/Str)]
   clojure.lang.Named
   (getName [_] field-name) ; (name <field>) returns the *unqualified* name of the field, #obvi
 
@@ -160,11 +162,14 @@
 ;;; Placeholder Types
 
 ;; Replace Field IDs with these during first pass
-(s/defrecord FieldPlaceholder [field-id      :- su/IntGreaterThanZero
-                               fk-field-id   :- (s/maybe (s/constrained su/IntGreaterThanZero
-                                                                        (fn [_] (or (assert-driver-supports :foreign-keys) true)) ; assert-driver-supports will throw Exception if driver is bound
-                                                                        "foreign-keys is not supported by this driver."))         ; and driver does not support foreign keys
-                               datetime-unit :- (s/maybe DatetimeFieldUnit)])
+(s/defrecord FieldPlaceholder [field-id            :- su/IntGreaterThanZero
+                               fk-field-id         :- (s/maybe (s/constrained su/IntGreaterThanZero
+                                                                              (fn [_] (or (assert-driver-supports :foreign-keys) true)) ; assert-driver-supports will throw Exception if driver is bound
+                                                                              "foreign-keys is not supported by this driver."))         ; and driver does not support foreign keys
+                               datetime-unit       :- (s/maybe DatetimeFieldUnit)
+                               remapped-from       :- (s/maybe s/Str)
+                               remapped-to         :- (s/maybe s/Str)
+                               field-display-name  :- (s/maybe s/Str)])
 
 (s/defrecord AgFieldRef [index :- s/Int])
 ;; TODO - add a method to get matching expression from the query?
