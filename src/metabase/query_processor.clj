@@ -110,8 +110,6 @@
   [query]
   ((qp-pipeline execute-query) query))
 
-
-
 (def ^{:arglists '([query])} expand
   "Expand a QUERY the same way it would normally be done as part of query processing.
    This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
@@ -125,6 +123,13 @@
 ;;; +----------------------------------------------------------------------------------------------------+
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
+
+;; The only difference between `process-query` and `process-query-and-save-execution!` (below) is that the
+;; latter records a `QueryExecution` (inserts a new row) recording some stats about this Query run including
+;; execution time and type of query ran
+;;
+;; `process-query-and-save-execution!` is the function used by various things like API endpoints and pulses;
+;; `process-query` is more of an internal function
 
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
@@ -216,7 +221,11 @@
         (save-and-return-failed-query! query-execution (.getMessage e))))))
 
 (def ^:private DatasetQueryOptions
-  "Schema for the options map for the `dataset-query` function."
+  "Schema for the options map for the `dataset-query` function.
+   This becomes available to QP middleware as the `:info` dictionary in the top level of a query.
+   When the query is finished running, most of these values are saved in the new `QueryExecution` row.
+   In some cases, these values are used by the middleware; for example, the permissions-checking middleware
+   will check Collection permissions if applicable if `card-id` is non-nil."
   (s/constrained {:context                       query-execution/Context
                   (s/optional-key :executed-by)  (s/maybe su/IntGreaterThanZero)
                   (s/optional-key :card-id)      (s/maybe su/IntGreaterThanZero)
@@ -227,7 +236,7 @@
                        *allow-queries-with-no-executor-id*))
                  "executed-by cannot be nil unless *allow-queries-with-no-executor-id* is true"))
 
-(s/defn ^:always-validate dataset-query
+(s/defn ^:always-validate process-query-and-save-execution!
   "Process and run a json based dataset query and return results.
 
   Takes 2 arguments:

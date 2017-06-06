@@ -153,7 +153,7 @@
 (datasets/expect-with-engines (disj non-timeseries-engines :mongo :bigquery :presto)
   [(aggregate-col :count)
    (assoc (aggregate-col :count)
-     :display_name    "count_2"
+     :display_name    "Count 2"
      :name            "count_2"
      :preview_display true)]
   (-> (data/run-query venues
