@@ -22,25 +22,22 @@
 
 /* what follows is a war crime but such is the state of FE development */
 .TableInteractive {
-    border: 1px solid rgb(205, 205, 205);
+
 }
 .TableInteractive-header {
     border-bottom: 1px solid rgb(205, 205, 205);
-    border-right: 1px solid rgb(205, 205, 205);
     box-sizing: border-box;
 }
 
 .TableInteractive .TableInteractive-cellWrapper {
-    border-right: 1px solid #e8e8e8;
     border-bottom: 1px solid #e8e8e8;
     border-top: 1px solid transparent;
-    border-left: 1px solid transparent;
 
     padding: 8px;
     overflow: hidden;
     display: flex;
     align-items: center;
-}
+} 
 
 .TableInteractive.TableInteractive--pivot .TableInteractive-cellWrapper--firstColumn {
     border-right: 1px solid rgb(205, 205, 205);
