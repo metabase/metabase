@@ -108,8 +108,20 @@ export default class StructuredQuery extends Query {
         return Q.getAggregations(this.query());
     }
     aggregationOptions(): any[] {
-        return [];
+        return this.table().aggregations();
     }
+    aggregationFieldOptions(agg): DimensionOptions {
+        const aggregation = this.table().aggregation(agg);
+        if (aggregation) {
+            return this.fieldOptions(
+                null,
+                field => aggregation.validFieldsFilters[0]([field]).length === 1
+            );
+        } else {
+            return { count: 0, fks: [], dimensions: [] };
+        }
+    }
+
     canAddAggregation(): boolean {
         return false;
     }

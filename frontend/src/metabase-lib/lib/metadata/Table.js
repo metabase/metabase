@@ -10,6 +10,8 @@ import type { SchemaName } from "metabase/meta/types/Table";
 
 import Dimension from "../Dimension";
 
+import _ from "underscore";
+
 //** This is the primary way people interact with tables */
 export default class Table extends Base {
     displayName: string;
@@ -31,5 +33,13 @@ export default class Table extends Base {
 
     dimensions(): Dimension[] {
         return this.fields.map(field => field.dimension());
+    }
+
+    aggregations() {
+        return this.aggregation_options || [];
+    }
+
+    aggregation(agg) {
+        return _.findWhere(this.aggregations(), { short: agg });
     }
 }

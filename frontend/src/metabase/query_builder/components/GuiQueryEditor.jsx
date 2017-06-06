@@ -386,6 +386,7 @@ export default class GuiQueryEditor extends Component {
 
 const AggregationWidget = ({ index, aggregation, query, updateQuery, addButton }) =>
     <AggregationWidget_LEGACY
+        query={query}
         aggregation={aggregation}
         tableMetadata={query.tableMetadata()}
         customFields={query.expressions()}
