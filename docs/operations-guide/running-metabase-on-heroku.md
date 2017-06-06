@@ -39,6 +39,8 @@ Now that you’ve installed Metabase, it’s time to [set it up and connect it t
 
 # Deploying New Versions of Metabase
 
+## Option 1: Upgrading via Git
+
 Upgrading to the next version of Metabase is a simple process where you will grab the latest version of [metabase-deploy](https://github.com/metabase/metabase-deploy) and push it to Heroku.
 
 Here's each step:
@@ -68,3 +70,19 @@ git push -f heroku master
 ```
 
 * Wait for the deploy to finish
+
+# Option 2: Upgrading via One-Click Deploy and Heroku Pipelines
+
+Here is each step:
+
+* Move your metabase application to a pipeline (first upgrade only)
+
+* Use the one-click deploy button to create a new Metabase application
+
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](http://downloads.metabase.com/launch-heroku.html)
+
+* Go to your metabase pipeline and click 'Add Existing App...' to Staging
+
+* Promote the new metabase application to production
+
+* Delete the new metabase application (your existing application has now been upgraded)
