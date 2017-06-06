@@ -141,6 +141,17 @@ export default class Dimension {
         return this;
     }
 
+    field(): Field {
+        return new Field();
+    }
+
+    operators() {
+        return this.field().operators || [];
+    }
+    operator(op) {
+        return this.field().operator(op);
+    }
+
     render() {
         return <span>{this.displayName()}</span>;
     }
@@ -162,8 +173,9 @@ export class FieldDimension extends Dimension {
         if (this._parent instanceof FieldDimension) {
             return this._parent.field();
         }
-        return null;
+        return new Field();
     }
+
     displayName(): string {
         return Query_DEPRECATED.getFieldPathName(
             this.field().id,
@@ -189,7 +201,7 @@ export class FieldIDDimension extends FieldDimension {
         return null;
     }
     field() {
-        return this._metadata.fields[this._args[0]];
+        return this._metadata.fields[this._args[0]] || new Field();
     }
     mbql(): LocalFieldReference {
         return ["field-id", this._args[0]];
@@ -220,7 +232,7 @@ export class FKDimension extends FieldDimension {
     }
 
     field() {
-        return this._metadata.fields[this._args[0]];
+        return this._metadata.fields[this._args[0]] || new Field();
     }
 
     mbql(): ForeignFieldReference {

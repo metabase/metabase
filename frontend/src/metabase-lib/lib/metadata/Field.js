@@ -78,4 +78,10 @@ export default class Field extends Base {
     dimension() {
         return new FieldIDDimension(null, [this.id], this.metadata);
     }
+
+    operator(op) {
+        if (this.operators_lookup) {
+            return this.operators_lookup[op];
+        }
+    }
 }

@@ -187,54 +187,8 @@ export default class StructuredQuery extends Query {
     breakouts(): Breakout[] {
         return Q.getBreakouts(this.query());
     }
-    breakoutOptions(
-        breakout?: any,
-        fieldFilter = () => true
-    ): DimensionOptions {
-        const fieldOptions = {
-            count: 0,
-            fks: [],
-            dimensions: []
-        };
-
-        const table = this.tableMetadata();
-        if (table) {
-            // the set of field ids being used by other breakouts
-            const usedFields = new Set(
-                this.breakouts()
-                    .filter(b => !_.isEqual(b, breakout))
-                    .map(b => Q_deprecated.getFieldTargetId(b))
-            );
-
-            const dimensionFilter = dimension => {
-                const field = dimension.field && dimension.field();
-                return !field ||
-                    (field.isDimension() &&
-                        fieldFilter(field) &&
-                        !usedFields.has(field.id));
-            };
-
-            for (const dimension of this.dimensions().filter(dimensionFilter)) {
-                const field = dimension.field && dimension.field();
-                if (field && field.isFK()) {
-                    const fkDimensions = dimension
-                        .dimensions()
-                        .filter(dimensionFilter);
-                    if (fkDimensions.length > 0) {
-                        fieldOptions.count += fkDimensions.length;
-                        fieldOptions.fks.push({
-                            field: field,
-                            dimension: dimension,
-                            dimensions: fkDimensions
-                        });
-                    }
-                }
-                fieldOptions.count++;
-                fieldOptions.dimensions.push(dimension);
-            }
-        }
-
-        return fieldOptions;
+    breakoutOptions(breakout?: any, fieldFilter = () => true) {
+        return this.fieldOptions(breakout, fieldFilter);
     }
 
     canAddBreakout(): boolean {
@@ -262,11 +216,16 @@ export default class StructuredQuery extends Query {
     filters(): Filter[] {
         return Q.getFilters(this.query());
     }
-    filterOptions(): DimensionOptions {
-        return { count: 0, dimensions: [], fks: [] };
+    filterFieldOptions(): DimensionOptions {
+        return this.fieldOptions();
+    }
+    filterSegmentOptions() {
+        return this.table().segments.filter(sgmt => sgmt.is_active === true);
     }
     canAddFilter(): boolean {
-        return Q.canAddFilter(this.query());
+        return Q.canAddFilter(this.query()) &&
+            (this.filterFieldOptions().count > 0 ||
+                this.filterSegmentOptions().length > 0);
     }
 
     addFilter(filter: Filter) {
@@ -311,7 +270,7 @@ export default class StructuredQuery extends Query {
         let sortOptions = { count: 0, dimensions: [], fks: [] };
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
         if (this.isBareRows()) {
-            sortOptions = this.breakoutOptions(sort, fieldFilter);
+            sortOptions = this.fieldOptions(sort, fieldFilter);
         } else if (this.hasValidBreakout()) {
             for (const breakout of this.breakouts()) {
                 sortOptions.dimensions.push(
@@ -383,6 +342,55 @@ export default class StructuredQuery extends Query {
         return this._updateQuery(Q.removeExpression, arguments);
     }
 
+    // FIELD OPTIONS
+
+    fieldOptions(fieldRef?: any, fieldFilter = () => true): DimensionOptions {
+        const fieldOptions = {
+            count: 0,
+            fks: [],
+            dimensions: []
+        };
+
+        const table = this.tableMetadata();
+        if (table) {
+            // the set of field ids being used by other breakouts
+            const usedFields = new Set(
+                this.breakouts()
+                    .filter(b => !_.isEqual(b, fieldRef))
+                    .map(b => Q_deprecated.getFieldTargetId(b))
+            );
+
+            const dimensionFilter = dimension => {
+                const field = dimension.field && dimension.field();
+                return !field ||
+                    (field.isDimension() &&
+                        fieldFilter(field) &&
+                        !usedFields.has(field.id));
+            };
+
+            for (const dimension of this.dimensions().filter(dimensionFilter)) {
+                const field = dimension.field && dimension.field();
+                if (field && field.isFK()) {
+                    const fkDimensions = dimension
+                        .dimensions()
+                        .filter(dimensionFilter);
+                    if (fkDimensions.length > 0) {
+                        fieldOptions.count += fkDimensions.length;
+                        fieldOptions.fks.push({
+                            field: field,
+                            dimension: dimension,
+                            dimensions: fkDimensions
+                        });
+                    }
+                }
+                fieldOptions.count++;
+                fieldOptions.dimensions.push(dimension);
+            }
+        }
+
+        return fieldOptions;
+    }
+
     // DIMENSIONS
 
     dimensions(): Dimension[] {
@@ -417,7 +425,7 @@ export default class StructuredQuery extends Query {
         }
     }
 
-    parseFieldReference(fieldRef) {
+    parseFieldReference(fieldRef): ?Dimension {
         const dimension = Dimension.parseMBQL(fieldRef, this._metadata);
         if (dimension) {
             // HACK

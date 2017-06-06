@@ -249,7 +249,7 @@ export default class AggregationPopover extends Component {
                         fieldOptions={this.getAggregationFieldOptions(agg)}
                         customFieldOptions={customFields}
                         onFieldChange={this.onPickField}
-                        enableTimeGrouping={false}
+                        enableSubDimensions={false}
                     />
                 </div>
             );

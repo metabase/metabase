@@ -28,12 +28,12 @@ export default class FieldWidget extends Component {
         removeField: PropTypes.func,
         isInitiallyOpen: PropTypes.bool,
         tableMetadata: PropTypes.object.isRequired,
-        enableTimeGrouping: PropTypes.bool
+        enableSubDimensions: PropTypes.bool
     };
 
     static defaultProps = {
         color: "brand",
-        enableTimeGrouping: true
+        enableSubDimensions: true
     };
 
     setField(value) {
@@ -62,7 +62,7 @@ export default class FieldWidget extends Component {
                         fieldOptions={this.props.fieldOptions}
                         customFieldOptions={this.props.customFieldOptions}
                         onFieldChange={this.setField}
-                        enableTimeGrouping={this.props.enableTimeGrouping}
+                        enableSubDimensions={this.props.enableSubDimensions}
                     />
                 </Popover>
             );

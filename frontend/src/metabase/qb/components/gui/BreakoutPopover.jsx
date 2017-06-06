@@ -35,7 +35,7 @@ const BreakoutPopover = (
                 onClose();
             }
         }}
-        enableTimeGrouping
+        enableSubDimensions
         alwaysExpanded
     />
 );

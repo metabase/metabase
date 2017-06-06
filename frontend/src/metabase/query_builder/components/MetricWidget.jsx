@@ -31,9 +31,9 @@ export default class MetricWidget extends Component {
 
     // TODO: Will setting an aggregation in MetricWidget be possible anymore?
     // setAggregation = (aggregation) => {
-    //     const { query, aggregationIndex, updateQuery } = this.props;
+    //     const { query, aggregationIndex, setDatasetQuery } = this.props;
     //     // Should be in a Redux action rather than in a component
-    //     query.updateAggregation(aggregationIndex, aggregation).update(updateQuery);
+    //     query.updateAggregation(aggregationIndex, aggregation).update(setDatasetQuery);
     // };
 
     removeMetric = () => {

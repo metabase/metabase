@@ -491,9 +491,9 @@ export default class Question {
             display: this._card.display,
             parameters: this._card.parameters,
             visualization_settings: this._card.visualization_settings,
-            // $FlowFixMe
             ...(includeOriginalCardId
-                ? { original_card_id: this._card.original_card_id }
+                ? // $FlowFixMe
+                  { original_card_id: this._card.original_card_id }
                 : {})
         };
 

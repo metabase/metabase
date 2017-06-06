@@ -1,7 +1,6 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
 import AccordianList from "metabase/components/AccordianList.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -35,7 +34,9 @@ type Props = {
     onFilterChange?: (filter: any) => void,
 
     tableMetadata: TableMetadata,
-    alwaysExpanded?: boolean
+
+    alwaysExpanded?: boolean,
+    enableSubDimensions?: boolean
 }
 
 type State = {
@@ -47,17 +48,6 @@ export default class FieldList extends Component {
     state: State = {
         sections: []
     }
-
-    static propTypes = {
-        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        fieldOptions: PropTypes.object.isRequired,
-        segmentOptions: PropTypes.array,
-        tableName: PropTypes.string,
-        onFieldChange: PropTypes.func.isRequired,
-        onFilterChange: PropTypes.func,
-        enableTimeGrouping: PropTypes.bool,
-        tableMetadata: PropTypes.object.isRequired
-    };
 
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
@@ -106,7 +96,7 @@ export default class FieldList extends Component {
     }
 
     renderItemExtra = (item) => {
-        let { field } = this.props;
+        const { field, enableSubDimensions } = this.props;
 
         return (
             <div className="Field-extra flex align-center">
@@ -116,7 +106,7 @@ export default class FieldList extends Component {
                 { item.dimension && item.dimension.tag &&
                     <span className="h5 text-grey-2 px1">{item.dimension.tag}</span>
                 }
-                { item.dimension && item.dimension.dimensions().length > 0 ?
+                { enableSubDimensions && item.dimension && item.dimension.dimensions().length > 0 ?
                     <PopoverWithTrigger
                         className={this.props.className}
                         hasArrow={false}

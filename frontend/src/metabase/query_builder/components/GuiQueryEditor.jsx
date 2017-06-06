@@ -129,8 +129,8 @@ export default class GuiQueryEditor extends Component {
             if (filters && filters.length > 0) {
                 filterList = (
                     <FilterList
+                        query={query}
                         filters={filters}
-                        tableMetadata={query.tableMetadata()}
                         removeFilter={(index) => query.removeFilter(index).update(setDatasetQuery)}
                         updateFilter={(index, filter) => query.updateFilter(index, filter).update(setDatasetQuery)}
                     />
@@ -160,9 +160,8 @@ export default class GuiQueryEditor extends Component {
                         horizontalAttachments={["left"]}
                     >
                         <FilterPopover
-                            isNew={true}
-                            tableMetadata={query.tableMetadata() || {}}
-                            customFields={query.expressions()}
+                            isNew
+                            query={query}
                             onCommitFilter={(filter) => query.addFilter(filter).update(setDatasetQuery)}
                             onClose={() => this.refs.filterPopover.close()}
                         />

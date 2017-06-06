@@ -75,7 +75,7 @@ export default class SortWidget extends Component {
                     customFieldOptions={this.props.customFieldOptions}
                     setField={this.setField}
                     isInitiallyOpen={this.state.field === null}
-                    enableTimeGrouping={false}
+                    enableSubDimensions={false}
                 />
 
                 <SelectionModule
