@@ -44,8 +44,36 @@ export default class RefreshWidget extends Component {
                             <RefreshOption key={option.period} name={option.name} period={option.period} selected={option.period === period} onClick={() => { this.refs.popover.close(); onChangePeriod(option.period) }} />
                         ) }
                     </RefreshOptionList>
+                    <CustomRefreshInterval
+                        onChangePeriod={onChangePeriod}
+                        selected={OPTIONS.filter(option => option.period !== period)}
+                    />
                 </div>
             </PopoverWithTrigger>
+        );
+    }
+}
+
+class CustomRefreshInterval extends Component {
+    constructor () {
+        super();
+        this.state = {};
+    }
+    render () {
+        const { onChangePeriod, selected } = this.props;
+        return (
+            <div className="border-top ml3">
+                <input
+                    className="input input--small mt1"
+                    type="text"
+                    value={this.state.period}
+                    placeholder="Custom (seconds)"
+                    onChange={(ev) => {
+                        onChangePeriod(ev.target.value)
+                        this.setState({ period: ev.target.value })
+                    }}
+                />
+            </div>
         );
     }
 }
