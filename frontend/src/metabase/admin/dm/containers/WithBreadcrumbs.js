@@ -1,5 +1,6 @@
 /* @flow */
 import React, { Component } from 'react'
+import cx from 'classnames'
 
 import BreadcrumbNav from './BreadcrumbNav'
 import SearchResults from './SearchResults'
@@ -21,6 +22,7 @@ class DatabaseSearch extends Component {
 
     expand = () => {
         this.setState({ expanded: true })
+        this.refs.datamodelSearch.value('').focus()
     }
 
     handleSearchPress = (event) => {
@@ -36,29 +38,35 @@ class DatabaseSearch extends Component {
     }
 
     render () {
+        const { expanded, searchString } = this.state
         return (
             <div
-                className="bordered rounded border-dark relative flex align-center rounded"
+                className={cx(
+                    'relative flex align-center rounded',
+                    {'bordered border-dark transition-border': expanded }
+                )}
                 style={{
-                    width: this.state.expanded ? 300 : 'inherit'
+                    width: expanded ? 300 : 'inherit'
                 }}
             >
                 <Icon
                     onClick={() => this.expand() }
+                    className={cx('ml2', { 'cursor-pointer text-brand-hover' : !expanded })}
                     name="search"
                 />
-                { this.state.expanded && (
+                { expanded && (
                     <div>
                         <input
+                            ref="datamodelSearch"
                             type="text"
                             style={{ outline: 'none' }}
-                            className="borderless full p2"
+                            className="block borderless full p2"
                             placeholder="Search for metrics, tables, or fields"
                             onChange={event => this.onSearch(event.currentTarget.value)}
                         />
-                        { this.state.searchString && (
+                        { searchString && (
                             <div className="absolute z2 left right" style={{ top: 40 }}>
-                                <SearchResults searchString={this.state.searchString} />
+                                <SearchResults searchString={searchString} />
                             </div>
                         )}
                     </div>

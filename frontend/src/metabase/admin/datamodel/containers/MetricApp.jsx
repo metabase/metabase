@@ -22,8 +22,8 @@ export default class MetricApp extends Component {
         const { params, location } = this.props;
 
         let tableId;
-        if (params.id) {
-            const metricId = parseInt(params.id);
+        if (params.metricId) {
+            const metricId = parseInt(params.metricId);
             const { payload: metric } = await this.props.getMetric({ metricId });
             tableId = metric.table_id;
         } else if (location.query.table) {
@@ -52,12 +52,10 @@ export default class MetricApp extends Component {
 
     render() {
         return (
-            <div>
                 <MetricForm
                     {...this.props}
                     onSubmit={this.onSubmit.bind(this)}
                 />
-            </div>
         );
     }
 }

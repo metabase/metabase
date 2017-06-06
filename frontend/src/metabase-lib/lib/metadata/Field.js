@@ -18,7 +18,8 @@ import {
     isMetric,
     isPK,
     isFK,
-    getIconForField
+    getIconForField,
+    getFieldType
 } from "metabase/lib/schema_metadata";
 
 /**
@@ -74,6 +75,12 @@ export default class Field extends Base {
     icon() {
         return getIconForField(this);
     }
+
+    typeDisplayName() {
+        return getFieldType(this);
+    }
+
+    getVisibilitySettingName() {}
 
     dimension() {
         return new FieldIDDimension(null, [this.id], this.metadata);

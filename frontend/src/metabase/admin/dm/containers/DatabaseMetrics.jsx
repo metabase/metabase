@@ -24,10 +24,12 @@ const MetricsList = ({ metrics = [] }) =>
         <ol className="Grid Grid--gutters Grid--1of3">
             { metrics.map(metric =>
                 <li className="Grid-cell" key={metric.id}>
-                    <div className="bordered rounded bg-white p4 shadowed">
-                        <h2>{metric.name}</h2>
-                        <span>{metric.database}</span>
-                    </div>
+                    <MetricLink id={metric.id}>
+                        <div className="bordered rounded bg-white p4 shadowed">
+                            <h2>{metric.name}</h2>
+                            <span>{metric.database}</span>
+                        </div>
+                    </MetricLink>
                 </li>
             )}
         </ol>
@@ -38,6 +40,13 @@ const MetricsList = ({ metrics = [] }) =>
 const mapStateToProps = (state, { params }) => ({
     metrics: getMetricsByDatabaseId(state, params.databaseId)
 })
+
+let MetricLink = ({ id, children, params }) =>
+    <Link to={datamodel.metric(params.databaseId, id)}>
+        { children }
+    </Link>
+
+MetricLink = withRouter(MetricLink)
 
 let NewMetric = ({ params }) =>
     <Link to={`/admin/dm/database/${params.databaseId}/metric/create`}>

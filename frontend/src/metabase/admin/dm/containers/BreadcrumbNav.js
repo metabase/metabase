@@ -21,7 +21,7 @@ class BreadcrumbNav extends Component {
         return (
             <ol className="flex align-center">
                 { !database && (
-                    <li>Your data</li>
+                    <h1>Your data</h1>
                 )}
                 { database && (
                     <li className="mr1">
