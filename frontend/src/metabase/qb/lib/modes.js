@@ -1,7 +1,12 @@
 /* @flow weak */
 
 import Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
-import { isDate, isAddress, isCategory, isPK } from "metabase/lib/schema_metadata";
+import {
+    isDate,
+    isAddress,
+    isCategory,
+    isPK
+} from "metabase/lib/schema_metadata";
 import * as Query from "metabase/lib/query/query";
 import * as Card from "metabase/meta/Card";
 import Utils from "metabase/lib/utils";
@@ -49,16 +54,22 @@ export function getMode(
         const filters = Query.getFilters(query);
 
         if (aggregations.length === 0 && breakouts.length === 0) {
-            const isPKFilter = (filter) => {
-                if (tableMetadata && Array.isArray(filter) && filter[0] === "=") {
+            const isPKFilter = filter => {
+                if (
+                    tableMetadata && Array.isArray(filter) && filter[0] === "="
+                ) {
                     const fieldId = Q_DEPRECATED.getFieldTargetId(filter[1]);
                     const field = tableMetadata.fields_lookup[fieldId];
-                    if (field && field.table.id === query.source_table && isPK(field)) {
+                    if (
+                        field &&
+                        field.table.id === query.source_table &&
+                        isPK(field)
+                    ) {
                         return true;
                     }
                 }
                 return false;
-            }
+            };
             if (_.any(filters, isPKFilter)) {
                 return ObjectMode;
             } else {
@@ -71,7 +82,8 @@ export function getMode(
         if (aggregations.length > 0 && breakouts.length > 0) {
             let breakoutFields = breakouts.map(
                 breakout =>
-                    (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {}).field
+                    (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {
+                    }).field
             );
             if (
                 (breakoutFields.length === 1 && isDate(breakoutFields[0])) ||

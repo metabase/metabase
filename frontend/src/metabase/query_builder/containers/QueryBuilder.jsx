@@ -6,7 +6,6 @@ import cx from "classnames";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
-import { isPK, isFK } from "metabase/lib/types";
 
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 

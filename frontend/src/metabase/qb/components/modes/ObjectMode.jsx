@@ -7,9 +7,7 @@ import type { QueryMode } from "metabase/meta/types/Visualization";
 const SegmentMode: QueryMode = {
     name: "object",
     actions: [],
-    drills: [
-        ObjectDetailDrill,
-    ]
+    drills: [ObjectDetailDrill]
 };
 
 export default SegmentMode;
