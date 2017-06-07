@@ -135,6 +135,26 @@ describe("metabase/meta/Card", () => {
                     )
                 });
             });
+            it("should return question URL even if only original_card_id is present", () => {
+                const cardWithOnlyOriginalCardId = { ...card, id: undefined, original_card_id: card.id };
+
+                const url = Card.questionUrlWithParameters(
+                    cardWithOnlyOriginalCardId,
+                    metadata,
+                    parameters,
+                    { "1": "bar" },
+                    parameterMappings
+                );
+                expect(parseUrl(url)).toEqual({
+                    pathname: "/question",
+                    query: {},
+                    card: assocIn(
+                        cardWithOnlyOriginalCardId,
+                        ["dataset_query", "query", "filter"],
+                        ["AND", ["=", ["field-id", 1], "bar"]]
+                    )
+                });
+            });
             it("should return question URL with number MBQL filter added", () => {
                 const url = Card.questionUrlWithParameters(
                     card,

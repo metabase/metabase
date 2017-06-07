@@ -249,3 +249,32 @@ function wrapMethod(object, name, method) {
         }
     }
 }
+// TODO Atte Keinänen 5/30/17 Extract to metabase-lib card/question logic
+export const cardHasBecomeDirty = (nextCard, previousCard) =>
+    !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) || previousCard.display !== nextCard.display;
+
+export function getCardAfterVisualizationClick(nextCard, previousCard) {
+    if (cardHasBecomeDirty(nextCard, previousCard)) {
+        const isMultiseriesQuestion = !nextCard.id;
+        const alreadyHadLineage = !!previousCard.original_card_id;
+
+        return {
+            ...nextCard,
+            // Original card id is needed for showing the "started from" lineage in dirty cards.
+            original_card_id: alreadyHadLineage
+                // Just recycle the original card id of previous card if there was one
+                ? previousCard.original_card_id
+                // A multi-aggregation or multi-breakout series legend / drill-through action
+                // should always use the id of underlying/previous card
+                : (isMultiseriesQuestion ? previousCard.id : nextCard.id)
+        }
+    } else {
+        // Even though the card is currently clean, we might still apply dashboard parameters to it,
+        // so add the original_card_id to ensure a correct behavior in that context
+        return {
+            ...nextCard,
+            original_card_id: nextCard.id
+        };
+    }
+}
+

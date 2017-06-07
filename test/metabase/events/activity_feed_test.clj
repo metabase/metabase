@@ -26,83 +26,84 @@
 
 
 ;; `:card-create` event
-(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(expect
   {:topic       :card-create
    :user_id     (user->id :rasta)
    :model       "card"
-   :model_id    (:id card)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Card", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :card-create, :item card})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "card-create"
-      :model_id (:id card))))
+  (tt/with-temp Card [card {:name "My Cool Card"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :card-create, :item card})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "card-create"
+        :model_id (:id card)))))
+
 
 
 ;; `:card-update` event
-(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(expect
   {:topic       :card-update
    :user_id     (user->id :rasta)
    :model       "card"
-   :model_id    (:id card)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Card", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :card-update, :item card})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "card-update"
-      :model_id (:id card))))
+  (tt/with-temp Card [card {:name "My Cool Card"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :card-update, :item card})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "card-update"
+        :model_id (:id card)))))
 
 
 ;; `:card-delete` event
-(tt/expect-with-temp [Card [card {:name "My Cool Card"}]]
+(expect
   {:topic       :card-delete
    :user_id     (user->id :rasta)
    :model       "card"
-   :model_id    (:id card)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Card", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :card-delete, :item card})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "card-delete"
-      :model_id (:id card))))
+  (tt/with-temp Card [card {:name "My Cool Card"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :card-delete, :item card})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "card-delete"
+        :model_id (:id card)))))
 
 
 ;; `:dashboard-create` event
-(tt/expect-with-temp [Dashboard [dashboard {:name "My Cool Dashboard"}]]
+(expect
   {:topic       :dashboard-create
    :user_id     (user->id :rasta)
    :model       "dashboard"
-   :model_id    (:id dashboard)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Dashboard", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :dashboard-create, :item dashboard})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "dashboard-create"
-      :model_id (:id dashboard))))
+  (tt/with-temp Dashboard [dashboard {:name "My Cool Dashboard"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :dashboard-create, :item dashboard})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "dashboard-create"
+        :model_id (:id dashboard)))))
 
 
 ;; `:dashboard-delete` event
-(tt/expect-with-temp [Dashboard [dashboard {:name "My Cool Dashboard"}]]
+(expect
   {:topic       :dashboard-delete
    :user_id     (user->id :rasta)
    :model       "dashboard"
-   :model_id    (:id dashboard)
    :database_id nil
    :table_id    nil
    :details     {:name "My Cool Dashboard", :description nil}}
-  (with-temp-activities
-    (process-activity-event! {:topic :dashboard-delete, :item dashboard})
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
-      :topic    "dashboard-delete"
-      :model_id (:id dashboard))))
+  (tt/with-temp Dashboard [dashboard {:name "My Cool Dashboard"}]
+    (with-temp-activities
+      (process-activity-event! {:topic :dashboard-delete, :item dashboard})
+      (db/select-one [Activity :topic :user_id :model :database_id :table_id :details]
+        :topic    "dashboard-delete"
+        :model_id (:id dashboard)))))
 
 
 ;; `:dashboard-add-cards` event

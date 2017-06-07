@@ -1,11 +1,11 @@
-(ns metabase.query-processor.sql-parameters-test
+(ns metabase.query-processor.middleware.parameters.sql-test
   (:require [clj-time.core :as t]
             [expectations :refer :all]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :refer [engines-that-support first-row format-rows-by]]]
-            [metabase.query-processor.sql-parameters :refer :all]
+            [metabase.query-processor.middleware.parameters.sql :refer :all]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -17,8 +17,8 @@
 ;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
 
 (defn- substitute {:style/indent 1} [sql params]
-  (binding [metabase.query-processor.sql-parameters/*driver* (driver/engine->driver :h2)] ; apparently you can still bind private dynamic vars
-    ((resolve 'metabase.query-processor.sql-parameters/expand-query-params)
+  (binding [metabase.query-processor.middleware.parameters.sql/*driver* (driver/engine->driver :h2)] ; apparently you can still bind private dynamic vars
+    ((resolve 'metabase.query-processor.middleware.parameters.sql/expand-query-params)
      {:query sql}
      (into {} (for [[k v] params]
                 {k v})))))
@@ -182,7 +182,7 @@
 
 ;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
 
-(tu/resolve-private-vars metabase.query-processor.sql-parameters value-for-tag)
+(tu/resolve-private-vars metabase.query-processor.middleware.parameters.sql value-for-tag)
 
 ;; variable -- specified
 (expect
@@ -192,7 +192,7 @@
 
 ;; variable -- unspecified
 (expect
-  #metabase.query_processor.sql_parameters.NoValue{}
+  #metabase.query_processor.middleware.parameters.sql.NoValue{}
   (value-for-tag {:name "id", :display_name "ID", :type "text"} nil))
 
 ;; variable -- default
@@ -238,8 +238,8 @@
 
 ;;; ------------------------------------------------------------ expansion tests: variables ------------------------------------------------------------
 
-(defn- expand-params* [query]
-  (-> (expand-params (assoc query :driver     (driver/engine->driver :h2)))
+(defn- expand* [query]
+  (-> (expand (assoc query :driver (driver/engine->driver :h2)))
       :native
       (select-keys [:query :params])))
 
@@ -247,59 +247,59 @@
 (expect
   {:query  "SELECT * FROM orders ;"
    :params []}
-  (expand-params* {:native     {:query "SELECT * FROM orders [[WHERE id = {{id}}]];"
-                                :template_tags {:id {:name "id", :display_name "ID", :type "number"}}}
-                   :parameters []}))
+  (expand* {:native     {:query "SELECT * FROM orders [[WHERE id = {{id}}]];"
+                         :template_tags {:id {:name "id", :display_name "ID", :type "number"}}}
+            :parameters []}))
 
 ;; unspecified *required* param
 (expect
   Exception
-  (expand-params {:native     {:query "SELECT * FROM orders [[WHERE id = {{id}}]];"
-                               :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true}}}
-                  :parameters []}))
+  (expand {:native     {:query "SELECT * FROM orders [[WHERE id = {{id}}]];"
+                        :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true}}}
+           :parameters []}))
 
 ;; default value
 (expect
   {:query  "SELECT * FROM orders WHERE id = 100;"
    :params []}
-  (expand-params* {:native     {:query "SELECT * FROM orders WHERE id = {{id}};"
-                                :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true, :default "100"}}}
-                   :parameters []}))
+  (expand* {:native     {:query "SELECT * FROM orders WHERE id = {{id}};"
+                         :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true, :default "100"}}}
+            :parameters []}))
 
 ;; specified param (numbers)
 (expect
   {:query  "SELECT * FROM orders WHERE id = 2;"
    :params []}
-  (expand-params* {:native     {:query "SELECT * FROM orders WHERE id = {{id}};"
-                                :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true, :default "100"}}}
-                   :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]}))
+  (expand* {:native     {:query "SELECT * FROM orders WHERE id = {{id}};"
+                         :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true, :default "100"}}}
+            :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]}))
 
 ;; specified param (date/single)
 (expect
   {:query  "SELECT * FROM orders WHERE created_at > ?;"
    :params [#inst "2016-07-19T00:00:00.000000000-00:00"]}
-  (expand-params* {:native     {:query "SELECT * FROM orders WHERE created_at > {{created_at}};"
-                                :template_tags {:created_at {:name "created_at", :display_name "Created At", :type "date"}}}
-                   :parameters [{:type "date/single", :target ["variable" ["template-tag" "created_at"]], :value "2016-07-19"}]}))
+  (expand* {:native     {:query "SELECT * FROM orders WHERE created_at > {{created_at}};"
+                         :template_tags {:created_at {:name "created_at", :display_name "Created At", :type "date"}}}
+            :parameters [{:type "date/single", :target ["variable" ["template-tag" "created_at"]], :value "2016-07-19"}]}))
 
 ;; specified param (text)
 (expect
   {:query  "SELECT * FROM products WHERE category = ?;"
    :params ["Gizmo"]}
-  (expand-params* {:native     {:query "SELECT * FROM products WHERE category = {{category}};"
-                                :template_tags {:category {:name "category", :display_name "Category", :type "text"}}}
-                   :parameters [{:type "category", :target ["variable" ["template-tag" "category"]], :value "Gizmo"}]}))
+  (expand* {:native     {:query "SELECT * FROM products WHERE category = {{category}};"
+                         :template_tags {:category {:name "category", :display_name "Category", :type "text"}}}
+            :parameters [{:type "category", :target ["variable" ["template-tag" "category"]], :value "Gizmo"}]}))
 
 
 ;;; ------------------------------------------------------------ expansion tests: dimensions ------------------------------------------------------------
 
 (defn- expand-with-dimension-param [dimension-param]
   (with-redefs [t/now (fn [] (t/date-time 2016 06 07 12 0 0))]
-    (expand-params* {:native     {:query "SELECT * FROM checkins WHERE {{date}};"
-                                  :template_tags {:date {:name "date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
-                     :parameters (when dimension-param
-                                   [(merge {:target ["dimension" ["template-tag" "date"]]}
-                                            dimension-param)])})))
+    (expand* {:native     {:query "SELECT * FROM checkins WHERE {{date}};"
+                           :template_tags {:date {:name "date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+              :parameters (when dimension-param
+                            [(merge {:target ["dimension" ["template-tag" "date"]]}
+                                    dimension-param)])})))
 
 ;; dimension (date/single)
 (expect
@@ -496,53 +496,53 @@
    :template_tags {:created_at {:name "created_at", :display_name "Created At", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}},
    :params        [#inst "2017-03-01T00:00:00.000000000-00:00"
                    #inst "2017-03-31T00:00:00.000000000-00:00"]}
-  (:native (expand-params {:driver     (driver/engine->driver :h2)
-                           :native     {:query         "SELECT count(*) FROM CHECKINS WHERE {{created_at}}"
-                                        :template_tags {:created_at {:name "created_at", :display_name "Created At", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
-                           :parameters [{:type "date/month-year", :target ["dimension" ["template-tag" "created_at"]], :value "2017-03"}]})))
+  (:native (expand {:driver     (driver/engine->driver :h2)
+                    :native     {:query         "SELECT count(*) FROM CHECKINS WHERE {{created_at}}"
+                                 :template_tags {:created_at {:name "created_at", :display_name "Created At", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+                    :parameters [{:type "date/month-year", :target ["dimension" ["template-tag" "created_at"]], :value "2017-03"}]})))
 
 (expect
   {:query         "SELECT count(*) FROM ORDERS"
    :template_tags {:price {:name "price", :display_name "Price", :type "number", :required false}}
    :params        []}
-  (:native (expand-params {:driver     (driver/engine->driver :h2)
-                           :native     {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
-                                        :template_tags {:price {:name "price", :display_name "Price", :type "number", :required false}}}
-                           :parameters []})))
+  (:native (expand {:driver     (driver/engine->driver :h2)
+                    :native     {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
+                                 :template_tags {:price {:name "price", :display_name "Price", :type "number", :required false}}}
+                    :parameters []})))
 
 (expect
   {:query         "SELECT count(*) FROM ORDERS WHERE price > 100"
    :template_tags {:price {:name "price", :display_name "Price", :type "number", :required false}}
    :params        []}
-  (:native (expand-params {:driver     (driver/engine->driver :h2)
-                           :native     {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
-                                        :template_tags {:price {:name "price", :display_name "Price", :type "number", :required false}}}
-                           :parameters [{:type "category", :target ["variable" ["template-tag" "price"]], :value "100"}]})))
+  (:native (expand {:driver     (driver/engine->driver :h2)
+                    :native     {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
+                                 :template_tags {:price {:name "price", :display_name "Price", :type "number", :required false}}}
+                    :parameters [{:type "category", :target ["variable" ["template-tag" "price"]], :value "100"}]})))
 
 (expect
   {:query         "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE ?"
    :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}
    :params        ["%Toucan%"]}
-  (:native (expand-params {:driver     (driver/engine->driver :h2)
-                           :native     {:query         "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE {{x}}",
-                                        :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}},
-                           :parameters [{:type "category", :target ["variable" ["template-tag" "x"]]}]})))
+  (:native (expand {:driver     (driver/engine->driver :h2)
+                    :native     {:query         "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE {{x}}",
+                                 :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}},
+                    :parameters [{:type "category", :target ["variable" ["template-tag" "x"]]}]})))
 
 ;; make sure that you can use the same parameter multiple times (#4659)
 (expect
   {:query         "SELECT count(*) FROM products WHERE title LIKE ? AND subtitle LIKE ?"
    :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}
    :params        ["%Toucan%" "%Toucan%"]}
-  (:native (expand-params {:driver     (driver/engine->driver :h2)
-                           :native     {:query         "SELECT count(*) FROM products WHERE title LIKE {{x}} AND subtitle LIKE {{x}}",
-                                        :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}},
-                           :parameters [{:type "category", :target ["variable" ["template-tag" "x"]]}]})))
+  (:native (expand {:driver     (driver/engine->driver :h2)
+                    :native     {:query         "SELECT count(*) FROM products WHERE title LIKE {{x}} AND subtitle LIKE {{x}}",
+                                 :template_tags {:x {:name "x", :display_name "X", :type "text", :required true, :default "%Toucan%"}}},
+                    :parameters [{:type "category", :target ["variable" ["template-tag" "x"]]}]})))
 
 (expect
   {:query         "SELECT * FROM ORDERS WHERE true  AND ID = ? OR USER_ID = ?"
    :template_tags {:id {:name "id", :display_name "ID", :type "text"}}
    :params        ["2" "2"]}
-  (:native (expand-params {:driver     (driver/engine->driver :h2)
-                           :native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
-                                        :template_tags {:id {:name "id", :display_name "ID", :type "text"}}}
-                           :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]})))
+  (:native (expand {:driver     (driver/engine->driver :h2)
+                    :native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
+                                 :template_tags {:id {:name "id", :display_name "ID", :type "text"}}}
+                    :parameters [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]})))

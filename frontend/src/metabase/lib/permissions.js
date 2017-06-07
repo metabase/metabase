@@ -109,13 +109,15 @@ export function downgradeNativePermissionsIfNeeded(permissions: GroupsPermission
     }
 }
 
-// $FlowFixMe
-const metadataTableToTableEntityId = (table: Table): TableEntityId => ({ databaseId: table.db_id, schemaName: table.schema, tableId: table.id });
+const metadataTableToTableEntityId = (table: Table): TableEntityId => ({ databaseId: table.db_id, schemaName: table.schema || "", tableId: table.id });
+
+// TODO Atte Keinänen 6/24/17 See if this method could be simplified
 const entityIdToMetadataTableFields = (entityId: EntityId) => ({
     ...(entityId.databaseId ? {db_id: entityId.databaseId} : {}),
-    ...(entityId.schemaName ? {schema: entityId.schemaName} : {}),
-    ...(entityId.tableId ? {tableId: entityId.tableId} : {})
-})
+    // $FlowFixMe Because schema name can be an empty string, which means an empty schema, this check becomes a little nasty
+    ...(entityId.schemaName !== undefined ? {schema: entityId.schemaName !== "" ? entityId.schemaName : null} : {}),
+    ...(entityId.tableId ? {id: entityId.tableId} : {})
+});
 
 function inferEntityPermissionValueFromChildTables(permissions: GroupsPermissions, groupId: GroupId, entityId: DatabaseEntityId|SchemaEntityId, metadata: Metadata) {
     const { databaseId } = entityId;
@@ -177,7 +179,7 @@ export function updateFieldsPermission(permissions: GroupsPermissions, groupId: 
 
 export function updateTablesPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName }: SchemaEntityId, value: string, metadata: Metadata): GroupsPermissions {
     const database = metadata && metadata.database(databaseId);
-    const tableIds: ?number[] = database && database.tables().filter(t => t.schema === schemaName).map(t => t.id);
+    const tableIds: ?number[] = database && database.tables().filter(t => (t.schema || "") === schemaName).map(t => t.id);
 
     permissions = updateSchemasPermission(permissions, groupId, { databaseId }, "controlled", metadata);
     permissions = updatePermission(permissions, groupId, [databaseId, "schemas", schemaName], value, tableIds);
@@ -186,11 +188,12 @@ export function updateTablesPermission(permissions: GroupsPermissions, groupId: 
 }
 
 export function updateSchemasPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId }: DatabaseEntityId, value: string, metadata: Metadata): GroupsPermissions {
-    let database = metadata.database(databaseId);
-    let schemaNames = database && database.schemaNames();
+    const database = metadata.database(databaseId);
+    const schemaNames = database && database.schemaNames();
+    const schemaNamesOrNoSchema = (schemaNames && schemaNames.length > 0) ? schemaNames : [""];
 
     permissions = downgradeNativePermissionsIfNeeded(permissions, groupId, { databaseId }, value, metadata);
-    return updatePermission(permissions, groupId, [databaseId, "schemas"], value, schemaNames);
+    return updatePermission(permissions, groupId, [databaseId, "schemas"], value, schemaNamesOrNoSchema);
 }
 
 export function updateNativePermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId }: DatabaseEntityId, value: string, metadata: Metadata): GroupsPermissions {

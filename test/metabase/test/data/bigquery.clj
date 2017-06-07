@@ -147,7 +147,7 @@
     (for [[i row] (m/indexed rows)]
       (assoc (zipmap field-names (for [v row]
                                    (u/prog1 (if (instance? java.util.Date v)
-                                              (DateTime. v)             ; convert to Google version of DateTime, otherwise it doesn't work (!)
+                                              (DateTime. ^java.util.Date v) ; convert to Google version of DateTime, otherwise it doesn't work (!)
                                               v)
                                             (assert (not (nil? <>)))))) ; make sure v is non-nil
              :id (inc i)))))

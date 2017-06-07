@@ -1,33 +1,35 @@
 (ns metabase.driver.generic-sql.native-test
   (:require [expectations :refer :all]
+            [medley.core :as m]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.test.data :refer :all]
             [toucan.db :as db]))
 
 ;; Just check that a basic query works
-(expect {:status :completed
-         :row_count 2
-         :data {:rows [[100]
-                       [99]]
-                :columns ["ID"]
-                :cols [{:name "ID", :base_type :type/Integer}]
-                :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}}}
+(expect
+  {:status :completed
+   :row_count 2
+   :data {:rows [[100]
+                 [99]]
+          :columns ["ID"]
+          :cols [{:name "ID", :base_type :type/Integer}]
+          :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}}}
   (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
                      :type     :native
                      :database (id)}))
 
 ;; Check that column ordering is maintained
 (expect
-    {:status :completed
-     :row_count 2
-     :data {:rows [[100 "Mohawk Bend" 46]
-                   [99 "Golden Road Brewing" 10]]
-            :columns ["ID" "NAME" "CATEGORY_ID"]
-            :cols [{:name "ID", :base_type :type/Integer}
-                   {:name "NAME", :base_type :type/Text}
-                   {:name "CATEGORY_ID", :base_type :type/Integer}]
-            :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}}}
+  {:status :completed
+   :row_count 2
+   :data {:rows [[100 "Mohawk Bend" 46]
+                 [99 "Golden Road Brewing" 10]]
+          :columns ["ID" "NAME" "CATEGORY_ID"]
+          :cols [{:name "ID", :base_type :type/Integer}
+                 {:name "NAME", :base_type :type/Text}
+                 {:name "CATEGORY_ID", :base_type :type/Integer}]
+          :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}}}
   (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2;"}
                      :type     :native
                      :database (id)}))

@@ -34,9 +34,13 @@ export default ({ card, tableMetadata }: ClickActionProps): ClickAction[] => {
                     customFields={Query.getExpressions(query)}
                     availableAggregations={tableMetadata.aggregation_options}
                     onCommitAggregation={aggregation => {
-                        onChangeCardAndRun(
-                            summarize(card, aggregation, tableMetadata)
-                        );
+                        onChangeCardAndRun({
+                            nextCard: summarize(
+                                card,
+                                aggregation,
+                                tableMetadata
+                            )
+                        });
                         onClose && onClose();
                     }}
                 />

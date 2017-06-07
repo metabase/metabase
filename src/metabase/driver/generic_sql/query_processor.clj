@@ -243,7 +243,7 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
-(defn- apply-source-table [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
+(defn- apply-source-table [honeysql-form {{table-name :name, schema :schema} :source-table}]
   {:pre [table-name]}
   (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
 
@@ -252,7 +252,7 @@
   ;;    will get swapped around and  we'll be left with old version of the function that nobody implements
   ;; 2) This is a vector rather than a map because the order the clauses get handled is important for some drivers.
   ;;    For example, Oracle needs to wrap the entire query in order to apply its version of limit (`WHERE ROWNUM`).
-  [:source-table apply-source-table
+  [:source-table (u/drop-first-arg apply-source-table)
    :aggregation  #'sql/apply-aggregation
    :breakout     #'sql/apply-breakout
    :fields       #'sql/apply-fields

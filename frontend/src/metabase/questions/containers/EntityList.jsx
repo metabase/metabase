@@ -175,11 +175,13 @@ export default class EntityList extends Component {
 
         const section = this.getSection();
 
+
         const hasEntitiesInPlainState = entityIds.length > 0 || section.section !== "all";
 
         const showActionHeader = (editable && selectedCount > 0);
         const showSearchHeader = (hasEntitiesInPlainState && showSearchWidget);
         const showEntityFilterWidget = onChangeSection;
+
         return (
             <div style={style}>
                 { (showActionHeader || showSearchHeader || showEntityFilterWidget) &&

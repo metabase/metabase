@@ -285,7 +285,9 @@
                                          (printf "(%s %s) failed: %s" f v (.getMessage e))
                                          (throw e)))))))))))
 
-(def formatted-venues-rows (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
+(def ^{:arglists '([results])} formatted-venues-rows
+  "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
+  (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
 
 (defn rows
