@@ -163,7 +163,7 @@ export function generateTimeValueDescription(value, bucketing) {
     }
 }
 
-export function formatBucketing(bucketing) {
+export function formatBucketing(bucketing = "") {
     let words = bucketing.split("-");
     words[0] = inflection.capitalize(words[0]);
     return words.join(" ");
