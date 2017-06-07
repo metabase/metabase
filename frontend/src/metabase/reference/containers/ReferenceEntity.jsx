@@ -9,7 +9,6 @@ import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 import Detail from "metabase/reference/components/Detail.jsx";
@@ -18,6 +17,8 @@ import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
+
+import FieldXray from 'metabase/reference/containers/FieldXray';
 
 import {
     tryUpdateData
@@ -221,6 +222,11 @@ export default class ReferenceEntity extends Component {
                                     field={points_of_interest}
                                     />
                             </li>
+                            { section.type === 'field' && (
+                                <li>
+                                    <FieldXray field={entity} />
+                                </li>
+                            )}
                             <li className="relative">
                                 <Detail
                                     id="caveats"
