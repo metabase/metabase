@@ -32,6 +32,11 @@ export default class Query {
         return false;
     }
 
+    // TODO: Decide the behavior of isEditable for multimetric questions
+    isEditable(): boolean {
+        return true;
+    }
+    
     /**
      * Returns the dataset_query object underlying this Query
      */

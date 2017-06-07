@@ -15,7 +15,7 @@ const MetricList = ({...props}) => {
     const metrics = question.singleQueries();
     const metricColors = getCardColors(question.card());
 
-    const showAddMetricButton = !hideAddButton && !question.query().isBareRows();
+    const showAddMetricButton = !hideAddButton;
     const canAddMetricToVisualization = _.contains(["line", "area", "bar"], question.display());
     const metricsAreRemovable = !hideClearButton && question.canRemoveMetric();
 

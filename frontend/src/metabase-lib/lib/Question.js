@@ -184,11 +184,12 @@ export default class Question {
         return this.query().isMulti();
     }
     canConvertToMultiQuery(): boolean {
-        return true;
+        const query = this.query();
+        return query instanceof StructuredQuery && !query.isBareRows();
     }
     convertToMultiQuery(): Question {
         // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
-        const multiDatasetQuery = convertToMultiDatasetQuery(this._card.dataset_query);
+        const multiDatasetQuery = convertToMultiDatasetQuery(this, this._card.dataset_query);
         return this.setCard(assoc(this._card, "dataset_query", multiDatasetQuery));
     }
 
