@@ -28,7 +28,7 @@ export default class SavedMetricSelector extends Component {
             currentQuestion: question,
             currentResults: results,
             // The initial aggregations are only set when the selector view is opened
-            initialMetrics: question.metrics(),
+            initialMetrics: question.singleQueries(),
             addedMetrics: {},
             searchValue: ""
         };
@@ -124,7 +124,7 @@ export default class SavedMetricSelector extends Component {
 
         if (!currentQuestion) return [];
 
-        return currentQuestion.availableMetrics().filter(metricWrapper => {
+        return currentQuestion.availableSavedMetrics().filter(metricWrapper => {
             if (_.find(initialMetrics, (metric) => metric.equalsToMetric(metricWrapper))) {
                 return false;
             }

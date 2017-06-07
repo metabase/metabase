@@ -3,6 +3,7 @@
 import Question from "./Question";
 import Query from "./Query";
 
+
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -24,6 +25,7 @@ import type {
     NativeDatasetQuery
 } from "metabase/meta/types/Card";
 import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
+import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 
 const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     database: null,
@@ -34,14 +36,25 @@ const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     }
 };
 
-export default class NativeQuery extends Query {
+export function isNativeDatasetQuery(datasetQuery: DatasetQuery) {
+    return datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
+}
+
+export default class NativeQuery extends Query { // implements SingleDatabaseQuery
+    // For Flow type completion
+    _nativeDatasetQuery: NativeDatasetQuery;
+
     constructor(
         question: Question,
-        index: number,
-        datasetQuery?: DatasetQuery = NATIVE_QUERY_TEMPLATE
+        datasetQuery: DatasetQuery = NATIVE_QUERY_TEMPLATE
     ) {
-        super(question, index, datasetQuery);
+        super(question, datasetQuery);
+
+        // $FlowFixMe
+        this._nativeDatasetQuery = datasetQuery;
     }
+
+    /* Query superclass methods */
 
     isNative() {
         return true;
@@ -53,6 +66,34 @@ export default class NativeQuery extends Query {
             (!this.requiresTable() || this.collection());
     }
 
+    databases(): Database[] {
+        return super
+            .databases()
+            .filter(database => database.native_permissions === "write");
+    }
+
+    /* SingleDatabaseQuery methods */
+
+    tables(): ?(Table[]) {
+        const database = this.database();
+        return (database && database.tables) || null;
+    }
+
+    databaseId(): ?DatabaseId {
+        // same for both structured and native
+        return this._nativeDatasetQuery.database;
+    }
+    database(): ?Database {
+        const databaseId = this.databaseId();
+        return databaseId != null ? this._metadata.databases[databaseId] : null;
+    }
+    engine(): ?DatabaseEngine {
+        const database = this.database();
+        return database && database.engine;
+    }
+
+    /* Methods unique to this query type */
+
     hasWritePermission(): boolean {
         const database = this.database();
         return database != null && database.native_permissions === "write";
@@ -62,12 +103,6 @@ export default class NativeQuery extends Query {
         const database = this.database();
         return database != null &&
             _.contains(database.features, "native-parameters");
-    }
-
-    databases(): Database[] {
-        return super
-            .databases()
-            .filter(database => database.native_permissions === "write");
     }
 
     table(): ?Table {
@@ -86,7 +121,6 @@ export default class NativeQuery extends Query {
     updateQueryText(newQueryText: string): Query {
         return new NativeQuery(
             this._question,
-            this._index,
             chain(this._datasetQuery)
                 .assocIn(["native", "query"], newQueryText)
                 .assocIn(
@@ -104,7 +138,6 @@ export default class NativeQuery extends Query {
     updateCollection(newCollection: string) {
         return new NativeQuery(
             this._question,
-            this._index,
             assocIn(this._datasetQuery, ["native", "collection"], newCollection)
         );
     }

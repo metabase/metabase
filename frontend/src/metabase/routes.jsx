@@ -164,7 +164,7 @@ export const getRoutes = (store) =>
 
                 {/* QUERY BUILDER */}
                 <Route path="/question" component={QueryBuilder} />
-                <Route path="/question/:cardId" component={QuestionBuilder} />
+                <Route path="/question/:cardId" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
                 <Route path="/questions" title="Questions">

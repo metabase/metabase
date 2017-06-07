@@ -6,6 +6,10 @@ import type { Parameter, ParameterInstance } from "./Parameter";
 
 export type CardId = number;
 
+export type VisualizationSettings = {
+    [key: string]: any
+}
+
 export type UnsavedCard = {
     dataset_query: DatasetQuery,
     display: string,
@@ -40,8 +44,21 @@ export type NativeDatasetQuery = {
     parameters?: Array<ParameterInstance>
 };
 
-export type VisualizationSettings = {
-    [key: string]: any
-}
+/**
+ * The type for MultiDatasetQuery children
+ */
+export type ChildDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
-export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
+/**
+ * A compound type for supporting multi-query questions without having to change the data model of Card
+ */
+export type MultiDatasetQuery = {
+    type: "multi",
+    queries: ChildDatasetQuery[],
+    parameters?: Array<ParameterInstance>
+};
+
+/**
+ * All possible formats for `dataset_query`
+ */
+export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery | MultiDatasetQuery;

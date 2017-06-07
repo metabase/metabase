@@ -16,9 +16,10 @@ import Question from "metabase-lib/lib/Question";
 
 type Props = {
     className?: string,
+    card: Card,
     question: Question,
     setCardAndRun: (card: Card) => void,
-    navigateToNewCardInsideQB: any => void
+    navigateToNewCardInsideQB: (any) => void
 };
 
 type State = {
@@ -90,7 +91,7 @@ export default class ActionsWidget extends Component {
             const nextQuestion = action.question();
             if (nextQuestion) {
                 MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun(nextQuestion.card());
+                this.handleOnChangeCardAndRun({ nextCard: nextQuestion.card() });
             }
             this.close();
         }

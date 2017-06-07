@@ -36,7 +36,7 @@ const VisualizationResult = ({question, isObjectDetail, navigateToNewCardInsideQ
         // BUT the last executed "dataset_query" (to ensure data matches the query)
 
         // TODO: Atte Keinänen 6/2/17: Should we provide a `lastRunDatasetQueries` or similar?
-        const series = question.metrics().map((metricQuery, index) => ({
+        const series = question.singleQueries().map((metricQuery, index) => ({
             card: {
                 ...question.card(),
                 dataset_query: metricQuery.datasetQuery()

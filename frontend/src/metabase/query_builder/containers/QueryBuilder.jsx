@@ -204,11 +204,10 @@ export default class QueryBuilder extends Component {
     }
 
     render() {
-        const isSavedCard = !!getIn(this.props.card, ["id"]);
-        const isDirtySavedCard = !!(getIn(this.props.card, ["original_card_id"]) && this.props.isDirty);
-        const redirectToQuestionBuilder = isSavedCard || isDirtySavedCard;
+        const { question } = this.props;
+        const isMultiQueryQuestion = question && question.isMultiQuery();
 
-        if (redirectToQuestionBuilder) {
+        if (isMultiQueryQuestion) {
             return <QuestionBuilder {...this.props} qbIsAlreadyInitialized />
         } else {
             return (

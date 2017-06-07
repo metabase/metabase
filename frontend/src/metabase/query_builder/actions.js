@@ -621,8 +621,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
             newQuestion = newQuestion.newQuestion();
         }
 
-        // currently only support single query
-        newQuestion = newQuestion.setQuery(newQuestion.query().setDatasetQuery(dataset_query), 0);
+        newQuestion = newQuestion.setDatasetQuery(dataset_query);
 
         const oldTagCount = question.query().isNative() ? question.query().templateTags().length : 0;
         const newTagCount = newQuestion.query().isNative() ? newQuestion.query().templateTags().length : 0;
@@ -903,7 +902,8 @@ export const removeQueryExpression = createQueryAction(
 // TODO: Used also in SavedMetricSelector, should this be part of metabase-lib or not?
 // (Kept temporarily here next to the action that uses it)
 export const getQuestionQueryResults = (question, cancelQueryDeferred) => {
-    const queries = question.metrics();
+    const rootQuery = question.query();
+    const queries = rootQuery.isMulti() ? rootQuery.childQueries() : [rootQuery];
 
     // Note that triggering cancelQueryDeferred will cancel every distinct query API call
     const getQueryResult = (query) =>
@@ -957,7 +957,6 @@ export const runQuestionQuery = ({
 
         getQuestionQueryResults(question)
             .then((queryResults) => dispatch(queryCompleted(question.card(), queryResults)))
-            .catch((error) => dispatch(queryErrored(startTime, error)));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", question.query().datasetQuery().type);
 

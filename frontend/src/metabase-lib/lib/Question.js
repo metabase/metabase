@@ -11,15 +11,16 @@ import Field from "./metadata/Field";
 import Breakout from "./query/Breakout";
 import Filter from "./query/Filter";
 
-import StructuredQuery from "./StructuredQuery";
-import NativeQuery from "./NativeQuery";
+import MultiQuery, { isMultiDatasetQuery, convertToMultiDatasetQuery } from "./MultiQuery";
+import StructuredQuery, { isStructuredDatasetQuery } from "metabase-lib/lib/StructuredQuery";
+import NativeQuery, { isNativeDatasetQuery } from "metabase-lib/lib/NativeQuery";
 
+import { memoize } from "metabase-lib/lib/utils";
 import Utils from "metabase/lib/utils";
 import { utf8_to_b64url } from "metabase/lib/card";
 import Query_DEPRECATED from "metabase/lib/query";
 
 import { getParametersWithExtras } from "metabase/meta/Card";
-import * as Q from "metabase/lib/query/query";
 
 import {
     summarize,
@@ -32,7 +33,7 @@ import {
 import { getMode } from "metabase/qb/lib/modes";
 
 import _ from "underscore";
-import { chain, updateIn, assoc } from "icepick";
+import { chain, assoc } from "icepick";
 
 import type {
     Parameter as ParameterObject,
@@ -41,8 +42,8 @@ import type {
 } from "metabase/meta/types/Parameter";
 import type { DimensionOptions } from "metabase/meta/types/Metadata";
 import type {
+    DatasetQuery,
     Card as CardObject,
-    DatasetQuery as DatasetQueryObject,
     StructuredDatasetQuery as StructuredDatasetQueryObject
 } from "metabase/meta/types/Card";
 
@@ -61,14 +62,24 @@ type ParameterOptions = "FIXME";
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 export default class Question {
+    /**
+     * A Question wrapper requires
+     * TODO Atte Keinänen 6/6/17: Check which parts of metadata are actually needed and document them here
+     * The contents of `metadata` could also be asserted in the Question constructor
+     */
     _metadata: Metadata;
-    _card: CardObject;
-    _parameterValues: ParameterValues;
 
     /**
-     * A question has one or more queries
+     * The plain object presentation of this question, equal to the format that Metabase REST API understands.
+     * It is called `card` for both historical reasons and to make a clear distinction to this class.
      */
-    _queries: Query[];
+    _card: CardObject;
+
+    /**
+     * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
+     * TODO Atte Keinänen 6/6/17: Why are parameter values considered a part of a Question?
+     */
+    _parameterValues: ParameterValues;
 
     /**
      * Question constructor
@@ -81,30 +92,28 @@ export default class Question {
         this._metadata = metadata;
         this._card = card;
         this._parameterValues = parameterValues || {};
+    }
 
-        if (
-            card.dataset_query.type === "query" &&
-            Q.getAggregations(card.dataset_query.query).length > 1
-        ) {
-            const datasetQuery: StructuredDatasetQueryObject = card.dataset_query;
+    /**
+     * A question contains either a:
+     * - StructuredQuery for queries written in MBQL
+     * - NativeQuery for queries written in data source's native query language
+     * - MultiQuery that is composed from one or more structured or native queries
+     *
+     * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
+     */
+    @memoize query(): Query {
+        const datasetQuery = this._card.dataset_query;
 
-            // TODO: real multiple metric persistence
-            this._queries = Q.getAggregations(
-                card.dataset_query.query
-            ).map((aggregation, index) =>
-                this.createQuery(
-                    {
-                        ...datasetQuery,
-                        query: Q.addAggregation(
-                            Q.clearAggregations(datasetQuery.query),
-                            aggregation
-                        )
-                    },
-                    index
-                ));
-        } else {
-            this._queries = [this.createQuery(card.dataset_query, 0)];
+        if (isMultiDatasetQuery(datasetQuery)) {
+            return new MultiQuery(this, datasetQuery);
+        } else if (isStructuredDatasetQuery(datasetQuery)) {
+            return new StructuredQuery(this, datasetQuery);
+        } else if (isNativeDatasetQuery(datasetQuery)) {
+            return new NativeQuery(this, datasetQuery);
         }
+
+        throw new Error("Unknown query type: " + datasetQuery.type);
     }
 
     metadata(): Metadata {
@@ -125,52 +134,24 @@ export default class Question {
         );
     }
 
-    createQuery(datasetQuery: DatasetQueryObject, index: number): Query {
-        if (datasetQuery.type === "query") {
-            return new StructuredQuery(this, index, datasetQuery);
-        } else if (datasetQuery.type === "native") {
-            return new NativeQuery(this, index, datasetQuery);
-        }
-        throw new Error("Unknown query type: " + datasetQuery.type);
+    /**
+     * Returns a new Question object with an updated query.
+     * The query is saved to the `dataset_query` field of the Card object.
+     */
+    setQuery(newQuery: Query): Question {
+        return this.setCard(
+            assoc(this.card(), "dataset_query", newQuery.datasetQuery())
+        );
     }
 
-    setQuery(newQuery: Query, index?: number): Question {
-        if (index != null && newQuery instanceof StructuredQuery) {
-            // TODO: real multiple metric persistence
-            let query = Q.clearAggregations(newQuery.query());
-            for (let i = 0; i < this._queries.length; i++) {
-                query = Q.addAggregation(
-                    query,
-                    // $FlowFixMe
-                    (i === index ? newQuery : this._queries[i]).aggregations()[
-                        0
-                    ]
-                );
-            }
-            return this.setCard({
-                ...this._card,
-                dataset_query: {
-                    ...newQuery.datasetQuery(),
-                    query: query
-                }
-            });
-        } else {
-            return this.setCard({
-                ...this._card,
-                dataset_query: newQuery.datasetQuery()
-            });
-        }
+    setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
+        return this.setCard(
+            assoc(this.card(), "dataset_query", newDatasetQuery)
+        );
     }
 
     card() {
         return this._card;
-    }
-
-    /**
-     * Helper for single query centric cards
-     */
-    query(): Query {
-        return this._queries[0];
     }
 
     /**
@@ -188,37 +169,67 @@ export default class Question {
      * Question is valid (as far as we know) and can be executed
      */
     canRun(): boolean {
-        for (const query of this._queries) {
-            if (!query.canRun()) {
-                return false;
-            }
-        }
-        return true;
+        return this.query().canRun();
     }
 
     canWrite(): boolean {
         return this._card && this._card.can_write;
     }
 
-    metrics(): Query[] {
-        return this._queries;
+
+    /**
+     * Conversion from a single query -centric question to a multi-query question
+     */
+    isMultiQuery(): boolean {
+        return this.query().isMulti();
     }
-    availableMetrics(): Metric[] {
+    canConvertToMultiQuery(): boolean {
+        return true;
+    }
+    convertToMultiQuery(): Question {
+        // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
+        const multiDatasetQuery = convertToMultiDatasetQuery(this._card.dataset_query);
+        return this.setCard(assoc(this._card, "dataset_query", multiDatasetQuery));
+    }
+
+    /**
+     * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
+     */
+    singleQueries(): Query[] {
+        return this.query().isMulti() ? this.query().childQueries() : [this.query()];
+    }
+
+    /**
+     * Metric-related methods for the multi-metric query builder
+     *
+     * These methods provide convenient abstractions and mental mappings for working with questions
+     * which are composed of different kinds of metrics (either reusable saved metrics or ad-hoc metrics that are
+     * specific to the current question)
+     */
+    assertIsMultiQuery(): void {
+        if (!this.isMultiQuery()) {
+            throw new Error("Trying to use a metric method for a Question that hasn't been converted to a multi-query format")
+        }
+    }
+
+    availableSavedMetrics(): Metric[] {
+        this.assertIsMultiQuery();
         return this._metadata.metricsList();
     }
     canAddMetric(): boolean {
-        // only structured queries with 0 or 1 breakouts can have multiple series
-        const query = this.query();
-        return query instanceof StructuredQuery &&
-            query.breakouts().length <= 1;
+        this.assertIsMultiQuery();
+        // $FlowFixMe
+        const multiQuery: MultiQuery = this.query();
+        return multiQuery.canAddQuery();
     }
     canRemoveMetric(): boolean {
+        this.assertIsMultiQuery();
         // can't remove last metric
-        return this.metrics().length > 1;
+        // $FlowFixMe
+        const multiQuery: MultiQuery = this.query();
+        return multiQuery.childQueries().length > 1;
     }
-
     addSavedMetric(metric: Metric): Question {
-        console.log("adding a saved metric", metric);
         return this.addMetric(
             ({
                 type: "query",
@@ -231,27 +242,26 @@ export default class Question {
         );
     }
     addMetric(datasetQuery: StructuredDatasetQueryObject): Question {
-        // TODO: multiple metrics persistence
-        return this.setCard(
-            updateIn(this.card(), ["dataset_query", "query"], query =>
-                Q.addAggregation(
-                    query,
-                    Q.getAggregations(datasetQuery.query)[0]
-                ))
-        );
+        this.assertIsMultiQuery();
+        // $FlowFixMe
+        const multiQuery: MultiQuery = this.query();
+        return this.setQuery(multiQuery.addQuery(datasetQuery))
     }
     updateMetric(index: number, metric: Query): Question {
-        return this.setQuery(metric, index);
+        this.assertIsMultiQuery();
+        // $FlowFixMe
+        const multiQuery: MultiQuery = this.query();
+        return this.setQuery(multiQuery.setQueryAtIndex(index, metric))
     }
     removeMetric(index: number): Question {
-        // TODO: multiple metrics persistence
-        return this.setCard(
-            updateIn(this.card(), ["dataset_query", "query"], query =>
-                Q.removeAggregation(query, index))
-        );
+        this.assertIsMultiQuery();
+        // $FlowFixMe
+        const multiQuery: MultiQuery = this.query();
+        return this.setQuery(multiQuery.removeQueryAtIndex(index))
     }
 
     // multiple series can be pivoted
+    // $FlowFixMe
     breakouts(): Breakout[] {
         // TODO: real multiple metric persistence
         const query = this.query();

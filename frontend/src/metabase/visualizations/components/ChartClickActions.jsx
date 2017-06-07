@@ -82,7 +82,7 @@ export default class ChartClickActions extends Component {
             const nextQuestion = action.question();
             if (nextQuestion) {
                 MetabaseAnalytics.trackEvent("Actions", "Executed Click Action", `${action.section||""}:${action.name||""}`);
-                onChangeCardAndRun(nextQuestion.card());
+                onChangeCardAndRun({ nextCard: nextQuestion.card() });
             }
             this.close();
         }

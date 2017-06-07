@@ -19,6 +19,9 @@ declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
 }
 
+// TODO Atte Keinänen 6/5/17 Should these be moved to corresponding metabase-lib classes?
+// Is there any reason behind keeping them in a central place?
+
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
     type: "query",
     database: null,
@@ -37,6 +40,11 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
         query: "",
         template_tags: {}
     }
+};
+
+export const MULTI_QUERY_TEMPLATE: NativeDatasetQuery = {
+    type: "multi",
+    dataset_queries: []
 };
 
 export function isStructured(card: Card): bool {

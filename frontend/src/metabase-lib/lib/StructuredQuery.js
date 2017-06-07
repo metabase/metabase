@@ -1,3 +1,13 @@
+/* @flow weak */
+
+/**
+ * Represents a structured MBQL query.
+ *
+ * Although MultiQuery has superseded the multi-aggregation functionality of StructuredQuery, this class still
+ * contains the multi-aggregation support for dealing with `dataset_query` objects that are in a legacy format.
+ *
+ * TODO Atte Keinänen 6/6/17: Should the multi-aggregation questions be automatically converted to MultiQuery or not?
+ */
 import Query from "./Query";
 
 import * as Q from "metabase/lib/query/query";
@@ -19,15 +29,23 @@ import type {
     LimitClause,
     OrderBy
 } from "metabase/meta/types/Query";
+import type { DatasetQuery, StructuredDatasetQuery } from "metabase/meta/types/Card";
 import type {
     TableMetadata,
     DimensionOptions
 } from "metabase/meta/types/Metadata";
+// TODO: Update Flow so that interfaces are supported
+// import type { SingleDatabaseQuery } from "./interfaces";
 
 import Dimension, {
     ExpressionDimension,
     AggregationDimension
 } from "metabase-lib/lib/Dimension";
+
+import type Table from "metabase-lib/lib/metadata/Table";
+import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
+import type Database from "metabase-lib/lib/metadata/Database";
+import type Question from "metabase-lib/lib/Question";
 
 const STRUCTURED_QUERY_TEMPLATE = {
     database: null,
@@ -37,21 +55,57 @@ const STRUCTURED_QUERY_TEMPLATE = {
     }
 };
 
-export default class StructuredQuery extends Query {
+export function isStructuredDatasetQuery(datasetQuery: DatasetQuery) {
+   return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
+}
+
+export default class StructuredQuery extends Query { // implements SingleDatabaseQuery
+    // For Flow type completion
+    _structuredDatasetQuery: StructuredDatasetQuery;
+
     constructor(
         question: Question,
-        index: number,
-        datasetQuery?: DatasetQuery = STRUCTURED_QUERY_TEMPLATE
+        datasetQuery: DatasetQuery = STRUCTURED_QUERY_TEMPLATE
     ) {
-        super(question, index, datasetQuery);
+        super(question, datasetQuery);
+
+        // $FlowFixMe
+        this._structuredDatasetQuery = datasetQuery;
     }
+
+    /* Query superclass methods */
 
     isStructured(): boolean {
         return true;
     }
 
+    canRun() {
+        return true;
+    }
+
+    /* SingleDatabaseQuery methods */
+
+    tables(): ?(Table[]) {
+        const database = this.database();
+        return (database && database.tables) || null;
+    }
+    databaseId(): ?DatabaseId {
+        // same for both structured and native
+        return this._structuredDatasetQuery.database;
+    }
+    database(): ?Database {
+        const databaseId = this.databaseId();
+        return databaseId != null ? this._metadata.databases[databaseId] : null;
+    }
+    engine(): ?DatabaseEngine {
+        const database = this.database();
+        return database && database.engine;
+    }
+
+    /* Methods unique to this query type */
+
     reset(): StructuredQuery {
-        return new StructuredQuery(this._question, this._index);
+        return new StructuredQuery(this._question);
     }
 
     isEditable(): boolean {
@@ -103,7 +157,6 @@ export default class StructuredQuery extends Query {
     }
 
     // AGGREGATIONS
-
     aggregations(): Aggregation[] {
         return Q.getAggregations(this.query());
     }
@@ -122,9 +175,6 @@ export default class StructuredQuery extends Query {
         }
     }
 
-    canAddAggregation(): boolean {
-        return false;
-    }
     canRemoveAggregation(): boolean {
         return this.aggregations().length > 1;
     }
@@ -172,6 +222,9 @@ export default class StructuredQuery extends Query {
         return "";
     }
 
+    /**
+     * For dealing with the legacy multi-aggregation queries
+     */
     addAggregation(aggregation: Aggregation) {
         return this._updateQuery(Q.addAggregation, arguments);
     }
@@ -461,7 +514,6 @@ export default class StructuredQuery extends Query {
     ) {
         return new StructuredQuery(
             this._question,
-            this._index,
             updateIn(this._datasetQuery, ["query"], query =>
                 updateFunction(query, ...args))
         );

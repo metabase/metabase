@@ -1,28 +1,24 @@
 /* @flow weak */
 
 import Database from "./metadata/Database";
-import Table from "./metadata/Table";
-import Metadata from "./metadata/Metadata";
-
-import Question from "./Question";
-import Action, { ActionClick } from "./Action";
+import Action from "./Action";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { DatabaseId, DatabaseEngine } from "metabase/meta/types/Database";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type Question from "metabase-lib/lib/Question";
+import type { ActionClick } from "metabase-lib/lib/Action";
 
 /**
- * This is a wrapper around a single MBQL or Native query
+ * An abstract class for all query types (StructuredQuery, NativeQuery and MultiQuery)
  */
 export default class Query {
     _metadata: Metadata;
     _question: Question;
     _datasetQuery: DatasetQuery;
-    _index: number;
 
-    constructor(question: Question, index: number, datasetQuery: DatasetQuery) {
+    constructor(question: Question, datasetQuery: DatasetQuery) {
         this._metadata = question._metadata;
         this._question = question;
-        this._index = index;
         this._datasetQuery = datasetQuery;
     }
 
@@ -32,9 +28,8 @@ export default class Query {
     isNative(): boolean {
         return false;
     }
-
-    question(): Question {
-        return this._question.setQuery(this, this._index);
+    isMulti(): boolean {
+        return false;
     }
 
     /**
@@ -45,40 +40,17 @@ export default class Query {
     }
 
     /**
+     * Query is valid (as far as we know) and can be executed
+     */
+    canRun(): boolean {
+        return false;
+    }
+
+    /**
      * Databases this query could use
      */
     databases(): Database[] {
         return this._metadata.databasesList();
-    }
-
-    /** Tables this query could use, if the database is set
-     */
-    tables(): ?(Table[]) {
-        const database = this.database();
-        return (database && database.tables) || null;
-    }
-
-    databaseId(): ?DatabaseId {
-        // same for both structured and native
-        return this.datasetQuery().database;
-    }
-    database(): ?Database {
-        const databaseId = this.databaseId();
-        return databaseId != null ? this._metadata.databases[databaseId] : null;
-    }
-    engine(): ?DatabaseEngine {
-        const database = this.database();
-        return database && database.engine;
-    }
-
-    // NATIVE QUERY
-
-    getNativeQuery(): string {
-        // this requires the result dataset, or a call to the server
-        return "";
-    }
-    convertToNativeQuery() {
-        // this requires the result dataset, or a call to the server
     }
 
     /**
@@ -96,21 +68,10 @@ export default class Query {
     }
 
     /**
-     * Query is valid (as far as we know) and can be executed
-     */
-    canRun(): boolean {
-        // TODO:
-        return false;
-    }
-
-    setDatasetQuery(datasetQuery: DatasetQuery): Query {
-        return this.question().createQuery(datasetQuery, this._index);
-    }
-
-    /**
-     * Helper for updating with functions that expect a DatasetQuery
+     * Helper for updating with functions that expect a DatasetQuery object
      */
     update(fn: (datasetQuery: DatasetQuery) => void) {
         return fn(this.datasetQuery());
     }
 }
+

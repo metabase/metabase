@@ -12,7 +12,7 @@ import AddButton from "metabase/components/AddButton";
 const MetricList = ({...props}) => {
     const { question, setDatasetQuery, hideAddButton, hideClearButton } = props;
 
-    const metrics = question.metrics();
+    const metrics = question.singleQueries();
     const metricColors = getCardColors(question.card());
 
     const showAddMetricButton = !hideAddButton && !question.query().isBareRows();
