@@ -5,6 +5,28 @@ const { GET, PUT, POST, DELETE } = api;
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
+import { isDate, isNumber } from "metabase/lib/schema_metadata";
+const DATETIME_UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year", "minute-of-hour", "hour-of-day", "day-of-week"];
+function addDimensionsToField(field) {
+    if (isDate(field)) {
+        field.dimension_options = DATETIME_UNITS.map(unit => ({
+            mbql: ["datetime-field", null, unit]
+        }));
+        field.default_dimension_option = {
+            mbql: ["datetime-field", null, "day"]
+        };
+    } else if (isNumber(field)) {
+        field.dimension_options = [
+            { mbql: null },
+            { mbql: ["binning-strategy", null, "default", 10] },
+            { mbql: ["binning-strategy", null, "default", 100] },
+            { mbql: ["binning-strategy", null, "custom"],
+              name: "Age Demographics" },
+        ]
+        field.default_dimension_option = field.dimension_options[1];
+    }
+}
+
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
@@ -116,6 +138,13 @@ export const MetabaseApi = {
                                         table.metrics.push(...GA.metrics);
                                         table.segments.push(...GA.segments);
                                     }
+
+                                    if (table && table.fields) {
+                                        for (const field of table.fields) {
+                                            addDimensionsToField(field);
+                                        }
+                                    }
+
                                     return table;
                                  }),
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
