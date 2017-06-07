@@ -96,7 +96,7 @@ export default class FieldList extends Component {
     }
 
     renderItemExtra = (item) => {
-        const { field, enableSubDimensions } = this.props;
+        const { field, enableSubDimensions, tableMetadata: { metadata } } = this.props;
 
         return (
             <div className="Field-extra flex align-center">
@@ -119,7 +119,7 @@ export default class FieldList extends Component {
                         }}
                     >
                         <DimensionPicker
-                            dimension={Dimension.parseMBQL(field)}
+                            dimension={Dimension.parseMBQL(field, metadata)}
                             dimensions={item.dimension.dimensions()}
                             onChangeDimension={dimension => this.props.onFieldChange(dimension.mbql())}
                         />
@@ -140,8 +140,11 @@ export default class FieldList extends Component {
     }
 
     renderSubDimensionTrigger(dimension) {
-        const defaultDimension = dimension.defaultDimension();
-        const name = defaultDimension ? defaultDimension.subTriggerDisplayName() : null;
+        const { field, tableMetadata: { metadata } } = this.props;
+        const subDimension = dimension.isSameBaseDimension(field) ?
+            Dimension.parseMBQL(field, metadata) :
+            dimension.defaultDimension();
+        const name = subDimension ? subDimension.subTriggerDisplayName() : null;
         return (
             <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
                 {name && <h4 className="mr1">{name}</h4> }

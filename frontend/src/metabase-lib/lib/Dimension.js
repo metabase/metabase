@@ -1,5 +1,8 @@
 import React from "react";
 
+import Icon from "metabase/components/Icon";
+
+import { stripId, inflect } from "metabase/lib/formatting";
 import Query_DEPRECATED from "metabase/lib/query";
 import { mbqlEq } from "metabase/lib/query/util";
 import _ from "underscore";
@@ -23,7 +26,7 @@ type IconName = string;
  */
 export default class Dimension {
     _parent: ?Dimension;
-    _args: any[];
+    _args: any;
     _metadata: ?Metadata;
 
     constructor(parent: ?Dimension, args: any[], metadata?: Metadata) {
@@ -54,12 +57,14 @@ export default class Dimension {
         return !!dimensionA && !!dimensionB && dimensionA.isEqual(dimensionB);
     }
 
-    // TODO: better names for these
+    displayName(): string {
+        return "";
+    }
     subDisplayName(): string {
         return "";
     }
     subTriggerDisplayName(): string {
-        return this.subDisplayName();
+        return "";
     }
 
     icon(): ?IconName {
@@ -73,20 +78,49 @@ export default class Dimension {
         return null;
     }
 
+    dimensionForOption(option) {
+        // fill in the parent field ref
+        const fieldRef = this.baseDimension().mbql();
+        let mbql = option.mbql;
+        if (mbql) {
+            mbql = [mbql[0], fieldRef, ...mbql.slice(2)];
+        } else {
+            mbql = fieldRef;
+        }
+        let dimension = Dimension.parseMBQL(mbql, this._metadata);
+        if (option.name) {
+            dimension.subDisplayName = () => option.name;
+            dimension.subTriggerDisplayName = () => option.name;
+        }
+        return dimension;
+    }
+
     dimensions(DimensionTypes: any[] = DIMENSION_TYPES): Dimension[] {
-        return [].concat(
-            ...DimensionTypes.map(DimensionType =>
-                DimensionType.dimensions(this))
-        );
+        const dimensionOptions = this.field().dimension_options;
+        if (dimensionOptions) {
+            return dimensionOptions.map(option => this.dimensionForOption(option))
+        } else {
+            return []
+            .concat(
+                ...DimensionTypes.map(DimensionType =>
+                    DimensionType.dimensions(this))
+            );
+        }
     }
 
     defaultDimension(DimensionTypes: any[] = DIMENSION_TYPES): ?Dimension {
-        for (const DimensionType of DimensionTypes) {
-            const defaultDimension = DimensionType.defaultDimension(this);
-            if (defaultDimension) {
-                return defaultDimension;
+        const defaultDimensionOption = this.field().default_dimension_option;
+        if (defaultDimensionOption) {
+            return this.dimensionForOption(defaultDimensionOption);
+        } else {
+            for (const DimensionType of DimensionTypes) {
+                const defaultDimension = DimensionType.defaultDimension(this);
+                if (defaultDimension) {
+                    return defaultDimension;
+                }
             }
         }
+
         return null;
     }
 
@@ -153,7 +187,7 @@ export default class Dimension {
     }
 
     render() {
-        return <span>{this.displayName()}</span>;
+        return [this.displayName()];
     }
 }
 
@@ -162,13 +196,6 @@ export default class Dimension {
  * @abstract
  */
 export class FieldDimension extends Dimension {
-    // displayName(): string {
-    //     if (this.field().isFK()) {
-    //         return stripId(super.displayName());
-    //     } else {
-    //         return super.displayName();
-    //     }
-    // }
     field(): ?Field {
         if (this._parent instanceof FieldDimension) {
             return this._parent.field();
@@ -177,13 +204,20 @@ export class FieldDimension extends Dimension {
     }
 
     displayName(): string {
-        return Query_DEPRECATED.getFieldPathName(
+        return stripId(Query_DEPRECATED.getFieldPathName(
             this.field().id,
             this.field().table
-        );
+        ));
     }
     subDisplayName(): string {
-        return this.field().display_name;
+        if (this._parent) {
+            // foreign key, show the field name
+            return this.field().display_name;
+        } else if (this.field().isNumber()) {
+            return "Continuous (no binning)";
+        } else {
+            return "Default";
+        }
     }
     icon() {
         return this.field().icon();
@@ -200,11 +234,13 @@ export class FieldIDDimension extends FieldDimension {
         }
         return null;
     }
-    field() {
-        return this._metadata.fields[this._args[0]] || new Field();
-    }
+
     mbql(): LocalFieldReference {
         return ["field-id", this._args[0]];
+    }
+
+    field() {
+        return this._metadata.fields[this._args[0]] || new Field();
     }
 }
 
@@ -231,14 +267,22 @@ export class FKDimension extends FieldDimension {
         return [];
     }
 
-    field() {
-        return this._metadata.fields[this._args[0]] || new Field();
-    }
-
     mbql(): ForeignFieldReference {
         // TODO: not sure `this._parent._args[0]` is the best way to handle this?
         // we don't want the `["field-id", ...]` wrapper from the `this._parent.mbql()`
         return ["fk->", this._parent._args[0], this._args[0]];
+    }
+
+    field() {
+        return this._metadata.fields[this._args[0]] || new Field();
+    }
+
+    render() {
+        return [
+            stripId(this._parent.field().display_name),
+            <Icon name="connections" className="px1" size={10} />,
+            this.field().display_name
+        ]
     }
 }
 
@@ -277,19 +321,28 @@ export class DatetimeFieldDimension extends FieldDimension {
         return null;
     }
 
-    subDisplayName(): string {
-        return formatBucketing(this._args[0]);
-    }
-    subTriggerDisplayName(): string {
-        return "by " + formatBucketing(this._args[0]).toLowerCase();
-    }
-
     mbql(): DatetimeField {
         return ["datetime-field", this._parent.mbql(), this._args[0]];
     }
 
     baseDimension(): Dimension {
         return this._parent.baseDimension();
+    }
+
+    subDisplayName(): string {
+        return formatBucketing(this._args[0]);
+    }
+
+    subTriggerDisplayName(): string {
+        return "by " + formatBucketing(this._args[0]).toLowerCase();
+    }
+
+    render() {
+        return [
+            ...super.render(),
+            ": ",
+            this.subDisplayName()
+        ]
     }
 }
 
@@ -311,16 +364,25 @@ export class BinnedDimension extends FieldDimension {
         return [];
     }
 
-    subDisplayName(): string {
-        return this._args[1] + " bins";
-    }
-
     mbql() {
         return ["binning-strategy", this._parent.mbql(), ...this._args];
     }
 
     baseDimension(): Dimension {
         return this._parent.baseDimension();
+    }
+
+    subDisplayName(): string {
+        if (this._args[0] === "default") {
+            return `Quantized into ${this._args[1]} ${inflect("bins", this._args[1])}`;
+        }
+        return JSON.stringify(this._args);
+    }
+    subTriggerDisplayName(): string {
+        if (this._args[0] === "default") {
+            return `${this._args[1]} ${inflect("bins", this._args[1])}`;
+        }
+        return "";
     }
 }
 
@@ -333,12 +395,12 @@ export class ExpressionDimension extends Dimension {
         }
     }
 
-    displayName(): string {
-        return this._args[0];
-    }
-
     mbql(): ExpressionReference {
         return ["expression", this._args[0]];
+    }
+
+    displayName(): string {
+        return this._args[0];
     }
 
     icon(): IconName {
@@ -369,6 +431,17 @@ export class AggregationDimension extends Dimension {
 
     icon() {
         return "int";
+    }
+}
+
+export class CustomDimension extends Dimension {
+    mbql() {
+        const mbql = this._args.mbql;
+        if (mbql) {
+            return [mbql[0], this._parent.mbql(), ...mbql.slice(2)];
+        } else {
+            return this._parent.mbql();
+        }
     }
 }
 
