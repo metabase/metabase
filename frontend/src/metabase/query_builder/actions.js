@@ -43,6 +43,9 @@ import querystring from "querystring";
 import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils";
 
 import type { Card } from "metabase/meta/types/Card";
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/NativeQuery";
+import MultiQuery from "metabase-lib/lib/MultiQuery";
 
 type UiControls = {
     isEditing?: boolean,
@@ -348,13 +351,25 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
 export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
 export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (card) => {
     return async (dispatch, getState) => {
-        // if we have a card with a known source table then dispatch an action to load up that info
-        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table != null) {
-            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
+        // Short-circuit if we're in a weird state where the card isn't completely loaded
+        if (!card && !card.dataset_query) return;
+
+        const query = new Question(getMetadata(getState()), card).query();
+
+        function loadMetadataForSingleQuery(singleQuery) {
+            if (singleQuery instanceof StructuredQuery && singleQuery.tableId() != null) {
+                dispatch(loadTableMetadata(singleQuery.tableId()));
+            }
+
+            if (singleQuery instanceof NativeQuery && singleQuery.databaseId() != null) {
+                dispatch(loadDatabaseFields(singleQuery.databaseId()));
+            }
         }
 
-        if (card && card.dataset_query && card.dataset_query.type === "native" && card.dataset_query.database != null) {
-            dispatch(loadDatabaseFields(card.dataset_query.database));
+        if (query instanceof MultiQuery) {
+            query.childQueries().map(loadMetadataForSingleQuery);
+        } else {
+            loadMetadataForSingleQuery(query);
         }
     }
 });
