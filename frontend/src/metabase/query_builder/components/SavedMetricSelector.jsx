@@ -43,6 +43,7 @@ export default class SavedMetricSelector extends Component {
         getQuestionQueryResults(updatedQuestion)
             .then((newResults) => {
                 // TODO: Should the display type be automatically updated when adding a metric? Probably it should?
+                // Requires more elaborate listing of scenarios where it could possibly change
                 updatedQuestion.setDisplay(getDisplayTypeForCard(updatedQuestion.card(), newResults));
 
                 this.setState({
@@ -146,8 +147,7 @@ export default class SavedMetricSelector extends Component {
         const badMetrics = [];
 
         const MetricListItem = ({metric}) =>
-            <li key={metric.id}
-                className={cx("my1 pl2 py1 flex align-center", {disabled: badMetrics[metric.id]})}>
+            <li className={cx("my1 pl2 py1 flex align-center", {disabled: badMetrics[metric.id]})}>
                 <span className="px1 flex-no-shrink">
                     <CheckBox checked={addedMetrics[metric.id]}
                               onChange={this.onToggleMetric.bind(this, metric)}/>
@@ -189,7 +189,7 @@ export default class SavedMetricSelector extends Component {
                     <LoadingAndErrorWrapper className="flex flex-full" loading={!filteredMetrics} error={error} noBackground>
                         { () =>
                             <ul className="flex-full scroll-y scroll-show pr1">
-                                {filteredMetrics.map(m => <MetricListItem metric={m} />)}
+                                {filteredMetrics.map(m => <MetricListItem key={m.id} metric={m} />)}
                             </ul>
                         }
                     </LoadingAndErrorWrapper>

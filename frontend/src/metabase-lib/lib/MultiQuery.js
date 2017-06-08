@@ -34,6 +34,8 @@ function createChildQuery(question: Question, datasetQuery: ChildDatasetQuery): 
     throw new Error("Unknown query type: " + datasetQuery.type);
 }
 
+// TODO Atte Keinänen 6/8/17: Write comprehensive unit tests for this class
+
 /**
  * Converts the DatasetQuery to a MultiDatasetQuery.
  *
@@ -138,13 +140,13 @@ export default class MultiQuery extends Query {
     }
 
     setQueryAtIndex(index: number, datasetQuery: ChildDatasetQuery): MultiQuery {
-        // TODO: Write implementation
-        return this._updateQueries(this.childQueries());
+        return this._updateQueries(this.childQueries().map((query, i) =>
+            index === i ? createChildQuery(this._originalQuestion, datasetQuery) : query)
+        );
     }
 
     removeQueryAtIndex(index: number): MultiQuery {
-        // TODO: Write implementation
-        return this._updateQueries(this.childQueries());
+        return this._updateQueries(this.childQueries().filter((_, i) => i !== index));
     }
 
     canAddQuery(): boolean {

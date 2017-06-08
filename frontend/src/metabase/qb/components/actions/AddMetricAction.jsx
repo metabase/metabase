@@ -12,7 +12,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                 name: "add-metric",
                 title: "Add a metric",
                 icon: "add",
-                question: () => question.convertToMultiQuery()
+                question: () => question.newQuestion().convertToMultiQuery()
             }
         ];
     }

@@ -12,7 +12,7 @@ import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
+import { loadCard, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
 import { isPK, isFK } from "metabase/lib/types";
@@ -272,9 +272,12 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             , 0);
         }
 
+        const question = new Question(getMetadata(getState()), card);
+        const originalQuestion = new Question(getMetadata(getState()), originalCard);
+
         // clean up the url and make sure it reflects our card state
         dispatch(updateUrl(card, {
-            dirty: isCardDirty(card, originalCard),
+            dirty: question.isDirtyComparedTo(originalQuestion),
             replaceState: true,
             preserveParameters
         }));
@@ -537,7 +540,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
             : (card.id ? card : null);
 
         // Update the card and originalCard before running the actual query
-        dispatch.action(SET_CARD_AND_RUN, { card, originalCard})
+        dispatch.action(SET_CARD_AND_RUN, { card, originalCard })
         dispatch(runQuestionQuery({ shouldUpdateUrl }));
 
         // Load table & database metadata for the current question
@@ -582,7 +585,7 @@ export const updateQuestion = (newQuestion) => {
     return (dispatch, getState) => {
         // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
         // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
-        if (getIsEditing(getState()) && newQuestion.isSaved()) {
+        if (!getIsEditing(getState()) && newQuestion.isSaved()) {
             newQuestion = newQuestion.newQuestion();
         }
 
