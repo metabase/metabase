@@ -82,4 +82,4 @@ if [ ! -z "$RDS_HOSTNAME" ]; then
     export MB_DB_PORT=$RDS_PORT
 fi
 
-exec java -Dfile.encoding=UTF-8 $JAVA_OPTS -jar ./target/uberjar/metabase.jar
+exec java -Dfile.encoding=UTF-8 -XX:+UseCompressedOops $JAVA_OPTS -jar ./target/uberjar/metabase.jar
