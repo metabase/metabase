@@ -5,12 +5,16 @@
             [metabase.query-processor.middleware
              [expand :as ql]
              [add-dimension-projections :as dim-proj]]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.models
              [dimensions :refer [Dimensions]]
              [field-values :refer [FieldValues]]]
             [toucan.db :as db]
             [metabase.test.data.dataset-definitions :as defs]))
+
+(tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections create-remapped-col)
 
 ;;; single column
 (qp-expect-with-all-engines
@@ -90,7 +94,7 @@
    :cols    [(assoc (breakout-col (venues-col :category_id))
                :remapped_to "Foo")
              (aggregate-col :count)
-             (#'dim-proj/create-remapped-col "Foo" (data/format-name "category_id"))]
+             (create-remapped-col "Foo" (data/format-name "category_id"))]
    :native_form true}
   (data/with-data
     (fn []

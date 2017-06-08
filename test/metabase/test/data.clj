@@ -1,6 +1,7 @@
 (ns metabase.test.data
   "Code related to creating and deleting test databases + datasets."
-  (:require [clojure
+  (:require [cheshire.core :as json]
+            [clojure
              [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
@@ -12,7 +13,9 @@
             metabase.driver.h2
             [metabase.models
              [database :refer [Database]]
+             [dimensions :refer [Dimensions]]
              [field :as field :refer [Field]]
+             [field-values :refer [FieldValues]]
              [table :refer [Table]]]
             [metabase.query-processor.interface :as qi]
             [metabase.query-processor.middleware.expand :as ql]
@@ -304,3 +307,30 @@
 
 (defmacro with-data [data-load-fn & body]
   `(call-with-data ~data-load-fn (fn [] ~@body)))
+
+(def  venue-categories
+  (map vector (defs/field-values defs/test-data-map "categories" "name")))
+
+(defn create-venue-category-remapping
+  "Returns a thunk that adds an internal remapping for category_id in
+  the venues table aliased as `REMAPPING-NAME`. Can be used in a
+  `with-data` invocation."
+  [remapping-name]
+  (fn []
+    [(db/insert! Dimensions {:field_id (id :venues :category_id)
+                             :name remapping-name
+                             :type :internal})
+     (db/insert! FieldValues {:field_id (id :venues :category_id)
+                              :values (json/generate-string (range 0 (count venue-categories)))
+                              :human_readable_values (json/generate-string (map first venue-categories))})]))
+
+(defn create-venue-category-fk-remapping
+  "Returns a thunk that adds a FK remapping for category_id in the
+  venues table aliased as `REMAPPING-NAME`. Can be used in a
+  `with-data` invocation."
+  [remapping-name]
+  (fn []
+    [(db/insert! Dimensions {:field_id (id :venues :category_id)
+                             :name remapping-name
+                             :type :external
+                             :human_readable_field_id (id :categories :name)})]))

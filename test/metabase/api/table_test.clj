@@ -1,7 +1,6 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [cheshire.core :as json]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             [metabase
              [driver :as driver]
              [http-client :as http]
@@ -13,7 +12,6 @@
              [database :as database :refer [Database]]
              [dimensions :refer [Dimensions]]
              [field :refer [Field]]
-             [field-values :refer [FieldValues]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :refer [Table]]]
@@ -131,9 +129,6 @@
   (do
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     ((user->client :rasta) :get 403 (str "table/" table-id))))
-
-(def ^:private venue-categories
-  (map vector (defs/field-values defs/test-data-map "categories" "name")))
 
 ;; ## GET /api/table/:id/query_metadata
 (expect
@@ -524,20 +519,14 @@
     :id (id :venues :category_id)
     :name "CATEGORY_ID"
     :values (map-indexed (fn [idx [category]] [idx category]) venue-categories)
-    :dimensions {:name "Foo", :field_id 11, :human_readable_field_id nil, :type "internal"}}
+    :dimensions {:name "Foo", :field_id (id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
    {:id (id :venues :price)
     :table_id (id :venues)
     :name "PRICE"
     :values [[1] [2] [3] [4]]
     :dimensions []}]
   (with-data
-    (fn []
-      [(db/insert! Dimensions {:field_id (id :venues :category_id)
-                               :name "Foo"
-                               :type :internal})
-       (db/insert! FieldValues {:field_id (id :venues :category_id)
-                                :values (json/generate-string (range 0 (count venue-categories)))
-                                :human_readable_values (json/generate-string (map first venue-categories))})])
+    (create-venue-category-remapping "Foo")
     (narrow-fields ["PRICE" "CATEGORY_ID"]
                    ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))
 
@@ -548,17 +537,13 @@
     :id (id :venues :category_id)
     :name "CATEGORY_ID"
     :values []
-    :dimensions {:name "Foo", :field_id 11, :human_readable_field_id (id :categories :name), :type "external"}}
+    :dimensions {:name "Foo", :field_id (id :venues :category_id), :human_readable_field_id (id :categories :name), :type "external"}}
    {:id (id :venues :price)
     :table_id (id :venues)
     :name "PRICE"
     :values [[1] [2] [3] [4]]
     :dimensions []}]
   (with-data
-    (fn []
-      [(db/insert! Dimensions {:field_id (id :venues :category_id)
-                               :name "Foo"
-                               :type :external
-                               :human_readable_field_id (id :categories :name)})])
+    (create-venue-category-fk-remapping "Foo")
     (narrow-fields ["PRICE" "CATEGORY_ID"]
                    ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues))))))
