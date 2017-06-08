@@ -54,6 +54,7 @@ import type {
     ClickObject,
     QueryMode
 } from "metabase/meta/types/Visualization";
+import { MetabaseApi, CardApi } from "metabase/services";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -141,9 +142,11 @@ export default class Question {
      * The query is saved to the `dataset_query` field of the Card object.
      */
     setQuery(newQuery: Query): Question {
-        return this.setCard(
-            assoc(this.card(), "dataset_query", newQuery.datasetQuery())
-        );
+        if (this._card.dataset_query !== newQuery.datasetQuery()) {
+            return this.setCard(
+                assoc(this.card(), "dataset_query", newQuery.datasetQuery())
+            );
+        }
     }
 
     setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
@@ -186,7 +189,7 @@ export default class Question {
     }
     canConvertToMultiQuery(): boolean {
         const query = this.query();
-        return query instanceof StructuredQuery && !query.isBareRows();
+        return query instanceof StructuredQuery && !query.isBareRows() && query.breakouts().length < 2;
     }
     convertToMultiQuery(): Question {
         // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
@@ -214,6 +217,7 @@ export default class Question {
      * These methods provide convenient abstractions and mental mappings for working with questions
      * which are composed of different kinds of metrics (either reusable saved metrics or ad-hoc metrics that are
      * specific to the current question)
+     *
      */
     assertIsMultiQuery(): void {
         if (!this.isMultiQuery()) {
@@ -268,11 +272,60 @@ export default class Question {
         this.assertIsMultiQuery();
         // $FlowFixMe
         const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.removeQueryAtIndex(index));
+        return this.setQuery(multiQuery.removeQueryAtIndex(index))
+    }
+
+    /**
+     * Global breakouts and filters
+     * TODO: Make these support multi-query questions
+     */
+
+    // multiple series can be pivoted
+    breakouts(): Breakout[] {
+        // TODO: real multiple metric persistence
+        const query = this.query();
+        if (query instanceof StructuredQuery) {
+            return query.breakouts();
+        } else {
+            return [];
+        }
+    }
+    breakoutOptions(breakout?: any): DimensionOptions {
+        // TODO: real multiple metric persistence
+        const query = this.query();
+        if (query instanceof StructuredQuery) {
+            return query.breakoutOptions(breakout);
+        } else {
+            return {
+                count: 0,
+                fks: [],
+                dimensions: []
+            };
+        }
+    }
+    canAddBreakout(): boolean {
+        return this.breakouts() === 0;
+    }
+
+    // multiple series can be filtered by shared dimensions
+    filters(): Filter[] {
+        // TODO: real multiple metric persistence
+        const query = this.query();
+        return query instanceof StructuredQuery ? query.filters() : [];
+    }
+    filterOptions(): Dimension[] {
+        // TODO: real multiple metric persistence
+        const query = this.query();
+        return query instanceof StructuredQuery ? query.filterOptions() : [];
+    }
+    canAddFilter(): boolean {
+        return false;
     }
 
     // drill through / actions
     // TODO: a lot of this should be moved to StructuredQuery?
+    // Maybe in general these should be part of the Query interface and this class would just provide shortcuts for those methods
+    // (or maybe it wouldn't provide shortcuts at all?)
 
     summarize(aggregation) {
         const tableMetadata = this.tableMetadata();
@@ -407,8 +460,31 @@ export default class Question {
     getVersionHistory(): Promise<void> {
         return new Promise(() => {});
     }
-    run(): Promise<void> {
-        return new Promise(() => {});
+
+    /**
+     * Runs the query and returns an array containing results for each single query.
+     *
+     * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
+     * This way we benefit from caching and query optimizations done by Metabase backend.
+     */
+    async getResults({ cancelDeferred, isDirty = false, ignoreCache = false }): [any] {
+        const canUseCardApiEndpoint = !isDirty && !this.isMultiQuery() && this.isSaved()
+
+        if (canUseCardApiEndpoint) {
+            const queryParams = {
+                cardId: this.id(),
+                parameters: this.parameters(),
+                ignore_cache: ignoreCache
+            };
+
+            return [await CardApi.query(queryParams, { cancelled: cancelDeferred.promise })]
+        } else {
+            const getDatasetQueryResult = (datasetQuery) =>
+                MetabaseApi.dataset(datasetQuery, cancelDeferred ? {cancelled: cancelDeferred.promise} : {});
+
+            const datasetQueries = this.singleQueries().map(query => query.datasetQuery())
+            return Promise.all(datasetQueries.map(getDatasetQueryResult));
+        }
     }
 
     parameters(): ParameterObject[] {
@@ -421,10 +497,14 @@ export default class Question {
 
     // predicate function that dermines if the question is "dirty" compared to the given question
     isDirtyComparedTo(originalQuestion: Question) {
+        // TODO Atte Keinänen 6/8/17: Reconsider these rules because they don't completely match
+        // the current implementation which uses original_card_id for indicating that question has a lineage
+
         // The rules:
         //   - if it's new, then it's dirty when
         //       1) there is a database/table chosen or
         //       2) when there is any content on the native query
+        //       3) when the query is a MultiDatasetQuery
         //   - if it's saved, then it's dirty when
         //       1) the current card doesn't match the last saved version
 
@@ -439,6 +519,10 @@ export default class Question {
             } else if (
                 this._card.dataset_query.type === "native" &&
                 !_.isEmpty(this._card.dataset_query.native.query)
+            ) {
+                return true;
+            } else if (
+                this._card.dataset_query.type === "multi"
             ) {
                 return true;
             } else {

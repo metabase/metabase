@@ -118,9 +118,10 @@ export default class NativeQuery extends Query { // implements SingleDatabaseQue
         return getIn(this.datasetQuery(), ["native", "query"]) || "";
     }
 
+    // TODO:
     updateQueryText(newQueryText: string): Query {
         return new NativeQuery(
-            this._question,
+            this._originalQuestion,
             chain(this._datasetQuery)
                 .assocIn(["native", "query"], newQueryText)
                 .assocIn(
@@ -137,7 +138,7 @@ export default class NativeQuery extends Query { // implements SingleDatabaseQue
 
     updateCollection(newCollection: string) {
         return new NativeQuery(
-            this._question,
+            this._originalQuestion,
             assocIn(this._datasetQuery, ["native", "collection"], newCollection)
         );
     }

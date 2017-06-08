@@ -111,7 +111,7 @@ export default class StructuredQuery extends Query {
     /* Methods unique to this query type */
 
     reset(): StructuredQuery {
-        return new StructuredQuery(this._question);
+        return new StructuredQuery(this._originalQuestion);
     }
 
     isEditable(): boolean {
@@ -519,7 +519,7 @@ export default class StructuredQuery extends Query {
         args: any[]
     ) {
         return new StructuredQuery(
-            this._question,
+            this._originalQuestion,
             updateIn(this._datasetQuery, ["query"], query =>
                 updateFunction(query, ...args))
         );

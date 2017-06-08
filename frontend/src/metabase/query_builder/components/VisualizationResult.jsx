@@ -41,7 +41,7 @@ const VisualizationResult = ({question, isObjectDetail, navigateToNewCardInsideQ
                 ...question.card(),
                 dataset_query: metricQuery.datasetQuery()
             },
-            data: results[index].data
+            data: results[index] && results[index].data
         }));
 
         return <Visualization

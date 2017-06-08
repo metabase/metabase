@@ -524,7 +524,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
+export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
         const card = Utils.copy(nextCard);
@@ -536,16 +536,14 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
             // This is needed for checking whether the card is in dirty state or not
             : (card.id ? card : null);
 
+        // Update the card and originalCard before running the actual query
+        dispatch.action(SET_CARD_AND_RUN, { card, originalCard})
+        dispatch(runQuestionQuery({ shouldUpdateUrl }));
+
+        // Load table & database metadata for the current question
         dispatch(loadMetadataForCard(card));
-
-        dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }));
-
-        return {
-            card,
-            originalCard
-        };
     };
-});
+};
 
 /**
  * User-triggered events that are handled with this action:
@@ -936,27 +934,19 @@ export const runQuestionQuery = ({
         const question = overrideWithCard ? questionFromCard(overrideWithCard) : getQuestion(getState());
         const originalQuestion = getOriginalQuestion(getState());
 
+
         const cardIsDirty = originalQuestion ? question.isDirtyComparedTo(originalQuestion) : true;
 
         if (shouldUpdateUrl) {
             dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
         }
 
-        // NOTE: Doesn't support multiple queries yet
-        // Use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        // if (card.id != null && !cardIsDirty) {
-        //     CardApi.query({
-        //         cardId: card.id,
-        //         parameters: datasetQuery.parameters,
-        //         ignore_cache: ignoreCache
-        //     }, {cancelled: cancelQueryDeferred.promise}).then(onQuerySuccess, onQueryError);
-        // }
-
         const startTime = new Date();
         const cancelQueryDeferred = defer();
 
-        getQuestionQueryResults(question)
+        question.getResults({ cancelDeferred: cancelQueryDeferred, isDirty: cardIsDirty })
             .then((queryResults) => dispatch(queryCompleted(question.card(), queryResults)))
+            .catch((error) => dispatch(queryErrored(startTime, error)));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", question.query().datasetQuery().type);
 
