@@ -157,11 +157,6 @@ export const getParameters = createSelector(
     (card, parameterValues) => getParametersWithExtras(card, parameterValues)
 );
 
-export const getIsRunnable = createSelector(
-    [getCard, getTableMetadata],
-    (card, tableMetadata) => isCardRunnable(card, tableMetadata)
-)
-
 const getLastRunDatasetQuery = createSelector([getLastRunCard], (card) => card && card.dataset_query);
 const getNextRunDatasetQuery = createSelector([getCard], (card) => card && card.dataset_query);
 
@@ -198,3 +193,5 @@ export const getQuery = createSelector(
     [getQuestion],
     (question) => question && question.query()
 )
+
+export const getIsRunnable = createSelector([getQuestion], (question) => question && question.canRun())

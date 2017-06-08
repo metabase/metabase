@@ -186,12 +186,12 @@ export default class QuestionHeader extends Component {
             onSetCardAttribute
         } = this.props;
 
-        const database = question && question.query().database();
         const card = question.card();
 
         // TODO Atte Keinänen 5/20/17 Add multi-query support to all components that need metadata
-        // This only fetches the table metadata of first available query
-        const tableMetadata = question.query().tableMetadata();
+        // These only fetch the database and table metadata of first available query
+        const tableMetadata = question.singleQueries()[0].tableMetadata();
+        const database = question && question.singleQueries()[0].database();
 
         const SaveNewCardButton = () =>
             <ModalWithTrigger

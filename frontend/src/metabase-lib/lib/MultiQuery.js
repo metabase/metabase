@@ -40,10 +40,10 @@ function createChildQuery(question: Question, datasetQuery: ChildDatasetQuery): 
  * Because each query contained by MultiDatasetQuery should have just a single aggregation, StructuredQueries
  * with two or more aggregations are broken into queries with one of those aggregations in each.
  */
-export function convertToMultiDatasetQuery(datasetQuery: DatasetQuery) {
+export function convertToMultiDatasetQuery(question: Question, datasetQuery: DatasetQuery) {
     const getConvertedQueries = () => {
         if (isStructuredDatasetQuery(datasetQuery)) {
-            const structuredQuery: StructuredQuery = new StructuredQuery(null, datasetQuery);
+            const structuredQuery: StructuredQuery = new StructuredQuery(question, datasetQuery);
             const aggregations = structuredQuery.aggregations();
             const isMultiAggregationQuery = aggregations.length > 1;
 
@@ -56,10 +56,11 @@ export function convertToMultiDatasetQuery(datasetQuery: DatasetQuery) {
                 return aggregations.map((aggregation) => (
                     structuredQuery.clearAggregations().addAggregation(aggregation).datasetQuery()
                 ));
+            } else {
+                return [datasetQuery];
             }
         } else {
-            // Just bypass the native/structured query
-            return [datasetQuery];
+            throw new Error("Native queries can't yet be converted to MultiDatasetQuery")
         }
     }
 
