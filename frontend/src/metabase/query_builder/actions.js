@@ -524,7 +524,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
+export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
         const card = Utils.copy(nextCard);
@@ -536,16 +536,14 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
             // This is needed for checking whether the card is in dirty state or not
             : (card.id ? card : null);
 
+        // Update the card and originalCard before running the actual query
+        dispatch.action(SET_CARD_AND_RUN, { card, originalCard})
+        dispatch(runQuestionQuery({ shouldUpdateUrl }));
+
+        // Load table & database metadata for the current question
         dispatch(loadMetadataForCard(card));
-
-        dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl }));
-
-        return {
-            card,
-            originalCard
-        };
     };
-});
+};
 
 /**
  * User-triggered events that are handled with this action:
@@ -935,6 +933,7 @@ export const runQuestionQuery = ({
 
         const question = overrideWithCard ? questionFromCard(overrideWithCard) : getQuestion(getState());
         const originalQuestion = getOriginalQuestion(getState());
+
 
         const cardIsDirty = originalQuestion ? question.isDirtyComparedTo(originalQuestion) : true;
 

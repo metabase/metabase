@@ -498,10 +498,14 @@ export default class Question {
 
     // predicate function that dermines if the question is "dirty" compared to the given question
     isDirtyComparedTo(originalQuestion: Question) {
+        // TODO Atte Keinänen 6/8/17: Reconsider these rules because they don't completely match
+        // the current implementation which uses original_card_id for indicating that question has a lineage
+
         // The rules:
         //   - if it's new, then it's dirty when
         //       1) there is a database/table chosen or
         //       2) when there is any content on the native query
+        //       3) when the query is a MultiDatasetQuery
         //   - if it's saved, then it's dirty when
         //       1) the current card doesn't match the last saved version
 
@@ -516,6 +520,10 @@ export default class Question {
             } else if (
                 this._card.dataset_query.type === "native" &&
                 !_.isEmpty(this._card.dataset_query.native.query)
+            ) {
+                return true;
+            } else if (
+                this._card.dataset_query.type === "multi"
             ) {
                 return true;
             } else {
