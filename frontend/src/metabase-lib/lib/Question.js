@@ -43,7 +43,6 @@ import type {
     ParameterId,
     ParameterValues
 } from "metabase/meta/types/Parameter";
-import type { DimensionOptions } from "metabase/meta/types/Metadata";
 import type {
     DatasetQuery,
     Card as CardObject,

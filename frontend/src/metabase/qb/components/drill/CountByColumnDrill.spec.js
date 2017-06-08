@@ -7,7 +7,7 @@ import {
     clickedCategoryHeader,
     MAIN_TABLE_ID,
     MAIN_CATEGORY_FIELD_ID
-} from "../__support__/fixtures";
+} from "metabase/__support__/fixtures";
 
 describe("CountByColumnDrill", () => {
     it("should not be valid for top level actions", () => {

@@ -19,6 +19,7 @@ export const MAIN_FK_FIELD_ID = 115;
 export const MAIN_METRIC_ID = 116;
 
 export const FOREIGN_PK_FIELD_ID = 121;
+export const FOREIGN_TEXT_FIELD_ID = 122;
 
 export const state = {
     metadata: {
@@ -47,7 +48,10 @@ export const state = {
                 id: FOREIGN_TABLE_ID,
                 db_id: 100,
                 display_name: "Mock Foreign Table",
-                fields: [FOREIGN_PK_FIELD_ID]
+                fields: [
+                    FOREIGN_PK_FIELD_ID,
+                    FOREIGN_TEXT_FIELD_ID
+                ]
             }
         },
         fields: {
@@ -88,9 +92,15 @@ export const state = {
             [FOREIGN_PK_FIELD_ID]: {
                 id: FOREIGN_PK_FIELD_ID,
                 table_id: FOREIGN_TABLE_ID,
-                display_name: "Mock PK Field",
+                display_name: "Mock Foreign PK Field",
                 base_type: TYPE.Integer,
                 special_type: TYPE.PK
+            },
+            [FOREIGN_TEXT_FIELD_ID]: {
+                id: FOREIGN_TEXT_FIELD_ID,
+                table_id: FOREIGN_TABLE_ID,
+                display_name: "Mock Foreign Text Field",
+                base_type: TYPE.Text
             }
         },
         metrics: {

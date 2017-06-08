@@ -7,7 +7,7 @@ import {
     clickedFloatHeader,
     MAIN_TABLE_ID,
     MAIN_FLOAT_FIELD_ID
-} from "../__support__/fixtures";
+} from "metabase/__support__/fixtures";
 
 describe("SummarizeColumnDrill", () => {
     it("should not be valid for top level actions", () => {

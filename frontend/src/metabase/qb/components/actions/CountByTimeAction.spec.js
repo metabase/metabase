@@ -5,7 +5,7 @@ import {
     questionNoFields,
     MAIN_TABLE_ID,
     MAIN_DATE_FIELD_ID
-} from "../__support__/fixtures";
+} from "metabase/__support__/fixtures";
 
 import CountByTimeAction from "./CountByTimeAction";
 

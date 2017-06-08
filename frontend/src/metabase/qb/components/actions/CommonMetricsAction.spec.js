@@ -4,7 +4,7 @@ import {
     makeQuestion,
     MAIN_TABLE_ID,
     MAIN_METRIC_ID
-} from "../__support__/fixtures";
+} from "metabase/__support__/fixtures";
 
 import CommonMetricsAction from "./CommonMetricsAction";
 
