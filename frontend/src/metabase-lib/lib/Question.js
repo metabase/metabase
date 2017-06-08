@@ -190,7 +190,7 @@ export default class Question {
     }
     canConvertToMultiQuery(): boolean {
         const query = this.query();
-        return query instanceof StructuredQuery && !query.isBareRows();
+        return query instanceof StructuredQuery && !query.isBareRows() && query.breakouts().length < 2;
     }
     convertToMultiQuery(): Question {
         // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
