@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { getParametersWithExtras } from "metabase/meta/Card";
 
-import { isCardDirty, isCardRunnable } from "metabase/lib/card";
+import { isCardDirty } from "metabase/lib/card";
 import { parseFieldTargetId } from "metabase/lib/query_time";
 import { isPK } from "metabase/lib/types";
 import Query from "metabase/lib/query";

@@ -7,19 +7,29 @@ import type { DatasetQuery } from "metabase/meta/types/Card";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
 import type { ActionClick } from "metabase-lib/lib/Action";
+import { memoize } from "metabase-lib/lib/utils";
 
 /**
  * An abstract class for all query types (StructuredQuery, NativeQuery and MultiQuery)
  */
 export default class Query {
     _metadata: Metadata;
-    _question: Question;
+
+    /**
+     * Note that Question is not always in sync with _datasetQuery,
+     * calling question() will always merge the latest _datasetQuery to the question object
+     */
+    _originalQuestion: Question;
     _datasetQuery: DatasetQuery;
 
     constructor(question: Question, datasetQuery: DatasetQuery) {
         this._metadata = question._metadata;
-        this._question = question;
         this._datasetQuery = datasetQuery;
+        this._originalQuestion = question;
+    }
+
+    @memoize question(): Question {
+        return this._originalQuestion.setQuery(this);
     }
 
     isStructured(): boolean {

@@ -6,7 +6,6 @@ import { connect } from "react-redux";
 
 import cx from "classnames";
 import _ from "underscore";
-import { getIn } from "icepick";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";

@@ -76,7 +76,7 @@ export default class SavedMetricSelector extends Component {
     removeMetric = (metricWrapper) => {
         const { addedMetrics, currentQuestion } = this.state;
 
-        const metrics = currentQuestion.metrics();
+        const metrics = currentQuestion.singleQueries();
         const index = _.findIndex(metrics, (metric) => metric.equalsToMetric(metricWrapper));
 
         if (index !== -1) {

@@ -134,7 +134,7 @@ export default class MultiQuery extends Query {
      * Wrap individual queries to Query objects for a convenient access
      */
     @memoize childQueries(): Query[] {
-        return this._multiDatasetQuery.queries.map((datasetQuery) => createChildQuery(this._question, datasetQuery));
+        return this._multiDatasetQuery.queries.map((datasetQuery) => createChildQuery(this._originalQuestion, datasetQuery));
     }
 
     setQueryAtIndex(index: number, datasetQuery: ChildDatasetQuery): MultiQuery {
@@ -159,7 +159,7 @@ export default class MultiQuery extends Query {
 
     // TODO Should this accept just a Query object instead or not?
     addQuery(datasetQuery: ChildDatasetQuery): MultiQuery {
-        return this._updateQueries([...this.childQueries(), createChildQuery(this._question, datasetQuery)]);
+        return this._updateQueries([...this.childQueries(), createChildQuery(this._originalQuestion, datasetQuery)]);
     }
 
     /**
@@ -171,8 +171,8 @@ export default class MultiQuery extends Query {
 
     /* Internal methods */
     _updateQueries(queries: Query[]) {
-        return new MultiQuery(this._question, {
-            ...MULTI_QUERY_TEMPLATE,
+        return new MultiQuery(this._originalQuestion, {
+            ...this.datasetQuery(),
             queries: queries.map((query) => query.datasetQuery())
         });
     }

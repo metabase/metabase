@@ -538,7 +538,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
 
         dispatch(loadMetadataForCard(card));
 
-        dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }));
+        dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl }));
 
         return {
             card,
@@ -942,21 +942,12 @@ export const runQuestionQuery = ({
             dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
         }
 
-        // NOTE: Doesn't support multiple queries yet
-        // Use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        // if (card.id != null && !cardIsDirty) {
-        //     CardApi.query({
-        //         cardId: card.id,
-        //         parameters: datasetQuery.parameters,
-        //         ignore_cache: ignoreCache
-        //     }, {cancelled: cancelQueryDeferred.promise}).then(onQuerySuccess, onQueryError);
-        // }
-
         const startTime = new Date();
         const cancelQueryDeferred = defer();
 
-        getQuestionQueryResults(question)
+        question.getResults({ cancelDeferred: cancelQueryDeferred, isDirty: cardIsDirty })
             .then((queryResults) => dispatch(queryCompleted(question.card(), queryResults)))
+            .catch((error) => dispatch(queryErrored(startTime, error)));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", question.query().datasetQuery().type);
 

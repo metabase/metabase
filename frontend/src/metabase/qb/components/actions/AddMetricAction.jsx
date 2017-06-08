@@ -1,5 +1,4 @@
 /* @flow */
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
 
 import type {
     ClickAction,
@@ -7,8 +6,6 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 export default ({ question }: ClickActionProps): ClickAction[] => {
-    const isBareRows = question.query() instanceof StructuredQuery && question.query().isBareRows()
-
     if (question.canConvertToMultiQuery()) {
         return [
             {
