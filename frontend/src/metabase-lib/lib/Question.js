@@ -1,19 +1,22 @@
 /* @flow weak */
 
 import Query from "./Query";
-import Dimension from "./Dimension";
 
 import Metadata from "./metadata/Metadata";
 import Metric from "./metadata/Metric";
 import Table from "./metadata/Table";
 import Field from "./metadata/Field";
 
-import Breakout from "./query/Breakout";
-import Filter from "./query/Filter";
-
-import MultiQuery, { isMultiDatasetQuery, convertToMultiDatasetQuery } from "./MultiQuery";
-import StructuredQuery, { isStructuredDatasetQuery } from "metabase-lib/lib/StructuredQuery";
-import NativeQuery, { isNativeDatasetQuery } from "metabase-lib/lib/NativeQuery";
+import MultiQuery, {
+    isMultiDatasetQuery,
+    convertToMultiDatasetQuery
+} from "./MultiQuery";
+import StructuredQuery, {
+    isStructuredDatasetQuery
+} from "metabase-lib/lib/StructuredQuery";
+import NativeQuery, {
+    isNativeDatasetQuery
+} from "metabase-lib/lib/NativeQuery";
 
 import { memoize } from "metabase-lib/lib/utils";
 import Utils from "metabase/lib/utils";
@@ -176,7 +179,6 @@ export default class Question {
         return this._card && this._card.can_write;
     }
 
-
     /**
      * Conversion from a single query -centric question to a multi-query question
      */
@@ -189,15 +191,22 @@ export default class Question {
     }
     convertToMultiQuery(): Question {
         // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
-        const multiDatasetQuery = convertToMultiDatasetQuery(this, this._card.dataset_query);
-        return this.setCard(assoc(this._card, "dataset_query", multiDatasetQuery));
+        const multiDatasetQuery = convertToMultiDatasetQuery(
+            this,
+            this._card.dataset_query
+        );
+        return this.setCard(
+            assoc(this._card, "dataset_query", multiDatasetQuery)
+        );
     }
 
     /**
      * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
      */
     singleQueries(): Query[] {
-        return this.query().isMulti() ? this.query().childQueries() : [this.query()];
+        return this.query().isMulti()
+            ? this.query().childQueries()
+            : [this.query()];
     }
 
     /**
@@ -209,7 +218,9 @@ export default class Question {
      */
     assertIsMultiQuery(): void {
         if (!this.isMultiQuery()) {
-            throw new Error("Trying to use a metric method for a Question that hasn't been converted to a multi-query format")
+            throw new Error(
+                "Trying to use a metric method for a Question that hasn't been converted to a multi-query format"
+            );
         }
     }
 
@@ -246,62 +257,19 @@ export default class Question {
         this.assertIsMultiQuery();
         // $FlowFixMe
         const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.addQuery(datasetQuery))
+        return this.setQuery(multiQuery.addQuery(datasetQuery));
     }
     updateMetric(index: number, metric: Query): Question {
         this.assertIsMultiQuery();
         // $FlowFixMe
         const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.setQueryAtIndex(index, metric))
+        return this.setQuery(multiQuery.setQueryAtIndex(index, metric));
     }
     removeMetric(index: number): Question {
         this.assertIsMultiQuery();
         // $FlowFixMe
         const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.removeQueryAtIndex(index))
-    }
-
-    // multiple series can be pivoted
-    // $FlowFixMe
-    breakouts(): Breakout[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        if (query instanceof StructuredQuery) {
-            return query.breakouts();
-        } else {
-            return [];
-        }
-    }
-    breakoutOptions(breakout?: any): DimensionOptions {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        if (query instanceof StructuredQuery) {
-            return query.breakoutOptions(breakout);
-        } else {
-            return {
-                count: 0,
-                fks: [],
-                dimensions: []
-            };
-        }
-    }
-    canAddBreakout(): boolean {
-        return this.breakouts() === 0;
-    }
-
-    // multiple series can be filtered by shared dimensions
-    filters(): Filter[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        return query instanceof StructuredQuery ? query.filters() : [];
-    }
-    filterOptions(): Dimension[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        return query instanceof StructuredQuery ? query.filterOptions() : [];
-    }
-    canAddFilter(): boolean {
-        return false;
+        return this.setQuery(multiQuery.removeQueryAtIndex(index));
     }
 
     // drill through / actions

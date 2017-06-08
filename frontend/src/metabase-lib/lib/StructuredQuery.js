@@ -10,6 +10,8 @@
  */
 import Query from "./Query";
 
+import Metric from "./metadata/Metric";
+
 import * as Q from "metabase/lib/query/query";
 import Q_deprecated, {
     AggregationClause,
@@ -29,7 +31,10 @@ import type {
     LimitClause,
     OrderBy
 } from "metabase/meta/types/Query";
-import type { DatasetQuery, StructuredDatasetQuery } from "metabase/meta/types/Card";
+import type {
+    DatasetQuery,
+    StructuredDatasetQuery
+} from "metabase/meta/types/Card";
 import type {
     TableMetadata,
     DimensionOptions
@@ -56,10 +61,11 @@ const STRUCTURED_QUERY_TEMPLATE = {
 };
 
 export function isStructuredDatasetQuery(datasetQuery: DatasetQuery) {
-   return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
+    return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
 }
 
-export default class StructuredQuery extends Query { // implements SingleDatabaseQuery
+export default class StructuredQuery extends Query {
+    // implements SingleDatabaseQuery
     // For Flow type completion
     _structuredDatasetQuery: StructuredDatasetQuery;
 

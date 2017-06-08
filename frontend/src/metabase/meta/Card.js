@@ -11,7 +11,7 @@ import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
 import type { StructuredQuery, NativeQuery, TemplateTag } from "metabase/meta/types/Query";
-import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "metabase/meta/types/Card";
+import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery, MultiDatasetQuery } from "metabase/meta/types/Card";
 import type { Parameter, ParameterMapping, ParameterValues } from "metabase/meta/types/Parameter";
 import type { Metadata, TableMetadata } from "metabase/meta/types/Metadata";
 
@@ -42,9 +42,9 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     }
 };
 
-export const MULTI_QUERY_TEMPLATE: NativeDatasetQuery = {
+export const MULTI_QUERY_TEMPLATE: MultiDatasetQuery = {
     type: "multi",
-    dataset_queries: []
+    queries: []
 };
 
 export function isStructured(card: Card): bool {
