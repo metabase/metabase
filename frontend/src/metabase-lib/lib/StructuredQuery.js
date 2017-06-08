@@ -321,23 +321,21 @@ export default class StructuredQuery extends Query {
             Dimension.parseMBQL(breakout, this._metadata));
     }
     metricDimensions() {
-        return this.aggregations()
-            .entries()
-            .map(
-                ([index, aggregation]) =>
-                    new AggregationDimension(
-                        null,
-                        [index],
-                        this._metadata,
-                        aggregation[0]
-                    )
-            );
+        return this.aggregations().map(
+            (aggregation, index) =>
+                new AggregationDimension(
+                    null,
+                    [index],
+                    this._metadata,
+                    aggregation[0]
+                )
+        );
     }
 
     sorts(): OrderBy[] {
         return Q.getOrderBys(this.query());
     }
-    sortOptions(sort, fieldFilter): any[] {
+    sortOptions(sort, fieldFilter): DimensionOptions {
         let sortOptions = { count: 0, dimensions: [], fks: [] };
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
         if (this.isBareRows()) {
