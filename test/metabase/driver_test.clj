@@ -36,3 +36,22 @@
 (expect
   :type/*
   (driver/values->base-type [(Object.)]))
+
+;; Should work with initial nils even if sequence is lazy
+(expect
+  [:type/Integer true]
+  (let [realized-lazy-seq? (atom false)]
+    [(driver/values->base-type (lazy-cat [nil nil nil]
+                                (do (reset! realized-lazy-seq? true)
+                                    [4 5 6])))
+     @realized-lazy-seq?]))
+
+;; but it should respect laziness and not keep scanning after it finds 100 values
+(expect
+  [:type/Integer false]
+  (let [realized-lazy-seq? (atom false)]
+    [(driver/values->base-type (lazy-cat [1 2 3]
+                                         (repeat 1000 nil)
+                                         (do (reset! realized-lazy-seq? true)
+                                             [4 5 6])))
+     @realized-lazy-seq?]))
