@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
@@ -8,16 +10,31 @@ import {
     setQuerySourceTable
 } from 'metabase/query_builder/actions'
 
-import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+import { getMetadata, getDatabasesList } from "metabase/selectors/metadata"
+
+import type {
+    DatabaseMetadata,
+    TableMetadata
+} from "metabase/meta/types/Metadata"
+
+import type { DatabaseId } from "metabase/meta/types/Database"
+import type { TableId } from "metabase/meta/types/Table"
+
+import StructuredQuery from "metabase-lib/lib/StructuredQuery"
 
 import {
     getQuery,
     getTables,
-    getTableMetadata,
 } from "../selectors";
 
 type Props = {
     query: StructuredQuery,
+    databases: DatabaseMetadata[],
+    tables: TableMetadata[],
+
+    fetchDatabases: () => void,
+    setQueryDatabase: (id: DatabaseId) => void,
+    setQuerySourceTable: (id: TableId) => void,
 }
 
 class NewQuestionOptions extends Component {
@@ -36,10 +53,8 @@ class NewQuestionOptions extends Component {
             tables
         } = this.props
 
-        const database = query.database()
-        const table = query.table()
-
-        window.query = query
+        const database = query && query.database()
+        const table = query && query.table()
 
         return (
             <div className="wrapper wrapper--trim">
@@ -63,7 +78,10 @@ class NewQuestionOptions extends Component {
                         <h2>Pick a table</h2>
                         <ol>
                             { tables.map(table =>
-                                <li onClick={() => setQuerySourceTable(table.id)}>
+                                <li
+                                    key={table.id}
+                                    onClick={() => setQuerySourceTable(table.id)}
+                                >
                                     {table.display_name}
                                 </li>
                             )}
@@ -73,7 +91,7 @@ class NewQuestionOptions extends Component {
                 { table && (
                     <ol>
                         { table.aggregation_options.filter(option => option.short !== "raw").map(option =>
-                        <li>
+                        <li key={option.short}>
                             {option.name}
                         </li>
                         )}

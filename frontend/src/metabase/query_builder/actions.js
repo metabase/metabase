@@ -241,7 +241,6 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         } else {
             // we are starting a new/empty card
-            const databaseId = (options.db) ? parseInt(options.db) : (databasesList && databasesList.length > 0 && databasesList[0].id);
 
             card = startNewCard("query");
 
