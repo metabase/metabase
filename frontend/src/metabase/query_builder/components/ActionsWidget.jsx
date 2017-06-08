@@ -57,7 +57,9 @@ export default class ActionsWidget extends Component {
 
     handleMouseStoppedMoving = _.debounce(
         () => {
-            this.setState({ isVisible: false });
+            if (this.state.isVisible) {
+                this.setState({ isVisible: false });
+            }
         },
         1000
     );
