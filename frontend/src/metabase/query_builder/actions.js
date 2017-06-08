@@ -537,7 +537,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
             : (card.id ? card : null);
 
         // Update the card and originalCard before running the actual query
-        dispatch.action(SET_CARD_AND_RUN, { card, originalCard})
+        dispatch.action(SET_CARD_AND_RUN, { card, originalCard })
         dispatch(runQuestionQuery({ shouldUpdateUrl }));
 
         // Load table & database metadata for the current question

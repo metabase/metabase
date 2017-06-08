@@ -43,6 +43,7 @@ export default class SavedMetricSelector extends Component {
         getQuestionQueryResults(updatedQuestion)
             .then((newResults) => {
                 // TODO: Should the display type be automatically updated when adding a metric? Probably it should?
+                // Requires more elaborate listing of scenarios where it could possibly change
                 updatedQuestion.setDisplay(getDisplayTypeForCard(updatedQuestion.card(), newResults));
 
                 this.setState({

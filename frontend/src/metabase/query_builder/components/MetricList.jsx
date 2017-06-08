@@ -21,7 +21,7 @@ const SavedMetricSelectorModalContent = ({ onClose, ...props }) =>
 
 // TODO: Containerize this component in order to reduce the props passing in QB
 const MetricList = ({...props}) => {
-    const { question, setDatasetQuery, hideAddButton, hideClearButton } = props;
+    const { question, updateQuestion, hideAddButton, hideClearButton } = props;
 
     const metrics = question.singleQueries();
     const metricColors = getCardColors(question.card());
@@ -54,7 +54,7 @@ const MetricList = ({...props}) => {
                     question={question}
                     metric={metric}
                     metricIndex={index}
-                    setDatasetQuery={setDatasetQuery}
+                    updateQuestion={updateQuestion}
                     clearable={metricsAreRemovable}
                     color={metricColors[index]}
                 />

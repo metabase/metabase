@@ -37,8 +37,8 @@ export default class MetricWidget extends Component {
     // };
 
     removeMetric = () => {
-        const { question, metricIndex, setDatasetQuery } = this.props;
-        setDatasetQuery(question.removeMetric(metricIndex).datasetQuery());
+        const { question, metricIndex, updateQuestion } = this.props;
+        updateQuestion(question.removeMetric(metricIndex));
     }
 
     open() {
