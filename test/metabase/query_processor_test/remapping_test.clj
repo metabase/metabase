@@ -59,14 +59,14 @@
             ["BCD Tofu House" 2 "Korean"]]
    :columns [(:name (venues-col :name))
              (:name (venues-col :price))
-             "NAME_2"]
+             (data/format-name "name_2")]
    :cols    [(venues-col :name)
              (venues-col :price)
              (assoc (categories-col :name)
                :fk_field_id (data/id :venues :category_id)
                :display_name "Foo"
-               :name "NAME_2"
-               :remapped_from "CATEGORY_ID"
+               :name (data/format-name "name_2")
+               :remapped_from (data/format-name "category_id")
                :schema_name nil)]
    :native_form true}
   (data/with-data
@@ -76,4 +76,4 @@
            (ql/limit 5))
          booleanize-native-form
          (format-rows-by [int str int double double int str])
-         (select-columns #{"NAME" "PRICE" "NAME_2"}))))
+         (select-columns (set (map data/format-name ["name" "price" "name_2"]))))))
