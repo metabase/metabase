@@ -7,8 +7,8 @@
 
 ;; make sure that `infer-column-types` can still infer types even if the initial value(s) are `nil` (#4256)
 (expect
-  [{:name "a", :base_type :type/Integer}
-   {:name "b", :base_type :type/Integer}]
+  [{:name "a", :display_name "A", :base_type :type/Integer}
+   {:name "b", :display_name "B", :base_type :type/Integer}]
   (:cols (infer-column-types {:columns [:a :b], :rows [[1 nil]
                                                        [2 nil]
                                                        [3 nil]
