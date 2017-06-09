@@ -1,3 +1,5 @@
+/* @flow */
+
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
@@ -12,7 +14,7 @@ import ColumnItem from 'metabase/admin/datamodel/components/database/ColumnItem'
 import Icon from 'metabase/components/Icon'
 import Card from '../components/Card'
 
-class TableLanding extends Component {
+export class TableLanding extends Component {
     state = {
         editing: false
     }
@@ -117,5 +119,8 @@ const mapStateToProps = (state, { params }) => ({
 })
 
 export default withBreadcrumbs(
-    connect(mapStateToProps,{ fetchTableMetadata })(TableLanding)
+    connect(
+        mapStateToProps,
+        { fetchTableMetadata }
+    )(TableLanding)
 )
