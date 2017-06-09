@@ -120,6 +120,7 @@ export default class SavedMetricSelector extends Component {
         });
     };
 
+    // TODO Atte Keinänen 6/8/17: Consider moving the filtering logic to Redux selectors
     filteredMetrics = () => {
         const { searchValue, initialMetrics, currentQuestion } = this.state;
 

@@ -175,7 +175,17 @@ export default class MultiQuery extends Query {
         const firstQuery = this.childQueries()[0]
 
         if (firstQuery instanceof StructuredQuery && firstQuery.breakouts().length === 1) {
-            return Dimension.parseMBQL(firstQuery.breakouts()[0]);
+            return Dimension.parseMBQL(firstQuery.breakouts()[0]).constructor;
+        } else {
+            throw new Error("Cannot infer the shared dimension from the first query of MultiQuery")
+        }
+    }
+
+    sharedDimensionBaseMBQL(): typeof Dimension {
+        const firstQuery = this.childQueries()[0]
+
+        if (firstQuery instanceof StructuredQuery && firstQuery.breakouts().length === 1) {
+            return firstQuery.breakouts()[0];
         } else {
             throw new Error("Cannot infer the shared dimension from the first query of MultiQuery")
         }

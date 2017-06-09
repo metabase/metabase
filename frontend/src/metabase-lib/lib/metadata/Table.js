@@ -35,6 +35,10 @@ export default class Table extends Base {
         return this.fields.map(field => field.dimension());
     }
 
+    dateFields(): Field[] {
+        return this.fields.filter(field => field.isDate());
+    }
+
     aggregations() {
         return this.aggregation_options || [];
     }

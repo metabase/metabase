@@ -55,6 +55,7 @@ import type {
     QueryMode
 } from "metabase/meta/types/Visualization";
 import { MetabaseApi, CardApi } from "metabase/services";
+import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -228,9 +229,15 @@ export default class Question {
         }
     }
 
-    availableSavedMetrics(): Metric[] {
+    @memoize availableSavedMetrics(): Metric[] {
         this.assertIsMultiQuery();
-        return this._metadata.metricsList();
+        // $FlowFixMe
+        const multiQuery: MultiQuery = this.query();
+        const dimensionType = multiQuery.sharedDimensionType();
+
+        return this._metadata.metricsList().filter(
+            (metric) => metric.isCompatibleWithBreakoutDimension(dimensionType)
+        );
     }
     canAddMetric(): boolean {
         this.assertIsMultiQuery();
@@ -246,16 +253,37 @@ export default class Question {
         return multiQuery.childQueries().length > 1;
     }
     addSavedMetric(metric: Metric): Question {
-        return this.addMetric(
-            ({
-                type: "query",
-                database: metric.table.db.id,
-                query: {
-                    source_table: metric.table.id,
-                    aggregation: [["METRIC", metric.id]]
-                }
-            }: StructuredDatasetQueryObject)
-        );
+        this.assertIsMultiQuery();
+        // can't remove last metric
+        // $FlowFixMe
+        const multiQuery: MultiQuery = this.query();
+
+        // NOTE: Would be nice to have a proper API in metabase-lib for deriving a new breakout
+        // based on an existing breakout / datetime dimension
+        if (multiQuery.sharedDimensionType() === DatetimeFieldDimension) {
+            const breakout = [
+                "datetime-field",
+                metric.table.dateFields()[0].dimension().mbql(),
+                "as",
+                // use the same granularity as in other queries
+                multiQuery.sharedDimensionBaseMBQL()[3]
+            ]
+
+            return this.addMetric(
+                ({
+                    type: "query",
+                    database: metric.table.db.id,
+                    query: {
+                        source_table: metric.table.id,
+                        aggregation: [["METRIC", metric.id]],
+                        breakout
+                    }
+                }: StructuredDatasetQueryObject)
+            );
+        } else {
+            throw new Error("Can't currently add a metric a question with a non-datetime breakout")
+        }
+
     }
     addMetric(datasetQuery: StructuredDatasetQueryObject): Question {
         this.assertIsMultiQuery();
