@@ -61,7 +61,7 @@ export default class SegmentForm extends Component {
     }
 
     render() {
-        const { fields: { id, name, description, definition, revision_message }, segment, tableMetadata, handleSubmit, previewSummary } = this.props;
+        const { fields: { id, name, description, definition, revision_message }, segment, metadata, tableMetadata, handleSubmit, previewSummary } = this.props;
 
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
@@ -79,6 +79,7 @@ export default class SegmentForm extends Component {
                                 features={{
                                     filter: true
                                 }}
+                                metadata={metadata}
                                 tableMetadata={{
                                     ...tableMetadata,
                                     segments: null
