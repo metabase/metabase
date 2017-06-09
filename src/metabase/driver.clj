@@ -283,7 +283,7 @@
   []
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
-    (require ns-symb)))
+    (require ns-symb :reload)))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
