@@ -59,6 +59,9 @@ import { push } from "react-router-redux";
 import { MetabaseApi } from "metabase/services";
 import QuestionBuilder from "metabase/query_builder/containers/QuestionBuilder";
 
+import NewQuestionBar from "metabase/query_builder/containers/NewQuestionBar";
+import NewQuestionOptions from "metabase/query_builder/containers/NewQuestionOptions";
+
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
 
@@ -220,7 +223,7 @@ export default class QueryBuilder extends Component {
 
 class LegacyQueryBuilder extends Component {
     render() {
-        const { query, card, isDirty, databases, uiControls, mode } = this.props;
+        const { query, card, isDirty, databases, uiControls, mode, isNew } = this.props;
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -241,23 +244,31 @@ class LegacyQueryBuilder extends Component {
 
                     <div id="react_qb_editor" className="z2 hide sm-show">
                         { query.isNative() ?
-                            <NativeQueryEditor
-                                {...this.props}
-                                isOpen={!card.dataset_query.native.query || isDirty}
-                                datasetQuery={card && card.dataset_query}
-                            />
-                        : query.isStructured() ?
-                            <div className="wrapper">
-                                <GuiQueryEditor
+                                <NativeQueryEditor
                                     {...this.props}
+                                    isOpen={!card.dataset_query.native.query || isDirty}
                                     datasetQuery={card && card.dataset_query}
                                 />
+                        : query.isStructured() ?
+                            <div className="wrapper">
+                                { isNew
+                                        ?  <NewQuestionBar />
+                                        : (
+                                            <GuiQueryEditor
+                                                {...this.props}
+                                                datasetQuery={card && card.dataset_query}
+                                            />
+                                        )
+                                }
                             </div>
                         : null }
                     </div>
 
                     <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        <QueryVisualization {...this.props} className="full wrapper mb2 z1" />
+                        { isNew
+                            ? <NewQuestionOptions />
+                            : <QueryVisualization {...this.props} className="full wrapper mb2 z1" />
+                        }
                     </div>
 
                     { ModeFooter &&

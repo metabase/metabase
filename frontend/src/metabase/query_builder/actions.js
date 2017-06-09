@@ -245,9 +245,8 @@ export const initializeQB = (location, params) => {
 
         } else {
             // we are starting a new/empty card
-            const databaseId = (options.db) ? parseInt(options.db) : (databasesList && databasesList.length > 0 && databasesList[0].id);
 
-            card = startNewCard("query", databaseId);
+            card = startNewCard("query");
 
             // initialize parts of the query based on optional parameters supplied
             if (options.table != undefined && card.dataset_query.query) {
