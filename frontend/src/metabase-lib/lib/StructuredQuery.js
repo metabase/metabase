@@ -60,11 +60,11 @@ const STRUCTURED_QUERY_TEMPLATE = {
     }
 };
 
-export function isStructuredDatasetQuery(datasetQuery: DatasetQuery) {
-    return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
-}
-
 export default class StructuredQuery extends Query {
+    static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
+        return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
+    }
+
     // implements SingleDatabaseQuery
     // For Flow type completion
     _structuredDatasetQuery: StructuredDatasetQuery;
@@ -81,12 +81,8 @@ export default class StructuredQuery extends Query {
 
     /* Query superclass methods */
 
-    isStructured(): boolean {
-        return true;
-    }
-
     canRun() {
-        return true;
+        return Q_deprecated.canRun(this.query());
     }
 
     /* SingleDatabaseQuery methods */
@@ -119,15 +115,14 @@ export default class StructuredQuery extends Query {
     }
 
     query(): StructuredQueryObject {
-        // $FlowFixMe
-        return this._datasetQuery.query;
+        return this._structuredDatasetQuery.query;
     }
 
     // legacy
     tableMetadata(): ?TableMetadata {
-        if (this.isStructured()) {
-            // $FlowFixMe
-            return this._metadata.tables[this._datasetQuery.query.source_table];
+        const sourceTableId = this._structuredDatasetQuery.query.source_table;
+        if (sourceTableId != null) {
+            return this._metadata.tables[sourceTableId];
         }
     }
 
@@ -189,43 +184,41 @@ export default class StructuredQuery extends Query {
         return Q.isBareRows(this.query());
     }
 
-    aggregationName(index: number = 0): string {
-        if (this.isStructured()) {
-            const aggregation = this.aggregations()[index];
-            if (NamedClause.isNamed(aggregation)) {
-                return NamedClause.getName(aggregation);
-            } else if (AggregationClause.isCustom(aggregation)) {
-                return formatExpression(aggregation, {
-                    tableMetadata: this.tableMetadata(),
-                    customFields: this.expressions()
-                });
-            } else if (AggregationClause.isMetric(aggregation)) {
-                const metricId = AggregationClause.getMetric(aggregation);
-                const metric = this._metadata.metrics[metricId];
-                if (metric) {
-                    return metric.name;
-                }
-            } else {
-                const selectedAggregation = getAggregator(
-                    AggregationClause.getOperator(aggregation)
+    aggregationName(index: number = 0): ?string {
+        const aggregation = this.aggregations()[index];
+        if (NamedClause.isNamed(aggregation)) {
+            return NamedClause.getName(aggregation);
+        } else if (AggregationClause.isCustom(aggregation)) {
+            return formatExpression(aggregation, {
+                tableMetadata: this.tableMetadata(),
+                customFields: this.expressions()
+            });
+        } else if (AggregationClause.isMetric(aggregation)) {
+            const metricId = AggregationClause.getMetric(aggregation);
+            const metric = this._metadata.metrics[metricId];
+            if (metric) {
+                return metric.name;
+            }
+        } else {
+            const selectedAggregation = getAggregator(
+                AggregationClause.getOperator(aggregation)
+            );
+            if (selectedAggregation) {
+                let aggregationName = selectedAggregation.name.replace(
+                    " of ...",
+                    ""
                 );
-                if (selectedAggregation) {
-                    let aggregationName = selectedAggregation.name.replace(
-                        " of ...",
-                        ""
-                    );
-                    const fieldId = Q_deprecated.getFieldTargetId(
-                        AggregationClause.getField(aggregation)
-                    );
-                    const field = fieldId && this._metadata.fields[fieldId];
-                    if (field) {
-                        aggregationName += " of " + field.display_name;
-                    }
-                    return aggregationName;
+                const fieldId = Q_deprecated.getFieldTargetId(
+                    AggregationClause.getField(aggregation)
+                );
+                const field = fieldId && this._metadata.fields[fieldId];
+                if (field) {
+                    aggregationName += " of " + field.display_name;
                 }
+                return aggregationName;
             }
         }
-        return "";
+        return null;
     }
 
     /**
@@ -507,6 +500,10 @@ export default class StructuredQuery extends Query {
         }
     }
 
+    setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
+        return new StructuredQuery(this._originalQuestion, datasetQuery);
+    }
+
     // INTERNAL
 
     _updateQuery(
@@ -515,9 +512,8 @@ export default class StructuredQuery extends Query {
             ...args: any[]
         ) => StructuredQueryObject,
         args: any[]
-    ) {
-        return new StructuredQuery(
-            this._originalQuestion,
+    ): StructuredQuery {
+        return this.setDatasetQuery(
             updateIn(this._datasetQuery, ["query"], query =>
                 updateFunction(query, ...args))
         );

@@ -23,6 +23,9 @@ import ActionsWidget from "../components/ActionsWidget.jsx";
 
 import title from "metabase/hoc/Title";
 
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/NativeQuery";
+
 import {
     getCard,
     getOriginalCard,
@@ -240,13 +243,13 @@ class LegacyQueryBuilder extends Component {
                     </div>
 
                     <div id="react_qb_editor" className="z2 hide sm-show">
-                        { query.isNative() ?
+                        { query instanceof NativeQuery ?
                             <NativeQueryEditor
                                 {...this.props}
                                 isOpen={!card.dataset_query.native.query || isDirty}
                                 datasetQuery={card && card.dataset_query}
                             />
-                        : query.isStructured() ?
+                        : query instanceof StructuredQuery ?
                             <div className="wrapper">
                                 <GuiQueryEditor
                                     {...this.props}
@@ -270,7 +273,7 @@ class LegacyQueryBuilder extends Component {
                         <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
 
-                    { uiControls.isShowingTemplateTagsEditor && query.isNative() &&
+                    { uiControls.isShowingTemplateTagsEditor && query instanceof NativeQuery &&
                         <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                     }
                 </div>

@@ -32,21 +32,11 @@ export default class Query {
         return this._originalQuestion.setQuery(this);
     }
 
-    isStructured(): boolean {
-        return false;
-    }
-    isNative(): boolean {
-        return false;
-    }
-    isMulti(): boolean {
-        return false;
-    }
-
     // TODO: Decide the behavior of isEditable for multimetric questions
     isEditable(): boolean {
         return true;
     }
-    
+
     /**
      * Returns the dataset_query object underlying this Query
      */
@@ -89,4 +79,3 @@ export default class Query {
         return fn(this.datasetQuery());
     }
 }
-

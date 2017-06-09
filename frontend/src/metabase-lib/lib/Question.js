@@ -7,16 +7,9 @@ import Metric from "./metadata/Metric";
 import Table from "./metadata/Table";
 import Field from "./metadata/Field";
 
-import MultiQuery, {
-    isMultiDatasetQuery,
-    convertToMultiDatasetQuery
-} from "./MultiQuery";
-import StructuredQuery, {
-    isStructuredDatasetQuery
-} from "metabase-lib/lib/StructuredQuery";
-import NativeQuery, {
-    isNativeDatasetQuery
-} from "metabase-lib/lib/NativeQuery";
+import MultiQuery, { convertToMultiDatasetQuery } from "./MultiQuery";
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/NativeQuery";
 
 import { memoize } from "metabase-lib/lib/utils";
 import Utils from "metabase/lib/utils";
@@ -108,12 +101,11 @@ export default class Question {
     @memoize query(): Query {
         const datasetQuery = this._card.dataset_query;
 
-        if (isMultiDatasetQuery(datasetQuery)) {
-            return new MultiQuery(this, datasetQuery);
-        } else if (isStructuredDatasetQuery(datasetQuery)) {
-            return new StructuredQuery(this, datasetQuery);
-        } else if (isNativeDatasetQuery(datasetQuery)) {
-            return new NativeQuery(this, datasetQuery);
+        for (const QueryClass of [MultiQuery, StructuredQuery, NativeQuery]) {
+            if (QueryClass.isDatasetQueryType(datasetQuery)) {
+                // $FlowFixMe: flow doesn't support predicate types yet
+                return new QueryClass(this, datasetQuery);
+            }
         }
 
         throw new Error("Unknown query type: " + datasetQuery.type);
@@ -147,6 +139,7 @@ export default class Question {
                 assoc(this.card(), "dataset_query", newQuery.datasetQuery())
             );
         }
+        return this;
     }
 
     setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
@@ -185,11 +178,13 @@ export default class Question {
      * Conversion from a single query -centric question to a multi-query question
      */
     isMultiQuery(): boolean {
-        return this.query().isMulti();
+        return this.query() instanceof MultiQuery;
     }
     canConvertToMultiQuery(): boolean {
         const query = this.query();
-        return query instanceof StructuredQuery && !query.isBareRows() && query.breakouts().length < 2;
+        return query instanceof StructuredQuery &&
+            !query.isBareRows() &&
+            query.breakouts().length < 2;
     }
     convertToMultiQuery(): Question {
         // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
@@ -206,9 +201,8 @@ export default class Question {
      * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
      */
     singleQueries(): Query[] {
-        return this.query().isMulti()
-            ? this.query().childQueries()
-            : [this.query()];
+        const query = this.query();
+        return query instanceof MultiQuery ? query.childQueries() : [query];
     }
 
     /**
@@ -272,54 +266,7 @@ export default class Question {
         this.assertIsMultiQuery();
         // $FlowFixMe
         const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.removeQueryAtIndex(index))
-    }
-
-    /**
-     * Global breakouts and filters
-     * TODO: Make these support multi-query questions
-     */
-
-    // multiple series can be pivoted
-    breakouts(): Breakout[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        if (query instanceof StructuredQuery) {
-            return query.breakouts();
-        } else {
-            return [];
-        }
-    }
-    breakoutOptions(breakout?: any): DimensionOptions {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        if (query instanceof StructuredQuery) {
-            return query.breakoutOptions(breakout);
-        } else {
-            return {
-                count: 0,
-                fks: [],
-                dimensions: []
-            };
-        }
-    }
-    canAddBreakout(): boolean {
-        return this.breakouts() === 0;
-    }
-
-    // multiple series can be filtered by shared dimensions
-    filters(): Filter[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        return query instanceof StructuredQuery ? query.filters() : [];
-    }
-    filterOptions(): Dimension[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        return query instanceof StructuredQuery ? query.filterOptions() : [];
-    }
-    canAddFilter(): boolean {
-        return false;
+        return this.setQuery(multiQuery.removeQueryAtIndex(index));
     }
 
     // drill through / actions
@@ -467,8 +414,12 @@ export default class Question {
      * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
      * This way we benefit from caching and query optimizations done by Metabase backend.
      */
-    async getResults({ cancelDeferred, isDirty = false, ignoreCache = false }): [any] {
-        const canUseCardApiEndpoint = !isDirty && !this.isMultiQuery() && this.isSaved()
+    async getResults(
+        { cancelDeferred, isDirty = false, ignoreCache = false }
+    ): Promise<[any]> {
+        const canUseCardApiEndpoint = !isDirty &&
+            !this.isMultiQuery() &&
+            this.isSaved();
 
         if (canUseCardApiEndpoint) {
             const queryParams = {
@@ -477,12 +428,20 @@ export default class Question {
                 ignore_cache: ignoreCache
             };
 
-            return [await CardApi.query(queryParams, { cancelled: cancelDeferred.promise })]
+            return [
+                await CardApi.query(queryParams, {
+                    cancelled: cancelDeferred.promise
+                })
+            ];
         } else {
-            const getDatasetQueryResult = (datasetQuery) =>
-                MetabaseApi.dataset(datasetQuery, cancelDeferred ? {cancelled: cancelDeferred.promise} : {});
+            const getDatasetQueryResult = datasetQuery =>
+                MetabaseApi.dataset(
+                    datasetQuery,
+                    cancelDeferred ? { cancelled: cancelDeferred.promise } : {}
+                );
 
-            const datasetQueries = this.singleQueries().map(query => query.datasetQuery())
+            const datasetQueries = this.singleQueries().map(query =>
+                query.datasetQuery());
             return Promise.all(datasetQueries.map(getDatasetQueryResult));
         }
     }
@@ -521,9 +480,7 @@ export default class Question {
                 !_.isEmpty(this._card.dataset_query.native.query)
             ) {
                 return true;
-            } else if (
-                this._card.dataset_query.type === "multi"
-            ) {
+            } else if (this._card.dataset_query.type === "multi") {
                 return true;
             } else {
                 return false;

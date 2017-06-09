@@ -13,7 +13,7 @@ import { stripId, singularize } from "metabase/lib/formatting";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import type { ConcreteField } from "metabase/meta/types/Query";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type Table from "metabase-lib/lib/metadata/Table";
 
 // import type { Section } from "metabase/components/AccordianList";
 export type AccordianListItem = {
@@ -33,7 +33,7 @@ type Props = {
     // HACK: for segments
     onFilterChange?: (filter: any) => void,
 
-    tableMetadata: TableMetadata,
+    tableMetadata: Table,
 
     alwaysExpanded?: boolean,
     enableSubDimensions?: boolean
