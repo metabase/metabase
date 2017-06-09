@@ -14,6 +14,7 @@ import StructuredQuery, { isStructuredDatasetQuery } from "metabase-lib/lib/Stru
 import NativeQuery, { isNativeDatasetQuery } from "metabase-lib/lib/NativeQuery";
 import { memoize } from "metabase-lib/lib/utils";
 import Action, { ActionClick } from "./Action";
+import Dimension from "metabase-lib/lib/Dimension";
 
 export const MULTI_QUERY_TEMPLATE: MultiDatasetQuery = {
     type: "multi",
@@ -99,7 +100,7 @@ export default class MultiQuery extends Query {
         }
     }
 
-    /* Query superclass methods */
+    /******* Query superclass methods *******/
 
     isMulti(): boolean {
         return true;
@@ -130,7 +131,9 @@ export default class MultiQuery extends Query {
         return [];
     }
 
-    /* Methods unique to this query type */
+    /******* Methods unique to this query type *******/
+
+    /* Access to / manipulation of the query list */
 
     /**
      * Wrap individual queries to Query objects for a convenient access
@@ -150,7 +153,7 @@ export default class MultiQuery extends Query {
     }
 
     canAddQuery(): boolean {
-        // TODO Atte Keinänen 6/6/17: Which rules should apply here?
+        // TODO Atte Keinänen 6/6/17: Which rules should apply here? Discuss with @mazameli
         // Old rules used in
         // only structured queries with 0 or 1 breakouts can have multiple series
         // const query = this.query();
@@ -159,9 +162,23 @@ export default class MultiQuery extends Query {
         return true;
     }
 
-    // TODO Should this accept just a Query object instead or not?
     addQuery(datasetQuery: ChildDatasetQuery): MultiQuery {
         return this._updateQueries([...this.childQueries(), createChildQuery(this._originalQuestion, datasetQuery)]);
+    }
+
+    /* Shared x-axis dimension */
+
+    /**
+     * Returns the x-axis dimension that is currently shared by all child queries.
+     */
+    sharedDimensionType(): typeof Dimension {
+        const firstQuery = this.childQueries()[0]
+
+        if (firstQuery instanceof StructuredQuery && firstQuery.breakouts().length === 1) {
+            return Dimension.parseMBQL(firstQuery.breakouts()[0]);
+        } else {
+            throw new Error("Cannot infer the shared dimension from the first query of MultiQuery")
+        }
     }
 
     /**
@@ -176,6 +193,6 @@ export default class MultiQuery extends Query {
         return new MultiQuery(this._originalQuestion, {
             ...this.datasetQuery(),
             queries: queries.map((query) => query.datasetQuery())
-        });
+        }: MultiQuery);
     }
 }
