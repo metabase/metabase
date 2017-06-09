@@ -9,6 +9,8 @@ import cx from "classnames";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
 import MetricList from "metabase/query_builder/components/MetricList";
 import { getDisplayTypeForCard, getQuestionQueryResults} from "metabase/query_builder/actions";
+import MetricDimensionOptions from "metabase/query_builder/components/MetricDimensionOptions";
+import Question from "metabase-lib/lib/Question";
 
 type Props = {
     onClose: () => void,
@@ -58,6 +60,11 @@ export default class SavedMetricSelector extends Component {
                 });
             })
     };
+
+    updateQuery = (query) => {
+        console.log('updateQuery', query)
+        this.updateQuestionAndFetchResults(this.state.currentQuestion.setQuery(query));
+    }
 
     addMetric = (metricWrapper) => {
         // TODO Maybe don't use global state, maintain local query instead; this code is helpful for that
@@ -163,6 +170,9 @@ export default class SavedMetricSelector extends Component {
                 <div className="flex flex-column flex-full bg-white">
                     <div className="flex-no-shrink h3 pl4 pt4 pb1 text-bold">
                         <MetricList {...this.props} hideAddButton hideClearButton />
+                    </div>
+                    <div className="flex-no-shrink px4 pt1 pb1 text-bold">
+                        <MetricDimensionOptions query={currentQuestion.query()} updateQuery={this.updateQuery} />
                     </div>
                     <div className="flex-full mx1 relative">
                         <VisualizationResult

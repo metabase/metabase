@@ -262,11 +262,13 @@ export default class Question {
         // based on an existing breakout / datetime dimension
         if (multiQuery.sharedDimensionType() === DatetimeFieldDimension) {
             const breakout = [
-                "datetime-field",
-                metric.table.dateFields()[0].dimension().mbql(),
-                "as",
-                // use the same granularity as in other queries
-                multiQuery.sharedDimensionBaseMBQL()[3]
+                [
+                    "datetime-field",
+                    metric.table.dateFields()[0].dimension().mbql(),
+                    "as",
+                    // use the same granularity as in other queries
+                    multiQuery.sharedDimensionBaseMBQL()[3]
+                ]
             ]
 
             return this.addMetric(

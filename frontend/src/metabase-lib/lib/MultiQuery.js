@@ -181,7 +181,7 @@ export default class MultiQuery extends Query {
         }
     }
 
-    sharedDimensionBaseMBQL(): typeof Dimension {
+    sharedDimensionBaseMBQL(): any {
         const firstQuery = this.childQueries()[0]
 
         if (firstQuery instanceof StructuredQuery && firstQuery.breakouts().length === 1) {
