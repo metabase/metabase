@@ -265,6 +265,33 @@ export default class DatabaseDetailsForm extends Component {
                 name: "is_full_sync",
                 required: true
             }
+            {
+                name: "sync_schedule",
+                'display-nane': "DATBASE SYNC",
+                description: "How Often should Metabase check for updated to this database's schema",
+                placeholder: "0 50 * * * ? *",
+                required: false
+            }
+            {
+                name: "cache_field_values_schedule",
+                'display-nane': "SCAN FIELD VALUES",
+                description: "Metabase can scan the values of fields in this datbase to enable things like better filters. How often should we scan for these valuesaf?",
+                placeholder: "0 50 * * * ? *",
+                required: false
+            }
+            {
+                name: "analyze_schedule",
+                'display-nane': "IN-DEPTH ANALYSIS",
+                description: "This allows us to present you with better metadata for your tables and is required for some features of Metabase. How often should Metabase perfomr this analysis?",
+                placeholder: "0 50 * * * ? *",
+                required: false
+            }
+            {
+                name: "classify_schedule",
+                'display-nane': "CLASSIFICATION SCHEDULE",
+                placeholder: "0 50 * * * ? *",
+                required: false
+            }
         ];
 
         hiddenFields = hiddenFields || {};
