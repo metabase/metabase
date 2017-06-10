@@ -230,9 +230,10 @@ export default class TableInteractive extends Component {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
                     "cursor-pointer": isClickable,
                     "justify-end": isColumnRightAligned(column),
-                    "link": isClickable && isID(column)
+                    "link": isClickable && isID(column),
+                    "TableInteractive--emptyCell": !value
                 })}
-                onClick={isClickable && ((e) => {
+                onClick={isClickable && (e => {
                     onVisualizationClick({ ...clicked, element: e.currentTarget });
                 })}
             >
@@ -309,7 +310,15 @@ export default class TableInteractive extends Component {
                 >
                     <div
                         className="bg-brand-hover bg-brand-active"
-                        style={{ zIndex: 99, position: "absolute", width: RESIZE_HANDLE_WIDTH, top: 0, bottom: 0, left: -RESIZE_HANDLE_WIDTH - 1, cursor: "ew-resize" }}
+                        style={{
+                            zIndex: 99,
+                            position: "absolute",
+                            width: RESIZE_HANDLE_WIDTH,
+                            top: 0,
+                            bottom: 0,
+                            left: -RESIZE_HANDLE_WIDTH - 1,
+                            cursor: "ew-resize"
+                        }}
                     />
                 </Draggable>
             </div>
@@ -320,21 +329,16 @@ export default class TableInteractive extends Component {
         const { totals } = this.props.data;
         const column = totals[columnIndex];
 
-        const isRightAligned = isColumnRightAligned(column);
-
         return (
             <div
                 key={key}
-                style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
+                style={style}
                 className={cx(
                     "TableInteractive-cellWrapper TableInteractive-headerCellData justify-end", {
                     "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
                 })}
             >
-                <div className="cellData">
-                    { column }
-                </div>
-
+                {column}
             </div>
         )
     }
@@ -356,7 +360,7 @@ export default class TableInteractive extends Component {
         return (
             <ScrollSync>
             {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
-                <div className={cx(className, 'TableInteractive relative', { 'TableInteractive--pivot': this.props.isPivoted, 'TableInteractive--ready': this.state.contentWidths })}>
+                <div className={cx(className, 'TableInteractive relative',{ 'TableInteractive--pivot': this.props.isPivoted, 'TableInteractive--ready': this.state.contentWidths })}>
                     <canvas
                         className="spread"
                         style={{ pointerEvents: "none", zIndex: 999 }}
@@ -385,13 +389,17 @@ export default class TableInteractive extends Component {
                                 ? this.getColumnWidth(props)
                                 : 50
                         }
-                        cellRenderer={(props) => props.columnIndex < cols.length ? this.tableHeaderRenderer(props) : null}
+                        cellRenderer={props =>
+                            props.columnIndex < cols.length
+                                ? this.tableHeaderRenderer(props)
+                                : null
+                        }
                         onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                         scrollLeft={scrollLeft}
                         tabIndex={null}
                     />
                     <Grid
-                        ref={(ref) => this.grid = ref}
+                        ref={ref => this.grid = ref}
                         style={{
                             top: HEADER_HEIGHT,
                             left: 0,
@@ -399,7 +407,6 @@ export default class TableInteractive extends Component {
                             bottom: 0,
                             position: "absolute"
                         }}
-                        className=""
                         width={width}
                         height={height - HEADER_HEIGHT}
                         columnCount={cols.length}

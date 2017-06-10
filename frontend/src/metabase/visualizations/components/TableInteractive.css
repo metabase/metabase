@@ -84,3 +84,7 @@
   text-overflow: ellipsis;
   overflow-x: hidden;
 }
+
+.TableInteractive .TableInteractive--emptyCell {
+  background-color: var(--border-color);
+}
