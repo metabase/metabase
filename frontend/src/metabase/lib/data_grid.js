@@ -15,6 +15,7 @@ export function pivot(data) {
         cellCol = 2,
         pivotColValues = distinctValues(data, pivotCol),
         normalColValues = distinctValues(data, normalCol);
+
     if (normalColValues.length <= pivotColValues.length) {
         pivotCol = 1;
         normalCol = 0;
@@ -37,12 +38,17 @@ export function pivot(data) {
         normalColValues.sort();
     }
 
+
     // make sure that the first element in the pivoted column list is null which makes room for the label of the other column
     pivotColValues.unshift(data.cols[normalCol].display_name);
 
+    // add a total column, this needs to happen here so that we make space for the eventual total
+    pivotColValues = pivotColValues.concat(["Total"])
+
     // start with an empty grid that we'll fill with the appropriate values
-    const pivotedRows = normalColValues.map((normalColValues, index) => {
+    let pivotedRows = normalColValues.map((normalColValues, index) => {
         const row = pivotColValues.map(() => null);
+
         // for onVisualizationClick:
         row._dimension = {
             value: normalColValues,
@@ -57,9 +63,31 @@ export function pivot(data) {
         var pivotColIdx = pivotColValues.lastIndexOf(data.rows[j][pivotCol]);
 
         pivotedRows[normalColIdx][0] = data.rows[j][normalCol];
+
         // NOTE: we are hard coding the expectation that the metric is in the 3rd column
         pivotedRows[normalColIdx][pivotColIdx] = data.rows[j][2];
     }
+
+
+    // total each row
+    pivotedRows.map(row =>
+        // the total is the last spot in each row
+        row[row.length -1] = row.slice(1, -1).reduce((a, b) => a + b, 0)
+    )
+
+    // total each column
+    pivotedRows.push(
+        pivotColValues.map((value, index) => {
+            // skip if we're on the first or last column
+            if(index === 0 || index === pivotColValues.length -1) {
+                return null
+            }
+            return data.rows.filter(row => row[pivotCol] === value)
+                     .map(row => row[2])
+                     .reduce((a, b) => a + b, 0)
+        })
+    )
+
 
     // provide some column metadata to maintain consistency
     const cols = pivotColValues.map(function(value, idx) {
