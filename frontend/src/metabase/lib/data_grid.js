@@ -12,8 +12,7 @@ export function pivot(data) {
     // TODO: we assume dimensions are in the first 2 columns, which is less than ideal
     var pivotCol = 0,
         normalCol = 1,
-        cellCol = 2,
-        pivotColValues = distinctValues(data, pivotCol),
+        cellCol = 2, pivotColValues = distinctValues(data, pivotCol),
         normalColValues = distinctValues(data, normalCol);
 
     if (normalColValues.length <= pivotColValues.length) {
@@ -76,17 +75,15 @@ export function pivot(data) {
     )
 
     // total each column
-    pivotedRows.push(
-        pivotColValues.map((value, index) => {
-            // skip if we're on the first or last column
-            if(index === 0 || index === pivotColValues.length -1) {
-                return null
-            }
-            return data.rows.filter(row => row[pivotCol] === value)
-                     .map(row => row[2])
-                     .reduce((a, b) => a + b, 0)
-        })
-    )
+    const totals = pivotColValues.map((value, index) => {
+        // skip if we're on the first or last column
+        if(index === 0 || index === pivotColValues.length -1) {
+            return null
+        }
+        return data.rows.filter(row => row[pivotCol] === value)
+                 .map(row => row[2])
+                 .reduce((a, b) => a + b, 0)
+    })
 
 
     // provide some column metadata to maintain consistency
@@ -108,9 +105,10 @@ export function pivot(data) {
     });
 
     return {
-        cols: cols,
+        cols,
         columns: pivotColValues,
-        rows: pivotedRows
+        rows: pivotedRows,
+        totals
     };
 }
 

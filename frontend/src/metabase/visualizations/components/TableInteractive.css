@@ -1,3 +1,7 @@
+:root {
+  --border-color: rgb(205, 205, 205);
+}
+
 .PagingButtons {
     border: 1px solid #ddd;
 }
@@ -20,12 +24,19 @@
      color: var(--brand-color);
 }
 
-/* what follows is a war crime but such is the state of FE development */
 .TableInteractive {
     border: 1px solid rgb(205, 205, 205);
 }
+
 .TableInteractive-header {
+    border-bottom: var(--border-color);
+    border-right: var(--border-color);
+    box-sizing: border-box;
+}
+
+.TableInteractive-footer {
     border-bottom: 1px solid rgb(205, 205, 205);
+    border-left: 1px solid rgb(205, 205, 205);
     border-right: 1px solid rgb(205, 205, 205);
     box-sizing: border-box;
 }

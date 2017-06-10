@@ -20,6 +20,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 
 const HEADER_HEIGHT = 36;
+const FOOTER_HEIGHT = 36;
 const ROW_HEIGHT = 30;
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
@@ -315,6 +316,29 @@ export default class TableInteractive extends Component {
         )
     }
 
+    footerRenderer = ({ key, style, columnIndex }): CellRendererProps => {
+        const { totals } = this.props.data;
+        const column = totals[columnIndex];
+
+        const isRightAligned = isColumnRightAligned(column);
+
+        return (
+            <div
+                key={key}
+                style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
+                className={cx(
+                    "TableInteractive-cellWrapper TableInteractive-headerCellData justify-end", {
+                    "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+                })}
+            >
+                <div className="cellData">
+                    { column }
+                </div>
+
+            </div>
+        )
+    }
+
     getColumnWidth = ({ index }: { index: number }) => {
         const { settings } = this.props;
         const { columnWidths } = this.state;
@@ -323,7 +347,7 @@ export default class TableInteractive extends Component {
     }
 
     render() {
-        const { width, height, data: { cols, rows }, className } = this.props;
+        const { width, height, isPivoted, data: { cols, rows }, className } = this.props;
 
         if (!width || !height) {
             return <div className={className} />;
@@ -333,10 +357,22 @@ export default class TableInteractive extends Component {
             <ScrollSync>
             {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
                 <div className={cx(className, 'TableInteractive relative', { 'TableInteractive--pivot': this.props.isPivoted, 'TableInteractive--ready': this.state.contentWidths })}>
-                    <canvas className="spread" style={{ pointerEvents: "none", zIndex: 999 }} width={width} height={height} />
+                    <canvas
+                        className="spread"
+                        style={{ pointerEvents: "none", zIndex: 999 }}
+                        width={width}
+                        height={height}
+                    />
                     <Grid
-                        ref={(ref) => this.header = ref}
-                        style={{ top: 0, left: 0, right: 0, height: HEADER_HEIGHT, position: "absolute", overflow: "hidden" }}
+                        ref={ref => this.header = ref}
+                        style={{
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: HEADER_HEIGHT,
+                            position: "absolute",
+                            overflow: "hidden"
+                        }}
                         className="TableInteractive-header scroll-hide-all"
                         width={width || 0}
                         height={HEADER_HEIGHT}
@@ -344,7 +380,11 @@ export default class TableInteractive extends Component {
                         rowHeight={HEADER_HEIGHT}
                         // HACK: there might be a better way to do this, but add a phantom padding cell at the end to ensure scroll stays synced if main content scrollbars are visible
                         columnCount={cols.length + 1}
-                        columnWidth={(props) => props.index < cols.length ? this.getColumnWidth(props) : 50}
+                        columnWidth={props =>
+                            props.index < cols.length
+                                ? this.getColumnWidth(props)
+                                : 50
+                        }
                         cellRenderer={(props) => props.columnIndex < cols.length ? this.tableHeaderRenderer(props) : null}
                         onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                         scrollLeft={scrollLeft}
@@ -352,7 +392,13 @@ export default class TableInteractive extends Component {
                     />
                     <Grid
                         ref={(ref) => this.grid = ref}
-                        style={{ top: HEADER_HEIGHT, left: 0, right: 0, bottom: 0, position: "absolute" }}
+                        style={{
+                            top: HEADER_HEIGHT,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            position: "absolute"
+                        }}
                         className=""
                         width={width}
                         height={height - HEADER_HEIGHT}
@@ -369,6 +415,30 @@ export default class TableInteractive extends Component {
                         tabIndex={null}
                         overscanRowCount={20}
                     />
+                    { isPivoted && (
+                        <Grid
+                            ref={ref => this.footer = ref}
+                            style={{
+                                top: height,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                height: FOOTER_HEIGHT,
+                                position: "absolute"
+                            }}
+                            className="TableInteractive-footer scroll-hide-all"
+                            width={width}
+                            height={height - FOOTER_HEIGHT}
+                            columnCount={cols.length}
+                            columnWidth={this.getColumnWidth}
+                            rowCount={1}
+                            rowHeight={FOOTER_HEIGHT}
+                            cellRenderer={this.footerRenderer}
+                            onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+                            scrollLeft={scrollLeft}
+                            tabIndex={null}
+                        />
+                    )}
                 </div>
             }
             </ScrollSync>
