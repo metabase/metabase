@@ -61,7 +61,7 @@ export default class MultiQueryDimensionOptions extends Component {
     updateChildQueryDimension = ({ index, updatedDimension }: UpdateDimensionParams) => {
         const { query, updateQuery } = this.props;
 
-        const breakoutDimension = new DatetimeFieldDimension(updatedDimension, query.sharedDimension.bucketing());
+        const breakoutDimension = new DatetimeFieldDimension(updatedDimension, [query.sharedDimension.bucketing()]);
 
         const updatedMultiQuery = query.setQueryAtIndexWith(index, (atomicQuery) =>
             atomicQuery instanceof StructuredQuery

@@ -179,7 +179,7 @@ export default class MultiQuery extends Query {
                 throw new Error("Tried to add a metric that doesn't have any compatible fields for the shared breakout")
             }
 
-            const breakoutDimension = new DatetimeFieldDimension(compatibleFields[0].dimension(), sharedDimension.bucketing())
+            const breakoutDimension = new DatetimeFieldDimension(compatibleFields[0].dimension(), [sharedDimension.bucketing()])
 
             const metricQuery = StructuredQuery
                 .newStucturedQuery({ question: this, databaseId: metric.table.db.id, tableId: metric.table.id })

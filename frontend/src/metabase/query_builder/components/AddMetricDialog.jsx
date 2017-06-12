@@ -87,7 +87,7 @@ export default class AddMetricDialog extends Component {
     };
 
     queryHasMetricAggregation = (query, metric) =>
-        query.wrappedAggregations().includes((agg) => agg.isMetric() && agg.getMetric() === metric.id)
+        query.wrappedAggregations().filter((agg) => agg.isMetric() && agg.getMetric() === metric.id).length > 0
 
     removeMetric = (metric: Metric) => {
         const { addedMetrics, currentQuestion } = this.state;
@@ -96,7 +96,7 @@ export default class AddMetricDialog extends Component {
         const index = _.findIndex(queries, (query) => this.queryHasMetricAggregation(query, metric));
 
         if (index !== -1) {
-            const updatedQuestion = currentQuestion.removeMetric(index);
+            const updatedQuestion = currentQuestion.multiQuery().removeQueryAtIndex(index).question();
             this.updateQuestionAndFetchResults(updatedQuestion);
         } else {
             console.error("Removing the metric from aggregations failed");
