@@ -54,3 +54,10 @@
   [{field-id :id :as field}]
   (-> (field-query field (ql/aggregation {} (ql/count (ql/field-id field-id))))
       first first int))
+
+
+(defn field-values 
+  "Return all the values of a given field"
+  [field]
+  ; TODO UN-STUBB ME
+  (1 2 3 4 5 6 7 8 9 10))

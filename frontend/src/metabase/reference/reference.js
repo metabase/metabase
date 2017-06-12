@@ -67,6 +67,19 @@ const HIDE_DASHBOARD_MODAL = "metabase/reference/HIDE_DASHBOARD_MODAL";
 export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
 
+// X-Ray whatnotery
+const FETCH_FIELD_FINGERPRINT = 'FETCH_FIELD_FINGERPRINT';
+const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId) {
+    return async () => {
+        try {
+            let fingerprint = await MetabaseAPI.fieldFingerPrint(fieldId)
+            return fingerprint
+        } catch (error) {
+            console.error(error)
+        }
+    }
+};
+
 const initialState = {
     error: null,
     isLoading: false,
@@ -77,6 +90,9 @@ const initialState = {
 export default handleActions({
     [FETCH_GUIDE]: {
         next: (state, { payload }) => assoc(state, 'guide', payload)
+    },
+    [FETCH_FIELD_FINGERPRINT]: {
+        next: (state, { payload }) => assoc(state, 'fingerprint', payload)
     },
     [SET_ERROR]: {
         throw: (state, { payload }) => assoc(state, 'error', payload)

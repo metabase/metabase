@@ -5,6 +5,7 @@
             [kixi.stats.math :as math]
             [redux.core :as redux]
             [clj-time.core :as t]
+            [metabase.db.metadata-queries :as metadata]
             [clj-time.coerce :as coerce]))
 
 (def ^:private ^:const ^Double cardinality-error 0.01)
@@ -168,7 +169,7 @@
          :entropy (binned-entropy histogram)}))))
 
 (defn field-fingerprint
-  [driver field]
+  [field]
   (transduce identity
              (fingerprinter field)
-             (driver/field-values-lazy-seq driver field)))
+             (metadata/field-values field)))

@@ -5,6 +5,7 @@ import Visualization from 'metabase/visualizations/components/Visualization'
 import { connect } from 'react-redux'
 
 import type { Field } from 'metabase/meta/types/Field'
+import { fetchFieldFingerPrint } from 'metabase/reference/reference'
 
 type Props = {
     fetchXrayData: () => void,
@@ -18,6 +19,13 @@ class FieldXray extends Component {
     componentWillMount() {
         this.props.fetchXrayData(this.props.field.id)
     }
+    
+    componentDidMount () {
+        // QUESTION: What am I doing wrong here?
+        let fingerprint = await this.props.fetchFieldFingerprint(this.props.fieldId)
+        this.setState({ fingerprint })
+    }
+
     render () {
         return (
             <div style={{
@@ -44,6 +52,7 @@ class FieldXray extends Component {
                 <Visualization
                     series={[this.props.xray.histogram]}
                 />
+                <div>{[this.props.fingerprint]}</div>
             </div>
         )
     }
