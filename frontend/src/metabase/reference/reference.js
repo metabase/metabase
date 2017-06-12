@@ -68,7 +68,7 @@ export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
 
 // X-Ray whatnotery
-const FETCH_FIELD_FINGERPRINT = 'FETCH_FIELD_FINGERPRINT';
+const FETCH_FIELD_FINGERPRINT = 'metabase/reference/FETCH_FIELD_FINGERPRINT';
 const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId) {
     return async () => {
         try {
@@ -78,7 +78,7 @@ const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, functio
             console.error(error)
         }
     }
-};
+});
 
 const initialState = {
     error: null,

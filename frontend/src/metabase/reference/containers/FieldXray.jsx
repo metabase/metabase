@@ -20,11 +20,11 @@ class FieldXray extends Component {
         this.props.fetchXrayData(this.props.field.id)
     }
     
-    componentDidMount () {
-        // QUESTION: What am I doing wrong here?
-        let fingerprint = await this.props.fetchFieldFingerprint(this.props.fieldId)
-        this.setState({ fingerprint })
-    }
+    // componentDidMount () {
+    //     // QUESTION: What am I doing wrong here?
+    //     let fingerprint = await this.props.fetchFieldFingerprint(this.props.fieldId)
+    //     this.setState({ fingerprint })
+    // }
 
     render () {
         return (
@@ -159,7 +159,7 @@ function makeFakeBarRows () {
 }
 
 const fetchXrayData = () => ({
-    'type': 'metabase/XRAY'
+    'type': 'metabase/reference/FETCH_FIELD_FINGERPRINT'
 })
 
 export default connect(mapStateToProps, { fetchXrayData })(FieldXray)
