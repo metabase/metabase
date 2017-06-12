@@ -69,9 +69,8 @@ type ParameterOptions = "FIXME";
  */
 export default class Question {
     /**
-     * A Question wrapper requires a metadata object
-     * TODO Atte Keinänen 6/6/17: Check which parts of metadata are actually needed and document them here
-     * The contents of `metadata` could also be asserted in the Question constructor
+     * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery))
+     * need metadata for accessing databases, tables and metrics.
      */
     _metadata: Metadata;
 
@@ -234,8 +233,9 @@ export default class Question {
      * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
      */
     atomicQueries(): AtomicQuery[] {
-        if (this.query() instanceof MultiQuery) return this.query().atomicQueries()
-        if (this.query() instanceof AtomicQuery) return [this.query()]
+        const query = this.query();
+        if (query instanceof MultiQuery) return query.atomicQueries()
+        if (query instanceof AtomicQuery) return [query]
         return [];
     }
 

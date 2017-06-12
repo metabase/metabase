@@ -117,7 +117,6 @@ export default class NativeQuery extends AtomicQuery {
         return getIn(this.datasetQuery(), ["native", "query"]) || "";
     }
 
-    // TODO:
     updateQueryText(newQueryText: string): Query {
         return new NativeQuery(
             this._originalQuestion,

@@ -94,6 +94,10 @@ export default class StructuredQuery extends AtomicQuery {
         return true;
     }
 
+    isEditable(): boolean {
+        return !!this.tableMetadata();
+    }
+
     /* AtomicQuery superclass methods */
 
     tables(): ?(Table[]) {
@@ -117,10 +121,6 @@ export default class StructuredQuery extends AtomicQuery {
 
     reset(): StructuredQuery {
         return new StructuredQuery(this._originalQuestion);
-    }
-
-    isEditable(): boolean {
-        return !!this.tableMetadata();
     }
 
     query(): StructuredQueryObject {

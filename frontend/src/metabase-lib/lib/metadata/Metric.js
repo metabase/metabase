@@ -17,14 +17,6 @@ export default class Metric extends Base {
     database: Database;
     table: Table;
 
-    isCompatibleWithBreakoutDimension(dimensionType: typeof Dimension): boolean {
-        if (dimensionType === DatetimeFieldDimension) {
-            return this.table.dateFields().length > 0;
-        } else {
-            return false;
-        }
-    }
-
     newQuestion(): Question {
         // $FlowFixMe
         return new Question();

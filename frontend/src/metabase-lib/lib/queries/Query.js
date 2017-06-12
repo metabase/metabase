@@ -42,7 +42,6 @@ export default class Query {
         }
     }
 
-    // TODO: Decide the behavior of isEditable for multimetric questions
     isEditable(): boolean {
         return true;
     }

@@ -40,9 +40,9 @@ export function createAtomicQuery(question: Question, datasetQuery: AtomicDatase
 // TODO Atte Keinänen 6/8/17: Write comprehensive unit tests for this class and exported methods
 
 /**
- * Converts the DatasetQuery to a MultiDatasetQuery.
+ * Converts a {@link DatasetQuery} to a {@link MultiDatasetQuery}.
  *
- * Because each query contained by MultiDatasetQuery should have just a single aggregation, StructuredQueries
+ * Because each query contained by MultiDatasetQuery should have just a single aggregation, {@link StructuredQuery}s
  * with two or more aggregations are broken into queries with one of those aggregations in each.
  */
 export function convertToMultiDatasetQuery(question: Question, datasetQuery: DatasetQuery) {
@@ -64,6 +64,8 @@ export function convertToMultiDatasetQuery(question: Question, datasetQuery: Dat
             throw new Error("Native queries can't yet be converted to MultiDatasetQuery")
         }
     }
+
+    if (isMultiDatasetQuery(datasetQuery)) return datasetQuery;
 
     return {
         ...MULTI_QUERY_TEMPLATE,
