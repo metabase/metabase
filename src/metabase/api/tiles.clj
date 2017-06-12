@@ -129,7 +129,7 @@
         lon-col-idx   (Integer/parseInt lon-col-idx)
         query         (json/parse-string query keyword)
         updated-query (update query :query (u/rpartial query-with-inside-filter lat-field-id lon-field-id x y zoom))
-        result        (qp/dataset-query updated-query {:executed-by api/*current-user-id*, :context :map-tiles})
+        result        (qp/process-query-and-save-execution! updated-query {:executed-by api/*current-user-id*, :context :map-tiles})
         points        (for [row (-> result :data :rows)]
                         [(nth row lat-col-idx) (nth row lon-col-idx)])]
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image

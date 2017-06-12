@@ -44,7 +44,7 @@
   (try
     (queries/table-row-count table)
     (catch Throwable e
-      (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
+      (log/warn (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
 (defn test-for-cardinality?
   "Should FIELD should be tested for cardinality?"

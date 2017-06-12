@@ -152,6 +152,7 @@
   {include_sensitive_fields (s/maybe su/BooleanString)}
   (-> (api/read-check Table id)
       (hydrate :db [:fields :target] :field_values :segments :metrics)
+      (m/dissoc-in [:db :details])
       assoc-dimension-options
       (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
                              ;; If someone passes include_sensitive_fields return hydrated :fields as-is

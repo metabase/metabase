@@ -20,15 +20,13 @@
              [table :refer [Table]]
              [view-log :refer [ViewLog]]]
             [metabase.test
-             [data :refer :all]
+             [data :as data :refer :all]
              [util :as tu :refer [match-$ random-name]]]
             [metabase.test.data.users :refer :all]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
-
-;;; CARD LIFECYCLE
 
 ;;; Helpers
 
@@ -44,7 +42,38 @@
    :query_type        "query"
    :cache_ttl         nil})
 
-;; ## GET /api/card
+(defn- do-with-self-cleaning-random-card-name
+  "Generate a random card name (or use CARD-NAME), pass it to F, then delete any Cards with that name afterwords."
+  [f & [card-name]]
+  (let [card-name (or card-name (random-name))]
+    (try (f card-name)
+         (finally (db/delete! Card :name card-name)))))
+
+(defmacro ^:private with-self-cleaning-random-card-name
+  "Generate a random card name (or optionally use CARD-NAME) and bind it to CARD-NAME-BINDING.
+   Execute BODY and then delete and Cards with that name afterwards."
+  {:style/indent 1, :arglists '([[card-name-binding] & body] [[card-name-binding card-name] & body])}
+  [[card-name-binding card-name] & body]
+  `(do-with-self-cleaning-random-card-name (fn [~card-name-binding]
+                                             ~@body)
+                                           ~@(when card-name [card-name])))
+
+(defn- mbql-count-query [database-id table-id]
+  {:database database-id
+   :type     "query"
+   :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}})
+
+(defn- card-with-name-and-query [card-name query]
+  {:name                   card-name
+   :display                "scalar"
+   :dataset_query          query
+   :visualization_settings {:global {:title nil}}})
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                               FETCHING CARDS & FILTERING                                               |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;; Filter cards by database
 (expect
   [true
@@ -169,15 +198,18 @@
             :visualization_settings {:global {:title nil}}
             :database_id            database-id ; these should be inferred automatically
             :table_id               table-id})
-    ;; make sure we clean up after ourselves as well and delete the Card we create
-    (dissoc (u/prog1 ((user->client :rasta) :post 200 "card" {:name                   card-name
-                                                              :display                "scalar"
-                                                              :dataset_query          (mbql-count-query database-id table-id)
-                                                              :visualization_settings {:global {:title nil}}})
-              (db/delete! Card :id (u/get-id <>)))
-            :created_at :updated_at :id)))
+    (with-self-cleaning-random-card-name [_ card-name]
+      (dissoc ((user->client :rasta) :post 200 "card" {:name                   card-name
+                                                       :display                "scalar"
+                                                       :dataset_query          (mbql-count-query database-id table-id)
+                                                       :visualization_settings {:global {:title nil}}})
+              :created_at :updated_at :id))))
 
-;; ## GET /api/card/:id
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                FETCHING A SPECIFIC CARD                                                |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;; Test that we can fetch a card
 (tt/expect-with-temp [Database  [{database-id :id}]
                       Table     [{table-id :id}   {:db_id database-id}]
@@ -221,7 +253,10 @@
     ;; now a non-admin user shouldn't be able to fetch this card
     ((user->client :rasta) :get 403 (str "card/" (u/get-id card)))))
 
-;; ## PUT /api/card/:id
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                    UPDATING A CARD                                                     |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; updating a card that doesn't exist should give a 404
 (expect "Not found."
@@ -297,10 +332,14 @@
     (Card id)))
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
-(expect "Not found."
+(expect
+  "Not found."
   ((user->client :crowberto) :delete 404 "card/12345"))
 
-;; # CARD FAVORITE STUFF
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                       FAVORITING                                                       |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; Helper Functions
 (defn- fave? [card]
@@ -343,6 +382,10 @@
          (fave? card))]))
 
 
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                         LABELS                                                         |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;;; POST /api/card/:id/labels
 ;; Check that we can update card labels
 (tt/expect-with-temp [Card  [{card-id :id}]
@@ -361,6 +404,10 @@
      (update-labels [label-1-id label-2-id]) ; (2)
      (update-labels [])]))                   ; (3)
 
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                CSV/JSON/XLSX DOWNLOADS                                                 |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;;; POST /api/:card-id/query/csv
 
@@ -461,6 +508,7 @@
            (spreadsheet/select-sheet "Query result")
            (spreadsheet/select-columns {:A :col})))))
 
+
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      COLLECTIONS                                                       |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -468,26 +516,19 @@
 ;; Make sure we can create a card and specify its `collection_id` at the same time
 (tt/expect-with-temp [Collection [collection]]
   (u/get-id collection)
-  (do
+  (with-self-cleaning-random-card-name [card-name]
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-    (let [{card-id :id} ((user->client :rasta) :post 200 "card" {:name                   "My Cool Card"
-                                                                 :display                "scalar"
-                                                                 :dataset_query          (mbql-count-query (id) (id :venues))
-                                                                 :visualization_settings {:global {:title nil}}
-                                                                 :collection_id          (u/get-id collection)})]
-      ;; make sure we clean up after ourselves and delete the newly created Card
-      (u/prog1 (db/select-one-field :collection_id Card :id card-id)
-        (db/delete! Card :id card-id)))))
+    (let [{card-id :id} ((user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                                                                  :collection_id (u/get-id collection)))]
+      (db/select-one-field :collection_id Card :id card-id))))
 
 ;; Make sure we card creation fails if we try to set a `collection_id` we don't have permissions for
 (expect
   "You don't have permissions to do that."
-  (tt/with-temp Collection [collection]
-    ((user->client :rasta) :post 403 "card" {:name                   "My Cool Card"
-                                             :display                "scalar"
-                                             :dataset_query          (mbql-count-query (id) (id :venues))
-                                             :visualization_settings {:global {:title nil}}
-                                             :collection_id          (u/get-id collection)})))
+  (with-self-cleaning-random-card-name [card-name]
+    (tt/with-temp Collection [collection]
+      ((user->client :rasta) :post 403 "card" (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
+                                                :collection_id (u/get-id collection))))))
 
 ;; Make sure we can change the `collection_id` of a Card if it's not in any collection
 (tt/expect-with-temp [Card       [card]
@@ -680,7 +721,7 @@
 
 ;; Test that we *cannot* share a Card if the Card has been archived
 (expect
-  "The object has been archived."
+  {:message "The object has been archived.", :error_code "archived"}
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [card {:archived true}]
       ((user->client :crowberto) :post 404 (format "card/%d/public_link" (u/get-id card))))))

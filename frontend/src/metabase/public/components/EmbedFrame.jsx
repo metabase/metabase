@@ -32,9 +32,14 @@ type Props = {
     setParameterValue: (id: string, value: string) => void
 }
 
+type State = {
+    innerScroll: boolean
+}
+
 @withRouter
-export default class EmbedFrame extends Component<*, Props, *> {
-    state = {
+export default class EmbedFrame extends Component {
+    props: Props;
+    state: State = {
         innerScroll: true
     }
 

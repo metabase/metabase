@@ -16,8 +16,8 @@
                                (throw (Exception. "In order to test Druid, you must specify `MB_DRUID_PORT`."))))})
 
 (u/strict-extend DruidDriver
-  i/IDatasetLoader
-  (merge i/IDatasetLoaderDefaultsMixin
+  i/IDriverTestExtensions
+  (merge i/IDriverTestExtensionsDefaultsMixin
          {:engine                       (constantly :druid)
           :database->connection-details database->connection-details
           :create-db!                   (constantly nil)}))

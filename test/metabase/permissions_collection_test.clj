@@ -18,9 +18,6 @@
 ;; but not Rasta (all-users)
 
 (defn- api-call-was-successful? {:style/indent 0} [response]
-  (when (and (string? response)
-             (not= response "You don't have permissions to do that."))
-    (println "RESPONSE:" response)) ; DEBUG
   (and (not= response "You don't have permissions to do that.")
        (not= response "Unauthenticated")))
 

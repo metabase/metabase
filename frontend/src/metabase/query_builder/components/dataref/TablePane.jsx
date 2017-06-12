@@ -115,7 +115,7 @@ export default class TablePane extends Component {
                     <h1>{table.display_name}</h1>
                     {description}
                     {queryButton}
-                    { table.metrics.length > 0 &&
+                    { table.metrics && (table.metrics.length > 0) &&
                         <ExpandableItemList
                             name="Metrics"
                             type="metrics"
@@ -123,7 +123,7 @@ export default class TablePane extends Component {
                             items={table.metrics}
                         />
                     }
-                    { table.segments.length > 0 &&
+                    { table.segments && (table.segments.length > 0) &&
                         <ExpandableItemList
                             name="Segments"
                             type="segments"

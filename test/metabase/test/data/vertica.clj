@@ -40,7 +40,7 @@
 
 
 (u/strict-extend VerticaDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:create-db-sql             (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
@@ -50,8 +50,8 @@
           :pk-sql-type               (constantly "INTEGER")
           :qualified-name-components (u/drop-first-arg qualified-name-components)
           :execute-sql!              generic/sequentially-execute-sql!})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (fn [& _] @db-connection-details)
           :default-schema                     (constantly "public")
           :engine                             (constantly :vertica)

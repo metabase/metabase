@@ -9,16 +9,20 @@ import * as Field from "metabase/lib/query/field";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
 import { isDate, isState, isCountry } from "metabase/lib/schema_metadata";
+import Utils from "metabase/lib/utils";
 
 import type { Card as CardObject } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
 
+// TODO: use icepick instead of mutation, make they handle frozen cards
+
 export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
     newCard.dataset_query = card.dataset_query;
     newCard.display = "table";
+    newCard.original_card_id = card.id;
     return newCard;
 };
 
@@ -35,7 +39,7 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     }
 };
 
-export const getFieldClauseFromCol = col => {
+export const getFieldRefFromColumn = col => {
     if (col.fk_field_id != null) {
         return ["fk->", col.fk_field_id, col.id];
     } else {
@@ -47,8 +51,8 @@ const clone = card => {
     const newCard = startNewCard("query");
 
     newCard.display = card.display;
-    newCard.dataset_query = card.dataset_query;
-    newCard.visualization_settings = card.visualization_settings;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
+    newCard.visualization_settings = Utils.copy(card.visualization_settings);
 
     return newCard;
 };
@@ -59,7 +63,7 @@ export const filter = (card, operator, column, value) => {
     // $FlowFixMe:
     const filter: FieldFilter = [
         operator,
-        getFieldClauseFromCol(column),
+        getFieldRefFromColumn(column),
         value
     ];
     newCard.dataset_query.query = Query.addFilter(
@@ -70,30 +74,34 @@ export const filter = (card, operator, column, value) => {
 };
 
 const drillFilter = (card, value, column) => {
-    let newCard = clone(card);
-
     let filter;
     if (isDate(column)) {
         filter = [
             "=",
             [
                 "datetime-field",
-                getFieldClauseFromCol(column),
+                getFieldRefFromColumn(column),
                 "as",
                 column.unit
             ],
             moment(value).toISOString()
         ];
     } else {
-        filter = ["=", getFieldClauseFromCol(column), value];
+        filter = ["=", getFieldRefFromColumn(column), value];
     }
 
+    return addOrUpdateFilter(card, filter);
+};
+
+export const addOrUpdateFilter = (card, filter) => {
+    let newCard = clone(card);
     // replace existing filter, if it exists
     let filters = Query.getFilters(newCard.dataset_query.query);
     for (let index = 0; index < filters.length; index++) {
         if (
             Filter.isFieldFilter(filters[index]) &&
-            Field.getFieldTargetId(filters[index][1]) === column.id
+            Field.getFieldTargetId(filters[index][1]) ===
+                Field.getFieldTargetId(filter[1])
         ) {
             newCard.dataset_query.query = Query.updateFilter(
                 newCard.dataset_query.query,
@@ -112,7 +120,36 @@ const drillFilter = (card, value, column) => {
     return newCard;
 };
 
+export const addOrUpdateBreakout = (card, breakout) => {
+    let newCard = clone(card);
+    // replace existing breakout, if it exists
+    let breakouts = Query.getBreakouts(newCard.dataset_query.query);
+    for (let index = 0; index < breakouts.length; index++) {
+        if (
+            Field.getFieldTargetId(breakouts[index]) ===
+            Field.getFieldTargetId(breakout)
+        ) {
+            newCard.dataset_query.query = Query.updateBreakout(
+                newCard.dataset_query.query,
+                index,
+                breakout
+            );
+            return newCard;
+        }
+    }
+
+    // otherwise add a new breakout
+    newCard.dataset_query.query = Query.addBreakout(
+        newCard.dataset_query.query,
+        breakout
+    );
+    return newCard;
+};
+
 const UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year"];
+const getNextUnit = unit => {
+    return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
+};
 
 export const drillDownForDimensions = dimensions => {
     const timeDimensions = dimensions.filter(
@@ -120,13 +157,13 @@ export const drillDownForDimensions = dimensions => {
     );
     if (timeDimensions.length === 1) {
         const column = timeDimensions[0].column;
-        let nextUnit = UNITS[Math.max(0, UNITS.indexOf(column.unit) - 1)];
+        let nextUnit = getNextUnit(column.unit);
         if (nextUnit && nextUnit !== column.unit) {
             return {
                 name: column.unit,
                 breakout: [
                     "datetime-field",
-                    getFieldClauseFromCol(column),
+                    getFieldRefFromColumn(column),
                     "as",
                     nextUnit
                 ]
@@ -194,6 +231,76 @@ export const breakout = (card, breakout, tableMetadata) => {
     );
     guessVisualization(newCard, tableMetadata);
     return newCard;
+};
+
+// min number of points when switching units
+const MIN_INTERVALS = 4;
+
+export const updateDateTimeFilter = (card, column, start, end) => {
+    let newCard = clone(card);
+
+    let fieldRef = getFieldRefFromColumn(column);
+    start = moment(start);
+    end = moment(end);
+    if (column.unit) {
+        // start with the existing breakout unit
+        let unit = column.unit;
+
+        // clamp range to unit to ensure we select exactly what's represented by the dots/bars
+        start = start.add(1, unit).startOf(unit);
+        end = end.endOf(unit);
+
+        // find the largest unit with at least MIN_INTERVALS
+        while (
+            unit !== getNextUnit(unit) && end.diff(start, unit) < MIN_INTERVALS
+        ) {
+            unit = getNextUnit(unit);
+        }
+
+        // update the breakout
+        newCard = addOrUpdateBreakout(newCard, [
+            "datetime-field",
+            fieldRef,
+            "as",
+            unit
+        ]);
+
+        // round to start of the original unit
+        start = start.startOf(column.unit);
+        end = end.startOf(column.unit);
+
+        if (start.isAfter(end)) {
+            return card;
+        }
+        if (start.isSame(end, column.unit)) {
+            // is the start and end are the same (in whatever the original unit was) then just do an "="
+            return addOrUpdateFilter(newCard, [
+                "=",
+                ["datetime-field", fieldRef, "as", column.unit],
+                start.format()
+            ]);
+        } else {
+            // otherwise do a BETWEEN
+            return addOrUpdateFilter(newCard, [
+                "BETWEEN",
+                ["datetime-field", fieldRef, "as", column.unit],
+                start.format(),
+                end.format()
+            ]);
+        }
+    } else {
+        return addOrUpdateFilter(newCard, [
+            "BETWEEN",
+            fieldRef,
+            start.format(),
+            end.format()
+        ]);
+    }
+};
+
+export const updateNumericFilter = (card, column, start, end) => {
+    const fieldRef = getFieldRefFromColumn(column);
+    return addOrUpdateFilter(card, ["BETWEEN", fieldRef, start, end]);
 };
 
 export const pivot = (

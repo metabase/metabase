@@ -26,7 +26,8 @@ type State = {
     result: null|"success"|"failed",
 }
 
-export default class ActionButton extends Component<*, Props, State> {
+export default class ActionButton extends Component {
+    props: Props;
     state: State;
 
     timeout: ?any;

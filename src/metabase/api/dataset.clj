@@ -19,6 +19,8 @@
             [schema.core :as s])
   (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
+;;; ------------------------------------------------------------ Constants ------------------------------------------------------------
+
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
   2000)
@@ -32,24 +34,20 @@
   {:max-results           max-results
    :max-results-bare-rows max-results-bare-rows})
 
+
+;;; ------------------------------------------------------------ Running a Query Normally ------------------------------------------------------------
+
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format."
-  [:as {{:keys [database] :as body} :body}]
+  [:as {{:keys [database], :as query} :body}]
+  {database s/Int}
   (api/read-check Database database)
   ;; add sensible constraints for results limits on our query
-  (let [query (assoc body :constraints default-query-constraints)]
-    (qp/dataset-query query {:executed-by api/*current-user-id*, :context :ad-hoc})))
+  (let [query (assoc query :constraints default-query-constraints)]
+    (qp/process-query-and-save-execution! query {:executed-by api/*current-user-id*, :context :ad-hoc})))
 
-;; TODO - this is no longer used. Should we remove it?
-(api/defendpoint POST "/duration"
-  "Get historical query execution duration."
-  [:as {{:keys [database], :as query} :body}]
-  (api/read-check Database database)
-  ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if there's no data there.
-  ;; if we still can't find relevant info, just default to 0
-  {:average (or (query/average-execution-time-ms (qputil/query-hash query))
-                (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
-                0)})
+
+;;; ------------------------------------------------------------ Downloading Query Results in Other Formats ------------------------------------------------------------
 
 (defn- export-to-csv [columns rows]
   (with-out-str
@@ -123,8 +121,22 @@
   (let [query (json/parse-string query keyword)]
     (api/read-check Database (:database query))
     (as-format export-format
-      (qp/dataset-query (dissoc query :constraints)
+      (qp/process-query-and-save-execution! (dissoc query :constraints)
         {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
+
+
+;;; ------------------------------------------------------------ Other Endpoints ------------------------------------------------------------
+
+;; TODO - this is no longer used. Should we remove it?
+(api/defendpoint POST "/duration"
+  "Get historical query execution duration."
+  [:as {{:keys [database], :as query} :body}]
+  (api/read-check Database database)
+  ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if there's no data there.
+  ;; if we still can't find relevant info, just default to 0
+  {:average (or (query/average-execution-time-ms (qputil/query-hash query))
+                (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints default-query-constraints)))
+                0)})
 
 (api/define-routes
   (middleware/streaming-json-response (route-fn-name 'POST "/")))

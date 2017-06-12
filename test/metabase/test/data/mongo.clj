@@ -41,8 +41,8 @@
 
 
 (u/strict-extend MongoDriver
-  i/IDatasetLoader
-  (merge i/IDatasetLoaderDefaultsMixin
+  i/IDriverTestExtensions
+  (merge i/IDriverTestExtensionsDefaultsMixin
          {:create-db!                   (u/drop-first-arg create-db!)
           :database->connection-details database->connection-details
           :engine                       (constantly :mongo)

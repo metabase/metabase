@@ -9,7 +9,9 @@ import { assocIn } from "icepick";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-export default class BarFunnel extends Component<*, VisualizationProps, *> {
+export default class BarFunnel extends Component {
+    props: VisualizationProps;
+
     render() {
         return (
             <BarChart

@@ -27,7 +27,9 @@ type StepInfo = {
     clicked?: ClickObject,
 };
 
-export default class Funnel extends Component<*, VisualizationProps, *> {
+export default class Funnel extends Component {
+    props: VisualizationProps;
+
     render() {
         const { className, series, gridSize, hovered, onHoverChange, onVisualizationClick, visualizationIsClickable } = this.props;
 
@@ -35,7 +37,7 @@ export default class Funnel extends Component<*, VisualizationProps, *> {
         const metricIndex = 1;
         const cols = series[0].data.cols;
         // $FlowFixMe
-        const rows = series.map(s => s.data.rows[0]);
+        const rows: number[][] = series.map(s => s.data.rows[0]);
 
         const funnelSmallSize = gridSize && (gridSize.width < 7 || gridSize.height <= 5);
 

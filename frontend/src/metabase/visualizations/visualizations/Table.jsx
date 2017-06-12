@@ -29,7 +29,8 @@ type State = {
     data: ?DatasetData
 }
 
-export default class Table extends Component<*, Props, State> {
+export default class Table extends Component {
+    props: Props;
     state: State;
 
     static uiName = "Table";
@@ -126,7 +127,13 @@ export default class Table extends Component<*, Props, State> {
         const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
         const isPivoted = settings["table.pivot"];
         const TableComponent = isDashboard ? TableSimple : TableInteractive;
+
+        if (!data) {
+            return null;
+        }
+
         return (
+            // $FlowFixMe
             <TableComponent
                 {...this.props}
                 data={data}
