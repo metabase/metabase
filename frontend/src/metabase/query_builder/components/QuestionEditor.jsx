@@ -21,7 +21,7 @@ import type { DatabaseId } from "metabase/meta/types/Database";
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { TableMetadata, DatabaseMetadata } from "metabase/meta/types/Metadata";
 import type { Children } from 'react';
-import Query from "metabase-lib/lib/Query";
+import Query from "metabase-lib/lib/queries/Query";
 
 type Props = {
     children?: Children,

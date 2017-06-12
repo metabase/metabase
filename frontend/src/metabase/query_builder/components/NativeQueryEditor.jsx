@@ -41,7 +41,7 @@ const MAX_AUTO_SIZE_LINES = 12;
 const getEditorLineHeight = (lines) => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 
 import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/NativeQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { DatabaseId } from "metabase/meta/types/Database";

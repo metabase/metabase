@@ -48,21 +48,18 @@ export type NativeDatasetQuery = {
 /**
  * The type for MultiDatasetQuery children
  */
-export type ChildDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
+export type AtomicDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
 /**
  * A compound type for supporting multi-query questions without having to change the data model of Card
  */
 export type MultiDatasetQuery = {
     type: "multi",
-    queries: ChildDatasetQuery[],
+    queries: AtomicDatasetQuery[],
     parameters?: Array<ParameterInstance>,
-    // How the global/shared breakout(s) and filter(s) could be contained in MultiDatasetQuery:
-    // sharedBreakout?: BreakoutClause,
-    // sharedFilter?: FilterClause,
 };
 
 /**
  * All possible formats for `dataset_query`
  */
-export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery | MultiDatasetQuery;
+export type DatasetQuery = AtomicDatasetQuery | MultiDatasetQuery;

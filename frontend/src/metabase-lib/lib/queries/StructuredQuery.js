@@ -8,9 +8,6 @@
  *
  * TODO Atte Keinänen 6/6/17: Should the multi-aggregation questions be automatically converted to MultiQuery or not?
  */
-import Query from "./Query";
-
-import Metric from "./metadata/Metric";
 
 import * as Q from "metabase/lib/query/query";
 import Q_deprecated, {
@@ -39,18 +36,19 @@ import type {
     TableMetadata,
     DimensionOptions
 } from "metabase/meta/types/Metadata";
-// TODO: Update Flow so that interfaces are supported
-// import type { SingleDatabaseQuery } from "./interfaces";
 
 import Dimension, {
     ExpressionDimension,
     AggregationDimension
 } from "metabase-lib/lib/Dimension";
 
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "../metadata/Table";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Question from "metabase-lib/lib/Question";
+import type Database from "../metadata/Database";
+import type Question from "../Question";
+import { TableId } from "metabase/meta/types/Table";
+import AtomicQuery from "./AtomicQuery";
+import AggregationWrapper from './Aggregation';
 
 const STRUCTURED_QUERY_TEMPLATE = {
     database: null,
@@ -64,8 +62,7 @@ export function isStructuredDatasetQuery(datasetQuery: DatasetQuery) {
     return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
 }
 
-export default class StructuredQuery extends Query {
-    // implements SingleDatabaseQuery
+export default class StructuredQuery extends AtomicQuery {
     // For Flow type completion
     _structuredDatasetQuery: StructuredDatasetQuery;
 
@@ -79,17 +76,25 @@ export default class StructuredQuery extends Query {
         this._structuredDatasetQuery = datasetQuery;
     }
 
-    /* Query superclass methods */
+    static newStucturedQuery({question, databaseId, tableId}: { question: Question, databaseId?: DatabaseId, tableId?: TableId }) {
+        const datasetQuery = {
+            ...STRUCTURED_QUERY_TEMPLATE,
+            database: databaseId || null,
+            query: {
+                source_table: tableId || null
+            }
+        }
 
-    isStructured(): boolean {
-        return true;
+        return new StructuredQuery(question, datasetQuery);
     }
+
+    /* Query superclass methods */
 
     canRun() {
         return true;
     }
 
-    /* SingleDatabaseQuery methods */
+    /* AtomicQuery superclass methods */
 
     tables(): ?(Table[]) {
         const database = this.database();
@@ -125,10 +130,7 @@ export default class StructuredQuery extends Query {
 
     // legacy
     tableMetadata(): ?TableMetadata {
-        if (this.isStructured()) {
-            // $FlowFixMe
-            return this._metadata.tables[this._datasetQuery.query.source_table];
-        }
+        return this._metadata.tables[this._datasetQuery.query.source_table];
     }
 
     setDatabase(database: Database) {
@@ -166,6 +168,12 @@ export default class StructuredQuery extends Query {
     aggregations(): Aggregation[] {
         return Q.getAggregations(this.query());
     }
+
+    // TODO Atte Keinänen 6/11/17: Make the wrapper objects the standard format for aggregations
+    wrappedAggregations(): AggregationWrapper[] {
+        return this.aggregations().map(agg => new AggregationWrapper(agg));
+    }
+
     aggregationOptions(): any[] {
         return this.table().aggregations();
     }
@@ -190,41 +198,40 @@ export default class StructuredQuery extends Query {
     }
 
     aggregationName(index: number = 0): string {
-        if (this.isStructured()) {
-            const aggregation = this.aggregations()[index];
-            if (NamedClause.isNamed(aggregation)) {
-                return NamedClause.getName(aggregation);
-            } else if (AggregationClause.isCustom(aggregation)) {
-                return formatExpression(aggregation, {
-                    tableMetadata: this.tableMetadata(),
-                    customFields: this.expressions()
-                });
-            } else if (AggregationClause.isMetric(aggregation)) {
-                const metricId = AggregationClause.getMetric(aggregation);
-                const metric = this._metadata.metrics[metricId];
-                if (metric) {
-                    return metric.name;
-                }
-            } else {
-                const selectedAggregation = getAggregator(
-                    AggregationClause.getOperator(aggregation)
+        const aggregation = this.aggregations()[index];
+        if (NamedClause.isNamed(aggregation)) {
+            return NamedClause.getName(aggregation);
+        } else if (AggregationClause.isCustom(aggregation)) {
+            return formatExpression(aggregation, {
+                tableMetadata: this.tableMetadata(),
+                customFields: this.expressions()
+            });
+        } else if (AggregationClause.isMetric(aggregation)) {
+            const metricId = AggregationClause.getMetric(aggregation);
+            const metric = this._metadata.metrics[metricId];
+            if (metric) {
+                return metric.name;
+            }
+        } else {
+            const selectedAggregation = getAggregator(
+                AggregationClause.getOperator(aggregation)
+            );
+            if (selectedAggregation) {
+                let aggregationName = selectedAggregation.name.replace(
+                    " of ...",
+                    ""
                 );
-                if (selectedAggregation) {
-                    let aggregationName = selectedAggregation.name.replace(
-                        " of ...",
-                        ""
-                    );
-                    const fieldId = Q_deprecated.getFieldTargetId(
-                        AggregationClause.getField(aggregation)
-                    );
-                    const field = fieldId && this._metadata.fields[fieldId];
-                    if (field) {
-                        aggregationName += " of " + field.display_name;
-                    }
-                    return aggregationName;
+                const fieldId = Q_deprecated.getFieldTargetId(
+                    AggregationClause.getField(aggregation)
+                );
+                const field = fieldId && this._metadata.fields[fieldId];
+                if (field) {
+                    aggregationName += " of " + field.display_name;
                 }
+                return aggregationName;
             }
         }
+
         return "";
     }
 
@@ -242,15 +249,6 @@ export default class StructuredQuery extends Query {
     }
     clearAggregations() {
         return this._updateQuery(Q.clearAggregations, arguments);
-    }
-
-    equalsToMetric(metric: Metric) {
-        const aggregations = this.aggregations();
-        if (aggregations.length !== 1) return false;
-
-        const agg = aggregations[0];
-        return AggregationClause.isMetric(agg) &&
-            AggregationClause.getMetric(agg) === metric.id;
     }
 
     // BREAKOUTS

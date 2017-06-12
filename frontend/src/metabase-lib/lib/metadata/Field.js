@@ -18,7 +18,8 @@ import {
     isMetric,
     isPK,
     isFK,
-    getIconForField
+    getIconForField,
+    getFieldType
 } from "metabase/lib/schema_metadata";
 
 /**
@@ -29,6 +30,10 @@ export default class Field extends Base {
     description: string;
 
     table: Table;
+
+    fieldType() {
+        return getFieldType(this);
+    }
 
     isDate() {
         return isDate(this);
@@ -54,6 +59,7 @@ export default class Field extends Base {
     isMetric() {
         return isMetric(this);
     }
+    // TODO Atte Keinänen 6/11/17: What is this check based on?
     isDimension() {
         return isDimension(this);
     }

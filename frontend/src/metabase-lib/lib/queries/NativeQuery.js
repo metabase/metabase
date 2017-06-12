@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import Question from "./Question";
+import Question from "../Question";
 import Query from "./Query";
 
 
@@ -26,6 +26,7 @@ import type {
 } from "metabase/meta/types/Card";
 import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     database: null,
@@ -40,9 +41,11 @@ export function isNativeDatasetQuery(datasetQuery: DatasetQuery) {
     return datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
 }
 
-export default class NativeQuery extends Query { // implements SingleDatabaseQuery
+export default class NativeQuery extends AtomicQuery {
     // For Flow type completion
     _nativeDatasetQuery: NativeDatasetQuery;
+
+    _datasetQuery: NativeDatasetQuery;
 
     constructor(
         question: Question,
@@ -56,10 +59,6 @@ export default class NativeQuery extends Query { // implements SingleDatabaseQue
 
     /* Query superclass methods */
 
-    isNative() {
-        return true;
-    }
-
     canRun() {
         return this.databaseId() != null &&
             this.queryText().length > 0 &&
@@ -72,7 +71,7 @@ export default class NativeQuery extends Query { // implements SingleDatabaseQue
             .filter(database => database.native_permissions === "write");
     }
 
-    /* SingleDatabaseQuery methods */
+    /* AtomicQuery superclass methods */
 
     tables(): ?(Table[]) {
         const database = this.database();

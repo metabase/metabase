@@ -2,7 +2,7 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import { getQuery } from "../selectors";
 

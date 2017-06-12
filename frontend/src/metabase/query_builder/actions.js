@@ -43,9 +43,9 @@ import querystring from "querystring";
 import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils";
 
 import type { Card } from "metabase/meta/types/Card";
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/NativeQuery";
-import MultiQuery from "metabase-lib/lib/MultiQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import MultiQuery from "metabase-lib/lib/queries/MultiQuery";
 
 type UiControls = {
     isEditing?: boolean,
@@ -358,7 +358,7 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
 
         const query = new Question(getMetadata(getState()), card).query();
 
-        function loadMetadataForSingleQuery(singleQuery) {
+        function loadMetadataForAtomicQuery(singleQuery) {
             if (singleQuery instanceof StructuredQuery && singleQuery.tableId() != null) {
                 dispatch(loadTableMetadata(singleQuery.tableId()));
             }
@@ -369,9 +369,9 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
         }
 
         if (query instanceof MultiQuery) {
-            query.childQueries().map(loadMetadataForSingleQuery);
+            query.atomicQueries().map(loadMetadataForAtomicQuery);
         } else {
-            loadMetadataForSingleQuery(query);
+            loadMetadataForAtomicQuery(query);
         }
     }
 });
@@ -610,7 +610,7 @@ export const updateQuestion = (newQuestion) => {
         dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
         // See it the template tags editor should be shown/hidden
-        const getTemplateTagCount = (q) => q.query().isNative() ? q.query().templateTags().length : 0;
+        const getTemplateTagCount = (q) => q.query() instanceof NativeQuery ? q.query().templateTags().length : 0;
 
         const oldQuestion = getQuestion(getState());
         const oldTagCount = getTemplateTagCount(oldQuestion);
@@ -641,8 +641,8 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 
         newQuestion = newQuestion.setDatasetQuery(dataset_query);
 
-        const oldTagCount = question.query().isNative() ? question.query().templateTags().length : 0;
-        const newTagCount = newQuestion.query().isNative() ? newQuestion.query().templateTags().length : 0;
+        const oldTagCount = question.query() instanceof NativeQuery ? question.query().templateTags().length : 0;
+        const newTagCount = newQuestion.query() instanceof NativeQuery ? newQuestion.query().templateTags().length : 0;
 
         let openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
         if (newTagCount > oldTagCount) {
@@ -729,6 +729,9 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     };
 });
 
+// TODO Atte Keinänen: The heavy lifting should be moved to StructuredQuery and NativeQuery
+// Question.js could possibly provide a helper method like `Question.setDatabaseId` that delegates it to respective query classes
+
 // setQueryDatabase
 export const SET_QUERY_DATABASE = "metabase/qb/SET_QUERY_DATABASE";
 export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseId) => {
@@ -777,6 +780,9 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
         }
     };
 });
+
+// TODO Atte Keinänen: The heavy lifting should be moved to StructuredQuery and NativeQuery
+// Question.js could possibly provide a helper method like `Question.setSourceTable` that delegates it to respective query classes
 
 // setQuerySourceTable
 export const SET_QUERY_SOURCE_TABLE = "metabase/qb/SET_QUERY_SOURCE_TABLE";
@@ -915,23 +921,6 @@ export const removeQueryExpression = createQueryAction(
     Query.removeExpression,
     ["QueryBuilder", "Remove Expression"]
 );
-
-
-// TODO: Used also in SavedMetricSelector, should this be part of metabase-lib or not?
-// (Kept temporarily here next to the action that uses it)
-export const getQuestionQueryResults = (question, cancelQueryDeferred) => {
-    const rootQuery = question.query();
-    const queries = rootQuery.isMulti() ? rootQuery.childQueries() : [rootQuery];
-
-    // Note that triggering cancelQueryDeferred will cancel every distinct query API call
-    const getQueryResult = (query) =>
-        MetabaseApi.dataset(
-            query.datasetQuery(),
-            cancelQueryDeferred ? {cancelled: cancelQueryDeferred.promise} : {}
-        );
-
-    return Promise.all(queries.map(getQueryResult))
-};
 
 /**
  * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.

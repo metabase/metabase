@@ -1,8 +1,9 @@
 import React, { Component } from "react";
 import Clearable from './Clearable.jsx';
 import cx from "classnames";
-import Query from "metabase-lib/lib/Query";
+import Query from "metabase-lib/lib/queries/Query";
 import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {
     metric: Query,
@@ -48,8 +49,8 @@ export default class MetricWidget extends Component {
 
     render() {
         const { metric, editable, color, clearable } = this.props;
-        // TODO Atte Keinänen: Does this sufficiently check that the query has an aggregation?
-        if (metric.isStructured() && !metric.isBareRows()) {
+
+        if (metric instanceof StructuredQuery && !metric.isBareRows()) {
             let aggregationName = metric.aggregationName();
 
             const metricTitle =

@@ -32,7 +32,7 @@ const CARD_WITH_TWO_METRICS = {
 describe("Question", () => {
     it("work with one metric", () => {
         const question = new Question(METADATA, CARD_WITH_ONE_METRIC);
-        expect(question.singleQueries()).toHaveLength(1);
+        expect(question.atomicQueries()).toHaveLength(1);
         expect(question.card()).toEqual({
             dataset_query: {
                 type: "query",
@@ -51,7 +51,7 @@ describe("Question", () => {
                 aggregation: [["sum", ["field-id", 1]]]
             }
         });
-        expect(question.singleQueries()).toHaveLength(2);
+        expect(question.atomicQueries()).toHaveLength(2);
         expect(question.card()).toEqual({
             dataset_query: {
                 type: "query",
@@ -65,7 +65,7 @@ describe("Question", () => {
     it("should add a new saved metric", () => {
         let question = new Question(METADATA, CARD_WITH_ONE_METRIC);
         question = question.addSavedMetric(METRIC);
-        expect(question.singleQueries()).toHaveLength(2);
+        expect(question.atomicQueries()).toHaveLength(2);
         expect(question.card()).toEqual({
             dataset_query: {
                 type: "query",
@@ -79,7 +79,7 @@ describe("Question", () => {
     it("should remove a metric", () => {
         let question = new Question(METADATA, CARD_WITH_TWO_METRICS);
         question = question.removeMetric(0);
-        expect(question.singleQueries()).toHaveLength(1);
+        expect(question.atomicQueries()).toHaveLength(1);
         expect(question.card()).toEqual({
             dataset_query: {
                 type: "query",
@@ -93,7 +93,7 @@ describe("Question", () => {
     it("should add a filter", () => {
         let question = new Question(METADATA, CARD_WITH_TWO_METRICS);
         const query = question
-            .singleQueries()[0]
+            .atomicQueries()[0]
             .addFilter(["=", ["field-id", 1], 42]);
         question = question.setQuery(query, 0);
         expect(question.metrics()).toHaveLength(2);

@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import AggregationPopover from "metabase/qb/components/gui/AggregationPopover";
 
 import type {

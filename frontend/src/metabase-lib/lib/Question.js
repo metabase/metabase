@@ -1,26 +1,25 @@
 /* @flow weak */
 
-import Query from "./Query";
+import Query from "./queries/Query";
 
 import Metadata from "./metadata/Metadata";
-import Metric from "./metadata/Metric";
 import Table from "./metadata/Table";
 import Field from "./metadata/Field";
 
 import MultiQuery, {
     isMultiDatasetQuery,
     convertToMultiDatasetQuery
-} from "./MultiQuery";
+} from "./queries/MultiQuery";
 import StructuredQuery, {
     isStructuredDatasetQuery
-} from "metabase-lib/lib/StructuredQuery";
+} from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery, {
     isNativeDatasetQuery
-} from "metabase-lib/lib/NativeQuery";
+} from "metabase-lib/lib/queries/NativeQuery";
 
 import { memoize } from "metabase-lib/lib/utils";
 import Utils from "metabase/lib/utils";
-import { utf8_to_b64url } from "metabase/lib/card";
+import * as Card_DEPRECATED from "metabase/lib/card";
 import Query_DEPRECATED from "metabase/lib/query";
 
 import { getParametersWithExtras } from "metabase/meta/Card";
@@ -56,6 +55,9 @@ import type {
 } from "metabase/meta/types/Visualization";
 import { MetabaseApi, CardApi } from "metabase/services";
 import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
+import { TableId } from "metabase/meta/types/Table";
+import { DatabaseId } from "metabase/meta/types/Database";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -67,7 +69,7 @@ type ParameterOptions = "FIXME";
  */
 export default class Question {
     /**
-     * A Question wrapper requires
+     * A Question wrapper requires a metadata object
      * TODO Atte Keinänen 6/6/17: Check which parts of metadata are actually needed and document them here
      * The contents of `metadata` could also be asserted in the Question constructor
      */
@@ -96,6 +98,22 @@ export default class Question {
         this._metadata = metadata;
         this._card = card;
         this._parameterValues = parameterValues || {};
+    }
+
+    /**
+     *
+     */
+    static newQuestion({
+        databaseId, tableId, metadata, parameterValues, ...cardProps
+    }: { databaseId?: DatabaseId, tableId?: TableId, metadata: Metadata, parameterValues?: ParameterValues }) {
+        const card = {
+            name: cardProps.name || null,
+            display: cardProps.display || "table",
+            visualization_settings: cardProps.visualization_settings || {},
+            dataset_query: cardProps.dataset_query || StructuredQuery.newStucturedQuery({ question: this, databaseId, tableId })
+        };
+
+       return new Question(metadata, card, parameterValues);
     }
 
     /**
@@ -186,178 +204,47 @@ export default class Question {
      * Conversion from a single query -centric question to a multi-query question
      */
     isMultiQuery(): boolean {
-        return this.query().isMulti();
+        return this.query() instanceof MultiQuery;
     }
     canConvertToMultiQuery(): boolean {
         const query = this.query();
-
         return query instanceof StructuredQuery && !query.isBareRows() && query.breakouts().length === 1;
     }
     convertToMultiQuery(): Question {
         // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
-        const multiDatasetQuery = convertToMultiDatasetQuery(
-            this,
-            this._card.dataset_query
-        );
+        const multiDatasetQuery = convertToMultiDatasetQuery(this, this._card.dataset_query);
         return this.setCard(
             assoc(this._card, "dataset_query", multiDatasetQuery)
         );
     }
 
     /**
+     * A convenience shorthand for getting the MultiQuery object for a multi-query question
+     */
+    multiQuery(): MultiQuery {
+        if (!this.isMultiQuery()) {
+            throw new Error("Tried to use `multiQuery()` shorthand on a non-multi-query question");
+        }
+
+        // $FlowFixMe
+        return this.query();
+    }
+
+    /**
      * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
      */
-    singleQueries(): Query[] {
-        return this.query().isMulti()
-            ? this.query().childQueries()
-            : [this.query()];
+    atomicQueries(): AtomicQuery[] {
+        if (this.query() instanceof MultiQuery) return this.query().atomicQueries()
+        if (this.query() instanceof AtomicQuery) return [this.query()]
+        return [];
     }
 
     /**
-     * Metric-related methods for the multi-metric query builder
+     * Visualization drill-through and action widget actions
      *
-     * These methods provide convenient abstractions and mental mappings for working with questions
-     * which are composed of different kinds of metrics (either reusable saved metrics or ad-hoc metrics that are
-     * specific to the current question)
-     *
+     * Although most of these are essentially a way to modify the current query, having them as a part
+     * of Question interface instead of Query interface makes it more convenient to also change the current visualization
      */
-    assertIsMultiQuery(): void {
-        if (!this.isMultiQuery()) {
-            throw new Error(
-                "Trying to use a metric method for a Question that hasn't been converted to a multi-query format"
-            );
-        }
-    }
-
-    @memoize availableSavedMetrics(): Metric[] {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        const dimensionType = multiQuery.sharedDimensionType();
-
-        return this._metadata.metricsList().filter(
-            (metric) => metric.isCompatibleWithBreakoutDimension(dimensionType)
-        );
-    }
-    canAddMetric(): boolean {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return multiQuery.canAddQuery();
-    }
-    canRemoveMetric(): boolean {
-        this.assertIsMultiQuery();
-        // can't remove last metric
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return multiQuery.childQueries().length > 1;
-    }
-    addSavedMetric(metric: Metric): Question {
-        this.assertIsMultiQuery();
-        // can't remove last metric
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-
-        // NOTE: Would be nice to have a proper API in metabase-lib for deriving a new breakout
-        // based on an existing breakout / datetime dimension
-        if (multiQuery.sharedDimensionType() === DatetimeFieldDimension) {
-            const breakout = [
-                [
-                    "datetime-field",
-                    metric.table.dateFields()[0].dimension().mbql(),
-                    "as",
-                    // use the same granularity as in other queries
-                    multiQuery.sharedDimensionBaseMBQL()[3]
-                ]
-            ]
-
-            return this.addMetric(
-                ({
-                    type: "query",
-                    database: metric.table.db.id,
-                    query: {
-                        source_table: metric.table.id,
-                        aggregation: [["METRIC", metric.id]],
-                        breakout
-                    }
-                }: StructuredDatasetQueryObject)
-            );
-        } else {
-            throw new Error("Can't currently add a metric a question with a non-datetime breakout")
-        }
-
-    }
-    addMetric(datasetQuery: StructuredDatasetQueryObject): Question {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.addQuery(datasetQuery));
-    }
-    updateMetric(index: number, metric: Query): Question {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.setQueryAtIndex(index, metric));
-    }
-    removeMetric(index: number): Question {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.removeQueryAtIndex(index))
-    }
-
-    /**
-     * Global breakouts and filters
-     * TODO: Make these support multi-query questions
-     */
-
-    // multiple series can be pivoted
-    breakouts(): Breakout[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        if (query instanceof StructuredQuery) {
-            return query.breakouts();
-        } else {
-            return [];
-        }
-    }
-    breakoutOptions(breakout?: any): DimensionOptions {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        if (query instanceof StructuredQuery) {
-            return query.breakoutOptions(breakout);
-        } else {
-            return {
-                count: 0,
-                fks: [],
-                dimensions: []
-            };
-        }
-    }
-    canAddBreakout(): boolean {
-        return this.breakouts() === 0;
-    }
-
-    // multiple series can be filtered by shared dimensions
-    filters(): Filter[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        return query instanceof StructuredQuery ? query.filters() : [];
-    }
-    filterOptions(): Dimension[] {
-        // TODO: real multiple metric persistence
-        const query = this.query();
-        return query instanceof StructuredQuery ? query.filterOptions() : [];
-    }
-    canAddFilter(): boolean {
-        return false;
-    }
-
-    // drill through / actions
-    // TODO: a lot of this should be moved to StructuredQuery?
-    // Maybe in general these should be part of the Query interface and this class would just provide shortcuts for those methods
-    // (or maybe it wouldn't provide shortcuts at all?)
-
     summarize(aggregation) {
         const tableMetadata = this.tableMetadata();
         return this.setCard(summarize(this.card(), aggregation, tableMetadata));
@@ -498,7 +385,7 @@ export default class Question {
      * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
      * This way we benefit from caching and query optimizations done by Metabase backend.
      */
-    async getResults({ cancelDeferred, isDirty = false, ignoreCache = false }): [any] {
+    async getResults({ cancelDeferred, isDirty = false, ignoreCache = false } = {}): [any] {
         const canUseCardApiEndpoint = !isDirty && !this.isMultiQuery() && this.isSaved()
 
         if (canUseCardApiEndpoint) {
@@ -513,7 +400,7 @@ export default class Question {
             const getDatasetQueryResult = (datasetQuery) =>
                 MetabaseApi.dataset(datasetQuery, cancelDeferred ? {cancelled: cancelDeferred.promise} : {});
 
-            const datasetQueries = this.singleQueries().map(query => query.datasetQuery())
+            const datasetQueries = this.atomicQueries().map(query => query.datasetQuery())
             return Promise.all(datasetQueries.map(getDatasetQueryResult));
         }
     }
@@ -590,6 +477,6 @@ export default class Question {
                 : {})
         };
 
-        return utf8_to_b64url(JSON.stringify(cardCopy));
+        return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(cardCopy));
     }
 }

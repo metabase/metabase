@@ -23,7 +23,7 @@ import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { TableMetadata, DatabaseMetadata } from "metabase/meta/types/Metadata";
 import type { Children } from 'react';
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 export type GuiQueryEditorFeatures = {
     data?: boolean,

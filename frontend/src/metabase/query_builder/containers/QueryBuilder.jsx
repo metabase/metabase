@@ -61,6 +61,8 @@ import QuestionBuilder from "metabase/query_builder/containers/QuestionBuilder";
 
 import NewQuestionBar from "metabase/query_builder/containers/NewQuestionBar";
 import NewQuestionOptions from "metabase/query_builder/containers/NewQuestionOptions";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -243,13 +245,13 @@ class LegacyQueryBuilder extends Component {
                     </div>
 
                     <div id="react_qb_editor" className="z2 hide sm-show">
-                        { query.isNative() ?
+                        { query instanceof NativeQuery ?
                                 <NativeQueryEditor
                                     {...this.props}
                                     isOpen={!card.dataset_query.native.query || isDirty}
                                     datasetQuery={card && card.dataset_query}
                                 />
-                        : query.isStructured() ?
+                        : (query instanceof StructuredQuery) ?
                             <div className="wrapper">
                                 { isNew
                                         ?  <NewQuestionBar />

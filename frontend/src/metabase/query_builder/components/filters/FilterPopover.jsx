@@ -18,7 +18,7 @@ import { singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter, FieldFilter, ConcreteField } from "metabase/meta/types/Query";
 import type { FieldMetadata, Operator } from "metabase/meta/types/Metadata";
 

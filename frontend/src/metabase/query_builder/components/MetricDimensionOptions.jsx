@@ -1,8 +1,8 @@
 /* @flow */
 import React, { Component } from "react";
 import Select, { Option } from "metabase/components/Select";
-import MultiQuery from "metabase-lib/lib/MultiQuery";
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import MultiQuery from "metabase-lib/lib/queries/MultiQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension, { DatetimeFieldDimension, FieldIDDimension } from "metabase-lib/lib/Dimension";
 import MetricWidget from "metabase/query_builder/components/MetricWidget";
 
@@ -19,7 +19,7 @@ type ChildQueryDimensionSelectProps = {
 }
 
 const ChildQueryDimensionSelect = ({ query, index, dimensionType, updateDimension }: ChildQueryDimensionSelectProps) => {
-    // TODO: Generalized query for finding compatible dimensions using metabase-lib
+    // TODO: Generalize to use the same format as in MultiQuery.addSavedMetric()
     if (dimensionType !== DatetimeFieldDimension) {
         return <div>This shared dimension type isn't supported</div>
     }
@@ -61,37 +61,30 @@ export default class MultiQueryDimensionOptions extends Component {
     updateChildQueryDimension = ({ index, updatedDimension }: UpdateDimensionParams) => {
         const { query, updateQuery } = this.props;
 
-        // TODO Atte Keinänen 6/9/17: Same as in addSavedMetric: could this be behind a nice dimension API, maybe as factory methods in Dimension.js
-        const newBreakout = [
-                "datetime-field",
-                updatedDimension.mbql(),
-                "as",
-                // use the same granularity as in other queries
-                query.sharedDimensionBaseMBQL()[3]
-        ];
+        const breakoutDimension = new DatetimeFieldDimension(updatedDimension, query.sharedDimension.bucketing());
 
-        const childQuery = query.childQueries()[index];
-        const updatedChildQuery = childQuery.updateBreakout(0, newBreakout);
-        const updatedMultiQuery = query.setQueryAtIndex(index, updatedChildQuery.datasetQuery());
+        const updatedMultiQuery = query.setQueryAtIndexWith(index, (atomicQuery) =>
+            atomicQuery instanceof StructuredQuery
+                ? atomicQuery.updateBreakout(0, breakoutDimension.mbql())
+                : atomicQuery
+        );
         updateQuery(updatedMultiQuery);
     }
 
     render() {
         const { query } = this.props;
 
-        const dimensionType = query.sharedDimensionType();
+        const dimensionType = query.sharedDimension().constructor;
         if (dimensionType !== DatetimeFieldDimension) {
             return <div>This shared dimension type isn't supported</div>
         }
 
-        const childQueries: StructuredQuery[] = query.childQueries();
-
+        const atomicQueries: StructuredQuery[] = query.atomicQueries();
 
         // Somehow fetch the dimension name from metadata
-
         return (
             <div className="align-center flex-full flex flex-wrap">
-                { childQueries.map((childQuery, index) =>
+                { atomicQueries.map((childQuery, index) =>
                     <ChildQueryDimensionSelect query={childQuery} index={index}
                                                dimensionType={dimensionType}
                                                updateDimension={this.updateChildQueryDimension}/>)

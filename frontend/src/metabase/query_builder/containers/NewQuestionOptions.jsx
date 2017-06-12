@@ -20,12 +20,25 @@ import type {
 import type { DatabaseId } from "metabase/meta/types/Database"
 import type { TableId } from "metabase/meta/types/Table"
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery"
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
 
 import {
     getQuery,
     getTables,
 } from "../selectors";
+
+const mapStateToProps = state => ({
+    query:          getQuery(state),
+    metadata:       getMetadata(state),
+    databases:      getDatabasesList(state),
+    tables:         getTables(state)
+})
+
+const mapDispatchToProps = {
+    fetchDatabases,
+    setQueryDatabase,
+    setQuerySourceTable,
+}
 
 type Props = {
     query: StructuredQuery,
@@ -37,8 +50,7 @@ type Props = {
     setQuerySourceTable: (id: TableId) => void,
 }
 
-class NewQuestionOptions extends Component {
-
+export class NewQuestionOptions extends Component {
     props: Props
 
     componentWillMount () {
@@ -102,18 +114,4 @@ class NewQuestionOptions extends Component {
     }
 }
 
-const mapStateToProps = state => ({
-    query:          getQuery(state),
-    metadata:       getMetadata(state),
-    databases:      getDatabasesList(state),
-    tables:         getTables(state)
-})
-
-export default connect(
-    mapStateToProps,
-    {
-        fetchDatabases,
-        setQueryDatabase,
-        setQuerySourceTable,
-    }
-)(NewQuestionOptions)
+export default connect(mapStateToProps, mapDispatchToProps)(NewQuestionOptions)
