@@ -72,7 +72,7 @@ const FETCH_FIELD_FINGERPRINT = 'metabase/reference/FETCH_FIELD_FINGERPRINT';
 export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId) {
     return async () => {
         try {
-            let fingerprint = await MetabaseApi.field_fingerprint(fieldId);
+            let fingerprint = await MetabaseApi.field_fingerprint({ fieldId });
             return fingerprint;
         } catch (error) {
             console.error(error);

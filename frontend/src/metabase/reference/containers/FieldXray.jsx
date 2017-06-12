@@ -8,23 +8,17 @@ import type { Field } from 'metabase/meta/types/Field'
 import { fetchFieldFingerPrint } from 'metabase/reference/reference'
 
 type Props = {
-    fetchXrayData: () => void,
+    fetchFieldFingerPrint: () => void,
     field: Field,
-    xray: {}
+    fingerprint: {}
 }
 
 class FieldXray extends Component {
     props: Props
 
-    componentWillMount() {
-        this.props.fetchXrayData(this.props.field.id)
+    componentDidMount () {
+        this.props.fetchFieldFingerPrint(this.props.field.id)
     }
-    
-    // componentDidMount () {
-    //     // QUESTION: What am I doing wrong here?
-    //     let fingerprint = await this.props.fetchFieldFingerprint(this.props.fieldId)
-    //     this.setState({ fingerprint })
-    // }
 
     render () {
         return (
@@ -36,130 +30,37 @@ class FieldXray extends Component {
                 <div className="Grid Grid--1of2 Grid--gutters mt1">
                     <div className="Grid-cell">
                         <div className="bordered rounded shadowed py2">
+                            { this.props.max && this.props.max }
+                            Max
+                            { /*
                             <Visualization
                                 series={[this.props.xray.min]}
                             />
+                            */}
                         </div>
                     </div>
                     <div className="Grid-cell">
                         <div className="bordered rounded shadowed py2">
+                            { this.props.min && this.props.min }
+                            Min
+                            { /*
                             <Visualization
                                 series={[this.props.xray.max]}
                             />
+                           */}
                         </div>
                     </div>
                 </div>
-                <Visualization
-                    series={[this.props.xray.histogram]}
-                />
-                <div>fingerprint {[this.props.fingerprint]}</div>
             </div>
         )
     }
 }
 
+// TODO - create selectors
 const mapStateToProps = state => ({
-    xray: {
-        min: {
-            card: {
-                name: 'Min',
-                display: 'scalar'
-            },
-            data: {
-                cols: [{
-                    base_type: "type/Integer",
-                    description: null,
-                    display_name: "count",
-                    extra_info: {},
-                    id: null,
-                    name: "count",
-                    source: "aggregation",
-                    special_type: "type/Number",
-                    table_id: null,
-                    target: null
-                }],
-                columns: [["count"]],
-                rows: [
-                    [Math.floor(Math.random() * 40)]
-                ]
-            }
-        },
-        max: {
-            card: {
-                name: 'Max',
-                display: 'scalar'
-            },
-            data: {
-                cols: [{
-                    base_type: "type/Integer",
-                    description: null,
-                    display_name: "count",
-                    extra_info: {},
-                    id: null,
-                    name: "count",
-                    source: "aggregation",
-                    special_type: "type/Number",
-                    table_id: null,
-                    target: null
-                }],
-                columns: [["count"]],
-                rows: [
-                    [Math.floor(Math.random() * 400)]
-                ]
-            }
-        },
-        histogram: {
-            card: {
-                name: 'Histogram',
-                display: 'bar',
-            },
-            data: {
-                cols: [
-                    {
-                        base_type: "type/Integer",
-                        description: null,
-                        display_name: "ID",
-                        extra_info: {},
-                        id: 4,
-                        name: "ID",
-                        source: "breakout",
-                        special_type: "type/Number",
-                        table_id: null,
-                        target: null
-                    },
-                    {
-                        base_type: "type/Integer",
-                        description: null,
-                        display_name: "count",
-                        extra_info: {},
-                        id: null,
-                        name: "count",
-                        source: "aggregation",
-                        special_type: "type/Number",
-                        table_id: 1,
-                        target: null
-                    },
-                ],
-                columns: [["ID", "count"]],
-                rows: makeFakeBarRows()
-            }
-        }
-    }
+    min: state.reference.fingerprint && state.reference.fingerprint.min,
+    max: state.reference.finterprint && state.reference.fingerprint.max,
+    histogram: state.reference.fingerprint && state.reference.fingerprint.histogram
 })
 
-function makeFakeBarRows () {
-    let rows = []
-    for(let i = 1; i < 50; i ++) {
-        rows.push([
-            i,
-            Math.floor(Math.random() * 100)
-        ])
-    }
-    return rows
-}
-
-const fetchXrayData = () => ({
-    'type': 'metabase/reference/FETCH_FIELD_FINGERPRINT'
-})
-
-export default connect(mapStateToProps, { fetchXrayData })(FieldXray)
+export default connect(mapStateToProps, { fetchFieldFingerPrint })(FieldXray)
