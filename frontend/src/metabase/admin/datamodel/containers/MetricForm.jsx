@@ -62,8 +62,9 @@ export default class MetricForm extends Component {
         )
     }
 
+
     render() {
-        const { fields: { id, name, description, definition, revision_message }, metric, tableMetadata, handleSubmit, previewSummary } = this.props;
+        const { fields: { id, name, description, definition, revision_message }, metric, metadata, tableMetadata, handleSubmit, previewSummary } = this.props;
 
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
@@ -82,6 +83,7 @@ export default class MetricForm extends Component {
                                 filter: true,
                                 aggregation: true
                             }}
+                            metadata={metadata}
                             tableMetadata={{
                                 ...tableMetadata,
                                 aggregation_options: tableMetadata.aggregation_options.filter(a => a.short !== "rows"),

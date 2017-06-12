@@ -3,6 +3,7 @@
 import type { DatabaseId } from "./Database";
 import type { StructuredQuery, NativeQuery } from "./Query";
 import type { Parameter, ParameterInstance } from "./Parameter";
+import { BreakoutClause, FilterClause } from "metabase/meta/types/Query";
 
 export type CardId = number;
 
@@ -55,7 +56,10 @@ export type ChildDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 export type MultiDatasetQuery = {
     type: "multi",
     queries: ChildDatasetQuery[],
-    parameters?: Array<ParameterInstance>
+    parameters?: Array<ParameterInstance>,
+    // How the global/shared breakout(s) and filter(s) could be contained in MultiDatasetQuery:
+    // sharedBreakout?: BreakoutClause,
+    // sharedFilter?: FilterClause,
 };
 
 /**

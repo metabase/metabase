@@ -92,6 +92,7 @@ export const updateEmbeddingParams = createAction(UPDATE_EMBEDDING_PARAMS, ({ id
     CardApi.update({ id, embedding_params })
 );
 
+// TODO Atte Keinänen 6/8/17: Should use the stored question by default instead of requiring an explicit `card` parameter
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(UPDATE_URL, (card, { dirty = false, replaceState = false, preserveParameters = true }) =>
     (dispatch, getState) => {
@@ -146,7 +147,7 @@ export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
+export const initializeQB = (location, params) => {
     return async (dispatch, getState) => {
         // do this immediately to ensure old state is cleared before the user sees it
         dispatch(resetQB());
@@ -270,6 +271,16 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             MetabaseAnalytics.trackEvent("QueryBuilder", "Query Started", card.dataset_query.type);
         }
 
+        /**** All actions are dispatched here ****/
+
+        // Update the question to Redux state together with the initial state of UI controls
+        dispatch.action(INITIALIZE_QB, {
+            card,
+            originalCard,
+            uiControls
+        });
+
+        // Fetch the question metadata
         dispatch(loadMetadataForCard(card));
 
         // $FlowFixMe
@@ -294,13 +305,13 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             }));
         }
 
-        return {
-            card,
-            originalCard,
-            uiControls
-        };
+        // if we have loaded up a card that we can run then lets kick that off as well
+        if (question.canRun()) {
+            // NOTE: timeout to allow Parameters widget to set parameterValues
+            setTimeout(() => dispatch(runQuestionQuery({ shouldUpdateUrl: false })), 0);
+        }
     };
-});
+};
 
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
@@ -357,6 +368,7 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     };
 });
 
+// TODO Atte Keinänen 6/8/17: Could (should?) use the stored question by default instead of always requiring the explicit `card` parameter
 export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
 export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (card) => {
     return async (dispatch, getState) => {
