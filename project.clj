@@ -83,15 +83,13 @@
                  [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]
 
-                 ; Notebook utilities and prototypes
+                 ; Proposed additions for fingerprinting
                  [bigml/histogram "4.1.3"]
                  [bigml/sketchy "0.4.1"]
-                 [net.cgrand/xforms "0.9.2"]
                  [kixi/stats "0.3.8"]
                  [redux "0.1.4"]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
-  :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
-            [lein-gorilla "0.4.0"]                                    ; interactive notebooks
+  :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables                                                                      
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
   :main ^:skip-aot metabase.core
