@@ -85,7 +85,7 @@
 
                  ; Proposed additions for fingerprinting
                  [bigml/histogram "4.1.3"]
-                 [bigml/sketchy "0.4.1"]
+                 [bigml/sketchy "0.4.0"]
                  [kixi/stats "0.3.8"]
                  [redux "0.1.4"]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
