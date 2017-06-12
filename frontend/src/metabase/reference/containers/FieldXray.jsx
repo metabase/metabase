@@ -52,7 +52,7 @@ class FieldXray extends Component {
                 <Visualization
                     series={[this.props.xray.histogram]}
                 />
-                <div>{[this.props.fingerprint]}</div>
+                <div>fingerprint {[this.props.fingerprint]}</div>
             </div>
         )
     }

@@ -127,7 +127,7 @@ export const MetabaseApi = {
     dataset:                    POST("/api/dataset"),
     dataset_duration:           POST("/api/dataset/duration"),
     // X-Rays
-    fieldFingerprint:           GET("api/fingerprint/field/:fieldId")
+    field_fingerprint:           GET("api/fingerprint/field/:fieldId")
 };
 
 export const PulseApi = {

@@ -9,7 +9,7 @@ import {
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 
-import { GettingStartedApi } from "metabase/services";
+import { GettingStartedApi, MetabaseApi } from 'metabase/services';
 
 const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
 export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
@@ -69,15 +69,15 @@ export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
 // X-Ray whatnotery
 const FETCH_FIELD_FINGERPRINT = 'metabase/reference/FETCH_FIELD_FINGERPRINT';
-const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId) {
+export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, function(fieldId) {
     return async () => {
         try {
-            let fingerprint = await MetabaseAPI.fieldFingerPrint(fieldId)
-            return fingerprint
+            let fingerprint = await MetabaseApi.field_fingerprint(fieldId);
+            return fingerprint;
         } catch (error) {
-            console.error(error)
+            console.error(error);
         }
-    }
+    };
 });
 
 const initialState = {
