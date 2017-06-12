@@ -1,6 +1,7 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.walk :as walk]
+            [expectations :refer :all]
             [metabase
              [driver :as driver]
              [http-client :as http]
@@ -23,6 +24,7 @@
             [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
+(resolve-private-vars metabase.api.table dimension-options-for-response datetime-dimension-indexes numeric-dimension-indexes)
 
 
 ;; ## /api/org/* AUTHENTICATION Tests
@@ -129,10 +131,15 @@
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     ((user->client :rasta) :get 403 (str "table/" table-id))))
 
+(defn- query-metadata-defaults []
+  (->> dimension-options-for-response
+       var-get
+       walk/keywordize-keys
+       (assoc (table-defaults) :dimension_options)))
 
 ;; ## GET /api/table/:id/query_metadata
 (expect
-  (merge (table-defaults)
+  (merge (query-metadata-defaults)
          (match-$ (hydrate/hydrate (Table (id :categories)) :field_values)
            {:schema       "PUBLIC"
             :name         "CATEGORIES"
@@ -151,7 +158,8 @@
                                                 :raw_column_id      $
                                                 :last_analyzed      $
                                                 :min_value          1.0
-                                                :max_value          75.0}))
+                                                :max_value          75.0
+                                                :dimension_options  (var-get numeric-dimension-indexes)}))
                              (merge defaults (match-$ (Field (id :categories :name))
                                                {:special_type       "type/Name"
                                                 :name               "NAME"
@@ -163,7 +171,8 @@
                                                 :base_type          "type/Text"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))])
+                                                :last_analyzed      $
+                                                :dimension_options  []}))])
             :rows         75
             :updated_at   $
             :id           (id :categories)
@@ -194,7 +203,7 @@
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
-  (merge (table-defaults)
+  (merge (query-metadata-defaults)
          (match-$ (Table (id :users))
            {:schema       "PUBLIC"
             :name         "USERS"
@@ -213,7 +222,8 @@
                                                 :raw_column_id      $
                                                 :last_analyzed      $
                                                 :min_value          1.0
-                                                :max_value          15.0}))
+                                                :max_value          15.0
+                                                :dimension_options  (var-get numeric-dimension-indexes)}))
                              (merge defaults (match-$ (Field (id :users :last_login))
                                                {:special_type       nil
                                                 :name               "LAST_LOGIN"
@@ -225,7 +235,8 @@
                                                 :visibility_type    "normal"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))
+                                                :last_analyzed      $
+                                                :dimension_options  (var-get datetime-dimension-indexes)}))
                              (merge defaults (match-$ (Field (id :users :name))
                                                {:special_type       "type/Name"
                                                 :name               "NAME"
@@ -237,7 +248,8 @@
                                                 :visibility_type    "normal"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))
+                                                :last_analyzed      $
+                                                :dimension_options  []}))
                              (merge defaults (match-$ (Field :table_id (id :users), :name "PASSWORD")
                                                {:special_type       "type/Category"
                                                 :name               "PASSWORD"
@@ -249,7 +261,8 @@
                                                 :visibility_type    "sensitive"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))])
+                                                :last_analyzed      $
+                                                :dimension_options  []}))])
             :rows         15
             :updated_at   $
             :id           (id :users)
@@ -276,7 +289,7 @@
 ;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
-  (merge (table-defaults)
+  (merge (query-metadata-defaults)
          (match-$ (Table (id :users))
            {:schema       "PUBLIC"
             :name         "USERS"
@@ -294,7 +307,8 @@
                                                 :raw_column_id      $
                                                 :last_analyzed      $
                                                 :min_value          1.0
-                                                :max_value          15.0}))
+                                                :max_value          15.0
+                                                :dimension_options  (var-get numeric-dimension-indexes)}))
                              (merge defaults (match-$ (Field (id :users :last_login))
                                                {:special_type       nil
                                                 :name               "LAST_LOGIN"
@@ -305,7 +319,8 @@
                                                 :base_type          "type/DateTime"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))
+                                                :last_analyzed      $
+                                                :dimension_options  (var-get datetime-dimension-indexes)}))
                              (merge defaults (match-$ (Field (id :users :name))
                                                {:special_type       "type/Name"
                                                 :name               "NAME"
@@ -316,7 +331,8 @@
                                                 :base_type          "type/Text"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
-                                                :last_analyzed      $}))])
+                                                :last_analyzed      $
+                                                :dimension_options  []}))])
             :rows         15
             :updated_at   $
             :id           (id :users)
