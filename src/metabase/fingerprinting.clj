@@ -12,14 +12,22 @@
 (def ^:private ^:const percentiles (range 0 1 0.1))
 
 (defn histogram
-  ([] (hist/create))
-  ([acc] acc)
-  ([acc x] (hist/insert! acc x)))
+  ([] (histogram identity))
+  ([f]
+   (fn
+     ([] (hist/create))
+     ([acc] acc)
+     ([acc x] (hist/insert! acc (f x))))))
 
 (defn histogram-categorical
-  ([] (hist/create))
-  ([acc] acc)
-  ([acc x] (hist/insert-categorical! acc (when x 1) x)))
+  ([] (histogram-categorical identity))
+  ([f]
+   (fn
+     ([] (hist/create))
+     ([acc] acc)
+     ([acc x]
+      (let [fx (f x)]
+        (hist/insert-categorical! acc (when fx 1) fx))))))
 
 (defn- bins
   [histogram]
@@ -28,6 +36,12 @@
         (into {}
               (map (juxt :mean :count))
               bins))))
+
+(def ^:private nil-count (comp :count hist/missing-bin))
+
+(defn total-count
+  [histogram]
+  (+ (hist/total-count histogram) (nil-count histogram)))
 
 (defn cardinality
   ([] (hyper-loglog/create cardinality-error))
@@ -63,8 +77,8 @@
             max (hist/maximum histogram)
             mean (hist/mean histogram)
             median (hist/median histogram)
-            nil-count (-> histogram hist/missing-bin :count)
-            total-count (+ (hist/total-count histogram) nil-count)
+            nil-count (nil-count histogram)
+            total-count (total-count histogram)
             range (- max min)]
         {:histogram (bins histogram)
          :percentiles (apply hist/percentiles histogram percentiles)
@@ -97,13 +111,13 @@
 (defmethod fingerprinter :type/Text
   [field]
   (redux/post-complete
-    (redux/fuse {:histogram (redux/pre-step histogram (stats/somef count))})
+    (redux/fuse {:histogram (histogram (stats/somef count))})
     (fn [{:keys [histogram]}]
-      (let [nil-count (-> histogram hist/missing-bin :count)]
+      (let [nil-count (nil-count histogram)]
         {:min (hist/minimum histogram)
          :max (hist/maximum histogram)
          :hisogram (bins histogram)
-         :count (+ (hist/total-count histogram) nil-count)
+         :count (total-count histogram)
          :nil-conunt nil-count
          :has-nils? (pos? nil-count)}))))
 
@@ -114,16 +128,14 @@
 (defmethod fingerprinter :type/DateTime
   [field]
   (redux/post-complete
-    (redux/fuse {:histogram (redux/pre-step histogram (stats/somef coerce/to-long))
-                 :histogram-hour (redux/pre-step histogram (stats/somef t/hour))
-                 :histogram-day (redux/pre-step histogram
-                                                (stats/somef t/day-of-week))
-                 :histogram-month (redux/pre-step histogram (stats/somef t/month))
-                 :histogram-quarter (redux/pre-step histogram
-                                                    (stats/somef quarter))})
+    (redux/fuse {:histogram (histogram (stats/somef coerce/to-long))
+                 :histogram-hour (histogram (stats/somef t/hour))
+                 :histogram-day (histogram (stats/somef t/day-of-week))
+                 :histogram-month (histogram (stats/somef t/month))
+                 :histogram-quarter (histogram (stats/somef quarter))})
     (fn [{:keys [histogram histogram-hour histogram-day histogram-month
                  histogram-quarter]}]
-      (let [nil-count (-> histogram hist/missing-bin :count) ]
+      (let [nil-count (nil-count histogram)]
         {:min (hist/minimum histogram)
          :max (hist/maximum histogram)
          :hisogram (bins histogram)
@@ -132,7 +144,7 @@
          :hisogram-day (bins histogram-day)
          :hisogram-month (bins histogram-month)
          :hisogram-quarter (bins histogram-quarter)
-         :count (+ (hist/total-count histogram) nil-count)
+         :count (total-count histogram)
          :nil-conunt nil-count
          :has-nils? (pos? nil-count)
          :entropy (binned-entropy histogram)}))))
@@ -143,8 +155,8 @@
     (redux/fuse {:histogram histogram-categorical
                  :cardinality cardinality})
     (fn [{:keys [histogram cardinality]}]
-      (let [nil-count (-> histogram hist/missing-bin :count)
-            total-count (+ (hist/total-count histogram) nil-count)]
+      (let [nil-count (nil-count histogram)
+            total-count (total-count histogram)]
         {:histogram (bins histogram)
          :cardinality-vs-count (/ cardinality total-count)
          :nil-conunt nil-count
