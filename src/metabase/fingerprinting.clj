@@ -177,5 +177,4 @@
 ; Stub to get things working
 (defn field-fingerprint
   [field]
-  {:field field :min 1 :max 10 :histogram {0 1 1 5 2 10 3 15 4 10 5 15 6 10 7 20 8 5 9 3 10 1} }
-  )
+  {:field field :min 1 :max 10 :histogram {0 1 1 5 2 10 3 15 4 10 5 15 6 10 7 20 8 5 9 3 10 1}})
