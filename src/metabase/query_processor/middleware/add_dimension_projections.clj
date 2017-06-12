@@ -31,6 +31,30 @@
                        (xform-fn (nth row col-index)))
                      dim-seq))))
 
+(defn- transform-values-for-col
+  "Converts `VALUES` to a type compatible with the base_type found for
+  `COL`. These values should be directly comparable with the values
+  returned from the database for the given `COL`."
+  [{:keys [base_type] :as col} values]
+  (cond
+    (isa? base_type :type/Decimal)
+    (map bigdec values)
+
+    (isa? base_type :type/Float)
+    (map double values)
+
+    (isa? base_type :type/BigInteger)
+    (map bigint values)
+
+    (isa? base_type :type/Integer)
+    (map int values)
+
+    (isa? base_type :type/Text)
+    (map str values)
+
+    :else
+    values))
+
 (defn- assoc-remapped-to [from->to]
   (fn [col]
     (-> col
@@ -44,7 +68,7 @@
       {:col-index idx
        :from remap-from
        :to remap-to
-       :xform-fn (zipmap (get-in col [:values :values])
+       :xform-fn (zipmap (transform-values-for-col col (get-in col [:values :values]))
                          (get-in col [:values :human-readable-values]))
        :new-column (create-remapped-col remap-to remap-from)
        :dimension-type remap-type})))
