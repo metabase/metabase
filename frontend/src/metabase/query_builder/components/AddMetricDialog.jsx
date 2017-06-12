@@ -11,14 +11,16 @@ import MetricList from "metabase/query_builder/components/MetricList";
 import { getDisplayTypeForCard } from "metabase/query_builder/actions";
 import MetricDimensionOptions from "metabase/query_builder/components/MetricDimensionOptions";
 import Question from "metabase-lib/lib/Question";
-import NewAdHocMetric from "metabase/query_builder/components/NewAdHocMetric";
 import MultiQuery from "metabase-lib/lib/queries/MultiQuery";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import NewQueryBar from "metabase/new_query/containers/NewQueryBar";
+import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {
     onClose: () => void,
-    originalQuestion: Question,
+    question: Question,
     // TODO Add correct type for the query result
     results: any,
     metadata: Metadata
@@ -156,17 +158,23 @@ export default class AddMetricDialog extends Component {
         });
     };
 
-    addAdHocMetric = (datasetQuery: Data) => {
+    showNewAdHocMetricFlow = () => {
+        this.setState({ showNewAdHocMetricFlow: true });
+    }
+
+    onNewAdHocMetricFlowComplete = (adHocQuery: StructuredQuery) => {
         const { currentQuestion } = this.state;
-
-        const currentQuery: MultiQuery = currentQuestion.query();
-        const updatedQuestion = currentQuery.addQuery(datasetQuery)
-
+        const updatedQuestion: MultiQuery = currentQuestion.multiQuery().addQuery(adHocQuery).question();
         this.updateQuestionAndFetchResults(updatedQuestion);
+        this.setState({ showNewAdHocMetricFlow: false });
+    }
+
+    onNewAdHocMetricFlowCancel = () => {
+        this.setState({ showNewAdHocMetricFlow: false });
     }
 
     render() {
-        const { onClose } = this.props;
+        const { question, onClose } = this.props;
         const { showNewAdHocMetricFlow, currentResults, currentQuestion, addedMetrics } = this.state;
 
         const filteredMetrics = this.filteredMetrics();
@@ -175,17 +183,23 @@ export default class AddMetricDialog extends Component {
 
         if (showNewAdHocMetricFlow) {
             return (
-                <NewAdHocMetric
-                    addAdHocMetric={this.addAdHocMetric}
-                    onClose={this.setState({showNewAdHocMetricFlow: false})}
-                />
+                <div className="spread flex">
+                    <div className="flex flex-column flex-full bg-white">
+                        <NewQueryBar />
+                        <NewQueryOptions
+                            question={question}
+                            onComplete={this.onNewAdHocMetricFlowComplete}
+                            onCancel={this.onNewAdHocMetricFlowCancel}
+                        />
+                    </div>
+                </div>
             )
         }
 
         const AddNewMetricListItem = () =>
             <li
                 className="my1 pl2 py1 flex align-center text-brand-saturated text-bold cursor-pointer"
-                onClick={() => this.setState({ showNewAdHocMetricFlow: true })}
+                onClick={this.showNewAdHocMetricFlow}
             >
                 <span className="px1 flex-no-shrink" style={{ height: "16px" }}>
                     <Icon

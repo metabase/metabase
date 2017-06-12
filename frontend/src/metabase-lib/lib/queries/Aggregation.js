@@ -7,8 +7,6 @@ import { FieldId } from "metabase/meta/types/Field";
 // TODO Atte Keinänen 6/11/17: Add a docstring about the purpose of Aggregations
 
 export default class Aggregation {
-    clause: AggregationObject;
-
     constructor(
         clause: AggregationObject
     ): Aggregation {
@@ -44,7 +42,7 @@ export default class Aggregation {
     getMetric(): ?MetricId { return AggregationClause_DEPRECATED.getMetric(this.clause) }
 
     /**
-     * TODO Atte Keinänen 6/11/17: What is the purpose of `isCustom`?
+     * Is a custom expression created with the expression editor
      */
     isCustom(): boolean { return AggregationClause_DEPRECATED.isCustom(this.clause) }
 

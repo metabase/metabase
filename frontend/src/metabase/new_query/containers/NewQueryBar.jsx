@@ -10,15 +10,19 @@ type Props = {
     query: StructuredQuery
 }
 
-class NewQuestionBar extends Component {
+export class NewQueryBar extends Component {
 
     props: Props
 
     render () {
-
         const { query } = this.props
-        const database = query && query.database()
-        const table = query && query.table()
+
+        if (!query) {
+            return null;
+        }
+
+        const database = query.database()
+        const table = query.table()
 
         return (
             <ol className="bordered rounded shadowed py2 flex align-center">
@@ -40,4 +44,4 @@ const mapStateToProps = state => ({
     query: getQuery(state)
 })
 
-export default connect(mapStateToProps)(NewQuestionBar)
+export default connect(mapStateToProps)(NewQueryBar)

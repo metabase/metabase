@@ -59,7 +59,11 @@ export default class Field extends Base {
     isMetric() {
         return isMetric(this);
     }
-    // TODO Atte Keinänen 6/11/17: What is this check based on?
+
+    /**
+     * Tells if this column can be used in a breakout
+     * Currently returns `true` for everything expect for aggregation columns
+     */
     isDimension() {
         return isDimension(this);
     }

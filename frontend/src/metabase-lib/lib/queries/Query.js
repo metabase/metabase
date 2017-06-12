@@ -42,6 +42,16 @@ export default class Query {
         }
     }
 
+    /**
+     * Convenience method for accessing the global metadata
+     */
+    metadata() {
+        return this._metadata;
+    }
+
+    /**
+     * Does this query have the sufficient metadata for editing it?
+     */
     isEditable(): boolean {
         return true;
     }
@@ -51,6 +61,13 @@ export default class Query {
      */
     datasetQuery(): DatasetQuery {
         return this._datasetQuery;
+    }
+
+    /**
+     * Query is considered empty, i.e. it is in a plain state with no properties / query clauses set
+     */
+    isEmpty(): boolean {
+        return false;
     }
 
     /**

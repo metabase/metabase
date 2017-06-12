@@ -58,6 +58,7 @@ import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import { TableId } from "metabase/meta/types/Table";
 import { DatabaseId } from "metabase/meta/types/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import { Dataset } from "metabase/meta/types/Dataset";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -100,7 +101,7 @@ export default class Question {
     }
 
     /**
-     *
+     * TODO: Write a docstring, rename the latter newQuestion instance method
      */
     static newQuestion({
         databaseId, tableId, metadata, parameterValues, ...cardProps
@@ -145,6 +146,7 @@ export default class Question {
         return new Question(this._metadata, card, this._parameterValues);
     }
 
+    // TODO: Rename?
     newQuestion() {
         return this.setCard(
             chain(this.card())
@@ -153,6 +155,10 @@ export default class Question {
                 .dissoc("description")
                 .value()
         );
+    }
+
+    isEmpty(): boolean {
+        return this.query().isEmpty();
     }
 
     /**
@@ -385,7 +391,7 @@ export default class Question {
      * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
      * This way we benefit from caching and query optimizations done by Metabase backend.
      */
-    async getResults({ cancelDeferred, isDirty = false, ignoreCache = false } = {}): [any] {
+    async getResults({ cancelDeferred, isDirty = false, ignoreCache = false } = {}): [Dataset] {
         const canUseCardApiEndpoint = !isDirty && !this.isMultiQuery() && this.isSaved()
 
         if (canUseCardApiEndpoint) {

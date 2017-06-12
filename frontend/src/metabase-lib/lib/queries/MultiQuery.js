@@ -173,6 +173,9 @@ export default class MultiQuery extends Query {
     /* Specialized query list manipulation */
     addSavedMetric(metric: Metric): MultiQuery {
         const sharedDimension = this.sharedDimension();
+        // sharedDimension.field().isDate() !== field.isDate()
+        // sharedDimension.field().isNumeric() !== field.isNumeric()
+        // sharedDimension.field().id !== field.id
         if (sharedDimension instanceof DatetimeFieldDimension) {
             // A possible more generalized approach (discuss with Tom):
             // metric.table.fields.filter(field => sharedDimension.allowedFieldTypes().contains(field.fieldType()))
@@ -199,6 +202,7 @@ export default class MultiQuery extends Query {
     /**
      * Returns the x-axis dimension that is currently shared by all atomic queries.
      */
+
     sharedDimension(): Dimension {
         const firstQuery = this.atomicQueries()[0]
 
@@ -221,6 +225,6 @@ export default class MultiQuery extends Query {
         return new MultiQuery(this._originalQuestion, {
             ...this.datasetQuery(),
             queries: queries.map((query) => query.datasetQuery())
-        }: MultiQuery);
+        });
     }
 }

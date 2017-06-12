@@ -62,6 +62,7 @@ export function isStructuredDatasetQuery(datasetQuery: DatasetQuery) {
     return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
 }
 
+
 export default class StructuredQuery extends AtomicQuery {
     // For Flow type completion
     _structuredDatasetQuery: StructuredDatasetQuery;
@@ -89,6 +90,10 @@ export default class StructuredQuery extends AtomicQuery {
     }
 
     /* Query superclass methods */
+
+    isEmpty() {
+        return !this.databaseId();
+    }
 
     canRun() {
         return true;
@@ -135,7 +140,8 @@ export default class StructuredQuery extends AtomicQuery {
 
     setDatabase(database: Database) {
         if (database.id !== this.databaseId()) {
-            return this.reset().setDatasetQuery(
+            return new StructuredQuery(
+                this._originalQuestion,
                 assoc(this.datasetQuery(), "database", database.id)
             );
         } else {
@@ -145,7 +151,8 @@ export default class StructuredQuery extends AtomicQuery {
 
     setTable(table: Table) {
         if (table.id !== this.tableId()) {
-            return this.reset().setDatasetQuery(
+            return new StructuredQuery(
+                this._originalQuestion,
                 chain(this.datasetQuery())
                     .assoc("database", table.database.id)
                     .assocIn(["query", "source_table"], table.id)
@@ -177,6 +184,11 @@ export default class StructuredQuery extends AtomicQuery {
     aggregationOptions(): any[] {
         return this.table().aggregations();
     }
+
+    aggregationOptionsWithoutRaw(): any[] {
+        return this.aggregationOptions().filter(option => option.short !== "raw");
+    }
+
     aggregationFieldOptions(agg): DimensionOptions {
         const aggregation = this.table().aggregation(agg);
         if (aggregation) {
@@ -235,9 +247,8 @@ export default class StructuredQuery extends AtomicQuery {
         return "";
     }
 
-    /**
-     * For dealing with the legacy multi-aggregation queries
-     */
+    // AGGREGATIONS
+
     addAggregation(aggregation: Aggregation) {
         return this._updateQuery(Q.addAggregation, arguments);
     }
