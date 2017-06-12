@@ -20,16 +20,16 @@ For more info see our [blog post on the subject](http://www.metabase.com/blog/Jo
 
 ### Can I use SQL with Metabase?
 
-[Yes](http://www.metabase.com/docs/latest/users-guide/03-asking-questions.html#using-sql).
+[Yes](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
 
 
 ### Do I need to know SQL to use Metabase?
-[No](http://www.metabase.com/docs/latest/users-guide/03-asking-questions.html)
+[No](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html)
 
 
 ### Why can't I do X in the Query Builder?
 
-The primary audience of the GUI querying interface is a non-technical user who doesn't SQL. Advanced users can always [use SQL](http://www.metabase.com/docs/latest/users-guide/03-asking-questions.html#using-sql).
+The primary audience of the GUI querying interface is a non-technical user who doesn't SQL. Advanced users can always [use SQL](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
 
 We're constantly trying to walk the line between putting more functionality into the GUI interface and creating a confusing mess. You can expect it to improve and change with time, but in the meantime, you can always lean on SQL directly for the complicated matters.
 
