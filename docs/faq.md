@@ -2,9 +2,9 @@
 
 ### I can't log into Metabase. Can you reset my password?
 
-If you are running the Mac OS X application on your laptop, you can click on the Help menu item and click `Reset Password`.
+If you are running the MacOS application on your laptop, you can click on the Help menu item and click `Reset Password`.
 
-If you are using a browser to access Metabase, then someone downloaded our software and installed it on a server. We at Metabase don't host your instance. We write software that someone at your company decided to run.  You should ask whoever it is that set up your company's Metabase (a good starting point for this would be to ask whoever).
+If you are using a browser to access Metabase, then someone downloaded our software and installed it on a server. We at Metabase don't host your instance. We write software that someone at your company decided to run. You should ask whomever it was that set up your company's Metabase for help resetting your password.
 
 ### How should I use the Mac OS X application?
 
