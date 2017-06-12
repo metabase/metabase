@@ -15,7 +15,8 @@
              [humanization :as humanization]]
             [metabase.query-processor
              [interface :as i]
-             [sort :as sort]]
+             [sort :as sort]
+             [util :as qputil]]
             [toucan.db :as db])
   (:import [metabase.query_processor.interface Expression ExpressionRef]))
 

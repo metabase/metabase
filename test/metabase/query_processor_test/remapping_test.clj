@@ -3,6 +3,7 @@
   (:require [metabase.query-processor.middleware.expand :as ql]
             [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
+            [metabase.test.data.datasets :as datasets]
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections create-remapped-col)
@@ -11,8 +12,7 @@
   {:rows  [["20th Century Cafe" 12 "Café Sweets"]
            ["25°" 11 "Café"]
            ["33 Taps" 7 "Beer Garden"]
-           ["800 Degrees Neapolitan Pizzeria" 58 "Ramen"]
-           ["BCD Tofu House" 44 "Landmark"]]
+           ["800 Degrees Neapolitan Pizzeria" 58 "Ramen"]]
    :columns [(data/format-name "name")
              (data/format-name "category_id")
              "Foo"]
@@ -25,7 +25,7 @@
     (->> (data/run-query venues
            (ql/fields $name $category_id)
            (ql/order-by (ql/asc $name))
-           (ql/limit 5))
+           (ql/limit 4))
          booleanize-native-form
          (format-rows-by [str int str]))))
 
@@ -51,12 +51,11 @@
                    (fn [rows]
                      (map #(mapv % col-indexes) rows))))))
 
-(qp-expect-with-all-engines
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
   {:rows   [["20th Century Cafe" 2 "Café"]
             ["25°" 2 "Burger"]
             ["33 Taps" 2 "Bar"]
-            ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]
-            ["BCD Tofu House" 2 "Korean"]]
+            ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
    :columns [(:name (venues-col :name))
              (:name (venues-col :price))
              (data/format-name "name_2")]
@@ -73,7 +72,8 @@
     (data/create-venue-category-fk-remapping "Foo")
     (->> (data/run-query venues
            (ql/order-by (ql/asc $name))
-           (ql/limit 5))
+           (ql/limit 4))
          booleanize-native-form
          (format-rows-by [int str int double double int str])
-         (select-columns (set (map data/format-name ["name" "price" "name_2"]))))))
+         (select-columns (set (map data/format-name ["name" "price" "name_2"])))
+         :data)))

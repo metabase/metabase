@@ -28,8 +28,8 @@
 (defn- row-map-fn [dim-seq]
   (fn [row]
     (concat row (map (fn [{:keys [col-index xform-fn]}]
-                       (xform-fn (nth row col-index)))
-                     dim-seq))))
+                          (xform-fn (nth row col-index)))
+                        dim-seq))))
 
 (defn- transform-values-for-col
   "Converts `VALUES` to a type compatible with the base_type found for

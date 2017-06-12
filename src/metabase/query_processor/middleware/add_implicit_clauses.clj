@@ -76,7 +76,6 @@
     query
     (update query :query add-implicit-clauses-to-inner-query)))
 
-
 (defn add-implicit-clauses
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."
