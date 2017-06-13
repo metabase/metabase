@@ -1,0 +1,61 @@
+;; gorilla-repl.fileformat = 1
+
+;; **
+;;; # Metabase Common MBQL forms
+;;; 
+;;; This is a document to simplify working with MBQL for data science-y types as well as people like me (Sameer) with no memory
+;; **
+
+;; @@
+(ns parched-sanctuary
+  (:require [gorilla-plot.core :as plot]))
+;; @@
+
+;; **
+;;; # Tables
+;; **
+
+;; @@
+; how do I fetch a table by id?
+
+; how do I get all a tables rows?
+
+; how do I get a sample of a tables rows?
+
+; how do I get all the fields of a table?
+;; @@
+
+;; **
+;;; # Fields
+;; **
+
+;; @@
+; how do I fetch a field by id?
+
+; how do I fetch a sample of values for a field
+
+; how do I fetch all the values + their frequencies (eg, count grouped by field)
+
+;; @@
+
+;; **
+;;; # Metrics
+;; **
+
+;; @@
+; how do I fetch a metric by id?
+
+; how do I calculate the metric
+;; @@
+
+;; @@
+; how do I get all dimensions (eg all attached fields) for a metric?
+
+; how do I get the type of each dimension?
+;; @@
+
+;; @@
+; how do I get a metric broken out by one of its dimensions?
+
+; how do I filter a matric on one of its dimensions?
+;; @@
