@@ -255,11 +255,11 @@ class LegacyQueryBuilder extends Component {
 
                     <div id="react_qb_editor" className="z2 hide sm-show">
                         { query instanceof NativeQuery ?
-                                <NativeQueryEditor
-                                    {...this.props}
-                                    isOpen={!card.dataset_query.native.query || isDirty}
-                                    datasetQuery={card && card.dataset_query}
-                                />
+                            <NativeQueryEditor
+                                {...this.props}
+                                isOpen={!card.dataset_query.native.query || isDirty}
+                                datasetQuery={card && card.dataset_query}
+                            />
                         : (query instanceof StructuredQuery) ?
                             <div className="wrapper">
                                 { showNewQueryFlow
@@ -292,7 +292,7 @@ class LegacyQueryBuilder extends Component {
                         <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
 
-                    { uiControls.isShowingTemplateTagsEditor && query.isNative() &&
+                    { uiControls.isShowingTemplateTagsEditor && query instanceof NativeQuery &&
                         <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                     }
                 </div>

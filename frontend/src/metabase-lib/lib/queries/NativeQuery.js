@@ -3,7 +3,6 @@
 import Question from "../Question";
 import Query from "./Query";
 
-
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -37,15 +36,9 @@ const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     }
 };
 
-export function isNativeDatasetQuery(datasetQuery: DatasetQuery) {
-    return datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
-}
-
 export default class NativeQuery extends AtomicQuery {
     // For Flow type completion
     _nativeDatasetQuery: NativeDatasetQuery;
-
-    _datasetQuery: NativeDatasetQuery;
 
     constructor(
         question: Question,
@@ -55,6 +48,10 @@ export default class NativeQuery extends AtomicQuery {
 
         // $FlowFixMe
         this._nativeDatasetQuery = datasetQuery;
+    }
+
+    static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
+        return datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
     }
 
     /* Query superclass methods */

@@ -5,32 +5,30 @@ import Query from "./Query";
 
 import _ from "underscore";
 
-import type {
-    AtomicDatasetQuery,
-    DatasetQuery,
-    MultiDatasetQuery,
-} from "metabase/meta/types/Card";
-import StructuredQuery, { isStructuredDatasetQuery } from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery, { isNativeDatasetQuery } from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "./StructuredQuery";
+import NativeQuery from "./NativeQuery";
 import { memoize } from "metabase-lib/lib/utils";
 import Action, { ActionClick } from "../Action";
 import Dimension, { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
-import AtomicQuery from "./AtomicQuery";
-import Metric from "metabase-lib/lib/metadata/Metric";
+
+import type {
+    AtomicDatasetQuery,
+    DatasetQuery,
+    MultiDatasetQuery
+} from "metabase/meta/types/Card";
 
 export const MULTI_QUERY_TEMPLATE: MultiDatasetQuery = {
     type: "multi",
     queries: []
 };
 
-export function isMultiDatasetQuery(datasetQuery: DatasetQuery) {
-    return datasetQuery.type === MULTI_QUERY_TEMPLATE.type;
-}
-
-export function createAtomicQuery(question: Question, datasetQuery: AtomicDatasetQuery): Query {
-    if (isStructuredDatasetQuery(datasetQuery)) {
+export function createAtomicQuery(
+    question: Question,
+    datasetQuery: AtomicDatasetQuery
+): Query {
+    if (StructuredQuery.isDatasetQueryType(datasetQuery)) {
         return new StructuredQuery(question, datasetQuery);
-    } else if (isNativeDatasetQuery(datasetQuery)) {
+    } else if (NativeQuery.isDatasetQueryType(datasetQuery)) {
         return new NativeQuery(question, datasetQuery);
     }
 
@@ -45,27 +43,37 @@ export function createAtomicQuery(question: Question, datasetQuery: AtomicDatase
  * Because each query contained by MultiDatasetQuery should have just a single aggregation, {@link StructuredQuery}s
  * with two or more aggregations are broken into queries with one of those aggregations in each.
  */
-export function convertToMultiDatasetQuery(question: Question, datasetQuery: DatasetQuery) {
+export function convertToMultiDatasetQuery(
+    question: Question,
+    datasetQuery: DatasetQuery
+) {
     const getConvertedQueries = () => {
-        if (isStructuredDatasetQuery(datasetQuery)) {
-            const structuredQuery: StructuredQuery = new StructuredQuery(question, datasetQuery);
+        if (StructuredQuery.isDatasetQueryType(datasetQuery)) {
+            const structuredQuery: StructuredQuery = new StructuredQuery(
+                question,
+                datasetQuery
+            );
             const aggregations = structuredQuery.aggregations();
             const isMultiAggregationQuery = aggregations.length > 1;
 
             if (isMultiAggregationQuery) {
                 // Each aggregation is isolated to its own StructuredQuery
-                return aggregations.map((aggregation) => (
-                    structuredQuery.clearAggregations().addAggregation(aggregation).datasetQuery()
-                ));
+                return aggregations.map(aggregation =>
+                    structuredQuery
+                        .clearAggregations()
+                        .addAggregation(aggregation)
+                        .datasetQuery());
             } else {
                 return [datasetQuery];
             }
         } else {
-            throw new Error("Native queries can't yet be converted to MultiDatasetQuery")
+            throw new Error(
+                "Native queries can't yet be converted to MultiDatasetQuery"
+            );
         }
-    }
+    };
 
-    if (isMultiDatasetQuery(datasetQuery)) return datasetQuery;
+    if (MultiQuery.isDatasetQueryType(datasetQuery)) return datasetQuery;
 
     return {
         ...MULTI_QUERY_TEMPLATE,
@@ -77,26 +85,35 @@ export function convertToMultiDatasetQuery(question: Question, datasetQuery: Dat
  * Represents a composite query that is composed from multiple structured / native queries.
  */
 export default class MultiQuery extends Query {
+    static isDatasetQueryType(datasetQuery: DatasetQuery) {
+        return datasetQuery.type === MULTI_QUERY_TEMPLATE.type;
+    }
+
     // For Flow type completion
     _multiDatasetQuery: MultiDatasetQuery;
 
-    getInvalidParamsError = (message) =>
-        new Error(`You tried to call MultiQuery constructor with invalid parameters: ${message}`);
+    getInvalidParamsError = message =>
+        new Error(
+            `You've tried to call MultiQuery constructor with invalid parameters: ${message}`
+        );
 
     constructor(
         question: Question,
-        datasetQuery?: DatasetQuery = MULTI_QUERY_TEMPLATE
+        datasetQuery?: MultiDatasetQuery = MULTI_QUERY_TEMPLATE
     ) {
         super(question, datasetQuery);
 
-        // $FlowFixMe Cast to MultiDatasetQuery for type completion
         this._multiDatasetQuery = datasetQuery;
 
         if (this._multiDatasetQuery.type !== "multi") {
-            throw this.getInvalidParamsError("The type of datasetQuery isn't `multi`");
+            throw this.getInvalidParamsError(
+                "The type of datasetQuery isn't `multi`"
+            );
         }
         if (!_.isArray(this._multiDatasetQuery.queries)) {
-            throw this.getInvalidParamsError("datasetQuery doesn't contain the `queries` array");
+            throw this.getInvalidParamsError(
+                "datasetQuery doesn't contain the `queries` array"
+            );
         }
     }
 
@@ -159,7 +176,9 @@ export default class MultiQuery extends Query {
     }
 
     removeQueryAtIndex(index: number): MultiQuery {
-        return this._updateQueries(this.atomicQueries().filter((_, i) => i !== index));
+        return this._updateQueries(
+            this.atomicQueries().filter((_, i) => i !== index)
+        );
     }
 
     canAddQuery(): boolean {
@@ -202,14 +221,18 @@ export default class MultiQuery extends Query {
     /**
      * Returns the x-axis dimension that is currently shared by all atomic queries.
      */
-
     sharedDimension(): Dimension {
         const firstQuery = this.atomicQueries()[0]
 
-        if (firstQuery instanceof StructuredQuery && firstQuery.breakouts().length === 1) {
+        if (
+            firstQuery instanceof StructuredQuery &&
+            firstQuery.breakouts().length === 1
+        ) {
             return Dimension.parseMBQL(firstQuery.breakouts()[0]);
         } else {
-            throw new Error("Cannot infer the shared dimension from the first query of MultiQuery")
+            throw new Error(
+                "Cannot infer the shared dimension from the first query of MultiQuery"
+            );
         }
     }
 
@@ -222,8 +245,9 @@ export default class MultiQuery extends Query {
 
     /* Internal methods */
     _updateQueries(queries: AtomicQuery[]) {
+        const datasetQuery: MultiDatasetQuery = this.datasetQuery();
         return new MultiQuery(this._originalQuestion, {
-            ...this.datasetQuery(),
+            ...datasetQuery,
             queries: queries.map((query) => query.datasetQuery())
         });
     }

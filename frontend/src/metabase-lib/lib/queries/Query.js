@@ -55,7 +55,7 @@ export default class Query {
     isEditable(): boolean {
         return true;
     }
-    
+
     /**
      * Returns the dataset_query object underlying this Query
      */
@@ -105,4 +105,3 @@ export default class Query {
         return fn(this.datasetQuery());
     }
 }
-

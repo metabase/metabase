@@ -58,12 +58,11 @@ const STRUCTURED_QUERY_TEMPLATE = {
     }
 };
 
-export function isStructuredDatasetQuery(datasetQuery: DatasetQuery) {
-    return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
-}
-
-
 export default class StructuredQuery extends AtomicQuery {
+    static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
+        return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
+    }
+
     // For Flow type completion
     _structuredDatasetQuery: StructuredDatasetQuery;
 
@@ -96,7 +95,7 @@ export default class StructuredQuery extends AtomicQuery {
     }
 
     canRun() {
-        return true;
+        return Q_deprecated.canRun(this.query());
     }
 
     isEditable(): boolean {
@@ -129,13 +128,15 @@ export default class StructuredQuery extends AtomicQuery {
     }
 
     query(): StructuredQueryObject {
-        // $FlowFixMe
-        return this._datasetQuery.query;
+        return this._structuredDatasetQuery.query;
     }
 
     // legacy
     tableMetadata(): ?TableMetadata {
-        return this._metadata.tables[this._datasetQuery.query.source_table];
+        const sourceTableId = this._structuredDatasetQuery.query.source_table;
+        if (sourceTableId != null) {
+            return this._metadata.tables[sourceTableId];
+        }
     }
 
     setDatabase(database: Database) {
@@ -209,7 +210,7 @@ export default class StructuredQuery extends AtomicQuery {
         return Q.isBareRows(this.query());
     }
 
-    aggregationName(index: number = 0): string {
+    aggregationName(index: number = 0): ?string {
         const aggregation = this.aggregations()[index];
         if (NamedClause.isNamed(aggregation)) {
             return NamedClause.getName(aggregation);
@@ -243,8 +244,7 @@ export default class StructuredQuery extends AtomicQuery {
                 return aggregationName;
             }
         }
-
-        return "";
+        return null;
     }
 
     // AGGREGATIONS
@@ -516,6 +516,10 @@ export default class StructuredQuery extends AtomicQuery {
         }
     }
 
+    setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
+        return new StructuredQuery(this._originalQuestion, datasetQuery);
+    }
+
     // INTERNAL
 
     _updateQuery(
@@ -524,9 +528,8 @@ export default class StructuredQuery extends AtomicQuery {
             ...args: any[]
         ) => StructuredQueryObject,
         args: any[]
-    ) {
-        return new StructuredQuery(
-            this._originalQuestion,
+    ): StructuredQuery {
+        return this.setDatasetQuery(
             updateIn(this._datasetQuery, ["query"], query =>
                 updateFunction(query, ...args))
         );

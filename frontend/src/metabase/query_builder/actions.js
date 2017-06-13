@@ -54,6 +54,12 @@ type UiControls = {
     isShowingTutorial?: boolean,
 }
 
+const getTemplateTagCount = (question: Question) => {
+    const query = question.query();
+    return query instanceof NativeQuery ?
+        query.templateTags().length :
+        0;
+}
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE"; const setCurrentState = createAction(SET_CURRENT_STATE);
 
@@ -276,15 +282,27 @@ export const initializeQB = (location, params) => {
         // Fetch the question metadata
         dispatch(loadMetadataForCard(card));
 
-        const question = new Question(getMetadata(getState()), card);
-        const originalQuestion = new Question(getMetadata(getState()), originalCard);
+        // $FlowFixMe
+        const question = card && new Question(getMetadata(getState()), (card: Card));
 
-        // clean up the url and make sure it reflects our card state
-        dispatch(updateUrl(card, {
-            dirty: question.isDirtyComparedTo(originalQuestion),
-            replaceState: true,
-            preserveParameters
-        }));
+        // if we have loaded up a card that we can run then lets kick that off as well
+        if (question) {
+            if (question.canRun()) {
+                // NOTE: timeout to allow Parameters widget to set parameterValues
+                setTimeout(() =>
+                    // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
+                    dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }))
+                , 0);
+            }
+
+            const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
+            // clean up the url and make sure it reflects our card state
+            dispatch(updateUrl(card, {
+                dirty: originalQuestion && question.isDirtyComparedTo(originalQuestion),
+                replaceState: true,
+                preserveParameters
+            }));
+        }
 
         // if we have loaded up a card that we can run then lets kick that off as well
         if (question.canRun()) {
@@ -356,7 +374,7 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
         // Short-circuit if we're in a weird state where the card isn't completely loaded
         if (!card && !card.dataset_query) return;
 
-        const query = new Question(getMetadata(getState()), card).query();
+        const query = card && new Question(getMetadata(getState()), card).query();
 
         function loadMetadataForAtomicQuery(singleQuery) {
             if (singleQuery instanceof StructuredQuery && singleQuery.tableId() != null) {
@@ -368,10 +386,12 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
             }
         }
 
-        if (query instanceof MultiQuery) {
-            query.atomicQueries().map(loadMetadataForAtomicQuery);
-        } else {
-            loadMetadataForAtomicQuery(query);
+        if (query) {
+            if (query instanceof MultiQuery) {
+                query.atomicQueries().map(loadMetadataForAtomicQuery);
+            } else {
+                loadMetadataForAtomicQuery(query);
+            }
         }
     }
 });
@@ -609,8 +629,7 @@ export const updateQuestion = (newQuestion) => {
         // Replace the current question with a new one
         dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
-        // See it the template tags editor should be shown/hidden
-        const getTemplateTagCount = (q) => q.query() instanceof NativeQuery ? q.query().templateTags().length : 0;
+        // See if the template tags editor should be shown/hidden
 
         const oldQuestion = getQuestion(getState());
         const oldTagCount = getTemplateTagCount(oldQuestion);
@@ -641,8 +660,8 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 
         newQuestion = newQuestion.setDatasetQuery(dataset_query);
 
-        const oldTagCount = question.query() instanceof NativeQuery ? question.query().templateTags().length : 0;
-        const newTagCount = newQuestion.query() instanceof NativeQuery ? newQuestion.query().templateTags().length : 0;
+        const oldTagCount = getTemplateTagCount(question);
+        const newTagCount = getTemplateTagCount(newQuestion);
 
         let openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
         if (newTagCount > oldTagCount) {
@@ -938,11 +957,10 @@ export const runQuestionQuery = ({
     overrideWithCard
 } : RunQueryParams = {}) => {
     return async (dispatch, getState) => {
-        const questionFromCard = (c) => new Question(getMetadata(getState()), c);
+        const questionFromCard = (c: Card): Question => c && new Question(getMetadata(getState()), c);
 
-        const question = overrideWithCard ? questionFromCard(overrideWithCard) : getQuestion(getState());
-        const originalQuestion = getOriginalQuestion(getState());
-
+        const question: Question = overrideWithCard ? questionFromCard(overrideWithCard) : getQuestion(getState());
+        const originalQuestion: ?Question = getOriginalQuestion(getState());
 
         const cardIsDirty = originalQuestion ? question.isDirtyComparedTo(originalQuestion) : true;
 
