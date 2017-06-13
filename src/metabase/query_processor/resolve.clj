@@ -100,6 +100,11 @@
 
 ;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
+(defn calculate-bin-width [field num-bins]
+  (u/round-to-decimals 5 (/ (- (:max-value field)
+                               (:min-value field))
+                            num-bins)))
+
 (defn- field-ph-resolve-field [{:keys [field-id datetime-unit fk-field-id binning-strategy], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                i/map->Field
@@ -111,7 +116,8 @@
                              :unit  (or datetime-unit :day)}) ; default to `:day` if a unit wasn't specified
       binning-strategy
       (i/map->BinnedField {:field field
-                           :num-bins binning-strategy})
+                           :num-bins binning-strategy
+                           :bin-width (calculate-bin-width field binning-strategy)})
       :else field)
     ;; If that fails just return ourselves as-is
     this))

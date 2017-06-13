@@ -73,21 +73,21 @@
        (format-rows-by [int int int])))
 
 (expect-with-non-timeseries-dbs
-  [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+  [[10.1 1] [33.1 61] [37.7 29] [39.2 8] [40.8 1]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default 20))))))
 
 (expect-with-non-timeseries-dbs
-  [[10.0 1] [30.0 90] [40.0 9]]
+ [[10.1 1] [30.5 99]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default 3))))))
 
 (expect-with-non-timeseries-dbs
-  [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
+  [[10.1 -165.4 1] [33.1 -119.7 61] [37.7 -124.2 29] [39.2 -78.5 8] [40.8 -78.5 1]]
   (format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
@@ -97,16 +97,28 @@
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
 (expect-with-non-timeseries-dbs
-  [[8.0 1] [32.0 61] [36.0 29] [40.0 9]]
+  [[10.1 1] [33.1 61] [36.9 38]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default))))))
 
 (expect-with-non-timeseries-dbs
-  [[10.0 1] [30.0 90] [40.0 9]]
+  [[10.1 1] [30.5 99]]
   (tu/with-temporary-setting-values [breakout-bins-num 3]
     (format-rows-by [(partial u/round-to-decimals 1) int]
       (rows (data/run-query venues
               (ql/aggregation (ql/count))
               (ql/breakout (ql/binning-strategy $latitude :default)))))))
+
+;;Validate binning info is returned with the binning-strategy
+(expect-with-non-timeseries-dbs
+  (merge (venues-col :latitude)
+         {:min_value 10.0646, :source :breakout,
+          :max_value 40.7794, :binning-info {:binning-strategy "num-bins", :bin-width 10.23827, :num-bins 3}})
+  (tu/with-temporary-setting-values [breakout-bins-num 3]
+    (-> (data/run-query venues
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/binning-strategy $latitude :default)))
+        (get-in [:data :cols])
+        first)))

@@ -45,6 +45,12 @@
           (i/map->DateTimeField {:field field, :unit unit}))
         fields))
 
+    metabase.query_processor.interface.BinnedField
+    (let [nested-field (:field this)]
+      [(assoc nested-field :binning-info {:binning-strategy "num-bins"
+                                          :bin-width (:bin-width this)
+                                          :num-bins (:num-bins this)})])
+
     metabase.query_processor.interface.Field
     (if-let [parent (:parent this)]
       [this parent]
