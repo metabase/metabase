@@ -4,38 +4,36 @@
  */
 
 import { handleActions, combineReducers } from "metabase/lib/redux";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Question from "metabase-lib/lib/Question";
+import StructuredQuery, { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/lib/queries/StructuredQuery";
+import type { DatasetQuery } from "metabase/meta/types/Card";
 
 /**
  * Initializes the new query flow for a given question
  */
-export const INITIALIZE_NEW_QUERY = "metabase/new_query/INITIALIZE_NEW_QUERY";
-export function initializeNewQuery(question: Question) {
+export const RESET_QUERY = "metabase/new_query/RESET_QUERY";
+export function resetQuery() {
     return function(dispatch, getState) {
-        const query = new StructuredQuery(question);
-        dispatch.action(INITIALIZE_NEW_QUERY, query)
+        dispatch.action(RESET_QUERY, STRUCTURED_QUERY_TEMPLATE)
     }
 }
 
 export const UPDATE_QUERY = "metabase/new_query/UPDATE_QUERY";
 export function updateQuery(updatedQuery: StructuredQuery) {
     return function(dispatch, getState) {
-        dispatch.action(UPDATE_QUERY, updatedQuery)
+        dispatch.action(UPDATE_QUERY, updatedQuery.datasetQuery())
     }
 }
 
 /**
  * The current query that we are creating
  */
-
 // TODO Atte Keinänen 6/12/17: Test later how Flow typing with redux-actions could work best for our reducers
-// something like const query = handleActions<StructuredQuery>({
-const query = handleActions({
-    [INITIALIZE_NEW_QUERY]: (state, { payload }): StructuredQuery => payload,
-    [UPDATE_QUERY]: (state, { payload }): StructuredQuery => payload
-}, null);
+// something like const query = handleActions<DatasetQuery>({
+const datasetQuery = handleActions({
+    [RESET_QUERY]: (state, { payload }): DatasetQuery => payload,
+    [UPDATE_QUERY]: (state, { payload }): DatasetQuery => payload
+}, STRUCTURED_QUERY_TEMPLATE);
 
 export default combineReducers({
-    query
+    datasetQuery
 });

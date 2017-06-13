@@ -146,6 +146,9 @@ export default class AddMetricDialog extends Component {
 
 
         return metadata.metricsList().filter(metric => {
+            if (!metric.is_active) {
+                return false;
+            }
             if (_.find(initialQueries, (query) => this.queryHasMetricAggregation(query, metric))) {
                 return false;
             }
@@ -164,7 +167,11 @@ export default class AddMetricDialog extends Component {
 
     onNewAdHocMetricFlowComplete = (adHocQuery: StructuredQuery) => {
         const { currentQuestion } = this.state;
-        const updatedQuestion: MultiQuery = currentQuestion.multiQuery().addQuery(adHocQuery).question();
+        const updatedQuestion: MultiQuery = currentQuestion
+            .multiQuery()
+            .addQueryWithInferredBreakout(adHocQuery)
+            .question();
+
         this.updateQuestionAndFetchResults(updatedQuestion);
         this.setState({ showNewAdHocMetricFlow: false });
     }

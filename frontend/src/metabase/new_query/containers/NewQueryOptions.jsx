@@ -3,8 +3,8 @@
 import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
-import { fetchDatabases } from 'metabase/redux/metadata'
-import { initializeNewQuery, updateQuery } from '../new_query'
+import { fetchDatabases, fetchTableMetadata } from 'metabase/redux/metadata'
+import { resetQuery, updateQuery } from '../new_query'
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -16,6 +16,9 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
 import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
 
 import type { Field } from "metabase/meta/types/Field";
+import type { TableId } from "metabase/meta/types/Table";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import { getMetadata, getTables } from "metabase/selectors/metadata";
 
 class OptionListItem extends Component {
     props: {
@@ -36,11 +39,14 @@ class OptionListItem extends Component {
 
 const mapStateToProps = state => ({
     query: getQuery(state),
+    metadata: getMetadata(state),
+    tables: getTables(state)
 })
 
 const mapDispatchToProps = {
     fetchDatabases,
-    initializeNewQuery,
+    fetchTableMetadata,
+    resetQuery,
     updateQuery
 }
 
@@ -51,10 +57,13 @@ type Props = {
 
     // Properties injected with redux connect
     query: StructuredQuery,
-    initializeNewQuery: () => void,
+    resetQuery: () => void,
     updateQuery: (StructuredQuery) => void,
 
     fetchDatabases: () => void,
+    fetchTableMetadata: (TableId) => void,
+
+    metadata: Metadata
 }
 
 /**
@@ -65,9 +74,8 @@ export class NewQueryOptions extends Component {
     props: Props
 
     componentWillMount() {
-        const { question } = this.props;
-        this.props.fetchDatabases()
-        this.props.initializeNewQuery(question);
+        this.props.fetchDatabases();
+        this.props.resetQuery();
     }
 
     setDatabase = (database: Database) => {
@@ -75,6 +83,7 @@ export class NewQueryOptions extends Component {
     }
 
     setTable = (table: Table) => {
+        this.props.fetchTableMetadata(table.id);
         this.props.updateQuery(this.props.query.setTable(table))
     }
 
@@ -97,7 +106,8 @@ export class NewQueryOptions extends Component {
     }
 
     render() {
-        const { query } = this.props
+        const { query, metadata } = this.props
+
         if (!query) {
             return <LoadingAndErrorWrapper loading={true}/>
         }
@@ -106,7 +116,6 @@ export class NewQueryOptions extends Component {
         const table = query.table()
         const aggregation = query.aggregationsWrapped()[0]
         const aggregationOption = aggregation && aggregation.getOption()
-        console.log('render', aggregation, aggregationOption);
 
         return (
             <LoadingAndErrorWrapper loading={!query}>
@@ -115,7 +124,7 @@ export class NewQueryOptions extends Component {
                         <div>
                             <h2>Pick a database</h2>
                             <ol>
-                                { query.metadata().databasesList().map(database =>
+                                { metadata.databasesList().map(database =>
                                     <OptionListItem key={database.id} item={database} action={this.setDatabase}>
                                         { database.name }
                                     </OptionListItem>

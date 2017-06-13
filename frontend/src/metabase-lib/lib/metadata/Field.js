@@ -60,6 +60,14 @@ export default class Field extends Base {
         return isMetric(this);
     }
 
+    isCompatibleWith(field: Field) {
+        return (
+            this.isDate() === field.isDate() ||
+            this.isNumeric() === field.isNumeric() ||
+            this.id === field.id
+        )
+    }
+
     /**
      * Tells if this column can be used in a breakout
      * Currently returns `true` for everything expect for aggregation columns

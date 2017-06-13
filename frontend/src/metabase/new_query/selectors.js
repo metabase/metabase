@@ -3,4 +3,7 @@
  * (used both for new questions and for adding "ad-hoc metrics" to multi-query questions)
  */
 
-export const getQuery = state => state.new_query.query;
+import { getQuestion } from "metabase/query_builder/selectors";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+export const getQuery = state => new StructuredQuery(getQuestion(state), state.new_query.datasetQuery);

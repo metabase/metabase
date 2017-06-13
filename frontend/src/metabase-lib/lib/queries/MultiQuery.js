@@ -18,6 +18,7 @@ import type {
 } from "metabase/meta/types/Card";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Metric from "metabase-lib/lib/metadata/Metric";
+import Field from "metabase-lib/lib/metadata/Field";
 
 export const MULTI_QUERY_TEMPLATE: MultiDatasetQuery = {
     type: "multi",
@@ -191,49 +192,65 @@ export default class MultiQuery extends Query {
         return this._updateQueries([...this.atomicQueries(), atomicQuery]);
     }
 
-    /* Specialized query list manipulation */
-    addSavedMetric(metric: Metric): MultiQuery {
-        const sharedDimension = this.sharedDimension();
-        // sharedDimension.field().isDate() !== field.isDate()
-        // sharedDimension.field().isNumeric() !== field.isNumeric()
-        // sharedDimension.field().id !== field.id
-        if (sharedDimension instanceof DatetimeFieldDimension) {
-            // A possible more generalized approach (discuss with Tom):
-            // metric.table.fields.filter(field => sharedDimension.allowedFieldTypes().contains(field.fieldType()))
-            const compatibleFields = metric.table.fields.filter(field => field.isDate());
-            if (compatibleFields.length === 0) {
-                throw new Error("Tried to add a metric that doesn't have any compatible fields for the shared breakout")
-            }
+    /**
+     * Compatible field breakout logic
+     */
+    compatibleFieldsFor(query: StructuredQuery) {
+        const baseDimension = this.baseBreakoutDimension();
+        return query.table().fields.filter(field => field.isCompatibleWith(baseDimension.field()));
+    }
 
-            const breakoutDimension = new DatetimeFieldDimension(compatibleFields[0].dimension(), [sharedDimension.bucketing()])
-
-            const metricQuery = StructuredQuery
-                .newStucturedQuery({ question: this._originalQuestion, databaseId: metric.table.db.id, tableId: metric.table.id })
-                .addAggregation(metric.aggregationClause())
-                .addBreakout(breakoutDimension.mbql());
-
-            return this.addQuery(metricQuery);
+    breakoutDimensionFor(field: Field) {
+        const baseDimension = this.baseBreakoutDimension();
+        if (!baseDimension._parent) {
+            return new baseDimension.constructor(null, [field.id], baseDimension._metadata);
         } else {
-            throw new Error("Can't currently add a metric a question with a non-datetime breakout")
+            return new baseDimension.constructor(field.dimension(), baseDimension._args, baseDimension._metadata);
         }
+    }
+
+    addQueryWithInferredBreakout(query: StructuredQuery): MultiQuery {
+        const compatibleFields = this.compatibleFieldsFor(query)
+        if (compatibleFields.length === 0) {
+            throw new Error("Tried to add a metric that doesn't have any compatible fields for the shared breakout")
+        }
+
+        const baseField = this.baseBreakoutDimension().field();
+        const field = compatibleFields.find((compatibleField) => {
+            return compatibleField.id === baseField.id || compatibleField.name === baseField.name
+        }) || compatibleFields[0];
+
+        return this.addQuery(query.addBreakout(this.breakoutDimensionFor(field).mbql()));
+    }
+
+    addSavedMetric(metric: Metric): MultiQuery {
+        const metricQuery = StructuredQuery
+            .newStucturedQuery({
+                question: this._originalQuestion,
+                databaseId: metric.table.db.id,
+                tableId: metric.table.id
+            })
+            .addAggregation(metric.aggregationClause())
+
+        return this.addQueryWithInferredBreakout(metricQuery);
     }
 
     /* Shared x-axis dimension */
 
     /**
-     * Returns the x-axis dimension that is currently shared by all atomic queries.
+     * Returns the breakout dimension that is currently the basis for all new atomic queries.
      */
-    sharedDimension(): Dimension {
+    baseBreakoutDimension(): Dimension {
         const firstQuery = this.atomicQueries()[0]
 
         if (
             firstQuery instanceof StructuredQuery &&
             firstQuery.breakouts().length === 1
         ) {
-            return Dimension.parseMBQL(firstQuery.breakouts()[0]);
+            return Dimension.parseMBQL(firstQuery.breakouts()[0], this._metadata);
         } else {
             throw new Error(
-                "Cannot infer the shared dimension from the first query of MultiQuery"
+                "Cannot infer the shared breakout dimension from the first query of MultiQuery"
             );
         }
     }
