@@ -47,9 +47,9 @@
 
     metabase.query_processor.interface.BinnedField
     (let [nested-field (:field this)]
-      [(assoc nested-field :binning-info {:binning-strategy "num-bins"
-                                          :bin-width (:bin-width this)
-                                          :num-bins (:num-bins this)})])
+      [(assoc nested-field :binning_info {:binning_strategy "num-bins"
+                                          :bin_width (:bin-width this)
+                                          :num_bins (:num-bins this)})])
 
     metabase.query_processor.interface.Field
     (if-let [parent (:parent this)]

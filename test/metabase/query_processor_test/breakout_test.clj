@@ -115,7 +115,7 @@
 (expect-with-non-timeseries-dbs
   (merge (venues-col :latitude)
          {:min_value 10.0646, :source :breakout,
-          :max_value 40.7794, :binning-info {:binning-strategy "num-bins", :bin-width 10.23827, :num-bins 3}})
+          :max_value 40.7794, :binning_info {:binning_strategy "num-bins", :bin_width 10.23827, :num_bins 3}})
   (tu/with-temporary-setting-values [breakout-bins-num 3]
     (-> (data/run-query venues
           (ql/aggregation (ql/count))
