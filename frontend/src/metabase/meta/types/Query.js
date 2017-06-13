@@ -122,7 +122,7 @@ export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDateti
 export type SegmentFilter      = ["SEGMENT", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
-export type OrderBy = ["asc"|"desc", Field];
+export type OrderBy = [Field, "ascending"|"descending"|"asc"|"desc"];
 
 export type LimitClause = number;
 

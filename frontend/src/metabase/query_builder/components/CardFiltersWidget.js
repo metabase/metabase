@@ -4,9 +4,9 @@ import FilterList from './filters/FilterList.jsx';
 
 import Query from "metabase/lib/query";
 
-import type {DatasetQuery} from "metabase/meta/types/Card";
-import type {TableMetadata} from "metabase/meta/types/Metadata";
-import type {Filter} from "metabase/meta/types/Query";
+import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { Filter } from "metabase/meta/types/Query";
 
 export default class CardFiltersWidget extends Component {
     props: {

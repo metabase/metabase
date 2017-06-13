@@ -12,7 +12,7 @@ import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
+import { loadCard, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
 import { isPK, isFK } from "metabase/lib/types";
@@ -43,6 +43,9 @@ import querystring from "querystring";
 import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils";
 
 import type { Card } from "metabase/meta/types/Card";
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/NativeQuery";
+import MultiQuery from "metabase-lib/lib/MultiQuery";
 
 type UiControls = {
     isEditing?: boolean,
@@ -51,6 +54,12 @@ type UiControls = {
     isShowingTutorial?: boolean,
 }
 
+const getTemplateTagCount = (question: Question) => {
+    const query = question.query();
+    return query instanceof NativeQuery ?
+        query.templateTags().length :
+        0;
+}
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE"; const setCurrentState = createAction(SET_CURRENT_STATE);
 
@@ -83,6 +92,7 @@ export const updateEmbeddingParams = createAction(UPDATE_EMBEDDING_PARAMS, ({ id
     CardApi.update({ id, embedding_params })
 );
 
+// TODO Atte Keinänen 6/8/17: Should use the stored question by default instead of requiring an explicit `card` parameter
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(UPDATE_URL, (card, { dirty = false, replaceState = false, preserveParameters = true }) =>
     (dispatch, getState) => {
@@ -137,7 +147,7 @@ export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
+export const initializeQB = (location, params) => {
     return async (dispatch, getState) => {
         // do this immediately to ensure old state is cleared before the user sees it
         dispatch(resetQB());
@@ -261,31 +271,47 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
             MetabaseAnalytics.trackEvent("QueryBuilder", "Query Started", card.dataset_query.type);
         }
 
-        dispatch(loadMetadataForCard(card));
+        /**** All actions are dispatched here ****/
 
-        // if we have loaded up a card that we can run then lets kick that off as well
-        if (card && card.dataset_query && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
-            // NOTE: timeout to allow Parameters widget to set parameterValues
-            setTimeout(() =>
-                // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
-                dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }))
-            , 0);
-        }
-
-        // clean up the url and make sure it reflects our card state
-        dispatch(updateUrl(card, {
-            dirty: isCardDirty(card, originalCard),
-            replaceState: true,
-            preserveParameters
-        }));
-
-        return {
+        // Update the question to Redux state together with the initial state of UI controls
+        dispatch.action(INITIALIZE_QB, {
             card,
             originalCard,
             uiControls
-        };
+        });
+
+        // Fetch the question metadata
+        dispatch(loadMetadataForCard(card));
+
+        // $FlowFixMe
+        const question = card && new Question(getMetadata(getState()), (card: Card));
+
+        // if we have loaded up a card that we can run then lets kick that off as well
+        if (question) {
+            if (question.canRun()) {
+                // NOTE: timeout to allow Parameters widget to set parameterValues
+                setTimeout(() =>
+                    // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
+                    dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }))
+                , 0);
+            }
+
+            const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
+            // clean up the url and make sure it reflects our card state
+            dispatch(updateUrl(card, {
+                dirty: originalQuestion && question.isDirtyComparedTo(originalQuestion),
+                replaceState: true,
+                preserveParameters
+            }));
+        }
+
+        // if we have loaded up a card that we can run then lets kick that off as well
+        if (question.canRun()) {
+            // NOTE: timeout to allow Parameters widget to set parameterValues
+            setTimeout(() => dispatch(runQuestionQuery({ shouldUpdateUrl: false })), 0);
+        }
     };
-});
+};
 
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
@@ -342,16 +368,31 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     };
 });
 
+// TODO Atte Keinänen 6/8/17: Could (should?) use the stored question by default instead of always requiring the explicit `card` parameter
 export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
 export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (card) => {
     return async (dispatch, getState) => {
-        // if we have a card with a known source table then dispatch an action to load up that info
-        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table != null) {
-            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
+        // Short-circuit if we're in a weird state where the card isn't completely loaded
+        if (!card && !card.dataset_query) return;
+
+        const query = card && new Question(getMetadata(getState()), card).query();
+
+        function loadMetadataForSingleQuery(singleQuery) {
+            if (singleQuery instanceof StructuredQuery && singleQuery.tableId() != null) {
+                dispatch(loadTableMetadata(singleQuery.tableId()));
+            }
+
+            if (singleQuery instanceof NativeQuery && singleQuery.databaseId() != null) {
+                dispatch(loadDatabaseFields(singleQuery.databaseId()));
+            }
         }
 
-        if (card && card.dataset_query && card.dataset_query.type === "native" && card.dataset_query.database != null) {
-            dispatch(loadDatabaseFields(card.dataset_query.database));
+        if (query) {
+            if (query instanceof MultiQuery) {
+                query.childQueries().map(loadMetadataForSingleQuery);
+            } else {
+                loadMetadataForSingleQuery(query);
+            }
         }
     }
 });
@@ -524,7 +565,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
+export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
         const card = Utils.copy(nextCard);
@@ -536,16 +577,14 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shou
             // This is needed for checking whether the card is in dirty state or not
             : (card.id ? card : null);
 
+        // Update the card and originalCard before running the actual query
+        dispatch.action(SET_CARD_AND_RUN, { card, originalCard })
+        dispatch(runQuestionQuery({ shouldUpdateUrl }));
+
+        // Load table & database metadata for the current question
         dispatch(loadMetadataForCard(card));
-
-        dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }));
-
-        return {
-            card,
-            originalCard
-        };
     };
-});
+};
 
 /**
  * User-triggered events that are handled with this action:
@@ -584,7 +623,7 @@ export const updateQuestion = (newQuestion) => {
     return (dispatch, getState) => {
         // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
         // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
-        if (getIsEditing(getState()) && newQuestion.isSaved()) {
+        if (!getIsEditing(getState()) && newQuestion.isSaved()) {
             newQuestion = newQuestion.newQuestion();
         }
 
@@ -592,7 +631,6 @@ export const updateQuestion = (newQuestion) => {
         dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
         // See it the template tags editor should be shown/hidden
-        const getTemplateTagCount = (q) => q.query().isNative() ? q.query().templateTags().length : 0;
 
         const oldQuestion = getQuestion(getState());
         const oldTagCount = getTemplateTagCount(oldQuestion);
@@ -621,11 +659,10 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
             newQuestion = newQuestion.newQuestion();
         }
 
-        // currently only support single query
-        newQuestion = newQuestion.setQuery(newQuestion.query().setDatasetQuery(dataset_query), 0);
+        newQuestion = newQuestion.setDatasetQuery(dataset_query);
 
-        const oldTagCount = question.query().isNative() ? question.query().templateTags().length : 0;
-        const newTagCount = newQuestion.query().isNative() ? newQuestion.query().templateTags().length : 0;
+        const oldTagCount = getTemplateTagCount(question);
+        const newTagCount = getTemplateTagCount(newQuestion);
 
         let openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
         if (newTagCount > oldTagCount) {
@@ -903,7 +940,8 @@ export const removeQueryExpression = createQueryAction(
 // TODO: Used also in SavedMetricSelector, should this be part of metabase-lib or not?
 // (Kept temporarily here next to the action that uses it)
 export const getQuestionQueryResults = (question, cancelQueryDeferred) => {
-    const queries = question.metrics();
+    const rootQuery = question.query();
+    const queries = rootQuery instanceof MultiQuery ? rootQuery.childQueries() : [rootQuery];
 
     // Note that triggering cancelQueryDeferred will cancel every distinct query API call
     const getQueryResult = (query) =>
@@ -931,10 +969,10 @@ export const runQuestionQuery = ({
     overrideWithCard
 } : RunQueryParams = {}) => {
     return async (dispatch, getState) => {
-        const questionFromCard = (c) => new Question(getMetadata(getState()), c);
+        const questionFromCard = (c: Card): Question => c && new Question(getMetadata(getState()), c);
 
-        const question = overrideWithCard ? questionFromCard(overrideWithCard) : getQuestion(getState());
-        const originalQuestion = getOriginalQuestion(getState());
+        const question: Question = overrideWithCard ? questionFromCard(overrideWithCard) : getQuestion(getState());
+        const originalQuestion: ?Question = getOriginalQuestion(getState());
 
         const cardIsDirty = originalQuestion ? question.isDirtyComparedTo(originalQuestion) : true;
 
@@ -942,20 +980,10 @@ export const runQuestionQuery = ({
             dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
         }
 
-        // NOTE: Doesn't support multiple queries yet
-        // Use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        // if (card.id != null && !cardIsDirty) {
-        //     CardApi.query({
-        //         cardId: card.id,
-        //         parameters: datasetQuery.parameters,
-        //         ignore_cache: ignoreCache
-        //     }, {cancelled: cancelQueryDeferred.promise}).then(onQuerySuccess, onQueryError);
-        // }
-
         const startTime = new Date();
         const cancelQueryDeferred = defer();
 
-        getQuestionQueryResults(question)
+        question.getResults({ cancelDeferred: cancelQueryDeferred, isDirty: cardIsDirty })
             .then((queryResults) => dispatch(queryCompleted(question.card(), queryResults)))
             .catch((error) => dispatch(queryErrored(startTime, error)));
 

@@ -11,13 +11,16 @@ import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
 import type { StructuredQuery, NativeQuery, TemplateTag } from "metabase/meta/types/Query";
-import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "metabase/meta/types/Card";
+import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery, MultiDatasetQuery } from "metabase/meta/types/Card";
 import type { Parameter, ParameterMapping, ParameterValues } from "metabase/meta/types/Parameter";
 import type { Metadata, TableMetadata } from "metabase/meta/types/Metadata";
 
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
 }
+
+// TODO Atte Keinänen 6/5/17 Should these be moved to corresponding metabase-lib classes?
+// Is there any reason behind keeping them in a central place?
 
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
     type: "query",
@@ -37,6 +40,11 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
         query: "",
         template_tags: {}
     }
+};
+
+export const MULTI_QUERY_TEMPLATE: MultiDatasetQuery = {
+    type: "multi",
+    queries: []
 };
 
 export function isStructured(card: Card): bool {

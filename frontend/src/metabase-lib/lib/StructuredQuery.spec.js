@@ -1,10 +1,3 @@
-/* @flow weak */
-
-declare var describe: any;
-declare var it: any;
-declare var xit: any;
-declare var expect: any;
-
 // HACK: needed due to cyclical dependency issue
 import "metabase-lib/lib/Question";
 
@@ -50,7 +43,6 @@ describe("Query", () => {
             expect(
                 new StructuredQuery(
                     mockQuestion,
-                    0,
                     makeDatasetQuery(["METRIC", 1])
                 ).aggregationName()
             ).toBe("Metric");
@@ -59,7 +51,6 @@ describe("Query", () => {
             expect(
                 new StructuredQuery(
                     mockQuestion,
-                    0,
                     makeDatasetQuery(["count"])
                 ).aggregationName()
             ).toBe("Count of rows");
@@ -68,7 +59,6 @@ describe("Query", () => {
             expect(
                 new StructuredQuery(
                     mockQuestion,
-                    0,
                     makeDatasetQuery(["sum", ["field-id", 1]])
                 ).aggregationName()
             ).toBe("Sum of Field");
@@ -77,7 +67,6 @@ describe("Query", () => {
             expect(
                 new StructuredQuery(
                     mockQuestion,
-                    0,
                     makeDatasetQuery(["sum", ["fk", 2, 3]])
                 ).aggregationName()
             ).toBe("Sum of Field");
@@ -86,7 +75,6 @@ describe("Query", () => {
             expect(
                 new StructuredQuery(
                     mockQuestion,
-                    0,
                     makeDatasetQuery(["+", 1, ["sum", ["field-id", 1]]])
                 ).aggregationName()
             ).toBe("1 + Sum(Field)");
@@ -95,7 +83,6 @@ describe("Query", () => {
             expect(
                 new StructuredQuery(
                     mockQuestion,
-                    0,
                     makeDatasetQuery([
                         "named",
                         ["sum", ["field-id", 1]],

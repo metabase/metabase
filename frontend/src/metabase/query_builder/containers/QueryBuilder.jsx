@@ -6,7 +6,6 @@ import { connect } from "react-redux";
 
 import cx from "classnames";
 import _ from "underscore";
-import { getIn } from "icepick";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
@@ -23,6 +22,9 @@ import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 import ActionsWidget from "../components/ActionsWidget.jsx";
 
 import title from "metabase/hoc/Title";
+
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/NativeQuery";
 
 import {
     getCard,
@@ -204,11 +206,10 @@ export default class QueryBuilder extends Component {
     }
 
     render() {
-        const isSavedCard = !!getIn(this.props.card, ["id"]);
-        const isDirtySavedCard = !!(getIn(this.props.card, ["original_card_id"]) && this.props.isDirty);
-        const redirectToQuestionBuilder = isSavedCard || isDirtySavedCard;
+        const { question } = this.props;
+        const isMultiQueryQuestion = question && question.isMultiQuery();
 
-        if (redirectToQuestionBuilder) {
+        if (isMultiQueryQuestion) {
             return <QuestionBuilder {...this.props} qbIsAlreadyInitialized />
         } else {
             return (
@@ -242,13 +243,13 @@ class LegacyQueryBuilder extends Component {
                     </div>
 
                     <div id="react_qb_editor" className="z2 hide sm-show">
-                        { query.isNative() ?
+                        { query instanceof NativeQuery ?
                             <NativeQueryEditor
                                 {...this.props}
                                 isOpen={!card.dataset_query.native.query || isDirty}
                                 datasetQuery={card && card.dataset_query}
                             />
-                        : query.isStructured() ?
+                        : query instanceof StructuredQuery ?
                             <div className="wrapper">
                                 <GuiQueryEditor
                                     {...this.props}
@@ -272,7 +273,7 @@ class LegacyQueryBuilder extends Component {
                         <DataReference {...this.props} onClose={() => this.props.toggleDataReference()} />
                     }
 
-                    { uiControls.isShowingTemplateTagsEditor && query.isNative() &&
+                    { uiControls.isShowingTemplateTagsEditor && query instanceof NativeQuery &&
                         <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                     }
                 </div>

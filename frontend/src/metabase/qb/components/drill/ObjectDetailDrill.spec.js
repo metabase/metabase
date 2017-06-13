@@ -11,7 +11,7 @@ import {
     FOREIGN_TABLE_ID,
     MAIN_PK_FIELD_ID,
     FOREIGN_PK_FIELD_ID
-} from "../__support__/fixtures";
+} from "metabase/__support__/fixtures";
 
 describe("ObjectDetailDrill", () => {
     it("should not be valid non-PK cells", () => {

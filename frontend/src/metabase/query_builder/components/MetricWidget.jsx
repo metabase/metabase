@@ -3,6 +3,8 @@ import Clearable from './Clearable.jsx';
 import Query from "metabase/lib/query";
 import cx from "classnames";
 
+import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+
 type Props = {
     question: Question,
     metric: Query,
@@ -37,8 +39,8 @@ export default class MetricWidget extends Component {
     // };
 
     removeMetric = () => {
-        const { question, metricIndex, setDatasetQuery } = this.props;
-        setDatasetQuery(question.removeMetric(metricIndex).datasetQuery());
+        const { question, metricIndex, updateQuestion } = this.props;
+        updateQuestion(question.removeMetric(metricIndex));
     }
 
     open() {
@@ -54,7 +56,7 @@ export default class MetricWidget extends Component {
     render() {
         const { metric, editable, color, clearable } = this.props;
         // TODO: Does this sufficiently check that the query has an aggregation?
-        if (metric.isStructured() && !metric.isBareRows()) {
+        if (metric instanceof StructuredQuery && !metric.isBareRows()) {
             let aggregationName = metric.aggregationName();
 
             const metricTitle =

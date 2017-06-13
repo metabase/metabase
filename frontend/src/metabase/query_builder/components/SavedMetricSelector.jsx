@@ -28,7 +28,7 @@ export default class SavedMetricSelector extends Component {
             currentQuestion: question,
             currentResults: results,
             // The initial aggregations are only set when the selector view is opened
-            initialMetrics: question.metrics(),
+            initialMetrics: question.singleQueries(),
             addedMetrics: {},
             searchValue: ""
         };
@@ -43,6 +43,7 @@ export default class SavedMetricSelector extends Component {
         getQuestionQueryResults(updatedQuestion)
             .then((newResults) => {
                 // TODO: Should the display type be automatically updated when adding a metric? Probably it should?
+                // Requires more elaborate listing of scenarios where it could possibly change
                 updatedQuestion.setDisplay(getDisplayTypeForCard(updatedQuestion.card(), newResults));
 
                 this.setState({
@@ -76,7 +77,7 @@ export default class SavedMetricSelector extends Component {
     removeMetric = (metricWrapper) => {
         const { addedMetrics, currentQuestion } = this.state;
 
-        const metrics = currentQuestion.metrics();
+        const metrics = currentQuestion.singleQueries();
         const index = _.findIndex(metrics, (metric) => metric.equalsToMetric(metricWrapper));
 
         if (index !== -1) {
@@ -124,7 +125,7 @@ export default class SavedMetricSelector extends Component {
 
         if (!currentQuestion) return [];
 
-        return currentQuestion.availableMetrics().filter(metricWrapper => {
+        return currentQuestion.availableSavedMetrics().filter(metricWrapper => {
             if (_.find(initialMetrics, (metric) => metric.equalsToMetric(metricWrapper))) {
                 return false;
             }
@@ -146,8 +147,7 @@ export default class SavedMetricSelector extends Component {
         const badMetrics = [];
 
         const MetricListItem = ({metric}) =>
-            <li key={metric.id}
-                className={cx("my1 pl2 py1 flex align-center", {disabled: badMetrics[metric.id]})}>
+            <li className={cx("my1 pl2 py1 flex align-center", {disabled: badMetrics[metric.id]})}>
                 <span className="px1 flex-no-shrink">
                     <CheckBox checked={addedMetrics[metric.id]}
                               onChange={this.onToggleMetric.bind(this, metric)}/>
@@ -189,7 +189,7 @@ export default class SavedMetricSelector extends Component {
                     <LoadingAndErrorWrapper className="flex flex-full" loading={!filteredMetrics} error={error} noBackground>
                         { () =>
                             <ul className="flex-full scroll-y scroll-show pr1">
-                                {filteredMetrics.map(m => <MetricListItem metric={m} />)}
+                                {filteredMetrics.map(m => <MetricListItem key={m.id} metric={m} />)}
                             </ul>
                         }
                     </LoadingAndErrorWrapper>

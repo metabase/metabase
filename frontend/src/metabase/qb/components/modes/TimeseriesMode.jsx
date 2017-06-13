@@ -2,8 +2,8 @@
 
 import React from "react";
 
-import TimeseriesGroupingWidget
-    from "metabase/qb/components/TimeseriesGroupingWidget";
+// import TimeseriesGroupingWidget
+//     from "metabase/qb/components/TimeseriesGroupingWidget";
 import TimeseriesFilterWidget
     from "metabase/qb/components/TimeseriesFilterWidget";
 
@@ -38,7 +38,7 @@ export const TimeseriesModeFooter = (props: Props) => {
             <span className="mr1">View</span>
             <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
             <span className="mx1">by</span>
-            <TimeseriesGroupingWidget {...props} card={props.lastRunCard} />
+            {/*<TimeseriesGroupingWidget {...props} card={props.lastRunCard} />*/}
         </div>
     );
 };
