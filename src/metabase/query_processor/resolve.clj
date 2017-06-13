@@ -100,7 +100,7 @@
 
 ;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
-(defn calculate-bin-width [field num-bins]
+(defn- calculate-bin-width [field num-bins]
   (u/round-to-decimals 5 (/ (- (:max-value field)
                                (:min-value field))
                             num-bins)))

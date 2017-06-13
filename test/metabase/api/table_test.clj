@@ -284,7 +284,7 @@
                             "Spiros Teofil"
                             "Szymon Theutrich"]}
             :created_at   $}))
-  #spy/d ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
+  ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
 
 ;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
