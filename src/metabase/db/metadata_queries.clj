@@ -55,9 +55,11 @@
   (-> (field-query field (ql/aggregation {} (ql/count (ql/field-id field-id))))
       first first int))
 
+(def ^:private ^:const max-sample-size 10000)
 
 (defn field-values 
-  "Return all the values of a given field"
+  "Return all the values of FIELD."
   [field]
-  ; TODO UN-STUBB ME
-  (1 2 3 4 5 6 7 8 9 10))
+  (map first (field-query field (-> {}
+                                    (ql/fields (ql/field-id (u/get-id field)))
+                                    (ql/limit max-sample-size)))))

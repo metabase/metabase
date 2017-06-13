@@ -10,9 +10,9 @@
 (api/defendpoint GET "/field/:id"
   "Get fingerprint for a `Field` with ID."
   [id]
-  (->
-    (api/read-check Field id)
-    (fingerprinting/field-fingerprint)))
+  (->> id
+       (api/read-check Field)
+       fingerprinting/field-fingerprint))
 
 
 (api/define-routes)
