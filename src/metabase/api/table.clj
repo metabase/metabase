@@ -78,7 +78,7 @@
       updated-table)))
 
 (def ^:private dimension-options
-  (zipmap (map str (range))
+  (zipmap (range)
           (concat
            (map (fn [[name param]]
                   {:name name
@@ -109,19 +109,22 @@
                  ["Quantized by the 100 equally sized bins" ["num-bins" 100]]]))))
 
 (def ^:private dimension-options-for-response
-  (m/map-vals #(dissoc % :type) dimension-options))
+  (m/map-kv (fn [k v]
+              [(str k) (dissoc v :type)]) dimension-options))
 
 (def ^:private datetime-dimension-indexes
   (->> dimension-options
        (m/filter-kv (fn [k v] (isa? (:type v) :type/DateTime)))
        keys
-       sort))
+       sort
+       (map str)))
 
 (def ^:private numeric-dimension-indexes
   (->> dimension-options
        (m/filter-kv (fn [k v] (isa? (:type v) :type/Numeric)))
        keys
-       sort))
+       sort
+       (map str)))
 
 (defn- assoc-dimension-options [resp]
   (-> resp

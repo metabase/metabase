@@ -284,7 +284,7 @@
                             "Spiros Teofil"
                             "Szymon Theutrich"]}
             :created_at   $}))
-  ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
+  #spy/d ((user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (id :users))))
 
 ;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
@@ -484,3 +484,11 @@
                                                               :raw_table_id $
                                                               :created_at   $}))}))}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
+
+(expect
+  (map str (sort (map #(Long/parseLong %) (var-get datetime-dimension-indexes))))
+  (var-get datetime-dimension-indexes))
+
+(expect
+  (map str (sort (map #(Long/parseLong %) (var-get numeric-dimension-indexes))))
+  (var-get numeric-dimension-indexes))
