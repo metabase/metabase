@@ -15,7 +15,7 @@ import Database from "metabase-lib/lib/metadata/Database";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
 import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
 
-import { Field } from "metabase/meta/types/Field";
+import type { Field } from "metabase/meta/types/Field";
 
 class OptionListItem extends Component {
     props: {
