@@ -77,6 +77,70 @@
         (sync-database/sync-table! updated-table))
       updated-table)))
 
+(def ^:private dimension-options
+  (zipmap (map str (range))
+          (concat
+           (map (fn [[name param]]
+                  {:name name
+                   :mbql ["datetime-field" nil param]
+                   :type :type/DateTime})
+                [["Minute" "minute"]
+                 ["Minute of Hour" "minute-of-hour"]
+                 ["Hour" "hour"]
+                 ["Hour of Day" "hour-of-day"]
+                 ["Day" "day"]
+                 ["Day of Week" "day-of-week"]
+                 ["Day of Month" "day-of-month"]
+                 ["Day of Year" "day-of-year"]
+                 ["Week" "week"]
+                 ["Week of Year" "week-of-year"]
+                 ["Month" "month"]
+                 ["Month of Year" "month-of-year"]
+                 ["Quarter" "quarter"]
+                 ["Quarter of Year" "quarter-of-year"]
+                 ["Year" "year"]])
+           (map (fn [[name params]]
+                  {:name name
+                   :mbql (apply vector "binning-strategy" nil params)
+                   :type :type/Numeric})
+                [["Quantized by the default binning strategy for the field" ["default"]]
+                 ["Quantized by the 10 equally sized bins" ["num-bins" 10]]
+                 ["Quantized by the 50 equally sized bins" ["num-bins" 50]]
+                 ["Quantized by the 100 equally sized bins" ["num-bins" 100]]]))))
+
+(def ^:private dimension-options-for-response
+  (m/map-vals #(dissoc % :type) dimension-options))
+
+(def ^:private datetime-dimension-indexes
+  (->> dimension-options
+       (m/filter-kv (fn [k v] (isa? (:type v) :type/DateTime)))
+       keys
+       sort))
+
+(def ^:private numeric-dimension-indexes
+  (->> dimension-options
+       (m/filter-kv (fn [k v] (isa? (:type v) :type/Numeric)))
+       keys
+       sort))
+
+(defn- assoc-dimension-options [resp]
+  (-> resp
+      (assoc :dimension_options dimension-options-for-response)
+      (update :fields (fn [fields]
+                        (mapv (fn [{:keys [base_type] :as field}]
+                                (assoc field
+                                  :dimension_options
+                                  (cond
+
+                                    (isa? base_type :type/Number)
+                                    numeric-dimension-indexes
+
+                                    (isa? base_type :type/DateTime)
+                                    datetime-dimension-indexes
+
+                                    :else
+                                    [])))
+                              fields)))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -89,6 +153,7 @@
   (-> (api/read-check Table id)
       (hydrate :db [:fields :target] :field_values :segments :metrics)
       (m/dissoc-in [:db :details])
+      assoc-dimension-options
       (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
                              ;; If someone passes include_sensitive_fields return hydrated :fields as-is
                              identity

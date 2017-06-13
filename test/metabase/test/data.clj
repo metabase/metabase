@@ -211,6 +211,12 @@
     ;; add extra metadata for fields
     (add-extra-metadata! database-definition <>)))
 
+(defn- reload-test-extensions [engine]
+  (println "Reloading test extensions for driver:" engine)
+  (let [extension-ns (symbol (str "metabase.test.data." (name engine)))]
+    (println (format "(require '%s 'metabase.test.data.datasets :reload)" extension-ns))
+    (require extension-ns 'metabase.test.data.datasets :reload)))
+
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
    DRIVER should be an object that implements `IDriverTestExtensions`; it defaults to the value returned by the method `driver` for the
@@ -218,9 +224,18 @@
   ([database-definition]
    (get-or-create-database! *driver* database-definition))
   ([driver database-definition]
-   (let [engine (i/engine driver)]
-     (or (i/metabase-instance database-definition engine)
-         (create-database! database-definition engine driver)))))
+   (let [engine         (i/engine driver)
+         get-or-create! (fn []
+                          (or (i/metabase-instance database-definition engine)
+                              (create-database! database-definition engine driver)))]
+     (try
+       (get-or-create!)
+       ;; occasionally we'll see an error like
+       ;; java.lang.IllegalArgumentException: No implementation of method: :database->connection-details of protocol: IDriverTestExtensions found for class: metabase.driver.h2.H2Driver
+       ;; to fix this we just need to reload a couple namespaces and then try again
+       (catch IllegalArgumentException _
+         (reload-test-extensions engine)
+         (get-or-create!))))))
 
 
 (defn do-with-temp-db

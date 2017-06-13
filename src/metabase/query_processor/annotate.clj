@@ -10,7 +10,9 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [humanization :as humanization]]
             [metabase.query-processor
              [interface :as i]
              [sort :as sort]]
@@ -145,7 +147,7 @@
    :preview-display    true
    :special-type       nil
    :field-name         k
-   :field-display-name k})
+   :field-display-name (humanization/name->human-readable-name (name k))})
 
 
 (defn- info-for-duplicate-field

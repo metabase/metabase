@@ -238,7 +238,9 @@
    :position           0
    :target             nil
    :preview_display    true
-   :parent_id          nil})
+   :parent_id          nil
+   :min_value          nil
+   :max_value          nil})
 
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
@@ -270,7 +272,9 @@
                                                             :base_type          "type/BigInteger"
                                                             :visibility_type    "normal"
                                                             :fk_target_field_id $
-                                                            :values             $}))
+                                                            :values             $
+                                                            :min_value          1.0
+                                                       :max_value               75.0}))
                                                   (merge default-field-details
                                                          (match-$ (hydrate/hydrate (Field (id :categories :name)) :values)
                                                            {:table_id           (id :categories)

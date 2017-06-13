@@ -157,11 +157,11 @@
 ;;; Placeholder Types
 
 ;; Replace Field IDs with these during first pass
-(s/defrecord FieldPlaceholder [field-id      :- su/IntGreaterThanZero
-                               fk-field-id   :- (s/maybe (s/constrained su/IntGreaterThanZero
+(s/defrecord FieldPlaceholder [field-id         :- su/IntGreaterThanZero
+                               fk-field-id      :- (s/maybe (s/constrained su/IntGreaterThanZero
                                                                         (fn [_] (or (assert-driver-supports :foreign-keys) true)) ; assert-driver-supports will throw Exception if driver is bound
                                                                         "foreign-keys is not supported by this driver."))         ; and driver does not support foreign keys
-                               datetime-unit :- (s/maybe (apply s/enum datetime-field-units))
+                               datetime-unit    :- (s/maybe (apply s/enum datetime-field-units))
                                binning-strategy :- (s/maybe s/Int)])
 
 (s/defrecord AgFieldRef [index :- s/Int])
