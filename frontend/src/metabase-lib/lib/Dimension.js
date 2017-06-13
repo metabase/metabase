@@ -100,10 +100,10 @@ export default class Dimension {
      * @abstract
      */
     dimensions(
-        DimensionTypes: typeof Dimension[] = DIMENSION_TYPES
+        DimensionTypes?: typeof Dimension[]
     ): Dimension[] {
         const dimensionOptions = this.field().dimension_options;
-        if (dimensionOptions) {
+        if (!DimensionTypes && dimensionOptions) {
             return dimensionOptions.map(option =>
                 this._dimensionForOption(option));
         } else {

@@ -43,6 +43,7 @@ import type {
 // import type { SingleDatabaseQuery } from "./interfaces";
 
 import Dimension, {
+    FKDimension,
     ExpressionDimension,
     AggregationDimension
 } from "metabase-lib/lib/Dimension";
@@ -434,7 +435,7 @@ export default class StructuredQuery extends Query {
                 const field = dimension.field && dimension.field();
                 if (field && field.isFK()) {
                     const fkDimensions = dimension
-                        .dimensions()
+                        .dimensions([FKDimension])
                         .filter(dimensionFilter);
                     if (fkDimensions.length > 0) {
                         fieldOptions.count += fkDimensions.length;

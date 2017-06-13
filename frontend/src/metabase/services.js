@@ -5,28 +5,6 @@ const { GET, PUT, POST, DELETE } = api;
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
-import { isDate, isNumber } from "metabase/lib/schema_metadata";
-const DATETIME_UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year", "minute-of-hour", "hour-of-day", "day-of-week"];
-function addDimensionsToField(field) {
-    if (isDate(field)) {
-        field.dimension_options = DATETIME_UNITS.map(unit => ({
-            mbql: ["datetime-field", null, unit]
-        }));
-        field.default_dimension_option = {
-            mbql: ["datetime-field", null, "day"]
-        };
-    } else if (isNumber(field)) {
-        field.dimension_options = [
-            { mbql: null },
-            { mbql: ["binning-strategy", null, "default", 10] },
-            { mbql: ["binning-strategy", null, "default", 100] },
-            { mbql: ["binning-strategy", null, "custom"],
-              name: "Age Demographics" },
-        ]
-        field.default_dimension_option = field.dimension_options[1];
-    }
-}
-
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
@@ -140,8 +118,14 @@ export const MetabaseApi = {
                                     }
 
                                     if (table && table.fields) {
+                                        // replace dimension_options IDs with objects
                                         for (const field of table.fields) {
-                                            addDimensionsToField(field);
+                                            if (field.dimension_options) {
+                                                field.dimension_options = field.dimension_options.map(id => table.dimension_options[id])
+                                            }
+                                            if (field.default_dimension_option) {
+                                                field.default_dimension_option = table.dimension_options[field.default_dimension_option];
+                                            }
                                         }
                                     }
 
