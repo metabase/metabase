@@ -28,6 +28,7 @@ import _ from "underscore";
 import Button from "metabase/components/Button";
 import type Question from "metabase-lib/lib/Question";
 import type {Card} from "metabase/meta/types/Card";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 type Props = {
     question: Question,
@@ -190,8 +191,8 @@ export default class QuestionHeader extends Component {
 
         // TODO Atte Keinänen 5/20/17 Add multi-query support to all components that need metadata
         // These only fetch the database and table metadata of first available query
-        const tableMetadata = question.singleQueries()[0].tableMetadata();
-        const database = question && question.singleQueries()[0].database();
+        const tableMetadata = question.atomicQueries()[0].tableMetadata();
+        const database = question && question.atomicQueries()[0].database();
 
         const SaveNewCardButton = () =>
             <ModalWithTrigger
@@ -348,7 +349,7 @@ export default class QuestionHeader extends Component {
         const isNewCardThatCanBeSaved = isNew && isDirty;
         const isSaved = !isNew;
         const isEditableSavedCard = isSaved && question.canWrite();
-        const isNativeQuery = Query.isNative(question && question.query().datasetQuery());
+        const isNativeQuery = question.query() instanceof NativeQuery;
         const isNativeQueryWithParameters = isNativeQuery && database && _.contains(database.features, "native-parameters");
 
         const getPersistenceButtons = () => {

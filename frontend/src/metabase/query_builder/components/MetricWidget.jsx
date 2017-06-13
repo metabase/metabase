@@ -1,17 +1,18 @@
 import React, { Component } from "react";
 import Clearable from './Clearable.jsx';
-import Query from "metabase/lib/query";
 import cx from "classnames";
-
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import Query from "metabase-lib/lib/queries/Query";
+import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {
-    question: Question,
     metric: Query,
-    metricIndex: number,
-    setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-    editable: boolean,
-    clearable: boolean,
+    editable?: boolean,
+    clearable?: boolean,
+    // metricIndex and updateQuestion are only needed if clearable = true
+    // TODO: Get rid of metricIndex as we can add Question.removeMetric that accepts a metric object or just use MultiQuery API directly
+    metricIndex?: number,
+    updateQuestion?: (question: Question) => void,
     color: string,
 };
 
@@ -31,16 +32,9 @@ export default class MetricWidget extends Component {
         clearable: false
     };
 
-    // TODO: Will setting an aggregation in MetricWidget be possible anymore?
-    // setAggregation = (aggregation) => {
-    //     const { query, aggregationIndex, setDatasetQuery } = this.props;
-    //     // Should be in a Redux action rather than in a component
-    //     query.updateAggregation(aggregationIndex, aggregation).update(setDatasetQuery);
-    // };
-
     removeMetric = () => {
-        const { question, metricIndex, updateQuestion } = this.props;
-        updateQuestion(question.removeMetric(metricIndex));
+        const { metricIndex, updateQuestion } = this.props;
+        updateQuestion(this.metric.question().removeMetric(metricIndex));
     }
 
     open() {
@@ -55,7 +49,7 @@ export default class MetricWidget extends Component {
 
     render() {
         const { metric, editable, color, clearable } = this.props;
-        // TODO: Does this sufficiently check that the query has an aggregation?
+
         if (metric instanceof StructuredQuery && !metric.isBareRows()) {
             let aggregationName = metric.aggregationName();
 

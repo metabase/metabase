@@ -15,7 +15,8 @@ import type {
     LocalFieldReference,
     ForeignFieldReference,
     DatetimeField,
-    ExpressionReference
+    ExpressionReference,
+    DatetimeUnit
 } from "metabase/meta/types/Query";
 
 import type { IconName } from "metabase/meta/types";
@@ -422,6 +423,10 @@ export class DatetimeFieldDimension extends FieldDimension {
 
     baseDimension(): Dimension {
         return this._parent.baseDimension();
+    }
+
+    bucketing(): DatetimeUnit {
+        return this._args[0];
     }
 
     subDisplayName(): string {

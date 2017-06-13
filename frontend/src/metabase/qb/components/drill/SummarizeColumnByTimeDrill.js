@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { getFieldRefFromColumn } from "metabase/qb/lib/actions";
 import { isNumeric, isDate } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";

@@ -23,9 +23,6 @@ import ActionsWidget from "../components/ActionsWidget.jsx";
 
 import title from "metabase/hoc/Title";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/NativeQuery";
-
 import {
     getCard,
     getOriginalCard,
@@ -61,6 +58,11 @@ import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
 import QuestionBuilder from "metabase/query_builder/containers/QuestionBuilder";
+
+import NewQueryBar from "metabase/new_query/containers/NewQueryBar";
+import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -222,8 +224,15 @@ export default class QueryBuilder extends Component {
 }
 
 class LegacyQueryBuilder extends Component {
+    onNewQueryFlowCompleted = (newQuery: StructuredQuery) => {
+        const { question, updateQuestion, runQuestionQuery } = this.props;
+        const updatedQuestion = question.setQuery(newQuery);
+        updateQuestion(updatedQuestion);
+        runQuestionQuery();
+    }
+
     render() {
-        const { query, card, isDirty, databases, uiControls, mode } = this.props;
+        const { question, query, card, isDirty, databases, uiControls, mode } = this.props;
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -234,6 +243,8 @@ class LegacyQueryBuilder extends Component {
 
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         const ModeFooter = mode && mode.ModeFooter;
+
+        const showNewQueryFlow = question && question.isEmpty();
 
         return (
             <div className="flex-full relative">
@@ -249,18 +260,26 @@ class LegacyQueryBuilder extends Component {
                                 isOpen={!card.dataset_query.native.query || isDirty}
                                 datasetQuery={card && card.dataset_query}
                             />
-                        : query instanceof StructuredQuery ?
+                        : (query instanceof StructuredQuery) ?
                             <div className="wrapper">
-                                <GuiQueryEditor
-                                    {...this.props}
-                                    datasetQuery={card && card.dataset_query}
-                                />
+                                { showNewQueryFlow
+                                        ?  <NewQueryBar />
+                                        : (
+                                            <GuiQueryEditor
+                                                {...this.props}
+                                                datasetQuery={card && card.dataset_query}
+                                            />
+                                        )
+                                }
                             </div>
                         : null }
                     </div>
 
                     <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        <QueryVisualization {...this.props} className="full wrapper mb2 z1" />
+                        { showNewQueryFlow
+                            ? <NewQueryOptions question={question} onComplete={this.onNewQueryFlowCompleted} />
+                            : <QueryVisualization {...this.props}  className="full wrapper mb2 z1" />
+                        }
                     </div>
 
                     { ModeFooter &&

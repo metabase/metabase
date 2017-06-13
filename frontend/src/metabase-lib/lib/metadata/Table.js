@@ -22,6 +22,7 @@ export default class Table extends Base {
 
     fields: Field[];
 
+    // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `db`)
     get database() {
         return this.db;
     }
@@ -33,6 +34,10 @@ export default class Table extends Base {
 
     dimensions(): Dimension[] {
         return this.fields.map(field => field.dimension());
+    }
+
+    dateFields(): Field[] {
+        return this.fields.filter(field => field.isDate());
     }
 
     aggregations() {

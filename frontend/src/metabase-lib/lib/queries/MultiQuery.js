@@ -1,30 +1,32 @@
 /* @flow weak */
 
-import Question from "./Question";
+import Question from "../Question";
 import Query from "./Query";
 
 import _ from "underscore";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/NativeQuery";
+import StructuredQuery from "./StructuredQuery";
+import NativeQuery from "./NativeQuery";
 import { memoize } from "metabase-lib/lib/utils";
-import Action, { ActionClick } from "./Action";
-import Dimension from "metabase-lib/lib/Dimension";
+import Action, { ActionClick } from "../Action";
+import Dimension, { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 
 import type {
-    ChildDatasetQuery,
+    AtomicDatasetQuery,
     DatasetQuery,
     MultiDatasetQuery
 } from "metabase/meta/types/Card";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import Metric from "metabase-lib/lib/metadata/Metric";
 
 export const MULTI_QUERY_TEMPLATE: MultiDatasetQuery = {
     type: "multi",
     queries: []
 };
 
-function createChildQuery(
+export function createAtomicQuery(
     question: Question,
-    datasetQuery: ChildDatasetQuery
+    datasetQuery: AtomicDatasetQuery
 ): Query {
     if (StructuredQuery.isDatasetQueryType(datasetQuery)) {
         return new StructuredQuery(question, datasetQuery);
@@ -35,12 +37,12 @@ function createChildQuery(
     throw new Error("Unknown query type: " + datasetQuery.type);
 }
 
-// TODO Atte Keinänen 6/8/17: Write comprehensive unit tests for this class
+// TODO Atte Keinänen 6/8/17: Write comprehensive unit tests for this class and exported methods
 
 /**
- * Converts the DatasetQuery to a MultiDatasetQuery.
+ * Converts a {@link DatasetQuery} to a {@link MultiDatasetQuery}.
  *
- * Because each query contained by MultiDatasetQuery should have just a single aggregation, StructuredQueries
+ * Because each query contained by MultiDatasetQuery should have just a single aggregation, {@link StructuredQuery}s
  * with two or more aggregations are broken into queries with one of those aggregations in each.
  */
 export function convertToMultiDatasetQuery(
@@ -58,10 +60,6 @@ export function convertToMultiDatasetQuery(
 
             if (isMultiAggregationQuery) {
                 // Each aggregation is isolated to its own StructuredQuery
-
-                // TODO Atte Keinänen 6/6/17: The following logic needs further clarification, talk with @mazameli
-                // In Question terminology those can be considered as either ad-hoc metrics (if there are filters/breakouts applied)
-                // or as saved metrics (if the original datasetQuery only contains the saved metric aggregation and no filters/breakouts)
                 return aggregations.map(aggregation =>
                     structuredQuery
                         .clearAggregations()
@@ -76,6 +74,8 @@ export function convertToMultiDatasetQuery(
             );
         }
     };
+
+    if (MultiQuery.isDatasetQueryType(datasetQuery)) return datasetQuery;
 
     return {
         ...MULTI_QUERY_TEMPLATE,
@@ -122,7 +122,7 @@ export default class MultiQuery extends Query {
     /******* Query superclass methods *******/
 
     canRun(): boolean {
-        return _.every(this.childQueries(), query => query.canRun());
+        return _.every(this.atomicQueries(), query => query.canRun());
     }
 
     /**
@@ -153,55 +153,78 @@ export default class MultiQuery extends Query {
     /**
      * Wrap individual queries to Query objects for a convenient access
      */
-    @memoize childQueries(): Query[] {
-        return this._multiDatasetQuery.queries.map(datasetQuery =>
-            createChildQuery(this._originalQuestion, datasetQuery));
+    @memoize atomicQueries(): AtomicQuery[] {
+        return this._multiDatasetQuery.queries.map((datasetQuery) => createAtomicQuery(this._originalQuestion, datasetQuery));
     }
 
-    setQueryAtIndex(
-        index: number,
-        datasetQuery: ChildDatasetQuery
-    ): MultiQuery {
-        return this._updateQueries(
-            this.childQueries().map(
-                (query, i) =>
-                    index === i
-                        ? createChildQuery(this._originalQuestion, datasetQuery)
-                        : query
-            )
+    /**
+     * Replaces the atomic query at an index with the given atomic query
+     */
+    setQueryAtIndex(index: number, atomicQuery: AtomicQuery): MultiQuery {
+        return this._updateQueries(this.atomicQueries().map((query, i) =>
+            index === i ? atomicQuery : query)
         );
+    }
+
+    /**
+     * Sets the atomic query at an index using a given updater function in a similar fashion as Icepick's `updateIn`
+     */
+    setQueryAtIndexWith(index: number, updater: (AtomicQuery) => AtomicQuery): MultiQuery {
+        return this.setQueryAtIndex(index, updater(this.atomicQueries()[index]));
+    }
+
+    canRemoveQuery(): boolean {
+        return this.atomicQueries().length > 1;
     }
 
     removeQueryAtIndex(index: number): MultiQuery {
         return this._updateQueries(
-            this.childQueries().filter((_, i) => i !== index)
+            this.atomicQueries().filter((_, i) => i !== index)
         );
     }
 
     canAddQuery(): boolean {
-        // TODO Atte Keinänen 6/6/17: Which rules should apply here? Discuss with @mazameli
-        // Old rules used in
-        // only structured queries with 0 or 1 breakouts can have multiple series
-        // const query = this.query();
-        // return query instanceof StructuredQuery && query.breakouts().length <= 1;
-
         return true;
     }
 
-    addQuery(datasetQuery: ChildDatasetQuery): MultiQuery {
-        return this._updateQueries([
-            ...this.childQueries(),
-            createChildQuery(this._originalQuestion, datasetQuery)
-        ]);
+    addQuery(atomicQuery: AtomicQuery): MultiQuery {
+        return this._updateQueries([...this.atomicQueries(), atomicQuery]);
+    }
+
+    /* Specialized query list manipulation */
+    addSavedMetric(metric: Metric): MultiQuery {
+        const sharedDimension = this.sharedDimension();
+        // sharedDimension.field().isDate() !== field.isDate()
+        // sharedDimension.field().isNumeric() !== field.isNumeric()
+        // sharedDimension.field().id !== field.id
+        if (sharedDimension instanceof DatetimeFieldDimension) {
+            // A possible more generalized approach (discuss with Tom):
+            // metric.table.fields.filter(field => sharedDimension.allowedFieldTypes().contains(field.fieldType()))
+            const compatibleFields = metric.table.fields.filter(field => field.isDate());
+            if (compatibleFields.length === 0) {
+                throw new Error("Tried to add a metric that doesn't have any compatible fields for the shared breakout")
+            }
+
+            const breakoutDimension = new DatetimeFieldDimension(compatibleFields[0].dimension(), [sharedDimension.bucketing()])
+
+            const metricQuery = StructuredQuery
+                .newStucturedQuery({ question: this._originalQuestion, databaseId: metric.table.db.id, tableId: metric.table.id })
+                .addAggregation(metric.aggregationClause())
+                .addBreakout(breakoutDimension.mbql());
+
+            return this.addQuery(metricQuery);
+        } else {
+            throw new Error("Can't currently add a metric a question with a non-datetime breakout")
+        }
     }
 
     /* Shared x-axis dimension */
 
     /**
-     * Returns the x-axis dimension that is currently shared by all child queries.
+     * Returns the x-axis dimension that is currently shared by all atomic queries.
      */
-    sharedDimensionType(): typeof Dimension {
-        const firstQuery = this.childQueries()[0];
+    sharedDimension(): Dimension {
+        const firstQuery = this.atomicQueries()[0]
 
         if (
             firstQuery instanceof StructuredQuery &&
@@ -223,12 +246,11 @@ export default class MultiQuery extends Query {
     }
 
     /* Internal methods */
-    _updateQueries(queries: Query[]) {
-        // $FlowFixMe
-        const datasetQuery: MultiDatasetQuery = this.datasetQuery();
+    _updateQueries(queries: AtomicQuery[]) {
+        const datasetQuery: DatasetQuery = this.datasetQuery();
         return new MultiQuery(this._originalQuestion, {
             ...datasetQuery,
-            queries: queries.map(query => query.datasetQuery())
+            queries: queries.map((query) => query.datasetQuery())
         });
     }
 }

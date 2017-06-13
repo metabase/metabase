@@ -28,6 +28,7 @@ import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 
 export default class QueryHeader extends Component {
@@ -179,7 +180,7 @@ export default class QueryHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
+        const { question, card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
         const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
         var buttonSections = [];
@@ -285,7 +286,7 @@ export default class QueryHeader extends Component {
         }
 
         // parameters
-        if (Query.isNative(card && card.dataset_query) && database && _.contains(database.features, "native-parameters")) {
+        if (question.query() instanceof NativeQuery && database && _.contains(database.features, "native-parameters")) {
             const parametersButtonClasses = cx('transition-color', {
                 'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor

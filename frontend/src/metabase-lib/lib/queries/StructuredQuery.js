@@ -8,9 +8,6 @@
  *
  * TODO Atte Keinänen 6/6/17: Should the multi-aggregation questions be automatically converted to MultiQuery or not?
  */
-import Query from "./Query";
-
-import Metric from "./metadata/Metric";
 
 import * as Q from "metabase/lib/query/query";
 import Q_deprecated, {
@@ -39,20 +36,21 @@ import type {
     TableMetadata,
     DimensionOptions
 } from "metabase/meta/types/Metadata";
-// TODO: Update Flow so that interfaces are supported
-// import type { SingleDatabaseQuery } from "./interfaces";
 
 import Dimension, {
     ExpressionDimension,
     AggregationDimension
 } from "metabase-lib/lib/Dimension";
 
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "../metadata/Table";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Question from "metabase-lib/lib/Question";
+import type Database from "../metadata/Database";
+import type Question from "../Question";
+import type { TableId } from "metabase/meta/types/Table";
+import AtomicQuery from "./AtomicQuery";
+import AggregationWrapper from './Aggregation';
 
-const STRUCTURED_QUERY_TEMPLATE = {
+export const STRUCTURED_QUERY_TEMPLATE = {
     database: null,
     type: "query",
     query: {
@@ -60,12 +58,11 @@ const STRUCTURED_QUERY_TEMPLATE = {
     }
 };
 
-export default class StructuredQuery extends Query {
+export default class StructuredQuery extends AtomicQuery {
     static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
         return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
     }
 
-    // implements SingleDatabaseQuery
     // For Flow type completion
     _structuredDatasetQuery: StructuredDatasetQuery;
 
@@ -79,13 +76,33 @@ export default class StructuredQuery extends Query {
         this._structuredDatasetQuery = datasetQuery;
     }
 
+    static newStucturedQuery({question, databaseId, tableId}: { question: Question, databaseId?: DatabaseId, tableId?: TableId }) {
+        const datasetQuery = {
+            ...STRUCTURED_QUERY_TEMPLATE,
+            database: databaseId || null,
+            query: {
+                source_table: tableId || null
+            }
+        }
+
+        return new StructuredQuery(question, datasetQuery);
+    }
+
     /* Query superclass methods */
+
+    isEmpty() {
+        return !this.databaseId();
+    }
 
     canRun() {
         return Q_deprecated.canRun(this.query());
     }
 
-    /* SingleDatabaseQuery methods */
+    isEditable(): boolean {
+        return !!this.tableMetadata();
+    }
+
+    /* AtomicQuery superclass methods */
 
     tables(): ?(Table[]) {
         const database = this.database();
@@ -110,10 +127,6 @@ export default class StructuredQuery extends Query {
         return new StructuredQuery(this._originalQuestion);
     }
 
-    isEditable(): boolean {
-        return !!this.tableMetadata();
-    }
-
     query(): StructuredQueryObject {
         return this._structuredDatasetQuery.query;
     }
@@ -128,7 +141,8 @@ export default class StructuredQuery extends Query {
 
     setDatabase(database: Database) {
         if (database.id !== this.databaseId()) {
-            return this.reset().setDatasetQuery(
+            return new StructuredQuery(
+                this._originalQuestion,
                 assoc(this.datasetQuery(), "database", database.id)
             );
         } else {
@@ -138,7 +152,8 @@ export default class StructuredQuery extends Query {
 
     setTable(table: Table) {
         if (table.id !== this.tableId()) {
-            return this.reset().setDatasetQuery(
+            return new StructuredQuery(
+                this._originalQuestion,
                 chain(this.datasetQuery())
                     .assoc("database", table.database.id)
                     .assocIn(["query", "source_table"], table.id)
@@ -161,9 +176,20 @@ export default class StructuredQuery extends Query {
     aggregations(): Aggregation[] {
         return Q.getAggregations(this.query());
     }
+
+    // TODO Atte Keinänen 6/11/17: Make the wrapper objects the standard format for aggregations
+    wrappedAggregations(): AggregationWrapper[] {
+        return this.aggregations().map(agg => new AggregationWrapper(agg));
+    }
+
     aggregationOptions(): any[] {
         return this.table().aggregations();
     }
+
+    aggregationOptionsWithoutRaw(): any[] {
+        return this.aggregationOptions().filter(option => option.short !== "raw");
+    }
+
     aggregationFieldOptions(agg): DimensionOptions {
         const aggregation = this.table().aggregation(agg);
         if (aggregation) {
@@ -221,9 +247,8 @@ export default class StructuredQuery extends Query {
         return null;
     }
 
-    /**
-     * For dealing with the legacy multi-aggregation queries
-     */
+    // AGGREGATIONS
+
     addAggregation(aggregation: Aggregation) {
         return this._updateQuery(Q.addAggregation, arguments);
     }
@@ -235,15 +260,6 @@ export default class StructuredQuery extends Query {
     }
     clearAggregations() {
         return this._updateQuery(Q.clearAggregations, arguments);
-    }
-
-    equalsToMetric(metric: Metric) {
-        const aggregations = this.aggregations();
-        if (aggregations.length !== 1) return false;
-
-        const agg = aggregations[0];
-        return AggregationClause.isMetric(agg) &&
-            AggregationClause.getMetric(agg) === metric.id;
     }
 
     // BREAKOUTS

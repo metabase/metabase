@@ -243,6 +243,7 @@ export const updateDateTimeFilter = (card, column, start, end) => {
     start = moment(start);
     end = moment(end);
     if (column.unit) {
+
         // start with the existing breakout unit
         let unit = column.unit;
 

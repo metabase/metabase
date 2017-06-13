@@ -18,7 +18,8 @@ import {
     isMetric,
     isPK,
     isFK,
-    getIconForField
+    getIconForField,
+    getFieldType
 } from "metabase/lib/schema_metadata";
 
 /**
@@ -29,6 +30,10 @@ export default class Field extends Base {
     description: string;
 
     table: Table;
+
+    fieldType() {
+        return getFieldType(this);
+    }
 
     isDate() {
         return isDate(this);
@@ -54,6 +59,11 @@ export default class Field extends Base {
     isMetric() {
         return isMetric(this);
     }
+
+    /**
+     * Tells if this column can be used in a breakout
+     * Currently returns `true` for everything expect for aggregation columns
+     */
     isDimension() {
         return isDimension(this);
     }

@@ -9,7 +9,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import cx from "classnames";
 
-import NativeQuery from "metabase-lib/lib/NativeQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import type { DatasetQuery } from "metabase/meta/types/Card"
 import type { TableId } from "metabase/meta/types/Table"
 import type { TemplateTag } from "metabase/meta/types/Query"

@@ -69,6 +69,7 @@ export type Aggregation =
     MaxAgg |
     MetricAgg;
 
+// TODO Atte Keinänen 6/11/17: Why is rows aggregation deprecated
 type Rows           = ["rows"]; // deprecated
 type CountAgg       = ["count"];
 type CountFieldAgg  = ["count", ConcreteField];

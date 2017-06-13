@@ -14,7 +14,7 @@ import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { DatasetQuery }  from "metabase/meta/types/Card";
 import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
 

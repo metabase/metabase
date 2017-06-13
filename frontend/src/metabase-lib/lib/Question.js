@@ -1,19 +1,18 @@
 /* @flow weak */
 
-import Query from "./Query";
+import Query from "./queries/Query";
 
 import Metadata from "./metadata/Metadata";
-import Metric from "./metadata/Metric";
 import Table from "./metadata/Table";
 import Field from "./metadata/Field";
 
-import MultiQuery, { convertToMultiDatasetQuery } from "./MultiQuery";
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/NativeQuery";
+import MultiQuery, { convertToMultiDatasetQuery } from "./queries/MultiQuery";
+import StructuredQuery from "./queries/StructuredQuery";
+import NativeQuery from "./queries/NativeQuery";
 
 import { memoize } from "metabase-lib/lib/utils";
 import Utils from "metabase/lib/utils";
-import { utf8_to_b64url } from "metabase/lib/card";
+import * as Card_DEPRECATED from "metabase/lib/card";
 import Query_DEPRECATED from "metabase/lib/query";
 
 import { getParametersWithExtras } from "metabase/meta/Card";
@@ -48,6 +47,13 @@ import type {
     QueryMode
 } from "metabase/meta/types/Visualization";
 import { MetabaseApi, CardApi } from "metabase/services";
+import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+
+import type { Dataset } from "metabase/meta/types/Dataset";
+import type { TableId } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/lib/queries/StructuredQuery";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -59,9 +65,8 @@ type ParameterOptions = "FIXME";
  */
 export default class Question {
     /**
-     * A Question wrapper requires
-     * TODO Atte Keinänen 6/6/17: Check which parts of metadata are actually needed and document them here
-     * The contents of `metadata` could also be asserted in the Question constructor
+     * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery))
+     * need metadata for accessing databases, tables and metrics.
      */
     _metadata: Metadata;
 
@@ -73,7 +78,7 @@ export default class Question {
 
     /**
      * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
-     * TODO Atte Keinänen 6/6/17: Why are parameter values considered a part of a Question?
+     * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
      */
     _parameterValues: ParameterValues;
 
@@ -88,6 +93,28 @@ export default class Question {
         this._metadata = metadata;
         this._card = card;
         this._parameterValues = parameterValues || {};
+    }
+
+    /**
+     * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
+     * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
+     */
+    static create({
+        databaseId, tableId, metadata, parameterValues, ...cardProps
+    }: { databaseId?: DatabaseId, tableId?: TableId, metadata: Metadata, parameterValues?: ParameterValues }) {
+
+        const card = {
+            name: cardProps.name || null,
+            display: cardProps.display || "table",
+            visualization_settings: cardProps.visualization_settings || {},
+            dataset_query: STRUCTURED_QUERY_TEMPLATE // temporary placeholder
+        };
+
+        // $FlowFixMe Passing an incomplete card object
+        const initialQuestion = new Question(metadata, card, parameterValues);
+        const query = StructuredQuery.newStucturedQuery({ question: initialQuestion, databaseId, tableId })
+
+        return initialQuestion.setQuery(query);
     }
 
     /**
@@ -119,6 +146,7 @@ export default class Question {
         return new Question(this._metadata, card, this._parameterValues);
     }
 
+    // TODO: Rename?
     newQuestion() {
         return this.setCard(
             chain(this.card())
@@ -127,6 +155,10 @@ export default class Question {
                 .dissoc("description")
                 .value()
         );
+    }
+
+    isEmpty(): boolean {
+        return this.query().isEmpty();
     }
 
     /**
@@ -188,92 +220,40 @@ export default class Question {
     }
     convertToMultiQuery(): Question {
         // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
-        const multiDatasetQuery = convertToMultiDatasetQuery(
-            this,
-            this._card.dataset_query
-        );
+        const multiDatasetQuery = convertToMultiDatasetQuery(this, this._card.dataset_query);
         return this.setCard(
             assoc(this._card, "dataset_query", multiDatasetQuery)
         );
     }
 
     /**
-     * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
+     * A convenience shorthand for getting the MultiQuery object for a multi-query question
      */
-    singleQueries(): Query[] {
-        const query = this.query();
-        return query instanceof MultiQuery ? query.childQueries() : [query];
+    multiQuery(): MultiQuery {
+        if (!this.isMultiQuery()) {
+            throw new Error("Tried to use `multiQuery()` shorthand on a non-multi-query question");
+        }
+
+        // $FlowFixMe
+        return this.query();
     }
 
     /**
-     * Metric-related methods for the multi-metric query builder
-     *
-     * These methods provide convenient abstractions and mental mappings for working with questions
-     * which are composed of different kinds of metrics (either reusable saved metrics or ad-hoc metrics that are
-     * specific to the current question)
-     *
+     * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
      */
-    assertIsMultiQuery(): void {
-        if (!this.isMultiQuery()) {
-            throw new Error(
-                "Trying to use a metric method for a Question that hasn't been converted to a multi-query format"
-            );
-        }
+    atomicQueries(): AtomicQuery[] {
+        const query = this.query();
+        if (query instanceof MultiQuery) return query.atomicQueries()
+        if (query instanceof AtomicQuery) return [query]
+        return [];
     }
 
-    availableSavedMetrics(): Metric[] {
-        this.assertIsMultiQuery();
-        return this._metadata.metricsList();
-    }
-    canAddMetric(): boolean {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return multiQuery.canAddQuery();
-    }
-    canRemoveMetric(): boolean {
-        this.assertIsMultiQuery();
-        // can't remove last metric
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return multiQuery.childQueries().length > 1;
-    }
-    addSavedMetric(metric: Metric): Question {
-        return this.addMetric(
-            ({
-                type: "query",
-                database: metric.table.db.id,
-                query: {
-                    source_table: metric.table.id,
-                    aggregation: [["METRIC", metric.id]]
-                }
-            }: StructuredDatasetQueryObject)
-        );
-    }
-    addMetric(datasetQuery: StructuredDatasetQueryObject): Question {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.addQuery(datasetQuery));
-    }
-    updateMetric(index: number, metric: Query): Question {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.setQueryAtIndex(index, metric));
-    }
-    removeMetric(index: number): Question {
-        this.assertIsMultiQuery();
-        // $FlowFixMe
-        const multiQuery: MultiQuery = this.query();
-        return this.setQuery(multiQuery.removeQueryAtIndex(index));
-    }
-
-    // drill through / actions
-    // TODO: a lot of this should be moved to StructuredQuery?
-    // Maybe in general these should be part of the Query interface and this class would just provide shortcuts for those methods
-    // (or maybe it wouldn't provide shortcuts at all?)
-
+    /**
+     * Visualization drill-through and action widget actions
+     *
+     * Although most of these are essentially a way to modify the current query, having them as a part
+     * of Question interface instead of Query interface makes it more convenient to also change the current visualization
+     */
     summarize(aggregation) {
         const tableMetadata = this.tableMetadata();
         return this.setCard(summarize(this.card(), aggregation, tableMetadata));
@@ -415,8 +395,8 @@ export default class Question {
      * This way we benefit from caching and query optimizations done by Metabase backend.
      */
     async getResults(
-        { cancelDeferred, isDirty = false, ignoreCache = false }
-    ): Promise<[any]> {
+        { cancelDeferred, isDirty = false, ignoreCache = false } = {}
+    ): Promise<[Dataset]> {
         const canUseCardApiEndpoint = !isDirty &&
             !this.isMultiQuery() &&
             this.isSaved();
@@ -440,7 +420,7 @@ export default class Question {
                     cancelDeferred ? { cancelled: cancelDeferred.promise } : {}
                 );
 
-            const datasetQueries = this.singleQueries().map(query =>
+            const datasetQueries = this.atomicQueries().map(query =>
                 query.datasetQuery());
             return Promise.all(datasetQueries.map(getDatasetQueryResult));
         }
@@ -516,6 +496,6 @@ export default class Question {
                 : {})
         };
 
-        return utf8_to_b64url(JSON.stringify(cardCopy));
+        return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(cardCopy));
     }
 }
