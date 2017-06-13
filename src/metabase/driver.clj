@@ -323,6 +323,17 @@
       (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
+(defn values->base-type
+  "Given a sequence of VALUES, return the most common base type."
+  [values]
+  (->> values
+       (take 100)                                   ; take up to 100 values
+       (filter (complement nil?))                   ; filter out `nil` values
+       (group-by (comp class->base-type class))     ; now group by their base-type
+       (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
+       ffirst))                                     ; take the base-type from the first pair
+
+
 ;; ## Driver Lookup
 
 (defn engine->driver

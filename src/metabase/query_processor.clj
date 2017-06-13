@@ -61,35 +61,54 @@
 ;; PRE-PROCESSING fns are applied from bottom to top, and POST-PROCESSING from top to bottom;
 ;; the easiest way to wrap your head around this is picturing a the query as a ball being thrown in the air
 ;; (up through the preprocessing fns, back down through the post-processing ones)
+(defn- qp-pipeline
+  "Construct a new Query Processor pipeline with F as the final 'piviotal' function. e.g.:
+
+     All PRE-PROCESSING (query) --> F --> All POST-PROCESSING (result)
+
+   Or another way of looking at it is
+
+     (post-process (f (pre-process query)))
+
+   Normally F is something that runs the query, like the `execute-query` function above, but this can be swapped out when we want to do things like
+   process a query without actually running it."
+  [f]
+  ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
+  (-> f
+      dev/guard-multiple-calls
+      mbql-to-native/mbql->native                      ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
+      annotate-and-sort/annotate-and-sort
+      perms/check-query-permissions
+      log-query/log-expanded-query
+      dev/check-results-format
+      limit/limit
+      cumulative-ags/handle-cumulative-aggregations
+      implicit-clauses/add-implicit-clauses
+      format-rows/format-rows
+      expand-resolve/expand-resolve                    ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
+      row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
+      parameters/substitute-parameters
+      expand-macros/expand-macros
+      driver-specific/process-query-in-context         ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
+      add-settings/add-settings
+      resolve-driver/resolve-driver                    ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
+      log-query/log-initial-query
+      cache/maybe-return-cached-results
+      catch-exceptions/catch-exceptions))
+;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are (eventually) passed to `expand-resolve`
+
+(defn query->native
+  "Return the native form for QUERY (e.g. for a MBQL query on Postgres this would return a map containing the compiled SQL form)."
+  {:style/indent 0}
+  [query]
+  (-> ((qp-pipeline identity) query)
+      (get-in [:data :native_form])))
+
 (defn process-query
   "A pipeline of various QP functions (including middleware) that are used to process MB queries."
   {:style/indent 0}
   [query]
-  ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `run-query` are (eventually) passed to `limit`
-  ((-> execute-query
-       dev/guard-multiple-calls
-       mbql-to-native/mbql->native                   ; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; all functions *above* will only see the native query
-       annotate-and-sort/annotate-and-sort
-       perms/check-query-permissions
-       log-query/log-expanded-query
-       dev/check-results-format
-       limit/limit
-       cumulative-ags/handle-cumulative-aggregations
-       implicit-clauses/add-implicit-clauses
-       format-rows/format-rows
-       expand-resolve/expand-resolve                 ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
-       row-count-and-status/add-row-count-and-status ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
-       parameters/substitute-parameters
-       expand-macros/expand-macros
-       driver-specific/process-query-in-context      ; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
-       add-settings/add-settings
-       resolve-driver/resolve-driver                 ; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲ All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
-       log-query/log-initial-query
-       cache/maybe-return-cached-results
-       catch-exceptions/catch-exceptions)
-   query))
-;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are (eventually) passed to `expand-resolve`
-
+  ((qp-pipeline execute-query) query))
 
 (def ^{:arglists '([query])} expand
   "Expand a QUERY the same way it would normally be done as part of query processing.
@@ -104,6 +123,13 @@
 ;;; +----------------------------------------------------------------------------------------------------+
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
+
+;; The only difference between `process-query` and `process-query-and-save-execution!` (below) is that the
+;; latter records a `QueryExecution` (inserts a new row) recording some stats about this Query run including
+;; execution time and type of query ran
+;;
+;; `process-query-and-save-execution!` is the function used by various things like API endpoints and pulses;
+;; `process-query` is more of an internal function
 
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
@@ -195,7 +221,11 @@
         (save-and-return-failed-query! query-execution (.getMessage e))))))
 
 (def ^:private DatasetQueryOptions
-  "Schema for the options map for the `dataset-query` function."
+  "Schema for the options map for the `dataset-query` function.
+   This becomes available to QP middleware as the `:info` dictionary in the top level of a query.
+   When the query is finished running, most of these values are saved in the new `QueryExecution` row.
+   In some cases, these values are used by the middleware; for example, the permissions-checking middleware
+   will check Collection permissions if applicable if `card-id` is non-nil."
   (s/constrained {:context                       query-execution/Context
                   (s/optional-key :executed-by)  (s/maybe su/IntGreaterThanZero)
                   (s/optional-key :card-id)      (s/maybe su/IntGreaterThanZero)
@@ -206,7 +236,7 @@
                        *allow-queries-with-no-executor-id*))
                  "executed-by cannot be nil unless *allow-queries-with-no-executor-id* is true"))
 
-(s/defn ^:always-validate dataset-query
+(s/defn ^:always-validate process-query-and-save-execution!
   "Process and run a json based dataset query and return results.
 
   Takes 2 arguments:

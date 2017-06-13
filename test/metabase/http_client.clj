@@ -67,7 +67,6 @@
    or throw an Exception if that fails."
   [{:keys [username password], :as credentials}]
   {:pre [(string? username) (string? password)]}
-  (println "Authenticating" username) ; DEBUG
   (try
     (:id (client :post 200 "session" credentials))
     (catch Throwable e

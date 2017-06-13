@@ -63,8 +63,8 @@ export default class QueryHeader extends Component {
 
     componentWillUnmount() {
         clearTimeout(this.timeout);
-        if (this.requesetPromise) {
-            this.requesetPromise.cancel();
+        if (this.requestPromise) {
+            this.requestPromise.cancel();
         }
     }
 
@@ -90,8 +90,8 @@ export default class QueryHeader extends Component {
         }
 
         // TODO: reduxify
-        this.requesetPromise = cancelable(CardApi.create(card));
-        return this.requesetPromise.then(newCard => {
+        this.requestPromise = cancelable(CardApi.create(card));
+        return this.requestPromise.then(newCard => {
             this.props.notifyCardCreatedFn(newCard);
 
             this.setState({
@@ -115,8 +115,8 @@ export default class QueryHeader extends Component {
         }
 
         // TODO: reduxify
-        this.requesetPromise = cancelable(CardApi.update(card));
-        return this.requesetPromise.then(updatedCard => {
+        this.requestPromise = cancelable(CardApi.update(card));
+        return this.requestPromise.then(updatedCard => {
             if (this.props.fromUrl) {
                 this.onGoBack();
                 return;

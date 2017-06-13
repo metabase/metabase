@@ -88,11 +88,11 @@
   (card-with-uuid uuid))
 
 
-
 (defn run-query-for-card-with-id
   "Run the query belonging to Card with CARD-ID with PARAMETERS and other query options (e.g. `:constraints`)."
   [card-id parameters & options]
   (u/prog1 (-> (let [parameters (if (string? parameters) (json/parse-string parameters keyword) parameters)]
+                 ;; run this query with full superuser perms
                  (binding [api/*current-user-permissions-set*     (atom #{"/"})
                            qp/*allow-queries-with-no-executor-id* true]
                    (apply card-api/run-query-for-card card-id, :parameters parameters, :context :public-question, options)))

@@ -2,25 +2,16 @@
   "Converts a Query Dict as received by the API into an *expanded* one that contains extra information that will be needed to
    construct the appropriate native Query, and perform various post-processing steps such as Field ordering."
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
-  (:require [clojure
-             [core :as core]
-             [string :as str]]
+  (:require [clojure.core :as core]
             [clojure.tools.logging :as log]
-            [metabase.query-processor.interface :as i]
+            [metabase.query-processor
+             [interface :as i]
+             [util :as qputil]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter Expression ExpressionRef FieldPlaceholder RelativeDatetime StringFilter ValuePlaceholder]))
-
-;;; # ------------------------------------------------------------ Token dispatch ------------------------------------------------------------
-
-(s/defn ^:always-validate normalize-token :- s/Keyword
-  "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased keyword."
-  [token :- su/KeywordOrString]
-  (-> (name token)
-      str/lower-case
-      (str/replace #"_" "-")
-      keyword))
+  (:import [metabase.query_processor.interface AgFieldRef BetweenFilter ComparisonFilter CompoundFilter Expression ExpressionRef
+            FieldPlaceholder RelativeDatetime StringFilter Value ValuePlaceholder]))
 
 ;;; # ------------------------------------------------------------ Clause Handlers ------------------------------------------------------------
 
@@ -38,7 +29,7 @@
   [id :- su/IntGreaterThanZero]
   (i/map->FieldPlaceholder {:field-id id}))
 
-(s/defn ^:private ^:always-validate field :- i/AnyFieldOrExpression
+(s/defn ^:private ^:always-validate field :- i/AnyField
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
   (if (integer? f)
@@ -58,7 +49,7 @@
   ([f _ unit] (log/warn (u/format-color 'yellow (str "The syntax for datetime-field has changed in MBQL '98. [:datetime-field <field> :as <unit>] is deprecated. "
                                                      "Prefer [:datetime-field <field> <unit>] instead.")))
               (datetime-field f unit))
-  ([f unit]   (assoc (field f) :datetime-unit (normalize-token unit))))
+  ([f unit]   (assoc (field f) :datetime-unit (qputil/normalize-token unit))))
 
 (s/defn ^:ql ^:always-validate fk-> :- FieldPlaceholder
   "Reference to a `Field` that belongs to another `Table`. DEST-FIELD-ID is the ID of this Field, and FK-FIELD-ID is the ID of the foreign key field
@@ -72,11 +63,12 @@
   (i/map->FieldPlaceholder {:fk-field-id fk-field-id, :field-id dest-field-id}))
 
 
-(s/defn ^:private ^:always-validate value :- ValuePlaceholder
+(s/defn ^:private ^:always-validate value :- (s/cond-pre Value ValuePlaceholder)
   "Literal value. F is the `Field` it relates to, and V is `nil`, or a boolean, string, numerical, or datetime value."
   [f v]
   (cond
     (instance? ValuePlaceholder v) v
+    (instance? Value v)            v
     :else                          (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
 
 (s/defn ^:private ^:always-validate field-or-value
@@ -94,11 +86,11 @@
 
      (relative-datetime :current)
      (relative-datetime -31 :day)"
-  ([n]                (s/validate (s/eq :current) (normalize-token n))
+  ([n]                (s/validate (s/eq :current) (qputil/normalize-token n))
                       (relative-datetime 0 nil))
   ([n :- s/Int, unit] (i/map->RelativeDatetime {:amount n, :unit (if (nil? unit)
                                                                    :day                        ; give :unit a default value so we can simplify the schema a bit and require a :unit
-                                                                   (normalize-token unit))})))
+                                                                   (qputil/normalize-token unit))})))
 
 (s/defn ^:ql ^:always-validate expression :- ExpressionRef
   {:added "0.17.0"}
@@ -170,8 +162,8 @@
                                                          ;; make sure the ag map is still typed correctly
                                                          (u/prog1 (cond
                                                                     (:operator ag) (i/map->Expression ag)
-                                                                    (:field ag)    (i/map->AggregationWithField    (update ag :aggregation-type normalize-token))
-                                                                    :else          (i/map->AggregationWithoutField (update ag :aggregation-type normalize-token)))
+                                                                    (:field ag)    (i/map->AggregationWithField    (update ag :aggregation-type qputil/normalize-token))
+                                                                    :else          (i/map->AggregationWithoutField (update ag :aggregation-type qputil/normalize-token)))
                                                            (s/validate i/Aggregation <>)))))))
 
   ;; also handle varargs for convenience
@@ -288,7 +280,7 @@
     (filter {} (time-interval (field-id 100) :current :day)) "
   [f n unit]
   (if-not (integer? n)
-    (case (normalize-token n)
+    (case (qputil/normalize-token n)
       :current (recur f  0 unit)
       :last    (recur f -1 unit)
       :next    (recur f  1 unit))
@@ -353,7 +345,7 @@
     (map? subclause)    subclause ; already parsed by `asc` or `desc`
     (vector? subclause) (let [[f direction] subclause]
                           (log/warn (u/format-color 'yellow "The syntax for order-by has changed in MBQL '98. [<field> :ascending/:descending] is deprecated. Prefer [:asc/:desc <field>] instead."))
-                          (order-by-subclause (normalize-token direction) f))))
+                          (order-by-subclause (qputil/normalize-token direction) f))))
 
 (defn ^:ql order-by
   "Specify how ordering should be done for this query.
@@ -432,7 +424,7 @@
 
      (fn-for-token :starts-with) -> #'starts-with"
   [token]
-  (let [token (normalize-token token)]
+  (let [token (qputil/normalize-token token)]
     (core/or (token->ql-fn token)
              (throw (Exception. (str "Illegal clause (no matching fn found): " token))))))
 
@@ -506,4 +498,4 @@
      (is-clause? :field-id [\"FIELD-ID\" 2000]) ; -> true"
   [clause-keyword clause]
   (core/and (sequential? clause)
-            (core/= (normalize-token (first clause)) clause-keyword)))
+            (core/= (qputil/normalize-token (first clause)) clause-keyword)))

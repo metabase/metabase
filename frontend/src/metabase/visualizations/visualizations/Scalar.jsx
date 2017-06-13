@@ -196,7 +196,7 @@ export default class Scalar extends Component {
                 <div className={styles.Title + " flex align-center relative"}>
                     <Ellipsified tooltip={card.name}>
                         <span
-                            onClick={onChangeCardAndRun && (() => onChangeCardAndRun(card))}
+                            onClick={onChangeCardAndRun && (() => onChangeCardAndRun({ nextCard: card }))}
                             className={cx("fullscreen-normal-text fullscreen-night-text", {
                                 "cursor-pointer": !!onChangeCardAndRun
                             })}

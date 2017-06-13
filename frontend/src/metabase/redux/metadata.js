@@ -6,6 +6,7 @@ import {
     resourceListToMap,
     fetchData,
     updateData,
+    handleEntities
 } from "metabase/lib/redux";
 
 import { normalize } from "normalizr";
@@ -426,34 +427,6 @@ const segments = handleActions({
 const revisions = handleActions({
     [FETCH_REVISIONS]: { next: (state, { payload }) => payload }
 }, {});
-
-// merge each entity from newEntities with existing entity, if any
-// this ensures partial entities don't overwrite existing entities with more properties
-function mergeEntities(entities, newEntities) {
-    entities = { ...entities };
-    for (const id in newEntities) {
-        if (id in entities) {
-            entities[id] = { ...entities[id], ...newEntities[id] };
-        } else {
-            entities[id] = newEntities[id];
-        }
-    }
-    return entities;
-}
-
-// reducer that merges payload.entities
-function handleEntities(actionPattern, entityType, reducer) {
-    return (state, action) => {
-        if (state === undefined) {
-            state = {};
-        }
-        let entities = getIn(action, ["payload", "entities", entityType])
-        if (actionPattern.test(action.type) && entities) {
-            state = mergeEntities(state, entities);
-        }
-        return reducer(state, action);
-    }
-}
 
 export default combineReducers({
     metrics:   handleEntities(/^metabase\/metadata\//, "metrics", metrics),

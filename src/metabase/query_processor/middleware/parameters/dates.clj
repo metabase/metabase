@@ -1,17 +1,10 @@
-(ns metabase.query-processor.parameters
-  "Code for handling parameter substitution in MBQL queries."
+(ns metabase.query-processor.middleware.parameters.dates
+  "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
   (:require [clj-time
              [core :as t]
              [format :as tf]]
-            [clojure.string :as s]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.query-processor.sql-parameters :as native-params])
+            [medley.core :as m])
   (:import [org.joda.time DateTime DateTimeConstants]))
-
-;;; +-------------------------------------------------------------------------------------------------------+
-;;; |                                    DATE RANGES & PERIODS                                              |
-;;; +-------------------------------------------------------------------------------------------------------+
 
 ;; Both in MBQL and SQL parameter substitution a field value is compared to a date range, either relative or absolute.
 ;; Currently the field value is casted to a day (ignoring the time of day), so the ranges should have the same
@@ -69,6 +62,7 @@
   [date]
   (tf/parse (tf/formatters :date-opt-time) date))
 
+
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                    DATE STRING DECODERS                                               |
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -83,6 +77,7 @@
     :int-value [[group-label (Integer/parseInt group-value)]]
     (:date :date-1 :date-2) [[group-label (parse-absolute-date group-value)]]
     [[group-label group-value]]))
+
 
 (defn- regex->parser
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which
@@ -217,74 +212,8 @@
         (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
              (m/map-vals (partial tf/unparse formatter-no-tz))))))
 
-(defn- date-string->filter
+(defn date-string->filter
   "Takes a string description of a date range such as 'lastmonth' or '2016-07-15~2016-08-6' and returns a
    corresponding MBQL filter clause for a given field reference."
   [date-string field-reference]
   (execute-decoders all-date-string-decoders :filter field-reference date-string))
-
-;;; +-------------------------------------------------------------------------------------------------------+
-;;; |                                             MBQL QUERIES                                              |
-;;; +-------------------------------------------------------------------------------------------------------+
-
-(defn- parse-param-value-for-type
-  "Convert PARAM-VALUE to a type appropriate for PARAM-TYPE.
-   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead convert the parameters to integers or floating-point numbers."
-  [param-type param-value]
-  (cond
-    ;; no conversion needed if PARAM-TYPE isn't :number or PARAM-VALUE isn't a string
-    (or (not= (keyword param-type) :number)
-        (not (string? param-value)))        param-value
-    ;; if PARAM-VALUE contains a period then convert to a Double
-    (re-find #"\." param-value)             (Double/parseDouble param-value)
-    ;; otherwise convert to a Long
-    :else                                   (Long/parseLong param-value)))
-
-(defn- build-filter-clause [{param-type :type, param-value :value, [_ field] :target}]
-  (let [param-value (parse-param-value-for-type param-type param-value)]
-    (cond
-      ;; default behavior (non-date filtering) is to use a simple equals filter
-      (not (s/starts-with? param-type "date")) ["=" field param-value]
-      ;; date range
-      :else (date-string->filter param-value field))))
-
-(defn- merge-filter-clauses [base addtl]
-  (cond
-    (and (seq base)
-         (seq addtl)) ["AND" base addtl]
-    (seq base)        base
-    (seq addtl)       addtl
-    :else             []))
-
-(defn- expand-params:mbql [query-dict [{:keys [target value], :as param} & rest]]
-  (cond
-    (not param)      query-dict
-    (or (not target)
-        (not value)) (recur query-dict rest)
-    :else            (let [filter-subclause (build-filter-clause param)
-                           query            (assoc-in query-dict [:query :filter] (merge-filter-clauses (get-in query-dict [:query :filter]) filter-subclause))]
-                       (recur query rest))))
-
-
-;;; +-------------------------------------------------------------------------------------------------------+
-;;; |                                             SQL QUERIES                                               |
-;;; +-------------------------------------------------------------------------------------------------------+
-
-(defn- expand-params:native [{:keys [driver] :as query}]
-  (if-not (driver/driver-supports? driver :native-parameters)
-    query
-    (native-params/expand-params query)))
-
-
-;;; +-------------------------------------------------------------------------------------------------------+
-;;; |                                              PUBLIC API                                               |
-;;; +-------------------------------------------------------------------------------------------------------+
-
-
-(defn expand-parameters
-  "Expand any :parameters set on the QUERY-DICT and apply them to the query definition.
-   This function removes the :parameters attribute from the QUERY-DICT as part of its execution."
-  [{:keys [parameters], :as query-dict}]
-  (if (= :query (keyword (:type query-dict)))
-    (expand-params:mbql (dissoc query-dict :parameters) parameters)
-    (expand-params:native query-dict)))

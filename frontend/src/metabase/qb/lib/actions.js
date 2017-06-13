@@ -22,6 +22,7 @@ export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
     newCard.dataset_query = card.dataset_query;
     newCard.display = "table";
+    newCard.original_card_id = card.id;
     return newCard;
 };
 

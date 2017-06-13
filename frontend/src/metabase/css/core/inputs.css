@@ -48,3 +48,9 @@
 .no-focus:focus {
   outline: 0;
 }
+
+/* prevent safari from forcing type="search" styles - issue #5225 */
+.input[type="search"] {
+  -webkit-appearance: none;
+}
+
