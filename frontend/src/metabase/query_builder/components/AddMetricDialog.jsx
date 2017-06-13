@@ -89,7 +89,7 @@ export default class AddMetricDialog extends Component {
     };
 
     queryHasMetricAggregation = (query, metric) =>
-        query.wrappedAggregations().filter((agg) => agg.isMetric() && agg.getMetric() === metric.id).length > 0
+        query.aggregationsWrapped().filter((agg) => agg.isMetric() && agg.getMetric() === metric.id).length > 0
 
     removeMetric = (metric: Metric) => {
         const { addedMetrics, currentQuestion } = this.state;

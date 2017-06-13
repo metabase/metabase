@@ -45,7 +45,7 @@ const ChildQueryDimensionSelect = ({ query, index, dimensionType, updateDimensio
                 placeholder="Select…"
             >
                 { compatibleDimensions.map(dimension =>
-                    <Option value={dimension}>{dimension.displayName()}</Option>
+                    <Option key={dimension.displayName()} value={dimension}>{dimension.displayName()}</Option>
                 )}
             </Select>
         </div>
@@ -85,7 +85,9 @@ export default class MultiQueryDimensionOptions extends Component {
         return (
             <div className="align-center flex-full flex flex-wrap">
                 { atomicQueries.map((childQuery, index) =>
-                    <ChildQueryDimensionSelect query={childQuery} index={index}
+                    <ChildQueryDimensionSelect key={index}
+                                               index={index}
+                                               query={childQuery}
                                                dimensionType={dimensionType}
                                                updateDimension={this.updateChildQueryDimension}/>)
                 }

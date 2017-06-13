@@ -4,18 +4,18 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 
 import { fetchDatabases } from 'metabase/redux/metadata'
-
 import { initializeNewQuery, updateQuery } from '../new_query'
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
-
-import Question from "metabase-lib/lib/Question";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 import { getQuery } from "../selectors";
+import Question from "metabase-lib/lib/Question";
 import Table from "metabase-lib/lib/metadata/Table";
 import Database from "metabase-lib/lib/metadata/Database";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery"
+import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
 
-import type { Aggregation } from "metabase/meta/types/Query";
+import { Field } from "metabase/meta/types/Field";
 
 class OptionListItem extends Component {
     props: {
@@ -78,20 +78,35 @@ export class NewQueryOptions extends Component {
         this.props.updateQuery(this.props.query.setTable(table))
     }
 
-    setAggregation = (aggregation: Aggregation) => {
-        const query = this.props.query.addAggregation(aggregation);
-        this.props.updateQuery(this.props.query.addAggregation(aggregation))
-        this.props.onComplete(query);
+    setAggregation = (option: AggregationOption) => {
+        const updatedQuery = this.props.query.addAggregation(option.toAggregation().clause);
+        if (option.hasFields()) {
+            this.props.updateQuery(updatedQuery)
+        } else {
+            this.props.onComplete(updatedQuery);
+        }
+    }
+
+    setAggregationField = (field: Field) => {
+        const { query } = this.props;
+        const aggregation = query.aggregationsWrapped()[0];
+        if (!aggregation) throw new Error("Trying to set the field of a non-existing aggregation");
+
+        const updatedQuery = this.props.query.updateAggregation(0, aggregation.setField(field.id).clause);
+        this.props.onComplete(updatedQuery);
     }
 
     render() {
-        const {query} = this.props
-
+        const { query } = this.props
         if (!query) {
             return <LoadingAndErrorWrapper loading={true}/>
         }
+
         const database = query.database()
         const table = query.table()
+        const aggregation = query.aggregationsWrapped()[0]
+        const aggregationOption = aggregation && aggregation.getOption()
+        console.log('render', aggregation, aggregationOption);
 
         return (
             <LoadingAndErrorWrapper loading={!query}>
@@ -120,11 +135,20 @@ export class NewQueryOptions extends Component {
                             </ol>
                         </div>
                     )}
-                    { table && (
+                    { table && !aggregationOption && (
                         <ol>
-                            { query.aggregationOptionsWithoutRaw().map(option =>
-                                <OptionListItem key={option.short} item={table} action={this.setAggregation}>
+                            { query.aggregationOptionsWithoutRows().map(option =>
+                                <OptionListItem key={option.short} item={option} action={this.setAggregation}>
                                     {option.name}
+                                </OptionListItem>
+                            )}
+                        </ol>
+                    )}
+                    { aggregationOption && (
+                        <ol>
+                            { aggregationOption.fields[0].map(field =>
+                                <OptionListItem key={field.id} item={field} action={this.setAggregationField}>
+                                    {field.name}
                                 </OptionListItem>
                             )}
                         </ol>

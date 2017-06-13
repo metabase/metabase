@@ -1,16 +1,35 @@
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import { AggregationClause as AggregationClause_DEPRECATED } from "metabase/lib/query";
 import { MetricId } from "metabase/meta/types/Metric";
-import { Operator } from "metabase/meta/types/Metadata";
+import { AggregationOption, Operator } from "metabase/meta/types/Metadata";
 import { FieldId } from "metabase/meta/types/Field";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 // TODO Atte Keinänen 6/11/17: Add a docstring about the purpose of Aggregations
 
 export default class Aggregation {
+    _query: ?StructuredQuery;
+
+    clause: AggregationObject
+
     constructor(
+        query?: StructuredQuery,
         clause: AggregationObject
     ): Aggregation {
+        this._query = query;
         this.clause = clause;
+    }
+
+    /**
+     * Gets the aggregation option matching this aggregation
+     * Returns `null` if the clause isn't in a standard format
+     */
+    getOption(): ?AggregationOption {
+        if (this._query == null) return null;
+
+        const operator = this.getOperator();
+        return operator ? this._query.aggregationOptions().find(option => option.short === operator) : null;
     }
 
     /**
@@ -62,6 +81,11 @@ export default class Aggregation {
      * Set the fieldId on a standard aggregation clause.
      * If the clause isn't in a standard format, no modifications are done.
      */
-    setField(fieldId: FieldId) { return AggregationClause_DEPRECATED.setField(this.clause, fieldId) }
+    setField(fieldId: FieldId): Aggregation {
+        return new Aggregation(
+            this._query,
+            AggregationClause_DEPRECATED.setField(this.clause, fieldId)
+        )
+    }
 }
 

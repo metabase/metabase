@@ -12,7 +12,7 @@ import Dimension from "../Dimension";
 
 import _ from "underscore";
 
-//** This is the primary way people interact with tables */
+/** This is the primary way people interact with tables */
 export default class Table extends Base {
     displayName: string;
     description: string;
@@ -22,7 +22,7 @@ export default class Table extends Base {
 
     fields: Field[];
 
-    // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `db`)
+    // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
     get database() {
         return this.db;
     }
