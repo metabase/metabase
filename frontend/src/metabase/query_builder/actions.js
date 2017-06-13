@@ -291,23 +291,17 @@ export const initializeQB = (location, params) => {
                 // NOTE: timeout to allow Parameters widget to set parameterValues
                 setTimeout(() =>
                     // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
-                    dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }))
+                    dispatch(runQuestionQuery({ shouldUpdateUrl: false }))
                 , 0);
             }
 
-            const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
             // clean up the url and make sure it reflects our card state
+            const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
             dispatch(updateUrl(card, {
                 dirty: originalQuestion && question.isDirtyComparedTo(originalQuestion),
                 replaceState: true,
                 preserveParameters
             }));
-        }
-
-        // if we have loaded up a card that we can run then lets kick that off as well
-        if (question.canRun()) {
-            // NOTE: timeout to allow Parameters widget to set parameterValues
-            setTimeout(() => dispatch(runQuestionQuery({ shouldUpdateUrl: false })), 0);
         }
     };
 };

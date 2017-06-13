@@ -5,7 +5,7 @@ import Question from "../Question";
 import Database from "./Database";
 import Table from "./Table";
 import Dimension, { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
-import { Aggregation } from "metabase/meta/types/Query";
+import type { Aggregation } from "metabase/meta/types/Query";
 
 /**
  * Wrapper class for a metric. Belongs to a {@link Database} and possibly a {@link Table}

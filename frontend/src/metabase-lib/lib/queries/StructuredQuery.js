@@ -46,11 +46,11 @@ import type Table from "../metadata/Table";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 import type Database from "../metadata/Database";
 import type Question from "../Question";
-import { TableId } from "metabase/meta/types/Table";
+import type { TableId } from "metabase/meta/types/Table";
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from './Aggregation';
 
-const STRUCTURED_QUERY_TEMPLATE = {
+export const STRUCTURED_QUERY_TEMPLATE = {
     database: null,
     type: "query",
     query: {

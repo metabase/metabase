@@ -21,6 +21,7 @@ class OptionListItem extends Component {
     props: {
         item: any,
         action: (any) => void,
+        children?: React$Element<any>
     }
     onClick = () => { this.props.action(this.props.item); }
 

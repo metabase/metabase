@@ -16,6 +16,8 @@ import type {
     DatasetQuery,
     MultiDatasetQuery
 } from "metabase/meta/types/Card";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import Metric from "metabase-lib/lib/metadata/Metric";
 
 export const MULTI_QUERY_TEMPLATE: MultiDatasetQuery = {
     type: "multi",
@@ -206,7 +208,7 @@ export default class MultiQuery extends Query {
             const breakoutDimension = new DatetimeFieldDimension(compatibleFields[0].dimension(), [sharedDimension.bucketing()])
 
             const metricQuery = StructuredQuery
-                .newStucturedQuery({ question: this, databaseId: metric.table.db.id, tableId: metric.table.id })
+                .newStucturedQuery({ question: this._originalQuestion, databaseId: metric.table.db.id, tableId: metric.table.id })
                 .addAggregation(metric.aggregationClause())
                 .addBreakout(breakoutDimension.mbql());
 
@@ -245,7 +247,7 @@ export default class MultiQuery extends Query {
 
     /* Internal methods */
     _updateQueries(queries: AtomicQuery[]) {
-        const datasetQuery: MultiDatasetQuery = this.datasetQuery();
+        const datasetQuery: DatasetQuery = this.datasetQuery();
         return new MultiQuery(this._originalQuestion, {
             ...datasetQuery,
             queries: queries.map((query) => query.datasetQuery())

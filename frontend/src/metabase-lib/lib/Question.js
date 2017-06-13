@@ -48,10 +48,12 @@ import type {
 } from "metabase/meta/types/Visualization";
 import { MetabaseApi, CardApi } from "metabase/services";
 import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
-import { TableId } from "metabase/meta/types/Table";
-import { DatabaseId } from "metabase/meta/types/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import { Dataset } from "metabase/meta/types/Dataset";
+
+import type { Dataset } from "metabase/meta/types/Dataset";
+import type { TableId } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/lib/queries/StructuredQuery";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -76,7 +78,7 @@ export default class Question {
 
     /**
      * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
-     * TODO Atte Keinänen 6/6/17: Why are parameter values considered a part of a Question?
+     * They are in the grey area between UI state and question state, but having them in Question wrapper is convenient.
      */
     _parameterValues: ParameterValues;
 
@@ -94,19 +96,25 @@ export default class Question {
     }
 
     /**
-     * TODO: Write a docstring, rename the latter newQuestion instance method
+     * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
+     * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
      */
-    static newQuestion({
+    static create({
         databaseId, tableId, metadata, parameterValues, ...cardProps
     }: { databaseId?: DatabaseId, tableId?: TableId, metadata: Metadata, parameterValues?: ParameterValues }) {
+
         const card = {
             name: cardProps.name || null,
             display: cardProps.display || "table",
             visualization_settings: cardProps.visualization_settings || {},
-            dataset_query: cardProps.dataset_query || StructuredQuery.newStucturedQuery({ question: this, databaseId, tableId })
+            dataset_query: STRUCTURED_QUERY_TEMPLATE // temporary placeholder
         };
 
-       return new Question(metadata, card, parameterValues);
+        // $FlowFixMe Passing an incomplete card object
+        const initialQuestion = new Question(metadata, card, parameterValues);
+        const query = StructuredQuery.newStucturedQuery({ question: initialQuestion, databaseId, tableId })
+
+        return initialQuestion.setQuery(query);
     }
 
     /**
