@@ -4,17 +4,22 @@
             [metabase.query-processor.interface :as i])
   (:import [metabase.query_processor.interface BinnedField ComparisonFilter BetweenFilter]))
 
-(defn- update! [^clojure.lang.ITransientAssociative coll k f]
+(defn- update!
+  "Similar to `clojure.core/update` but works on transient maps"
+  [^clojure.lang.ITransientAssociative coll k f]
   (assoc! coll k (f (get coll k))))
 
-(defn- filter->field-map [mbql-filter]
+(defn- filter->field-map
+  "A bit of a stateful hack using clojure.walk/prewalk to find any
+  comparison or between filter. This should be replaced by a zipper
+  for a more functional/composable approach to this problem."
+  [mbql-filter]
   (let [acc (transient {})]
-    (clojure.walk/prewalk
+    (walk/prewalk
      (fn [x]
-       (when (or
-            (instance? BetweenFilter x)
-            (and (instance? ComparisonFilter x)
-                 (contains? #{:< :> :<= :>=} (:filter-type x))))
+       (when (or (instance? BetweenFilter x)
+                 (and (instance? ComparisonFilter x)
+                      (contains? #{:< :> :<= :>=} (:filter-type x))))
          (update! acc (get-in x [:field :field-id]) #(if (seq %)
                                                        (conj % x)
                                                        [x])))
@@ -26,29 +31,35 @@
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
-(defn- extract-bounds [{field-id :field-id, global-min :min-value, global-max :max-value} field-filter-map]
-  ;; Assuming only one for now
-  (let [bound-1 (first (for [{:keys [value filter-type]} (get field-filter-map field-id)
-                             :when (or (= :> filter-type)
-                                       (= :>= filter-type))]
-                         (:value value)                  ))
-        bound-2 (first (for [{:keys [value filter-type]} (get field-filter-map field-id)
-                             :when (or (= :< filter-type)
-                                       (= :<= filter-type))]
-                         (:value value)))
-        comparison-bounds (when (and bound-1 bound-2)
-                            (if (> bound-1 bound-2)
-                              [bound-2 bound-1]
-                              [bound-1 bound-2]))
-        ;;Assuming either >/< or between
-        between-bounds (first (for [{:keys [filter-type min-value max-value]} (get field-filter-map field-id)
-                                    :when (= :between filter-type)]
-                                [min-value max-value]))]
-    (or (seq comparison-bounds)
-        (seq between-bounds)
-        [global-min global-max])))
+(defn- extract-bounds
+  "Given query criteria, find a min/max value for the binning strategy
+  using the greatest user specified min value and the smallest user
+  specified max value. When a user specified min or max is not found,
+  use the global min/max for the given field."
+  [{field-id :field-id, global-min :min-value, global-max :max-value} field-filter-map]
+  (let [user-maxes (for [{:keys [filter-type] :as query-filter} (get field-filter-map field-id)
+                         :when (contains? #{:< :<= :between} filter-type)]
+                     (if (= :between filter-type)
+                       (get-in query-filter [:max-val :value])
+                       (get-in query-filter [:value :value])))
+        user-mins (for [{:keys [filter-type] :as query-filter} (get field-filter-map field-id)
+                        :when (contains? #{:> :>= :between} filter-type)]
+                    (if (= :between filter-type)
+                      (get-in query-filter [:min-val :value])
+                      (get-in query-filter [:value :value])))]
 
-(defn- update-bin-width [breakouts filter-field-map]
+    [(or (when (seq user-mins)
+           (apply max user-mins))
+         global-min)
+     (or (when (seq user-maxes)
+           (apply min user-maxes))
+         global-max)]))
+
+(defn- update-bin-width
+  "Calculates the bin width given the global min/max and user
+  specified crtieria that could impact that min/max. Throws an
+  Exception if no min/max values are found."
+  [breakouts filter-field-map]
   (mapv (fn [{:keys [field num-bins] :as breakout}]
           (if (instance? BinnedField breakout)
             (let [[min-value max-value] (extract-bounds field filter-field-map)]
