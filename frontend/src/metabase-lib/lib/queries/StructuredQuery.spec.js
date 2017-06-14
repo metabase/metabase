@@ -16,15 +16,19 @@ import {
 
 import StructuredQuery from "./StructuredQuery";
 
-function makeQuery(query) {
-    return new StructuredQuery(question, {
+function makeDatasetQuery(query) {
+    return {
         type: "query",
         database: DATABASE_ID,
         query: {
             source_table: MAIN_TABLE_ID,
             ...query
         }
-    });
+    };
+}
+
+function makeQuery(query) {
+    return new StructuredQuery(question, makeDatasetQuery(query));
 }
 
 function makeQueryWithAggregation(agg) {
@@ -120,21 +124,39 @@ describe("StructuredQuery", () => {
             expect(query.table()).toBe(metadata.tables[MAIN_TABLE_ID]);
         });
     });
-    describe("tableMetadata", () => {
-        it("", () => {});
-    });
 
     // AGGREGATIONS:
 
     describe("aggregations", () => {
-        it("", () => {});
+        it("should return an empty list for an empty query", () => {
+            expect(query.aggregations().length).toBe(0);
+        });
+        it("should return a list of one item after adding an aggregation", () => {
+            expect(query.addAggregation(["count"]).aggregations().length).toBe(1);
+        });
+        it("should return an actual count aggregation after trying to add it", () => {
+            expect(query.addAggregation(["count"]).aggregations()[0]).toEqual(["count"]);
+        });
     });
-    describe("aggregationsAW", () => {
-        it("", () => {});
+    describe("aggregationsWrapped", () => {
+        it("should return an empty list for an empty query", () => {
+            expect(query.aggregationsWrapped().length).toBe(0);
+        });
+        it("should return a list with Aggregation after adding an aggregation", () => {
+            expect(
+                query.addAggregation(["count"]).aggregationsWrapped()[0].isValid()
+            ).toBe(true);
+        });
     });
 
     describe("aggregationOptions", () => {
-        it("", () => {});
+        // TODO Atte Keinänen 6/14/17: Add the mock metadata for aggregation options
+        xit("should return a non-empty list of options", () => {
+            expect(query.aggregationOptions().length).toBeGreaterThan(0)
+        });
+        xit("should contain the count aggregation", () => {
+
+        });
     });
     describe("aggregationOptionsWithoutRaw", () => {
         it("", () => {});
@@ -145,11 +167,32 @@ describe("StructuredQuery", () => {
     });
 
     describe("canRemoveAggregation", () => {
-        it("", () => {});
+        it("should return false if there are no aggregations", () => {
+            expect(query.canRemoveAggregation()).toBe(false)
+        });
+        it("should return false for a single aggregation", () => {
+            expect(query.addAggregation(["count"]).canRemoveAggregation()).toBe(false)
+        });
+        it("should return true for two aggregations", () => {
+            expect(
+                query
+                    .addAggregation(["count"])
+                    .addAggregation([
+                        "sum",
+                        ["field-id", MAIN_FLOAT_FIELD_ID]
+                    ])
+                    .canRemoveAggregation()
+            ).toBe(true)
+        });
     });
 
     describe("isBareRows", () => {
-        it("", () => {});
+        it("should be true for an empty query", () => {
+            expect(query.isBareRows()).toBe(true)
+        });
+        it("should be false for a count aggregation", () => {
+            expect(query.addAggregation(["count"]).isBareRows()).toBe(false)
+        });
     });
 
     describe("aggregationName", () => {
@@ -377,9 +420,13 @@ describe("StructuredQuery", () => {
         it("", () => {});
     });
     describe("setDatasetQuery", () => {
-        it("", () => {});
-    });
-    describe("_updateQuery", () => {
-        it("", () => {});
+        it("should replace the previous dataset query with the provided one", () => {
+            const newDatasetQuery = makeDatasetQuery({
+                source_table: MAIN_TABLE_ID,
+                aggregation: [["count"]]
+            })
+
+            expect(query.setDatasetQuery(newDatasetQuery).datasetQuery()).toBe(newDatasetQuery)
+        });
     });
 });
