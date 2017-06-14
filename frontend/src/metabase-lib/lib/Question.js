@@ -7,7 +7,7 @@ import Table from "./metadata/Table";
 import Field from "./metadata/Field";
 
 import MultiQuery, { convertToMultiDatasetQuery } from "./queries/MultiQuery";
-import StructuredQuery from "./queries/StructuredQuery";
+import StructuredQuery, { STRUCTURED_QUERY_TEMPLATE } from "./queries/StructuredQuery";
 import NativeQuery from "./queries/NativeQuery";
 
 import { memoize } from "metabase-lib/lib/utils";
@@ -37,8 +37,7 @@ import type {
 } from "metabase/meta/types/Parameter";
 import type {
     DatasetQuery,
-    Card as CardObject,
-    StructuredDatasetQuery as StructuredDatasetQueryObject
+    Card as CardObject
 } from "metabase/meta/types/Card";
 
 import type {
@@ -47,13 +46,11 @@ import type {
     QueryMode
 } from "metabase/meta/types/Visualization";
 import { MetabaseApi, CardApi } from "metabase/services";
-import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 import type { Dataset } from "metabase/meta/types/Dataset";
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/lib/queries/StructuredQuery";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";

@@ -1,12 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
 import Clearable from "./Clearable.jsx";
 
 import Query from "metabase/lib/query";
-import { formatBucketing } from "metabase/lib/query_time";
-import { stripId } from "metabase/lib/formatting";
 
 import Dimension from "metabase-lib/lib/Dimension";
 

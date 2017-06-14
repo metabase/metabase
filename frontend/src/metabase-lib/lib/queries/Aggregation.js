@@ -3,11 +3,11 @@ import { AggregationClause as AggregationClause_DEPRECATED } from "metabase/lib/
 import { MetricId } from "metabase/meta/types/Metric";
 import { AggregationOption, Operator } from "metabase/meta/types/Metadata";
 import { FieldId } from "metabase/meta/types/Field";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-// TODO Atte Keinänen 6/11/17: Add a docstring about the purpose of Aggregations
-
+/**
+ * Wrapper for an aggregation contained by a {@link StructuredQuery}
+ */
 export default class Aggregation {
     _query: ?StructuredQuery;
 

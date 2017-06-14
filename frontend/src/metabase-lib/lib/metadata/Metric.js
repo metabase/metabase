@@ -4,7 +4,6 @@ import Base from "./Base";
 import Question from "../Question";
 import Database from "./Database";
 import Table from "./Table";
-import Dimension, { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 import type { Aggregation } from "metabase/meta/types/Query";
 
 /**

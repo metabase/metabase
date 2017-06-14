@@ -9,7 +9,6 @@ import cx from "classnames";
 
 import * as Query from "metabase/lib/query/query";
 import Question from "metabase-lib/lib/Question";
-import Table from "metabase-lib/lib/metadata/Table";
 
 export default class PartialQueryBuilder extends Component {
     static propTypes = {

@@ -9,7 +9,7 @@ import StructuredQuery from "./StructuredQuery";
 import NativeQuery from "./NativeQuery";
 import { memoize } from "metabase-lib/lib/utils";
 import Action, { ActionClick } from "../Action";
-import Dimension, { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 
 import type {
     AtomicDatasetQuery,
@@ -216,9 +216,11 @@ export default class MultiQuery extends Query {
         }
 
         const baseField = this.baseBreakoutDimension().field();
-        const field = compatibleFields.find((compatibleField) => {
+
+        const isEqualOrCloseToBaseField = (compatibleField) => {
             return compatibleField.id === baseField.id || compatibleField.name === baseField.name
-        }) || compatibleFields[0];
+        }
+        const field = compatibleFields.find(isEqualOrCloseToBaseField) || compatibleFields[0];
 
         return this.addQuery(query.addBreakout(this.breakoutDimensionFor(field).mbql()));
     }

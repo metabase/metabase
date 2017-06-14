@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import Select, { Option } from "metabase/components/Select";
 import MultiQuery from "metabase-lib/lib/queries/MultiQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension, { DatetimeFieldDimension, FieldIDDimension } from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 import MetricWidget from "metabase/query_builder/components/MetricWidget";
 import Field from "metabase-lib/lib/metadata/Field";
 

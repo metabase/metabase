@@ -59,8 +59,6 @@ import { push } from "react-router-redux";
 import { MetabaseApi } from "metabase/services";
 import QuestionBuilder from "metabase/query_builder/containers/QuestionBuilder";
 
-import NewQueryBar from "metabase/new_query/containers/NewQueryBar";
-import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -232,7 +230,7 @@ class LegacyQueryBuilder extends Component {
     }
 
     render() {
-        const { question, query, card, isDirty, databases, uiControls, mode } = this.props;
+        const { query, card, isDirty, databases, uiControls, mode } = this.props;
 
         // if we don't have a card at all or no databases then we are initializing, so keep it simple
         if (!card || !databases) {
@@ -244,7 +242,8 @@ class LegacyQueryBuilder extends Component {
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         const ModeFooter = mode && mode.ModeFooter;
 
-        const showNewQueryFlow = question && question.isEmpty();
+        // Fo showing the new question flow:
+        // const showNewQueryFlow = question && question.isEmpty();
 
         return (
             <div className="flex-full relative">
@@ -262,23 +261,25 @@ class LegacyQueryBuilder extends Component {
                             />
                         : (query instanceof StructuredQuery) ?
                             <div className="wrapper">
-                                { showNewQueryFlow
+                                { /* For showing the new question flow:
+                                     showNewQueryFlow
                                         ?  <NewQueryBar />
-                                        : (
+                                        : */
                                             <GuiQueryEditor
                                                 {...this.props}
                                                 datasetQuery={card && card.dataset_query}
                                             />
-                                        )
+
                                 }
                             </div>
                         : null }
                     </div>
 
                     <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        { showNewQueryFlow
+                        { /* For showing the new question flow:
+                            showNewQueryFlow
                             ? <NewQueryOptions question={question} onComplete={this.onNewQueryFlowCompleted} />
-                            : <QueryVisualization {...this.props}  className="full wrapper mb2 z1" />
+                            :*/ <QueryVisualization {...this.props}  className="full wrapper mb2 z1" />
                         }
                     </div>
 
