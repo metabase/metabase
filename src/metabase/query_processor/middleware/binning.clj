@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.binning
   (:require [clojure.walk :as walk]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.query-processor.interface :as i])
   (:import [metabase.query_processor.interface BinnedField ComparisonFilter BetweenFilter]))
 
 (defn- update! [^clojure.lang.ITransientAssociative coll k f]
@@ -25,7 +26,7 @@
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
-(defn extract-bounds [{field-id :field-id, global-min :min-value, global-max :max-value} field-filter-map]
+(defn- extract-bounds [{field-id :field-id, global-min :min-value, global-max :max-value} field-filter-map]
   ;; Assuming only one for now
   (let [bound-1 (first (for [{:keys [value filter-type]} (get field-filter-map field-id)
                              :when (or (= :> filter-type)
@@ -47,7 +48,7 @@
         (seq between-bounds)
         [global-min global-max]))  )
 
-(defn update-bin-width [breakouts filter-field-map]
+(defn- update-bin-width [breakouts filter-field-map]
   (mapv (fn [{:keys [field num-bins] :as breakout}]
           (if-let [[min-value max-value] (and (instance? BinnedField breakout)
                                               (extract-bounds field filter-field-map))]
@@ -59,6 +60,11 @@
         breakouts))
 
 (defn update-binning-strategy
+  "When a binned field is found, it might need to be updated if a
+  relevant query criteria affects the min/max value of the binned
+  field. This middleware looks for that criteria, then updates the
+  related min/max values and calculates the bin-width based on the
+  criteria values (or global min/max information)."
   [qp]
   (fn [query]
     (let [binned-breakouts (filter #(instance? BinnedField %) (get-in query [:query :breakout]))]
