@@ -4,7 +4,6 @@
 
 ### [Running Metabase on Docker](docker.md)
 
-
 ### [Connecting to databases and data warehouses with Metabase](datawarehouse.md)
 
 ### [Incorrect results due to time zones](timezones.md)
