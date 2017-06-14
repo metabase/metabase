@@ -30,28 +30,7 @@ export default class FieldName extends Component {
         if (dimension) {
             parts = dimension.render();
         } else {
-            // let fieldTarget = Query.getFieldTarget(field, tableMetadata);
-            // if (fieldTarget && !fieldTarget.field) {
-            //     parts.push(<span className="text-error" key="field">Missing Field</span>);
-            // } else if (fieldTarget) {
-            //     // fk path
-            //     for (let [index, fkField] of Object.entries(fieldTarget.path)) {
-            //         parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
-            //         parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" size={10} /></span>);
-            //     }
-            //     if (fieldTarget.field.id != null) {
-            //         parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, fieldTarget.table)}</span>);
-            //     } else {
-            //         // expressions, etc
-            //         parts.push(<span key="field">{fieldTarget.field.display_name}</span>);
-            //     }
-            //     // datetime-field unit
-            //     if (fieldTarget.unit != null) {
-            //         parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);
-            //     }
-            // } else {
-                parts.push(<span key="field">Unknown Field</span>);
-            // }
+            parts.push(<span key="field">Unknown Field</span>);
         }
 
         return (
