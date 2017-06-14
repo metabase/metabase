@@ -2,9 +2,12 @@
 import "metabase-lib/lib/Question";
 
 import {
+    metadata,
     question,
     DATABASE_ID,
+    ANOTHER_DATABASE_ID,
     MAIN_TABLE_ID,
+    FOREIGN_TABLE_ID,
     MAIN_FLOAT_FIELD_ID,
     MAIN_METRIC_ID,
     MAIN_FK_FIELD_ID,
@@ -32,40 +35,90 @@ const query = makeQuery({});
 
 describe("StructuredQuery", () => {
     describe("canRun", () => {
-        it("", () => {});
+        it("Should run a valid query", () => {
+            expect(query.canRun()).toBe(true);
+        });
     });
     describe("isEditable", () => {
-        it("", () => {});
+        it("A valid query should be editable", () => {
+            expect(query.isEditable()).toBe(true);
+        });
     });
     describe("tables", () => {
-        it("", () => {});
+        it("Tables should return multiple tables", () => {
+            expect(Array.isArray(query.tables())).toBe(true);
+        });
+        it("Tables should return a table map that includes fields", () => {
+            expect(Array.isArray(query.tables()[0].fields)).toBe(true);
+        });
     });
     describe("databaseId", () => {
-        it("", () => {});
+        it("Should return the Database ID of the wrapped query ", () => {
+            expect(query.databaseId()).toBe(DATABASE_ID);
+        });
     });
     describe("database", () => {
-        it("", () => {});
+        it("Should return a dictionary with the underlying database of the wrapped query", () => {
+            expect(query.database().id).toBe(DATABASE_ID);
+        });
+    });
+    describe("isEmpty", () => {
+        it("Should tell that a non-empty query is not empty", () => {
+            expect(query.isEmpty()).toBe(false);
+        });
     });
     describe("engine", () => {
-        it("", () => {});
+        it("Should identify the engine of a query", () => {
+            // This is a magic constant and we should probably pull this up into an enum
+            expect(query.engine()).toBe("bigquery");
+        });
     });
     describe("reset", () => {
-        it("", () => {});
+        it("Expect a reset query to not have a selected database", () => {
+            expect(query.reset().database()).toBe(null);
+        });
+        it("Expect a reset query to not be runnable", () => {
+            expect(query.reset().canRun()).toBe(false);
+        });
     });
     describe("query", () => {
-        it("", () => {});
+        it("Should return the wrapper for the query dictionary", () => {
+            expect(query.query().source_table).toBe(MAIN_TABLE_ID);
+        });
     });
     describe("setDatabase", () => {
-        it("", () => {});
+        it("Should allow you to set a new database", () => {
+            expect(
+                query
+                    .setDatabase(metadata.databases[ANOTHER_DATABASE_ID])
+                    .database().id
+            ).toBe(ANOTHER_DATABASE_ID);
+        });
     });
     describe("setTable", () => {
-        it("", () => {});
+        it("Should allow you to set a new table", () => {
+            expect(
+                query.setTable(metadata.tables[FOREIGN_TABLE_ID]).tableId()
+            ).toBe(FOREIGN_TABLE_ID);
+        });
+
+        it("Should retain the correct database id when setting a new table", () => {
+            expect(
+                query
+                    .setTable(metadata.tables[FOREIGN_TABLE_ID])
+                    .table().database.id
+            ).toBe(DATABASE_ID);
+        });
     });
     describe("tableId", () => {
-        it("", () => {});
+        it("Return the right table id", () => {
+            expect(query.tableId()).toBe(MAIN_TABLE_ID);
+        });
     });
     describe("table", () => {
-        it("", () => {});
+        it("Return the table wrapper object for the query", () => {
+            expect(query.table()).toBe(metadata.tables[MAIN_TABLE_ID]);
+        });
     });
     describe("tableMetadata", () => {
         it("", () => {});

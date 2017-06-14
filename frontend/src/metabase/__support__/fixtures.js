@@ -6,6 +6,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
 
 export const DATABASE_ID = 100;
+export const ANOTHER_DATABASE_ID = 101;
 
 export const MAIN_TABLE_ID = 110;
 export const FOREIGN_TABLE_ID = 120;
@@ -27,8 +28,16 @@ export const state = {
             [DATABASE_ID]: {
                 id: DATABASE_ID,
                 name: "Mock Database",
+                engine: "bigquery",
                 tables: [MAIN_TABLE_ID, FOREIGN_TABLE_ID]
+            },
+            [ANOTHER_DATABASE_ID]: {
+                id: ANOTHER_DATABASE_ID,
+                name: "Mock Empty Database",
+                engine: "bigquery",
+                tables: []
             }
+
         },
         tables: {
             [MAIN_TABLE_ID]: {
