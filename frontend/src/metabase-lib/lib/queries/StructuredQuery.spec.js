@@ -2,9 +2,12 @@
 import "metabase-lib/lib/Question";
 
 import {
+    metadata,
     question,
     DATABASE_ID,
+    ANOTHER_DATABASE_ID,
     MAIN_TABLE_ID,
+    FOREIGN_TABLE_ID,
     MAIN_FLOAT_FIELD_ID,
     MAIN_METRIC_ID,
     MAIN_FK_FIELD_ID,
@@ -13,15 +16,19 @@ import {
 
 import StructuredQuery from "./StructuredQuery";
 
-function makeQuery(query) {
-    return new StructuredQuery(question, {
+function makeDatasetQuery(query) {
+    return {
         type: "query",
         database: DATABASE_ID,
         query: {
             source_table: MAIN_TABLE_ID,
             ...query
         }
-    });
+    };
+}
+
+function makeQuery(query) {
+    return new StructuredQuery(question, makeDatasetQuery(query));
 }
 
 function makeQueryWithAggregation(agg) {
@@ -32,56 +39,124 @@ const query = makeQuery({});
 
 describe("StructuredQuery", () => {
     describe("canRun", () => {
-        it("", () => {});
+        it("Should run a valid query", () => {
+            expect(query.canRun()).toBe(true);
+        });
     });
     describe("isEditable", () => {
-        it("", () => {});
+        it("A valid query should be editable", () => {
+            expect(query.isEditable()).toBe(true);
+        });
     });
     describe("tables", () => {
-        it("", () => {});
+        it("Tables should return multiple tables", () => {
+            expect(Array.isArray(query.tables())).toBe(true);
+        });
+        it("Tables should return a table map that includes fields", () => {
+            expect(Array.isArray(query.tables()[0].fields)).toBe(true);
+        });
     });
     describe("databaseId", () => {
-        it("", () => {});
+        it("Should return the Database ID of the wrapped query ", () => {
+            expect(query.databaseId()).toBe(DATABASE_ID);
+        });
     });
     describe("database", () => {
-        it("", () => {});
+        it("Should return a dictionary with the underlying database of the wrapped query", () => {
+            expect(query.database().id).toBe(DATABASE_ID);
+        });
+    });
+    describe("isEmpty", () => {
+        it("Should tell that a non-empty query is not empty", () => {
+            expect(query.isEmpty()).toBe(false);
+        });
     });
     describe("engine", () => {
-        it("", () => {});
+        it("Should identify the engine of a query", () => {
+            // This is a magic constant and we should probably pull this up into an enum
+            expect(query.engine()).toBe("bigquery");
+        });
     });
     describe("reset", () => {
-        it("", () => {});
+        it("Expect a reset query to not have a selected database", () => {
+            expect(query.reset().database()).toBe(null);
+        });
+        it("Expect a reset query to not be runnable", () => {
+            expect(query.reset().canRun()).toBe(false);
+        });
     });
     describe("query", () => {
-        it("", () => {});
+        it("Should return the wrapper for the query dictionary", () => {
+            expect(query.query().source_table).toBe(MAIN_TABLE_ID);
+        });
     });
     describe("setDatabase", () => {
-        it("", () => {});
+        it("Should allow you to set a new database", () => {
+            expect(
+                query
+                    .setDatabase(metadata.databases[ANOTHER_DATABASE_ID])
+                    .database().id
+            ).toBe(ANOTHER_DATABASE_ID);
+        });
     });
     describe("setTable", () => {
-        it("", () => {});
+        it("Should allow you to set a new table", () => {
+            expect(
+                query.setTable(metadata.tables[FOREIGN_TABLE_ID]).tableId()
+            ).toBe(FOREIGN_TABLE_ID);
+        });
+
+        it("Should retain the correct database id when setting a new table", () => {
+            expect(
+                query
+                    .setTable(metadata.tables[FOREIGN_TABLE_ID])
+                    .table().database.id
+            ).toBe(DATABASE_ID);
+        });
     });
     describe("tableId", () => {
-        it("", () => {});
+        it("Return the right table id", () => {
+            expect(query.tableId()).toBe(MAIN_TABLE_ID);
+        });
     });
     describe("table", () => {
-        it("", () => {});
-    });
-    describe("tableMetadata", () => {
-        it("", () => {});
+        it("Return the table wrapper object for the query", () => {
+            expect(query.table()).toBe(metadata.tables[MAIN_TABLE_ID]);
+        });
     });
 
     // AGGREGATIONS:
 
     describe("aggregations", () => {
-        it("", () => {});
+        it("should return an empty list for an empty query", () => {
+            expect(query.aggregations().length).toBe(0);
+        });
+        it("should return a list of one item after adding an aggregation", () => {
+            expect(query.addAggregation(["count"]).aggregations().length).toBe(1);
+        });
+        it("should return an actual count aggregation after trying to add it", () => {
+            expect(query.addAggregation(["count"]).aggregations()[0]).toEqual(["count"]);
+        });
     });
-    describe("aggregationsAW", () => {
-        it("", () => {});
+    describe("aggregationsWrapped", () => {
+        it("should return an empty list for an empty query", () => {
+            expect(query.aggregationsWrapped().length).toBe(0);
+        });
+        it("should return a list with Aggregation after adding an aggregation", () => {
+            expect(
+                query.addAggregation(["count"]).aggregationsWrapped()[0].isValid()
+            ).toBe(true);
+        });
     });
 
     describe("aggregationOptions", () => {
-        it("", () => {});
+        // TODO Atte Keinänen 6/14/17: Add the mock metadata for aggregation options
+        xit("should return a non-empty list of options", () => {
+            expect(query.aggregationOptions().length).toBeGreaterThan(0)
+        });
+        xit("should contain the count aggregation", () => {
+
+        });
     });
     describe("aggregationOptionsWithoutRaw", () => {
         it("", () => {});
@@ -92,11 +167,32 @@ describe("StructuredQuery", () => {
     });
 
     describe("canRemoveAggregation", () => {
-        it("", () => {});
+        it("should return false if there are no aggregations", () => {
+            expect(query.canRemoveAggregation()).toBe(false)
+        });
+        it("should return false for a single aggregation", () => {
+            expect(query.addAggregation(["count"]).canRemoveAggregation()).toBe(false)
+        });
+        it("should return true for two aggregations", () => {
+            expect(
+                query
+                    .addAggregation(["count"])
+                    .addAggregation([
+                        "sum",
+                        ["field-id", MAIN_FLOAT_FIELD_ID]
+                    ])
+                    .canRemoveAggregation()
+            ).toBe(true)
+        });
     });
 
     describe("isBareRows", () => {
-        it("", () => {});
+        it("should be true for an empty query", () => {
+            expect(query.isBareRows()).toBe(true)
+        });
+        it("should be false for a count aggregation", () => {
+            expect(query.addAggregation(["count"]).isBareRows()).toBe(false)
+        });
     });
 
     describe("aggregationName", () => {
@@ -324,9 +420,13 @@ describe("StructuredQuery", () => {
         it("", () => {});
     });
     describe("setDatasetQuery", () => {
-        it("", () => {});
-    });
-    describe("_updateQuery", () => {
-        it("", () => {});
+        it("should replace the previous dataset query with the provided one", () => {
+            const newDatasetQuery = makeDatasetQuery({
+                source_table: MAIN_TABLE_ID,
+                aggregation: [["count"]]
+            })
+
+            expect(query.setDatasetQuery(newDatasetQuery).datasetQuery()).toBe(newDatasetQuery)
+        });
     });
 });
