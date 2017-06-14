@@ -111,6 +111,16 @@
               (ql/aggregation (ql/count))
               (ql/breakout (ql/binning-strategy $latitude :default)))))))
 
+(expect-with-non-timeseries-dbs
+  [[33.0 4] [34.0 57]]
+  (tu/with-temporary-setting-values [breakout-bins-num 15]
+    (format-rows-by [(partial u/round-to-decimals 1) int]
+      (rows (data/run-query venues
+              (ql/aggregation (ql/count))
+              (ql/filter (ql/and (ql/< $latitude 35)
+                                 (ql/> $latitude 20)))
+              (ql/breakout (ql/binning-strategy $latitude :default)))))))
+
 ;;Validate binning info is returned with the binning-strategy
 (expect-with-non-timeseries-dbs
   (merge (venues-col :latitude)

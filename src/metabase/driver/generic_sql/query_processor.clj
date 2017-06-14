@@ -89,7 +89,7 @@
     (sql/date (driver) unit (formatted field)))
 
   BinnedField
-  (formatted [{{:keys [min-value max-value] :as field} :field bin-width :bin-width}]
+  (formatted [{:keys [bin-width min-value max-value field]}]
     (let [formatted-field (formatted field)]
       (apply hsql/call :case
              (mapcat (fn [bin-floor]
