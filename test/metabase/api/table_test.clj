@@ -20,7 +20,9 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [users :refer :all]]
-            [toucan.hydrate :as hydrate]
+            [toucan
+             [db :as db]
+             [hydrate :as hydrate]]
             [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
@@ -485,6 +487,7 @@
                                                               :created_at   $}))}))}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
 
+;; Ensure dimensions options are sorted numerically, but returned as strings
 (expect
   (map str (sort (map #(Long/parseLong %) (var-get datetime-dimension-indexes))))
   (var-get datetime-dimension-indexes))
@@ -492,3 +495,16 @@
 (expect
   (map str (sort (map #(Long/parseLong %) (var-get numeric-dimension-indexes))))
   (var-get numeric-dimension-indexes))
+
+;; Numeric fields without min/max values should not have binning strategies
+(expect
+  []
+  (let [{:keys [min_value max_value]} (Field (id :categories :id))]
+    (try
+      (db/update! Field (id :categories :id) :min_value nil :max_value nil)
+      (-> ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories)))
+          (get-in [:fields])
+          first
+          :dimension_options)
+      (finally
+        (db/update! Field (id :categories :id) :min_value min_value :max_value max_value)))))

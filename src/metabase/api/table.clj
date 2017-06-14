@@ -130,12 +130,12 @@
   (-> resp
       (assoc :dimension_options dimension-options-for-response)
       (update :fields (fn [fields]
-                        (mapv (fn [{:keys [base_type] :as field}]
+                        (mapv (fn [{:keys [base_type min_value max_value] :as field}]
                                 (assoc field
                                   :dimension_options
                                   (cond
 
-                                    (isa? base_type :type/Number)
+                                    (and min_value max_value (isa? base_type :type/Number))
                                     numeric-dimension-indexes
 
                                     (isa? base_type :type/DateTime)
