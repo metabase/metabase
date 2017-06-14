@@ -2,9 +2,11 @@
   "Tests for the `:breakout` clause."
   (:require [metabase.query-processor-test :refer :all]
             [metabase.query-processor.expand :as ql]
+            [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 ;; single column
 (qp-expect-with-all-engines
@@ -133,3 +135,20 @@
           (ql/breakout (ql/binning-strategy $latitude :default)))
         (get-in [:data :cols])
         first)))
+
+;;Validate binning info is returned with the binning-strategy
+(expect-with-non-timeseries-dbs
+  {:status :failed
+   :class Exception
+   :error (format "Unable to bin field '%s' with id '%s' without a min/max value"
+                  (:name (Field (data/id :venues :latitude)))
+                  (data/id :venues :latitude))}
+  (let [{:keys [min_value max_value]} (Field (data/id :venues :latitude))]
+    (try
+      (db/update! Field (data/id :venues :latitude) :min_value nil :max_value nil)
+      (-> (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :default)))
+          (select-keys [:status :class :error]))
+      (finally
+        (db/update! Field (data/id :venues :latitude) :min_value min_value :max_value max_value)))))

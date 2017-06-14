@@ -46,17 +46,21 @@
                                 [min-value max-value]))]
     (or (seq comparison-bounds)
         (seq between-bounds)
-        [global-min global-max]))  )
+        [global-min global-max])))
 
 (defn- update-bin-width [breakouts filter-field-map]
   (mapv (fn [{:keys [field num-bins] :as breakout}]
-          (if-let [[min-value max-value] (and (instance? BinnedField breakout)
-                                              (extract-bounds field filter-field-map))]
-            (assoc breakout
-              :min-value min-value
-              :max-value max-value
-              :bin-width (calculate-bin-width min-value max-value num-bins))
-            breakout))
+          (if (instance? BinnedField breakout)
+            (let [[min-value max-value] (extract-bounds field filter-field-map)]
+              (when-not (and min-value max-value)
+                (throw (Exception. (format "Unable to bin field '%s' with id '%s' without a min/max value"
+                                           (get-in breakout [:field :field-name])
+                                           (get-in breakout [:field :field-id])))))
+              (assoc breakout
+                :min-value min-value
+                :max-value max-value
+                :bin-width (calculate-bin-width min-value max-value num-bins)))
+            breakouts))
         breakouts))
 
 (defn update-binning-strategy
