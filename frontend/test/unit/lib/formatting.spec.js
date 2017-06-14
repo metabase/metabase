@@ -1,5 +1,5 @@
 
-import { isElementOfType } from "react-addons-test-utils";
+import { isElementOfType } from "react-dom/test-utils";
 
 import { formatNumber, formatValue, formatUrl } from 'metabase/lib/formatting';
 import ExternalLink from "metabase/components/ExternalLink.jsx";
