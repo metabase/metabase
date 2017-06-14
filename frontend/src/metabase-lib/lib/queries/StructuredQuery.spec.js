@@ -76,7 +76,7 @@ describe("StructuredQuery", () => {
     describe("aggregations", () => {
         it("", () => {});
     });
-    describe("aggregationsWrapped", () => {
+    describe("aggregationsAW", () => {
         it("", () => {});
     });
 

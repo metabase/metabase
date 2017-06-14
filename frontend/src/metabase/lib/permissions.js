@@ -179,8 +179,8 @@ export function updateFieldsPermission(permissions: GroupsPermissions, groupId: 
 }
 
 export function updateTablesPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId, schemaName }: SchemaEntityId, value: string, metadata: Metadata): GroupsPermissions {
-    const database = metadata && metadata.database(databaseId);
-    const tableIds: ?number[] = database && database.tables().filter(t => (t.schema || "") === schemaName).map(t => t.id);
+    const database = metadata && metadata.databases[databaseId];
+    const tableIds: ?number[] = database && database.tables.filter(t => (t.schema || "") === schemaName).map(t => t.id);
 
     permissions = updateSchemasPermission(permissions, groupId, { databaseId }, "controlled", metadata);
     permissions = updatePermission(permissions, groupId, [databaseId, "schemas", schemaName], value, tableIds);
@@ -189,7 +189,7 @@ export function updateTablesPermission(permissions: GroupsPermissions, groupId: 
 }
 
 export function updateSchemasPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId }: DatabaseEntityId, value: string, metadata: Metadata): GroupsPermissions {
-    const database = metadata.database(databaseId);
+    const database = metadata.databases[databaseId];
     const schemaNames = database && database.schemaNames();
     const schemaNamesOrNoSchema = (schemaNames && schemaNames.length > 0) ? schemaNames : [""];
 
