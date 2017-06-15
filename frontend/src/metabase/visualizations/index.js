@@ -11,6 +11,7 @@ import AreaChart   from "./visualizations/AreaChart.jsx";
 import MapViz      from "./visualizations/Map.jsx";
 import ScatterPlot from "./visualizations/ScatterPlot.jsx";
 import Funnel      from "./visualizations/Funnel.jsx";
+import BarChartAdvanced      from "./visualizations/BarChartAdvanced.jsx";
 
 import _ from "underscore";
 
@@ -78,6 +79,7 @@ registerVisualization(Table);
 registerVisualization(LineChart);
 registerVisualization(AreaChart);
 registerVisualization(BarChart);
+registerVisualization(BarChartAdvanced);
 registerVisualization(RowChart);
 registerVisualization(ScatterPlot);
 registerVisualization(PieChart);
