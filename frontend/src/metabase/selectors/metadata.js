@@ -128,7 +128,7 @@ export const getParameterFieldValues = (state, props) => {
 // UTILS:
 
 // clone each object in the provided mapping of objects
-function copyObjects(metadata, objects, Klass) {
+export function copyObjects(metadata, objects, Klass) {
     let copies = {};
     for (const object of Object.values(objects)) {
         // $FlowFixMe
