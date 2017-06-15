@@ -185,3 +185,9 @@ export const questionNoFields = makeQuestion((card, state) => ({
     card,
     state: assocIn(state, ["metadata", "tables", MAIN_TABLE_ID, "fields"], [])
 }));
+
+export const NUM_TABLES = Object.keys(state.metadata.tables).length
+export const NUM_DBS = Object.keys(state.metadata.databases).length
+export const NUM_FIELDS = Object.keys(state.metadata.fields).length
+export const NUM_METRICS = Object.keys(state.metadata.metrics).length
+export const NUM_SEGMENTS = Object.keys(state.metadata.segments).length
