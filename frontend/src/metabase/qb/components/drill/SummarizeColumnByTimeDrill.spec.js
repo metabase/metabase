@@ -4,10 +4,10 @@ import {
     question,
     questionNoFields,
     clickedFloatHeader,
-    MAIN_TABLE_ID,
-    MAIN_FLOAT_FIELD_ID,
-    MAIN_DATE_FIELD_ID
-} from "metabase/__support__/fixtures";
+    ORDERS_TABLE_ID,
+    ORDERS_TOTAL_FIELD_ID,
+    ORDERS_CREATED_DATE_FIELD_ID
+} from "metabase/__support__/sample_dataset_fixture";
 
 import SummarizeColumnByTimeDrill from "./SummarizeColumnByTimeDrill";
 
@@ -31,12 +31,12 @@ describe("SummarizeColumnByTimeDrill", () => {
         expect(actions).toHaveLength(2);
         const newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: MAIN_TABLE_ID,
-            aggregation: [["sum", ["field-id", MAIN_FLOAT_FIELD_ID]]],
+            source_table: ORDERS_TABLE_ID,
+            aggregation: [["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]]],
             breakout: [
                 [
                     "datetime-field",
-                    ["field-id", MAIN_DATE_FIELD_ID],
+                    ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
                     "as",
                     "day"
                 ]

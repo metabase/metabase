@@ -6,13 +6,13 @@ import {
     question,
     DATABASE_ID,
     ANOTHER_DATABASE_ID,
-    MAIN_TABLE_ID,
-    FOREIGN_TABLE_ID,
-    MAIN_FLOAT_FIELD_ID,
+    ORDERS_TABLE_ID,
+    PRODUCT_TABLE_ID,
+    ORDERS_TOTAL_FIELD_ID,
     MAIN_METRIC_ID,
-    MAIN_FK_FIELD_ID,
-    FOREIGN_TEXT_FIELD_ID
-} from "metabase/__support__/fixtures";
+    ORDERS_PRODUCT_FK_FIELD_ID,
+    PRODUCT_TILE_FIELD_ID
+} from "metabase/__support__/sample_dataset_fixture";
 
 import StructuredQuery from "./StructuredQuery";
 
@@ -21,7 +21,7 @@ function makeDatasetQuery(query) {
         type: "query",
         database: DATABASE_ID,
         query: {
-            source_table: MAIN_TABLE_ID,
+            source_table: ORDERS_TABLE_ID,
             ...query
         }
     };
@@ -74,7 +74,7 @@ describe("StructuredQuery", () => {
     describe("engine", () => {
         it("Should identify the engine of a query", () => {
             // This is a magic constant and we should probably pull this up into an enum
-            expect(query.engine()).toBe("bigquery");
+            expect(query.engine()).toBe("h2");
         });
     });
     describe("reset", () => {
@@ -87,7 +87,7 @@ describe("StructuredQuery", () => {
     });
     describe("query", () => {
         it("Should return the wrapper for the query dictionary", () => {
-            expect(query.query().source_table).toBe(MAIN_TABLE_ID);
+            expect(query.query().source_table).toBe(ORDERS_TABLE_ID);
         });
     });
     describe("setDatabase", () => {
@@ -102,26 +102,26 @@ describe("StructuredQuery", () => {
     describe("setTable", () => {
         it("Should allow you to set a new table", () => {
             expect(
-                query.setTable(metadata.tables[FOREIGN_TABLE_ID]).tableId()
-            ).toBe(FOREIGN_TABLE_ID);
+                query.setTable(metadata.tables[PRODUCT_TABLE_ID]).tableId()
+            ).toBe(PRODUCT_TABLE_ID);
         });
 
         it("Should retain the correct database id when setting a new table", () => {
             expect(
                 query
-                    .setTable(metadata.tables[FOREIGN_TABLE_ID])
+                    .setTable(metadata.tables[PRODUCT_TABLE_ID])
                     .table().database.id
             ).toBe(DATABASE_ID);
         });
     });
     describe("tableId", () => {
         it("Return the right table id", () => {
-            expect(query.tableId()).toBe(MAIN_TABLE_ID);
+            expect(query.tableId()).toBe(ORDERS_TABLE_ID);
         });
     });
     describe("table", () => {
         it("Return the table wrapper object for the query", () => {
-            expect(query.table()).toBe(metadata.tables[MAIN_TABLE_ID]);
+            expect(query.table()).toBe(metadata.tables[ORDERS_TABLE_ID]);
         });
     });
 
@@ -132,10 +132,14 @@ describe("StructuredQuery", () => {
             expect(query.aggregations().length).toBe(0);
         });
         it("should return a list of one item after adding an aggregation", () => {
-            expect(query.addAggregation(["count"]).aggregations().length).toBe(1);
+            expect(query.addAggregation(["count"]).aggregations().length).toBe(
+                1
+            );
         });
         it("should return an actual count aggregation after trying to add it", () => {
-            expect(query.addAggregation(["count"]).aggregations()[0]).toEqual(["count"]);
+            expect(query.addAggregation(["count"]).aggregations()[0]).toEqual([
+                "count"
+            ]);
         });
     });
     describe("aggregationsWrapped", () => {
@@ -144,7 +148,10 @@ describe("StructuredQuery", () => {
         });
         it("should return a list with Aggregation after adding an aggregation", () => {
             expect(
-                query.addAggregation(["count"]).aggregationsWrapped()[0].isValid()
+                query
+                    .addAggregation(["count"])
+                    .aggregationsWrapped()[0]
+                    .isValid()
             ).toBe(true);
         });
     });
@@ -152,11 +159,9 @@ describe("StructuredQuery", () => {
     describe("aggregationOptions", () => {
         // TODO Atte Keinänen 6/14/17: Add the mock metadata for aggregation options
         xit("should return a non-empty list of options", () => {
-            expect(query.aggregationOptions().length).toBeGreaterThan(0)
+            expect(query.aggregationOptions().length).toBeGreaterThan(0);
         });
-        xit("should contain the count aggregation", () => {
-
-        });
+        xit("should contain the count aggregation", () => {});
     });
     describe("aggregationOptionsWithoutRaw", () => {
         it("", () => {});
@@ -168,10 +173,12 @@ describe("StructuredQuery", () => {
 
     describe("canRemoveAggregation", () => {
         it("should return false if there are no aggregations", () => {
-            expect(query.canRemoveAggregation()).toBe(false)
+            expect(query.canRemoveAggregation()).toBe(false);
         });
         it("should return false for a single aggregation", () => {
-            expect(query.addAggregation(["count"]).canRemoveAggregation()).toBe(false)
+            expect(query.addAggregation(["count"]).canRemoveAggregation()).toBe(
+                false
+            );
         });
         it("should return true for two aggregations", () => {
             expect(
@@ -179,19 +186,19 @@ describe("StructuredQuery", () => {
                     .addAggregation(["count"])
                     .addAggregation([
                         "sum",
-                        ["field-id", MAIN_FLOAT_FIELD_ID]
+                        ["field-id", ORDERS_TOTAL_FIELD_ID]
                     ])
                     .canRemoveAggregation()
-            ).toBe(true)
+            ).toBe(true);
         });
     });
 
     describe("isBareRows", () => {
         it("should be true for an empty query", () => {
-            expect(query.isBareRows()).toBe(true)
+            expect(query.isBareRows()).toBe(true);
         });
         it("should be false for a count aggregation", () => {
-            expect(query.addAggregation(["count"]).isBareRows()).toBe(false)
+            expect(query.addAggregation(["count"]).isBareRows()).toBe(false);
         });
     });
 
@@ -202,7 +209,7 @@ describe("StructuredQuery", () => {
                     "METRIC",
                     MAIN_METRIC_ID
                 ]).aggregationName()
-            ).toBe("Mock Metric");
+            ).toBe("Total Order Value");
         });
         it("should return a standard aggregation name", () => {
             expect(makeQueryWithAggregation(["count"]).aggregationName()).toBe(
@@ -213,32 +220,32 @@ describe("StructuredQuery", () => {
             expect(
                 makeQueryWithAggregation([
                     "sum",
-                    ["field-id", MAIN_FLOAT_FIELD_ID]
+                    ["field-id", ORDERS_TOTAL_FIELD_ID]
                 ]).aggregationName()
-            ).toBe("Sum of Mock Float Field");
+            ).toBe("Sum of Total");
         });
         it("should return a standard aggregation name with fk field", () => {
             expect(
                 makeQueryWithAggregation([
                     "sum",
-                    ["fk->", MAIN_FK_FIELD_ID, FOREIGN_TEXT_FIELD_ID]
+                    ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID]
                 ]).aggregationName()
-            ).toBe("Sum of Mock Foreign Text Field");
+            ).toBe("Sum of Title");
         });
         it("should return a custom expression description", () => {
             expect(
                 makeQueryWithAggregation([
                     "+",
                     1,
-                    ["sum", ["field-id", MAIN_FLOAT_FIELD_ID]]
+                    ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]]
                 ]).aggregationName()
-            ).toBe('1 + Sum("Mock Float Field")');
+            ).toBe("1 + Sum(Total)");
         });
         it("should return a named expression name", () => {
             expect(
                 makeQueryWithAggregation([
                     "named",
-                    ["sum", ["field-id", MAIN_FLOAT_FIELD_ID]],
+                    ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]],
                     "Named"
                 ]).aggregationName()
             ).toBe("Named");
@@ -248,7 +255,7 @@ describe("StructuredQuery", () => {
     describe("addAggregation", () => {
         it("should add an aggregation", () => {
             expect(query.addAggregation(["count"]).query()).toEqual({
-                source_table: MAIN_TABLE_ID,
+                source_table: ORDERS_TABLE_ID,
                 aggregation: [["count"]]
             });
         });
@@ -338,9 +345,9 @@ describe("StructuredQuery", () => {
         it("return an array with the sort clause", () => {
             expect(
                 makeQuery({
-                    order_by: [["field-id", MAIN_FLOAT_FIELD_ID], "ascending"]
+                    order_by: [["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"]
                 }).sorts()
-            ).toEqual([["field-id", MAIN_FLOAT_FIELD_ID], "ascending"]);
+            ).toEqual([["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"]);
         });
     });
 
@@ -422,11 +429,13 @@ describe("StructuredQuery", () => {
     describe("setDatasetQuery", () => {
         it("should replace the previous dataset query with the provided one", () => {
             const newDatasetQuery = makeDatasetQuery({
-                source_table: MAIN_TABLE_ID,
+                source_table: ORDERS_TABLE_ID,
                 aggregation: [["count"]]
-            })
+            });
 
-            expect(query.setDatasetQuery(newDatasetQuery).datasetQuery()).toBe(newDatasetQuery)
+            expect(query.setDatasetQuery(newDatasetQuery).datasetQuery()).toBe(
+                newDatasetQuery
+            );
         });
     });
 });

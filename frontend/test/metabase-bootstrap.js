@@ -31,6 +31,7 @@ window.MetabaseBootstrap = {
         "type/Decimal":                   ["type/Float"],
         "type/Description":               ["type/Text"],
         "type/Dictionary":                ["type/Collection"],
+        "type/Email":                     ["type/Text"],
         "type/FK":                        ["type/Special"],
         "type/Float":                     ["type/Number"],
         "type/IPAddress":                 ["type/TextLike"],

@@ -1,9 +1,7 @@
 // HACK: needed due to cyclical dependency issue
 import "metabase-lib/lib/Question";
 
-import {
-    question
-} from "metabase/__support__/fixtures";
+import { question } from "metabase/__support__/sample_dataset_fixture";
 
 import MultiQuery, { convertToMultiDatasetQuery } from "./MultiQuery";
 import type { StructuredDatasetQuery } from "metabase/meta/types/Card";
@@ -37,7 +35,10 @@ const DATASET_QUERY_WITH_TWO_METRICS: StructuredDatasetQuery = {
 
 describe("MultiQuery", () => {
     it("work with one query", () => {
-        const query = new MultiQuery(question, convertToMultiDatasetQuery(question, DATASET_QUERY_WITH_ONE_METRIC));
+        const query = new MultiQuery(
+            question,
+            convertToMultiDatasetQuery(question, DATASET_QUERY_WITH_ONE_METRIC)
+        );
         expect(query.atomicQueries()).toHaveLength(1);
     });
 
@@ -47,24 +48,25 @@ describe("MultiQuery", () => {
             query: {
                 aggregation: [["sum", ["field-id", 1]]]
             }
-        }
-        const query = new MultiQuery(question, convertToMultiDatasetQuery(question, DATASET_QUERY_WITH_ONE_METRIC))
-            .addQuery(new StructuredQuery(question, newDatasetQuery));
+        };
+        const query = new MultiQuery(
+            question,
+            convertToMultiDatasetQuery(question, DATASET_QUERY_WITH_ONE_METRIC)
+        ).addQuery(new StructuredQuery(question, newDatasetQuery));
 
         expect(query.atomicQueries()).toHaveLength(2);
         expect(query.datasetQuery()).toEqual({
             type: "multi",
-            queries: [
-                DATASET_QUERY_WITH_ONE_METRIC,
-                newDatasetQuery
-            ]
+            queries: [DATASET_QUERY_WITH_ONE_METRIC, newDatasetQuery]
         });
     });
 
     // Needs the actual metadata
     xit("should add a new saved metric", () => {
-        const query = new MultiQuery(question, convertToMultiDatasetQuery(question, DATASET_QUERY_WITH_ONE_METRIC))
-            .addSavedMetric(new Metric(METRIC));
+        const query = new MultiQuery(
+            question,
+            convertToMultiDatasetQuery(question, DATASET_QUERY_WITH_ONE_METRIC)
+        ).addSavedMetric(new Metric(METRIC));
 
         expect(query.atomicQueries()).toHaveLength(2);
         expect(query.datasetQuery()).toEqual({
@@ -82,16 +84,15 @@ describe("MultiQuery", () => {
     });
 
     it("should remove a query", () => {
-        let query = new MultiQuery(question, convertToMultiDatasetQuery(question, DATASET_QUERY_WITH_TWO_METRICS))
-            .removeQueryAtIndex(1);
+        let query = new MultiQuery(
+            question,
+            convertToMultiDatasetQuery(question, DATASET_QUERY_WITH_TWO_METRICS)
+        ).removeQueryAtIndex(1);
 
         expect(query.atomicQueries()).toHaveLength(1);
         expect(query.datasetQuery()).toEqual({
             type: "multi",
-            queries: [
-                DATASET_QUERY_WITH_ONE_METRIC
-            ]
+            queries: [DATASET_QUERY_WITH_ONE_METRIC]
         });
     });
-
 });

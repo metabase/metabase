@@ -3,9 +3,9 @@
 import {
     question,
     questionNoFields,
-    MAIN_TABLE_ID,
-    MAIN_DATE_FIELD_ID
-} from "metabase/__support__/fixtures";
+    ORDERS_TABLE_ID,
+    ORDERS_CREATED_DATE_FIELD_ID
+} from "metabase/__support__/sample_dataset_fixture";
 
 import CountByTimeAction from "./CountByTimeAction";
 
@@ -20,12 +20,12 @@ describe("CountByTimeAction", () => {
         expect(actions).toHaveLength(1);
         const newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: MAIN_TABLE_ID,
+            source_table: ORDERS_TABLE_ID,
             aggregation: [["count"]],
             breakout: [
                 [
                     "datetime-field",
-                    ["field-id", MAIN_DATE_FIELD_ID],
+                    ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
                     "as",
                     "day"
                 ]

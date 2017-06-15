@@ -7,11 +7,11 @@ import {
     clickedFloatValue,
     clickedPKValue,
     clickedFKValue,
-    MAIN_TABLE_ID,
-    FOREIGN_TABLE_ID,
-    MAIN_PK_FIELD_ID,
-    FOREIGN_PK_FIELD_ID
-} from "metabase/__support__/fixtures";
+    ORDERS_TABLE_ID,
+    PRODUCT_TABLE_ID,
+    ORDERS_PK_FIELD_ID,
+    PRODUCT_PK_FIELD_ID
+} from "metabase/__support__/sample_dataset_fixture";
 
 describe("ObjectDetailDrill", () => {
     it("should not be valid non-PK cells", () => {
@@ -28,10 +28,11 @@ describe("ObjectDetailDrill", () => {
             clicked: clickedPKValue
         });
         expect(actions).toHaveLength(1);
+        console.log(actions);
         const newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: MAIN_TABLE_ID,
-            filter: ["=", ["field-id", MAIN_PK_FIELD_ID], 42]
+            source_table: ORDERS_TABLE_ID,
+            filter: ["=", ["field-id", ORDERS_PK_FIELD_ID], 42]
         });
         expect(newCard.display).toEqual(undefined);
     });
@@ -43,8 +44,8 @@ describe("ObjectDetailDrill", () => {
         expect(actions).toHaveLength(1);
         const newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: FOREIGN_TABLE_ID,
-            filter: ["=", ["field-id", FOREIGN_PK_FIELD_ID], 43]
+            source_table: PRODUCT_TABLE_ID,
+            filter: ["=", ["field-id", PRODUCT_PK_FIELD_ID], 43]
         });
         expect(newCard.display).toEqual(undefined);
     });
