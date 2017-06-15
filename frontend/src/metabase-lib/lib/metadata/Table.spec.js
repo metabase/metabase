@@ -3,9 +3,9 @@ import Database from "./Database";
 
 import {
     state,
-    MAIN_TABLE_ID,
+    ORDERS_TABLE_ID,
     DATABASE_ID
-} from "metabase/__support__/fixtures";
+} from "metabase/__support__/sample_dataset_fixture";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
@@ -13,7 +13,7 @@ describe("Table", () => {
     let metadata, table;
     beforeEach(() => {
         metadata = getMetadata(state);
-        table = metadata.tables[MAIN_TABLE_ID];
+        table = metadata.tables[ORDERS_TABLE_ID];
     });
 
     it("should be a table", () => {

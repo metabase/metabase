@@ -5,16 +5,17 @@ import {
     metadata, // connected graph,
     state, // the original non connected metadata objects,
     DATABASE_ID,
-    MAIN_TABLE_ID,
-    MAIN_DATE_FIELD_ID,
-    NUM_DBS,
-    NUM_TABLES,
-    NUM_METRICS,
-    NUM_FIELDS,
-    NUM_SEGMENTS
-} from 'metabase/__support__/fixtures'
+    ORDERS_TABLE_ID,
+    ORDERS_CREATED_DATE_FIELD_ID
+} from 'metabase/__support__/sample_dataset_fixture'
 
 import { copyObjects } from './metadata'
+
+const NUM_TABLES = Object.keys(state.metadata.tables).length
+const NUM_DBS = Object.keys(state.metadata.databases).length
+const NUM_FIELDS = Object.keys(state.metadata.fields).length
+const NUM_METRICS = Object.keys(state.metadata.metrics).length
+const NUM_SEGMENTS = Object.keys(state.metadata.segments).length
 
 
 describe('getMetadata', () => {
@@ -36,11 +37,11 @@ describe('getMetadata', () => {
     })
 
     describe('connected table', () => {
-        const table = metadata.tables[MAIN_TABLE_ID]
+        const table = metadata.tables[ORDERS_TABLE_ID]
 
         it('should have the proper number of fields', () => {
             // TODO - make this more dynamic
-            expect(table.fields.length).toEqual(5)
+            expect(table.fields.length).toEqual(7)
         })
 
         it('should have a parent database', () => {
@@ -49,9 +50,9 @@ describe('getMetadata', () => {
     })
 
     describe('connected field', () => {
-        const field = metadata.fields[MAIN_DATE_FIELD_ID]
+        const field = metadata.fields[ORDERS_CREATED_DATE_FIELD_ID]
         it('should have a parent table', () => {
-            expect(field.table).toEqual(metadata.tables[MAIN_TABLE_ID])
+            expect(field.table).toEqual(metadata.tables[ORDERS_TABLE_ID])
         })
     })
 })
