@@ -6,11 +6,11 @@ import type { Field } from "metabase/meta/types/Field";
  * Wrapper class for an aggregation object
  */
 export default class AggregationOption extends Base {
-    name: string
-    short: string
+    name: string;
+    short: string;
     // TODO: Now just a plain object; wrap to a Field wrapper class
-    fields: Field[]
-    validFieldsFilters: [(fields: Field[]) => Field[]]
+    fields: Field[];
+    validFieldsFilters: [(fields: Field[]) => Field[]];
 
     /**
      * Aggregation has one or more required fields
@@ -26,4 +26,3 @@ export default class AggregationOption extends Base {
         );
     }
 }
-

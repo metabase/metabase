@@ -49,7 +49,7 @@ import type Database from "../metadata/Database";
 import type Question from "../Question";
 import type { TableId } from "metabase/meta/types/Table";
 import AtomicQuery from "./AtomicQuery";
-import AggregationWrapper from './Aggregation';
+import AggregationWrapper from "./Aggregation";
 import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
 
 export const STRUCTURED_QUERY_TEMPLATE = {
@@ -243,7 +243,9 @@ export default class StructuredQuery extends AtomicQuery {
      * TODO Atte Keinänen 6/11/17: Make the wrapper objects the standard format for aggregations
      */
     aggregationsWrapped(): AggregationWrapper[] {
-        return this.aggregations().map(agg => new AggregationWrapper(this, agg));
+        return this.aggregations().map(
+            agg => new AggregationWrapper(this, agg)
+        );
     }
 
     /**
@@ -252,14 +254,18 @@ export default class StructuredQuery extends AtomicQuery {
     aggregationOptions(): AggregationOption[] {
         // TODO Should `aggregation_options` be wrapped already in selectors/metadata.js?
         const optionObjects = this.table() && this.table().aggregations();
-        return optionObjects ? optionObjects.map(agg => new AggregationOption(agg)) : [];
+        return optionObjects
+            ? optionObjects.map(agg => new AggregationOption(agg))
+            : [];
     }
 
     /**
      * @returns an array of aggregation options for the currently selected table, excluding the "rows" pseudo-aggregation
      */
     aggregationOptionsWithoutRows(): AggregationOption[] {
-        return this.aggregationOptions().filter(option => option.short !== "rows");
+        return this.aggregationOptions().filter(
+            option => option.short !== "rows"
+        );
     }
 
     /**

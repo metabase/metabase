@@ -155,23 +155,32 @@ export default class MultiQuery extends Query {
      * Wrap individual queries to Query objects for a convenient access
      */
     @memoize atomicQueries(): AtomicQuery[] {
-        return this._multiDatasetQuery.queries.map((datasetQuery) => createAtomicQuery(this._originalQuestion, datasetQuery));
+        return this._multiDatasetQuery.queries.map(datasetQuery =>
+            createAtomicQuery(this._originalQuestion, datasetQuery));
     }
 
     /**
      * Replaces the atomic query at an index with the given atomic query
      */
     setQueryAtIndex(index: number, atomicQuery: AtomicQuery): MultiQuery {
-        return this._updateQueries(this.atomicQueries().map((query, i) =>
-            index === i ? atomicQuery : query)
+        return this._updateQueries(
+            this.atomicQueries().map(
+                (query, i) => index === i ? atomicQuery : query
+            )
         );
     }
 
     /**
      * Sets the atomic query at an index using a given updater function in a similar fashion as Icepick's `updateIn`
      */
-    setQueryAtIndexWith(index: number, updater: (AtomicQuery) => AtomicQuery): MultiQuery {
-        return this.setQueryAtIndex(index, updater(this.atomicQueries()[index]));
+    setQueryAtIndexWith(
+        index: number,
+        updater: (AtomicQuery) => AtomicQuery
+    ): MultiQuery {
+        return this.setQueryAtIndex(
+            index,
+            updater(this.atomicQueries()[index])
+        );
     }
 
     canRemoveQuery(): boolean {
@@ -197,42 +206,57 @@ export default class MultiQuery extends Query {
      */
     compatibleFieldsFor(query: StructuredQuery) {
         const baseDimension = this.baseBreakoutDimension();
-        return query.table().fields.filter(field => field.isCompatibleWith(baseDimension.field()));
+        return query
+            .table()
+            .fields.filter(field =>
+                field.isCompatibleWith(baseDimension.field()));
     }
 
     breakoutDimensionFor(field: Field) {
         const baseDimension = this.baseBreakoutDimension();
         if (!baseDimension._parent) {
-            return new baseDimension.constructor(null, [field.id], baseDimension._metadata);
+            return new baseDimension.constructor(
+                null,
+                [field.id],
+                baseDimension._metadata
+            );
         } else {
-            return new baseDimension.constructor(field.dimension(), baseDimension._args, baseDimension._metadata);
+            return new baseDimension.constructor(
+                field.dimension(),
+                baseDimension._args,
+                baseDimension._metadata
+            );
         }
     }
 
     addQueryWithInferredBreakout(query: StructuredQuery): MultiQuery {
-        const compatibleFields = this.compatibleFieldsFor(query)
+        const compatibleFields = this.compatibleFieldsFor(query);
         if (compatibleFields.length === 0) {
-            throw new Error("Tried to add a metric that doesn't have any compatible fields for the shared breakout")
+            throw new Error(
+                "Tried to add a metric that doesn't have any compatible fields for the shared breakout"
+            );
         }
 
         const baseField = this.baseBreakoutDimension().field();
 
-        const isEqualOrCloseToBaseField = (compatibleField) => {
-            return compatibleField.id === baseField.id || compatibleField.name === baseField.name
-        }
-        const field = compatibleFields.find(isEqualOrCloseToBaseField) || compatibleFields[0];
+        const isEqualOrCloseToBaseField = compatibleField => {
+            return compatibleField.id === baseField.id ||
+                compatibleField.name === baseField.name;
+        };
+        const field = compatibleFields.find(isEqualOrCloseToBaseField) ||
+            compatibleFields[0];
 
-        return this.addQuery(query.addBreakout(this.breakoutDimensionFor(field).mbql()));
+        return this.addQuery(
+            query.addBreakout(this.breakoutDimensionFor(field).mbql())
+        );
     }
 
     addSavedMetric(metric: Metric): MultiQuery {
-        const metricQuery = StructuredQuery
-            .newStucturedQuery({
-                question: this._originalQuestion,
-                databaseId: metric.table.db.id,
-                tableId: metric.table.id
-            })
-            .addAggregation(metric.aggregationClause())
+        const metricQuery = StructuredQuery.newStucturedQuery({
+            question: this._originalQuestion,
+            databaseId: metric.table.db.id,
+            tableId: metric.table.id
+        }).addAggregation(metric.aggregationClause());
 
         return this.addQueryWithInferredBreakout(metricQuery);
     }
@@ -243,13 +267,16 @@ export default class MultiQuery extends Query {
      * Returns the breakout dimension that is currently the basis for all new atomic queries.
      */
     baseBreakoutDimension(): Dimension {
-        const firstQuery = this.atomicQueries()[0]
+        const firstQuery = this.atomicQueries()[0];
 
         if (
             firstQuery instanceof StructuredQuery &&
             firstQuery.breakouts().length === 1
         ) {
-            return Dimension.parseMBQL(firstQuery.breakouts()[0], this._metadata);
+            return Dimension.parseMBQL(
+                firstQuery.breakouts()[0],
+                this._metadata
+            );
         } else {
             throw new Error(
                 "Cannot infer the shared breakout dimension from the first query of MultiQuery"
@@ -269,7 +296,7 @@ export default class MultiQuery extends Query {
         const datasetQuery: DatasetQuery = this.datasetQuery();
         return new MultiQuery(this._originalQuestion, {
             ...datasetQuery,
-            queries: queries.map((query) => query.datasetQuery())
+            queries: queries.map(query => query.datasetQuery())
         });
     }
 }

@@ -61,11 +61,9 @@ export default class Field extends Base {
     }
 
     isCompatibleWith(field: Field) {
-        return (
-            this.isDate() === field.isDate() ||
+        return this.isDate() === field.isDate() ||
             this.isNumeric() === field.isNumeric() ||
-            this.id === field.id
-        )
+            this.id === field.id;
     }
 
     /**

@@ -26,7 +26,10 @@ export function memoize(target, name, descriptor) {
     descriptor.value = function(...args) {
         const path = [this, method, ...args];
         const last = path.pop();
-        const map = path.reduce((map, key) => getWithFallback(map, key, () => new Map), memoized);
+        const map = path.reduce(
+            (map, key) => getWithFallback(map, key, () => new Map()),
+            memoized
+        );
         return getWithFallback(map, last, () => method.apply(this, args));
-    }
+    };
 }

@@ -26,5 +26,4 @@ export default class AtomicQuery extends Query {
     engine(): ?DatabaseEngine {
         return null;
     }
-
 }

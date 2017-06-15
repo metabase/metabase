@@ -7,7 +7,9 @@ import Table from "./metadata/Table";
 import Field from "./metadata/Field";
 
 import MultiQuery, { convertToMultiDatasetQuery } from "./queries/MultiQuery";
-import StructuredQuery, { STRUCTURED_QUERY_TEMPLATE } from "./queries/StructuredQuery";
+import StructuredQuery, {
+    STRUCTURED_QUERY_TEMPLATE
+} from "./queries/StructuredQuery";
 import NativeQuery from "./queries/NativeQuery";
 
 import { memoize } from "metabase-lib/lib/utils";
@@ -96,10 +98,20 @@ export default class Question {
      * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
      * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
      */
-    static create({
-        databaseId, tableId, metadata, parameterValues, ...cardProps
-    }: { databaseId?: DatabaseId, tableId?: TableId, metadata: Metadata, parameterValues?: ParameterValues }) {
-
+    static create(
+        {
+            databaseId,
+            tableId,
+            metadata,
+            parameterValues,
+            ...cardProps
+        }: {
+            databaseId?: DatabaseId,
+            tableId?: TableId,
+            metadata: Metadata,
+            parameterValues?: ParameterValues
+        }
+    ) {
         const card = {
             name: cardProps.name || null,
             display: cardProps.display || "table",
@@ -109,7 +121,11 @@ export default class Question {
 
         // $FlowFixMe Passing an incomplete card object
         const initialQuestion = new Question(metadata, card, parameterValues);
-        const query = StructuredQuery.newStucturedQuery({ question: initialQuestion, databaseId, tableId })
+        const query = StructuredQuery.newStucturedQuery({
+            question: initialQuestion,
+            databaseId,
+            tableId
+        });
 
         return initialQuestion.setQuery(query);
     }
@@ -217,7 +233,10 @@ export default class Question {
     }
     convertToMultiQuery(): Question {
         // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
-        const multiDatasetQuery = convertToMultiDatasetQuery(this, this._card.dataset_query);
+        const multiDatasetQuery = convertToMultiDatasetQuery(
+            this,
+            this._card.dataset_query
+        );
         return this.setCard(
             assoc(this._card, "dataset_query", multiDatasetQuery)
         );
@@ -228,7 +247,9 @@ export default class Question {
      */
     multiQuery(): MultiQuery {
         if (!this.isMultiQuery()) {
-            throw new Error("Tried to use `multiQuery()` shorthand on a non-multi-query question");
+            throw new Error(
+                "Tried to use `multiQuery()` shorthand on a non-multi-query question"
+            );
         }
 
         // $FlowFixMe
@@ -240,8 +261,8 @@ export default class Question {
      */
     atomicQueries(): AtomicQuery[] {
         const query = this.query();
-        if (query instanceof MultiQuery) return query.atomicQueries()
-        if (query instanceof AtomicQuery) return [query]
+        if (query instanceof MultiQuery) return query.atomicQueries();
+        if (query instanceof AtomicQuery) return [query];
         return [];
     }
 

@@ -3,8 +3,7 @@ import Database from "./Database";
 
 import {
     state,
-    ORDERS_TABLE_ID,
-    DATABASE_ID
+    ORDERS_TABLE_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
 import { getMetadata } from "metabase/selectors/metadata";

@@ -1,4 +1,3 @@
-import { TYPE } from "metabase/lib/types";
 import Question from "metabase-lib/lib/Question";
 import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
