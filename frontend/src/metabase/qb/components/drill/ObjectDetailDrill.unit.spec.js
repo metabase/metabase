@@ -28,7 +28,6 @@ describe("ObjectDetailDrill", () => {
             clicked: clickedPKValue
         });
         expect(actions).toHaveLength(1);
-        console.log(actions);
         const newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
             source_table: ORDERS_TABLE_ID,
