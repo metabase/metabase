@@ -77,6 +77,14 @@ describe("FieldIdDimension", () => {
         it("should return the field name", () => {
             expect(dimension.displayName()).toEqual("Total");
         });
+        it("should return 'Product ID' for the Orders table field PRODUCT_ID", () => {
+            const productIdDimension = Dimension.parseMBQL(
+                ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
+                metadata
+            );
+
+            expect(productIdDimension.displayName()).toEqual("Product ID");
+        });
     });
     describe("subDisplayName", () => {
         it("should return 'Continuous (no binning)' for numeric fields", () => {
