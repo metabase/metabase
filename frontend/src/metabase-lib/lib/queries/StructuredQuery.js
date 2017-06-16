@@ -2,11 +2,6 @@
 
 /**
  * Represents a structured MBQL query.
- *
- * Although MultiQuery has superseded the multi-aggregation functionality of StructuredQuery, this class still
- * contains the multi-aggregation support for dealing with `dataset_query` objects that are in a legacy format.
- *
- * TODO Atte Keinänen 6/6/17: Should the multi-aggregation questions be automatically converted to MultiQuery or not?
  */
 
 import * as Q from "metabase/lib/query/query";
