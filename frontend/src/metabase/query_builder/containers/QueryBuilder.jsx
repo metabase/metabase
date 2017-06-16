@@ -57,7 +57,6 @@ import * as actions from "../actions";
 import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
-import QuestionBuilder from "metabase/query_builder/containers/QuestionBuilder";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -206,29 +205,15 @@ export default class QueryBuilder extends Component {
     }
 
     render() {
-        const { question } = this.props;
-        const isMultiQueryQuestion = question && question.isMultiQuery();
-
-        if (isMultiQueryQuestion) {
-            return <QuestionBuilder {...this.props} qbIsAlreadyInitialized />
-        } else {
-            return (
-                <div className="flex-full flex relative">
-                    <LegacyQueryBuilder {...this.props} />
-                </div>
-            )
-        }
+        return (
+            <div className="flex-full flex relative">
+                <LegacyQueryBuilder {...this.props} />
+            </div>
+        )
     }
 }
 
 class LegacyQueryBuilder extends Component {
-    onNewQueryFlowCompleted = (newQuery: StructuredQuery) => {
-        const { question, updateQuestion, runQuestionQuery } = this.props;
-        const updatedQuestion = question.setQuery(newQuery);
-        updateQuestion(updatedQuestion);
-        runQuestionQuery();
-    }
-
     render() {
         const { query, card, isDirty, databases, uiControls, mode } = this.props;
 
@@ -241,9 +226,6 @@ class LegacyQueryBuilder extends Component {
 
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         const ModeFooter = mode && mode.ModeFooter;
-
-        // Fo showing the new question flow:
-        // const showNewQueryFlow = question && question.isEmpty();
 
         return (
             <div className="flex-full relative">
@@ -261,26 +243,17 @@ class LegacyQueryBuilder extends Component {
                             />
                         : (query instanceof StructuredQuery) ?
                             <div className="wrapper">
-                                { /* For showing the new question flow:
-                                     showNewQueryFlow
-                                        ?  <NewQueryBar />
-                                        : */
-                                            <GuiQueryEditor
-                                                {...this.props}
-                                                datasetQuery={card && card.dataset_query}
-                                            />
-
-                                }
+                                <GuiQueryEditor
+                                    {...this.props}
+                                    datasetQuery={card && card.dataset_query}
+                                />
                             </div>
                         : null }
                     </div>
 
-                    <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        { /* For showing the new question flow:
-                            showNewQueryFlow
-                            ? <NewQueryOptions question={question} onComplete={this.onNewQueryFlowCompleted} />
-                            :*/ <QueryVisualization {...this.props}  className="full wrapper mb2 z1" />
-                        }
+                    <div ref="viz" id="react_qb_viz" className="flex z1"
+                         style={{"transition": "opacity 0.25s ease-in-out"}}>
+                        <QueryVisualization {...this.props} className="full wrapper mb2 z1"/>
                     </div>
 
                     { ModeFooter &&

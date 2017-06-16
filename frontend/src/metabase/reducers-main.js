@@ -21,7 +21,6 @@ import dashboard from "metabase/dashboard/dashboard";
 import * as home from "metabase/home/reducers";
 
 /* questions / query builder */
-import new_query from "metabase/new_query/new_query";
 import questions from "metabase/questions/questions";
 import labels from "metabase/questions/labels";
 import collections from "metabase/questions/collections";
@@ -40,7 +39,6 @@ export default {
     dashboards,
     dashboard,
     home: combineReducers(home),
-    new_query,
     pulse: combineReducers(pulse),
     qb: combineReducers(qb),
     questions,
