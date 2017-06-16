@@ -60,6 +60,30 @@
 (defn field-values 
   "Return all the values of FIELD."
   [field]
-  (map first (field-query field (-> {}
-                                    (ql/fields (ql/field-id (u/get-id field)))
-                                    (ql/limit max-sample-size)))))
+  {:field field
+   :data (map first (field-query field (-> {}
+                                           (ql/fields (ql/field-id (u/get-id field)))
+                                           (ql/limit max-sample-size))))})
+
+(defn- transpose
+  [{:keys [rows columns cols]}]
+  (reduce (fn [acc row]
+            (reduce (fn [acc [k v]]
+                      (update-in acc [k :data] conj v))
+                    acc
+                    (map vector columns row)))
+          (zipmap columns (for [c cols]
+                            {:field c
+                             :data []}))
+          rows))
+
+(defn query-values
+  "Return all values for query"
+  [db-id query]
+  (-> (qp/process-query
+        {:type :query
+         :database db-id
+         :query (merge {:limit max-sample-size}
+                       query)})
+      :data
+      transpose))

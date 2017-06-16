@@ -6,6 +6,11 @@
             [redux.core :as redux]
             [clj-time.core :as t]
             [clj-time.format :as t.format]
+            (metabase.models [field :refer [Field]]
+                             [table :refer [Table]]
+                             [segment :refer [Segment]]
+                             [card :refer [Card]])
+            [toucan.db :as db]
             [metabase.db.metadata-queries :as metadata]
             [clj-time.coerce :as coerce]))
 
@@ -172,9 +177,41 @@
                            (- 1 cardinality-error))
         :entropy (binned-entropy histogram)}))))
 
-(defn field-fingerprint
+(defmulti fingerprint class)
+
+(defn fingerprint-field
+  [{:keys [field data]}]
+  (transduce identity (fingerprinter field) data))
+
+(defmethod fingerprint (class Field)
   [field]
-  (assoc (transduce identity
-                    (fingerprinter field)
-                    (metadata/field-values field))
-    :field field))
+  (assoc (fingerprint-field (metadata/field-values field)) :field field))
+
+(defn- fingerprint-query
+  [query-result]
+  (into {}
+    (for [[col field] query-result]
+      [col (fingerprint-field field)])))
+
+(defmethod fingerprint (class Table)
+  [table]
+  (fingerprint-query (metadata/query-values
+                      (:db_id table)
+                      {:source-table (:id table)})))
+
+(defmethod fingerprint (class Card)
+  [card]
+  (fingerprint-query (metadata/query-values
+                      (:database_id card)
+                      (-> card :dataset_query :query))))
+
+(defmethod fingerprint (class Segment)
+  [segment]
+  (fingerprint-query (metadata/query-values
+                      (:db_id (db/select-one 'Table :id (:table_id segment)))
+                      (:definition segment))))
+
+(defn compare-fingerprints
+  [a b]
+  {(:name a) (fingerprint a)
+   (:name b) (fingerprint b)})
