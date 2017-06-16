@@ -24,6 +24,7 @@ import type {
     DatasetQuery
 } from "metabase/meta/types/Card";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
+import TimeseriesGroupingWidget from "metabase/qb/components/TimeseriesGroupingWidget";
 
 type Props = {
     lastRunCard: CardObject,
@@ -38,7 +39,7 @@ export const TimeseriesModeFooter = (props: Props) => {
             <span className="mr1">View</span>
             <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
             <span className="mx1">by</span>
-            {/*<TimeseriesGroupingWidget {...props} card={props.lastRunCard} />*/}
+            <TimeseriesGroupingWidget {...props} card={props.lastRunCard} />
         </div>
     );
 };
