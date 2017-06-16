@@ -27,6 +27,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                 { onChangeCardAndRun, onClose }: ClickActionPopoverProps
             ) => (
                 <AggregationPopover
+                    query={query}
                     tableMetadata={query.table()}
                     customFields={query.expressions()}
                     availableAggregations={query.table().aggregation_options}
@@ -36,6 +37,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                         );
                         onClose && onClose();
                     }}
+                    onClose={onClose}
                 />
             )
         }
