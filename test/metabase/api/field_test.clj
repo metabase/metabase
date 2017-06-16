@@ -2,6 +2,7 @@
   (:require [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.models
+             [dimensions :refer [Dimensions]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [table :refer [Table]]]
@@ -9,7 +10,9 @@
              [data :refer :all]
              [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
 ;; Helper Fns
@@ -162,37 +165,135 @@
   {:values []}
   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
 
+(defn- num->$ [num-seq]
+  (mapv (fn [idx]
+          (vector idx (apply str (repeat idx \$))))
+        num-seq))
 
-;; ## POST /api/field/:id/value_map_update
+(def category-field {:name "Field Test" :base_type :type/Integer :special_type :type/Category})
 
-;; Check that we can set values
+;; ## POST /api/field/:id/values
+
+;; Human readable values are optional
 (expect
-  [{:status "success"}
-   {:values (mapv (fn [idx]
-                    (vector idx [(str idx) (apply str (repeat idx \$))]))
-                  [1 2 3 4])}]
-  [((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
-                                                                                                               :2 "$$"
-                                                                                                               :3 "$$$"
-                                                                                                               :4 "$$$$"}})
-   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
+  [{:values (map vector (range 5 10))}
+   {:status "success"}
+   {:values (map vector (range 1 5))}]
+  (tt/with-temp* [Field [{field-id :id} category-field]
+                  FieldValues [{field-value-id :id} {:values (range 5 10), :field_id field-id}]]
+    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+      {:values (map vector (range 1 5))})
+     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
 
-;; Check that we can unset values
+;; Existing field values can be updated (with their human readable values)
 (expect
-  [{:status "success"}
-   {:values (mapv vector [1 2 3 4])}]
-  [(do (db/update! FieldValues (:id (field->field-values :venues :price))
-         :human_readable_values {:1 "$" ; make sure they're set
-                                 :2 "$$"
-                                 :3 "$$$"
-                                 :4 "$$$$"})
-       ((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {}}))
-   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
+  [{:values (map vector (range 1 5))}
+   {:status "success"}
+   {:values (num->$ (range 1 5))}]
+  (tt/with-temp* [Field [{field-id :id} category-field]
+                  FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]]
+    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+      {:values (num->$ (range 1 5))})
+     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
 
-;; Check that we get an error if we call value_map_update on something that isn't a category
-(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."
-  ((user->client :crowberto) :post 400 (format "field/%d/value_map_update" (id :venues :id))
-   {:values_map {:1 "$"
-                 :2 "$$"
-                 :3 "$$$"
-                 :4 "$$$$"}}))
+;; Field values are created when not present
+(expect
+  [{:values []}
+   {:status "success"}
+   {:values (num->$ (range 1 5))}]
+  (tt/with-temp* [Field [{field-id :id} category-field]]
+    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+      {:values (num->$ (range 1 5))})
+     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
+
+;; Can unset values
+(expect
+  [{:values (mapv vector (range 1 5))}
+   {:status "success"}
+   {:values []}]
+  (tt/with-temp* [Field [{field-id :id} category-field]
+                  FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id}]]
+    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+      {:values []})
+     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
+
+;; Can unset just human readable values
+(expect
+  [{:values (num->$ (range 1 5))}
+   {:status "success"}
+   {:values (mapv vector (range 1 5))}]
+  (tt/with-temp* [Field [{field-id :id} category-field]
+                  FieldValues [{field-value-id :id} {:values (range 1 5), :field_id field-id
+                                                     :human_readable_values ["$" "$$" "$$$" "$$$$"]}]]
+    [((user->client :crowberto) :get 200 (format "field/%d/values" field-id))
+     ((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+      {:values (mapv vector (range 1 5))})
+     ((user->client :crowberto) :get 200 (format "field/%d/values" field-id))]))
+
+;; Should throw when human readable values are present but not for every value
+(expect
+  clojure.lang.ExceptionInfo
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test" :base_type :type/Integer :special_type :type/Category}]]
+    [((user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+      {:values [[1 "$"] [2 "$$"] [3] [4]]})]))
+
+;; ## PUT /api/field/:id/dimension
+
+(defn- dimension-for-field [field-id]
+  (-> (Field :id field-id)
+      (hydrate :dimensions)
+      :dimensions))
+
+(defn dimension-post [field-id map-to-post]
+  ((user->client :crowberto) :post 200 (format "field/%d/dimension" field-id) map-to-post))
+
+;; test that we can do basic field update work, including unsetting some fields such as special-type
+(expect
+  [[]
+   {:id true
+    :created_at true
+    :updated_at true
+    :type :internal
+    :name "some dimension name"
+    :human_readable_field_id false
+    :field_id true}
+   {:id true
+    :created_at true
+    :updated_at true
+    :type :internal
+    :name "different dimension name"
+    :human_readable_field_id false
+    :field_id true}
+   true]
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
+    (let [before-creation (dimension-for-field field-id)
+          _               (dimension-post field-id {:name "some dimension name", :type "internal"})
+          new-dim         (dimension-for-field field-id)
+          _               (dimension-post field-id {:name "different dimension name", :type "internal"})
+          updated-dim     (dimension-for-field field-id)]
+      [before-creation
+       (tu/boolean-ids-and-timestamps new-dim)
+       (tu/boolean-ids-and-timestamps updated-dim)
+       (= (:id new-dim) (:id updated-dim))])))
+
+;; test that we can do basic field update work, including unsetting some fields such as special-type
+(expect
+  [[]
+   {:id true
+    :created_at true
+    :updated_at true
+    :type :external
+    :name "some dimension name"
+    :human_readable_field_id true
+    :field_id true}]
+  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]
+                  Field [{field-id-2 :id} {:name "Field Test 2"}]]
+    (let [before-creation (dimension-for-field field-id-1)
+          _               (dimension-post field-id-1 {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})
+          new-dim         (dimension-for-field field-id-1)]
+      [before-creation
+       (tu/boolean-ids-and-timestamps new-dim)])))

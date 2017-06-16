@@ -3695,6 +3695,7 @@ databaseChangeLog:
                     initiallyDeferred: false
                     nullable: false
                     references: metabase_field(id)
+                    deleteCascade: true
               - column:
                   name: name
                   type: VARCHAR(254)
@@ -3717,6 +3718,7 @@ databaseChangeLog:
                     initiallyDeferred: false
                     nullable: true
                     references: metabase_field(id)
+                    deleteCascade: true
               - column:
                   name: created_at
                   type: DATETIME

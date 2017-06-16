@@ -3,6 +3,7 @@
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
             [metabase.models
+             [dimensions :refer [Dimensions]]
              [field :as field :refer [Field]]
              [field-values :refer [create-field-values-if-needed! field-should-have-field-values? FieldValues]]]
             [metabase.util :as u]
@@ -74,21 +75,67 @@
       {:values []}
       {:values (create-field-values-if-needed! field)})))
 
+(api/defendpoint POST "/:id/dimension"
+  "If `Field`'s special type derives from `type/Category`, or its base type is `type/Boolean`, return
+   all distinct values of the field, and a map of human-readable values defined by the user."
+  [id :as {{dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_id} :body}]
+  {dimension-type         (s/enum "internal" "external")
+   dimension-name         su/NonBlankString
+   human_readable_field_id (s/maybe s/Int)}
+  (let [field (api/read-check Field id)]
+    (if-let [dimension (Dimensions :field_id id)]
+      (db/update! Dimensions (:id dimension)
+        {:type dimension-type
+         :name dimension-name
+         :human_readable_field_id human_readable_field_id})
+      (db/insert! Dimensions
+                  {:field_id id
+                   :type dimension-type
+                   :name dimension-name
+                   :human_readable_field_id human_readable_field_id}))
+    (Dimensions :field_id id)))
 
-;; TODO - not sure this is used anymore
-(api/defendpoint POST "/:id/value_map_update"
+(defn validate-human-readable-pairs
+  "Human readable values are optional, but if present they must be
+  present for each field value. Throws if invalid, returns a boolean
+  indicating whether human readable values were found."
+  [value-pairs]
+  (let [human-readable-missing? #(= ::not-found (get % 1 ::not-found))
+        has-human-readable-values? (not-any? human-readable-missing? value-pairs)]
+    (api/check (or has-human-readable-values?
+                   (every? human-readable-missing? value-pairs))
+      [400 "If remapped values are specified, they must be specified for all field values"])
+    has-human-readable-values?))
+
+(defn- update-field-values [field-value-id value-pairs]
+  (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
+    (api/check-500 (db/update! FieldValues field-value-id
+                     :values (map first value-pairs)
+                     :human_readable_values (when human-readable-values?
+                                              (map second value-pairs))))))
+
+(defn- create-field-values
+  [field value-pairs]
+  (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
+    (db/insert! FieldValues
+      :field_id (:id field)
+      :values (map first value-pairs)
+      :human_readable_values (when human-readable-values?
+                               (map second value-pairs)))))
+
+(api/defendpoint POST "/:id/values"
   "Update the human-readable values for a `Field` whose special type is `category`/`city`/`state`/`country`
    or whose base type is `type/Boolean`."
-  [id :as {{:keys [values_map]} :body}]
-  {values_map su/Map}
-  (let [field (api/write-check Field id)]
-    (api/check (field-should-have-field-values? field)
-      [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."])
-    (if-let [field-values-id (db/select-one-id FieldValues, :field_id id)]
-      (api/check-500 (db/update! FieldValues field-values-id
-                       :human_readable_values values_map))
-      (create-field-values-if-needed! field values_map)))
+  [id :as {{value-pairs :values} :body}]
+  {value-pairs [[(s/one s/Num "value") (s/optional su/NonBlankString "human readable value")]]}
+  (try
+    (let [field (api/write-check Field id)]
+      (api/check (field-should-have-field-values? field)
+        [400 "You can only update the human readable values of a mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."])
+      (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
+        (update-field-values field-value-id value-pairs)
+        (create-field-values field value-pairs)))
+    (catch Exception e (println "fail") (.printStackTrace e) (throw e)))
   {:status :success})
-
 
 (api/define-routes)
