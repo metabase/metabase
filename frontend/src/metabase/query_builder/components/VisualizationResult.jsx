@@ -5,17 +5,15 @@ import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetai
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { DatasetQuery } from "metabase/meta/types/Card";
 
 type Props = {
     question: Question,
     isObjectDetail: boolean,
     result: any,
     results: any[],
-    lastRunDatasetQuery: DatasetQuery,
     navigateToNewCardInsideQB: (any) => void
 }
-const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, navigateToNewCardInsideQB, result, results, ...props}: Props) => {
+const VisualizationResult = ({question, isObjectDetail, navigateToNewCardInsideQB, result, results, ...props}: Props) => {
     const noResults = datasetContainsNoResults(result.data);
 
     if (isObjectDetail) {
@@ -36,10 +34,12 @@ const VisualizationResult = ({question, isObjectDetail, lastRunDatasetQuery, nav
         // we want to provide the visualization with a card containing the latest
         // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
         // BUT the last executed "dataset_query" (to ensure data matches the query)
+
+        // TODO: Atte Keinänen 6/2/17: Should we provide a `lastRunDatasetQueries` or similar?
         const series = question.atomicQueries().map((metricQuery, index) => ({
             card: {
                 ...question.card(),
-                dataset_query: lastRunDatasetQuery
+                dataset_query: metricQuery.datasetQuery()
             },
             data: results[index] && results[index].data
         }));
