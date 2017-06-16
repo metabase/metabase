@@ -29,6 +29,11 @@ export default class Metadata extends Base {
         return (Object.values(this.databases): Database[]);
     }
 
+    tablesList(): Database[] {
+        // $FlowFixMe
+        return (Object.values(this.tables): Database[]);
+    }
+
     metricsList(): Metric[] {
         // $FlowFixMe
         return (Object.values(this.metrics): Metric[]);
