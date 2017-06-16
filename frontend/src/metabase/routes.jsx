@@ -61,6 +61,10 @@ import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsLi
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
+import FieldXRay from "metabase/reference/containers/FieldXRay.jsx";
+import TableXRay from "metabase/reference/containers/TableXRay.jsx";
+import SegmentXRay from "metabase/reference/containers/SegmentXRay.jsx";
+
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
@@ -199,6 +203,7 @@ export const getRoutes = (store) =>
                     <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
                     <Route path="segments" component={ReferenceEntityList} />
                     <Route path="segments/:segmentId" component={ReferenceEntity} />
+                    <Route path="segments/:segmentId/xray" component={SegmentXRay} />
                     <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
                     <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
                     <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
@@ -207,8 +212,10 @@ export const getRoutes = (store) =>
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables/:tableId/xray" component={TableXRay} />
                     <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
                     <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId/xray" component={FieldXRay} />
                     <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
                 </Route>
 

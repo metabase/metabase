@@ -80,6 +80,32 @@ export const fetchFieldFingerPrint = createThunkAction(FETCH_FIELD_FINGERPRINT, 
     };
 });
 
+const FETCH_TABLE_FINGERPRINT = 'metabase/reference/FETCH_TABLE_FINGERPRINT';
+export const fetchTableFingerPrint = createThunkAction(FETCH_TABLE_FINGERPRINT, function(tableId) {
+    return async () => {
+        try {
+            let fingerprint = await MetabaseApi.table_fingerprint({ tableId });
+            return fingerprint;
+        } catch (error) {
+            console.error(error);
+        }
+    };
+});
+
+
+const FETCH_SEGMENT_FINGERPRINT = 'metabase/reference/FETCH_SEGMENT_FINGERPRINT';
+export const fetchSegmentFingerPrint = createThunkAction(FETCH_SEGMENT_FINGERPRINT, function(segmentId) {
+    return async () => {
+        try {
+            let fingerprint = await MetabaseApi.segment_fingerprint({ segmentId });
+            return fingerprint;
+        } catch (error) {
+            console.error(error);
+        }
+    };
+});
+
+
 const initialState = {
     error: null,
     isLoading: false,
@@ -92,7 +118,13 @@ export default handleActions({
         next: (state, { payload }) => assoc(state, 'guide', payload)
     },
     [FETCH_FIELD_FINGERPRINT]: {
-        next: (state, { payload }) => assoc(state, 'fingerprint', payload)
+        next: (state, { payload }) => assoc(state, 'fieldFingerprint', payload)
+    },
+    [FETCH_TABLE_FINGERPRINT]: {
+        next: (state, { payload }) => assoc(state, 'tableFingerprint', payload)
+    },
+    [FETCH_SEGMENT_FINGERPRINT]: {
+        next: (state, { payload }) => assoc(state, 'segmentFingerprint', payload)
     },
     [SET_ERROR]: {
         throw: (state, { payload }) => assoc(state, 'error', payload)

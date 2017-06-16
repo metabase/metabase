@@ -2,22 +2,22 @@
 import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
-import type { Field } from 'metabase/meta/types/Field'
 
-import { fetchFieldFingerPrint } from 'metabase/reference/reference'
+import type { Field } from 'metabase/meta/types/Field'
+import { fetchTableFingerPrint } from 'metabase/reference/reference'
 
 type Props = {
-    fetchFieldFingerPrint: () => void,
+    fetchTableFingerPrint: () => void,
     fingerprint: {}
 }
 
-
-class FieldXRay extends Component {
+class TableXRay extends Component {
     props: Props
 
     componentDidMount () {
-        this.props.fetchFieldFingerPrint(this.props.params.fieldId)
+        this.props.fetchTableFingerPrint(this.props.params.tableId)
     }
+
 
     render () {
         return (
@@ -41,11 +41,11 @@ class FieldXRay extends Component {
 }
 
 const mapStateToProps = state => ({
-    fingerprint: state.reference.fieldFingerprint, 
+    fingerprint: state.reference.tableFingerprint, 
 })
 
 const mapDispatchToProps = {
-    fetchFieldFingerPrint: fetchFieldFingerPrint
+    fetchTableFingerPrint: fetchTableFingerPrint
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(FieldXRay)
+export default connect(mapStateToProps, mapDispatchToProps)(TableXRay)
