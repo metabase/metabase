@@ -1073,9 +1073,9 @@ export default function lineAreaBar(element, {
             const card = series[0].card;
             const [start, end] = range;
             if (isDimensionTimeseries) {
-                onChangeCardAndRun(updateDateTimeFilter(card, column, start, end));
+                onChangeCardAndRun({ nextCard: updateDateTimeFilter(card, column, start, end) });
             } else {
-                onChangeCardAndRun(updateNumericFilter(card, column, start, end));
+                onChangeCardAndRun({ nextCard: updateNumericFilter(card, column, start, end) });
             }
         }
     }
