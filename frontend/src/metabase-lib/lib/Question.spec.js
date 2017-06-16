@@ -57,6 +57,20 @@ export const ordersCountDataCard = {
     }
 };
 
+export const ordersCountByIDDataCard = {
+    id: 2,
+    name: "# orders data",
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            aggregation: [["count"]],
+            source_table: ORDERS_TABLE_ID,
+            breakout: [["field-id", ORDERS_PK_FIELD_ID]]
+        }
+    }
+};
+
 const ORDERS_PRODUCT_CATEGORY = [
     "fk->",
     ORDERS_PRODUCT_FK_FIELD_ID,
@@ -166,36 +180,43 @@ describe("Question", () => {
         it("filtering by an id works", () => {
             const filteringQuestion = question.filter(
                 "=",
-                ORDERS_PK_FIELD_ID,
+                { id: ORDERS_PK_FIELD_ID },
                 1
             );
 
-            expect(filteringQuestion.query).toEqual({
-                dataset_query: {
-                    type: "query",
-                    database: DATABASE_ID,
-                    query: {
-                        source_table: ORDERS_TABLE_ID,
-                        filter: ["=", ORDERS_PK_FIELD_ID, 1]
-                    }
+            expect(filteringQuestion._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    filter: ["=", ["field-id", ORDERS_PK_FIELD_ID], 1]
                 }
             });
         });
         it("filtering by a categorical value works", () => {
             const filteringQuestion = question.filter(
                 "=",
-                ORDERS_PRODUCT_CATEGORY,
+                {
+                    id: PRODUCT_CATEGORY_FIELD_ID,
+                    fk_field_id: ORDERS_PRODUCT_FK_FIELD_ID
+                },
                 "Doohickey"
             );
 
-            expect(filteringQuestion.query).toEqual({
-                dataset_query: {
-                    type: "query",
-                    database: DATABASE_ID,
-                    query: {
-                        source_table: ORDERS_TABLE_ID,
-                        filter: ["=", ORDERS_PRODUCT_CATEGORY, "Doohickey"]
-                    }
+            expect(filteringQuestion._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    filter: [
+                        "=",
+                        [
+                            "fk->",
+                            ORDERS_PRODUCT_FK_FIELD_ID,
+                            PRODUCT_CATEGORY_FIELD_ID
+                        ],
+                        "Doohickey"
+                    ]
                 }
             });
         });
@@ -203,63 +224,78 @@ describe("Question", () => {
         it("filtering by a time works", () => {
             const filteringQuestion = question.filter(
                 "=",
-                ORDERS_CREATED_DATE_FIELD_ID,
+                { id: ORDERS_CREATED_DATE_FIELD_ID },
                 "12/12/2012"
             );
 
-            expect(filteringQuestion.query).toEqual({
-                dataset_query: {
-                    type: "query",
-                    database: DATABASE_ID,
-                    query: {
-                        source_table: ORDERS_TABLE_ID,
-                        filter: [
-                            "=",
-                            ORDERS_CREATED_DATE_FIELD_ID,
-                            "12/12/2012"
-                        ]
-                    }
+            expect(filteringQuestion._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    filter: [
+                        "=",
+                        ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+                        "12/12/2012"
+                    ]
                 }
             });
         });
     });
 
     describe("canBreakout", () => {
-        const ordersCountQuestion = new Question(metadata, ordersCountDataCard);
         it("can be broken out by a datetime", () => {
-            const brokenOutCard = ordersCountQuestion.breakout(
-                ORDERS_CREATED_DATE_FIELD_ID
+            const ordersCountQuestion = new Question(
+                metadata,
+                ordersCountDataCard
             );
+            const brokenOutCard = ordersCountQuestion.breakout([
+                "field-id",
+                ORDERS_CREATED_DATE_FIELD_ID
+            ]);
             expect(brokenOutCard.canRun()).toBe(true);
 
-            // if I actually call the .query() method below, this blows up garbage collection =/
-            expect(brokenOutCard.query).toEqual({
-                dataset_query: {
-                    type: "query",
-                    database: DATABASE_ID,
-                    query: {
-                        source_table: ORDERS_TABLE_ID,
-                        aggregation: [["count"]]
-                    }
+            expect(brokenOutCard._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    aggregation: [["count"]],
+                    breakout: [["field-id", ORDERS_CREATED_DATE_FIELD_ID]]
                 }
+            });
+
+            // Make sure we haven't mutated the underlying query
+            expect(ordersCountDataCard.dataset_query.query).toEqual({
+                source_table: ORDERS_TABLE_ID,
+                aggregation: [["count"]]
             });
         });
         it("can be broken out by a PK", () => {
-            const brokenOutCard = ordersCountQuestion.breakout(
-                ORDERS_PK_FIELD_ID
+            const ordersCountQuestion = new Question(
+                metadata,
+                ordersCountDataCard
             );
+            const brokenOutCard = ordersCountQuestion.breakout([
+                "field-id",
+                ORDERS_PK_FIELD_ID
+            ]);
             expect(brokenOutCard.canRun()).toBe(true);
-
-            // if I actually call the .query() method below, this blows up garbage collection =/
-            expect(brokenOutCard.query).toEqual({
-                dataset_query: {
-                    type: "query",
-                    database: DATABASE_ID,
-                    query: {
-                        source_table: ORDERS_TABLE_ID,
-                        aggregation: [["count"]]
-                    }
+            // This breaks because we're apparently modifying OrdersCountDataCard
+            expect(brokenOutCard._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    aggregation: [["count"]],
+                    breakout: [["field-id", ORDERS_PK_FIELD_ID]]
                 }
+            });
+
+            // Make sure we haven't mutated the underlying query
+            expect(ordersCountDataCard.dataset_query.query).toEqual({
+                source_table: ORDERS_TABLE_ID,
+                aggregation: [["count"]]
             });
         });
     });
@@ -267,37 +303,49 @@ describe("Question", () => {
     describe("canPivot", () => {
         const ordersCountQuestion = new Question(metadata, ordersCountDataCard);
         it("pivoting by datetime dimension works", () => {
-            const pivotedCard = ordersCountQuestion.pivot(
+            const pivotedCard = ordersCountQuestion.pivot([
+                "field-id",
                 ORDERS_CREATED_DATE_FIELD_ID
-            );
+            ]);
             expect(pivotedCard.canRun()).toBe(true);
 
             // if I actually call the .query() method below, this blows up garbage collection =/
-            expect(pivotedCard.query).toEqual({
-                dataset_query: {
-                    type: "query",
-                    database: DATABASE_ID,
-                    query: {
-                        source_table: ORDERS_TABLE_ID,
-                        aggregation: [["count"]]
-                    }
+            expect(pivotedCard._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    aggregation: [["count"]],
+                    breakout: [["field-id", ORDERS_CREATED_DATE_FIELD_ID]]
                 }
+            });
+            // Make sure we haven't mutated the underlying query
+            expect(ordersCountDataCard.dataset_query.query).toEqual({
+                source_table: ORDERS_TABLE_ID,
+                aggregation: [["count"]]
             });
         });
         it("pivoting by a PK dimension works", () => {
-            const pivotedCard = ordersCountQuestion.pivot(ORDERS_PK_FIELD_ID);
+            const pivotedCard = ordersCountQuestion.pivot([
+                "field-id",
+                ORDERS_PK_FIELD_ID
+            ]);
             expect(pivotedCard.canRun()).toBe(true);
 
             // if I actually call the .query() method below, this blows up garbage collection =/
-            expect(pivotedCard.query).toEqual({
-                dataset_query: {
-                    type: "query",
-                    database: DATABASE_ID,
-                    query: {
-                        source_table: ORDERS_TABLE_ID,
-                        aggregation: [["count"]]
-                    }
+            expect(pivotedCard._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    aggregation: [["count"]],
+                    breakout: [["field-id", ORDERS_PK_FIELD_ID]]
                 }
+            });
+            // Make sure we haven't mutated the underlying query
+            expect(ordersCountDataCard.dataset_query.query).toEqual({
+                source_table: ORDERS_TABLE_ID,
+                aggregation: [["count"]]
             });
         });
     });
@@ -306,20 +354,19 @@ describe("Question", () => {
         const question = new Question(metadata, ordersRawDataCard);
         it("returns the correct query for a PK detail drill-through", () => {
             const drilledQuestion = question.drillPK(
-                metadata.fields[(ORDERS_PK_FIELD_ID, 1)]
+                metadata.fields[ORDERS_PK_FIELD_ID],
+                1
             );
 
             expect(drilledQuestion.canRun()).toBe(true);
 
             // if I actually call the .query() method below, this blows up garbage collection =/
-            expect(drilledQuestion.query).toEqual({
-                dataset_query: {
-                    type: "query",
-                    database: DATABASE_ID,
-                    query: {
-                        source_table: ORDERS_TABLE_ID,
-                        filter: ["=", ORDERS_PK_FIELD_ID, 1]
-                    }
+            expect(drilledQuestion._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    filter: ["=", ["field-id", ORDERS_PK_FIELD_ID], 1]
                 }
             });
         });
@@ -331,17 +378,35 @@ describe("Question", () => {
             const summarizedQuestion = question.summarize(["count"]);
             expect(summarizedQuestion.canRun()).toBe(true);
             // if I actually call the .query() method below, this blows up garbage collection =/
-            expect(summarizedQuestion.query).toBe(ordersCountDataCard);
+            expect(summarizedQuestion._card.dataset_query).toEqual(
+                ordersCountDataCard.dataset_query
+            );
         });
     });
 
     describe("canDrillUnderlyingRecords", () => {
-        const ordersCountQuestion = new Question(metadata, ordersCountDataCard);
-        it("Not really sure what this does yet so ...", () => {
-            const drilledQuestion = ordersCountQuestion.drillUnderlyingRecords([
-            ]);
+        const ordersCountQuestion = new Question(
+            metadata,
+            ordersCountByIDDataCard
+        );
+        it("Properly apply a filter to a given filterspec", () => {
+            const dimensions = [
+                { value: 1, column: metadata.fields[ORDERS_PK_FIELD_ID] }
+            ];
+
+            const drilledQuestion = ordersCountQuestion.drillUnderlyingRecords(
+                dimensions
+            );
             expect(drilledQuestion.canRun()).toBe(true);
-            // TODO: Sameer 6/16/17 what exactly is this supposed to be?
+
+            expect(drilledQuestion._card.dataset_query).toEqual({
+                type: "query",
+                database: DATABASE_ID,
+                query: {
+                    source_table: ORDERS_TABLE_ID,
+                    filter: ["=", ["field-id", ORDERS_PK_FIELD_ID], 1]
+                }
+            });
         });
     });
 
@@ -354,14 +419,28 @@ describe("Question", () => {
 
             expect(underlyingRecordsQuestion.canRun()).toBe(true);
             // if I actually call the .query() method below, this blows up garbage collection =/
-            expect(underlyingRecordsQuestion.query).toEqual(ordersRawDataCard);
+            expect(underlyingRecordsQuestion._card.dataset_query).toEqual(
+                ordersRawDataCard.dataset_query
+            );
+
+            // Make sure we haven't mutated the underlying query
+            expect(ordersRawDataCard.dataset_query.query).toEqual({
+                source_table: ORDERS_TABLE_ID
+            });
         });
         it("returns underlying records correctly for a broken out query", () => {
             const underlyingRecordsQuestion = ordersCountQuestion.toUnderlyingRecords();
 
             expect(underlyingRecordsQuestion.canRun()).toBe(true);
             // if I actually call the .query() method below, this blows up garbage collection =/
-            expect(underlyingRecordsQuestion.query).toEqual(ordersRawDataCard);
+            expect(underlyingRecordsQuestion._card.dataset_query).toEqual(
+                ordersRawDataCard.dataset_query
+            );
+
+            // Make sure we haven't mutated the underlying query
+            expect(ordersRawDataCard.dataset_query.query).toEqual({
+                source_table: ORDERS_TABLE_ID
+            });
         });
         it("returns underlying data correctly for table query", () => {
             const underlyingDataQuestion = ordersCountQuestion
