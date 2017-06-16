@@ -12,6 +12,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate-and-sort :as annotate-and-sort]
+             [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [cumulative-aggregations :as cumulative-ags]
@@ -85,6 +86,7 @@
       cumulative-ags/handle-cumulative-aggregations
       implicit-clauses/add-implicit-clauses
       format-rows/format-rows
+      binning/update-binning-strategy
       expand-resolve/expand-resolve                    ; ▲▲▲ QUERY EXPANSION POINT  ▲▲▲ All functions *above* will see EXPANDED query during PRE-PROCESSING
       row-count-and-status/add-row-count-and-status    ; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       parameters/substitute-parameters

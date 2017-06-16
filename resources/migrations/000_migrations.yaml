@@ -3655,7 +3655,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: min_value
-                  type: float
+                  type: double
                   constraints:
                     nullable: true
         - addColumn:
@@ -3663,6 +3663,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: max_value
-                  type: float
+                  type: double
                   constraints:
                     nullable: true

@@ -141,8 +141,11 @@
   clojure.lang.Named
   (getName [_] (name field)))
 
-(s/defrecord BinnedField [field :- Field
-                          num-bins  :- s/Int]
+(s/defrecord BinnedField [field     :- Field
+                          num-bins  :- s/Int
+                          min-value :- s/Num
+                          max-value :- s/Num
+                          bin-width :- s/Num]
   clojure.lang.Named
   (getName [_] (name field)))
 

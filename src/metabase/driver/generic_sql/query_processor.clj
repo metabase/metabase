@@ -89,15 +89,12 @@
     (sql/date (driver) unit (formatted field)))
 
   BinnedField
-  (formatted [{{:keys [min-value max-value] :as field} :field bins :num-bins}]
-    (let [bin-width (Math/ceil (/ (- (Math/floor max-value)
-                                     (Math/floor min-value))
-                                  bins))]
-      (-> field
-          formatted
-          (hx// bin-width)
-          hx/floor
-          (hx/* bin-width))))
+  (formatted [{:keys [bin-width min-value max-value field]}]
+    (let [formatted-field (formatted field)]
+      (apply hsql/call :case
+             (mapcat (fn [bin-floor]
+                       [[:and [:>= formatted-field bin-floor] [:< formatted-field (+ bin-floor bin-width)]] bin-floor])
+                     (range min-value max-value bin-width)))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef

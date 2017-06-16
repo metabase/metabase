@@ -2,9 +2,11 @@
   "Tests for the `:breakout` clause."
   (:require [metabase.query-processor-test :refer :all]
             [metabase.query-processor.expand :as ql]
+            [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 ;; single column
 (qp-expect-with-all-engines
@@ -73,21 +75,21 @@
        (format-rows-by [int int int])))
 
 (expect-with-non-timeseries-dbs
-  [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+  [[10.1 1] [33.1 61] [37.7 29] [39.2 8] [40.8 1]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default 20))))))
 
 (expect-with-non-timeseries-dbs
-  [[10.0 1] [30.0 90] [40.0 9]]
+ [[10.1 1] [30.5 99]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default 3))))))
 
 (expect-with-non-timeseries-dbs
-  [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
+  [[10.1 -165.4 1] [33.1 -119.7 61] [37.7 -124.2 29] [39.2 -78.5 8] [40.8 -78.5 1]]
   (format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
@@ -97,16 +99,56 @@
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
 (expect-with-non-timeseries-dbs
-  [[8.0 1] [32.0 61] [36.0 29] [40.0 9]]
+  [[10.1 1] [33.1 61] [36.9 38]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default))))))
 
 (expect-with-non-timeseries-dbs
-  [[10.0 1] [30.0 90] [40.0 9]]
+  [[10.1 1] [30.5 99]]
   (tu/with-temporary-setting-values [breakout-bins-num 3]
     (format-rows-by [(partial u/round-to-decimals 1) int]
       (rows (data/run-query venues
               (ql/aggregation (ql/count))
               (ql/breakout (ql/binning-strategy $latitude :default)))))))
+
+(expect-with-non-timeseries-dbs
+  [[33.0 4] [34.0 57]]
+  (tu/with-temporary-setting-values [breakout-bins-num 15]
+    (format-rows-by [(partial u/round-to-decimals 1) int]
+      (rows (data/run-query venues
+              (ql/aggregation (ql/count))
+              (ql/filter (ql/and (ql/< $latitude 35)
+                                 (ql/> $latitude 20)))
+              (ql/breakout (ql/binning-strategy $latitude :default)))))))
+
+;;Validate binning info is returned with the binning-strategy
+(expect-with-non-timeseries-dbs
+  (merge (venues-col :latitude)
+         {:min_value 10.0646, :source :breakout,
+          :max_value 40.7794, :binning_info {:binning_strategy "num-bins", :bin_width 10.23827, :num_bins 3
+                                             :min_value 10.0646, :max_value 40.7794}})
+  (tu/with-temporary-setting-values [breakout-bins-num 3]
+    (-> (data/run-query venues
+          (ql/aggregation (ql/count))
+          (ql/breakout (ql/binning-strategy $latitude :default)))
+        (get-in [:data :cols])
+        first)))
+
+;;Validate binning info is returned with the binning-strategy
+(expect-with-non-timeseries-dbs
+  {:status :failed
+   :class Exception
+   :error (format "Unable to bin field '%s' with id '%s' without a min/max value"
+                  (:name (Field (data/id :venues :latitude)))
+                  (data/id :venues :latitude))}
+  (let [{:keys [min_value max_value]} (Field (data/id :venues :latitude))]
+    (try
+      (db/update! Field (data/id :venues :latitude) :min_value nil :max_value nil)
+      (-> (data/run-query venues
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/binning-strategy $latitude :default)))
+          (select-keys [:status :class :error]))
+      (finally
+        (db/update! Field (data/id :venues :latitude) :min_value min_value :max_value max_value)))))
