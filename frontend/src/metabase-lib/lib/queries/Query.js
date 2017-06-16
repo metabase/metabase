@@ -10,7 +10,7 @@ import type { ActionClick } from "metabase-lib/lib/Action";
 import { memoize } from "metabase-lib/lib/utils";
 
 /**
- * An abstract class for all query types (StructuredQuery & NativeQuery)
+ * An abstract class for all query types (StructuredQuery & AtomicQuery (NativeQuery + MultiQuery))
  */
 export default class Query {
     _metadata: Metadata;

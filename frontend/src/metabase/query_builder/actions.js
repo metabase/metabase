@@ -45,6 +45,7 @@ import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils"
 import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import MultiQuery from "metabase-lib/lib/queries/MultiQuery";
 
 type UiControls = {
     isEditing?: boolean,
@@ -380,7 +381,11 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
         }
 
         if (query) {
-            loadMetadataForAtomicQuery(query);
+            if (query instanceof MultiQuery) {
+                query.atomicQueries().map(loadMetadataForAtomicQuery);
+            } else {
+                loadMetadataForAtomicQuery(query);
+            }
         }
     }
 });

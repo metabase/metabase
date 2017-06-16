@@ -6,6 +6,7 @@ import Metadata from "./metadata/Metadata";
 import Table from "./metadata/Table";
 import Field from "./metadata/Field";
 
+import MultiQuery, { convertToMultiDatasetQuery } from "./queries/MultiQuery";
 import StructuredQuery, {
     STRUCTURED_QUERY_TEMPLATE
 } from "./queries/StructuredQuery";
@@ -133,14 +134,16 @@ export default class Question {
      * A question contains either a:
      * - StructuredQuery for queries written in MBQL
      * - NativeQuery for queries written in data source's native query language
+     * - MultiQuery that is composed from one or more structured or native queries
      *
      * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
      */
     @memoize query(): Query {
         const datasetQuery = this._card.dataset_query;
 
-        for (const QueryClass of [StructuredQuery, NativeQuery]) {
+        for (const QueryClass of [MultiQuery, StructuredQuery, NativeQuery]) {
             if (QueryClass.isDatasetQueryType(datasetQuery)) {
+                // $FlowFixMe: flow doesn't support predicate types yet
                 return new QueryClass(this, datasetQuery);
             }
         }
@@ -217,10 +220,48 @@ export default class Question {
     }
 
     /**
+     * Conversion from a single query -centric question to a multi-query question
+     */
+    isMultiQuery(): boolean {
+        return this.query() instanceof MultiQuery;
+    }
+    canConvertToMultiQuery(): boolean {
+        const query = this.query();
+        return query instanceof StructuredQuery &&
+            !query.isBareRows() &&
+            query.breakouts().length === 1;
+    }
+    convertToMultiQuery(): Question {
+        // TODO Atte Keinänen 6/6/17: I want to be 99% sure that this doesn't corrupt the question in any scenario
+        const multiDatasetQuery = convertToMultiDatasetQuery(
+            this,
+            this._card.dataset_query
+        );
+        return this.setCard(
+            assoc(this._card, "dataset_query", multiDatasetQuery)
+        );
+    }
+
+    /**
+     * A convenience shorthand for getting the MultiQuery object for a multi-query question
+     */
+    multiQuery(): MultiQuery {
+        if (!this.isMultiQuery()) {
+            throw new Error(
+                "Tried to use `multiQuery()` shorthand on a non-multi-query question"
+            );
+        }
+
+        // $FlowFixMe
+        return this.query();
+    }
+
+    /**
      * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
      */
     atomicQueries(): AtomicQuery[] {
         const query = this.query();
+        if (query instanceof MultiQuery) return query.atomicQueries();
         if (query instanceof AtomicQuery) return [query];
         return [];
     }
@@ -374,7 +415,9 @@ export default class Question {
     async getResults(
         { cancelDeferred, isDirty = false, ignoreCache = false } = {}
     ): Promise<[Dataset]> {
-        const canUseCardApiEndpoint = !isDirty && this.isSaved();
+        const canUseCardApiEndpoint = !isDirty &&
+            !this.isMultiQuery() &&
+            this.isSaved();
 
         if (canUseCardApiEndpoint) {
             const queryParams = {
@@ -418,6 +461,7 @@ export default class Question {
         //   - if it's new, then it's dirty when
         //       1) there is a database/table chosen or
         //       2) when there is any content on the native query
+        //       3) when the query is a MultiDatasetQuery
         //   - if it's saved, then it's dirty when
         //       1) the current card doesn't match the last saved version
 
@@ -433,6 +477,8 @@ export default class Question {
                 this._card.dataset_query.type === "native" &&
                 !_.isEmpty(this._card.dataset_query.native.query)
             ) {
+                return true;
+            } else if (this._card.dataset_query.type === "multi") {
                 return true;
             } else {
                 return false;
