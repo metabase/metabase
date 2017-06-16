@@ -11,7 +11,7 @@ import {
     ORDERS_TOTAL_FIELD_ID,
     MAIN_METRIC_ID,
     ORDERS_PRODUCT_FK_FIELD_ID,
-    PRODUCT_TILE_FIELD_ID
+    PRODUCT_TILE_FIELD_ID, ORDERS_PK_FIELD_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
 import StructuredQuery from "./StructuredQuery";
@@ -37,7 +37,23 @@ function makeQueryWithAggregation(agg) {
 
 const query = makeQuery({});
 
-describe("StructuredQuery", () => {
+describe("StructuredQuery behavioral tests", () => {
+    fit("Should be able to filter by field which is already used for the query breakout", () => {
+         const breakoutDimensionOptions = query.breakoutOptions().dimensions;
+         const breakoutDimension = breakoutDimensionOptions.find((d) => d.field().id === ORDERS_PK_FIELD_ID);
+
+         expect(breakoutDimension).toBeDefined();
+
+         const queryWithBreakout = query.addBreakout(breakoutDimension.mbql());
+
+         const filterDimensionOptions = queryWithBreakout.filterFieldOptions().dimensions;
+         const filterDimension = filterDimensionOptions.find((d) => d.field().id === ORDERS_PK_FIELD_ID);
+
+         expect(filterDimension).toBeDefined();
+    });
+});
+
+describe("StructuredQuery unit tests", () => {
     describe("canRun", () => {
         it("Should run a valid query", () => {
             expect(query.canRun()).toBe(true);
