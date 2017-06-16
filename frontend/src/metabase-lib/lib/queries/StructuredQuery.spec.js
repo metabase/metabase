@@ -11,7 +11,8 @@ import {
     ORDERS_TOTAL_FIELD_ID,
     MAIN_METRIC_ID,
     ORDERS_PRODUCT_FK_FIELD_ID,
-    PRODUCT_TILE_FIELD_ID, ORDERS_PK_FIELD_ID
+    PRODUCT_TILE_FIELD_ID,
+    ORDERS_PK_FIELD_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
 import StructuredQuery from "./StructuredQuery";
