@@ -39,7 +39,7 @@ function makeQueryWithAggregation(agg) {
 const query = makeQuery({});
 
 describe("StructuredQuery behavioral tests", () => {
-    fit("Should be able to filter by field which is already used for the query breakout", () => {
+    it("Should be able to filter by field which is already used for the query breakout", () => {
          const breakoutDimensionOptions = query.breakoutOptions().dimensions;
          const breakoutDimension = breakoutDimensionOptions.find((d) => d.field().id === ORDERS_PK_FIELD_ID);
 
