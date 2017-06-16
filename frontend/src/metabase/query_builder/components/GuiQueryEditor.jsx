@@ -37,7 +37,7 @@ export type GuiQueryEditorFeatures = {
 type Props = {
     children?: Children,
 
-    features: GuiQueryEditorFeatures,
+    features?: GuiQueryEditorFeatures,
 
     query: StructuredQuery,
 
@@ -386,7 +386,7 @@ export default class GuiQueryEditor extends Component {
     }
 }
 
-const AggregationWidget = ({ index, aggregation, query, updateQuery, addButton }) =>
+export const AggregationWidget = ({ index, aggregation, query, updateQuery, addButton }) =>
     <AggregationWidget_LEGACY
         query={query}
         aggregation={aggregation}
@@ -397,7 +397,7 @@ const AggregationWidget = ({ index, aggregation, query, updateQuery, addButton }
         addButton={addButton}
     />
 
-const BreakoutWidget = ({ className, index, breakout, query, updateQuery, addButton }) =>
+export const BreakoutWidget = ({ className, index, breakout, query, updateQuery, addButton }) =>
     <BreakoutWidget_LEGACY
         className={className}
         field={breakout}
