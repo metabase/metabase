@@ -376,11 +376,14 @@ export default class Question {
     ): Promise<[Dataset]> {
         const canUseCardApiEndpoint = !isDirty && this.isSaved();
 
+        const parametersList = _.pick(this.parametersList(), "target", "type", "value");
+        const hasParameters = parametersList.length > 0;
+
         if (canUseCardApiEndpoint) {
             const queryParams = {
                 cardId: this.id(),
-                parameters: this.parameters(),
-                ignore_cache: ignoreCache
+                ignore_cache: ignoreCache,
+                ...(hasParameters ? { parameters: parametersList } : {})
             };
 
             return [
@@ -389,11 +392,17 @@ export default class Question {
                 })
             ];
         } else {
-            const getDatasetQueryResult = datasetQuery =>
-                MetabaseApi.dataset(
-                    datasetQuery,
-                    cancelDeferred ? { cancelled: cancelDeferred.promise } : {}
+            const getDatasetQueryResult = datasetQuery => {
+                const datasetQueryWithParameters = {
+                    ...datasetQuery,
+                    ...(hasParameters ? { parameters: parametersList } : {})
+                }
+
+                return MetabaseApi.dataset(
+                    datasetQueryWithParameters,
+                    cancelDeferred ? {cancelled: cancelDeferred.promise} : {}
                 );
+            }
 
             const datasetQueries = this.atomicQueries().map(query =>
                 query.datasetQuery());
@@ -401,8 +410,13 @@ export default class Question {
         }
     }
 
+    // TODO: Fix incorrect Flow signature
     parameters(): ParameterObject[] {
         return getParametersWithExtras(this.card(), this._parameterValues);
+    }
+
+    parametersList(): ParameterObject[] {
+        return Object.values(this.parameters());
     }
 
     createParameter(parameter: ParameterOptions) {}
