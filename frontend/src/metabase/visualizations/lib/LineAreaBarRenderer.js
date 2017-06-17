@@ -935,7 +935,14 @@ export default function lineAreaBar(element, {
         let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
         xInterval = computeTimeseriesDataInverval(xValues, unit);
     } else if (isQuantitative) {
-        xInterval = computeNumericDataInverval(xValues);
+        if (series[0].data.cols[0].binning_info) {
+            // Get the bin width from binning_info, if available
+            // TODO: multiseries?
+            xInterval = series[0].data.cols[0].binning_info.bin_width;
+        } else {
+            // Otherwise try to infer from the X values
+            xInterval = computeNumericDataInverval(xValues);
+        }
     }
 
     if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {

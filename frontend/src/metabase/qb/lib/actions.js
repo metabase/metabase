@@ -8,6 +8,7 @@ import * as Query from "metabase/lib/query/query";
 import * as Field from "metabase/lib/query/field";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
+import { rangeForValue } from "metabase/lib/dataset";
 import { isDate, isState, isCountry } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
@@ -87,7 +88,12 @@ const drillFilter = (card, value, column) => {
             moment(value).toISOString()
         ];
     } else {
-        filter = ["=", getFieldRefFromColumn(column), value];
+        const range = rangeForValue(value, column);
+        if (range) {
+            filter = ["BETWEEN", getFieldRefFromColumn(column), range[0], range[1]];
+        } else {
+            filter = ["=", getFieldRefFromColumn(column), value];
+        }
     }
 
     return addOrUpdateFilter(card, filter);
@@ -155,6 +161,9 @@ export const drillDownForDimensions = dimensions => {
     const timeDimensions = dimensions.filter(
         dimension => dimension.column.unit
     );
+    const binnedDimensions = dimensions.filter(
+        dimension => dimension.column.binning_info
+    );
     if (timeDimensions.length === 1) {
         const column = timeDimensions[0].column;
         let nextUnit = getNextUnit(column.unit);
@@ -164,10 +173,30 @@ export const drillDownForDimensions = dimensions => {
                 breakout: [
                     "datetime-field",
                     getFieldRefFromColumn(column),
-                    "as",
                     nextUnit
                 ]
             };
+        }
+    } else if (binnedDimensions.length === 1) {
+        const column = binnedDimensions[0].column;
+        if (column.binning_info.binning_strategy === "num-bins") {
+            return {
+                breakout: [
+                    "binning-strategy",
+                    getFieldRefFromColumn(column),
+                    "num-bins",
+                    column.binning_info.num_bins
+                ]
+            }
+        } else {
+            return {
+                breakout: [
+                    "binning-strategy",
+                    getFieldRefFromColumn(column),
+                    "bin-width",
+                    column.binning_info.bin_width / 10
+                ]
+            }
         }
     }
 };

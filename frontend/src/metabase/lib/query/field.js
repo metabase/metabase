@@ -18,6 +18,9 @@ export function getFieldTargetId(field: FieldReference): ?FieldId {
     } else if (isDatetimeField(field)) {
         // $FlowFixMe
         return getFieldTargetId(field[1]);
+    } else if (isBinningStrategy(field)) {
+        // $FlowFixMe
+        return getFieldTargetId(field[1]);
     }
     console.warn("Unknown field type: ", field);
 }
@@ -36,6 +39,10 @@ export function isForeignKeyField(field: FieldReference): boolean {
 
 export function isDatetimeField(field: FieldReference): boolean {
     return Array.isArray(field) && mbqlEq(field[0], "datetime-field");
+}
+
+export function isBinningStrategy(field: FieldReference): boolean {
+    return Array.isArray(field) && mbqlEq(field[0], "binning-strategy");
 }
 
 export function isExpressionField(field: FieldReference): boolean {
