@@ -61,6 +61,26 @@ import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsLi
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
+// Replacements
+import FieldDetail from "metabase/reference/containers/FieldDetail.jsx";
+import FieldList from "metabase/reference/containers/FieldList.jsx";
+import TableDetail from "metabase/reference/containers/TableDetail.jsx";
+import TableList from "metabase/reference/containers/TableList.jsx";
+import TableQuestions from "metabase/reference/containers/TableQuestions.jsx";
+import SegmentDetail from "metabase/reference/containers/SegmentDetail.jsx";
+import SegmentList from "metabase/reference/containers/SegmentList.jsx";
+import SegmentQuestions from "metabase/reference/containers/SegmentQuestions.jsx";
+import SegmentRevisions from "metabase/reference/containers/SegmentRevisions.jsx";
+import SegmentFieldDetail from "metabase/reference/containers/SegmentFieldDetail.jsx";
+import SegmentFieldList from "metabase/reference/containers/SegmentFieldList.jsx";
+
+import DatabaseDetail from "metabase/reference/containers/DatabaseDetail.jsx";
+import DatabaseList from "metabase/reference/containers/DatabaseList.jsx";
+import MetricDetail from "metabase/reference/containers/MetricDetail.jsx";
+import MetricList from "metabase/reference/containers/MetricList.jsx";
+import MetricQuestions from "metabase/reference/containers/MetricQuestions.jsx";
+import MetricRevisions from "metabase/reference/containers/MetricRevisions.jsx";
+
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
@@ -193,23 +213,23 @@ export const getRoutes = (store) =>
                 <Route path="/reference" title="Data Reference" component={ReferenceApp}>
                     <IndexRedirect to="/reference/guide" />
                     <Route path="guide" title="Getting Started" component={ReferenceGettingStartedGuide} />
-                    <Route path="metrics" component={ReferenceEntityList} />
-                    <Route path="metrics/:metricId" component={ReferenceEntity} />
-                    <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
-                    <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="segments" component={ReferenceEntityList} />
-                    <Route path="segments/:segmentId" component={ReferenceEntity} />
-                    <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
-                    <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
-                    <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="databases" component={ReferenceEntityList} />
-                    <Route path="databases/:databaseId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
-                    <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
+                    <Route path="metrics" component={MetricList} />
+                    <Route path="metrics/:metricId" component={MetricDetail} />
+                    <Route path="metrics/:metricId/questions" component={MetricQuestions} />
+                    <Route path="metrics/:metricId/revisions" component={MetricRevisions} />
+                    <Route path="segments" component={SegmentList} />
+                    <Route path="segments/:segmentId" component={SegmentDetail} />
+                    <Route path="segments/:segmentId/fields" component={SegmentFieldList} />
+                    <Route path="segments/:segmentId/fields/:fieldId" component={SegmentFieldDetail} />
+                    <Route path="segments/:segmentId/questions" component={SegmentQuestions} />
+                    <Route path="segments/:segmentId/revisions" component={SegmentRevisions} />
+                    <Route path="databases" component={DatabaseList} />
+                    <Route path="databases/:databaseId" component={DatabaseDetail} />
+                    <Route path="databases/:databaseId/tables" component={TableList} />
+                    <Route path="databases/:databaseId/tables/:tableId" component={TableDetail} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields" component={FieldList} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={FieldDetail} />
+                    <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestions} />
                 </Route>
 
                 {/* PULSE */}

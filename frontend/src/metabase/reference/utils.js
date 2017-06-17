@@ -463,6 +463,31 @@ export const typeToBgClass = {
     table: 'bg-purple'
 };
 
+export const emptyStateForUser = (emptyStateData, user) => {
+    const title = emptyStateData.title
+    
+    const message= user.is_superuser ?
+        emptyStateData.adminMessage || emptyStateData.message :
+        emptyStateData.message
+    
+       
+    const action=user.is_superuser ?
+        emptyStateData.adminAction || emptyStateData.action :
+        emptyStateData.action
+    
+    
+    const link=user.is_superuser ?
+        emptyStateData.adminLink || emptyStateData.link :
+        emptyStateData.link
+    
+    return {title : title, 
+            message : message, 
+            icon: emptyStateData.icon, 
+            image: emptyStateData.image, 
+            action: action,
+            link: link}
+};
+
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states
 export const has = (entity) => entity && entity.length > 0;

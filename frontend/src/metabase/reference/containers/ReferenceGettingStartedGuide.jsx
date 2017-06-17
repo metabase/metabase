@@ -50,6 +50,21 @@ import {
     tryUpdateGuide
 } from '../utils';
 
+const section = {
+        id: `/reference/guide`,
+        name: "Start here",
+        breadcrumb: "Guide",
+        fetch: {
+            fetchGuide: [],
+            fetchDashboards: [],
+            fetchMetrics: [],
+            fetchSegments: [],
+            fetchDatabasesWithMetadata: []
+        },
+        icon: "reference",
+        sidebar: false
+    }
+
 const mapStateToProps = (state, props) => {
     const guide = getGuide(state, props);
     const dashboards = getDashboards(state, props);
