@@ -43,9 +43,8 @@ import querystring from "querystring";
 import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils";
 
 import type { Card } from "metabase/meta/types/Card";
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/NativeQuery";
-import MultiQuery from "metabase-lib/lib/MultiQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 type UiControls = {
     isEditing?: boolean,
@@ -251,9 +250,8 @@ export const initializeQB = (location, params) => {
 
         } else {
             // we are starting a new/empty card
-            const databaseId = (options.db) ? parseInt(options.db) : (databasesList && databasesList.length > 0 && databasesList[0].id);
 
-            card = startNewCard("query", databaseId);
+            card = startNewCard("query");
 
             // initialize parts of the query based on optional parameters supplied
             if (options.table != undefined && card.dataset_query.query) {
@@ -292,23 +290,17 @@ export const initializeQB = (location, params) => {
                 // NOTE: timeout to allow Parameters widget to set parameterValues
                 setTimeout(() =>
                     // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
-                    dispatch(runQuestionQuery({ overrideWithCard: card, shouldUpdateUrl: false }))
+                    dispatch(runQuestionQuery({ shouldUpdateUrl: false }))
                 , 0);
             }
 
-            const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
             // clean up the url and make sure it reflects our card state
+            const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
             dispatch(updateUrl(card, {
                 dirty: originalQuestion && question.isDirtyComparedTo(originalQuestion),
                 replaceState: true,
                 preserveParameters
             }));
-        }
-
-        // if we have loaded up a card that we can run then lets kick that off as well
-        if (question.canRun()) {
-            // NOTE: timeout to allow Parameters widget to set parameterValues
-            setTimeout(() => dispatch(runQuestionQuery({ shouldUpdateUrl: false })), 0);
         }
     };
 };
@@ -377,7 +369,7 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
 
         const query = card && new Question(getMetadata(getState()), card).query();
 
-        function loadMetadataForSingleQuery(singleQuery) {
+        function loadMetadataForAtomicQuery(singleQuery) {
             if (singleQuery instanceof StructuredQuery && singleQuery.tableId() != null) {
                 dispatch(loadTableMetadata(singleQuery.tableId()));
             }
@@ -388,11 +380,7 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
         }
 
         if (query) {
-            if (query instanceof MultiQuery) {
-                query.childQueries().map(loadMetadataForSingleQuery);
-            } else {
-                loadMetadataForSingleQuery(query);
-            }
+            loadMetadataForAtomicQuery(query);
         }
     }
 });
@@ -630,7 +618,7 @@ export const updateQuestion = (newQuestion) => {
         // Replace the current question with a new one
         dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
-        // See it the template tags editor should be shown/hidden
+        // See if the template tags editor should be shown/hidden
 
         const oldQuestion = getQuestion(getState());
         const oldTagCount = getTemplateTagCount(oldQuestion);
@@ -749,6 +737,9 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     };
 });
 
+// TODO Atte Keinänen: The heavy lifting should be moved to StructuredQuery and NativeQuery
+// Question.js could possibly provide a helper method like `Question.setDatabaseId` that delegates it to respective query classes
+
 // setQueryDatabase
 export const SET_QUERY_DATABASE = "metabase/qb/SET_QUERY_DATABASE";
 export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseId) => {
@@ -797,6 +788,9 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
         }
     };
 });
+
+// TODO Atte Keinänen: The heavy lifting should be moved to StructuredQuery and NativeQuery
+// Question.js could possibly provide a helper method like `Question.setSourceTable` that delegates it to respective query classes
 
 // setQuerySourceTable
 export const SET_QUERY_SOURCE_TABLE = "metabase/qb/SET_QUERY_SOURCE_TABLE";
@@ -935,23 +929,6 @@ export const removeQueryExpression = createQueryAction(
     Query.removeExpression,
     ["QueryBuilder", "Remove Expression"]
 );
-
-
-// TODO: Used also in SavedMetricSelector, should this be part of metabase-lib or not?
-// (Kept temporarily here next to the action that uses it)
-export const getQuestionQueryResults = (question, cancelQueryDeferred) => {
-    const rootQuery = question.query();
-    const queries = rootQuery instanceof MultiQuery ? rootQuery.childQueries() : [rootQuery];
-
-    // Note that triggering cancelQueryDeferred will cancel every distinct query API call
-    const getQueryResult = (query) =>
-        MetabaseApi.dataset(
-            query.datasetQuery(),
-            cancelQueryDeferred ? {cancelled: cancelQueryDeferred.promise} : {}
-        );
-
-    return Promise.all(queries.map(getQueryResult))
-};
 
 /**
  * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.

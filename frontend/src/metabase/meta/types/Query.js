@@ -53,11 +53,14 @@ export type StructuredQuery = {
 };
 
 export type AggregationClause =
-    Aggregation | // deprecated
+    Aggregation | // @deprecated: aggregation clause is now an array
     Array<Aggregation>;
 
+/**
+ * An aggregation MBQL clause
+ */
 export type Aggregation =
-    Rows | // deprecated
+    Rows | // @deprecated: implicit when there are no aggregations
     CountAgg |
     CountFieldAgg |
     AvgAgg |
@@ -69,8 +72,14 @@ export type Aggregation =
     MaxAgg |
     MetricAgg;
 
-type Rows           = ["rows"]; // deprecated
+
+/**
+ * @deprecated: implicit when there are no aggregations
+ */
+type Rows           = ["rows"];
+
 type CountAgg       = ["count"];
+
 type CountFieldAgg  = ["count", ConcreteField];
 type AvgAgg         = ["avg", ConcreteField];
 type CumSumAgg      = ["cum_sum", ConcreteField];
@@ -79,6 +88,7 @@ type StdDevAgg      = ["stddev", ConcreteField];
 type SumAgg         = ["sum", ConcreteField];
 type MinAgg         = ["min", ConcreteField];
 type MaxAgg         = ["max", ConcreteField];
+
 // NOTE: currently the backend expects METRIC to be uppercase
 type MetricAgg      = ["METRIC", MetricId];
 
@@ -138,7 +148,7 @@ export type ConcreteField =
 
 export type LocalFieldReference =
     ["field-id", FieldId] |
-    FieldId; // deprecated
+    FieldId; // @deprecated: use ["field-id", FieldId]
 
 export type ForeignFieldReference =
     ["fk->", FieldId, FieldId];
@@ -148,7 +158,7 @@ export type ExpressionReference =
 
 export type DatetimeField =
     ["datetime-field", LocalFieldReference | ForeignFieldReference, DatetimeUnit] |
-    ["datetime-field", LocalFieldReference | ForeignFieldReference, "as", DatetimeUnit]; // deprecated
+    ["datetime-field", LocalFieldReference | ForeignFieldReference, "as", DatetimeUnit]; // @deprecated: don't include the "as" element
 
 export type AggregateField = ["aggregation", number];
 

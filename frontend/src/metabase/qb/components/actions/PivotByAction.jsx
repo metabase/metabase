@@ -3,7 +3,7 @@
 import React from "react";
 
 import BreakoutPopover from "metabase/qb/components/gui/BreakoutPopover";
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type { Field } from "metabase/meta/types/Field";
 import type {

@@ -1,6 +1,7 @@
 :root {
   --brand-color: #509EE3;
   --brand-light-color: #CDE3F8;
+  --brand-saturated-color: #2D86D4;
 
   --base-grey: #f8f8f8;
   --grey-1: color(var(--base-grey) shade(10%));
@@ -43,6 +44,11 @@
 .text-brand, :local(.text-brand),
 .text-brand-hover:hover, :local(.text-brand-hover):hover {
     color: var(--brand-color);
+}
+
+.text-brand-saturated,
+.text-brand-saturated-hover:hover {
+    color: var(--brand-saturated-color);
 }
 
 .text-brand-darken,

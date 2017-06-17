@@ -5,9 +5,9 @@ import SummarizeColumnDrill from "./SummarizeColumnDrill";
 import {
     question,
     clickedFloatHeader,
-    MAIN_TABLE_ID,
-    MAIN_FLOAT_FIELD_ID
-} from "metabase/__support__/fixtures";
+    ORDERS_TABLE_ID,
+    ORDERS_TOTAL_FIELD_ID
+} from "metabase/__support__/sample_dataset_fixture";
 
 describe("SummarizeColumnDrill", () => {
     it("should not be valid for top level actions", () => {
@@ -21,8 +21,8 @@ describe("SummarizeColumnDrill", () => {
         expect(actions.length).toEqual(5);
         let newCard = actions[0].question().card();
         expect(newCard.dataset_query.query).toEqual({
-            source_table: MAIN_TABLE_ID,
-            aggregation: [["sum", ["field-id", MAIN_FLOAT_FIELD_ID]]]
+            source_table: ORDERS_TABLE_ID,
+            aggregation: [["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]]]
         });
         expect(newCard.display).toEqual("scalar");
     });

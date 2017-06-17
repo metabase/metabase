@@ -21,7 +21,7 @@ import type { DimensionValue } from "metabase/meta/types/Visualization";
 
 export const toUnderlyingData = (card: CardObject): ?CardObject => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.display = "table";
     newCard.original_card_id = card.id;
     return newCard;
@@ -29,7 +29,7 @@ export const toUnderlyingData = (card: CardObject): ?CardObject => {
 
 export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     if (card.dataset_query.type === "query") {
-        const query: StructuredQuery = card.dataset_query.query;
+        const query: StructuredQuery = Utils.copy(card.dataset_query).query;
         const newCard = startNewCard(
             "query",
             card.dataset_query.database,
@@ -53,7 +53,14 @@ const clone = card => {
 
     newCard.display = card.display;
     newCard.dataset_query = Utils.copy(card.dataset_query);
-    newCard.visualization_settings = Utils.copy(card.visualization_settings);
+
+    // The Question lib doesn't always set a viz setting. Placing a check here, but we should probably refactor this
+    // into a separate test + clean up the question lib.
+    if (card.visualization_settings) {
+        newCard.visualization_settings = Utils.copy(
+            card.visualization_settings
+        );
+    }
 
     return newCard;
 };
@@ -61,6 +68,7 @@ const clone = card => {
 // Adds a new filter with the specified operator, column, and value
 export const filter = (card, operator, column, value) => {
     const newCard = clone(card);
+
     // $FlowFixMe:
     const filter: FieldFilter = [
         operator,
@@ -236,13 +244,13 @@ export const drillRecord = (databaseId, tableId, fieldId, value) => {
 export const plotSegmentField = card => {
     const newCard = startNewCard("query");
     newCard.display = "scatter";
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     return newCard;
 };
 
 export const summarize = (card, aggregation, tableMetadata) => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.dataset_query.query = Query.addAggregation(
         newCard.dataset_query.query,
         aggregation
@@ -253,7 +261,7 @@ export const summarize = (card, aggregation, tableMetadata) => {
 
 export const breakout = (card, breakout, tableMetadata) => {
     const newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
     newCard.dataset_query.query = Query.addBreakout(
         newCard.dataset_query.query,
         breakout
@@ -343,7 +351,7 @@ export const pivot = (
     }
 
     let newCard = startNewCard("query");
-    newCard.dataset_query = card.dataset_query;
+    newCard.dataset_query = Utils.copy(card.dataset_query);
 
     for (const dimension of dimensions) {
         newCard = drillFilter(newCard, dimension.value, dimension.column);

@@ -2,12 +2,12 @@ import Dimension from "./Dimension";
 
 import {
     metadata,
-    MAIN_FLOAT_FIELD_ID,
-    MAIN_CATEGORY_FIELD_ID,
-    MAIN_DATE_FIELD_ID,
-    MAIN_FK_FIELD_ID,
-    FOREIGN_TEXT_FIELD_ID
-} from "metabase/__support__/fixtures";
+    ORDERS_TOTAL_FIELD_ID,
+    PRODUCT_CATEGORY_FIELD_ID,
+    ORDERS_CREATED_DATE_FIELD_ID,
+    ORDERS_PRODUCT_FK_FIELD_ID,
+    PRODUCT_TILE_FIELD_ID
+} from "metabase/__support__/sample_dataset_fixture";
 
 describe("Dimension", () => {
     it("should parse and format MBQL correctly", () => {
@@ -62,17 +62,28 @@ describe("Dimension", () => {
 
 describe("FieldIdDimension", () => {
     const dimension = Dimension.parseMBQL(
-        ["field-id", MAIN_FLOAT_FIELD_ID],
+        ["field-id", ORDERS_TOTAL_FIELD_ID],
         metadata
     );
     describe("mbql", () => {
         it('should return a "field-id" clause', () => {
-            expect(dimension.mbql()).toEqual(["field-id", MAIN_FLOAT_FIELD_ID]);
+            expect(dimension.mbql()).toEqual([
+                "field-id",
+                ORDERS_TOTAL_FIELD_ID
+            ]);
         });
     });
     describe("displayName", () => {
         it("should return the field name", () => {
-            expect(dimension.displayName()).toEqual("Mock Float Field");
+            expect(dimension.displayName()).toEqual("Total");
+        });
+        it("should return 'Product ID' for the Orders table field PRODUCT_ID", () => {
+            const productIdDimension = Dimension.parseMBQL(
+                ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
+                metadata
+            );
+
+            expect(productIdDimension.displayName()).toEqual("Product ID");
         });
     });
     describe("subDisplayName", () => {
@@ -84,7 +95,7 @@ describe("FieldIdDimension", () => {
         it("should return 'Default' for non-numeric fields", () => {
             expect(
                 Dimension.parseMBQL(
-                    ["field-id", MAIN_CATEGORY_FIELD_ID],
+                    ["field-id", PRODUCT_CATEGORY_FIELD_ID],
                     metadata
                 ).subDisplayName()
             ).toEqual("Default");
@@ -99,28 +110,26 @@ describe("FieldIdDimension", () => {
 
 describe("FKDimension", () => {
     const dimension = Dimension.parseMBQL(
-        ["fk->", MAIN_FK_FIELD_ID, FOREIGN_TEXT_FIELD_ID],
+        ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID],
         metadata
     );
     describe("mbql", () => {
         it('should return a "fk->" clause', () => {
             expect(dimension.mbql()).toEqual([
                 "fk->",
-                MAIN_FK_FIELD_ID,
-                FOREIGN_TEXT_FIELD_ID
+                ORDERS_PRODUCT_FK_FIELD_ID,
+                PRODUCT_TILE_FIELD_ID
             ]);
         });
     });
     describe("displayName", () => {
         it("should return the field name", () => {
-            expect(dimension.displayName()).toEqual("Mock Foreign Text Field");
+            expect(dimension.displayName()).toEqual("Title");
         });
     });
     describe("subDisplayName", () => {
         it("should return the field name", () => {
-            expect(dimension.subDisplayName()).toEqual(
-                "Mock Foreign Text Field"
-            );
+            expect(dimension.subDisplayName()).toEqual("Title");
         });
     });
     describe("subTriggerDisplayName", () => {
@@ -132,21 +141,21 @@ describe("FKDimension", () => {
 
 describe("DatetimeFieldDimension", () => {
     const dimension = Dimension.parseMBQL(
-        ["datetime-field", MAIN_DATE_FIELD_ID, "month"],
+        ["datetime-field", ORDERS_CREATED_DATE_FIELD_ID, "month"],
         metadata
     );
     describe("mbql", () => {
         it('should return a "datetime-field" clause', () => {
             expect(dimension.mbql()).toEqual([
                 "datetime-field",
-                ["field-id", MAIN_DATE_FIELD_ID],
+                ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
                 "month"
             ]);
         });
     });
     describe("displayName", () => {
         it("should return the field name", () => {
-            expect(dimension.displayName()).toEqual("Mock Date Field");
+            expect(dimension.displayName()).toEqual("Created At");
         });
     });
     describe("subDisplayName", () => {
@@ -163,14 +172,14 @@ describe("DatetimeFieldDimension", () => {
 
 describe("BinningStrategyDimension", () => {
     const dimension = Dimension.parseMBQL(
-        ["binning-strategy", MAIN_FLOAT_FIELD_ID, "default", 10],
+        ["binning-strategy", ORDERS_TOTAL_FIELD_ID, "default", 10],
         metadata
     );
     describe("mbql", () => {
         it('should return a "binning-strategy" clause', () => {
             expect(dimension.mbql()).toEqual([
                 "binning-strategy",
-                ["field-id", MAIN_FLOAT_FIELD_ID],
+                ["field-id", ORDERS_TOTAL_FIELD_ID],
                 "default",
                 10
             ]);
@@ -178,7 +187,7 @@ describe("BinningStrategyDimension", () => {
     });
     describe("displayName", () => {
         it("should return the field name", () => {
-            expect(dimension.displayName()).toEqual("Mock Float Field");
+            expect(dimension.displayName()).toEqual("Total");
         });
     });
     describe("subDisplayName", () => {

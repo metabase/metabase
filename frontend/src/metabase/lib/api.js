@@ -77,41 +77,45 @@ class Api extends EventEmitter {
                     }
                 }
 
-                return new Promise((resolve, reject) => {
-                    let xhr = new XMLHttpRequest();
-                    xhr.open(method, this.basename + url);
-                    for (let headerName in headers) {
-                        xhr.setRequestHeader(headerName, headers[headerName])
-                    }
-                    xhr.onreadystatechange = () => {
-                        // $FlowFixMe
-                        if (xhr.readyState === XMLHttpRequest.DONE) {
-                            let body = xhr.responseText;
-                            try { body = JSON.parse(body); } catch (e) {}
-                            if (xhr.status >= 200 && xhr.status <= 299) {
-                                if (options.transformResponse) {
-                                    body = options.transformResponse(body, { data });
-                                }
-                                resolve(body);
-                            } else {
-                                reject({
-                                    status: xhr.status,
-                                    data: body
-                                });
-                            }
-                            if (!options.noEvent) {
-                                this.emit(xhr.status, url);
-                            }
-                        }
-                    }
-                    xhr.send(body);
-
-                    if (options.cancelled) {
-                        options.cancelled.then(() => xhr.abort());
-                    }
-                });
+                return this._makeRequest(method, url, headers, body, data, options);
             }
         }
+    }
+
+    _makeRequest(method, url, headers, body, data, options) {
+        return new Promise((resolve, reject) => {
+            let xhr = new XMLHttpRequest();
+            xhr.open(method, this.basename + url);
+            for (let headerName in headers) {
+                xhr.setRequestHeader(headerName, headers[headerName])
+            }
+            xhr.onreadystatechange = () => {
+                // $FlowFixMe
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    let body = xhr.responseText;
+                    try { body = JSON.parse(body); } catch (e) {}
+                    if (xhr.status >= 200 && xhr.status <= 299) {
+                        if (options.transformResponse) {
+                            body = options.transformResponse(body, { data });
+                        }
+                        resolve(body);
+                    } else {
+                        reject({
+                            status: xhr.status,
+                            data: body
+                        });
+                    }
+                    if (!options.noEvent) {
+                        this.emit(xhr.status, url);
+                    }
+                }
+            }
+            xhr.send(body);
+
+            if (options.cancelled) {
+                options.cancelled.then(() => xhr.abort());
+            }
+        });
     }
 }
 

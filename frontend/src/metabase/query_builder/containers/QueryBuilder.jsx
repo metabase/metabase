@@ -23,9 +23,6 @@ import ActionsWidget from "../components/ActionsWidget.jsx";
 
 import title from "metabase/hoc/Title";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/NativeQuery";
-
 import {
     getCard,
     getOriginalCard,
@@ -60,7 +57,9 @@ import * as actions from "../actions";
 import { push } from "react-router-redux";
 
 import { MetabaseApi } from "metabase/services";
-import QuestionBuilder from "metabase/query_builder/containers/QuestionBuilder";
+
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -206,18 +205,11 @@ export default class QueryBuilder extends Component {
     }
 
     render() {
-        const { question } = this.props;
-        const isMultiQueryQuestion = question && question.isMultiQuery();
-
-        if (isMultiQueryQuestion) {
-            return <QuestionBuilder {...this.props} qbIsAlreadyInitialized />
-        } else {
-            return (
-                <div className="flex-full flex relative">
-                    <LegacyQueryBuilder {...this.props} />
-                </div>
-            )
-        }
+        return (
+            <div className="flex-full flex relative">
+                <LegacyQueryBuilder {...this.props} />
+            </div>
+        )
     }
 }
 
@@ -249,7 +241,7 @@ class LegacyQueryBuilder extends Component {
                                 isOpen={!card.dataset_query.native.query || isDirty}
                                 datasetQuery={card && card.dataset_query}
                             />
-                        : query instanceof StructuredQuery ?
+                        : (query instanceof StructuredQuery) ?
                             <div className="wrapper">
                                 <GuiQueryEditor
                                     {...this.props}
@@ -259,8 +251,9 @@ class LegacyQueryBuilder extends Component {
                         : null }
                     </div>
 
-                    <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
-                        <QueryVisualization {...this.props} className="full wrapper mb2 z1" />
+                    <div ref="viz" id="react_qb_viz" className="flex z1"
+                         style={{"transition": "opacity 0.25s ease-in-out"}}>
+                        <QueryVisualization {...this.props} className="full wrapper mb2 z1"/>
                     </div>
 
                     { ModeFooter &&

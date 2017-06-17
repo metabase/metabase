@@ -2,7 +2,7 @@
 
 import { inflect } from "metabase/lib/formatting";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import type {
     ClickAction,

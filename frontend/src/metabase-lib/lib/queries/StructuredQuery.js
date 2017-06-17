@@ -2,15 +2,7 @@
 
 /**
  * Represents a structured MBQL query.
- *
- * Although MultiQuery has superseded the multi-aggregation functionality of StructuredQuery, this class still
- * contains the multi-aggregation support for dealing with `dataset_query` objects that are in a legacy format.
- *
- * TODO Atte Keinänen 6/6/17: Should the multi-aggregation questions be automatically converted to MultiQuery or not?
  */
-import Query from "./Query";
-
-import Metric from "./metadata/Metric";
 
 import * as Q from "metabase/lib/query/query";
 import Q_deprecated, {
@@ -39,8 +31,6 @@ import type {
     TableMetadata,
     DimensionOptions
 } from "metabase/meta/types/Metadata";
-// TODO: Update Flow so that interfaces are supported
-// import type { SingleDatabaseQuery } from "./interfaces";
 
 import Dimension, {
     FKDimension,
@@ -48,12 +38,17 @@ import Dimension, {
     AggregationDimension
 } from "metabase-lib/lib/Dimension";
 
-import type Table from "metabase-lib/lib/metadata/Table";
+import type Table from "../metadata/Table";
+import type Segment from "../metadata/Segment";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Question from "metabase-lib/lib/Question";
+import type Database from "../metadata/Database";
+import type Question from "../Question";
+import type { TableId } from "metabase/meta/types/Table";
+import AtomicQuery from "./AtomicQuery";
+import AggregationWrapper from "./Aggregation";
+import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
 
-const STRUCTURED_QUERY_TEMPLATE = {
+export const STRUCTURED_QUERY_TEMPLATE = {
     database: null,
     type: "query",
     query: {
@@ -61,15 +56,20 @@ const STRUCTURED_QUERY_TEMPLATE = {
     }
 };
 
-export default class StructuredQuery extends Query {
+/**
+ * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
+ */
+export default class StructuredQuery extends AtomicQuery {
     static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
         return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
     }
 
-    // implements SingleDatabaseQuery
     // For Flow type completion
     _structuredDatasetQuery: StructuredDatasetQuery;
 
+    /**
+     * Creates a new StructuredQuery based on the provided DatasetQuery object
+     */
     constructor(
         question: Question,
         datasetQuery: DatasetQuery = STRUCTURED_QUERY_TEMPLATE
@@ -80,26 +80,76 @@ export default class StructuredQuery extends Query {
         this._structuredDatasetQuery = datasetQuery;
     }
 
+    static newStucturedQuery(
+        {
+            question,
+            databaseId,
+            tableId
+        }: { question: Question, databaseId?: DatabaseId, tableId?: TableId }
+    ) {
+        const datasetQuery = {
+            ...STRUCTURED_QUERY_TEMPLATE,
+            database: databaseId || null,
+            query: {
+                source_table: tableId || null
+            }
+        };
+
+        return new StructuredQuery(question, datasetQuery);
+    }
+
     /* Query superclass methods */
 
+    /**
+     * @returns true if this is new query that hasn't been modified yet.
+     */
+    isEmpty() {
+        return !this.databaseId();
+    }
+
+    /**
+     * @returns true if this query is in a state where it can be run.
+     */
     canRun() {
         return Q_deprecated.canRun(this.query());
     }
 
-    /* SingleDatabaseQuery methods */
+    /**
+     * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
+     */
+    isEditable(): boolean {
+        return !!this.tableMetadata();
+    }
 
+    /* AtomicQuery superclass methods */
+
+    /**
+     * @returns all tables in the currently selected database that can be used.
+     */
     tables(): ?(Table[]) {
         const database = this.database();
         return (database && database.tables) || null;
     }
+
+    /**
+     * @returns the currently selected database ID, if any is selected.
+     */
     databaseId(): ?DatabaseId {
         // same for both structured and native
         return this._structuredDatasetQuery.database;
     }
+
+    /**
+     * @returns the currently selected database metadata, if a database is selected and loaded.
+     */
     database(): ?Database {
         const databaseId = this.databaseId();
         return databaseId != null ? this._metadata.databases[databaseId] : null;
     }
+
+    /**
+     * @returns the database engine object, if a database is selected and loaded.
+     */
     engine(): ?DatabaseEngine {
         const database = this.database();
         return database && database.engine;
@@ -107,29 +157,28 @@ export default class StructuredQuery extends Query {
 
     /* Methods unique to this query type */
 
+    /**
+     * @returns a new reset @type {StructuredQuery} with the same parent @type {Question}
+     */
     reset(): StructuredQuery {
         return new StructuredQuery(this._originalQuestion);
     }
 
-    isEditable(): boolean {
-        return !!this.tableMetadata();
-    }
-
+    /**
+     * @returns the underlying MBQL query object
+     */
     query(): StructuredQueryObject {
         return this._structuredDatasetQuery.query;
     }
 
-    // legacy
-    tableMetadata(): ?TableMetadata {
-        const sourceTableId = this._structuredDatasetQuery.query.source_table;
-        if (sourceTableId != null) {
-            return this._metadata.tables[sourceTableId];
-        }
-    }
-
-    setDatabase(database: Database) {
+    /**
+     * @returns a new query with the provided Database set.
+     */
+    setDatabase(database: Database): StructuredQuery {
         if (database.id !== this.databaseId()) {
-            return this.reset().setDatasetQuery(
+            // TODO: this should reset the rest of the query?
+            return new StructuredQuery(
+                this._originalQuestion,
                 assoc(this.datasetQuery(), "database", database.id)
             );
         } else {
@@ -137,9 +186,13 @@ export default class StructuredQuery extends Query {
         }
     }
 
-    setTable(table: Table) {
+    /**
+     * @returns a new query with the provided Table set.
+     */
+    setTable(table: Table): StructuredQuery {
         if (table.id !== this.tableId()) {
-            return this.reset().setDatasetQuery(
+            return new StructuredQuery(
+                this._originalQuestion,
                 chain(this.datasetQuery())
                     .assoc("database", table.database.id)
                     .assocIn(["query", "source_table"], table.id)
@@ -150,21 +203,70 @@ export default class StructuredQuery extends Query {
         }
     }
 
-    tableId() {
+    /**
+     * @returns the table ID, if a table is selected.
+     */
+    tableId(): ?TableId {
         return this.query().source_table;
     }
 
-    table() {
+    /**
+     * @returns the table object, if a table is selected and loaded.
+     * FIXME: actual return type should be `?Table`
+     */
+    table(): Table {
         return this._metadata.tables[this.tableId()];
     }
 
+    /**
+     * @deprecated Alias of `table()`. Use only when partially porting old code that uses @type {TableMetadata} object.
+     */
+    tableMetadata(): ?TableMetadata {
+        return this.table();
+    }
+
     // AGGREGATIONS
+
+    /**
+     * @returns an array of MBQL @type {Aggregation}s.
+     */
     aggregations(): Aggregation[] {
         return Q.getAggregations(this.query());
     }
-    aggregationOptions(): any[] {
-        return this.table().aggregations();
+
+    /**
+     * @returns an array of aggregation wrapper objects
+     * TODO Atte Keinänen 6/11/17: Make the wrapper objects the standard format for aggregations
+     */
+    aggregationsWrapped(): AggregationWrapper[] {
+        return this.aggregations().map(
+            agg => new AggregationWrapper(this, agg)
+        );
     }
+
+    /**
+     * @returns an array of aggregation options for the currently selected table
+     */
+    aggregationOptions(): AggregationOption[] {
+        // TODO Should `aggregation_options` be wrapped already in selectors/metadata.js?
+        const optionObjects = this.table() && this.table().aggregations();
+        return optionObjects
+            ? optionObjects.map(agg => new AggregationOption(agg))
+            : [];
+    }
+
+    /**
+     * @returns an array of aggregation options for the currently selected table, excluding the "rows" pseudo-aggregation
+     */
+    aggregationOptionsWithoutRows(): AggregationOption[] {
+        return this.aggregationOptions().filter(
+            option => option.short !== "rows"
+        );
+    }
+
+    /**
+     * @returns the field options for the provided aggregation
+     */
     aggregationFieldOptions(agg): DimensionOptions {
         const aggregation = this.table().aggregation(agg);
         if (aggregation) {
@@ -177,14 +279,23 @@ export default class StructuredQuery extends Query {
         }
     }
 
+    /**
+     * @returns true if the aggregation can be removed
+     */
     canRemoveAggregation(): boolean {
         return this.aggregations().length > 1;
     }
 
+    /**
+     * @returns true if the query has no aggregation
+     */
     isBareRows(): boolean {
         return Q.isBareRows(this.query());
     }
 
+    /**
+     * @returns the formatted named of the aggregation at the provided index.
+     */
     aggregationName(index: number = 0): ?string {
         const aggregation = this.aggregations()[index];
         if (NamedClause.isNamed(aggregation)) {
@@ -223,85 +334,152 @@ export default class StructuredQuery extends Query {
     }
 
     /**
-     * For dealing with the legacy multi-aggregation queries
+     * @returns {StructuredQuery} new query with the provided MBQL @type {Aggregation} added.
      */
-    addAggregation(aggregation: Aggregation) {
+    addAggregation(aggregation: Aggregation): StructuredQuery {
         return this._updateQuery(Q.addAggregation, arguments);
     }
-    updateAggregation(index: number, aggregation: Aggregation) {
+
+    /**
+     * @returns {StructuredQuery} new query with the MBQL @type {Aggregation} updated at the provided index.
+     */
+    updateAggregation(
+        index: number,
+        aggregation: Aggregation
+    ): StructuredQuery {
         return this._updateQuery(Q.updateAggregation, arguments);
     }
-    removeAggregation(index: number) {
+
+    /**
+     * @returns {StructuredQuery} new query with the aggregation at the provided index removed.
+     */
+    removeAggregation(index: number): StructuredQuery {
         return this._updateQuery(Q.removeAggregation, arguments);
     }
-    clearAggregations() {
+
+    /**
+     * @returns {StructuredQuery} new query with all aggregations removed.
+     */
+    clearAggregations(): StructuredQuery {
         return this._updateQuery(Q.clearAggregations, arguments);
-    }
-
-    equalsToMetric(metric: Metric) {
-        const aggregations = this.aggregations();
-        if (aggregations.length !== 1) return false;
-
-        const agg = aggregations[0];
-        return AggregationClause.isMetric(agg) &&
-            AggregationClause.getMetric(agg) === metric.id;
     }
 
     // BREAKOUTS
 
+    /**
+     * @returns An array of MBQL @type {Breakout}s.
+     */
     breakouts(): Breakout[] {
         return Q.getBreakouts(this.query());
     }
+
+    /**
+     * @param breakout The breakout to include even if it's already used
+     * @param fieldFilter An option @type {Field} predicate to filter out options
+     * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
+     */
     breakoutOptions(breakout?: any, fieldFilter = () => true) {
         return this.fieldOptions(breakout, fieldFilter);
     }
 
+    /**
+     * @returns whether a new breakout can be added or not
+     */
     canAddBreakout(): boolean {
         return this.breakoutOptions().count > 0;
     }
+
+    /**
+     * @returns whether the current query has a valid breakout
+     */
     hasValidBreakout(): boolean {
         return Q_deprecated.hasValidBreakout(this.query());
     }
 
+    /**
+     * @returns {StructuredQuery} new query with the provided MBQL @type {Breakout} added.
+     */
     addBreakout(breakout: Breakout) {
         return this._updateQuery(Q.addBreakout, arguments);
     }
+
+    /**
+     * @returns {StructuredQuery} new query with the MBQL @type {Breakout} updated at the provided index.
+     */
     updateBreakout(index: number, breakout: Breakout) {
         return this._updateQuery(Q.updateBreakout, arguments);
     }
+
+    /**
+     * @returns {StructuredQuery} new query with the breakout at the provided index removed.
+     */
     removeBreakout(index: number) {
         return this._updateQuery(Q.removeBreakout, arguments);
     }
+    /**
+     * @returns {StructuredQuery} new query with all breakouts removed.
+     */
     clearBreakouts() {
         return this._updateQuery(Q.clearBreakouts, arguments);
     }
 
     // FILTERS
 
+    /**
+     * @returns An array of MBQL @type {Filter}s.
+     */
     filters(): Filter[] {
         return Q.getFilters(this.query());
     }
+
+    /**
+     * @returns @type {DimensionOptions} that can be used in filters.
+     */
     filterFieldOptions(): DimensionOptions {
         return this.fieldOptions();
     }
-    filterSegmentOptions() {
+
+    /**
+     * @returns @type {Segment}s that can be used as filters.
+     * TODO: exclude used segments
+     */
+    filterSegmentOptions(): Segment[] {
         return this.table().segments.filter(sgmt => sgmt.is_active === true);
     }
+
+    /**
+     * @returns whether a new filter can be added or not
+     */
     canAddFilter(): boolean {
         return Q.canAddFilter(this.query()) &&
             (this.filterFieldOptions().count > 0 ||
                 this.filterSegmentOptions().length > 0);
     }
 
+    /**
+     * @returns {StructuredQuery} new query with the provided MBQL @type {Filter} added.
+     */
     addFilter(filter: Filter) {
         return this._updateQuery(Q.addFilter, arguments);
     }
+
+    /**
+     * @returns {StructuredQuery} new query with the MBQL @type {Filter} updated at the provided index.
+     */
     updateFilter(index: number, filter: Filter) {
         return this._updateQuery(Q.updateFilter, arguments);
     }
+
+    /**
+     * @returns {StructuredQuery} new query with the filter at the provided index removed.
+     */
     removeFilter(index: number) {
         return this._updateQuery(Q.removeFilter, arguments);
     }
+
+    /**
+     * @returns {StructuredQuery} new query with all filters removed.
+     */
     clearFilters() {
         return this._updateQuery(Q.clearFilters, arguments);
     }
@@ -309,22 +487,6 @@ export default class StructuredQuery extends Query {
     // SORTS
 
     // TODO: standardize SORT vs ORDER_BY terminology
-
-    aggregationDimensions() {
-        return this.breakouts().map(breakout =>
-            Dimension.parseMBQL(breakout, this._metadata));
-    }
-    metricDimensions() {
-        return this.aggregations().map(
-            (aggregation, index) =>
-                new AggregationDimension(
-                    null,
-                    [index],
-                    this._metadata,
-                    aggregation[0]
-                )
-        );
-    }
 
     sorts(): OrderBy[] {
         return Q.getOrderBys(this.query());
@@ -461,8 +623,7 @@ export default class StructuredQuery extends Query {
     }
 
     tableDimensions(): Dimension[] {
-        // $FlowFixMe
-        const table: Table = this.tableMetadata();
+        const table: Table = this.table();
         return table ? table.dimensions() : [];
     }
 
@@ -473,6 +634,23 @@ export default class StructuredQuery extends Query {
         ]) => {
             return new ExpressionDimension(null, [expressionName]);
         });
+    }
+
+    aggregationDimensions() {
+        return this.breakouts().map(breakout =>
+            Dimension.parseMBQL(breakout, this._metadata));
+    }
+
+    metricDimensions() {
+        return this.aggregations().map(
+            (aggregation, index) =>
+                new AggregationDimension(
+                    null,
+                    [index],
+                    this._metadata,
+                    aggregation[0]
+                )
+        );
     }
 
     fieldReferenceForColumn(column) {

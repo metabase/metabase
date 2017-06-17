@@ -12,7 +12,7 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import cx from "classnames";
 import _ from "underscore";
 
-import StructuredQuery from "metabase-lib/lib/StructuredQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter } from "metabase/meta/types/Query";
 
 type Props = {

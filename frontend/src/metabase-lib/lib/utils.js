@@ -1,10 +1,3 @@
-/**
- * An interface for Query subclasses that use only a single database (StructuredQuery and NativeQuery)
- */
-import type Table from "metabase-lib/lib/metadata/Table";
-import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
-import type Database from "metabase-lib/lib/metadata/Database";
-
 export function nyi(target, key, descriptor) {
     let method = descriptor.value;
     descriptor.value = function() {
@@ -33,21 +26,10 @@ export function memoize(target, name, descriptor) {
     descriptor.value = function(...args) {
         const path = [this, method, ...args];
         const last = path.pop();
-        const map = path.reduce((map, key) => getWithFallback(map, key, () => new Map), memoized);
+        const map = path.reduce(
+            (map, key) => getWithFallback(map, key, () => new Map()),
+            memoized
+        );
         return getWithFallback(map, last, () => method.apply(this, args));
-    }
-}
-
-export interface SingleDatabaseQuery {
-    /**
-     * Tables this query could use, if the database is set
-     */
-    tables(): ?(Table[]);
-
-    databaseId(): ?DatabaseId;
-
-    database(): ?Database;
-
-    engine(): ?DatabaseEngine;
-
+    };
 }

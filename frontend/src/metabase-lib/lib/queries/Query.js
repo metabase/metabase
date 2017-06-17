@@ -1,7 +1,7 @@
 /* @flow weak */
 
-import Database from "./metadata/Database";
-import Action from "./Action";
+import Database from "../metadata/Database";
+import Action from "../Action";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -10,7 +10,7 @@ import type { ActionClick } from "metabase-lib/lib/Action";
 import { memoize } from "metabase-lib/lib/utils";
 
 /**
- * An abstract class for all query types (StructuredQuery, NativeQuery and MultiQuery)
+ * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
 export default class Query {
     _metadata: Metadata;
@@ -28,11 +28,33 @@ export default class Query {
         this._originalQuestion = question;
     }
 
+    /**
+     * Returns a question updated with the current dataset query.
+     * Can only be applied to query that is a direct child of the question.
+     */
     @memoize question(): Question {
-        return this._originalQuestion.setQuery(this);
+        const isDirectChildOfQuestion = typeof this._originalQuestion.query() ===
+            typeof this;
+
+        if (isDirectChildOfQuestion) {
+            return this._originalQuestion.setQuery(this);
+        } else {
+            throw new Error(
+                "Can't derive a question from a query that is a child of other query"
+            );
+        }
     }
 
-    // TODO: Decide the behavior of isEditable for multimetric questions
+    /**
+     * Convenience method for accessing the global metadata
+     */
+    metadata() {
+        return this._metadata;
+    }
+
+    /**
+     * Does this query have the sufficient metadata for editing it?
+     */
     isEditable(): boolean {
         return true;
     }
@@ -42,6 +64,13 @@ export default class Query {
      */
     datasetQuery(): DatasetQuery {
         return this._datasetQuery;
+    }
+
+    /**
+     * Query is considered empty, i.e. it is in a plain state with no properties / query clauses set
+     */
+    isEmpty(): boolean {
+        return false;
     }
 
     /**

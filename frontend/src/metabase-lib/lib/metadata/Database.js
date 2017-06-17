@@ -12,8 +12,12 @@ import type { SchemaName } from "metabase/meta/types/Table";
 
 /**
  * Wrapper class for database metadata objects. Contains {@link Schema}s, {@link Table}s, {@link Metric}s, {@link Segment}s.
+ *
+ * Backed by types/Database data structure which matches the backend API contract
  */
 export default class Database extends Base {
+    // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
+
     displayName: string;
     description: ?string;
 
