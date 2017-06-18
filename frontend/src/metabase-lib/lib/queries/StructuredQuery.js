@@ -270,7 +270,6 @@ export default class StructuredQuery extends AtomicQuery {
         const aggregation = this.table().aggregation(agg);
         if (aggregation) {
             const fieldOptions = this.fieldOptions(
-                null,
                 field => {
                     return aggregation.validFieldsFilters[0]([field]).length === 1
                 }
@@ -390,12 +389,19 @@ export default class StructuredQuery extends AtomicQuery {
     }
 
     /**
-     * @param breakout The breakout to include even if it's already used
+     * @param includedBreakout The breakout to include even if it's already used
      * @param fieldFilter An option @type {Field} predicate to filter out options
      * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
      */
-    breakoutOptions(breakout?: any, fieldFilter = () => true) {
-        return this.fieldOptions(breakout, fieldFilter);
+    breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
+        // the set of field ids being used by other breakouts
+        const usedFields = new Set(
+            this.breakouts()
+                .filter(b => !_.isEqual(b, includedBreakout))
+                .map(b => Q_deprecated.getFieldTargetId(b))
+        );
+
+        return this.fieldOptions((field) => fieldFilter(field) && !usedFields.has(field.id));
     }
 
     /**
@@ -507,11 +513,17 @@ export default class StructuredQuery extends AtomicQuery {
     sorts(): OrderBy[] {
         return Q.getOrderBys(this.query());
     }
-    sortOptions(sort, fieldFilter): DimensionOptions {
+    sortOptions(sort): DimensionOptions {
         let sortOptions = { count: 0, dimensions: [], fks: [] };
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
         if (this.isBareRows()) {
-            sortOptions = this.fieldOptions(sort, fieldFilter);
+            const usedFields = new Set(
+                this.sorts()
+                    .filter(b => !_.isEqual(b, sort))
+                    .map(b => Q_deprecated.getFieldTargetId(b[0]))
+            );
+
+            return this.fieldOptions((field) => !usedFields.has(field.id));
         } else if (this.hasValidBreakout()) {
             for (const breakout of this.breakouts()) {
                 sortOptions.dimensions.push(
@@ -587,7 +599,7 @@ export default class StructuredQuery extends AtomicQuery {
 
     // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
     // See aggregationFieldOptions for an explanation why that covers more use cases
-    fieldOptions(fieldRef?: any, fieldFilter = () => true): DimensionOptions {
+    fieldOptions(fieldFilter = () => true): DimensionOptions {
         const fieldOptions = {
             count: 0,
             fks: [],
@@ -596,19 +608,9 @@ export default class StructuredQuery extends AtomicQuery {
 
         const table = this.tableMetadata();
         if (table) {
-            // the set of field ids being used by other breakouts
-            const usedFields = new Set(
-                this.breakouts()
-                    .filter(b => !_.isEqual(b, fieldRef))
-                    .map(b => Q_deprecated.getFieldTargetId(b))
-            );
-
             const dimensionFilter = dimension => {
                 const field = dimension.field && dimension.field();
-                return !field ||
-                    (field.isDimension() &&
-                        fieldFilter(field) &&
-                        !usedFields.has(field.id));
+                return !field || (field.isDimension() && fieldFilter(field));
             };
 
             const dimensionIsFKReference = (dimension) =>

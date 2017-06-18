@@ -6,7 +6,7 @@ import Question from "metabase-lib/lib/Question";
 import {
     DATABASE_ID,
     ORDERS_TABLE_ID,
-    ORDERS_PRODUCT_FK_FIELD_ID,
+    ORDERS_TOTAL_FIELD_ID,
     metadata
 } from "metabase/__support__/sample_dataset_fixture";
 
@@ -39,7 +39,7 @@ describe('GuiQueryEditor', () => {
         const query: StructuredQuery = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
             .query()
             .addAggregation(["count"])
-            .addBreakout(["field-id"], ORDERS_PRODUCT_FK_FIELD_ID)
+            .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID);
 
         const component = shallow(getGuiQueryEditor(query));
 

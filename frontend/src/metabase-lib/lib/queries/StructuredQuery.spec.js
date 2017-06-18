@@ -298,7 +298,21 @@ describe("StructuredQuery unit tests", () => {
         it("", () => {});
     });
     describe("breakoutOptions", () => {
-        it("", () => {});
+        it("should return the correct count of dimensions", () => {
+            expect(query.breakoutOptions().dimensions.length).toBe(5)
+        });
+
+        it("should exclude the already used breakouts", () => {
+            const queryWithBreakout = query.addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID]);
+            expect(queryWithBreakout.breakoutOptions().dimensions.length).toBe(4)
+        });
+
+        it("should include an explicitly provided breakout although it has already been used", () => {
+            const breakout = ["field-id", ORDERS_TOTAL_FIELD_ID]
+            const queryWithBreakout = query.addBreakout(breakout);
+            expect(queryWithBreakout.breakoutOptions().dimensions.length).toBe(4)
+            expect(queryWithBreakout.breakoutOptions(breakout).dimensions.length).toBe(5)
+        });
     });
     describe("canAddBreakout", () => {
         it("", () => {});
@@ -369,7 +383,21 @@ describe("StructuredQuery unit tests", () => {
     });
 
     describe("sortOptions", () => {
-        it("", () => {});
+        it("should return the correct count of dimensions", () => {
+            expect(query.sortOptions().dimensions.length).toBe(5)
+        });
+
+        it("should exclude the already used sorts", () => {
+            const queryWithBreakout = query.addSort([["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"]);
+            expect(queryWithBreakout.sortOptions().dimensions.length).toBe(4)
+        });
+
+        it("should include an explicitly provided sort although it has already been used", () => {
+            const sort = [["field-id", ORDERS_TOTAL_FIELD_ID], "ascending"];
+            const queryWithBreakout = query.addSort(sort);
+            expect(queryWithBreakout.sortOptions().dimensions.length).toBe(4)
+            expect(queryWithBreakout.sortOptions(sort).dimensions.length).toBe(5)
+        });
     });
 
     describe("canAddSort", () => {
