@@ -235,7 +235,7 @@ export default class GuiQueryEditor extends Component {
         const breakouts: (Breakout|null)[] = query.breakouts();
 
         // Placeholder breakout for showing the add button
-        if (query.canAddBreakout() && breakouts.length === 0) {
+        if (query.canAddBreakout()) {
             breakouts.push(null);
         }
 
