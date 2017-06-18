@@ -132,6 +132,18 @@ describe("Question", () => {
             expect(question.actions()[3].icon).toBe("sum");
             expect(question.actions()[3].title).toBe("Summarize this segment");
         });
+
+        it("a question with an aggregation and a time breakout has pivot actions", () => {
+            const actions = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
+                .query()
+                .addAggregation(["count"])
+                .addBreakout(["datetime-field", ["field-id", 1], "day"])
+                .question()
+                .actions()
+
+            expect(actions[0].name).toBe("pivot-by-category");
+            expect(actions[1].name).toBe("pivot-by-location");
+        })
     });
 
     describe("canFilter", () => {
