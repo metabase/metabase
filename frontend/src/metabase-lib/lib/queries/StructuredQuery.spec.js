@@ -52,20 +52,6 @@ describe("StructuredQuery behavioral tests", () => {
 
          expect(filterDimension).toBeDefined();
     });
-
-    it("Should be able to choose a custom expression as an aggregation", () => {
-        const expressionName = "70% of subtotal";
-        const queryWithExpression = query.updateExpression(expressionName, ["*", ["field-id", 4], 0.7]);
-
-        // Check first that the expression was actually added
-        expect(queryWithExpression.expressions()[expressionName]).toBeDefined();
-
-        const agg = ["cum_count"]
-        const hasSameAggregationFieldOptionsAsBefore =
-            query.aggregationFieldOptions(agg).length === queryWithExpression.aggregationFieldOptions(agg).length;
-
-        expect(hasSameAggregationFieldOptionsAsBefore).toBe(false)
-    })
 });
 
 describe("StructuredQuery unit tests", () => {
