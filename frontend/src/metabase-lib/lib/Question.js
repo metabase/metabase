@@ -376,7 +376,7 @@ export default class Question {
     ): Promise<[Dataset]> {
         const canUseCardApiEndpoint = !isDirty && this.isSaved();
 
-        const parametersList = _.pick(this.parametersList(), "target", "type", "value");
+        const parametersList = this.parametersList().map(param => _.pick(param, "target", "type", "value"));
         const hasParameters = parametersList.length > 0;
 
         if (canUseCardApiEndpoint) {

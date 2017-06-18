@@ -12,14 +12,14 @@ describe("Question", () => {
     })
 
     it("should return correct result for a SQL question with template tag parameters", async () => {
-        // NOTE: Using the fixture metadata for now because trying to load the metadata involves a lot of Redux magic
         const templateTagName = "orderid"
         const templateTagId = "f1cb12ed3-8727-41b6-bbb4-b7ba31884c30"
         const question = Question.create({ databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata })
             .setDatasetQuery({
                 ...NATIVE_QUERY_TEMPLATE,
+                database: DATABASE_ID,
                 native: {
-                    query: `SELECT * FROM ORDERS WHERE id = [[${templateTagName}]]`,
+                    query: `SELECT SUBTOTAL FROM ORDERS WHERE id = {{${templateTagName}}}`,
                     template_tags: {
                         [templateTagName]: {
                             id: templateTagId,
@@ -31,15 +31,11 @@ describe("Question", () => {
                 }
             })
 
-        question.parameterValues = { [templateTagId]: "5" };
+        question._parameterValues = { [templateTagId]: "5" };
 
-        try {
-            const results = await question.getResults()
-            console.log(results[0]);
-            expect(results[0]).toBeDefined();
-        } catch(e) {
-            console.error(e);
-        }
+        const results = await question.getResults({ignoreCache: true})
+        expect(results[0]).toBeDefined();
+        expect(results[0].data.rows[0][0]).toEqual(18.1);
     })
 
     afterAll(async () => {

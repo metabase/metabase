@@ -32,7 +32,11 @@ api._makeRequest = async (method, url, headers, body, data, options) => {
     if (result.status >= 200 && result.status <= 299) {
         return result.json();
     } else {
-        throw { status: result.status, data: result.json() }
+        const error = {status: result.status, data: await result.json()}
+        console.log('A request made in a test failed with the following error:')
+        console.dir(error, { depth: null })
+
+        throw error
     }
 }
 
