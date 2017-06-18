@@ -1,0 +1,11 @@
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/ace-builds/demo/emmet.html [35m822 ms[39m
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/ace-builds/demo/keyboard_shortcuts.html [35m738 ms[39m
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/ace-builds/demo/settings_menu.html [35m819 ms[39m
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/chevrotain/diagrams/diagrams.html [35m1 ms[39m
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/chevrotain/diagrams/diagrams_serialized.html
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/clone/test-apart-ctx.html [35m847 ms[39m
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/clone/test.html [35m728 ms[39m
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/console-browserify/test/static/index.html [35m708 ms[39m
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/cuint/examples/uint32.html
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/date-now/test/static/index.html [35m507 ms[39m
+[32m✓[39m /Users/varunramg/Desktop/metabase/node_modules/dc/_SpecRunner.html [35m563 ms[39m
