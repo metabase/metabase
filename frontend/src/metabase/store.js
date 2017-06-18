@@ -24,9 +24,7 @@ export function getStore(reducers, history, intialState) {
         routing,
     });
 
-    if (history) {
-        middleware.push(routerMiddleware(history));
-    }
+    middleware.push(routerMiddleware(history));
 
     return createStore(reducer, intialState, compose(
         applyMiddleware(...middleware),

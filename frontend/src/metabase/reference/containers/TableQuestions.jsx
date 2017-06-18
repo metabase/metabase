@@ -20,12 +20,10 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    separateTablesBySchema
+    separateTablesBySchema,
+    getQuestionUrl
 } from '../utils';
 
-import {
-    getQuestionUrl
-} from "../utils";
 
 import {
     getSection,
@@ -63,15 +61,15 @@ import * as metadataActions from "metabase/redux/metadata";
 //         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
 //     }
 
-    const emptyStateData =  {
-        message: `Questions about this table will appear here as they're added`,
-        icon: "all",
-        action: "Ask a question",
-        link: getQuestionUrl({
-            dbId: table.db_id,
-            tableId: table.id,
-        })
-    }
+    // const emptyStateData =  {
+    //     message: `Questions about this table will appear here as they're added`,
+    //     icon: "all",
+    //     action: "Ask a question",
+    //     link: getQuestionUrl({
+    //         dbId: table.db_id,
+    //         tableId: table.id,
+    //     })
+    // }
 
 
 const mapStateToProps = (state, props) => ({

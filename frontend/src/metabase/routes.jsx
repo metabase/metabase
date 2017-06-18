@@ -62,24 +62,25 @@ import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevis
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
 // Replacements
-import FieldDetail from "metabase/reference/containers/FieldDetail.jsx";
-import FieldList from "metabase/reference/containers/FieldList.jsx";
-import TableDetail from "metabase/reference/containers/TableDetail.jsx";
-import TableList from "metabase/reference/containers/TableList.jsx";
-import TableQuestions from "metabase/reference/containers/TableQuestions.jsx";
-import SegmentDetail from "metabase/reference/containers/SegmentDetail.jsx";
-import SegmentList from "metabase/reference/containers/SegmentList.jsx";
-import SegmentQuestions from "metabase/reference/containers/SegmentQuestions.jsx";
-import SegmentRevisions from "metabase/reference/containers/SegmentRevisions.jsx";
-import SegmentFieldDetail from "metabase/reference/containers/SegmentFieldDetail.jsx";
-import SegmentFieldList from "metabase/reference/containers/SegmentFieldList.jsx";
+import GettingStartedGuideContainer from "metabase/reference/new_containers/GettingStartedGuideContainer.jsx";
+import FieldDetailContainer from "metabase/reference/new_containers/FieldDetailContainer.jsx";
+import FieldListContainer from "metabase/reference/new_containers/FieldListContainer.jsx";
+import TableDetailContainer from "metabase/reference/new_containers/TableDetailContainer.jsx";
+import TableListContainer from "metabase/reference/new_containers/TableListContainer.jsx";
+import TableQuestionsContainer from "metabase/reference/new_containers/TableQuestionsContainer.jsx";
+import SegmentDetailContainer from "metabase/reference/new_containers/SegmentDetailContainer.jsx";
+import SegmentListContainer from "metabase/reference/new_containers/SegmentListContainer.jsx";
+import SegmentQuestionsContainer from "metabase/reference/new_containers/SegmentQuestionsContainer.jsx";
+import SegmentRevisionsContainer from "metabase/reference/new_containers/SegmentRevisionsContainer.jsx";
+import SegmentFieldDetailContainer from "metabase/reference/new_containers/SegmentFieldDetailContainer.jsx";
+import SegmentFieldListContainer from "metabase/reference/new_containers/SegmentFieldListContainer.jsx";
 
-import DatabaseDetail from "metabase/reference/containers/DatabaseDetail.jsx";
-import DatabaseList from "metabase/reference/containers/DatabaseList.jsx";
-import MetricDetail from "metabase/reference/containers/MetricDetail.jsx";
-import MetricList from "metabase/reference/containers/MetricList.jsx";
-import MetricQuestions from "metabase/reference/containers/MetricQuestions.jsx";
-import MetricRevisions from "metabase/reference/containers/MetricRevisions.jsx";
+import DatabaseDetailContainer from "metabase/reference/new_containers/DatabaseDetailContainer.jsx";
+import DatabaseListContainer from "metabase/reference/new_containers/DatabaseListContainer.jsx";
+import MetricDetailContainer from "metabase/reference/new_containers/MetricDetailContainer.jsx";
+import MetricListContainer from "metabase/reference/new_containers/MetricListContainer.jsx";
+import MetricQuestionsContainer from "metabase/reference/new_containers/MetricQuestionsContainer.jsx";
+import MetricRevisionsContainer from "metabase/reference/new_containers/MetricRevisionsContainer.jsx";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
@@ -210,26 +211,26 @@ export const getRoutes = (store) =>
                 </Route>
 
                 {/* REFERENCE */}
-                <Route path="/reference" title="Data Reference" component={ReferenceApp}>
+                <Route path="/reference" title="Data Reference">
                     <IndexRedirect to="/reference/guide" />
                     <Route path="guide" title="Getting Started" component={ReferenceGettingStartedGuide} />
-                    <Route path="metrics" component={MetricList} />
-                    <Route path="metrics/:metricId" component={MetricDetail} />
-                    <Route path="metrics/:metricId/questions" component={MetricQuestions} />
-                    <Route path="metrics/:metricId/revisions" component={MetricRevisions} />
-                    <Route path="segments" component={SegmentList} />
-                    <Route path="segments/:segmentId" component={SegmentDetail} />
-                    <Route path="segments/:segmentId/fields" component={SegmentFieldList} />
-                    <Route path="segments/:segmentId/fields/:fieldId" component={SegmentFieldDetail} />
-                    <Route path="segments/:segmentId/questions" component={SegmentQuestions} />
-                    <Route path="segments/:segmentId/revisions" component={SegmentRevisions} />
-                    <Route path="databases" component={DatabaseList} />
-                    <Route path="databases/:databaseId" component={DatabaseDetail} />
-                    <Route path="databases/:databaseId/tables" component={TableList} />
-                    <Route path="databases/:databaseId/tables/:tableId" component={TableDetail} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields" component={FieldList} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={FieldDetail} />
-                    <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestions} />
+                    <Route path="metrics" component={MetricListContainer} />
+                    <Route path="metrics/:metricId" component={MetricDetailContainer} />
+                    <Route path="metrics/:metricId/questions" component={MetricQuestionsContainer} />
+                    <Route path="metrics/:metricId/revisions" component={MetricRevisionsContainer} />
+                    <Route path="segments" component={SegmentListContainer} />
+                    <Route path="segments/:segmentId" component={SegmentDetailContainer} />
+                    <Route path="segments/:segmentId/fields" component={SegmentFieldListContainer} />
+                    <Route path="segments/:segmentId/fields/:fieldId" component={SegmentFieldDetailContainer} />
+                    <Route path="segments/:segmentId/questions" component={SegmentQuestionsContainer} />
+                    <Route path="segments/:segmentId/revisions" component={SegmentRevisionsContainer} />
+                    <Route path="databases" component={DatabaseListContainer} />
+                    <Route path="databases/:databaseId" component={DatabaseDetailContainer} />
+                    <Route path="databases/:databaseId/tables" component={TableListContainer} />
+                    <Route path="databases/:databaseId/tables/:tableId" component={TableDetailContainer} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields" component={FieldListContainer} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={FieldDetailContainer} />
+                    <Route path="databases/:databaseId/tables/:tableId/questions" component={TableQuestionsContainer} />
                 </Route>
 
                 {/* PULSE */}
