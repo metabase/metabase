@@ -1,15 +1,34 @@
 /* @flow weak */
 
 // import { DATABASE_ID, ORDERS_TABLE_ID, metadata } from "metabase/__support__/sample_dataset_fixture";
-import { login, startServer, stopServer } from "metabase/__support__/integrated_tests";
+import {
+    linkContainerToGlobalReduxStore,
+    globalReduxStore as store,
+    login,
+    startServer,
+    stopServer
+} from "metabase/__support__/integrated_tests";
 
 import React from 'react';
 import { shallow, mount, render } from 'enzyme';
 
-import { ReferenceApp } from './containers/ReferenceApp';
-
-import {browserHistory} from "react-router"
 import { CardApi, SegmentApi, MetricApi } from 'metabase/services'
+import ReferenceEntity from "metabase/reference/containers/ReferenceEntity";
+import { fetchMetrics } from "metabase/redux/metadata";
+
+/**
+ * Returns a reference section container linked to the global test Redux store
+ *
+ * @param Container: the container element like ReferenceEntity, ReferenceEntityList or ReferenceFieldsList
+ * @param sectionId: either "metrics", "segments" or "databases"
+ * @param params: a key-value list of section-specific route parameters, e.g. { segmentId: "1" }
+ */
+const getReferenceContainer = (Container, sectionId, params = {}) => {
+    return linkContainerToGlobalReduxStore(<Container
+        location={{ pathname: {sectionId} }}
+        params={params}
+    />)
+}
 
 
 describe("The Reference Section", () => {
@@ -41,8 +60,6 @@ describe("The Reference Section", () => {
         await startServer();
         await login();
 
-        // // mount things
-        // const app = mount(<ReferenceApp />);
     })
 
     afterAll(async () => {
@@ -66,8 +83,14 @@ describe("The Reference Section", () => {
         it("Should show an empty guide with a creation CTA for admin users", async () => {expect(true).toBe(true)})
 
         it("A non-admin attempting to edit the guide should get an error", async () => {expect(true).toBe(true)})
-        
+
         it("Adding metrics should to the guide should make them appear", async () => {
+            // load needed metadata already (as you can check from the `referenceSections` object in reference/selectors.js)
+            // normally ReferenceApp container does the loading by calling `tryFetchData`
+            await store.dispatch(fetchMetrics())
+            const mountedContainer = mount(getReferenceContainer(ReferenceEntity, "metrics"));
+            console.log('the dom tree that enzyme has rendered', mountedContainer.debug())
+
             expect(0).toBe(0)
             var metric = await MetricApi.create(metricDef);
             expect(1).toBe(1)
