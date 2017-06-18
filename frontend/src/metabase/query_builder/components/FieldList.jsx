@@ -54,7 +54,7 @@ export default class FieldList extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        let { tableMetadata, fieldOptions, segmentOptions, customFieldOptions } = newProps;
+        let { tableMetadata, fieldOptions, segmentOptions } = newProps;
         let tableName = tableMetadata.display_name;
 
         let specialOptions = [];

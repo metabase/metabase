@@ -269,10 +269,27 @@ export default class StructuredQuery extends AtomicQuery {
     aggregationFieldOptions(agg): DimensionOptions {
         const aggregation = this.table().aggregation(agg);
         if (aggregation) {
-            return this.fieldOptions(
+            const fieldOptions = this.fieldOptions(
                 null,
-                field => aggregation.validFieldsFilters[0]([field]).length === 1
+                field => {
+                    return aggregation.validFieldsFilters[0]([field]).length === 1
+                }
             );
+
+            // HACK Atte Keinänen 6/18/17: Using `fieldOptions` with a field filter function
+            // ends up often omitting all expressions because the field object of ExpressionDimension is empty.
+            // Expressions can be applied to all aggregations so we can simply add all expressions to the
+            // dimensions list in this hack.
+            //
+            // A real solution would have a `dimensionOptions` method instead of `fieldOptions` which would
+            // enable filtering based on dimension properties.
+            return {
+                ...fieldOptions,
+                dimensions: _.uniq([
+                    ...this.expressionDimensions(),
+                    ...fieldOptions.dimensions.filter((d) => d instanceof ExpressionDimension),
+                ])
+            }
         } else {
             return { count: 0, fks: [], dimensions: [] };
         }
@@ -568,6 +585,8 @@ export default class StructuredQuery extends AtomicQuery {
 
     // FIELD OPTIONS
 
+    // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
+    // See aggregationFieldOptions for an explanation why that covers more use cases
     fieldOptions(fieldRef?: any, fieldFilter = () => true): DimensionOptions {
         const fieldOptions = {
             count: 0,

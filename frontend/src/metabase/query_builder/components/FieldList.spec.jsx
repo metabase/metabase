@@ -22,13 +22,13 @@ const getFieldList = (query, fieldOptions) =>
     />
 
 describe('FieldList', () => {
-    it("should allow adding the first breakout", () => {
+    it("should allow using expression as aggregation dimension", () => {
         const expressionName = "70% of subtotal";
         const query: StructuredQuery = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
             .query()
             .updateExpression(expressionName, ["*", ["field-id", 4], 0.7])
 
-        // Use the count aggregation as an example case
+        // Use the count aggregation as an example case (this is equally valid for filters and groupings)
         const fieldOptions = query.aggregationFieldOptions("sum");
         const component = mount(getFieldList(query, fieldOptions));
         expect(component.find(`.List-item-title[children="${expressionName}"]`).length).toBe(1);
