@@ -32,9 +32,9 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
                     customFields={query.expressions()}
                     availableAggregations={query.table().aggregation_options}
                     onCommitAggregation={aggregation => {
-                        onChangeCardAndRun(
-                            question.summarize(aggregation).card()
-                        );
+                        onChangeCardAndRun({
+                            nextCard: question.summarize(aggregation).card()
+                        });
                         onClose && onClose();
                     }}
                     onClose={onClose}
