@@ -27,7 +27,7 @@ import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
-const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
+export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     database: null,
     type: "native",
     native: {
