@@ -592,27 +592,29 @@ export default class StructuredQuery extends AtomicQuery {
                         !usedFields.has(field.id));
             };
 
-            // Iterate fields in the current table
-            for (const dimension of this.dimensions().filter(dimensionFilter)) {
+            const dimensionIsFKReference = (dimension) =>
+                dimension.field && dimension.field() && dimension.field().isFK();
+
+            const filteredNonFKDimensions =
+                this.dimensions().filter(dimensionFilter).filter(d => !dimensionIsFKReference(d));
+            for (const dimension of filteredNonFKDimensions) {
                 fieldOptions.count++;
                 fieldOptions.dimensions.push(dimension);
             }
 
-            // Iterate fields in tables referenced by foreign keys
-            for (const dimension of this.dimensions()) {
-                const field = dimension.field && dimension.field();
-                if (field && field.isFK()) {
-                    const fkDimensions = dimension
-                        .dimensions()
-                        .filter(dimensionFilter);
-                    if (fkDimensions.length > 0) {
-                        fieldOptions.count += fkDimensions.length;
-                        fieldOptions.fks.push({
-                            field: field,
-                            dimension: dimension,
-                            dimensions: fkDimensions
-                        });
-                    }
+            const fkDimensions = this.dimensions().filter(dimensionIsFKReference)
+            for (const dimension of fkDimensions) {
+                const fkDimensions = dimension
+                    .dimensions()
+                    .filter(dimensionFilter);
+
+                if (fkDimensions.length > 0) {
+                    fieldOptions.count += fkDimensions.length;
+                    fieldOptions.fks.push({
+                        field: dimension.field(),
+                        dimension: dimension,
+                        dimensions: fkDimensions
+                    });
                 }
             }
         }

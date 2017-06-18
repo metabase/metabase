@@ -41,14 +41,14 @@ const query = makeQuery({});
 describe("StructuredQuery behavioral tests", () => {
     it("Should be able to filter by field which is already used for the query breakout", () => {
          const breakoutDimensionOptions = query.breakoutOptions().dimensions;
-         const breakoutDimension = breakoutDimensionOptions.find((d) => d.field().id === ORDERS_PK_FIELD_ID);
+         const breakoutDimension = breakoutDimensionOptions.find((d) => d.field().id === ORDERS_TOTAL_FIELD_ID);
 
          expect(breakoutDimension).toBeDefined();
 
          const queryWithBreakout = query.addBreakout(breakoutDimension.mbql());
 
          const filterDimensionOptions = queryWithBreakout.filterFieldOptions().dimensions;
-         const filterDimension = filterDimensionOptions.find((d) => d.field().id === ORDERS_PK_FIELD_ID);
+         const filterDimension = filterDimensionOptions.find((d) => d.field().id === ORDERS_TOTAL_FIELD_ID);
 
          expect(filterDimension).toBeDefined();
     });
@@ -434,7 +434,22 @@ describe("StructuredQuery unit tests", () => {
     });
 
     describe("fieldOptions", () => {
-        it("", () => {});
+        it("should include the correct number of dimensions", () => {
+            // Should just include the non-fk keys from the current table
+            expect(query.fieldOptions().dimensions.length).toBe(5);
+        });
+        it("should not include foreign key fields in the dimensions list", () => {
+            const dimensions = query.fieldOptions().dimensions;
+            const fkDimensions = dimensions.filter(dim => dim.field() && dim.field().isFK());
+            expect(fkDimensions.length).toBe(0);
+        });
+
+        it("should return correct count of foreign keys", () => {
+            expect(query.fieldOptions().fks.length).toBe(2);
+        });
+        it("should return a correct count of fields", () => {
+            expect(query.fieldOptions().count).toBe(26);
+        });
     });
     describe("dimensions", () => {
         it("", () => {});
