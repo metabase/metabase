@@ -53,7 +53,6 @@ export default class FieldListContainer extends Component {
         params: PropTypes.object.isRequired,
         breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
-        children: PropTypes.any.isRequired,
         sections: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
@@ -78,16 +77,12 @@ export default class FieldListContainer extends Component {
 
     render() {
         const {
-            children,
             section,
             sections,
             breadcrumbs,
             isEditing
         } = this.props;
 
-        if (section.sidebar === false) {
-            return children;
-        }
 
         return (
             <SidebarLayout

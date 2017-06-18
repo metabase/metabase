@@ -53,7 +53,6 @@ export default class GettingStartedGuideContainer extends Component {
         params: PropTypes.object.isRequired,
         breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
-        children: PropTypes.any.isRequired,
         sections: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
@@ -78,25 +77,15 @@ export default class GettingStartedGuideContainer extends Component {
 
     render() {
         const {
-            children,
             section,
             sections,
             breadcrumbs,
             isEditing
         } = this.props;
 
-        if (section.sidebar === false) {
-            return children;
-        }
 
         return (
-            <SidebarLayout
-                className="flex-full relative"
-                style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
-            >
                 <ReferenceGettingStartedGuide {...this.props} />
-            </SidebarLayout>
         );
     }
 }

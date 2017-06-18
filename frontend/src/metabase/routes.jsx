@@ -54,14 +54,7 @@ import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditor
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
-import ReferenceApp from "metabase/reference/containers/ReferenceApp.jsx";
-import ReferenceEntity from "metabase/reference/containers/ReferenceEntity.jsx";
-import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityList.jsx";
-import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsList.jsx";
-import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
-import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
-
-// Replacements
+// Reference Guide
 import GettingStartedGuideContainer from "metabase/reference/new_containers/GettingStartedGuideContainer.jsx";
 import FieldDetailContainer from "metabase/reference/new_containers/FieldDetailContainer.jsx";
 import FieldListContainer from "metabase/reference/new_containers/FieldListContainer.jsx";
@@ -213,7 +206,7 @@ export const getRoutes = (store) =>
                 {/* REFERENCE */}
                 <Route path="/reference" title="Data Reference">
                     <IndexRedirect to="/reference/guide" />
-                    <Route path="guide" title="Getting Started" component={ReferenceGettingStartedGuide} />
+                    <Route path="guide" title="Getting Started" component={GettingStartedGuideContainer} />
                     <Route path="metrics" component={MetricListContainer} />
                     <Route path="metrics/:metricId" component={MetricDetailContainer} />
                     <Route path="metrics/:metricId/questions" component={MetricQuestionsContainer} />
