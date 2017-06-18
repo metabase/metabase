@@ -6,7 +6,6 @@ import Question from "metabase-lib/lib/Question";
 import {
     DATABASE_ID,
     ORDERS_TABLE_ID,
-    ORDERS_PRODUCT_FK_FIELD_ID,
     metadata
 } from "metabase/__support__/sample_dataset_fixture";
 
@@ -19,7 +18,7 @@ const getActionsWidget = (question) =>
     />
 
 describe('ActionsWidget', () => {
-    it("should be shown for a just created question", () => {
+    it("should be shown for an empty question", () => {
         const question: Question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
             .query()
             .question();

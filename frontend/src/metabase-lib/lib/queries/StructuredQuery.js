@@ -592,7 +592,14 @@ export default class StructuredQuery extends AtomicQuery {
                         !usedFields.has(field.id));
             };
 
+            // Iterate fields in the current table
             for (const dimension of this.dimensions().filter(dimensionFilter)) {
+                fieldOptions.count++;
+                fieldOptions.dimensions.push(dimension);
+            }
+
+            // Iterate fields in tables referenced by foreign keys
+            for (const dimension of this.dimensions()) {
                 const field = dimension.field && dimension.field();
                 if (field && field.isFK()) {
                     const fkDimensions = dimension
@@ -607,8 +614,6 @@ export default class StructuredQuery extends AtomicQuery {
                         });
                     }
                 }
-                fieldOptions.count++;
-                fieldOptions.dimensions.push(dimension);
             }
         }
 

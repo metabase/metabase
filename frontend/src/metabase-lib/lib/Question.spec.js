@@ -134,15 +134,16 @@ describe("Question", () => {
         });
 
         it("a question with an aggregation and a time breakout has pivot actions", () => {
-            const actions = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
+            const timeBreakoutQuestion = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
                 .query()
                 .addAggregation(["count"])
                 .addBreakout(["datetime-field", ["field-id", 1], "day"])
                 .question()
-                .actions()
+                .setDisplay("table");
 
-            expect(actions[0].name).toBe("pivot-by-category");
-            expect(actions[1].name).toBe("pivot-by-location");
+            expect(timeBreakoutQuestion.actions().length).toBe(3);
+            expect(timeBreakoutQuestion.actions()[0].name).toBe("pivot-by-category");
+            expect(timeBreakoutQuestion.actions()[1].name).toBe("pivot-by-location");
         })
     });
 
