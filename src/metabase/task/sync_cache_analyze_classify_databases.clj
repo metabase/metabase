@@ -1,19 +1,20 @@
 (ns metabase.task.sync-cache-analyze-classify-databases
   (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite
+             [conversion :as qc]
              [jobs :as jobs]
              [triggers :as triggers]]
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [clojurewerkz.quartzite.conversion :as qc]
-            [clojurewerkz.quartzite.jobs :as jobs]
+            [metabase
+             [cache-database :as cache-database]
+             [task :as task]
+             [util :as u]]
             [metabase.models.database :refer [Database]]
-            [metabase.sync-database.classify :as classify]
-            [metabase.task :as task]
-            [toucan.db :as db]
-            [metabase.util :as u]
-            [metabase.sync-database.analyze :as analyze]
-            [metabase.sync-database.cached-values :as cached-values]
-            [metabase.cache-database :as cache-database]))
+            [metabase.sync-database
+             [analyze :as analyze]
+             [cached-values :as cached-values]
+             [classify :as classify]]
+            [toucan.db :as db]))
 
 (def ^:private ^:const classify-databases-job-key     "metabase.task.%s-databases.job-%s")
 (def ^:private ^:const classify-databases-trigger-key "metabase.task.%s-databases.trigger-%s")
@@ -59,8 +60,9 @@
         (log/error (format "Error fetching field values for database %d: (%s)" db-id (:name database)) e)))))
 
 
-(defn- schedule-db-sync-actions
-  "Schedule the Sync, Analyze, Cache-field-values, and classify jobs for a database"
+(defn schedule-db-sync-actions
+  "Schedule the Sync, Analyze, Cache-field-values, and classify jobs for a database
+   Deletes and replaces any existing schedules"
   [database]
   (doseq [[action db-keyword job-type] [["classify"     :classify_schedule           ClassifyDatabase]
                                         ["cache-values" :cache_field_values_schedule CacheFieldValuesForDatabase]
@@ -68,21 +70,25 @@
                                         ["sync"         :sync_schedule SyncDatabase]]]
     (let [db-id (:id database)
           trigger-name (format classify-databases-trigger-key action db-id)
+          trigger-key  (triggers/key trigger-name)
           job-name     (format classify-databases-job-key action db-id)
+          job-key      (jobs/key job-name)
           schedule (or (db-keyword database) "0 50 * * * ? *")
           job     (jobs/build
                    (jobs/of-type job-type)
                    (jobs/using-job-data {"db-id" db-id})
-                   (jobs/with-identity (jobs/key job-name)))
+                   (jobs/with-identity job-key))
           trigger (triggers/build
-                   (triggers/with-identity (triggers/key trigger-name))
+                   (triggers/with-identity trigger-key)
                    (triggers/start-now)
                    (triggers/with-schedule
                      (cron/schedule
                       (cron/cron-schedule schedule)
                       (cron/with-misfire-handling-instruction-do-nothing))))] ;; drop tasks if they start to back up
       (log/error (u/format-color 'green "scheduling %s for database-id: %d (%s) at %s named %s" action db-id (:name database) schedule job-name))
-      ;; submit ourselves to the scheduler
+      ;; clear any existing schedules for this job:
+      (task/delete-task! job-key trigger-key)
+      ;; submit a new job to the scheduler
       (task/schedule-task! job trigger)
       job-name)))
 

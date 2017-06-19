@@ -250,7 +250,8 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest]} :body}]
+  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest
+                   cache_field_values_schedule sync_schedule analyze_schedule classify_schedule]} :body}]
   {name    su/NonBlankString
    engine  DBEngine
    details su/Map}
@@ -272,6 +273,10 @@
                            :engine             engine
                            :details            details
                            :is_full_sync       is_full_sync
+                           :sync_schedule      sync_schedule
+                           :cache_field_values_schedule cache_field_values_schedule
+                           :analyze_schedule   analyze_schedule
+                           :classify_schedule  classify_schedule
                            :description        description
                            :caveats            caveats
                            :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?

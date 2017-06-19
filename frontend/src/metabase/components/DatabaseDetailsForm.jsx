@@ -100,7 +100,11 @@ export default class DatabaseDetailsForm extends Component {
             engine: engine,
             name: details.name,
             details: {},
-            is_full_sync: details.is_full_sync
+            is_full_sync: details.is_full_sync,
+            sync_schedule: details.sync_schedule,
+            cache_field_values_schedule: details.cache_field_values_schedule,
+            analyze_schedule: details.analyze_schedule,
+            classify_schedule: details.classify_schedule
         };
 
         for (let field of engines[engine]['details-fields']) {
@@ -256,7 +260,7 @@ export default class DatabaseDetailsForm extends Component {
         let fields = [
             {
                 name: 'name',
-                'display-name': 'Name',
+                'display-name': 'NameFOOsss',
                 placeholder: "How would you like to refer to this database?",
                 required: true
             },
@@ -264,31 +268,31 @@ export default class DatabaseDetailsForm extends Component {
             {
                 name: "is_full_sync",
                 required: true
-            }
+            },
             {
                 name: "sync_schedule",
-                'display-nane': "DATBASE SYNC",
+                'display-name': "DATBASE SYNC",
                 description: "How Often should Metabase check for updated to this database's schema",
                 placeholder: "0 50 * * * ? *",
                 required: false
-            }
+            },
             {
                 name: "cache_field_values_schedule",
-                'display-nane': "SCAN FIELD VALUES",
+                'display-name': "SCAN FIELD VALUES",
                 description: "Metabase can scan the values of fields in this datbase to enable things like better filters. How often should we scan for these valuesaf?",
                 placeholder: "0 50 * * * ? *",
                 required: false
-            }
+            },
             {
                 name: "analyze_schedule",
-                'display-nane': "IN-DEPTH ANALYSIS",
+                'display-name': "IN-DEPTH ANALYSIS",
                 description: "This allows us to present you with better metadata for your tables and is required for some features of Metabase. How often should Metabase perfomr this analysis?",
                 placeholder: "0 50 * * * ? *",
                 required: false
-            }
+            },
             {
                 name: "classify_schedule",
-                'display-nane': "CLASSIFICATION SCHEDULE",
+                'display-name': "CLASSIFICATION SCHEDULE",
                 placeholder: "0 50 * * * ? *",
                 required: false
             }

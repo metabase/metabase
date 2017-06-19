@@ -3802,7 +3802,7 @@ databaseChangeLog:
               - column:
                   name: table_id
         - addColumn:
-            tableName: metabase_table
+            tableName: metabase_database
             columns:
               - column:
                   name: sync_schedule

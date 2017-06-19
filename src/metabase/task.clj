@@ -52,3 +52,10 @@
   [job trigger]
   (when @quartz-scheduler
     (qs/schedule @quartz-scheduler job trigger)))
+
+(defn delete-task!
+  "delete a task from the scheduler"
+  [job-key trigger-key]
+  (when @quartz-scheduler
+    (qs/delete-trigger @quartz-scheduler trigger-key)
+    (qs/delete-job @quartz-scheduler job-key)))
