@@ -29,6 +29,7 @@ import * as Urls from "metabase/lib/urls";
 import cx from "classnames";
 import _ from "underscore";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import Utils from "metabase/lib/utils";
 
 
 export default class QueryHeader extends Component {
@@ -77,6 +78,20 @@ export default class QueryHeader extends Component {
         , 5000);
     }
 
+    _getCleanedCard(card) {
+        if (card.dataset_query.query) {
+            const query = Utils.copy(card.dataset_query.query);
+            return {
+                ...card,
+                dataset_query: {
+                    ...card.dataset_query,
+                    query: Query.cleanQuery(query)
+                }
+            }
+        } else {
+            return card
+        }
+    }
     onCreate(card, addToDash) {
         // MBQL->NATIVE
         // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
@@ -86,12 +101,9 @@ export default class QueryHeader extends Component {
         //     delete card.dataset_query.native;
         // }
 
-        if (card.dataset_query.query) {
-            Query.cleanQuery(card.dataset_query.query);
-        }
-
+        const cleanedCard = this._getCleanedCard(card);
         // TODO: reduxify
-        this.requestPromise = cancelable(CardApi.create(card));
+        this.requestPromise = cancelable(CardApi.create(cleanedCard));
         return this.requestPromise.then(newCard => {
             this.props.notifyCardCreatedFn(newCard);
 
@@ -111,12 +123,9 @@ export default class QueryHeader extends Component {
         //     delete card.dataset_query.native;
         // }
 
-        if (card.dataset_query.query) {
-            Query.cleanQuery(card.dataset_query.query);
-        }
-
+        const cleanedCard = this._getCleanedCard(card);
         // TODO: reduxify
-        this.requestPromise = cancelable(CardApi.update(card));
+        this.requestPromise = cancelable(CardApi.update(cleanedCard));
         return this.requestPromise.then(updatedCard => {
             if (this.props.fromUrl) {
                 this.onGoBack();
