@@ -946,6 +946,7 @@ export default function lineAreaBar(element, {
     }
 
     if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {
+        const fillValue = settings["line.missing"] === "zero" ? 0 : null;
         if (isTimeseries) {
             // $FlowFixMe
             const { interval, count } = xInterval;
@@ -957,7 +958,7 @@ export default function lineAreaBar(element, {
                 datas = fillMissingValues(
                     datas,
                     xValues,
-                    settings["line.missing"] === "zero" ? 0 : null,
+                    fillValue,
                     (m) => d3.round(m.toDate().getTime(), -1) // sometimes rounds up 1ms?
                 );
             }
@@ -969,14 +970,16 @@ export default function lineAreaBar(element, {
                 datas = fillMissingValues(
                     datas,
                     xValues,
-                    settings["line.missing"] === "zero" ? 0 : null,
+                    fillValue,
+                    // normalize to xInterval to avoid floating point issues
+                    (v) => Math.round(v / xInterval)
                 );
             }
         } else {
             datas = fillMissingValues(
                 datas,
                 xValues,
-                settings["line.missing"] === "zero" ? 0 : null
+                fillValue
             );
         }
     }
