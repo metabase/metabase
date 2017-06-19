@@ -14,10 +14,6 @@ import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 import Detail from "metabase/reference/components/Detail.jsx";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
-import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
-import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
-import Formula from "metabase/reference/components/Formula.jsx";
-import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
 
 import {
     tryUpdateData

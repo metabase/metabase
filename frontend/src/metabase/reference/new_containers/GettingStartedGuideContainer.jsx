@@ -24,10 +24,6 @@ import {
 } from '../utils';
 
 import {
-    loadEntities
-} from 'metabase/questions/questions';
-
-import {
     fetchDashboards
 } from 'metabase/dashboards/dashboards';
 
@@ -41,7 +37,6 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-    fetchQuestions: () => loadEntities("card", {}),
     fetchDashboards,
     ...metadataActions,
     ...actions
