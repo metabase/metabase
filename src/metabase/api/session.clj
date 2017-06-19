@@ -192,7 +192,7 @@
   (throttle/check (login-throttlers :ip-address) remote-address)
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
-    (log/info "Successfully authenicated Google Auth token for:" given_name family_name)
+    (log/info "Successfully authenticated Google Auth token for:" given_name family_name)
     (google-auth-fetch-or-create-user! given_name family_name email)))
 
 
