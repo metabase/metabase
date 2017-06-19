@@ -282,7 +282,7 @@ export const initializeQB = (location, params) => {
         dispatch(loadMetadataForCard(card));
 
         // $FlowFixMe
-        const question = card && new Question(getMetadata(getState()), (card: Card));
+        const question = card && new Question(getMetadata(getState()), card);
 
         // if we have loaded up a card that we can run then lets kick that off as well
         if (question) {
@@ -297,7 +297,7 @@ export const initializeQB = (location, params) => {
             // clean up the url and make sure it reflects our card state
             const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
             dispatch(updateUrl(card, {
-                dirty: originalQuestion && question.isDirtyComparedTo(originalQuestion),
+                dirty: !originalQuestion || originalQuestion && question.isDirtyComparedTo(originalQuestion),
                 replaceState: true,
                 preserveParameters
             }));
