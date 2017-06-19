@@ -52,6 +52,7 @@ import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import type { Dataset } from "metabase/meta/types/Dataset";
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
+import * as Urls from "metabase/lib/urls";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -328,8 +329,12 @@ export default class Question {
         return this._card && this._card.public_uuid;
     }
 
-    getUrl(): string {
-        return "";
+    getUrl(originalQuestion?: Question): string {
+        const isDirty = !originalQuestion || this.isDirtyComparedTo(originalQuestion);
+
+        return isDirty
+            ? Urls.question(null, this.serializeForUrl())
+            : Urls.question(this.id(), "")
     }
     getLineage(): ?Question {
         return null;

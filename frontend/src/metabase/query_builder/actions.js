@@ -148,6 +148,7 @@ export const resetQB = createAction(RESET_QB);
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
     return async (dispatch, getState) => {
+
         // do this immediately to ensure old state is cleared before the user sees it
         dispatch(resetQB());
         dispatch(cancelQuery());

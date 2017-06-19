@@ -2,6 +2,10 @@ import { BackendResource } from "../../../test/e2e/support/backend.js";
 import api from "metabase/lib/api";
 import { SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
+import reducers from 'metabase/reducers-main';
+import { createMemoryHistory } from 'history'
+import { getStore } from "metabase/store";
+import { useRouterHistory } from "react-router";
 
 // Stores the current login session
 var loginSession = null;
@@ -58,6 +62,15 @@ export const startServer = async () => await BackendResource.start(server);
  */
 export const stopServer = async () => await BackendResource.stop(server);
 
+/**
+ * A Redux store that is shared between subsequent tests,
+ * intended to reduce the need for reloading metadata between every test
+ *
+ * The Redux store matches the production app's store 1-to-1 with an exception that
+ * it doesn't contain redux-router navigation history state
+ */
+export const browserHistory = useRouterHistory(createMemoryHistory)();
+export const globalReduxStore = getStore(reducers, browserHistory);
 
 // TODO: How to have the high timeout interval only for integration tests?
 // or even better, just for the setup/teardown of server process?
