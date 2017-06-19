@@ -30,6 +30,27 @@ export const getIsDirty = createSelector(
     }
 );
 
+export const getSettings = createSelector(
+    state => state.settings.settings,
+    state => state.admin.settings.warnings,
+    (settings, warnings) =>
+        settings.map(setting => warnings[setting.key] ?
+            { ...setting, warning: warnings[setting.key] } :
+            setting
+        )
+)
+
+export const getSettingValues = createSelector(
+    getSettings,
+    (settings) => {
+        const settingValues = {};
+        for (const setting of settings) {
+            settingValues[setting.key] = setting.value;
+        }
+        return settingValues;
+    }
+)
+
 export const getIsNew = (state) => state.qb.card && !state.qb.card.id;
 
 export const getDatabaseId = createSelector(

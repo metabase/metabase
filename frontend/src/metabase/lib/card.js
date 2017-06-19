@@ -86,7 +86,8 @@ export function serializeCardForUrl(card) {
         display: card.display,
         parameters: card.parameters,
         visualization_settings: card.visualization_settings,
-        original_card_id: card.original_card_id
+        original_card_id: card.original_card_id,
+        cache_ttl: card.cache_ttl
     };
 
     return utf8_to_b64url(JSON.stringify(cardCopy));

@@ -12,15 +12,26 @@ import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
-
+import { CardApi } from "metabase/services";
+import { cancelable } from "metabase/lib/promise";
 
 export default class ExtendedOptions extends Component {
-    state = {
-        isOpen: false,
-        editExpression: null
-    };
+    constructor(props, context) {
+        super(props, context);
+
+        this.state = {
+          isOpen: false,
+          editExpression: null,
+          cache_ttl: (!this.props.card || !this.props.card.name) ? 0 : (this.props.card.cache_ttl ? this.props.card.cache_ttl : 0)
+        };
+
+        _.bindAll(this, "onSave", "onGoBack", "handleChangeCacheTTL", "handleSubmitCacheTTL");
+    }
+
+
 
     static propTypes = {
+        card: PropTypes.object,
         features: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object.isRequired,
         tableMetadata: PropTypes.object,
@@ -55,6 +66,46 @@ export default class ExtendedOptions extends Component {
         this.setState({editExpression: null});
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Expression');
+    }
+
+
+    onSave(data) {
+        // MBQL->NATIVE
+        // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
+        // if (card.dataset_query.type === "native" && card.dataset_query.query) {
+        //     delete card.dataset_query.query;
+        // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
+        //     delete card.dataset_query.native;
+        // }
+
+        if (this.props.card.dataset_query.query) {
+            Query.cleanQuery(this.props.card.dataset_query.query);
+        }
+
+        // TODO: reduxify
+        this.requesetPromise = cancelable(CardApi.update(data));
+        return this.requesetPromise.then(updatedCard => {
+            if (this.props.fromUrl) {
+                this.onGoBack();
+                return;
+            }
+
+            this.props.notifyCardUpdatedFn(updatedCard);
+        });
+    }
+
+    handleChangeCacheTTL(event) {
+      this.setState({cache_ttl: event.target.value});
+    }
+
+    handleSubmitCacheTTL() {
+      this.onSave({id: this.props.card.id,
+                   cache_ttl: +this.state.cache_ttl > 0 ? (+this.state.cache_ttl)*60 : null});
+      this.setState({ isOpen: false });
+    }
+
+    onGoBack() {
+        this.props.onChangeLocation(this.props.fromUrl || "/");
     }
 
     renderSort() {
@@ -150,8 +201,8 @@ export default class ExtendedOptions extends Component {
     renderPopover() {
         if (!this.state.isOpen) return null;
 
-        const { features, datasetQuery, tableMetadata } = this.props;
-
+        const { card, features, datasetQuery, tableMetadata, settingValues } = this.props;
+        console.log(card);
         return (
             <Popover onClose={() => this.setState({isOpen: false})}>
                 <div className="p3">
@@ -176,6 +227,19 @@ export default class ExtendedOptions extends Component {
                                 this.props.updateQueryLimit(limit);
                                 this.setState({ isOpen: false })
                             }} />
+                        </div>
+                    }
+
+                    { settingValues['enable-query-caching'] && card && card.name &&
+                        <div>
+                            <br/>
+                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Cache TTL, minutes (0 - defaults)</div>
+                            <div className="flex align-center">
+                              <input className="input block border-gray" type="text" defaultValue={card.cache_ttl ? card.cache_ttl/60 : 0} onChange={(e) => this.handleChangeCacheTTL(e)}/>
+                              <span className="Header-buttonSection borderless">
+                                <a className="ml1 cursor-pointer text-brand-hover text-grey-4 text-uppercase" onClick={this.handleSubmitCacheTTL}>DONE</a>
+                              </span>
+                            </div>
                         </div>
                     }
                 </div>
