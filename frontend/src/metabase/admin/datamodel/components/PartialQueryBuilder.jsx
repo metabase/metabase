@@ -73,7 +73,6 @@ export default class PartialQueryBuilder extends Component {
                     features={features}
                     query={query}
                     datasetQuery={datasetQuery}
-                    tableMetadata={tableMetadata}
                     databases={tableMetadata && [tableMetadata.db]}
                     setDatasetQuery={this.setDatasetQuery}
                     isShowingDataReference={false}

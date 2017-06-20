@@ -1391,6 +1391,45 @@ export const product_card = {
     }
 };
 
+export const orders_raw_card = {
+    id: 1,
+    name: "Raw orders data",
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            source_table: ORDERS_TABLE_ID
+        }
+    }
+};
+
+export const orders_count_card = {
+    id: 2,
+    name: "# orders data",
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            aggregation: [["count"]],
+            source_table: ORDERS_TABLE_ID
+        }
+    }
+};
+
+export const orders_count_by_id_card = {
+    id: 2,
+    name: "# orders data",
+    dataset_query: {
+        type: "query",
+        database: DATABASE_ID,
+        query: {
+            aggregation: [["count"]],
+            source_table: ORDERS_TABLE_ID,
+            breakout: [["field-id", ORDERS_PK_FIELD_ID]]
+        }
+    }
+};
+
 export const clickedFloatHeader = {
     column: {
         ...metadata.fields[ORDERS_TOTAL_FIELD_ID],

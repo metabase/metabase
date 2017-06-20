@@ -286,7 +286,7 @@ export default class StructuredQuery extends AtomicQuery {
                 ...fieldOptions,
                 dimensions: _.uniq([
                     ...this.expressionDimensions(),
-                    ...fieldOptions.dimensions.filter((d) => d instanceof ExpressionDimension),
+                    ...fieldOptions.dimensions.filter((d) => !(d instanceof ExpressionDimension)),
                 ])
             }
         } else {
@@ -618,6 +618,7 @@ export default class StructuredQuery extends AtomicQuery {
 
             const filteredNonFKDimensions =
                 this.dimensions().filter(dimensionFilter).filter(d => !dimensionIsFKReference(d));
+
             for (const dimension of filteredNonFKDimensions) {
                 fieldOptions.count++;
                 fieldOptions.dimensions.push(dimension);

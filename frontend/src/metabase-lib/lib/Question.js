@@ -130,6 +130,27 @@ export default class Question {
         return initialQuestion.setQuery(query);
     }
 
+    metadata(): Metadata {
+        return this._metadata;
+    }
+
+    card() {
+        return this._card;
+    }
+    setCard(card: CardObject): Question {
+        return new Question(this._metadata, card, this._parameterValues);
+    }
+
+    withoutNameAndId() {
+        return this.setCard(
+            chain(this.card())
+                .dissoc("id")
+                .dissoc("name")
+                .dissoc("description")
+                .value()
+        );
+    }
+
     /**
      * A question contains either a:
      * - StructuredQuery for queries written in MBQL
@@ -147,29 +168,6 @@ export default class Question {
         }
 
         throw new Error("Unknown query type: " + datasetQuery.type);
-    }
-
-    metadata(): Metadata {
-        return this._metadata;
-    }
-
-    setCard(card: CardObject): Question {
-        return new Question(this._metadata, card, this._parameterValues);
-    }
-
-    // TODO: Rename?
-    newQuestion() {
-        return this.setCard(
-            chain(this.card())
-                .dissoc("id")
-                .dissoc("name")
-                .dissoc("description")
-                .value()
-        );
-    }
-
-    isEmpty(): boolean {
-        return this.query().isEmpty();
     }
 
     /**
@@ -191,9 +189,15 @@ export default class Question {
         );
     }
 
-    card() {
-        return this._card;
+    /**
+     * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
+     */
+    atomicQueries(): AtomicQuery[] {
+        const query = this.query();
+        if (query instanceof AtomicQuery) return [query];
+        return [];
     }
+
 
     /**
      * The visualization type of the question
@@ -201,11 +205,14 @@ export default class Question {
     display(): string {
         return this._card && this._card.display;
     }
-
     setDisplay(display) {
         return this.setCard(assoc(this.card(), "display", display));
     }
 
+
+    isEmpty(): boolean {
+        return this.query().isEmpty();
+    }
     /**
      * Question is valid (as far as we know) and can be executed
      */
@@ -215,15 +222,6 @@ export default class Question {
 
     canWrite(): boolean {
         return this._card && this._card.can_write;
-    }
-
-    /**
-     * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
-     */
-    atomicQueries(): AtomicQuery[] {
-        const query = this.query();
-        if (query instanceof AtomicQuery) return [query];
-        return [];
     }
 
     /**
@@ -333,41 +331,8 @@ export default class Question {
         const isDirty = !originalQuestion || this.isDirtyComparedTo(originalQuestion);
 
         return isDirty
-            ? Urls.question(null, this.serializeForUrl())
+            ? Urls.question(null, this._serializeForUrl())
             : Urls.question(this.id(), "")
-    }
-    getLineage(): ?Question {
-        return null;
-    }
-
-    getPublicUrl(): string {
-        return "";
-    }
-    getDownloadURL(format: DownloadFormat): string {
-        return "";
-    }
-
-    // These methods require integration with Redux actions or REST API
-    update(): Promise<void> {
-        return new Promise(() => {});
-    }
-    save(): Promise<void> {
-        return new Promise(() => {});
-    }
-    revert(revisionId: RevisionId): Promise<void> {
-        return new Promise(() => {});
-    }
-    enablePublicSharing(): Promise<void> {
-        return new Promise(() => {});
-    }
-    disablePublicSharing(): Promise<void> {
-        return new Promise(() => {});
-    }
-    publishAsEmbeddable(): Promise<void> {
-        return new Promise(() => {});
-    }
-    getVersionHistory(): Promise<void> {
-        return new Promise(() => {});
     }
 
     /**
@@ -424,10 +389,6 @@ export default class Question {
         return Object.values(this.parameters());
     }
 
-    createParameter(parameter: ParameterOptions) {}
-    updateParameter(id: ParameterId, parameter: ParameterOptions) {}
-    deleteParameter(id: ParameterId) {}
-
     // predicate function that dermines if the question is "dirty" compared to the given question
     isDirtyComparedTo(originalQuestion: Question) {
         // TODO Atte Keinänen 6/8/17: Reconsider these rules because they don't completely match
@@ -457,15 +418,17 @@ export default class Question {
                 return false;
             }
         } else {
-            const origCardSerialized = originalQuestion.serializeForUrl();
-            const currentCardSerialized = this.serializeForUrl({
+            const origCardSerialized = originalQuestion._serializeForUrl();
+            const currentCardSerialized = this._serializeForUrl({
                 includeOriginalCardId: false
             });
             return currentCardSerialized !== origCardSerialized;
         }
     }
 
-    serializeForUrl({ includeOriginalCardId = true } = {}) {
+    // Internal methods
+
+    _serializeForUrl({ includeOriginalCardId = true } = {}) {
         // TODO Atte Keinänen 5/31/17: Remove code mutation and unnecessary copying
         const dataset_query = Utils.copy(this._card.dataset_query);
         if (dataset_query.query) {

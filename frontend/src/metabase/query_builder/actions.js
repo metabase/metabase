@@ -613,7 +613,7 @@ export const updateQuestion = (newQuestion) => {
         // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
         // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
         if (!getIsEditing(getState()) && newQuestion.isSaved()) {
-            newQuestion = newQuestion.newQuestion();
+            newQuestion = newQuestion.withoutNameAndId();
         }
 
         // Replace the current question with a new one
@@ -645,7 +645,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 
         // when the query changes on saved card we change this into a new query w/ a known starting point
         if (!uiControls.isEditing && question.isSaved()) {
-            newQuestion = newQuestion.newQuestion();
+            newQuestion = newQuestion.withoutNameAndId();
         }
 
         newQuestion = newQuestion.setDatasetQuery(dataset_query);
