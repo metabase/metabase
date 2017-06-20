@@ -73,7 +73,6 @@ export default class SegmentQuestionsContainer extends Component {
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing

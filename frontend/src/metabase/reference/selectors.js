@@ -87,7 +87,7 @@ const referenceSections = {
         name: "Databases and tables",
         empty: {
             title: "Metabase is no fun without any data",
-            adminMessage: "Your databses will appear here once you connect one",
+            adminMessage: "Your databases will appear here once you connect one",
             message: "Databases will appear here once your admins have added some",
             image: "app/assets/img/databases-list",
             adminAction: "Connect a database",
@@ -314,9 +314,9 @@ const getDatabaseSections = (database) => database ? {
         update: 'updateDatabase',
         type: 'database',
         breadcrumb: `${database.name}`,
-        fetch: {
-            fetchDatabaseMetadata: [database.id]
-        },
+        // fetch: {
+        //     fetchDatabaseMetadata: [database.id]
+        // },
         get: 'getDatabase',
         icon: "document",
         headerIcon: "database",
@@ -332,9 +332,9 @@ const getDatabaseSections = (database) => database ? {
         },
         sidebar: 'Tables in this database',
         breadcrumb: `${database.name}`,
-        fetch: {
-            fetchDatabaseMetadata: [database.id]
-        },
+        // fetch: {
+        //     fetchDatabaseMetadata: [database.id]
+        // },
         get: 'getTablesByDatabase',
         icon: "table2",
         headerIcon: "database",
@@ -368,9 +368,9 @@ const getTableSections = (database, table) => database && table ? {
             }
         ],
         breadcrumb: `${table.display_name}`,
-        fetch: {
-            fetchDatabaseMetadata: [database.id]
-        },
+        // fetch: {
+        //     fetchDatabaseMetadata: [database.id]
+        // },
         get: 'getTable',
         icon: "document",
         headerIcon: "table2",
@@ -389,9 +389,9 @@ const getTableSections = (database, table) => database && table ? {
         },
         sidebar: 'Fields in this table',
         breadcrumb: `${table.display_name}`,
-        fetch: {
-            fetchDatabaseMetadata: [database.id]
-        },
+        // fetch: {
+        //     fetchDatabaseMetadata: [database.id]
+        // },
         get: "getFieldsByTable",
         icon: "fields",
         headerIcon: "table2",
@@ -412,9 +412,9 @@ const getTableSections = (database, table) => database && table ? {
         type: 'questions',
         sidebar: 'Questions about this table',
         breadcrumb: `${table.display_name}`,
-        fetch: {
-            fetchDatabaseMetadata: [database.id], fetchQuestions: []
-        },
+        // fetch: {
+        //     fetchDatabaseMetadata: [database.id], fetchQuestions: []
+        // },
         get: 'getTableQuestions',
         icon: "all",
         headerIcon: "table2",
@@ -462,9 +462,9 @@ const getTableFieldSections = (database, table, field) => database && table && f
             }
         ],
         breadcrumb: `${field.display_name}`,
-        fetch: {
-            fetchDatabaseMetadata: [database.id]
-        },
+        // fetch: {
+        //     fetchDatabaseMetadata: [database.id]
+        // },
         get: "getField",
         icon: "document",
         headerIcon: "field",

@@ -14,20 +14,15 @@ import {
     getDatabaseId,
     getSectionId,
     getSections,
-    getSection,
     getBreadcrumbs,
     getIsEditing
 } from '../selectors';
 
-import {
-    tryFetchData
-} from '../utils';
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
     sections: getSections(state, props),
-    section: getSection(state, props),
     breadcrumbs: getBreadcrumbs(state, props),
     isEditing: getIsEditing(state, props)
 });
@@ -44,12 +39,11 @@ export default class FieldListContainer extends Component {
         breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
         sections: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
 
     async componentWillMount() {
-        await tryFetchData(this.props);
+        await actions.rFetchDatabaseMetadata(this.props, this.props.databaseId);
     }
 
     async componentWillReceiveProps(newProps) {
@@ -62,12 +56,11 @@ export default class FieldListContainer extends Component {
         newProps.clearError();
         newProps.collapseFormula();
 
-        await tryFetchData(newProps);
+        await actions.rFetchDatabaseMetadata(newProps, newProps.databaseId);
     }
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing

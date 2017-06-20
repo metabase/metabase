@@ -19,10 +19,6 @@ import {
     getIsEditing
 } from '../selectors';
 
-import {
-    tryFetchData
-} from '../utils';
-
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
@@ -50,7 +46,7 @@ export default class DatabaseDetailContainer extends Component {
     };
 
     async componentWillMount() {
-        await tryFetchData(this.props);
+        await actions.rFetchDatabaseMetadata(this.props, this.props.databaseId);
     }
 
     async componentWillReceiveProps(newProps) {
@@ -63,12 +59,11 @@ export default class DatabaseDetailContainer extends Component {
         newProps.clearError();
         newProps.collapseFormula();
 
-        await tryFetchData(newProps);
+        await actions.rFetchDatabaseMetadata(newProps, newProps.databaseId);
     }
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing

@@ -68,7 +68,6 @@ export default class SegmentFieldDetailContainer extends Component {
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing

@@ -67,7 +67,6 @@ export default class MetricListContainer extends Component {
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing

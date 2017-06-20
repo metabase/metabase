@@ -68,7 +68,6 @@ export default class SegmentListContainer extends Component {
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing

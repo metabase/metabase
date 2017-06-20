@@ -72,7 +72,6 @@ export default class MetricQuestionsContainer extends Component {
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing

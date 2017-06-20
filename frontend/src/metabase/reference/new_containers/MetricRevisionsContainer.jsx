@@ -68,7 +68,6 @@ export default class MetricRevisionsContainer extends Component {
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing

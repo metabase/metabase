@@ -11,6 +11,8 @@ import MetabaseAnalytics from 'metabase/lib/analytics';
 
 import { GettingStartedApi } from "metabase/services";
 
+import * as metadataActions from 'metabase/redux/metadata';
+
 const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
 const SET_ERROR = "metabase/reference/SET_ERROR";
 const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
@@ -68,6 +70,70 @@ export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
 
 export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
 
+
+// Helper functions. This is meant to be a transitional state to get things out of tryFetchData() and friends
+
+const fetchDataWrapper = (fn) => {
+
+    return (argument) => {
+        clearError();
+        startLoading();
+        try {
+            return fn.apply(argument)
+        }
+        catch(error) {
+            console.error(error);
+            setError(error);
+        }
+
+        endLoading();
+    }
+}
+
+export const rFetchDatabaseMetadata = (props, databaseID) => {
+    clearError();
+    startLoading();
+    try {
+        props.fetchDatabaseMetadata(databaseID)
+    }
+    catch(error) {
+        console.error(error);
+        setError(error);
+    }
+
+    endLoading();
+}
+
+export const rFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
+        clearError();
+        startLoading();
+        try {
+            await Promise.all(
+                    [props.fetchDatabaseMetadata(databaseID),
+                     props.fetchQuestions()]
+                )
+        }
+        catch(error) {
+            console.error(error);
+            setError(error);
+        }
+
+        endLoading();
+}
+
+export const rFetchDatabases = (props) => {
+    clearError();
+    startLoading();
+    try {
+        props.fetchDatabases()
+    }
+    catch(error) {
+        console.error(error);
+        setError(error);
+    }
+
+    endLoading();
+}
 
 const initialState = {
     error: null,

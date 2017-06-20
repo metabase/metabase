@@ -15,9 +15,6 @@ import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 import Detail from "metabase/reference/components/Detail.jsx";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
-import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
-import Formula from "metabase/reference/components/Formula.jsx";
-import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
 
 import {
     tryUpdateData
@@ -27,8 +24,6 @@ import {
     getSection,
     getData,
     getTable,
-    getFields,
-    getGuide,
     getError,
     getLoading,
     getUser,
@@ -94,23 +89,11 @@ import * as actions from 'metabase/reference/reference';
 
 const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
-    const guide = getGuide(state, props);
-    const fields = getFields(state, props);
-
-    const initialValues = {
-        important_fields: guide && guide.metric_important_fields &&
-            guide.metric_important_fields[entity.id] &&
-            guide.metric_important_fields[entity.id]
-                .map(fieldId => fields[fieldId]) ||
-                []
-    };
 
     return {
         section: getSection(state, props),
         entity,
         table: getTable(state, props),
-        metadataFields: fields,
-        guide,
         loading: getLoading(state, props),
         // naming this 'error' will conflict with redux form
         loadingError: getError(state, props),
@@ -122,7 +105,6 @@ const mapStateToProps = (state, props) => {
         hasDisplayName: getHasDisplayName(state, props),
         isFormulaExpanded: getIsFormulaExpanded(state, props),
         hasRevisionHistory: getHasRevisionHistory(state, props),
-        initialValues,
     }
 };
 
@@ -140,7 +122,7 @@ const validate = (values, props) => props.hasRevisionHistory ?
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'special_type', 'fk_target_field_id', 'important_fields'],
+    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'special_type', 'fk_target_field_id'],
     validate
 })
 export default class FieldDetail extends Component {
@@ -148,18 +130,13 @@ export default class FieldDetail extends Component {
         style: PropTypes.object.isRequired,
         entity: PropTypes.object.isRequired,
         table: PropTypes.object,
-        metadataFields: PropTypes.object,
-        guide: PropTypes.object,
         user: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
-        hasQuestions: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
         endLoading: PropTypes.func.isRequired,
-        expandFormula: PropTypes.func.isRequired,
-        collapseFormula: PropTypes.func.isRequired,
         setError: PropTypes.func.isRequired,
         updateField: PropTypes.func.isRequired,
         handleSubmit: PropTypes.func.isRequired,
@@ -168,41 +145,32 @@ export default class FieldDetail extends Component {
         section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
-        isFormulaExpanded: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
-        onChangeLocation: PropTypes.func.isRequired
     };
 
     render() {
         const {
-            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, special_type, fk_target_field_id, important_fields },
+            fields: { name, display_name, description, revision_message, points_of_interest, caveats, special_type, fk_target_field_id },
             style,
             section,
             entity,
             table,
-            metadataFields,
-            guide,
             loadingError,
             loading,
             user,
             foreignKeys,
             isEditing,
-            hasQuestions,
             startEditing,
             endEditing,
-            expandFormula,
-            collapseFormula,
             hasSingleSchema,
             hasDisplayName,
-            isFormulaExpanded,
             hasRevisionHistory,
             handleSubmit,
             resetForm,
             submitting,
-            onChangeLocation
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>

@@ -20,10 +20,6 @@ import {
 } from '../selectors';
 
 import {
-    tryFetchData
-} from '../utils';
-
-import {
     loadEntities
 } from 'metabase/questions/questions';
 
@@ -38,7 +34,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-    fetchQuestions: () => loadEntities("card", {}),
+    fetchQuestions: () => loadEntities("cards", {}),
     ...metadataActions,
     ...actions
 };
@@ -55,7 +51,7 @@ export default class TableQuestionsContainer extends Component {
     };
 
     async componentWillMount() {
-        await tryFetchData(this.props);
+        await actions.rFetchDatabaseMetadataAndQuestion(this.props, this.props.databaseId);
     }
 
     async componentWillReceiveProps(newProps) {
@@ -68,12 +64,11 @@ export default class TableQuestionsContainer extends Component {
         newProps.clearError();
         newProps.collapseFormula();
 
-        await tryFetchData(newProps);
+        await actions.rFetchDatabaseMetadataAndQuestion(newProps, newProps.databaseId);
     }
 
     render() {
         const {
-            section,
             sections,
             breadcrumbs,
             isEditing
