@@ -73,20 +73,6 @@ export const tryUpdateData = async (fields, props) => {
         if (!isEmptyObject(editedFields)) {
             const newEntity = {...entity, ...editedFields};
             await props[section.update](newEntity);
-
-            if (section.type === 'metric' && fields.important_fields) {
-                const importantFieldIds = fields.important_fields.map(field => field.id);
-                const existingImportantFieldIds = guide.metric_important_fields && guide.metric_important_fields[entity.id];
-
-                const areFieldIdsIdentitical = existingImportantFieldIds &&
-                    existingImportantFieldIds.length === importantFieldIds.length &&
-                    existingImportantFieldIds.every(id => importantFieldIds.includes(id));
-
-                if (!areFieldIdsIdentitical) {
-                    await updateMetricImportantFields(entity.id, importantFieldIds);
-                    tryFetchData(props);
-                }
-            }
         }
     }
     catch(error) {
@@ -99,6 +85,48 @@ export const tryUpdateData = async (fields, props) => {
     endEditing();
 }
 
+export const tryUpdateMetric = async (fields, props) => {
+    const {
+        entity,
+        guide,
+        section,
+        updateMetricImportantFields,
+        startLoading,
+        endLoading,
+        resetForm,
+        setError,
+        endEditing
+    } = props;
+
+    startLoading();
+    try {
+        const editedFields = filterUntouchedFields(fields, entity);
+        if (!isEmptyObject(editedFields)) {
+            const newEntity = {...entity, ...editedFields};
+            await props[section.update](newEntity);
+
+            const importantFieldIds = fields.important_fields.map(field => field.id);
+            const existingImportantFieldIds = guide.metric_important_fields && guide.metric_important_fields[entity.id];
+
+            const areFieldIdsIdentitical = existingImportantFieldIds &&
+                existingImportantFieldIds.length === importantFieldIds.length &&
+                existingImportantFieldIds.every(id => importantFieldIds.includes(id));
+
+            if (!areFieldIdsIdentitical) {
+                await updateMetricImportantFields(entity.id, importantFieldIds);
+                tryFetchData(props);
+            }
+        }
+    }
+    catch(error) {
+        setError(error);
+        console.error(error);
+    }
+
+    resetForm();
+    endLoading();
+    endEditing();
+}
 export const tryUpdateFields = async (formFields, props) => {
     const {
         entities,

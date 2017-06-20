@@ -16,7 +16,7 @@ import Formula from "metabase/reference/components/Formula.jsx";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
 
 import {
-    tryUpdateData
+    tryUpdateMetric
 } from '../utils';
 
 import {
@@ -172,7 +172,7 @@ export default class MetricDetail extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
-            await tryUpdateData(fields, this.props)
+            await tryUpdateMetric(fields, this.props)
         );
 
         return (
