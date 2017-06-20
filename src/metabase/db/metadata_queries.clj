@@ -58,8 +58,15 @@
   "Return all the values of FIELD."
   [field query]
   {:field field
-   :data (map first (field-query field (merge {:field-id (:id field)}
-                                              query)))})
+   :data (->> (qp/process-query
+               {:type :query
+                :database (db/select-one-field :db_id Table, :id (:table_id field))
+                :query (merge {:fields [[:field-id (:id field)]]
+                               :source-table (:table_id field)}
+                              query)})
+              :data
+              :rows
+              (map first))})
 
 (defn- transpose
   [{:keys [rows columns cols]}]
