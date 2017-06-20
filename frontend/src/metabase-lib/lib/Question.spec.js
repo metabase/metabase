@@ -34,7 +34,7 @@ describe("Question", () => {
                 expect(question.display()).toBeUndefined();
             })
             it("has correct mode", () => {
-                expect(question.mode().name).toBe("segment");
+                expect(question.mode().name()).toBe("segment");
             });
         });
 
@@ -133,7 +133,7 @@ describe("Question", () => {
     // TODO: These are mode-dependent and should probably be tied to modes
     // At the same time, the choice that which actions are visible depend on the question's properties
     // as actions are filtered using those
-    describe("MODE METHODS FOR DRILL-THROUGH / ACTION WIDGET", () => {
+    describe("METHODS FOR DRILL-THROUGH / ACTION WIDGET", () => {
         const rawDataQuestion = new Question(metadata, orders_raw_card);
         const timeBreakoutQuestion = Question.create({
             databaseId: DATABASE_ID,
@@ -149,54 +149,15 @@ describe("Question", () => {
         describe("mode()", () => {
             describe("for a new question with Orders table and Raw data aggregation", () => {
                 it("returns the correct mode", () => {
-                    expect(rawDataQuestion.mode().name).toBe("segment")
+                    expect(rawDataQuestion.mode().name()).toBe("segment")
                 })
             })
             describe("for a question with an aggregation and a time breakout", () => {
                 it("returns the correct mode", () => {
-                    expect(timeBreakoutQuestion.mode().name).toBe("timeseries")
+                    expect(timeBreakoutQuestion.mode().name()).toBe("timeseries")
                 })
             })
         })
-
-        describe("actions()", () => {
-            describe("for a new question with Orders table and Raw data aggregation", () => {
-                it("returns a correct number of mode actions", () => {
-                    expect(rawDataQuestion.actions().length).toBe(4);
-                });
-                it("returns 'View this as a table' as mode action 1", () => {
-                    expect(rawDataQuestion.actions()[0].name).toBe("underlying-data");
-                    expect(rawDataQuestion.actions()[0].icon).toBe("table");
-                    expect(rawDataQuestion.actions()[0].title).toBe("View this as a table");
-                });
-                it("returns a defined metric as mode action 2", () => {
-                    expect(rawDataQuestion.actions()[1].name).toBe("common-metric");
-                    // TODO: Sameer 6/16/17
-                    // This is wack and not really testable. We shouldn't be passing around react components in this imo
-                    // expect(question.actions()[1].title.props.children).toBe("Total Order Value");
-                });
-                it("returns a count timeseries as mode action 3", () => {
-                    expect(rawDataQuestion.actions()[2].name).toBe("count-by-time");
-                    expect(rawDataQuestion.actions()[2].icon).toBe("line");
-                    // TODO: Sameer 6/16/17
-                    // This is wack and not really testable. We shouldn't be passing around react components in this imo
-                    // expect(question.actions()[2].title.props.children).toBe("Count of rows by time");
-                });
-                it("returns summarize as mode action 4", () => {
-                    expect(rawDataQuestion.actions()[3].name).toBe("summarize");
-                    expect(rawDataQuestion.actions()[3].icon).toBe("sum");
-                    expect(rawDataQuestion.actions()[3].title).toBe("Summarize this segment");
-                });
-            })
-
-            describe("for a question with an aggregation and a time breakout", () => {
-                it("has pivot as mode actions 1 and 2", () => {
-                    expect(timeBreakoutQuestion.actions().length).toBe(3);
-                    expect(timeBreakoutQuestion.actions()[0].name).toBe("pivot-by-category");
-                    expect(timeBreakoutQuestion.actions()[1].name).toBe("pivot-by-location");
-                })
-            })
-        });
 
         describe("summarize(...)", async () => {
             const question = new Question(metadata, orders_raw_card);

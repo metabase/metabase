@@ -88,20 +88,6 @@ export default class Query {
     }
 
     /**
-     * Top level actions that can be performed on this query
-     */
-    actions(): Action[] {
-        return [];
-    }
-
-    /**
-     * Drill through actions that can be performed on a part of the result setParameter
-     */
-    actionsForClick(click: ActionClick): Action[] {
-        return [];
-    }
-
-    /**
      * Helper for updating with functions that expect a DatasetQuery object
      */
     update(fn: (datasetQuery: DatasetQuery) => void) {

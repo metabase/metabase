@@ -26,7 +26,6 @@ import {
     toUnderlyingRecords,
     drillUnderlyingRecords
 } from "metabase/qb/lib/actions";
-import { getMode } from "metabase/qb/lib/modes";
 
 import _ from "underscore";
 import { chain, assoc } from "icepick";
@@ -41,11 +40,6 @@ import type {
     Card as CardObject
 } from "metabase/meta/types/Card";
 
-import type {
-    ClickAction,
-    ClickObject,
-    QueryMode
-} from "metabase/meta/types/Visualization";
 import { MetabaseApi, CardApi } from "metabase/services";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
@@ -53,6 +47,7 @@ import type { Dataset } from "metabase/meta/types/Dataset";
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
 import * as Urls from "metabase/lib/urls";
+import Mode from "metabase-lib/lib/Mode";
 
 // TODO: move these
 type DownloadFormat = "csv" | "json" | "xlsx";
@@ -280,34 +275,10 @@ export default class Question {
         }
     }
 
-    mode(): ?QueryMode {
-        return getMode(this.card(), this.tableMetadata());
+    mode(): ?Mode {
+        return Mode.forQuestion(this);
     }
-
-    actions(): ClickAction[] {
-        const mode = this.mode();
-        if (mode) {
-            return _.flatten(
-                mode.actions.map(actionCreator =>
-                    actionCreator({ question: this }))
-            );
-        } else {
-            return [];
-        }
-    }
-
-    actionsForClick(clicked: ?ClickObject): ClickAction[] {
-        const mode = this.mode();
-        if (mode) {
-            return _.flatten(
-                mode.drills.map(actionCreator =>
-                    actionCreator({ question: this, clicked }))
-            );
-        } else {
-            return [];
-        }
-    }
-
+b
     /**
      * A user-defined name for the question
      */

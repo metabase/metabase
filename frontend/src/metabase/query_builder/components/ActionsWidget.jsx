@@ -86,7 +86,7 @@ export default class ActionsWidget extends Component {
 
     handleActionClick = (index: number) => {
         const { question } = this.props;
-        const action = question.actions()[index];
+        const action = question.mode().actions()[index];
         if (action && action.popover) {
             this.setState({ selectedActionIndex: index });
         } else if (action && action.question) {
@@ -102,7 +102,7 @@ export default class ActionsWidget extends Component {
         const { className, question } = this.props;
         const { isOpen, isVisible, selectedActionIndex } = this.state;
 
-        const actions = question.actions();
+        const actions = question.mode().actions();
         if (actions.length === 0) {
             return null;
         }
