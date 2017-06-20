@@ -177,15 +177,23 @@
                            (- 1 cardinality-error))
         :entropy (binned-entropy histogram)}))))
 
-(defmulti fingerprint class)
+(defmulti fingerprint (fn [_ x] (class x)))
+
+(def ^:private ^:const max-sample-size 10000)
+
+(defn- extract-query-opts
+  [{:keys [max-cost]}]
+  (cond-> {}
+    (< (or max-cost 5) 3) (assoc :limit max-sample-size)))
 
 (defn fingerprint-field
   [{:keys [field data]}]
   (transduce identity (fingerprinter field) data))
 
 (defmethod fingerprint (class Field)
-  [field]
-  (assoc (fingerprint-field (metadata/field-values field)) :field field))
+  [opts field]
+  (assoc (fingerprint-field (metadata/field-values field (extract-query-opts opts)))
+    :field field))
 
 (defn- fingerprint-query
   [query-result]
@@ -194,24 +202,29 @@
       [col (fingerprint-field field)])))
 
 (defmethod fingerprint (class Table)
-  [table]
+  [opts table]
   (fingerprint-query (metadata/query-values
                       (:db_id table)
-                      {:source-table (:id table)})))
+                      (merge (extract-query-opts opts)
+                             {:source-table (:id table)}))))
 
 (defmethod fingerprint (class Card)
-  [card]
+  [opts card]
   (fingerprint-query (metadata/query-values
                       (:database_id card)
-                      (-> card :dataset_query :query))))
+                      (merge (extract-query-opts opts)
+                             (-> card :dataset_query :query)))))
 
 (defmethod fingerprint (class Segment)
-  [segment]
+  [opts segment]
   (fingerprint-query (metadata/query-values
                       (:db_id (db/select-one 'Table :id (:table_id segment)))
-                      (:definition segment))))
+                      (merge (extract-query-opts opts)
+                             (:definition segment)))))
 
 (defn compare-fingerprints
-  [a b]
-  {(:name a) (fingerprint a)
-   (:name b) (fingerprint b)})
+  [opts a b]
+  {(:name a) (fingerprint opts a)
+   (:name b) (fingerprint opts b)})
+
+;; TODO unify Card and Segment fields with the rest

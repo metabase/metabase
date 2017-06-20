@@ -18,8 +18,7 @@
 (defn- field-query [{table-id :table_id} query]
   {:pre [(integer? table-id)]}
   (qp-query (db/select-one-field :db_id Table, :id table-id)
-            (ql/query (merge query)
-                      (ql/source-table table-id))))
+            (ql/query query (ql/source-table table-id))))
 
 (defn table-row-count
   "Fetch the row count of TABLE via the query processor."
@@ -55,15 +54,12 @@
   (-> (field-query field (ql/aggregation {} (ql/count (ql/field-id field-id))))
       first first int))
 
-(def ^:private ^:const max-sample-size 10000)
-
 (defn field-values 
   "Return all the values of FIELD."
-  [field]
+  [field query]
   {:field field
-   :data (map first (field-query field (-> {}
-                                           (ql/fields (ql/field-id (u/get-id field)))
-                                           (ql/limit max-sample-size))))})
+   :data (map first (field-query field (merge {:field-id (:id field)}
+                                              query)))})
 
 (defn- transpose
   [{:keys [rows columns cols]}]
@@ -83,7 +79,6 @@
   (-> (qp/process-query
         {:type :query
          :database db-id
-         :query (merge {:limit max-sample-size}
-                       query)})
+         :query query})
       :data
       transpose))
