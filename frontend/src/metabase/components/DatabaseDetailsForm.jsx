@@ -260,7 +260,7 @@ export default class DatabaseDetailsForm extends Component {
         let fields = [
             {
                 name: 'name',
-                'display-name': 'NameFOOsss',
+                'display-name': 'Name',
                 placeholder: "How would you like to refer to this database?",
                 required: true
             },

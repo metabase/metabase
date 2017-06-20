@@ -148,7 +148,7 @@
 (defn- analyze-table
   "Implementation of `analyze-table` for Druid driver."
   [driver table new-table-ids]
-  ((cached-values/make-analyze-table driver
+  ((cached-values/make-field-extractor driver
      :calculate-row-count?  false) driver table new-table-ids))
 
 

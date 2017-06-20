@@ -424,7 +424,7 @@
 (defn analyze-table
   "Default implementation of `analyze-table` for SQL drivers."
   [driver table new-table-ids]
-  ((cached-values/make-analyze-table driver)
+  ((cached-values/make-field-extractor driver)
    driver
    table
    new-table-ids))

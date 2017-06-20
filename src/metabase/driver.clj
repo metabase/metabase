@@ -20,7 +20,7 @@
   "The maximum number of values we should return when using `field-values-lazy-seq`.
    This many is probably fine for inferring special types and what-not; we don't want
    to scan millions of values at any rate."
-  1000)
+  10000)
 
 (def ^:const field-values-lazy-seq-chunk-size
   "How many Field values should be fetched at a time for a chunked implementation of `field-values-lazy-seq`?"

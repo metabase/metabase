@@ -74,11 +74,11 @@
           driver (->> id table/table-id->database-id driver/database-id->driver) ;; is this the easy way to do this?
           new-visibility (visible-state? (:visibility_type updated-table))
           old-visibility (visible-state? original-visibility-type)
-          visibility-changed? (and (not= new-visibility
+          table-now-visible? (and (not= new-visibility
                                          old-visibility)
                                    (= :show new-visibility))]
-      (when visibility-changed?
-        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type visibility-changed?)
+      (when table-now-visible?
+        (log/debug (u/format-color 'green "Table visibility changed, resyncing %s -> %s : %s") original-visibility-type visibility_type table-now-visible?)
         (sync-database/sync-table! updated-table)
         (cached-values/cache-table-data-shape! driver updated-table)
         (analyze/analyze-table-data-shape!     driver updated-table)

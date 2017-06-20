@@ -125,7 +125,7 @@
     (if (= v "NaN") 0.0 v)))
 
 (defn- analyze-table [driver table new-table-ids]
-  ((cached-values/make-analyze-table driver
+  ((cached-values/make-field-extractor driver
      :field-avg-length-fn   field-avg-length
      :field-percent-urls-fn field-percent-urls) driver table new-table-ids))
 

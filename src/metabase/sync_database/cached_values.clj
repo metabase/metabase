@@ -56,11 +56,7 @@
   [{:keys [name base_type] :as field} field-stats]
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
   ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
-
-  (let [#_name-type-guess #_(infer-special-type/infer-field-special-type name base_type)
-        ;collecting-field-values-is-allowed? true (field-values/field-should-have-field-values? field)
-;        _ (log/errorf (u/format-color 'green "name: %s :type %s" name name-type-guess))
-        non-nil-values  (when #_(test-for-cardinality? field) #_(nil? name-type-guess) (field-values/field-should-have-field-values? field)
+  (let [non-nil-values  (when (field-values/field-should-have-field-values? field)
                           (filter identity (queries/field-distinct-values field (inc classify/low-cardinality-threshold))))
         ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
         distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)
@@ -69,7 +65,7 @@
       (assoc field-stats :values distinct-values)
       field-stats)))
 
-(defn make-analyze-table
+(defn make-field-extractor
   "Make a generic implementation of `analyze-table`."
   {:style/indent 1}
   [driver & {:keys [calculate-row-count?]
@@ -82,7 +78,7 @@
 (defn generic-analyze-table
   "An implementation of `analyze-table` using the defaults (`default-field-avg-length` and `field-percent-urls`)."
   [driver table new-field-ids]
-  ((make-analyze-table driver) driver table new-field-ids))
+  ((make-field-extractor driver) driver table new-field-ids))
 
 ;;;; End of driver stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
