@@ -2,141 +2,184 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import moment from "moment";
-
-import visualizations from "metabase/visualizations";
-import { isQueryable } from "metabase/lib/table";
-import * as Urls from "metabase/lib/urls";
+import { reduxForm } from "redux-form";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
+import F from "metabase/reference/components/Field.css"
 
+import Field from "metabase/reference/components/Field.jsx";
 import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import EditHeader from "metabase/reference/components/EditHeader.jsx";
+import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 
-import {
-    separateTablesBySchema,
-    emptyStateForUser
-} from '../utils';
+import cx from "classnames";
 
 import {
     getSection,
     getData,
-    getUser,
-    getHasSingleSchema,
+    getForeignKeys,
     getError,
-    getLoading
+    getLoading,
+    getUser,
+    getIsEditing,
+    getHasRevisionHistory,
 } from "../selectors";
 
-import * as metadataActions from "metabase/redux/metadata";
+import {
+    tryUpdateFields,
+    fieldsToFormFields,
+    emptyStateForUser
+} from '../utils';
 
-// const section =  {
-//         id: `/reference/segments/${segment.id}/fields`,
-//         name: `Fields in ${segment.name}`,
+import { getIconForField } from "metabase/lib/schema_metadata";
+
+import * as metadataActions from "metabase/redux/metadata";
+import * as actions from 'metabase/reference/reference';
+
+// const section = {
+//         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
+//         name: `Fields in ${table.display_name}`,
 //         empty: {
-//             message: `Fields in this segment will appear here as they're added`,
+//             message: `Fields in this table will appear here as they're added`,
 //             icon: "fields"
 //         },
-//         sidebar: 'Fields in this segment',
+//         sidebar: 'Fields in this table',
+//         breadcrumb: `${table.display_name}`,
 //         fetch: {
-//             fetchSegmentFields: [segment.id]
+//             fetchDatabaseMetadata: [database.id]
 //         },
-//         get: "getFieldsBySegment",
-//         breadcrumb: `${segment.name}`,
+//         get: "getFieldsByTable",
 //         icon: "fields",
-//         headerIcon: "segment",
-//         parent: referenceSections[`/reference/segments`]
+//         headerIcon: "table2",
+//         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
 //     }
 
-const emptyStateData =  {
-            message: `Fields in this segment will appear here as they're added`,
+const emptyStateData = {
+            message: `Fields in this table will appear here as they're added`,
             icon: "fields"
         }
 
-const mapStateToProps = (state, props) => ({
-    section: getSection(state, props),
-    entities: getData(state, props),
-    user: getUser(state, props),
-    hasSingleSchema: getHasSingleSchema(state, props),
-    loading: getLoading(state, props),
-    loadingError: getError(state, props)
-});
+
+const mapStateToProps = (state, props) => {
+    const data = getData(state, props);
+    return {
+        section: getSection(state, props),
+        entities: data,
+        foreignKeys: getForeignKeys(state, props),
+        loading: getLoading(state, props),
+        loadingError: getError(state, props),
+        user: getUser(state, props),
+        isEditing: getIsEditing(state, props),
+        hasRevisionHistory: getHasRevisionHistory(state, props),
+        fields: fieldsToFormFields(data)
+    };
+}
 
 const mapDispatchToProps = {
-    ...metadataActions
+    ...metadataActions,
+    ...actions
 };
 
-const createListItem = (entity, index, section) =>
-    <li className="relative" key={entity.id}>
-        <ListItem
-            id={entity.id}
-            index={index}
-            name={entity.display_name || entity.name}
-            description={section.type !== 'questions' ?
-                entity.description :
-                `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}`
-            }
-            url={section.type !== 'questions' ?
-                `${section.id}/${entity.id}` :
-                Urls.question(entity.id)
-            }
-            icon={section.type === 'questions' ?
-                visualizations.get(entity.display).iconName :
-                section.icon
-            }
-        />
-    </li>;
-
-const createSchemaSeparator = (entity) =>
-    <li className={R.schemaSeparator}>{entity.schema}</li>;
+const validate = (values, props) => {
+    return {};
+}
 
 @connect(mapStateToProps, mapDispatchToProps)
+@reduxForm({
+    form: 'fields',
+    validate
+})
 export default class SegmentFieldList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
+        foreignKeys: PropTypes.object.isRequired,
+        isEditing: PropTypes.bool,
+        hasRevisionHistory: PropTypes.bool,
+        startEditing: PropTypes.func.isRequired,
+        endEditing: PropTypes.func.isRequired,
+        startLoading: PropTypes.func.isRequired,
+        endLoading: PropTypes.func.isRequired,
+        setError: PropTypes.func.isRequired,
+        updateField: PropTypes.func.isRequired,
+        handleSubmit: PropTypes.func.isRequired,
         user: PropTypes.object.isRequired,
+        fields: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
-        hasSingleSchema: PropTypes.bool,
         loading: PropTypes.bool,
-        loadingError: PropTypes.object
+        loadingError: PropTypes.object,
+        submitting: PropTypes.bool,
+        resetForm: PropTypes.func
     };
 
     render() {
         const {
-            entities,
-            user,
             style,
+            entities,
+            fields,
+            foreignKeys,
             section,
-            hasSingleSchema,
             loadingError,
-            loading
+            loading,
+            user,
+            isEditing,
+            hasRevisionHistory,
+            startEditing,
+            endEditing,
+            resetForm,
+            handleSubmit,
+            submitting
         } = this.props;
 
         return (
-            <div style={style} className="full">
-                <ReferenceHeader section={section} />
+            <form style={style} className="full"
+                onSubmit={handleSubmit(async (formFields) =>
+                    await tryUpdateFields(formFields, this.props)
+                )}
+            >
+                { isEditing &&
+                    <EditHeader
+                        hasRevisionHistory={hasRevisionHistory}
+                        reinitializeForm={resetForm}
+                        endEditing={endEditing}
+                        submitting={submitting}
+                    />
+                }
+                <ReferenceHeader section={section} user={user} isEditing={isEditing} startEditing={startEditing} />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
+                        <div className={S.item}>
+                            <div className={R.columnHeader}>
+                                <div className={cx(S.itemTitle, F.fieldNameTitle)}>
+                                    Field name
+                                </div>
+                                <div className={cx(S.itemTitle, F.fieldType)}>
+                                    Field type
+                                </div>
+                                <div className={cx(S.itemTitle, F.fieldDataType)}>
+                                    Data type
+                                </div>
+                            </div>
+                        </div>
                         <List>
-                            { section.type === "tables" && !hasSingleSchema ?
-                                separateTablesBySchema(
-                                    entities,
-                                    section,
-                                    createSchemaSeparator,
-                                    createListItem
-                                ) :
-                                Object.values(entities).filter(isQueryable).map((entity, index) =>
-                                    entity && entity.id && entity.name &&
-                                        createListItem(entity, index, section)
-                                )
-                            }
+                            { Object.values(entities).map(entity =>
+                                entity && entity.id && entity.name &&
+                                    <li className="relative" key={entity.id}>
+                                        <Field
+                                            field={entity}
+                                            foreignKeys={foreignKeys}
+                                            url={`${section.id}/${entity.id}`}
+                                            icon={getIconForField(entity)}
+                                            isEditing={isEditing}
+                                            formField={fields[entity.id]}
+                                        />
+                                    </li>
+                            )}
                         </List>
                     </div>
                     :
@@ -144,8 +187,11 @@ export default class SegmentFieldList extends Component {
                         { section.empty &&
                             <EmptyState
                                 title={section.empty.title}
-                                message="Fields in this segment will appear here as they're added"
-                                icon="fields"
+                                message={user.is_superuser ?
+                                    section.empty.adminMessage || section.empty.message :
+                                    section.empty.message
+                                }
+                                icon={section.empty.icon}
                                 image={section.empty.image}
                                 action={user.is_superuser ?
                                     section.empty.adminAction || section.empty.action :
@@ -160,7 +206,7 @@ export default class SegmentFieldList extends Component {
                     </div>
                 }
                 </LoadingAndErrorWrapper>
-            </div>
+            </form>
         )
     }
 }

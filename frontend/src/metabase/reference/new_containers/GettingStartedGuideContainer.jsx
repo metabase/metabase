@@ -3,8 +3,6 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
-import Sidebar from 'metabase/components/Sidebar.jsx';
-import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx"
 
 import * as metadataActions from 'metabase/redux/metadata';
@@ -71,12 +69,6 @@ export default class GettingStartedGuideContainer extends Component {
     }
 
     render() {
-        const {
-            sections,
-            breadcrumbs,
-            isEditing
-        } = this.props;
-
 
         return (
                 <ReferenceGettingStartedGuide {...this.props} />

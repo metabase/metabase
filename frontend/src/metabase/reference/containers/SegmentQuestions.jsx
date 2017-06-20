@@ -20,12 +20,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    separateTablesBySchema
+    separateTablesBySchema, getQuestionUrl
 } from '../utils';
 
-import {
-    getQuestionUrl
-} from "../utils";
 
 import {
     getSection,

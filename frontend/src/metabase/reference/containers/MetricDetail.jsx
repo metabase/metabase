@@ -5,15 +5,12 @@ import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
 
-import S from "metabase/reference/Reference.css";
-
 import List from "metabase/components/List.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 import Detail from "metabase/reference/components/Detail.jsx";
-import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
@@ -113,7 +110,7 @@ const validate = (values, props) => props.hasRevisionHistory ?
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'special_type', 'fk_target_field_id', 'important_fields'],
+    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'important_fields'],
     validate
 })
 export default class MetricDetail extends Component {
@@ -124,9 +121,7 @@ export default class MetricDetail extends Component {
         metadataFields: PropTypes.object,
         guide: PropTypes.object,
         user: PropTypes.object.isRequired,
-        foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
-        hasQuestions: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
@@ -151,7 +146,7 @@ export default class MetricDetail extends Component {
 
     render() {
         const {
-            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, special_type, fk_target_field_id, important_fields },
+            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, important_fields },
             style,
             section,
             entity,
@@ -161,9 +156,7 @@ export default class MetricDetail extends Component {
             loadingError,
             loading,
             user,
-            foreignKeys,
             isEditing,
-            hasQuestions,
             startEditing,
             endEditing,
             expandFormula,

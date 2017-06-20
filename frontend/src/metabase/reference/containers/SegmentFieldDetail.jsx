@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import { push } from "react-router-redux";
 
 import S from "metabase/reference/Reference.css";
 
@@ -29,13 +28,12 @@ import {
     getError,
     getLoading,
     getUser,
-    getHasQuestions,
     getIsEditing,
     getHasDisplayName,
     getHasRevisionHistory,
     getHasSingleSchema,
-    getIsFormulaExpanded,
-    getForeignKeys
+    getForeignKeys,
+    getIsFormulaExpanded
 } from "../selectors";
 
 import * as metadataActions from 'metabase/redux/metadata';
@@ -95,7 +93,6 @@ const mapStateToProps = (state, props) => {
         section: getSection(state, props),
         entity,
         table: getTable(state, props),
-        metadataFields: fields,
         guide,
         loading: getLoading(state, props),
         // naming this 'error' will conflict with redux form
@@ -104,7 +101,6 @@ const mapStateToProps = (state, props) => {
         foreignKeys: getForeignKeys(state, props),
         isEditing: getIsEditing(state, props),
         hasSingleSchema: getHasSingleSchema(state, props),
-        hasQuestions: getHasQuestions(state, props),
         hasDisplayName: getHasDisplayName(state, props),
         isFormulaExpanded: getIsFormulaExpanded(state, props),
         hasRevisionHistory: getHasRevisionHistory(state, props),
@@ -114,8 +110,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
     ...metadataActions,
-    ...actions,
-    onChangeLocation: push
+    ...actions
 };
 
 const validate = (values, props) => props.hasRevisionHistory ?
@@ -126,7 +121,7 @@ const validate = (values, props) => props.hasRevisionHistory ?
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'special_type', 'fk_target_field_id', 'important_fields'],
+    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats',  'special_type', 'fk_target_field_id'],
     validate
 })
 export default class SegmentFieldDetail extends Component {
@@ -134,18 +129,13 @@ export default class SegmentFieldDetail extends Component {
         style: PropTypes.object.isRequired,
         entity: PropTypes.object.isRequired,
         table: PropTypes.object,
-        metadataFields: PropTypes.object,
-        guide: PropTypes.object,
         user: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
-        hasQuestions: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
         endLoading: PropTypes.func.isRequired,
-        expandFormula: PropTypes.func.isRequired,
-        collapseFormula: PropTypes.func.isRequired,
         setError: PropTypes.func.isRequired,
         updateField: PropTypes.func.isRequired,
         handleSubmit: PropTypes.func.isRequired,
@@ -154,41 +144,32 @@ export default class SegmentFieldDetail extends Component {
         section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
-        isFormulaExpanded: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
-        onChangeLocation: PropTypes.func.isRequired
     };
 
     render() {
         const {
-            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, special_type, fk_target_field_id, important_fields },
+            fields: { name, display_name, description, revision_message, points_of_interest, caveats, special_type, fk_target_field_id },
             style,
             section,
             entity,
             table,
-            metadataFields,
-            guide,
             loadingError,
             loading,
             user,
             foreignKeys,
             isEditing,
-            hasQuestions,
             startEditing,
             endEditing,
-            expandFormula,
-            collapseFormula,
             hasSingleSchema,
             hasDisplayName,
-            isFormulaExpanded,
             hasRevisionHistory,
             handleSubmit,
             resetForm,
             submitting,
-            onChangeLocation
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>

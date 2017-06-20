@@ -37,7 +37,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-    fetchQuestions: () => loadEntities("card", {}),
+    fetchQuestions: () => loadEntities("cards", {}),
     ...metadataActions,
     ...actions
 };
