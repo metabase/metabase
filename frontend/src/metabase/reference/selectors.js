@@ -228,7 +228,23 @@ const getSegmentSections = (segment, table, user) => segment ? {
         headerIcon: "segment",
         parent: referenceSections[`/reference/segments`]
     },
-    [`/reference/segments/${segment.id}/questions`]: {
+    [`/reference/segments/${segment.id}/xray`]: {
+        id: `/reference/segments/${segment.id}/xray`,
+        name: `X-Ray ${segment.name}`,
+        empty: {
+            message: `This fields xray is loading`,
+            icon: "fields"
+        },
+        sidebar: 'X-Ray this Segment',
+        fetch: {
+            fetchSegmentFields: [segment.id]
+        },
+        get: "getFieldsBySegment",
+        breadcrumb: `${segment.name}`,
+        icon: "fields",
+        headerIcon: "segment",
+        parent: referenceSections[`/reference/segments`]
+    },   [`/reference/segments/${segment.id}/questions`]: {
         id: `/reference/segments/${segment.id}/questions`,
         name: `Questions about ${segment.name}`,
         empty: {
@@ -397,6 +413,23 @@ const getTableSections = (database, table) => database && table ? {
         headerIcon: "table2",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
+    [`/reference/databases/${database.id}/tables/${table.id}/xray`]: {
+        id: `/reference/databases/${database.id}/tables/${table.id}/xray`,
+        name: `Xray of ${table.display_name}`,
+        empty: {
+            message: `Loading X-Ray`,
+            icon: "fields"
+        },
+        sidebar: 'X-Ray this table',
+        breadcrumb: `${table.display_name}`,
+        fetch: {
+            fetchDatabaseMetadata: [database.id]
+        },
+        get: 'getTable',
+        icon: "fields",
+        headerIcon: "table2",
+        parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
+    },
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about ${table.display_name}`,
@@ -462,6 +495,19 @@ const getTableFieldSections = (database, table, field) => database && table && f
             }
         ],
         breadcrumb: `${field.display_name}`,
+        fetch: {
+            fetchDatabaseMetadata: [database.id]
+        },
+        get: "getField",
+        icon: "document",
+        headerIcon: "field",
+        parent: getTableSections(database, table)[`/reference/databases/${database.id}/tables/${table.id}/fields`]
+    },
+    [`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}/xray`]: {
+        id: `/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}/xray`,
+        name: 'X-Ray',
+        type: 'field',
+        breadcrumb: `X-Ray ${field.display_name}`,
         fetch: {
             fetchDatabaseMetadata: [database.id]
         },

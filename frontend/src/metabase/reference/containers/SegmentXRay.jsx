@@ -2,22 +2,22 @@
 import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
-import type { Field } from 'metabase/meta/types/Field'
 
-import { fetchFieldFingerPrint } from 'metabase/reference/reference'
+import type { Field } from 'metabase/meta/types/Field'
+import { fetchSegmentFingerPrint } from 'metabase/reference/reference'
 
 type Props = {
-    fetchFieldFingerPrint: () => void,
+    fetchSegmentFingerPrint: () => void,
     fingerprint: {}
 }
 
-
-class FieldXRay extends Component {
+class SegmentXRay extends Component {
     props: Props
 
     componentDidMount () {
-        this.props.fetchFieldFingerPrint(this.props.params.fieldId)
+        this.props.fetchSegmentFingerPrint(this.props.params.segmentId)
     }
+
 
     render () {
         return (
@@ -40,12 +40,14 @@ class FieldXRay extends Component {
     }
 }
 
+// TODO - create selectors
 const mapStateToProps = state => ({
-    fingerprint: state.reference.fieldFingerprint, 
+    fingerprint: state.reference.segmentFingerprint, 
 })
 
 const mapDispatchToProps = {
-    fetchFieldFingerPrint: fetchFieldFingerPrint
+    fetchSegmentFingerPrint: fetchSegmentFingerPrint
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(FieldXRay)
+
+export default connect(mapStateToProps, mapDispatchToProps)(SegmentXRay)
