@@ -59,12 +59,7 @@
 
       ;; if this table comes from a dynamic schema db then run that sync process now
       (when (driver/driver-supports? driver :dynamic-schema)
-        (sync-dynamic/scan-table-and-update-data-model! driver database table))
-
-      ;; analyze if we are supposed to
-      #_(when full-sync?
-        (analyze/analyze-table-data-shape! driver table)
-        (classify/classify-and-save-table! driver table)))
+        (sync-dynamic/scan-table-and-update-data-model! driver database table)))
 
     (events/publish-event! :table-sync {:table_id (:id table)})
     (log/info (u/format-color 'magenta "Finished syncing table '%s' from %s database '%s'. (%s)" (:display_name table) (name driver) (:name database)

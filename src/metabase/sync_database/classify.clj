@@ -149,9 +149,9 @@
   {:row_count (:row_count table-fingerprint)
    :fields (map #(test:new-field % {:id (:id %)}) field-fingerprints)})
 
-(defn classify-and-save-table!
+(defn classify-table!
   "Analyze the data shape for a single `Table`."
-  [driver {table-id :id, :as table}]
+  [{table-id :id, :as table}]
   (let [fields (table/fields table)
         field-fingerprints (db/select FieldFingerprint :table_id table-id)
         table-fingerprint  (db/select TableFingerprint :table_id table-id)]
@@ -180,7 +180,7 @@
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]
       (try
-        (classify-and-save-table! driver table)
+        (classify-table! table)
         (catch Throwable t
           (log/error "Unexpected error analyzing table" t))
         (finally
@@ -188,15 +188,6 @@
             (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
 
     (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
-
-(defn classify-table!
-  "classify one table"
-  [table]
-  (classify-and-save-table! (->> table
-                                  table/database
-                                  :id
-                                  driver/database-id->driver)
-                            table))
 
 (defn classify-database!
   "analyze all the tables in one database"

@@ -82,7 +82,7 @@
         (sync-database/sync-table! updated-table)
         (cached-values/cache-table-data-shape! driver updated-table)
         (analyze/analyze-table-data-shape!     driver updated-table)
-        (classify/classify-and-save-table!     driver updated-table))
+        (classify/classify-table!               updated-table))
       updated-table)))
 
 

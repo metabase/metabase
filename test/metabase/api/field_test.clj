@@ -19,6 +19,10 @@
     {:created_at         $
      :engine             "h2"
      :caveats            nil
+     :sync_schedule      "0 50 * * * ? *"
+     :cache_field_values_schedule "1 50 * * * ? *"
+     :analyze_schedule   "2 50 * * * ? *"
+     :classify_schedule  "3 50 * * * ? *"
      :points_of_interest nil
      :id                 $
      :updated_at         $
