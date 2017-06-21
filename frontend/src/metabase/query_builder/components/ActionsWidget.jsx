@@ -37,6 +37,7 @@ export default class ActionsWidget extends Component {
     state: State = {
         isVisible: false,
         isOpen: false,
+        isClosing: false,
         selectedActionIndex: null
     };
 
@@ -65,10 +66,15 @@ export default class ActionsWidget extends Component {
     );
 
     close = () => {
-        this.setState({ isOpen: false, selectedActionIndex: null });
+        this.setState({ isClosing: true, isOpen: false, selectedActionIndex: null });
+        // Needed because when closing the action widget by clicking compass, this is triggered first
+        // on mousedown (by OnClickOutsideWrapper) and toggle is triggered on mouseup
+        setTimeout(() => this.setState({ isClosing: false }), 500);
     };
 
     toggle = () => {
+        if (this.state.isClosing) return;
+
         if (!this.state.isOpen) {
             MetabaseAnalytics.trackEvent("Actions", "Opened Action Menu");
         }
