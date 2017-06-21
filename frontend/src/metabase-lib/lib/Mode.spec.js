@@ -36,7 +36,7 @@ describe("Mode", () => {
             it("returns `timeseries` mode with >=1 aggregations and date breakout", () => {
 
             })
-            it("returns `timeseries` mode with >=1 aggregations and 1-2 breakouts with date first", () => {
+            it("returns `timeseries` mode with >=1 aggregations and date + category breakout", () => {
 
             })
 
