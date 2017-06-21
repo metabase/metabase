@@ -58,26 +58,26 @@ describe("Question", () => {
 
     describe("STATUS METHODS", () => {
         describe("canRun()", () => {
-            
+            pending();
         })
         describe("canWrite()", () => {
-
+            pending();
         })
         describe("isSaved()", () => {
-
+            pending();
         })
     });
 
     describe("CARD METHODS", () => {
         describe("card()", () => {
             it("returns the underlying card", () => {
-
+                pending();
             })
         })
 
         describe("setCard(card)", () => {
             it("returns the underlying card", () => {
-
+                pending();
             })
         })
     });
@@ -85,23 +85,23 @@ describe("Question", () => {
     describe("QUERY METHODS", () => {
         describe("query()", () => {
             it("returns a correct class instance for structured query", () => {
-
+                pending();
             });
             it("returns a correct class instance for native query", () => {
-
+                pending();
             });
             it("throws an error for invalid queries", () => {
-
+                pending();
             });
         })
         describe("setQuery(query)", () => {
             it("updates the dataset_query of card", () => {
-
+                pending();
             })
         })
         describe("setDatasetQuery(datasetQuery)", () => {
             it("updates the dataset_query of card", () => {
-
+                pending();
             })
         })
     });
@@ -109,10 +109,10 @@ describe("Question", () => {
     describe("RESETTING METHODS", () => {
         describe("withoutNameAndId()", () => {
             it("unsets the name and id", () => {
-
+                pending();
             });
             it("retains the dataset query", () => {
-
+                pending();
             });
         })
     })
@@ -120,12 +120,12 @@ describe("Question", () => {
     describe("VISUALIZATION METHODS", () => {
         describe("display()", () => {
             it("returns the card's visualization type", () => {
-
+                pending();
             });
         });
         describe("setDisplay(display)", () => {
             it("sets the card's visualization type", () => {
-
+                pending();
             });
         })
     })
@@ -454,7 +454,7 @@ describe("Question", () => {
 
     describe("COMPARISON TO OTHER QUESTIONS", () => {
         describe("isDirtyComparedTo(question)", () => {
-
+            pending();
         })
     });
 

@@ -3,6 +3,10 @@ import api from "metabase/lib/api";
 import { SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import reducers from 'metabase/reducers-main';
+
+import React from 'react'
+import { Provider } from 'react-redux';
+
 import { createMemoryHistory } from 'history'
 import { getStore } from "metabase/store";
 import { useRouterHistory } from "react-router";
@@ -69,6 +73,17 @@ export const createReduxStoreWithBrowserHistory = () => {
     const history = useRouterHistory(createMemoryHistory)();
     const store = getStore(reducers, history);
     return { history, store }
+}
+
+/**
+ * Returns the given React container with an access to a global Redux store
+ */
+export function linkContainerToGlobalReduxStore(component) {
+    return (
+        <Provider store={globalReduxStore}>
+            {component}
+        </Provider>
+    );
 }
 
 /**

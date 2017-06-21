@@ -28,12 +28,14 @@ describe("FieldName", () => {
         expect(fieldName.text()).toEqual("Created At: Week");
     });
     // TODO: How to test nested fields with the test dataset? Should we create a test mongo dataset?
-    xit("should render nested field correctly", () => {
+    it("should render nested field correctly", () => {
+        pending();
         let fieldName = mount(<FieldName field={2} tableMetadata={ORDERS_TABLE_ID}/>);
         expect(fieldName.text()).toEqual("Foo: Baz");
     });
     // TODO: How to test nested fields with the test dataset? Should we create a test mongo dataset?
-    xit("should render nested fk field correctly", () => {
+    it("should render nested fk field correctly", () => {
+        pending();
         let fieldName = mount(<FieldName field={["fk->", 3, 2]} tableMetadata={ORDERS_TABLE_ID}/>);
         expect(fieldName.text()).toEqual("BarFoo: Baz");
     });

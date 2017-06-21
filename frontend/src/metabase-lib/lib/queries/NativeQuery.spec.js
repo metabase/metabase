@@ -56,10 +56,10 @@ describe("NativeQuery", () => {
             });
         });
         describe("supportsNativeParameters()", () => {
-
+            pending();
         })
         describe("aceMode()", () => {
-
+            pending();
         })
     })
 
@@ -75,13 +75,13 @@ describe("NativeQuery", () => {
         // should we somehow simulate a mongo query here?
         // NOTE: Would be nice to have QB UI tests for mongo-specific interactions as well
         describe("requiresTable()", () => {
-
+            pending();
         })
         describe("collection()", () => {
-
+            pending();
         })
         describe("updateCollection(newCollection)", () => {
-
+            pending();
         })
         describe("table()", () => {
             it("returns null for a non-mongo query", () => {
@@ -92,21 +92,21 @@ describe("NativeQuery", () => {
     })
     describe("QUERY TEXT METHODS", () => {
         describe("queryText()", () => {
-
+            pending();
         })
         describe("updateQueryText(newQueryText)", () => {
-
+            pending();
         })
         describe("lineCount()", () => {
-
+            pending();
         })
     })
     describe("TEMPLATE TAG METHODS", () => {
         describe("templateTags()", () => {
-
+            pending();
         })
         describe("templateTagsMap()", () => {
-
+            pending();
         })
     });
 })

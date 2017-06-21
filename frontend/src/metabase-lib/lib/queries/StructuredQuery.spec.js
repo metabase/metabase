@@ -181,20 +181,27 @@ describe("StructuredQuery unit tests", () => {
 
         describe("aggregationOptions", () => {
             // TODO Atte Keinänen 6/14/17: Add the mock metadata for aggregation options
-            xit("should return a non-empty list of options", () => {
+            // (currently the fixture doesn't include them)
+            it("should return a non-empty list of options", () => {
+                pending();
                 expect(query.aggregationOptions().length).toBeGreaterThan(0);
             });
-            xit("should contain the count aggregation", () => {
+            it("should contain the count aggregation", () => {
+                pending();
             });
         });
         describe("aggregationOptionsWithoutRaw", () => {
-            it("", () => {
-            });
+            // Also waiting for the mock metadata
+            pending();
         });
 
         describe("aggregationFieldOptions()", () => {
-            it("", () => {
-            });
+            it("includes expressions to the results without a field filter", () => {
+                pending();
+            })
+            it("includes expressions to the results with a field filter", () => {
+                pending();
+            })
         });
 
         describe("canRemoveAggregation", () => {
@@ -289,20 +296,25 @@ describe("StructuredQuery unit tests", () => {
 
         describe("removeAggregation", () => {
             it("removes the correct aggregation", () => {
+                pending();
             });
             it("removes all breakouts when removing the last aggregation", () => {
+                pending();
             });
         });
 
         describe("updateAggregation", () => {
             it("updates the correct aggregation", () => {
+                pending();
             });
             it('removes all breakouts and aggregations when setting an aggregation to "rows"', () => {
+                pending();
             });
         });
 
         describe("clearAggregations", () => {
             it("clears all aggreagtions and breakouts", () => {
+                pending();
             });
         });
     });
@@ -310,8 +322,7 @@ describe("StructuredQuery unit tests", () => {
     // BREAKOUTS:
     describe("BREAKOUT METHODS", () => {
         describe("breakouts", () => {
-            it("", () => {
-            });
+            pending();
         });
         describe("breakoutOptions", () => {
             it("returns the correct count of dimensions", () => {
@@ -331,70 +342,64 @@ describe("StructuredQuery unit tests", () => {
             });
         });
         describe("canAddBreakout", () => {
-            it("", () => {
-            });
+            pending();
         });
         describe("hasValidBreakout", () => {
-            it("", () => {
-            });
+            pending();
         });
 
         describe("addBreakout", () => {
-            it("adds a breakout", () => {
-            });
+            pending();
         });
 
         describe("removeBreakout", () => {
-            it("removes the correct breakout", () => {
-            });
+            pending();
         });
 
         describe("updateBreakout", () => {
-            it("updates the correct breakout", () => {
-            });
+            pending();
         });
 
         describe("clearBreakouts", () => {
-            it("clears all breakouts", () => {
-            });
+            pending();
         });
     })
 
     // FILTERS:
     describe("FILTER METHODS", () => {
         describe("filters", () => {
-            it("", () => {
-            });
+            pending();
         });
 
         describe("filterFieldOptions", () => {
-            it("", () => {
-            });
+            pending();
         });
         describe("filterSegmentOptions", () => {
-            it("", () => {
-            });
+            pending();
         });
 
         describe("canAddFilter", () => {
-            it("", () => {
-            });
+            pending();
         });
 
         describe("addFilter", () => {
             it("adds an filter", () => {
+                pending();
             });
         });
         describe("removeFilter", () => {
             it("removes the correct filter", () => {
+                pending();
             });
         });
         describe("updateFilter", () => {
             it("updates the correct filter", () => {
+                pending();
             });
         });
         describe("clearFilters", () => {
             it("clears all filters", () => {
+                pending();
             });
         });
     });
@@ -432,23 +437,33 @@ describe("StructuredQuery unit tests", () => {
         });
 
         describe("canAddSort", () => {
-            it("", () => {});
+            pending();
         });
 
         describe("addSort", () => {
-            it("adds a sort", () => {});
+            it("adds a sort", () => {
+                pending();
+            });
         });
         describe("updateSort", () => {
-            it("", () => {});
+            it("", () => {
+                pending();
+            });
         });
         describe("removeSort", () => {
-            it("removes the correct sort", () => {});
+            it("removes the correct sort", () => {
+                pending();
+            });
         });
         describe("clearSort", () => {
-            it("clears all sorts", () => {});
+            it("clears all sorts", () => {
+                pending();
+            });
         });
         describe("replaceSort", () => {
-            it("replaces sorts with a new sort", () => {});
+            it("replaces sorts with a new sort", () => {
+                pending();
+            });
         });
 
     })
@@ -456,28 +471,44 @@ describe("StructuredQuery unit tests", () => {
 
     describe("LIMIT METHODS", () => {
         describe("limit", () => {
-            it("returns null if there is no limit", () => {});
-            it("returns the limit if one has been set", () => {});
+            it("returns null if there is no limit", () => {
+                pending();
+            });
+            it("returns the limit if one has been set", () => {
+                pending();
+            });
         });
 
         describe("updateLimit", () => {
-            it("updates the limit", () => {});
+            it("updates the limit", () => {
+                pending();
+            });
         });
         describe("clearLimit", () => {
-            it("clears the limit", () => {});
+            it("clears the limit", () => {
+                pending();
+            });
         });
     })
 
     describe("EXPRESSION METHODS", () => {
         describe("expressions", () => {
-            it("returns an empty map", () => {});
-            it("returns a map with the expressions", () => {});
+            it("returns an empty map", () => {
+                pending();
+            });
+            it("returns a map with the expressions", () => {
+                pending();
+            });
         });
         describe("updateExpression", () => {
-            it("updates the correct expression", () => {});
+            it("updates the correct expression", () => {
+                pending();
+            });
         });
         describe("removeExpression", () => {
-            it("removes the correct expression", () => {});
+            it("removes the correct expression", () => {
+                pending();
+            });
         });
     })
 
@@ -501,32 +532,31 @@ describe("StructuredQuery unit tests", () => {
             });
         });
         describe("dimensions", () => {
-            it("", () => {});
+            pending();
         });
         describe("tableDimensions", () => {
-            it("", () => {});
+            pending();
         });
         describe("expressionDimensions", () => {
-            it("", () => {});
+            pending();
         });
         describe("aggregationDimensions", () => {
-            it("", () => {});
+            pending();
         });
         describe("metricDimensions", () => {
-            it("", () => {});
+            pending();
         });
     })
 
     describe("FIELD REFERENCE METHODS", () => {
         describe("fieldReferenceForColumn", () => {
-            it("", () => {});
+            pending();
         });
 
         describe("parseFieldReference", () => {
-            it("", () => {});
+            pending();
         });
     })
-
 
     describe("DATASET QUERY METHODS", () => {
         describe("setDatasetQuery", () => {

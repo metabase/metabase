@@ -21,6 +21,9 @@ describe("Question", () => {
         await login();
     })
 
+    afterAll(async () => {
+        await stopServer();
+    })
 
     describe("with SQL questions", () => {
         it("should return correct result with a static template tag parameter", async () => {
@@ -82,8 +85,5 @@ describe("Question", () => {
             expect(results2[0]).toBeDefined();
             expect(results2[0].data.rows[0][0]).toEqual(18.1);
         })
-    })
-    afterAll(async () => {
-        await stopServer();
     })
 });
