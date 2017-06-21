@@ -62,6 +62,10 @@ export default class NativeQuery extends AtomicQuery {
             (!this.requiresTable() || this.collection());
     }
 
+    isEmpty() {
+        return this.databaseId() == null || this.queryText().length == 0
+    }
+
     databases(): Database[] {
         return super
             .databases()

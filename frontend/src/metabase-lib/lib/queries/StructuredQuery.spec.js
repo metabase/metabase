@@ -11,8 +11,7 @@ import {
     ORDERS_TOTAL_FIELD_ID,
     MAIN_METRIC_ID,
     ORDERS_PRODUCT_FK_FIELD_ID,
-    PRODUCT_TILE_FIELD_ID,
-    ORDERS_PK_FIELD_ID
+    PRODUCT_TILE_FIELD_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
 import StructuredQuery from "./StructuredQuery";
@@ -79,11 +78,6 @@ describe("StructuredQuery unit tests", () => {
                 expect(query.database().id).toBe(DATABASE_ID);
             });
         });
-        describe("isEmpty", () => {
-            it("tells that a non-empty query is not empty", () => {
-                expect(query.isEmpty()).toBe(false);
-            });
-        });
         describe("engine", () => {
             it("identifies the engine of a query", () => {
                 // This is a magic constant and we should probably pull this up into an enum
@@ -146,6 +140,11 @@ describe("StructuredQuery unit tests", () => {
         describe("isEditable", () => {
             it("A valid query should be editable", () => {
                 expect(query.isEditable()).toBe(true);
+            });
+        });
+        describe("isEmpty", () => {
+            it("tells that a non-empty query is not empty", () => {
+                expect(query.isEmpty()).toBe(false);
             });
         });
     })
