@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component } from "react";
+import React from "react";
 
 import { ModalFooter } from "metabase/components/ModalContent"
 import AdminContentTable from "metabase/components/AdminContentTable";
@@ -32,11 +32,11 @@ type State = {
     mappings: { [string]: number[] }
 };
 
-export default class LdapGroupMappingsWidget extends Component<*, Props, State> {
+export default class LdapGroupMappingsWidget extends React.Component {
     props: Props;
     state: State;
 
-    constructor(props, context) {
+    constructor(props: Props, context: any) {
         super(props, context);
         this.state = {
             showEditModal: false,
@@ -46,26 +46,26 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
         };
     }
 
-    _showEditModal = (e) => {
+    _showEditModal = (e: Event) => {
         e.preventDefault();
         this.setState({ mappings: this.props.mappings || {}, showEditModal: true });
         PermissionsApi.groups().then((groups) => this.setState({ groups }));
     }
 
-    _showAddRow = (e) => {
+    _showAddRow = (e: Event) => {
         e.preventDefault();
         this.setState({ showAddRow: true });
     }
 
-    _hideAddRow = (e) => {
+    _hideAddRow = () => {
         this.setState({ showAddRow: false });
     }
 
-    _addMapping = (dn) => {
+    _addMapping = (dn: string) => {
         this.setState((prevState: State) => ({ mappings: { ...prevState.mappings, [dn]: [] }, showAddRow: false }));
     }
 
-    _changeMapping = (dn: string) => (group, selected) => {
+    _changeMapping = (dn: string) => (group: { id: number }, selected: boolean) => {
         if (selected) {
             this.setState((prevState: State) => ({
                 mappings: {
@@ -83,17 +83,17 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
         }
     }
 
-    _deleteMapping = (dn: string) => (e) => {
+    _deleteMapping = (dn: string) => (e: Event) => {
         e.preventDefault();
         this.setState((prevState: State) => ({ mappings: _.omit(prevState.mappings, dn) }));
     }
 
-    _cancelClick = (e) => {
+    _cancelClick = (e: Event) => {
         e.preventDefault();
         this.setState({ showEditModal: false, showAddRow: false });
     }
 
-    _saveClick = (e) => {
+    _saveClick = (e: Event) => {
         e.preventDefault();
         const { state: { mappings }, props: { updateMappings } } = this;
         SettingsApi.put({ key: "ldap-group-mappings", value: mappings }).then(() => {
@@ -128,7 +128,7 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
                                     { showAddRow ? (
                                         <AddMappingRow mappings={mappings} onCancel={this._hideAddRow} onAdd={this._addMapping} />
                                     ) : null }
-                                    { Object.entries(mappings).map(([dn, ids]) =>
+                                    { ((Object.entries(mappings): any): Array<[string, number[]]>).map(([dn, ids]) =>
                                         <MappingRow
                                             key={dn}
                                             dn={dn}
@@ -152,22 +152,35 @@ export default class LdapGroupMappingsWidget extends Component<*, Props, State> 
     }
 }
 
-class AddMappingRow extends Component {
-    constructor(props, context) {
+type AddMappingRowProps = {
+    mappings: { [string]: number[] },
+    onAdd?: (dn: string) => void,
+    onCancel?: () => void
+};
+
+type AddMappingRowState = {
+    value: ''
+};
+
+class AddMappingRow extends React.Component {
+    props: AddMappingRowProps;
+    state: AddMappingRowState;
+
+    constructor(props: AddMappingRowProps, context: any) {
         super(props, context);
         this.state = {
             value: ''
         };
     }
 
-    _handleCancelClick = (e) => {
+    _handleCancelClick = (e: Event) => {
         e.preventDefault();
         const { onCancel } = this.props;
         onCancel && onCancel();
         this.setState({ value: '' });
     }
 
-    _handleAddClick = (e) => {
+    _handleAddClick = (e: Event) => {
         e.preventDefault();
         const { onAdd } = this.props;
         onAdd && onAdd(this.state.value);
@@ -200,7 +213,13 @@ class AddMappingRow extends Component {
     }
 }
 
-class MappingGroupSelect extends Component {
+class MappingGroupSelect extends React.Component {
+    props: {
+        groups: Array<{ id: number }>,
+        selectedGroups: number[],
+        onGroupChange?: (group: { id: number }, selected: boolean) => void
+    };
+
     render() {
         const { groups, selectedGroups, onGroupChange } = this.props;
 
@@ -230,7 +249,15 @@ class MappingGroupSelect extends Component {
     }
 }
 
-class MappingRow extends Component {
+class MappingRow extends React.Component {
+    props: {
+        dn: string,
+        groups: Array<{ id: number }>,
+        selectedGroups: number[],
+        onChange?: (group: { id: number }, selected: boolean) => void,
+        onDelete?: (e: Event) => void
+    };
+
     render() {
         const { dn, groups, selectedGroups, onChange, onDelete } = this.props;
 
