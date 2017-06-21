@@ -46,6 +46,7 @@ describe('Visualization', () => {
         await stopServer();
     });
 
+    // NOTE: Should this be here or somewhere in QB directory?
     // see docstring of navigateToNewCardInsideQB for all possible scenarios
     describe("drill-through action inside query builder", () => {
         describe("for an unsaved question", () => {
@@ -69,7 +70,7 @@ describe('Visualization', () => {
                 expect(history.getCurrentLocation().hash).toBe("this-value-is-fixed")
             })
 
-            it("shows the lineage correctly", () => {
+            it("shows the name and lineage correctly", () => {
                 // requires writing a new selector for QB
                 const getLineage = (store) => {}
                 expect(getLineage(store.getState())).toBe("some value")
@@ -84,7 +85,7 @@ describe('Visualization', () => {
 
             it("results in a correct url", async () => {
             })
-            it("shows the lineage correctly", () => {
+            it("shows the name and lineage correctly", () => {
             })
             it("results in correct query result", () => {
             })
@@ -95,11 +96,65 @@ describe('Visualization', () => {
             
             it("results in a correct url", () => {
             })
-            it("shows the lineage correctly", () => {
+            it("shows the name and lineage correctly", () => {
             })
             it("results in correct query result", () => {
             })
         })
     })
 
+    describe("title/legend click action from dashboard", () => {
+        pending();
+
+        // NOTE Atte Keinänen 6/21/17: Listing here the scenarios that would be nice to test
+        // although we should start with a representative subset of these
+
+        describe("from a scalar card title", () => {
+            it("results in a correct url", () => {
+            })
+            it("shows the name lineage correctly", () => {
+            })
+            it("results in correct query result", () => {
+            })
+        });
+
+        describe("from a dashcard multiscalar legend", () => {
+            it("results in a correct url", () => {
+            })
+            it("shows the name and lineage correctly", () => {
+            })
+            it("results in correct query result", () => {
+            })
+        });
+    });
+
+    describe("drill-through action from dashboard", () => {
+        pending();
+        describe("from a scalar card value", () => {
+            it("results in a correct url", () => {
+            })
+            it("shows the name and lineage correctly", () => {
+            })
+            it("results in correct query result", () => {
+            })
+        });
+
+        describe("from a scalar with active filter applied", () => {
+            it("results in a correct url", () => {
+            })
+            it("shows the name and lineage correctly", () => {
+            })
+            it("results in correct query result", () => {
+            })
+        });
+
+        describe("from a aggregation multiscalar legend", () => {
+            it("results in a correct url", () => {
+            })
+            it("shows the name and lineage correctly", () => {
+            })
+            it("results in correct query result", () => {
+            })
+        });
+    });
 });

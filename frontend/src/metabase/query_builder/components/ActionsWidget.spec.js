@@ -8,6 +8,7 @@ import {
     ORDERS_TABLE_ID,
     metadata
 } from "metabase/__support__/sample_dataset_fixture";
+import { initializeQB } from "metabase/query_builder/actions";
 
 const getActionsWidget = (question) =>
     <ActionsWidget
@@ -18,12 +19,28 @@ const getActionsWidget = (question) =>
     />
 
 describe('ActionsWidget', () => {
-    it("should be shown for an empty question", () => {
-        const question: Question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
-            .query()
-            .question();
+    describe("visibility", () => {
+        it("is visible for an empty question", () => {
+            const question: Question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
+                .query()
+                .question();
 
-        const component = shallow(getActionsWidget(question));
-        expect(component.children().children().length).toBeGreaterThan(0);
-    });
+            const component = shallow(getActionsWidget(question));
+            expect(component.children().children().length).toBeGreaterThan(0);
+        });
+    })
+
+    describe("clicking an action", () => {
+        pending();
+        // will require changing this to an integrated test
+        // see Visualization.integ.spec.js for similar tests for visualization drill-through
+
+        it("results in correct url", async () => {
+            // await initializeQB();
+        })
+        it("results in correct question name and lineage", async () => {
+        })
+        it("results in the correct query result", async () => {
+        })
+    })
 });
