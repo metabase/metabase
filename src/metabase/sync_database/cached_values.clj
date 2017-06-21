@@ -17,14 +17,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Drivers use these to get field values
-#_(defn table-row-count
-  "Determine the count of rows in TABLE by running a simple structured MBQL query."
-  [table]
-  {:pre [(integer? (:id table))]}
-  (try
-    (queries/table-row-count table)
-    (catch Throwable e
-      (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
 (def ^:private ^:const ^Integer field-values-entry-max-length
   "The maximum character length for a stored `FieldValues` entry."
@@ -44,9 +36,7 @@
   "Should FIELD should be tested for cardinality?"
   [{:keys [base_type] :as field}]
   (or (field-values/field-should-have-field-values? field)
-      (and #_(nil? (:special_type field))
-           #_is-new? ;; do we actually want to test for this here?
-           (not (isa? base_type :type/DateTime))
+      (and (not (isa? base_type :type/DateTime))
            (not (isa? base_type :type/Collection))
            (not (= base_type :type/*)))))
 
@@ -71,8 +61,7 @@
   [driver & {:keys [calculate-row-count?]
              :or   {calculate-row-count?  true}}]
   (fn [driver table new-field-ids]
-    {#_:row_count #_(when calculate-row-count? (u/try-apply table-row-count table))
-     :fields    (for [id new-field-ids]
+    {:fields    (for [id new-field-ids]
                   (extract-field-values (field/Field id) {:id id}))}))
 
 (defn generic-analyze-table
@@ -88,7 +77,6 @@
 (defn cache-table-data-shape!
   "Analyze the data shape for a single `Table`."
   [driver {table-id :id, :as table}]
-  (log/error (u/format-color 'red "cache-table-data-shape! %s" table))
   (let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], :last_analyzed nil)]
     ;; TODO: this call should include the database
     (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
@@ -100,16 +88,11 @@
         (db/update! table/Table table-id, :rows (:row_count table-stats)))
 
       ;; update individual fields
-      (doseq [{:keys [id preview-display #_special-type values]} (:fields table-stats)]
+      (doseq [{:keys [id preview-display values]} (:fields table-stats)]
         ;; handle field values, setting them if applicable otherwise clearing them
         (if (and id values (pos? (count (filter identity values))))
           (field-values/save-field-values! id values)
-          (field-values/clear-field-values! id))))
-
-    ;; Keep track of how old the cache is on these fields
-    #_(db/update-where! field/Field {:table_id        table-id ;;  :TODO fix this
-                                   :visibility_type [:not= "retired"]}
-      :last_cached (u/new-sql-timestamp))))
+          (field-values/clear-field-values! id))))))
 
 (defn cache-field-values-for-table!
   "Save the field values for each field in this database"

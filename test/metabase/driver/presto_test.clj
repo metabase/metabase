@@ -123,12 +123,6 @@
         (update :category_id int)
         (update :id int))))
 
-;;; FIELD-PERCENT-URLS
-#_(datasets/expect-with-engine :presto
-  0.5
-  (data/dataset half-valid-urls
-    (sql/field-percent-urls (PrestoDriver.) (db/select-one 'Field :id (data/id :urls :url)))))
-
 ;;; APPLY-PAGE
 (expect
   {:select ["name" "id"]

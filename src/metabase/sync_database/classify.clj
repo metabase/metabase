@@ -164,8 +164,7 @@
             ;; if a field marked `preview-display` as false then set the visibility
             ;; type to `:details-only` (see models.field/visibility-types)
             :visibility_type (when (false? preview-display) :details-only)
-            :special_type    special-type
-            #_:last_analyzed   #_(u/new-sql-timestamp)))))
+            :special_type    special-type))))
 
     (db/update-where! field/Field {:table_id        table-id
                                    :visibility_type [:not= "retired"]}

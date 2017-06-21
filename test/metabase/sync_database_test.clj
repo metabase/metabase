@@ -309,40 +309,6 @@
        (sync-table! table)
        (get-special-type-and-fk-exists?))]))
 
-
-;;; ## FieldValues Syncing
-;; moved to cached_values_test
-#_(let [get-field-values    (fn [] (db/select-one-field :values FieldValues, :field_id (id :venues :price)))
-      get-field-values-id (fn [] (db/select-one-id FieldValues, :field_id (id :venues :price)))]
-  ;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created
-  (expect
-    [[1 2 3 4]  ; 1
-     nil        ; 2
-     [1 2 3 4]] ; 3
-    [ ;; 1. Check that we have expected field values to start with
-     (get-field-values)
-     ;; 2. Delete the Field values, make sure they're gone
-     (do (db/delete! FieldValues :id (get-field-values-id))
-         (get-field-values))
-     ;; 3. Now re-sync the table and make sure they're back
-     (do (sync-table! @venues-table)
-         (get-field-values))])
-
-  ;; Test that syncing will cause FieldValues to be updated
-  (expect
-    [[1 2 3 4]  ; 1
-     [1 2 3]    ; 2
-     [1 2 3 4]] ; 3
-    [ ;; 1. Check that we have expected field values to start with
-     (get-field-values)
-     ;; 2. Update the FieldValues, remove one of the values that should be there
-     (do (db/update! FieldValues (get-field-values-id), :values [1 2 3])
-         (get-field-values))
-     ;; 3. Now re-sync the table and make sure the value is back
-     (do (sync-table! @venues-table)
-         (get-field-values))]))
-
-
 ;;; -------------------- Make sure that if a Field's cardinality passes `metabase.sync-database.classify/low-cardinality-threshold` (currently 300) (#3215) --------------------
 (defn- insert-range-sql [rang]
   (str "INSERT INTO blueberries_consumed_rating (num) VALUES "

@@ -72,8 +72,7 @@
 ;; This test needs to be re-thought, after splitting sync and analyze it's become somewhat circular in it's reasoning
 (expect
   (do (cached-values/cache-field-values-for-table! @venues-table)
-      {#_:row_count #_100, ;; drivers are no longer responsible for counting rows when analyzing tables
-       :fields    [{:id (id :venues :category_id)}
+      {:fields    [{:id (id :venues :category_id)}
                    {:id (id :venues :id)}
                    {:id (id :venues :latitude)}
                    {:id (id :venues :longitude)}
@@ -81,15 +80,7 @@
                    {:id (id :venues :price), :values [1 2 3 4]}]})
   (update (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))) :fields #(sort-by :id %)))
 
-(resolve-private-vars metabase.driver.generic-sql #_field-avg-length field-values-lazy-seq table-rows-seq)
-
-;;; FIELD-AVG-LENGTH ;; TODO delete-me
-#_(datasets/expect-with-engines @generic-sql-engines
-  ;; Not sure why some databases give different values for this but they're close enough that I'll allow them
-  (if (contains? #{:redshift :sqlserver} datasets/*engine*)
-    15
-    16)
-  (field-avg-length datasets/*driver* (db/select-one 'Field :id (id :venues :name))))
+(resolve-private-vars metabase.driver.generic-sql field-values-lazy-seq table-rows-seq)
 
 ;;; FIELD-VALUES-LAZY-SEQ
 (datasets/expect-with-engines @generic-sql-engines
@@ -116,15 +107,6 @@
         (update :price int)
         (update :category_id int)
         (update :id int))))
-
-;;; FIELD-PERCENT-URLS
-#_(datasets/expect-with-engines @generic-sql-engines
-  (if (= datasets/*engine* :oracle)
-    ;; Oracle considers empty strings to be NULL strings; thus in this particular test `percent-valid-urls` gives us 4/7 valid valid where other DBs give us 4/8
-    0.5714285714285714
-    0.5)
-  (dataset half-valid-urls
-    (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))
 
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
 (expect
