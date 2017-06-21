@@ -1,11 +1,9 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import cx from "classnames";
 
 import { getScrollX, getScrollY } from "metabase/lib/dom";
 
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 import { Motion, spring } from "react-motion";
 
 import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
@@ -24,13 +22,9 @@ function getModalContent(props) {
 }
 
 export class WindowModal extends Component {
-    static propTypes = {
-        isOpen: PropTypes.bool
-    };
 
     static defaultProps = {
         className: "Modal",
-        backdropClassName: "Modal-backdrop"
     };
 
     componentWillMount() {
@@ -76,16 +70,34 @@ export class WindowModal extends Component {
     }
 
     _renderPopover() {
-        const { backdropClassName, isOpen, style } = this.props;
-        const backdropClassnames = 'flex justify-center align-center fixed top left bottom right';
+        const { isOpen } = this.props;
+        const backdropClassnames = 'Modal-backdrop flex justify-center align-center fixed top left bottom right';
+
         ReactDOM.unstable_renderSubtreeIntoContainer(this,
-            <ReactCSSTransitionGroup transitionName="Modal" transitionAppear={true} transitionAppearTimeout={250} transitionEnterTimeout={250} transitionLeaveTimeout={250}>
-                { isOpen &&
-                    <div key="modal" className={cx(backdropClassName, backdropClassnames)} style={style}>
-                        {this._modalComponent()}
+            <Motion
+                defaultStyle={{ opacity: 0, translate: 250 }}
+                style={isOpen ?
+                    { opacity: spring(1), translate: spring(0) } :
+                    { opacity: spring(0), translate: spring(250)}
+                }
+            >
+                { style =>
+                    <div>
+                        { isOpen &&
+                                <div key="modal" className={backdropClassnames} style={{
+                                    opacity: style.opacity
+                                }}>
+                                    <div style={{
+                                        opacity: style.opacity,
+                                        transform: `translateY(${style.translate})px`
+                                    }}>
+                                        {this._modalComponent()}
+                                    </div>
+                            </div>
+                        }
                     </div>
                 }
-            </ReactCSSTransitionGroup>
+            </Motion>
         , this._modalElement);
     }
 
