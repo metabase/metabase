@@ -3808,21 +3808,21 @@ databaseChangeLog:
                   name: sync_schedule
                   type: varchar(100)
                   remarks: 'The cron-formated schedule for syncing/indexing all tables in this DB'
-                  defaultValue: "0 50 * * * ? *"
+                  defaultValue: "0 00 * * * ? *"
                   constraints:
                     nullable: false
               - column:
                   name: cache_field_values_schedule
                   type: varchar(100)
                   remarks: 'The cron-formated schedule for saving cached field values for all tables in this for this DB'
-                  defaultValue: "1 50 * * * ? *"
+                  defaultValue: "1 10 * * * ? *"
                   constraints:
                     nullable: false
               - column:
                   name: analyze_schedule
                   type: varchar(100)
                   remarks: 'The cron-formated schedule for producing field fingerprints for this DB'
-                  defaultValue: "2 50 * * * ? *"
+                  defaultValue: "2 30 * * * ? *"
                   constraints:
                     nullable: false
               - column:

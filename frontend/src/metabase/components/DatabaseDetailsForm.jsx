@@ -273,21 +273,21 @@ export default class DatabaseDetailsForm extends Component {
                 name: "sync_schedule",
                 'display-name': "DATBASE SYNC",
                 description: "How Often should Metabase check for updated to this database's schema",
-                placeholder: "0 50 * * * ? *",
+                placeholder: "0 00 * * * ? *",
                 required: false
             },
             {
                 name: "cache_field_values_schedule",
                 'display-name': "SCAN FIELD VALUES",
                 description: "Metabase can scan the values of fields in this datbase to enable things like better filters. How often should we scan for these valuesaf?",
-                placeholder: "0 50 * * * ? *",
+                placeholder: "0 10 * * * ? *",
                 required: false
             },
             {
                 name: "analyze_schedule",
                 'display-name': "IN-DEPTH ANALYSIS",
                 description: "This allows us to present you with better metadata for your tables and is required for some features of Metabase. How often should Metabase perfomr this analysis?",
-                placeholder: "0 50 * * * ? *",
+                placeholder: "0 30 * * * ? *",
                 required: false
             },
             {

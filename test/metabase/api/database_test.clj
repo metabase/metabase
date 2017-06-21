@@ -20,10 +20,10 @@
 ;; HELPER FNS
 
 (def sync-schedules
-  {:classify_schedule           "3 50 * * * ? *"
-   :analyze_schedule            "2 50 * * * ? *"
-   :cache_field_values_schedule "1 50 * * * ? *"
-   :sync_schedule               "0 50 * * * ? *"})
+  {:sync_schedule               "0 00 * * * ? *"
+   :cache_field_values_schedule "1 10 * * * ? *"
+   :analyze_schedule            "2 30 * * * ? *"
+   :classify_schedule           "3 50 * * * ? *"})
 
 (defn- create-db-via-api! [options]
   ((user->client :crowberto) :post 200 "database" (merge {:engine       :postgres
