@@ -62,15 +62,24 @@ export const startServer = async () => await BackendResource.start(server);
  */
 export const stopServer = async () => await BackendResource.stop(server);
 
+export const createReduxStore = () => {
+    return getStore(reducers);
+}
+export const createReduxStoreWithBrowserHistory = () => {
+    const history = useRouterHistory(createMemoryHistory)();
+    const store = getStore(reducers, history);
+    return { history, store }
+}
+
 /**
  * A Redux store that is shared between subsequent tests,
  * intended to reduce the need for reloading metadata between every test
- *
- * The Redux store matches the production app's store 1-to-1 with an exception that
- * it doesn't contain redux-router navigation history state
  */
-export const browserHistory = useRouterHistory(createMemoryHistory)();
-export const globalReduxStore = getStore(reducers, browserHistory);
+const {
+    history: globalBrowserHistory,
+    store: globalReduxStore
+} = createReduxStoreWithBrowserHistory()
+export { globalBrowserHistory, globalReduxStore }
 
 // TODO: How to have the high timeout interval only for integration tests?
 // or even better, just for the setup/teardown of server process?

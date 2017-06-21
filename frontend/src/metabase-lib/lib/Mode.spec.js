@@ -117,6 +117,7 @@ describe("Mode", () => {
     })
 
     describe("actionsForClick()", () => {
-        // this is action-specific so just rudimentary tests
+        // this is action-specific so just rudimentary tests here showing that the actionsForClick logic works
+        // Action-specific tests would optimally be in their respective test files
     });
 })
