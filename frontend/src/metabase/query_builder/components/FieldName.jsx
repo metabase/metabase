@@ -26,11 +26,15 @@ export default class FieldName extends Component {
 
         let parts = [];
 
-        const dimension = Dimension.parseMBQL(field, tableMetadata && tableMetadata.metadata);
-        if (dimension) {
-            parts = dimension.render();
+        if (field) {
+            const dimension = Dimension.parseMBQL(field, tableMetadata && tableMetadata.metadata);
+            if (dimension) {
+                parts = dimension.render();
+            } else {
+                parts.push(<span key="field">Unknown Field</span>);
+            }
         } else {
-            parts.push(<span key="field">Unknown Field</span>);
+            parts.push(<span key="field" className={"text-grey-2"}>field</span>)
         }
 
         return (
