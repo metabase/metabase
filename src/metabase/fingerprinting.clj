@@ -66,9 +66,10 @@
                (redux/post-complete + -)
                (hist/bins histogram))))
 
-(defmulti fingerprinter :base_type)
+(defmulti fingerprinter (fn [{:keys [base_type special_type]}]
+                          [base_type (or special_type :type/Nil)]))
 
-(defmethod fingerprinter :type/Number
+(defmethod fingerprinter [:type/Number :type/*]
   [field]
   (redux/post-complete
    (redux/fuse {:histogram (histogram)
@@ -114,9 +115,10 @@
         :skewness skewness
         :all-distinct? (>= (/ cardinality total-count)
                            (- 1 cardinality-error))
-        :entropy (binned-entropy histogram)}))))
+        :entropy (binned-entropy histogram)
+        :type [:type/Number :type/*]}))))
 
-(defmethod fingerprinter :type/Text
+(defmethod fingerprinter [:type/Text :type/*]
   [field]
   (redux/post-complete
    (redux/fuse {:histogram (histogram (stats/somef count))})
@@ -127,13 +129,14 @@
         :hisogram (bins histogram)
         :count (total-count histogram)
         :nil-conunt nil-count
-        :has-nils? (pos? nil-count)}))))
+        :has-nils? (pos? nil-count)
+        :type [:type/Text :type/*]}))))
 
 (defn- quarter
   [dt]
   (Math/ceil (/ (t/month dt) 3)))
 
-(defmethod fingerprinter :type/DateTime
+(defmethod fingerprinter [:type/DateTime :type/*]
   [field]
   (redux/post-complete
    (redux/pre-step
@@ -157,9 +160,10 @@
         :count (total-count histogram)
         :nil-conunt nil-count
         :has-nils? (pos? nil-count)
-        :entropy (binned-entropy histogram)}))))
+        :entropy (binned-entropy histogram)
+        :type [:type/DateTime :type/*]}))))
 
-(defmethod fingerprinter :type/Category
+(defmethod fingerprinter [:type/* :type/Category]
   [field]
   (redux/post-complete
    (redux/fuse {:histogram (histogram-categorical)
@@ -175,7 +179,10 @@
         :count total-count
         :all-distinct? (>= (/ cardinality total-count)
                            (- 1 cardinality-error))
-        :entropy (binned-entropy histogram)}))))
+        :entropy (binned-entropy histogram)
+        :type [:type/* :type/Category]}))))
+
+(prefer-method fingerprinter [:type/* :type/Category] [:type/Text :type/*])
 
 (defmulti fingerprint (fn [_ x] (class x)))
 
@@ -184,7 +191,7 @@
 (defn- extract-query-opts
   [{:keys [max-cost]}]
   (cond-> {}
-    (< (or max-cost 5) 3) (assoc :limit max-sample-size)))
+    (some-> max-cost (< 3)) (assoc :limit max-sample-size)))
 
 (defn fingerprint-field
   [{:keys [field data]}]

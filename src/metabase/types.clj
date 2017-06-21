@@ -5,6 +5,7 @@
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
 
+(derive :type/Nil :type/*)
 
 ;;; Numeric Types
 
