@@ -1,12 +1,15 @@
 (ns metabase.integrations.ldap
-  (:require [clojure.set :as set]
-            [clojure.string :as s]
-            [clj-ldap.client :as ldap]
-            [toucan.db :as db]
-            (metabase.models [permissions-group :refer [PermissionsGroup], :as group]
-                             [setting :refer [defsetting], :as setting]
-                             [user :refer [User], :as user])
-            [metabase.util :as u]))
+  (:require [clj-ldap.client :as ldap]
+            [clojure
+             [set :as set]
+             [string :as str]]
+            [metabase.models
+             [permissions-group :as group :refer [PermissionsGroup]]
+             [setting :as setting :refer [defsetting]]
+             [user :as user :refer [User]]]
+            [metabase.util :as u]
+            [toucan.db :as db])
+  (:import [com.unboundid.ldap.sdk LDAPConnectionPool LDAPException]))
 
 (def ^:private filter-placeholder
   "{login}")
@@ -73,11 +76,11 @@
 (defn ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
   []
-  (and (ldap-enabled)
-       (boolean (ldap-host))
-       (boolean (ldap-bind-dn))
-       (boolean (ldap-password))
-       (boolean (ldap-user-base))))
+  (boolean (and (ldap-enabled)
+                (ldap-host)
+                (ldap-bind-dn)
+                (ldap-password)
+                (ldap-user-base))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   {:host      (str host ":" port)
@@ -96,11 +99,11 @@
 (defn- escape-value
   "Escapes a value for use in an LDAP filter expression."
   [value]
-  (s/replace value #"[\*\(\)\\\\0]" (comp (partial format "\\%02X") int first)))
+  (str/replace value #"[\*\(\)\\\\0]" (comp (partial format "\\%02X") int first)))
 
 (defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
-  []
+  ^LDAPConnectionPool []
   (ldap/connect (settings->ldap-options)))
 
 (defn- with-connection
@@ -114,9 +117,9 @@
   [ldap-groups]
   (-> (ldap-group-mappings)
       (select-keys (map keyword ldap-groups))
-      (vals)
-      (flatten)
-      (set)))
+      vals
+      flatten
+      set))
 
 (defn- get-user-groups
   "Retrieve groups for a supplied DN."
@@ -131,6 +134,9 @@
           (for [result results]
             (or (:dn result) (:distinguishedName result))))))))
 
+(def ^:private user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"})
+(def ^:private group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"})
+
 (defn test-ldap-connection
   "Test the connection to an LDAP server to determine if we can find the search base.
 
@@ -144,25 +150,21 @@
         :group-base \"ou=Groups,dc=metabase,dc=com\"}"
   [{:keys [user-base group-base], :as details}]
   (try
-    (with-open [conn (ldap/connect (details->ldap-options details))]
-      (let [user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"}
-            group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"}]
-        (or
-          (try
-            (when-not (ldap/get conn user-base)
-              user-base-error)
-            (catch Exception e
-              user-base-error))
-
-          (when group-base
-            (try
-              (when-not (ldap/get conn group-base)
-                group-base-error)
-              (catch Exception e
-                group-base-error)))
-
-          {:status :SUCCESS})))
-    (catch com.unboundid.ldap.sdk.LDAPException e
+    (with-open [^LDAPConnectionPool conn (ldap/connect (details->ldap-options details))]
+      (or
+       (try
+         (when-not (ldap/get conn user-base)
+           user-base-error)
+         (catch Exception e
+           user-base-error))
+       (when group-base
+         (try
+           (when-not (ldap/get conn group-base)
+             group-base-error)
+           (catch Exception e
+             group-base-error)))
+       {:status :SUCCESS}))
+    (catch LDAPException e
       {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
     (catch Exception e
       {:status :ERROR, :message (.getMessage e)})))
@@ -176,7 +178,7 @@
           lname-attr (keyword (ldap-attribute-lastname))
           email-attr (keyword (ldap-attribute-email))]
       (when-let [[result] (ldap/search conn (ldap-user-base) {:scope      :sub
-                                                              :filter     (s/replace (ldap-user-filter) filter-placeholder (escape-value username))
+                                                              :filter     (str/replace (ldap-user-filter) filter-placeholder (escape-value username))
                                                               :attributes [:dn :distinguishedName fname-attr lname-attr email-attr :memberOf]
                                                               :size-limit 1})]
         (let [dn    (or (:dn result) (:distinguishedName result))
@@ -187,7 +189,8 @@
           (when-not (or (empty? dn) (empty? fname) (empty? lname) (empty? email))
             ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
             ;; Otherwise we have to make the inverse query to get them
-            (let [groups (when (ldap-group-sync) (or (:memberOf result) (get-user-groups dn) []))]
+            (let [groups (when (ldap-group-sync)
+                           (or (:memberOf result) (get-user-groups dn) []))]
               {:dn         dn
                :first-name fname
                :last-name  lname
