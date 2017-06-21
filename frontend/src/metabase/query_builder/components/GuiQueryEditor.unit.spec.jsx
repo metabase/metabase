@@ -39,7 +39,7 @@ describe('GuiQueryEditor', () => {
         const query: StructuredQuery = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
             .query()
             .addAggregation(["count"])
-            .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID);
+            .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID]);
 
         const component = shallow(getGuiQueryEditor(query));
 

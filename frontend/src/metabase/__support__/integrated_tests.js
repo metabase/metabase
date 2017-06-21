@@ -58,7 +58,12 @@ api.basename = server.host;
  * If the backend is already running, this resolves immediately
  * TODO: Should happen automatically before any tests have been run
  */
-export const startServer = async () => await BackendResource.start(server);
+export const startServer = async () => {
+    if (!process.env["E2E_HOST"]) {
+        throw new Error("Please add E2E_HOST environment variable in order to run Jest integrated tests.")
+    }
+    await BackendResource.start(server);
+}
 
 /**
  * Stops the current backend process
