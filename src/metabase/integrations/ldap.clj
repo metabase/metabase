@@ -106,8 +106,11 @@
 (defn- with-connection
   "Applies `f` with a connection and `args`"
   [f & args]
-  (with-open [conn (get-connection)]
-    (apply f conn args)))
+  (let [conn (get-connection)]
+    (try
+      (apply f conn args)
+      (finally
+        (ldap/close conn)))))
 
 (defn- ldap-groups->mb-group-ids
   "Will translate a set of DNs to a set of MB group IDs using the configured mappings."
@@ -144,24 +147,27 @@
         :group-base \"ou=Groups,dc=metabase,dc=com\"}"
   [{:keys [user-base group-base], :as details}]
   (try
-    (with-open [conn (ldap/connect (details->ldap-options details))]
-      (let [user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"}
-            group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"}]
-        (or
-          (try
-            (when-not (ldap/get conn user-base)
-              user-base-error)
-            (catch Exception e
-              user-base-error))
-
-          (when group-base
+    (let [conn (ldap/connect (details->ldap-options details))]
+      (try
+        (let [user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"}
+              group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"}]
+          (or
             (try
-              (when-not (ldap/get conn group-base)
-                group-base-error)
+              (when-not (ldap/get conn user-base)
+                user-base-error)
               (catch Exception e
-                group-base-error)))
+                user-base-error))
 
-          {:status :SUCCESS})))
+            (when group-base
+              (try
+                (when-not (ldap/get conn group-base)
+                  group-base-error)
+                (catch Exception e
+                  group-base-error)))
+
+            {:status :SUCCESS}))
+        (finally
+          (ldap/close conn))))
     (catch com.unboundid.ldap.sdk.LDAPException e
       {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
     (catch Exception e
