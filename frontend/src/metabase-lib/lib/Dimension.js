@@ -31,6 +31,10 @@ type DimensionOption = {
 
 /**
  * Dimension base class, represents an MBQL field reference.
+ *
+ * Used for displaying fields (like Created At) and their "sub-dimensions" (like Hour of day)
+ * in field lists and active value widgets for filters, aggregations and breakouts.
+ *
  * @abstract
  */
 export default class Dimension {
@@ -57,6 +61,7 @@ export default class Dimension {
      */
     static parseMBQL(mbql: ConcreteField, metadata?: Metadata): ?Dimension {
         for (const D of DIMENSION_TYPES) {
+
             const dimension = D.parseMBQL(mbql, metadata);
             if (dimension != null) {
                 return dimension;
@@ -84,6 +89,8 @@ export default class Dimension {
      * Sub-dimensions for the provided dimension of this type.
      * @abstract
      */
+    // TODO Atte Keinänen 5/21/17: Rename either this or the instance method with the same name
+    // Also making it clear in the method name that we're working with sub-dimensions would be good
     static dimensions(parent: Dimension): Dimension[] {
         return [];
     }
@@ -100,6 +107,8 @@ export default class Dimension {
      * Returns "sub-dimensions" of this dimension.
      * @abstract
      */
+    // TODO Atte Keinänen 5/21/17: Rename either this or the static method with the same name
+    // Also making it clear in the method name that we're working with sub-dimensions would be good
     dimensions(
         DimensionTypes: typeof Dimension[] = DIMENSION_TYPES
     ): Dimension[] {
