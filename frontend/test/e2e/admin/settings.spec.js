@@ -11,8 +11,9 @@ describeE2E("admin/settings", () => {
         ensureLoggedIn(server, driver, "bob@metabase.com", "12341234")
     );
 
+    // TODO Atte Keinänen 6/22/17: Disabled because we already have converted this to Jest&Enzyme in other branch
     describe("admin settings", () => {
-        it("should persist a setting", async () => {
+        xit("should persist a setting", async () => {
             // pick a random site name to try updating it to
             const siteName = "Metabase" + Math.random();
 
