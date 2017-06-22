@@ -163,23 +163,17 @@
                :covariance (stats/covariance first second)
                :linear-regression (stats/simple-linear-regression first second)}))
 
-(def ^:private ^:cost timestamp-truncation-factor (* 1000 60 60 24))
+(def ^:private ^:cost timestamp-truncation-factor (/ 1 1000 60 60 24))
 
-(defn- truncate-timestamp
-  [t]
-  (/ t timestamp-truncation-factor))
+(def ^:private truncate-timestamp (partial * timestamp-truncation-factor))
 
 (defn- fill-timeseries
   [ts]
-  (let [truncated-timestamp->datatime (comp t.coerce/from-long
-                                            long
-                                            (partial * timestamp-truncation-factor))
-        start (-> ts first first truncated-timestamp->datatime)
-        end (-> ts last first truncated-timestamp->datatime)
+  (let [start (-> ts ffirst (/ timestamp-truncation-factor) long t.coerce/from-long)
         ts-index (into {} ts)]
     (into []
-      (comp (take-while #(not (t/after? % end)))
-            (map (comp truncate-timestamp t.coerce/to-long))
+      (comp (map (comp truncate-timestamp t.coerce/to-long))
+            (take-while (partial >= (-> ts last first)))
             (map (fn [t]
                    [t (ts-index t 0)])))
       (t.periodic/periodic-seq start (t/months 1)))))
