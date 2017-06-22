@@ -46,7 +46,7 @@ export const BackendResource = createSharedResource("BackendResource", {
             if (server.dbKey !== server.dbFile) {
                 await fs.copy(`${server.dbKey}.h2.db`, `${server.dbFile}.h2.db`);
             }
-            server.process = spawn("java", ["-jar", "target/uberjar/metabase.jar"], {
+            server.process = spawn("java", ["-jar", "-Dh2.bindAddress=localhost", "target/uberjar/metabase.jar"], {
                 env: {
                     MB_DB_FILE: server.dbFile,
                     MB_JETTY_PORT: server.port

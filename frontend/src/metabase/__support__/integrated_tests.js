@@ -58,9 +58,8 @@ api._makeRequest = async (method, url, headers, body, data, options) => {
     }
 }
 
-// Reference to the reusable/shared backend server resource
-const server = BackendResource.get({});
 // Set the correct base url to metabase/lib/api module
+const server = BackendResource.get({});
 api.basename = server.host;
 
 /**
@@ -72,14 +71,7 @@ export const startServer = async () => {
     if (!process.env["E2E_HOST"]) {
         throw new Error("Please add E2E_HOST environment variable in order to run Jest integrated tests.")
     }
-    await BackendResource.start(server);
 }
-
-/**
- * Stops the current backend process
- * TODO: This should happen automatically after tests have been run
- */
-export const stopServer = async () => await BackendResource.stop(server);
 
 export const createReduxStore = () => {
     return getStore(reducers);
