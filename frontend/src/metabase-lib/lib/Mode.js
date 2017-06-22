@@ -19,12 +19,16 @@ export default class Mode {
     }
 
     static forQuestion(question: Question): ?Mode {
-        // TODO: Move getMode here and refactor it after writing tests
+        // TODO Atte Keinänen 6/22/17: Move getMode here and refactor it after writing tests
         const card = question.card();
         const tableMetadata = question.tableMetadata();
         const queryMode = getMode(card, tableMetadata)
 
-        return new Mode(question, queryMode);
+        if (queryMode) {
+            return new Mode(question, queryMode);
+        } else {
+            return null;
+        }
     }
 
     queryMode() {
