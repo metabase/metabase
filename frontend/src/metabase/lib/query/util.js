@@ -11,7 +11,7 @@ export const mbqlEq = (a: string, b: string): boolean =>
 // determines whether 2 field IDs are equal. This is needed rather than
 // doing a simple comparison because field IDs are not guaranteed to be numeric:
 // the might be FieldLiterals, e.g. [field-literal <name> <unit>], instead.
-export const fieldIdsEq = (a, b): boolean => {
+export const fieldIdsEq = (a: any, b: any): boolean => {
     if (typeof a !== typeof b) return false;
 
     if (typeof a === "number") return a === b;
