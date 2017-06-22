@@ -2,7 +2,7 @@
 
 import { DATABASE_ID, ORDERS_TABLE_ID, metadata } from "metabase/__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
-import { login, startServer, stopServer } from "metabase/__support__/integrated_tests";
+import { login } from "metabase/__support__/integrated_tests";
 import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/lib/queries/NativeQuery";
 
 // const question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
@@ -17,12 +17,7 @@ import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/lib/queries/NativeQuery";
 // expect(results[0].data.rows[0][0]).toBeCloseTo(1034792.85, 2);
 describe("Question", () => {
     beforeAll(async () => {
-        await startServer();
         await login();
-    })
-
-    afterAll(async () => {
-        await stopServer();
     })
 
     describe("with SQL questions", () => {

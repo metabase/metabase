@@ -6,8 +6,6 @@ import Question from "metabase-lib/lib/Question";
 import { parse as urlParse } from "url";
 import {
     login,
-    startServer,
-    stopServer,
     globalReduxStore as store,
     globalBrowserHistory as history
 } from "metabase/__support__/integrated_tests";
@@ -26,12 +24,7 @@ describe("QueryBuilder", () => {
     let dirtyQuestion: Question = null;
 
     beforeAll(async () => {
-        await startServer();
         await login();
-    })
-
-    afterAll(async () => {
-        await stopServer();
     })
 
     describe("initializeQb", () => {

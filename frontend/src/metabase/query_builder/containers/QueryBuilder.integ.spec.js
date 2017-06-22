@@ -1,7 +1,5 @@
 import {
     login,
-    startServer,
-    stopServer,
     globalReduxStore as store,
     linkContainerToGlobalReduxStore
 } from "metabase/__support__/integrated_tests";
@@ -44,12 +42,7 @@ const createSavedQuestion = async () => {
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
-        await startServer();
         await login();
-    })
-
-    afterAll(async () => {
-        await stopServer();
     })
 
     /**
