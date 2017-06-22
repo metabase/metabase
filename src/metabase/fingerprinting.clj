@@ -186,13 +186,7 @@
                  :series (redux/post-complete conj fill-timeseries)})
     (fn [{:keys [series linear-regression]}]
       (let [{:keys [trend seasonal reminder]} (tide/decompose 12 series)
-            ys-r (reverse (map second series))]
-        (println [(map (fn [[t x]]
-                         [(-> t
-                              (* timestamp-truncation-factor)
-                              long
-                              t.coerce/from-long)
-                          x]) series) ys-r])
+            ys-r (reverse (map second series))]        
         {:series series         
          :linear-regression linear-regression
          :trend trend
