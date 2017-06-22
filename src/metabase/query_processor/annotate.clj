@@ -236,13 +236,16 @@
   similar, but is used when we don't have existing information on that
   column and need to infer it."
   [query actual-keys]
-  (update query :fields
-          (fn [fields]
-            (mapv (fn [expected-field actual-key]
-                    (if (not= (:field-name expected-field) (name actual-key))
-                      (assoc expected-field :field-name (name actual-key))
-                      expected-field))
-                  fields actual-keys))))
+  (let [expected-field-names (set (map (comp keyword name) (:fields query)))]
+    (if (= expected-field-names (set actual-keys))
+      query
+      (update query :fields
+              (fn [fields]
+                (mapv (fn [expected-field actual-key]
+                        (if (not= (name expected-field) (name actual-key))
+                          (assoc expected-field :field-name (name actual-key))
+                          expected-field))
+                      fields actual-keys))))))
 
 (defn- convert-field-to-expected-format
   "Rename keys, provide default values, etc. for FIELD so it is in the format expected by the frontend."
