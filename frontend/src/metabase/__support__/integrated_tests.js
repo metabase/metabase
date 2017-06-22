@@ -1,3 +1,7 @@
+/**
+ * Require this file before other imports for integrated tests
+ */
+
 import { BackendResource } from "../../../test/e2e/support/backend.js";
 import api from "metabase/lib/api";
 import { SessionApi } from "metabase/services";
@@ -10,6 +14,8 @@ import { Provider } from 'react-redux';
 import { createMemoryHistory } from 'history'
 import { getStore } from "metabase/store";
 import { useRouterHistory } from "react-router";
+
+import "./integrated_tests_mocks";
 
 // Stores the current login session
 var loginSession = null;
@@ -38,7 +44,11 @@ api._makeRequest = async (method, url, headers, body, data, options) => {
 
     const result = await fetch(api.basename + url, fetchOptions);
     if (result.status >= 200 && result.status <= 299) {
-        return result.json();
+        try {
+            return await result.json();
+        } catch (e) {
+            return null;
+        }
     } else {
         const error = {status: result.status, data: await result.json()}
         console.log('A request made in a test failed with the following error:')
