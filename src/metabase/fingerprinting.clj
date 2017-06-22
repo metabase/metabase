@@ -40,11 +40,16 @@
 
 (defn rollup
   [groupfn f]
-  (let [m (volatile! (transient {}))]
-    (fn
-      ([])
-      ([acc])
-      ([acc x]))))
+  (fn
+    ([] {})
+    ([acc]
+     (reduce (fn [acc k]
+               (update acc k f))
+             acc
+             (keys acc)))
+    ([acc x]
+     (let [k (groupfn x)]
+       (assoc acc k (f (get acc k (f)) x))))))
 
 (defn safe-divide
   [numerator & denominators]
@@ -206,9 +211,9 @@
    (fn [[x y]]     
      [(-> x t.format/parse t.coerce/to-long truncate-timestamp) y])))
 
-;; (defmethod fingerprinter [Category Any]
-;;   [[x y]]
-;;   (rollup first (redux/pre-step (fingerprinter y) second)))
+(defmethod fingerprinter [Category Any]
+  [[x y]]
+  (rollup first (redux/pre-step (fingerprinter y) second)))
 
 (defmethod fingerprinter Text
   [field]
@@ -372,4 +377,3 @@
                :rows)})})
 
 ;; TODO add db_id to Field, Card, and Segment
-
