@@ -162,10 +162,13 @@ export function absolute(date) {
 export function parseFieldBucketing(field, defaultUnit = null) {
     if (Array.isArray(field)) {
         if (mbqlEq(field[0], "datetime-field")) {
-            return field[3];
+            return field[field.length - 1]; // return last item because datetime-field is either [datetime-field field unit] or [datetime-field field "as" unit]
         } if (mbqlEq(field[0], "fk->") || mbqlEq(field[0], "field-id")) {
             return defaultUnit;
-        } else {
+        } if (mbqlEq(field[0], "field-literal")) {
+            return defaultUnit;
+        }
+        else {
             console.warn("Unknown field format", field);
         }
     }
@@ -188,6 +191,7 @@ export function parseFieldTargetId(field) {
         if (mbqlEq(field[0], "field-id"))       return field[1];
         if (mbqlEq(field[0], "fk->"))           return field[1];
         if (mbqlEq(field[0], "datetime-field")) return parseFieldTargetId(field[1]);
+        if (mbqlEq(field[0], "field-literal"))  return field;
     }
 
     console.warn("Unknown field format", field);

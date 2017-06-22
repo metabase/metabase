@@ -331,6 +331,11 @@ var Query = {
         return Array.isArray(field) && mbqlEq(field[0], "aggregation");
     },
 
+    // field literal has the formal ["field-literal", <field-name>, <field-base-type>]
+    isFieldLiteral(field) {
+        return Array.isArray(field) && field.length === 3 && mbqlEq(field[0], "field-literal") && _.isString(field[1]) && _.isString(field[2]);
+    },
+
     isValidField(field) {
         return (
             (Query.isRegularField(field)) ||
@@ -341,7 +346,8 @@ var Query = {
                     (field[2] === "as" && typeof field[3] === "string") : // deprecated
                     typeof field[2] === "string")) ||
             (Query.isExpressionField(field) && _.isString(field[1])) ||
-            (Query.isAggregateField(field)  && typeof field[1] === "number")
+            (Query.isAggregateField(field)  && typeof field[1] === "number") ||
+            Query.isFieldLiteral(field)
         );
     },
 
@@ -363,6 +369,8 @@ var Query = {
             return Query.getFieldTargetId(field[2]);
         } else if (Query.isDatetimeField(field)) {
             return Query.getFieldTargetId(field[1]);
+        } else if (Query.isFieldLiteral(field)) {
+            return field;
         }
         console.warn("Unknown field type: ", field);
     },
@@ -406,7 +414,9 @@ var Query = {
                 table: tableDef,
                 field: fieldDef,
                 path: path
-            }
+            };
+        } else if (Query.isFieldLiteral(field)) {
+            return { table: tableDef, field: Table.getField(tableDef, field), path }; // just pretend it's a normal field
         }
 
         console.warn("Unknown field type: ", field);

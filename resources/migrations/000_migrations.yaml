@@ -3659,3 +3659,14 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+  - changeSet:
+      id: 57
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: result_metadata
+                  type: text
+                  remarks: 'Serialized JSON containing metadata about the result columns from running the query.'

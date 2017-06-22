@@ -3,6 +3,7 @@
 import moment from "moment";
 
 import Q from "metabase/lib/query"; // legacy query lib
+import { fieldIdsEq } from "metabase/lib/query/util";
 import * as Card from "metabase/meta/Card";
 import * as Query from "metabase/lib/query/query";
 import * as Field from "metabase/lib/query/field";
@@ -164,7 +165,7 @@ export const drillDownForDimensions = dimensions => {
                 breakout: [
                     "datetime-field",
                     getFieldRefFromColumn(column),
-                    "as",
+                    "as", // TODO - this is deprecated and should be removed. See https://github.com/metabase/metabase/wiki/Query-Language-'98#datetime-field
                     nextUnit
                 ]
             };
@@ -323,7 +324,7 @@ export const pivot = (
             tableMetadata
         );
         for (const [index, field] of breakoutFields.entries()) {
-            if (field && field.id === dimension.column.id) {
+            if (field && fieldIdsEq(field.id, dimension.column.id)) {
                 newCard.dataset_query.query = Query.removeBreakout(
                     newCard.dataset_query.query,
                     index

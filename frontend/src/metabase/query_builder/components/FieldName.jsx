@@ -8,6 +8,7 @@ import Query from "metabase/lib/query";
 import { formatBucketing } from "metabase/lib/query_time";
 import { stripId } from "metabase/lib/formatting";
 
+import _ from "underscore";
 import cx from "classnames";
 
 export default class FieldName extends Component {
@@ -24,13 +25,29 @@ export default class FieldName extends Component {
         className: ""
     };
 
+    displayNameForFieldLiteral(tableMetadata, fieldLiteral) {
+        // see if we can find an entry in the table metadata that matches the field literal
+        let matchingField = _.find(tableMetadata.fields, (field) => Query.isFieldLiteral(field.id) && field.id[1] === fieldLiteral[1]); // check whether names of field literals match
+
+        return (matchingField && matchingField.display_name) || fieldLiteral[1];
+    }
+
     render() {
         let { field, tableMetadata, className } = this.props;
         let fieldTarget = Query.getFieldTarget(field, tableMetadata);
 
         let parts = [];
 
-        if (fieldTarget && !fieldTarget.field) {
+        // if the Field in question is a field literal, e.g. ["field-literal", <name>, <type>] just use name as-is
+        if (Query.isFieldLiteral(field)) {
+            parts.push(<span key="field">{this.displayNameForFieldLiteral(tableMetadata, field)}</span>);
+        }
+        // otherwise if for some weird reason we wound up with a Field Literal inside a field ID,
+        // e.g. ["field-id", ["field-literal", <name>, <type>], still just use the name as-is
+        else if (Query.isLocalField(field) && Query.isFieldLiteral(field[1])) {
+            parts.push(<span key="field">{this.displayNameForFieldLiteral(tableMetadata, field[1])}</span>);
+        }
+        else if (fieldTarget && !fieldTarget.field) {
             parts.push(<span className="text-error" key="field">Missing Field</span>);
         } else if (fieldTarget) {
             // fk path

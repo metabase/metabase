@@ -304,6 +304,16 @@
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly when it takes so long to load the data that the times are
 ;; no longer current (these tests pass locally if your machine isn't as slow as the CircleCI ones)
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+
+;; NOCOMMIT
+(defn- x []
+  (metabase.test.data.datasets/with-engine :postgres
+    (data/with-temp-db [_ (checkins:4-per-minute)]
+      (data/run-query checkins
+        (ql/aggregation (ql/count))
+        (ql/filter (ql/= (ql/datetime-field $timestamp :minute)
+                         (ql/relative-datetime "current")))))))
+
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 

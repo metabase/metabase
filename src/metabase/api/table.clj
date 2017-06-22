@@ -8,6 +8,8 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
+             [card :refer [Card]]
+             [database :as database]
              [field :refer [Field]]
              [interface :as mi]
              [table :as table :refer [Table]]]
@@ -95,6 +97,29 @@
                              ;; Otherwise filter out all :sensitive fields
                              (partial filter (fn [{:keys [visibility_type]}]
                                                (not= (keyword visibility_type) :sensitive)))))))
+
+(api/defendpoint GET "/card__:id/query_metadata"
+  "Return metadata for the 'virtual' table for a Card."
+  [id]
+  (let [{metadata :result_metadata, card-name :name} (api/read-check (db/select-one [Card :dataset_query :result_metadata :name], :id id))]
+    {:display_name card-name
+     :db_id        database/virtual-id
+     :id           (str "card__" id)
+     :fields       (for [col metadata]
+                     (assoc col
+                       :table_id     (str "card__" id)
+                       :id           [:field-literal (:name col) (:base_type col)]
+                       ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't actually be used that way IRL
+                       :special_type (when-let [special-type (keyword (:special_type col))]
+                                       (when-not (or (isa? special-type :type/PK)
+                                                     (isa? special-type :type/FK))
+                                         special-type))))}))
+
+(api/defendpoint GET "/card__:id/fks"
+  "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
+   serves mainly as a placeholder to avoid having to change anything on the frontend."
+  []
+  []) ; return empty array
 
 
 (api/defendpoint GET "/:id/fks"
