@@ -1,5 +1,5 @@
 import React from 'react';
-import { mount, shallow } from 'enzyme';
+import { shallow } from 'enzyme';
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { initializeQB, navigateToNewCardInsideQB } from "metabase/query_builder/actions";

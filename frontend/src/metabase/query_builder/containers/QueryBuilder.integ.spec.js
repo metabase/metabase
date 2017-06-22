@@ -18,11 +18,13 @@ import { CardApi } from "metabase/services";
 // We can't use the original classes because they do DOM mutation
 
 jest.mock("metabase/components/Modal", () => {
-    return (children) => <div className="mocked-modal" />
+    const MockedModal = () => <div className="mocked-modal" />
+    return MockedModal
 });
 
 jest.mock("metabase/components/Tooltip", () => {
-    return (children) => <div className="mocked-tooltip" />
+    const MockedTooltip = () => <div className="mocked-tooltip" />
+    return MockedTooltip
 });
 
 const getQBContainer = (cardId) =>

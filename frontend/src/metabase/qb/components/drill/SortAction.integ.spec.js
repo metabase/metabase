@@ -1,3 +1,4 @@
+/* @flow weak */
 describe("SortAction drill", () => {
     it("should return correct sort options for various inputs", () => {
         pending();

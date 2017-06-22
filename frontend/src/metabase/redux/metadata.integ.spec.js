@@ -11,11 +11,8 @@ import {
 } from "metabase/__support__/integrated_tests";
 import {
     fetchMetrics,
-    fetchSegments,
     fetchDatabases,
-    fetchDatabaseMetadata,
     fetchTables,
-    fetchDatabasesWithMetadata
 } from "./metadata"
 
 const metadata = (store) => getMetadata(store.getState())

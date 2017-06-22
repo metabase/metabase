@@ -1,3 +1,5 @@
+/* @flow weak */
+
 // HACK: needed due to cyclical dependency issue
 import "metabase-lib/lib/Question";
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import { mount, shallow } from 'enzyme'
+import { shallow } from 'enzyme'
 
 import SaveQuestionModal from './SaveQuestionModal';
 import Question from "metabase-lib/lib/Question";

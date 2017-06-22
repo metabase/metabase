@@ -2,7 +2,7 @@
 let jasmineAfterAllCleanup = async () => {}
 global.afterAll = (method) => { jasmineAfterAllCleanup = method; }
 
-import { exec, spawn } from "child_process";
+import { spawn } from "child_process";
 
 // use require for BackendResource to run it after the mock afterAll has been set
 const BackendResource = require("./e2e/support/backend.js").BackendResource
@@ -40,7 +40,7 @@ const cleanup = async () => {
 init()
     .then(cleanup)
     .catch((e) => {
-        throw e;
+        console.error(e);
         cleanup();
     });
 

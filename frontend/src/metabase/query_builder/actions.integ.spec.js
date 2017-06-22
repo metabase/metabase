@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import {
     DATABASE_ID, ORDERS_TABLE_ID, metadata,
     ORDERS_TOTAL_FIELD_ID
@@ -10,10 +12,9 @@ import {
     globalBrowserHistory as history
 } from "metabase/__support__/integrated_tests";
 import { initializeQB } from "./actions";
-import { getCard, getOriginalCard } from "./selectors";
+import { getCard, getOriginalCard, getQueryResults } from "./selectors";
 import { CardApi } from "metabase/services";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { getQueryResults } from "metabase/query_builder/selectors";
 
 jest.mock('metabase/lib/analytics');
 

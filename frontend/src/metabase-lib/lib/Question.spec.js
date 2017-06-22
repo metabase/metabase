@@ -173,7 +173,6 @@ describe("Question", () => {
             });
             it("retains the dataset query", () => {
                 const question = new Question(metadata, orders_raw_card);
-                const newQuestion = question.withoutNameAndId();
 
                 expect(question.id()).toBeDefined();
                 expect(question.displayName()).toBeDefined();

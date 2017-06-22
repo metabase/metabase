@@ -32,7 +32,6 @@ import { chain, assoc } from "icepick";
 
 import type {
     Parameter as ParameterObject,
-    ParameterId,
     ParameterValues
 } from "metabase/meta/types/Parameter";
 import type {
@@ -48,11 +47,6 @@ import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
 import * as Urls from "metabase/lib/urls";
 import Mode from "metabase-lib/lib/Mode";
-
-// TODO: move these
-type DownloadFormat = "csv" | "json" | "xlsx";
-type RevisionId = number;
-type ParameterOptions = "FIXME";
 
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects

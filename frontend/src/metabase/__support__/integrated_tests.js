@@ -1,5 +1,7 @@
+/* global process, jasmine */
+
 /**
- * Require this file before other imports for integrated tests
+ * Import this file before other imports in integrated tests
  */
 
 import api from "metabase/lib/api";
@@ -101,7 +103,5 @@ const {
 } = createReduxStoreWithBrowserHistory()
 export { globalBrowserHistory, globalReduxStore }
 
-// TODO: How to have the high timeout interval only for integration tests?
-// or even better, just for the setup/teardown of server process?
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 120000;
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
 
