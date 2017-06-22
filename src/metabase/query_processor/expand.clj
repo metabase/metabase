@@ -67,6 +67,8 @@
    (cond
      (instance? DateTimeField f) f
      (instance? FieldLiteral f)  (i/map->DateTimeField {:field f, :unit (qputil/normalize-token unit)})
+     ;; if it already has a datetime unit don't replace it with a new one (?)
+     ;; (:datetime-unit f)          f
      :else                       (assoc (field f) :datetime-unit (qputil/normalize-token unit)))))
 
 (s/defn ^:ql ^:always-validate fk-> :- FieldPlaceholder
@@ -80,7 +82,18 @@
   (i/assert-driver-supports :foreign-keys)
   (i/map->FieldPlaceholder {:fk-field-id fk-field-id, :field-id dest-field-id}))
 
+(defn- datetime-unit
+  "Determine the appropriate datetime unit that should be used for a field F and a value V.
+   (Sometimes the value may already have a 'default' value that should be replaced with the
+   value from the field it is being used with, e.g. in a filter clause.
+   For example when filtering by minute it is important both F and V are bucketed as minutes,
+   and thus both most have the same unit."
+  [f v]
+  (qputil/normalize-token (core/or (:datetime-unit f)
+                                   (:unit f)
+                                   (:unit v))))
 
+(s/defn ^:private ^:always-validate value :- i/AnyValue
   "Literal value. F is the `Field` it relates to, and V is `nil`, or a boolean, string, numerical, or datetime value."
   [f v]
   (cond
@@ -88,7 +101,7 @@
     (instance? Value v)                 v
     (instance? RelativeDateTimeValue v) v
     (instance? DateTimeValue v)         v
-    (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :field (datetime-field f (:unit v))))
+    (instance? RelativeDatetime v)      (i/map->RelativeDateTimeValue (assoc v :unit (datetime-unit f v), :field (datetime-field f (datetime-unit f v))))
     (instance? DateTimeField f)         (i/map->DateTimeValue {:value (u/->Timestamp v), :field f})
     (instance? FieldLiteral f)          (i/map->Value {:value v, :field f})
     :else                               (i/map->ValuePlaceholder {:field-placeholder (field f), :value v})))
