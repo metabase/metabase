@@ -194,13 +194,22 @@ export const GRAPH_AXIS_SETTINGS = {
       getDefault: ([{ data }], vizSettings) =>
           dimensionIsNumeric(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"].filter(d => d)[0]))
   },
+  "graph.x_axis._is_histogram": {
+      getDefault: ([{ data: { cols } }], vizSettings) =>
+        cols[0].binning_info != null
+  },
   "graph.x_axis.scale": {
       section: "Axes",
       title: "X-axis scale",
       widget: "select",
       default: "ordinal",
-      readDependencies: ["graph.x_axis._is_timeseries", "graph.x_axis._is_numeric"],
+      readDependencies: [
+          "graph.x_axis._is_timeseries",
+          "graph.x_axis._is_numeric",
+          "graph.x_axis._is_histogram"
+      ],
       getDefault: (series, vizSettings) =>
+          vizSettings["graph.x_axis._is_histogram"] ? "histogram" :
           vizSettings["graph.x_axis._is_timeseries"] ? "timeseries" :
           vizSettings["graph.x_axis._is_numeric"] ? "linear" :
           "ordinal",
@@ -211,8 +220,11 @@ export const GRAPH_AXIS_SETTINGS = {
           }
           if (vizSettings["graph.x_axis._is_numeric"]) {
               options.push({ name: "Linear", value: "linear" });
-              options.push({ name: "Power", value: "pow" });
-              options.push({ name: "Log", value: "log" });
+              if (!vizSettings["graph.x_axis._is_histogram"]) {
+                  options.push({ name: "Power", value: "pow" });
+                  options.push({ name: "Log", value: "log" });
+              }
+              options.push({ name: "Histogram", value: "histogram" });
           }
           options.push({ name: "Ordinal", value: "ordinal" });
           return { options };

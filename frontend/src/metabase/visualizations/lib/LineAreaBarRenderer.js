@@ -30,7 +30,7 @@ import {
 
 import { determineSeriesIndexFromElement } from "./tooltip";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue, formatNumber } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 import { isStructured } from "metabase/meta/Card";
 
@@ -874,6 +874,19 @@ export default function lineAreaBar(element, {
 }) {
     const colors = settings["graph.colors"];
 
+    // force histogram to be ordinal axis with zero-filled missing points
+    const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+    if (isHistogram) {
+        settings["line.missing"] = "zero";
+        settings["graph.x_axis.scale"] = "ordinal"
+    }
+
+    // bar histograms have special tick formatting:
+    // * aligned with beginning of bar to show bin boundaries
+    // * label only shows beginning value of bin
+    // * includes an extra tick at the end for the end of the last bin
+    const isHistogramBar = isHistogram && chartType === "bar";
+
     const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
     const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
     const isOrdinal = !isTimeseries && !isQuantitative;
@@ -934,11 +947,11 @@ export default function lineAreaBar(element, {
         // compute the interval
         let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
         xInterval = computeTimeseriesDataInverval(xValues, unit);
-    } else if (isQuantitative) {
-        if (series[0].data.cols[0].binning_info) {
+    } else if (isQuantitative || isHistogram) {
+        if (firstSeries.data.cols[0].binning_info) {
             // Get the bin width from binning_info, if available
             // TODO: multiseries?
-            xInterval = series[0].data.cols[0].binning_info.bin_width;
+            xInterval = firstSeries.data.cols[0].binning_info.bin_width;
         } else {
             // Otherwise try to infer from the X values
             xInterval = computeNumericDataInverval(xValues);
@@ -962,16 +975,24 @@ export default function lineAreaBar(element, {
                     (m) => d3.round(m.toDate().getTime(), -1) // sometimes rounds up 1ms?
                 );
             }
-        } if (isQuantitative) {
+        } if (isQuantitative || isHistogram) {
             // $FlowFixMe
             const count = Math.abs((xDomain[1] - xDomain[0]) / xInterval);
             if (count <= MAX_FILL_COUNT) {
-                xValues = d3.range(xDomain[0], xDomain[1] + xInterval, xInterval);
+                let [start, end] = xDomain;
+                if (isHistogramBar) {
+                    // NOTE: intentionally add an end point for bar histograms
+                    end += xInterval * 1.5
+                } else {
+                    // NOTE: avoid including endpoint due to floating point error
+                    end += xInterval * 0.5
+                }
+                xValues = d3.range(start, end, xInterval);
                 datas = fillMissingValues(
                     datas,
                     xValues,
                     fillValue,
-                    // normalize to xInterval to avoid floating point issues
+                    // NOTE: normalize to xInterval to avoid floating point issues
                     (v) => Math.round(v / xInterval)
                 );
             }
@@ -1207,6 +1228,24 @@ export default function lineAreaBar(element, {
                 });
             }
         })
+    } else if (isHistogramBar) {
+        parent.on("renderlet.histogram-bar", function (chart) {
+            let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
+            if (barCharts.length > 0) {
+                // manually size bars to fill space, minus 1 pixel padding
+                const bars = barCharts[0].querySelectorAll("rect");
+                let barWidth = parseFloat(bars[0].getAttribute("width"));
+                let newBarWidth = parseFloat(bars[1].getAttribute("x")) - parseFloat(bars[0].getAttribute("x")) - 1;
+                if (newBarWidth > barWidth) {
+                    chart.selectAll("g.sub .bar").attr("width", newBarWidth);
+                }
+
+                // shift half of bar width so ticks line up with start of each bar
+                for (const barChart of barCharts) {
+                    barChart.setAttribute("transform", `translate(${barWidth / 2}, 0)`);
+                }
+            }
+        })
     }
 
     // HACK: compositeChart + ordinal X axis shenanigans
@@ -1223,6 +1262,11 @@ export default function lineAreaBar(element, {
         applyChartQuantitativeXAxis(parent, settings, series, xValues, xDomain, xInterval);
     } else {
         applyChartOrdinalXAxis(parent, settings, series, xValues);
+    }
+
+    // override tick format for bars. ticks are aligned with beginning of bar, so just show the start value
+    if (isHistogramBar) {
+        parent.xAxis().tickFormat(d => formatNumber(d));
     }
 
     // y-axis settings
