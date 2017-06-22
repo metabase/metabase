@@ -4,34 +4,25 @@
     <meta charset="utf-8">
     <title>Metabase</title>
 
-    <script type="text/javascript">
-      var headings = [
-        "Bring your charts and data into Slack.",
-        "Turn tables to charts with a click.",
-        "Effortlessly explore your data."
-      ];
-
-      var counter = 0;
-
-      function switcher() {
-        setInterval(function() {
-          counter++;
-          if (counter == gifs.length) counter = 0;
-          fade(document.getElementById("gifbox"));
-          fade(document.getElementById("heading"));
-          document.getElementById("gifbox").src = gifs[counter];
-          document.getElementById("heading").innerHTML = headings[counter];
-          unfade(document.getElementById("gifbox"));
-          unfade(document.getElementById("heading"));
-        }, 12 * 1000);
-      }
-    </script>
-
     <style media="screen">
       * {
         padding: 0;
         margin: 0;
         font-family: Lato, 'Helvetica Neue', Helvetica, sans-serif;
+      }
+      progress[value] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+      }
+      progress[value]::-webkit-progress-bar {
+        background-color: #DBE9FA;
+        border-radius: 8px;
+      }
+      progress[value]::-webkit-progress-value {
+        background-color: #4A90E2;
+        border-radius: 8px;
       }
       #logo {
         padding: 10px 0 30px 0;
@@ -68,19 +59,15 @@
         width: 100%;
         padding-bottom: 20px;
       }
-      progress[value] {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 100%;
-        height: 4px;
+      #feature-image {
+        -webkit-transition: opacity 0.2s ease-in-out;
+        transition: opacity 0.2s ease-in-out;
       }
-      progress[value]::-webkit-progress-bar {
-        background-color: #DBE9FA;
-        border-radius: 8px;
+      .transparent {
+        opacity: 0;
       }
-      progress[value]::-webkit-progress-value {
-        background-color: #4A90E2;
-        border-radius: 8px;
+      .opaque {
+        opacity: 1;
       }
       .shadow {
         box-shadow: 0 5px 25px 0 #BCC5CA;
@@ -103,10 +90,8 @@
       }
     </style>
   </head>
+
   <body>
-
-
-
     <div id="container">
       <div id="logo">
         <svg viewBox="0 0 66 85" width="81.67" height="100" fill="#509EE3">
@@ -115,8 +100,8 @@
         </svg>
       </div>
 
-      <div class="drill-through-img"></div>
-      <p id="heading">Bring your charts and data into Slack.</p>
+      <div id="feature-image" class="drill-through-img"></div>
+      <p id="heading">Click on your charts to dive deeper.</p>
 
       <div id="footer">
         <progress id="progress" max="100" value="0"></progress>
@@ -124,12 +109,36 @@
           Starting Metabase...
         </div>
       </div>
-
     </div>
 
-
-
     <script type="text/javascript">
+      var content =
+        [
+          ['drill-through-img', 'Click on your charts to dive deeper.'],
+          ['metabot-img shadow', 'Bring your charts and data into Slack.']
+        ];
+
+      var featureImage = document.getElementById("feature-image");
+      var heading = document.getElementById("heading");
+
+      var counter = 0;
+
+      function switcher() {
+        setInterval(function() {
+          counter++;
+          if (counter == content.length) counter = 0;
+          featureImage.className += " transparent";
+          heading.className = "transparent";
+
+          // Need to somehow wait here for a sec before fading things back in
+          setTimeout(function() {
+            featureImage.className = content[counter][0] + " opaque";
+            heading.innerHTML = content[counter][1];
+            heading.className = "opaque";
+          }, 200);
+        }, 5000);
+      }
+
       var messages = [
         "Polishing tables…",
         "Scaling scalars…",
@@ -164,6 +173,8 @@
         }
         req.send();
       }
+
+      switcher();
       poll();
     </script>
   </body>
