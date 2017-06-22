@@ -1,4 +1,4 @@
-(ns metabase.sync-database.sync-test
+(ns metabase.sync-database.sync-schema-test
   (:require [expectations :refer :all]
             [metabase.models
              [database :refer [Database]]
@@ -8,7 +8,7 @@
              [table :refer [Table]]]
             [metabase.sync-database
              [introspect :as introspect]
-             [sync :refer :all]]
+             [sync-schema :refer :all]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -21,7 +21,7 @@
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
-(tu/resolve-private-vars metabase.sync-database.sync
+(tu/resolve-private-vars metabase.sync-database.sync-schema
   save-fks! save-table-fields!)
 
 (defn- get-tables [database-id]
@@ -376,6 +376,6 @@
 (expect
   #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft}
     {:name "ACQUIRED_TOUCANS",       :visibility_type nil}}
-  (data/dataset metabase.sync-database.sync-test/db-with-some-cruft
+  (data/dataset metabase.sync-database.sync-schema-test/db-with-some-cruft
     (set (for [table (db/select [Table :name :visibility_type], :db_id (data/id))]
            (into {} table)))))

@@ -11,7 +11,7 @@
              [table :as table :refer [Table]]]
             [metabase.sync-database
              [interface :as i]
-             [sync :as sync]]
+             [sync-schema :as sync-schema]]
             [schema.core :as schema]
             [toucan.db :as db]))
 
@@ -85,14 +85,14 @@
     (throw (IllegalStateException. "This function cannot be called on databases which are not :dynamic-schema")))
 
   ;; retire any tables which are no longer with us
-  (sync/retire-tables! database)
+  (sync-schema/retire-tables! database)
 
   (let [raw-tables          (raw-table/active-tables database-id)
         raw-table-id->table (u/key-by :raw_table_id (db/select Table, :db_id database-id, :active true))]
     ;; create/update tables (and their fields)
     ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
     (doseq [{raw-table-id :id, :as raw-table} raw-tables
-            :when                             (not (sync/is-metabase-metadata-table? raw-table))]
+            :when                             (not (sync-schema/is-metabase-metadata-table? raw-table))]
       (try
         (let [table-def (u/prog1 (driver/describe-table driver database (select-keys raw-table [:name :schema]))
                           (schema/validate i/DescribeTable <>))]
@@ -109,5 +109,5 @@
     ;; NOTE: dynamic schemas don't have FKs
 
     ;; NOTE: if per chance there were multiple _metabase_metadata tables in different schemas, we just take the first
-    (when-let [metabase-metadata-table (first (filter sync/is-metabase-metadata-table? raw-tables))]
-      (sync/sync-metabase-metadata-table! driver database metabase-metadata-table))))
+    (when-let [metabase-metadata-table (first (filter sync-schema/is-metabase-metadata-table? raw-tables))]
+      (sync-schema/sync-metabase-metadata-table! driver database metabase-metadata-table))))

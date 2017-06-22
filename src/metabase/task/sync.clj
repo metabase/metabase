@@ -1,4 +1,4 @@
-(ns metabase.task.sync-cache-analyze-classify-databases
+(ns metabase.task.sync
   (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite
              [conversion :as qc]

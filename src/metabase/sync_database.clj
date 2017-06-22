@@ -12,7 +12,7 @@
             [metabase.sync-database
              [analyze :as analyze]
              [introspect :as introspect]
-             [sync :as sync]
+             [sync-schema :as sync-schema]
              [sync-dynamic :as sync-dynamic]]
             [toucan.db :as db]
             [metabase.sync-database.classify :as classify]))
@@ -33,7 +33,7 @@
       ;; use the introspected schema information and update our working data models
       (if (driver/driver-supports? driver :dynamic-schema)
         (sync-dynamic/scan-database-and-update-data-model! driver database)
-        (sync/update-data-models-from-raw-tables! database))
+        (sync-schema/update-data-models-from-raw-tables! database))
 
       ;; now do any in-depth data analysis which requires querying the tables (if enabled)
       (when full-sync?
@@ -55,7 +55,7 @@
       ;; if the Table has a RawTable backing it then do an introspection and sync
       (when-let [raw-table (raw-table/RawTable (:raw_table_id table))]
         (introspect/introspect-raw-table-and-update! driver database raw-table)
-        (sync/update-data-models-for-table! table))
+        (sync-schema/update-data-models-for-table! table))
 
       ;; if this table comes from a dynamic schema db then run that sync process now
       (when (driver/driver-supports? driver :dynamic-schema)

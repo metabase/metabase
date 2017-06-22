@@ -1,4 +1,4 @@
-(ns metabase.sync-database.sync
+(ns metabase.sync-database.sync-schema
   (:require [clojure
              [set :as set]
              [string :as s]]
