@@ -4,15 +4,17 @@
             [kixi.stats.core :as stats]
             [kixi.stats.math :as math]
             [redux.core :as redux]
-            [clj-time.core :as t]
-            [clj-time.format :as t.format]
+            (clj-time [core :as t]
+                      [format :as t.format]
+                      [periodic :as t.periodic]
+                      [coerce :as t.coerce])
+            [tide.core :as tide]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]]
                              [segment :refer [Segment]]
                              [card :refer [Card]])
             [toucan.db :as db]
-            [metabase.db.metadata-queries :as metadata]
-            [clj-time.coerce :as coerce]))
+            [metabase.db.metadata-queries :as metadata]))
 
 (def ^:private ^:const ^Double cardinality-error 0.01)
 
@@ -35,6 +37,24 @@
      ([acc x]
       (let [fx (f x)]
         (hist/insert-categorical! acc (when fx 1) fx))))))
+
+(defn rollup
+  [groupfn f]
+  (let [m (volatile! (transient {}))]
+    (fn
+      ([])
+      ([acc])
+      ([acc x]))))
+
+(defn safe-divide
+  [numerator & denominators]
+  (when (or (and (not-empty denominators) (not-any? zero? denominators))
+            (and (not (zero? numerator)) (empty? denominators)))
+    (double (apply / numerator denominators))))
+
+(defn growth
+  [b a]
+  (safe-divide (* (if (neg? a) -1 1) (- b a)) a)) 
 
 (defn- bins
   [histogram]
@@ -66,10 +86,21 @@
                (redux/post-complete + -)
                (hist/bins histogram))))
 
-(defmulti fingerprinter (fn [{:keys [base_type special_type]}]
-                          [base_type (or special_type :type/Nil)]))
+(defn- field-type
+  [field]
+  (if (sequential? field)
+    (mapv field-type field)
+    [(:base_type field) (or (:special_type field) :type/Nil)]))
 
-(defmethod fingerprinter [:type/Number :type/*]
+(def Num [:type/Number :type/*])
+(def DateTime [:type/DateTime :type/*])
+(def Category [:type/* :type/Category])
+(def Any [:type/* :type/*])
+(def Text [:type/Text :type/*])
+
+(defmulti fingerprinter field-type)
+
+(defmethod fingerprinter Num
   [field]
   (redux/post-complete
    (redux/fuse {:histogram (histogram)
@@ -80,14 +111,15 @@
                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
                                                           (map #(* % %))))})
    (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
-     (let [var (hist/variance histogram)
+     (let [nil-count (nil-count histogram)
+           total-count (total-count histogram)           
+           unique% (/ cardinality (max total-count 1))
+           var (hist/variance histogram)
            sd (math/sqrt var)
            min (hist/minimum histogram)
            max (hist/maximum histogram)
            mean (hist/mean histogram)
            median (hist/median histogram)
-           nil-count (nil-count histogram)
-           total-count (total-count histogram)
            range (- max min)]
        {:histogram (bins histogram)
         :percentiles (apply hist/percentiles histogram percentiles)
@@ -95,14 +127,16 @@
         :sum-of-squares sum-of-squares
         :positive-definite? (>= min 0)
         :%>mean (- 1 ((hist/cdf histogram) mean))
-        :cardinality-vs-count (/ cardinality total-count)
+        :cardinality-vs-count unique%
         :var>sd? (> var sd)
         :nil-conunt nil-count
         :has-nils? (pos? nil-count)
         :0<=x<=1? (<= 0 min max 1)
         :-1<=x<=1? (<= -1 min max 1)
-        :range-vs-sd (/ range sd)
-        :range-vs-spread (/ range (- mean median))
+        :range-vs-sd (when (pos? sd)
+                       (/ range sd))
+        :range-vs-spread (when (not= mean median)
+                           (/ range (- mean median)))
         :cardinality cardinality
         :min min
         :max max
@@ -113,12 +147,70 @@
         :count total-count
         :kurtosis kurtosis
         :skewness skewness
-        :all-distinct? (>= (/ cardinality total-count)
+        :all-distinct? (>= unique%
                            (- 1 cardinality-error))
         :entropy (binned-entropy histogram)
-        :type [:type/Number :type/*]}))))
+        :type Number}))))
 
-(defmethod fingerprinter [:type/Text :type/*]
+(defmethod fingerprinter [Num Num]
+  [[x y]]
+  (redux/fuse {:correlation (stats/correlation first second)
+               :covariance (stats/covariance first second)
+               :linear-regression (stats/simple-linear-regression first second)}))
+
+(def ^:private ^:cost timestamp-truncation-factor (* 1000 60 60 24))
+
+(defn- truncate-timestamp
+  [t]
+  (/ t timestamp-truncation-factor))
+
+(defn- fill-timeseries
+  [ts]
+  (let [truncated-timestamp->datatime (comp t.coerce/from-long
+                                            long
+                                            (partial * timestamp-truncation-factor))
+        start (-> ts first first truncated-timestamp->datatime)
+        end (-> ts last first truncated-timestamp->datatime)
+        ts-index (into {} ts)]
+    (into []
+      (comp (take-while #(not (t/after? % end)))
+            (map (comp truncate-timestamp t.coerce/to-long))
+            (map (fn [t]
+                   [t (ts-index t 0)])))
+      (t.periodic/periodic-seq start (t/months 1)))))
+
+(defmethod fingerprinter [DateTime Num]
+  [[x y]]
+  (redux/pre-step
+   (redux/post-complete
+    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                 :series (redux/post-complete conj fill-timeseries)})
+    (fn [{:keys [series linear-regression]}]
+      (let [{:keys [trend seasonal reminder]} (tide/decompose 12 series)
+            ys-r (reverse (map second series))]
+        (println [(map (fn [[t x]]
+                         [(-> t
+                              (* timestamp-truncation-factor)
+                              long
+                              t.coerce/from-long)
+                          x]) series) ys-r])
+        {:series series         
+         :linear-regression linear-regression
+         :trend trend
+         :seasonal seasonal
+         :reminder reminder
+         :YoY (growth (first ys-r) (nth ys-r 11))
+         :YoY-previous (growth (second ys-r) (nth ys-r 12))
+         :MoM (growth (first ys-r) (second ys-r))
+         :MoM-previous (growth (second ys-r) (nth ys-r 2))})))
+   (fn [[x y]]     
+     [(-> x t.format/parse t.coerce/to-long truncate-timestamp) y])))
+
+;; (defmethod fingerprinter [Category Any]
+;;   [[x y]]
+;;   (rollup first (redux/pre-step (fingerprinter y) second)))
+
+(defmethod fingerprinter Text
   [field]
   (redux/post-complete
    (redux/fuse {:histogram (histogram (stats/somef count))})
@@ -130,17 +222,17 @@
         :count (total-count histogram)
         :nil-conunt nil-count
         :has-nils? (pos? nil-count)
-        :type [:type/Text :type/*]}))))
+        :type Text}))))
 
 (defn- quarter
   [dt]
   (Math/ceil (/ (t/month dt) 3)))
 
-(defmethod fingerprinter [:type/DateTime :type/*]
+(defmethod fingerprinter DateTime
   [field]
   (redux/post-complete
    (redux/pre-step
-    (redux/fuse {:histogram (histogram (stats/somef coerce/to-long))
+    (redux/fuse {:histogram (histogram (stats/somef t.coerce/to-long))
                  :histogram-hour (histogram-categorical (stats/somef t/hour))
                  :histogram-day (histogram-categorical (stats/somef t/day-of-week))
                  :histogram-month (histogram-categorical (stats/somef t/month))
@@ -161,9 +253,9 @@
         :nil-conunt nil-count
         :has-nils? (pos? nil-count)
         :entropy (binned-entropy histogram)
-        :type [:type/DateTime :type/*]}))))
+        :type DateTime}))))
 
-(defmethod fingerprinter [:type/* :type/Category]
+(defmethod fingerprinter Category
   [field]
   (redux/post-complete
    (redux/fuse {:histogram (histogram-categorical)
@@ -180,18 +272,32 @@
         :all-distinct? (>= (/ cardinality total-count)
                            (- 1 cardinality-error))
         :entropy (binned-entropy histogram)
-        :type [:type/* :type/Category]}))))
+        :type Category}))))
 
-(prefer-method fingerprinter [:type/* :type/Category] [:type/Text :type/*])
+(prefer-method fingerprinter Category Text)
+(prefer-method fingerprinter Num Category)
 
 (defmulti fingerprint (fn [_ x] (class x)))
 
 (def ^:private ^:const max-sample-size 10000)
 
+;; COSTS
+;;
+;; 1 - Don't touch anything, just use what we've already precomputed/cached.
+;; 2 - Sample and limit computation to O(n).
+;; 3 - Sample with unbounded computation.
+;; 4 - Full table scan but limit computation to O(n).
+;; 5 - Full table scan with unbounded computation.
+;; 6 - Full table scan bringing in data from other tables if needed.
+;;     Limit computation to O(n).
+;; 7 - Full table scan bringing in data from other tables if needed
+;;     and unbounded computation.
+;; 8 - Sky's the limit (GPU, ML, ...).
+
 (defn- extract-query-opts
   [{:keys [max-cost]}]
   (cond-> {}
-    (some-> max-cost (< 3)) (assoc :limit max-sample-size)))
+    (some-> max-cost (< 4)) (assoc :limit max-sample-size)))
 
 (defn fingerprint-field
   [{:keys [field data]}]
@@ -202,10 +308,22 @@
   (assoc (fingerprint-field (metadata/field-values field (extract-query-opts opts)))
     :field field))
 
+(defn- transpose
+  [{:keys [rows columns cols]}]
+  (reduce (fn [acc row]
+            (reduce (fn [acc [k v]]
+                      (update-in acc [k :data] conj v))
+                    acc
+                    (map vector columns row)))
+          (zipmap columns (for [c cols]
+                            {:field c
+                             :data []}))
+          rows))
+
 (defn- fingerprint-query
   [query-result]
   (into {}
-    (for [[col field] query-result]
+    (for [[col field] (transpose query-result)]
       [col (fingerprint-field field)])))
 
 (defmethod fingerprint (class Table)
@@ -225,7 +343,7 @@
 (defmethod fingerprint (class Segment)
   [opts segment]
   (fingerprint-query (metadata/query-values
-                      (:db_id (db/select-one 'Table :id (:table_id segment)))
+                      (db/select-one-field :db_id 'Table :id (:table_id segment))
                       (merge (extract-query-opts opts)
                              (:definition segment)))))
 
@@ -234,4 +352,24 @@
   {(:name a) (fingerprint opts a)
    (:name b) (fingerprint opts b)})
 
-;; TODO unify Card and Segment fields with the rest
+(defn multifield-fingerprint
+  [opts a b]
+  (assert (= (:table_id a) (:table_id b)))
+  {:fields (compare-fingerprints opts a b)
+   :fingerprint
+   (fingerprint-field
+    {:field [a b]
+     :data (-> (metadata/query-values
+                (db/select-one-field :db_id 'Table :id (:table_id a))
+                (merge (extract-query-opts opts)
+                       (if (isa? (field-type a) DateTime)
+                         {:source-table (:table_id a)                         
+                          :breakout [[:datetime-field [:field-id (:id a)] :month]]
+                          :aggregation [:sum [:field-id (:id b)]]}
+                         {:source-table (:table_id a)
+                          :fields [[:field-id (:id a)]
+                                   [:field-id (:id b)]]})))
+               :rows)})})
+
+;; TODO add db_id to Field, Card, and Segment
+

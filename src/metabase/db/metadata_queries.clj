@@ -68,18 +68,6 @@
               :rows
               (map first))})
 
-(defn- transpose
-  [{:keys [rows columns cols]}]
-  (reduce (fn [acc row]
-            (reduce (fn [acc [k v]]
-                      (update-in acc [k :data] conj v))
-                    acc
-                    (map vector columns row)))
-          (zipmap columns (for [c cols]
-                            {:field c
-                             :data []}))
-          rows))
-
 (defn query-values
   "Return all values for query"
   [db-id query]
@@ -87,5 +75,4 @@
         {:type :query
          :database db-id
          :query query})
-      :data
-      transpose))
+      :data))

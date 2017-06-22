@@ -86,7 +86,8 @@
                  ; Proposed additions for fingerprinting
                  [bigml/histogram "4.1.3"]
                  [bigml/sketchy "0.4.0"]
-                 [kixi/stats "0.3.8"]
+                 [kixi/stats "0.3.8"]                 
+                 [tide "0.1.0-SNAPSHOT"]
                  [redux "0.1.4"]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
   :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables                                                                      

@@ -46,12 +46,19 @@
        (api/read-check Card)
        (fingerprinting/fingerprint {:max-cost (maybe->int max_cost)})))
 
+(api/defendpoint GET "/fields/:id1/:id2"
+  "Get a multi-field fingerprint for `Field`s with ID1 and ID2."
+  [id1 id2 max_cost]
+  {max_cost (s/maybe su/IntString)}
+  (->> [id1 id2]         
+       (map (partial api/read-check Field))
+       (apply fingerprinting/multifield-fingerprint {:max-cost (maybe->int max_cost)})))
+
 (api/defendpoint GET "/compare/fields/:id1/:id2"
   "Get comparison fingerprints for `Field`s with ID1 and ID2."
   [id1 id2 max_cost]
   {max_cost (s/maybe su/IntString)}
-  (->> [id2 id2]
-       vals
+  (->> [id2 id2]       
        (map (partial api/read-check Field))
        (apply fingerprinting/compare-fingerprints {:max-cost (maybe->int max_cost)})))
 
@@ -59,8 +66,7 @@
   "Get comparison fingerprints for `Table`s with ID1 and ID2."
   [id1 id2 max_cost]
   {max_cost (s/maybe su/IntString)}
-  (->> [id2 id2]
-       vals
+  (->> [id2 id2]       
        (map (partial api/read-check Table))
        (apply fingerprinting/compare-fingerprints {:max-cost (maybe->int max_cost)})))
 
@@ -68,8 +74,7 @@
   "Get comparison fingerprints for `Card`s with ID1 and ID2."
   [id1 id2 max_cost]
   {max_cost (s/maybe su/IntString)}
-  (->> [id2 id2]
-       vals
+  (->> [id2 id2]       
        (map (partial api/read-check Card))
        (apply fingerprinting/compare-fingerprints {:max-cost (maybe->int max_cost)})))
 
@@ -77,8 +82,7 @@
   "Get comparison fingerprints for `Segment`s with ID1 and ID2."
   [id1 id2 max_cost]
   {max_cost (s/maybe su/IntString)}
-  (->> [id2 id2]
-       vals
+  (->> [id2 id2]       
        (map (partial api/read-check Segment))
        (apply fingerprinting/compare-fingerprints {:max-cost (maybe->int max_cost)})))
 
