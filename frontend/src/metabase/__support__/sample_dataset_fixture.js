@@ -4,6 +4,7 @@ import { assocIn } from "icepick";
 
 export const DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
+export const MONGO_DATABASE_ID = 3;
 
 export const ORDERS_TABLE_ID = 1;
 export const PEOPLE_TABLE_ID = 2;
@@ -155,6 +156,28 @@ export const state = {
         engine: 'h2',
         created_at: '2017-06-14T23:22:55.349Z',
         points_of_interest: null
+      },
+      '3':{
+          description: null,
+          features: [
+              "basic-aggregations",
+              "nested-fields",
+              "dynamic-schema"
+          ],
+          name: "test-data",
+          caveats: null,
+          tables: [],
+          is_full_sync: true,
+          updated_at: "2017-06-22T00:33:36.681Z",
+          details: {
+              dbname: "test-data",
+              host: "localhost"
+          },
+          is_sample: false,
+          id: 3,
+          engine: "mongo",
+          created_at: "2017-06-22T00:33:36.681Z",
+          points_of_interest: null
       }
     },
     tables: {
@@ -427,7 +450,7 @@ export const state = {
         values: []
       },
       '2': {
-        description: 'This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.',
+        description: 'This is a unique ID for the product. It is also called the “Invoice number" or “Confirmation number" in customer facing emails and screens.',
         table_id: 1,
         special_type: 'type/PK',
         name: 'ID',
