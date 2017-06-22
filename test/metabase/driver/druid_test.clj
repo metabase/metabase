@@ -1,6 +1,7 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
             [expectations :refer [expect]]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -29,9 +30,10 @@
 (defn- process-native-query [query]
   (datasets/with-engine :druid
     (timeseries-qp-test/with-flattened-dbdef
-      (qp/process-query {:native   {:query query}
-                         :type     :native
-                         :database (data/id)}))))
+      (-> (qp/process-query {:native   {:query query}
+                             :type     :native
+                             :database (data/id)})
+          (m/dissoc-in [:data :results_metadata])))))
 
 ;; test druid native queries
 (expect-with-engine :druid
