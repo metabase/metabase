@@ -1417,6 +1417,7 @@ export const product_card = {
 export const orders_raw_card = {
     id: 1,
     name: "Raw orders data",
+    can_write: true,
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1439,9 +1440,34 @@ export const orders_count_card = {
     }
 };
 
+export const native_orders_count_card = {
+    id: 2,
+    name: "# orders data",
+    dataset_query: {
+        type: "native",
+        database: DATABASE_ID,
+        native: {
+            query: "SELECT count(*) FROM orders"
+        }
+    }
+};
+
+export const invalid_orders_count_card = {
+    id: 2,
+    name: "# orders data",
+    dataset_query: {
+        type: "nosuchqueryprocessor",
+        database: DATABASE_ID,
+        query: {
+            query: "SELECT count(*) FROM orders"
+        }
+    }
+};
+
 export const orders_count_by_id_card = {
     id: 2,
     name: "# orders data",
+    can_write: false,
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
