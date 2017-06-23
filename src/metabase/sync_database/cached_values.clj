@@ -119,12 +119,12 @@
       (try
         (cache-table-data-shape! driver table)
         (catch Throwable t
-          (log/error "Unexpected error analyzing table" t))
+          (log/error "Unexpected error caching field values for table" t))
         (finally
           (u/prog1 (swap! finished-tables-count inc)
-            (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
+            (log/info (u/format-color 'blue "%s Caching Field Values for table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
 
-    (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)."
+    (log/info (u/format-color 'blue "Caching field values for %s database '%s' completed (%s)."
                 (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
 
 (defn cache-field-values-for-database!

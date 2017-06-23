@@ -181,12 +181,12 @@
       (try
         (classify-table! table)
         (catch Throwable t
-          (log/error "Unexpected error analyzing table" t))
+          (log/error "Unexpected error classifying table" t))
         (finally
           (u/prog1 (swap! finished-tables-count inc)
-            (log/info (u/format-color 'blue "%s Analyzed table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
+            (log/info (u/format-color 'blue "%s Classified table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
 
-    (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
+    (log/info (u/format-color 'blue "Classification of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
 
 (defn classify-database!
   "analyze all the tables in one database"
