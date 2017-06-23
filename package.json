@@ -154,7 +154,7 @@
     "test-karma": "karma start frontend/test/karma.conf.js --single-run",
     "test-karma-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
     "test-jest": "jest --maxWorkers=10 --config jest.unit.conf.json",
-    "test-jest-watch": "jest --config jest.unit.conf.json --watch",
+    "test-jest-watch": "jest --maxWorkers=10 --config jest.unit.conf.json --watch",
     "test-integrated": "babel-node ./frontend/test/run-integrated-tests.js",
     "test-integrated-watch": "babel-node ./frontend/test/run-integrated-tests.js --watch",
     "test-e2e": "JASMINE_CONFIG_PATH=./frontend/test/e2e/support/jasmine.json jasmine",

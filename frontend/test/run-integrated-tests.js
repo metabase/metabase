@@ -19,7 +19,7 @@ const init = async() => {
 
     const jestProcess = spawn(
         "yarn",
-        ["run", "jest", "--", "--config", "jest.integ.conf.json", ...userArgs],
+        ["run", "jest", "--", "--maxWorkers=1", "--config", "jest.integ.conf.json", ...userArgs],
         {
             env,
             stdio: "inherit"
