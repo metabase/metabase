@@ -29,7 +29,7 @@ var loginSession = null;
  * Login to the Metabase test instance with default credentials
  */
 export async function login() {
-    loginSession = await SessionApi.create({ email: "bob@metabase.com", password: "12341234"});
+    loginSession = await SessionApi.create({ username: "bob@metabase.com", password: "12341234"});
 }
 
 // Patches the metabase/lib/api module so that all API queries contain the login credential cookie.
