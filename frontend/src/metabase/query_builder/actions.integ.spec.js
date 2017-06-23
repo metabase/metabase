@@ -6,16 +6,13 @@ import Question from "metabase-lib/lib/Question";
 import { parse as urlParse } from "url";
 import {
     login,
-    startServer,
-    stopServer,
     globalReduxStore as store,
     globalBrowserHistory as history
 } from "metabase/__support__/integrated_tests";
 import { initializeQB } from "./actions";
-import { getCard, getOriginalCard } from "./selectors";
+import { getCard, getOriginalCard, getQueryResults } from "./selectors";
 import { CardApi } from "metabase/services";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { getQueryResults } from "metabase/query_builder/selectors";
 
 jest.mock('metabase/lib/analytics');
 
@@ -26,12 +23,7 @@ describe("QueryBuilder", () => {
     let dirtyQuestion: Question = null;
 
     beforeAll(async () => {
-        await startServer();
         await login();
-    })
-
-    afterAll(async () => {
-        await stopServer();
     })
 
     describe("initializeQb", () => {

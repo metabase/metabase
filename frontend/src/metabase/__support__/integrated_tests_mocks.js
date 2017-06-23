@@ -1,5 +1,3 @@
-import React from "react";
-
 global.ga = () => {}
 global.ace.define = () => {}
 global.ace.require = () => {}

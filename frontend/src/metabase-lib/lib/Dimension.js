@@ -61,7 +61,6 @@ export default class Dimension {
      */
     static parseMBQL(mbql: ConcreteField, metadata?: Metadata): ?Dimension {
         for (const D of DIMENSION_TYPES) {
-
             const dimension = D.parseMBQL(mbql, metadata);
             if (dimension != null) {
                 return dimension;

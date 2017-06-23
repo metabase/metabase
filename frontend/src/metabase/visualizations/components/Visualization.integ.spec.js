@@ -1,5 +1,5 @@
 import React from 'react';
-import { mount, shallow } from 'enzyme';
+import { shallow } from 'enzyme';
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { initializeQB, navigateToNewCardInsideQB } from "metabase/query_builder/actions";
@@ -8,8 +8,6 @@ import { parse as urlParse } from "url";
 import {
     linkContainerToGlobalReduxStore,
     login,
-    startServer,
-    stopServer,
     globalReduxStore as store,
     globalBrowserHistory as history
 } from "metabase/__support__/integrated_tests";
@@ -38,12 +36,7 @@ const question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE
 
 describe('Visualization', () => {
     beforeAll(async () => {
-        await startServer();
         await login();
-    });
-
-    afterAll(async () => {
-        await stopServer();
     });
 
     // NOTE: Should this be here or somewhere in QB directory?

@@ -75,8 +75,7 @@ export default class StructuredQuery extends AtomicQuery {
     ) {
         super(question, datasetQuery);
 
-        // $FlowFixMe
-        this._structuredDatasetQuery = datasetQuery;
+        this._structuredDatasetQuery = (datasetQuery: StructuredDatasetQuery);
     }
 
     static newStucturedQuery(
@@ -269,11 +268,9 @@ export default class StructuredQuery extends AtomicQuery {
     aggregationFieldOptions(agg): DimensionOptions {
         const aggregation = this.table().aggregation(agg);
         if (aggregation) {
-            const fieldOptions = this.fieldOptions(
-                field => {
-                    return aggregation.validFieldsFilters[0]([field]).length === 1
-                }
-            );
+            const fieldOptions = this.fieldOptions(field => {
+                return aggregation.validFieldsFilters[0]([field]).length === 1;
+            });
 
             // HACK Atte Keinänen 6/18/17: Using `fieldOptions` with a field filter function
             // ends up often omitting all expressions because the field object of ExpressionDimension is empty.
@@ -286,9 +283,11 @@ export default class StructuredQuery extends AtomicQuery {
                 ...fieldOptions,
                 dimensions: _.uniq([
                     ...this.expressionDimensions(),
-                    ...fieldOptions.dimensions.filter((d) => !(d instanceof ExpressionDimension)),
+                    ...fieldOptions.dimensions.filter(
+                        d => !(d instanceof ExpressionDimension)
+                    )
                 ])
-            }
+            };
         } else {
             return { count: 0, fks: [], dimensions: [] };
         }
@@ -401,7 +400,9 @@ export default class StructuredQuery extends AtomicQuery {
                 .map(b => Q_deprecated.getFieldTargetId(b))
         );
 
-        return this.fieldOptions((field) => fieldFilter(field) && !usedFields.has(field.id));
+        return this.fieldOptions(
+            field => fieldFilter(field) && !usedFields.has(field.id)
+        );
     }
 
     /**
@@ -523,7 +524,7 @@ export default class StructuredQuery extends AtomicQuery {
                     .map(b => Q_deprecated.getFieldTargetId(b[0]))
             );
 
-            return this.fieldOptions((field) => !usedFields.has(field.id));
+            return this.fieldOptions(field => !usedFields.has(field.id));
         } else if (this.hasValidBreakout()) {
             for (const breakout of this.breakouts()) {
                 sortOptions.dimensions.push(
@@ -613,18 +614,23 @@ export default class StructuredQuery extends AtomicQuery {
                 return !field || (field.isDimension() && fieldFilter(field));
             };
 
-            const dimensionIsFKReference = (dimension) =>
-                dimension.field && dimension.field() && dimension.field().isFK();
+            const dimensionIsFKReference = dimension =>
+                dimension.field &&
+                dimension.field() &&
+                dimension.field().isFK();
 
-            const filteredNonFKDimensions =
-                this.dimensions().filter(dimensionFilter).filter(d => !dimensionIsFKReference(d));
+            const filteredNonFKDimensions = this.dimensions()
+                .filter(dimensionFilter)
+                .filter(d => !dimensionIsFKReference(d));
 
             for (const dimension of filteredNonFKDimensions) {
                 fieldOptions.count++;
                 fieldOptions.dimensions.push(dimension);
             }
 
-            const fkDimensions = this.dimensions().filter(dimensionIsFKReference)
+            const fkDimensions = this.dimensions().filter(
+                dimensionIsFKReference
+            );
             for (const dimension of fkDimensions) {
                 const fkDimensions = dimension
                     .dimensions()

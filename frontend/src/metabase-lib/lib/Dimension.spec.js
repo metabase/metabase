@@ -13,35 +13,36 @@ describe("Dimension", () => {
     describe("STATIC METHODS", () => {
         describe("parseMBQL(mbql metadata)", () => {
             it("parses and format MBQL correctly", () => {
-                expect(Dimension.parseMBQL(1, metadata).mbql()).toEqual(["field-id", 1]);
-                expect(Dimension.parseMBQL(["field-id", 1], metadata).mbql()).toEqual([
+                expect(Dimension.parseMBQL(1, metadata).mbql()).toEqual([
                     "field-id",
                     1
                 ]);
-                expect(Dimension.parseMBQL(["fk->", 1, 2], metadata).mbql()).toEqual([
-                    "fk->",
-                    1,
-                    2
-                ]);
                 expect(
-                    Dimension.parseMBQL(["datetime-field", 1, "month"], metadata).mbql()
+                    Dimension.parseMBQL(["field-id", 1], metadata).mbql()
+                ).toEqual(["field-id", 1]);
+                expect(
+                    Dimension.parseMBQL(["fk->", 1, 2], metadata).mbql()
+                ).toEqual(["fk->", 1, 2]);
+                expect(
+                    Dimension.parseMBQL(
+                        ["datetime-field", 1, "month"],
+                        metadata
+                    ).mbql()
                 ).toEqual(["datetime-field", ["field-id", 1], "month"]);
                 expect(
-                    Dimension.parseMBQL([
-                        "datetime-field",
-                        ["field-id", 1],
-                        "month"
-                    ], metadata).mbql()
+                    Dimension.parseMBQL(
+                        ["datetime-field", ["field-id", 1], "month"],
+                        metadata
+                    ).mbql()
                 ).toEqual(["datetime-field", ["field-id", 1], "month"]);
                 expect(
-                    Dimension.parseMBQL([
-                        "datetime-field",
-                        ["fk->", 1, 2],
-                        "month"
-                    ], metadata).mbql()
+                    Dimension.parseMBQL(
+                        ["datetime-field", ["fk->", 1, 2], "month"],
+                        metadata
+                    ).mbql()
                 ).toEqual(["datetime-field", ["fk->", 1, 2], "month"]);
             });
-        })
+        });
 
         describe("isEqual(other)", () => {
             it("returns true for equivalent field-ids", () => {
@@ -62,43 +63,42 @@ describe("Dimension", () => {
                 expect(d1.isEqual(d2)).toEqual(false);
             });
         });
-
-    })
+    });
 
     describe("INSTANCE METHODS", () => {
         describe("dimensions()", () => {
             it("returns `dimension_options` of the underlying field if available", () => {
                 pending();
-            })
+            });
             it("returns sub-dimensions for matching dimension if no `dimension_options`", () => {
                 // just a single scenario should be sufficient here as we will test
                 // `static dimensions()` individually for each dimension
                 pending();
-            })
-        })
+            });
+        });
 
         describe("isSameBaseDimension(other)", () => {
             it("returns true if the base dimensions are same", () => {
                 pending();
-            })
+            });
             it("returns false if the base dimensions don't match", () => {
                 pending();
-            })
-        })
-    })
+            });
+        });
+    });
 
     describe("INSTANCE METHODS", () => {
         describe("dimensions()", () => {
             it("returns `default_dimension_option` of the underlying field if available", () => {
                 pending();
-            })
+            });
             it("returns default dimension for matching dimension if no `default_dimension_option`", () => {
                 // just a single scenario should be sufficient here as we will test
                 // `static defaultDimension()` individually for each dimension
                 pending();
-            })
-        })
-    })
+            });
+        });
+    });
 });
 
 describe("FieldIDDimension", () => {
@@ -141,7 +141,7 @@ describe("FieldIDDimension", () => {
                 expect(dimension.subTriggerDisplayName()).toBeFalsy();
             });
         });
-    })
+    });
 });
 
 describe("FKDimension", () => {
@@ -157,11 +157,11 @@ describe("FKDimension", () => {
                 // Something like this:
                 // fieldsInProductsTable = metadata.tables[1].fields.length;
                 // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-            })
+            });
             it("should return empty array for non-FK field dimension", () => {
                 pending();
-            })
-        })
+            });
+        });
     });
 
     describe("INSTANCE METHODS", () => {
@@ -189,7 +189,7 @@ describe("FKDimension", () => {
                 expect(dimension.subTriggerDisplayName()).toBeFalsy();
             });
         });
-    })
+    });
 });
 
 describe("DatetimeFieldDimension", () => {
@@ -205,18 +205,18 @@ describe("DatetimeFieldDimension", () => {
                 // Something like this:
                 // fieldsInProductsTable = metadata.tables[1].fields.length;
                 // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-            })
+            });
             it("should return empty array for non-date field dimension", () => {
                 pending();
-            })
-        })
+            });
+        });
         describe("defaultDimension(parentDimension)", () => {
             it("should return dimension with 'day' datetime unit", () => {
                 pending();
-            })
+            });
             it("should return null for non-date field dimension", () => {
                 pending();
-            })
+            });
         });
     });
 
@@ -245,7 +245,7 @@ describe("DatetimeFieldDimension", () => {
                 expect(dimension.subTriggerDisplayName()).toEqual("by month");
             });
         });
-    })
+    });
 });
 
 describe("BinningStrategyDimension", () => {
@@ -258,11 +258,11 @@ describe("BinningStrategyDimension", () => {
         describe("dimensions(parentDimension)", () => {
             it("should return an array of dimensions based on default binning", () => {
                 pending();
-            })
+            });
             it("should return empty array for non-number field dimension", () => {
                 pending();
-            })
-        })
+            });
+        });
     });
 
     describe("INSTANCE METHODS", () => {
@@ -293,7 +293,7 @@ describe("BinningStrategyDimension", () => {
                 expect(dimension.subTriggerDisplayName()).toEqual("10 bins");
             });
         });
-    })
+    });
 });
 
 describe("ExpressionDimension", () => {
@@ -309,11 +309,11 @@ describe("ExpressionDimension", () => {
                 // Something like this:
                 // fieldsInProductsTable = metadata.tables[1].fields.length;
                 // expect(FKDimension.dimensions(fkFieldIdDimension).length).toEqual(fieldsInProductsTable);
-            })
+            });
             it("should return empty array for non-FK field dimension", () => {
                 pending();
-            })
-        })
+            });
+        });
     });
 
     describe("INSTANCE METHODS", () => {
@@ -327,14 +327,11 @@ describe("ExpressionDimension", () => {
                 expect(dimension.displayName()).toEqual("Hello World");
             });
         });
-    })
+    });
 });
 
 describe("AggregationDimension", () => {
-    const dimension = Dimension.parseMBQL(
-        ["aggregation", 1],
-        metadata
-    );
+    const dimension = Dimension.parseMBQL(["aggregation", 1], metadata);
 
     describe("INSTANCE METHODS", () => {
         describe("mbql()", () => {

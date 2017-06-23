@@ -32,7 +32,6 @@ import { chain, assoc } from "icepick";
 
 import type {
     Parameter as ParameterObject,
-    ParameterId,
     ParameterValues
 } from "metabase/meta/types/Parameter";
 import type {
@@ -48,11 +47,6 @@ import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
 import * as Urls from "metabase/lib/urls";
 import Mode from "metabase-lib/lib/Mode";
-
-// TODO: move these
-type DownloadFormat = "csv" | "json" | "xlsx";
-type RevisionId = number;
-type ParameterOptions = "FIXME";
 
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
@@ -107,14 +101,14 @@ export default class Question {
             parameterValues?: ParameterValues
         }
     ) {
-        const card = {
+        // $FlowFixMe
+        const card: Card = {
             name: cardProps.name || null,
             display: cardProps.display || "table",
             visualization_settings: cardProps.visualization_settings || {},
             dataset_query: STRUCTURED_QUERY_TEMPLATE // temporary placeholder
         };
 
-        // $FlowFixMe Passing an incomplete card object
         const initialQuestion = new Question(metadata, card, parameterValues);
         const query = StructuredQuery.newStucturedQuery({
             question: initialQuestion,
@@ -193,7 +187,6 @@ export default class Question {
         return [];
     }
 
-
     /**
      * The visualization type of the question
      */
@@ -203,7 +196,6 @@ export default class Question {
     setDisplay(display) {
         return this.setCard(assoc(this.card(), "display", display));
     }
-
 
     isEmpty(): boolean {
         return this.query().isEmpty();
@@ -278,7 +270,7 @@ export default class Question {
     mode(): ?Mode {
         return Mode.forQuestion(this);
     }
-b
+
     /**
      * A user-defined name for the question
      */
@@ -299,11 +291,12 @@ b
     }
 
     getUrl(originalQuestion?: Question): string {
-        const isDirty = !originalQuestion || this.isDirtyComparedTo(originalQuestion);
+        const isDirty = !originalQuestion ||
+            this.isDirtyComparedTo(originalQuestion);
 
         return isDirty
             ? Urls.question(null, this._serializeForUrl())
-            : Urls.question(this.id(), "")
+            : Urls.question(this.id(), "");
     }
 
     /**
@@ -317,7 +310,8 @@ b
     ): Promise<[Dataset]> {
         const canUseCardApiEndpoint = !isDirty && this.isSaved();
 
-        const parametersList = this.parametersList().map(param => _.pick(param, "target", "type", "value"));
+        const parametersList = this.parametersList().map(param =>
+            _.pick(param, "target", "type", "value"));
         const hasParameters = parametersList.length > 0;
 
         if (canUseCardApiEndpoint) {
@@ -337,13 +331,13 @@ b
                 const datasetQueryWithParameters = {
                     ...datasetQuery,
                     ...(hasParameters ? { parameters: parametersList } : {})
-                }
+                };
 
                 return MetabaseApi.dataset(
                     datasetQueryWithParameters,
-                    cancelDeferred ? {cancelled: cancelDeferred.promise} : {}
+                    cancelDeferred ? { cancelled: cancelDeferred.promise } : {}
                 );
-            }
+            };
 
             const datasetQueries = this.atomicQueries().map(query =>
                 query.datasetQuery());
@@ -357,7 +351,8 @@ b
     }
 
     parametersList(): ParameterObject[] {
-        return Object.values(this.parameters());
+        // $FlowFixMe
+        return (Object.values(this.parameters()): ParameterObject[]);
     }
 
     // predicate function that dermines if the question is "dirty" compared to the given question
@@ -416,8 +411,7 @@ b
             parameters: this._card.parameters,
             visualization_settings: this._card.visualization_settings,
             ...(includeOriginalCardId
-                ? // $FlowFixMe
-                  { original_card_id: this._card.original_card_id }
+                ? { original_card_id: this._card.original_card_id }
                 : {})
         };
 

@@ -8,7 +8,6 @@ import {
     ORDERS_TABLE_ID,
     metadata
 } from "metabase/__support__/sample_dataset_fixture";
-import { initializeQB } from "metabase/query_builder/actions";
 
 const getActionsWidget = (question) =>
     <ActionsWidget

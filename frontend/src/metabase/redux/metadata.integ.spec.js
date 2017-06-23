@@ -8,29 +8,19 @@ import { getMetadata } from "metabase/selectors/metadata"
 import {
     createReduxStore,
     login,
-    startServer,
-    stopServer
 } from "metabase/__support__/integrated_tests";
 import {
     fetchMetrics,
-    fetchSegments,
     fetchDatabases,
-    fetchDatabaseMetadata,
     fetchTables,
-    fetchDatabasesWithMetadata
 } from "./metadata"
 
 const metadata = (store) => getMetadata(store.getState())
 
 describe("metadata/redux", () => {
     beforeAll(async () => {
-        await startServer();
         await login();
     });
-
-    afterAll(async () => {
-        await stopServer();
-    })
 
     describe("METRIC ACTIONS", () => {
         describe("fetchMetrics()", () => {

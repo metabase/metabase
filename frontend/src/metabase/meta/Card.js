@@ -135,7 +135,6 @@ export function applyParameters(
         }
 
         const mapping = _.findWhere(parameterMappings, {
-            // $FlowFixMe original_card_id not included in the flow type of card
             card_id: card.id || card.original_card_id,
             parameter_id: parameter.id
         });

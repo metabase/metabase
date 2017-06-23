@@ -25,7 +25,8 @@ type Props = {
 type State = {
     isVisible: boolean,
     isOpen: boolean,
-    selectedActionIndex: ?number
+    isClosing: boolean,
+    selectedActionIndex: ?number,
 };
 
 const CIRCLE_SIZE = 48;
