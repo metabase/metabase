@@ -11,7 +11,7 @@ import {
 
 describe("CountByColumnDrill", () => {
     it("should not be valid for top level actions", () => {
-        expect(CountByColumnDrill({productQuestion})).toHaveLength(0);
+        expect(CountByColumnDrill({ productQuestion })).toHaveLength(0);
     });
     it("should be valid for click on numeric column header", () => {
         expect(

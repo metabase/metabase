@@ -187,7 +187,6 @@ export default class Question {
         return [];
     }
 
-
     /**
      * The visualization type of the question
      */
@@ -197,7 +196,6 @@ export default class Question {
     setDisplay(display) {
         return this.setCard(assoc(this.card(), "display", display));
     }
-
 
     isEmpty(): boolean {
         return this.query().isEmpty();
@@ -293,11 +291,12 @@ export default class Question {
     }
 
     getUrl(originalQuestion?: Question): string {
-        const isDirty = !originalQuestion || this.isDirtyComparedTo(originalQuestion);
+        const isDirty = !originalQuestion ||
+            this.isDirtyComparedTo(originalQuestion);
 
         return isDirty
             ? Urls.question(null, this._serializeForUrl())
-            : Urls.question(this.id(), "")
+            : Urls.question(this.id(), "");
     }
 
     /**
@@ -311,7 +310,8 @@ export default class Question {
     ): Promise<[Dataset]> {
         const canUseCardApiEndpoint = !isDirty && this.isSaved();
 
-        const parametersList = this.parametersList().map(param => _.pick(param, "target", "type", "value"));
+        const parametersList = this.parametersList().map(param =>
+            _.pick(param, "target", "type", "value"));
         const hasParameters = parametersList.length > 0;
 
         if (canUseCardApiEndpoint) {
@@ -331,13 +331,13 @@ export default class Question {
                 const datasetQueryWithParameters = {
                     ...datasetQuery,
                     ...(hasParameters ? { parameters: parametersList } : {})
-                }
+                };
 
                 return MetabaseApi.dataset(
                     datasetQueryWithParameters,
-                    cancelDeferred ? {cancelled: cancelDeferred.promise} : {}
+                    cancelDeferred ? { cancelled: cancelDeferred.promise } : {}
                 );
-            }
+            };
 
             const datasetQueries = this.atomicQueries().map(query =>
                 query.datasetQuery());
@@ -411,8 +411,7 @@ export default class Question {
             parameters: this._card.parameters,
             visualization_settings: this._card.visualization_settings,
             ...(includeOriginalCardId
-                ?
-                  { original_card_id: this._card.original_card_id }
+                ? { original_card_id: this._card.original_card_id }
                 : {})
         };
 

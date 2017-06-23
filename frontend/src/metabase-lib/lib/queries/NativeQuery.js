@@ -62,7 +62,7 @@ export default class NativeQuery extends AtomicQuery {
     }
 
     isEmpty() {
-        return this.databaseId() == null || this.queryText().length == 0
+        return this.databaseId() == null || this.queryText().length == 0;
     }
 
     databases(): Database[] {

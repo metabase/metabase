@@ -4,7 +4,7 @@ import "metabase-lib/lib/Question";
 import {
     question,
     DATABASE_ID,
-    MONGO_DATABASE_ID,
+    MONGO_DATABASE_ID
 } from "metabase/__support__/sample_dataset_fixture";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
