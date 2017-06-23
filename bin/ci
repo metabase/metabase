@@ -56,6 +56,11 @@ node-6() {
         run_step ./bin/build version frontend-fast sample-dataset uberjar
     fi
 
+    # NOTE Atte Keinänen 6/23/17: Reuse the existing E2E infra for running integrated tests (they require the prebuild jar too)
+    if is_enabled "e2e"; then
+        run_step yarn run test-integrated
+    fi
+
     # TODO Atte Keinänen 6/22/17: Disabled due to Sauce problems, all tests will be converted to use Jest and Enzyme
     # if is_enabled "e2e" || is_enabled "compare_screenshots"; then
     #     USE_SAUCE=true \

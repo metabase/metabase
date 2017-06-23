@@ -150,7 +150,7 @@
     "lint-eslint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
     "lint-prettier": "prettier --tab-width 4 -l 'frontend/src/metabase/{qb,new_question}/**/*.js*' 'frontend/src/metabase-lib/**/*.js' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
     "flow": "flow check",
-    "test": "yarn run test-jest && yarn run test-integrated && yarn run test-karma",
+    "test": "yarn run test-jest && yarn run test-karma",
     "test-karma": "karma start frontend/test/karma.conf.js --single-run",
     "test-karma-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
     "test-jest": "jest --maxWorkers=10 --config jest.unit.conf.json",
