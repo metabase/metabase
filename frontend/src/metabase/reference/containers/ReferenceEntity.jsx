@@ -18,7 +18,7 @@ import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
 
-import FieldXRay from 'metabase/reference/containers/FieldXRay';
+import FieldXRay from 'metabase/reference/containers/FieldXray';
 
 import {
     tryUpdateData
