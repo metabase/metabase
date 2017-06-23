@@ -65,10 +65,22 @@
        (special-type-importance field)
        field-name])))
 
+(defn- should-sort? [inner-query]
+  (or
+   ;; if there's no source query then always sort
+   (not (:source-query inner-query))
+   ;; if the source query is MBQL then sort
+   (not (get-in inner-query [:source-query :native]))
+   ;; otherwise only sort queries with *NATIVE* source queries if the query has an aggregation and/or breakout
+   (:aggregation inner-query)
+   (:breakout inner-query)))
+
 (defn sort-fields
   "Sort FIELDS by their \"importance\" vectors."
-  [query fields]
-  (let [field-importance (field-importance-fn query)]
-    (when-not i/*disable-qp-logging*
-      (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields))))))
-    (sort-by field-importance fields)))
+  [inner-query fields]
+  (if-not (should-sort? inner-query)
+    fields
+    (let [field-importance (field-importance-fn inner-query)]
+      (when-not i/*disable-qp-logging*
+        (log/debug (u/format-color 'yellow "Sorted fields:\n%s" (u/pprint-to-str (sort (map field-importance fields))))))
+      (sort-by field-importance fields))))

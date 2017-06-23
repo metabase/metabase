@@ -12,6 +12,7 @@ import {
 } from "./components/widgets/PublicLinksListing.jsx";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
 
 import { UtilApi } from "metabase/services";
 
@@ -154,6 +155,93 @@ const SECTIONS = [
             },
             {
                 key: "google-auth-auto-create-accounts-domain"
+            }
+        ]
+    },
+    {
+        name: "LDAP",
+        settings: [
+            {
+                key: "ldap-enabled",
+                display_name: "LDAP Authentication",
+                description: null,
+                type: "boolean"
+            },
+            {
+                key: "ldap-host",
+                display_name: "LDAP Host",
+                placeholder: "ldap.yourdomain.org",
+                type: "string",
+                required: true,
+                autoFocus: true
+            },
+            {
+                key: "ldap-port",
+                display_name: "LDAP Port",
+                placeholder: "389",
+                type: "string",
+                validations: [["integer", "That's not a valid port number"]]
+            },
+            {
+                key: "ldap-security",
+                display_name: "LDAP Security",
+                description: null,
+                type: "radio",
+                options: { none: "None", ssl: "SSL", starttls: "StartTLS" },
+                defaultValue: "none"
+            },
+            {
+                key: "ldap-bind-dn",
+                display_name: "Username or DN",
+                type: "string",
+                required: true
+            },
+            {
+                key: "ldap-password",
+                display_name: "Password",
+                type: "password",
+                required: true
+            },
+            {
+                key: "ldap-user-base",
+                display_name: "User search base",
+                type: "string",
+                required: true
+            },
+            {
+                key: "ldap-user-filter",
+                display_name: "User filter",
+                type: "string",
+                validations: [["ldap_filter", "Check your parentheses"]]
+            },
+            {
+                key: "ldap-attribute-email",
+                display_name: "Email attribute",
+                type: "string"
+            },
+            {
+                key: "ldap-attribute-firstname",
+                display_name: "First name attribute",
+                type: "string"
+            },
+            {
+                key: "ldap-attribute-lastname",
+                display_name: "Last name attribute",
+                type: "string"
+            },
+            {
+                key: "ldap-group-sync",
+                display_name: "Synchronize group memberships",
+                description: null,
+                widget: LdapGroupMappingsWidget
+            },
+            {
+                key: "ldap-group-base",
+                display_name: "Group search base",
+                type: "string"
+            },
+            {
+                key: "ldap-group-mappings"
             }
         ]
     },

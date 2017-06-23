@@ -1,6 +1,6 @@
 
 import React from "react";
-import { renderIntoDocument, scryRenderedComponentsWithType as scryWithType } from "react-addons-test-utils";
+import { renderIntoDocument, scryRenderedComponentsWithType as scryWithType } from "react-dom/test-utils";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
