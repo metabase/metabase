@@ -134,8 +134,10 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-
-;; only register the Vertica driver if the JDBC driver is available
-(when (u/ignore-exceptions
-        (Class/forName "com.vertica.jdbc.Driver"))
-  (driver/register-driver! :vertica (VerticaDriver.)))
+(defn -init-driver
+  "Register the Vertica driver when found on the classpath"
+  []
+  ;; only register the Vertica driver if the JDBC driver is available
+  (when (u/ignore-exceptions
+         (Class/forName "com.vertica.jdbc.Driver"))
+    (driver/register-driver! :vertica (VerticaDriver.))))

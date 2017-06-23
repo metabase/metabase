@@ -281,11 +281,14 @@
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
-;; only register the Oracle driver if the JDBC driver is available
-(when (u/ignore-exceptions
-        (Class/forName "oracle.jdbc.OracleDriver"))
-  ;; By default the Oracle JDBC driver isn't compliant with JDBC standards -- instead of returning types like java.sql.Timestamp
-  ;; it returns wacky types like oracle.sql.TIMESTAMPT. By setting this System property the JDBC driver will return the appropriate types.
-  ;; See this page for more details: http://docs.oracle.com/database/121/JJDBC/datacc.htm#sthref437
-  (.setProperty (System/getProperties) "oracle.jdbc.J2EE13Compliant" "TRUE")
-  (driver/register-driver! :oracle (OracleDriver.)))
+(defn -init-driver
+  "Register the oracle driver when the JAR is found on the classpath"
+  []
+  ;; only register the Oracle driver if the JDBC driver is available
+  (when (u/ignore-exceptions
+         (Class/forName "oracle.jdbc.OracleDriver"))
+    ;; By default the Oracle JDBC driver isn't compliant with JDBC standards -- instead of returning types like java.sql.Timestamp
+    ;; it returns wacky types like oracle.sql.TIMESTAMPT. By setting this System property the JDBC driver will return the appropriate types.
+    ;; See this page for more details: http://docs.oracle.com/database/121/JJDBC/datacc.htm#sthref437
+    (.setProperty (System/getProperties) "oracle.jdbc.J2EE13Compliant" "TRUE")
+    (driver/register-driver! :oracle (OracleDriver.))))
