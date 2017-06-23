@@ -40,7 +40,7 @@ import { updateDateTimeFilter, updateNumericFilter } from "metabase/qb/lib/actio
 
 import { initBrush } from "./graph/brush";
 
-import type { SingleSeries, ClickObject } from "metabase/meta/types/Visualization"
+import type { VisualizationProps, SingleSeries, ClickObject } from "metabase/meta/types/Visualization"
 
 const MIN_PIXELS_PER_TICK = { x: 100, y: 32 };
 const BAR_PADDING_RATIO = 0.2;
@@ -861,8 +861,13 @@ function forceSortedGroupsOfGroups(groupsOfGroups: CrossfilterGroup[][], indexMa
     }
 }
 
+type LineAreaBarProps = VisualizationProps & {
+    chartType: "line" | "area" | "bar" | "scatter",
+    isScalarSeries: boolean,
+    maxSeries: number
+}
 
-export default function lineAreaBar(element, {
+export default function lineAreaBar(element: Element, {
     series,
     onHoverChange,
     onVisualizationClick,
@@ -872,7 +877,7 @@ export default function lineAreaBar(element, {
     settings,
     maxSeries,
     onChangeCardAndRun
-}) {
+}: LineAreaBarProps) {
     const colors = settings["graph.colors"];
 
     const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
@@ -1008,6 +1013,7 @@ export default function lineAreaBar(element, {
                 }
             }
 
+            // $FlowFixMe
             series = series.map(s => updateIn(s, ["data", "cols", 1], (col) => ({
                 ...col,
                 display_name: "% " + getFriendlyName(col)
@@ -1074,9 +1080,9 @@ export default function lineAreaBar(element, {
             const card = series[0].card;
             const [start, end] = range;
             if (isDimensionTimeseries) {
-                onChangeCardAndRun({ nextCard: updateDateTimeFilter(card, column, start, end) });
+                onChangeCardAndRun({ nextCard: updateDateTimeFilter(card, column, start, end), previousCard: card });
             } else {
-                onChangeCardAndRun({ nextCard: updateNumericFilter(card, column, start, end) });
+                onChangeCardAndRun({ nextCard: updateNumericFilter(card, column, start, end), previousCard: card });
             }
         }
     }
