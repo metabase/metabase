@@ -176,27 +176,27 @@ const getSegmentSections = (segment, table, user) => segment ? {
         name: 'Details',
         update: 'updateSegment',
         type: 'segment',
-        questions: [
-            {
-                text: `Number of ${segment.name}`,
-                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-                link: getQuestionUrl({
-                    dbId: table && table.db_id,
-                    tableId: segment.table_id,
-                    segmentId: segment.id,
-                    getCount: true
-                })
-            },
-            {
-                text: `See all ${segment.name}`,
-                icon: "table2",
-                link: getQuestionUrl({
-                    dbId: table && table.db_id,
-                    tableId: segment.table_id,
-                    segmentId: segment.id
-                })
-            }
-        ],
+        // questions: [
+        //     {
+        //         text: `Number of ${segment.name}`,
+        //         icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+        //         link: getQuestionUrl({
+        //             dbId: table && table.db_id,
+        //             tableId: segment.table_id,
+        //             segmentId: segment.id,
+        //             getCount: true
+        //         })
+        //     },
+        //     {
+        //         text: `See all ${segment.name}`,
+        //         icon: "table2",
+        //         link: getQuestionUrl({
+        //             dbId: table && table.db_id,
+        //             tableId: segment.table_id,
+        //             segmentId: segment.id
+        //         })
+        //     }
+        // ],
         breadcrumb: `${segment.name}`,
         fetch: {
             fetchSegmentTable: [segment.id]
@@ -275,27 +275,27 @@ const getSegmentFieldSections = (segment, table, field, user) => segment && fiel
         name: 'Details',
         update: 'updateField',
         type: 'field',
-        questions: [
-            {
-                text: `Number of ${table && table.display_name} grouped by ${field.display_name}`,
-                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-                link: getQuestionUrl({
-                    dbId: table && table.db_id,
-                    tableId: field.table_id,
-                    fieldId: field.id,
-                    getCount: true
-                })
-            },
-            {
-                text: `All distinct values of ${field.display_name}`,
-                icon: "table2",
-                link: getQuestionUrl({
-                    dbId: table && table.db_id,
-                    tableId: field.table_id,
-                    fieldId: field.id
-                })
-            }
-        ],
+        // questions: [
+        //     {
+        //         text: `Number of ${table && table.display_name} grouped by ${field.display_name}`,
+        //         icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+        //         link: getQuestionUrl({
+        //             dbId: table && table.db_id,
+        //             tableId: field.table_id,
+        //             fieldId: field.id,
+        //             getCount: true
+        //         })
+        //     },
+        //     {
+        //         text: `All distinct values of ${field.display_name}`,
+        //         icon: "table2",
+        //         link: getQuestionUrl({
+        //             dbId: table && table.db_id,
+        //             tableId: field.table_id,
+        //             fieldId: field.id
+        //         })
+        //     }
+        // ],
         breadcrumb: `${field.display_name}`,
         fetch: {
             fetchSegmentFields: [segment.id]
@@ -348,25 +348,25 @@ const getTableSections = (database, table) => database && table ? {
         name: 'Details',
         update: 'updateTable',
         type: 'table',
-        questions: [
-            {
-                text: `Count of ${table.display_name}`,
-                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-                link: getQuestionUrl({
-                    dbId: table.db_id,
-                    tableId: table.id,
-                    getCount: true
-                })
-            },
-            {
-                text: `See raw data for ${table.display_name}`,
-                icon: "table2",
-                link: getQuestionUrl({
-                    dbId: table.db_id,
-                    tableId: table.id,
-                })
-            }
-        ],
+        // questions: [
+        //     {
+        //         text: `Count of ${table.display_name}`,
+        //         icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+        //         link: getQuestionUrl({
+        //             dbId: table.db_id,
+        //             tableId: table.id,
+        //             getCount: true
+        //         })
+        //     },
+        //     {
+        //         text: `See raw data for ${table.display_name}`,
+        //         icon: "table2",
+        //         link: getQuestionUrl({
+        //             dbId: table.db_id,
+        //             tableId: table.id,
+        //         })
+        //     }
+        // ],
         breadcrumb: `${table.display_name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
@@ -428,39 +428,39 @@ const getTableFieldSections = (database, table, field) => database && table && f
         name: 'Details',
         update: 'updateField',
         type: 'field',
-        questions: [
-            {
-                text: `Number of ${table.display_name} grouped by ${field.display_name}`,
-                icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
-                link: getQuestionUrl({
-                    dbId: database.id,
-                    tableId: table.id,
-                    fieldId: field.id,
-                    getCount: true,
-                    visualization: 'bar'
-                })
-            },
-            {
-                text: `Number of ${table.display_name} grouped by ${field.display_name}`,
-                icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
-                link: getQuestionUrl({
-                    dbId: database.id,
-                    tableId: table.id,
-                    fieldId: field.id,
-                    getCount: true,
-                    visualization: 'pie'
-                })
-            },
-            {
-                text: `All distinct values of ${field.display_name}`,
-                icon: "table2",
-                link: getQuestionUrl({
-                    dbId: database.id,
-                    tableId: table.id,
-                    fieldId: field.id
-                })
-            }
-        ],
+        // questions: [
+        //     {
+        //         text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+        //         icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
+        //         link: getQuestionUrl({
+        //             dbId: database.id,
+        //             tableId: table.id,
+        //             fieldId: field.id,
+        //             getCount: true,
+        //             visualization: 'bar'
+        //         })
+        //     },
+        //     {
+        //         text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+        //         icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
+        //         link: getQuestionUrl({
+        //             dbId: database.id,
+        //             tableId: table.id,
+        //             fieldId: field.id,
+        //             getCount: true,
+        //             visualization: 'pie'
+        //         })
+        //     },
+        //     {
+        //         text: `All distinct values of ${field.display_name}`,
+        //         icon: "table2",
+        //         link: getQuestionUrl({
+        //             dbId: database.id,
+        //             tableId: table.id,
+        //             fieldId: field.id
+        //         })
+        //     }
+        // ],
         breadcrumb: `${field.display_name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
@@ -490,7 +490,7 @@ export const getSegment = createSelector(
 
 export const getDatabaseId = (state, props) => Number.parseInt(props.params.databaseId);
 
-const getDatabase = createSelector(
+export const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
     (databaseId, databases) => databases[databaseId] || { id: databaseId }
 );

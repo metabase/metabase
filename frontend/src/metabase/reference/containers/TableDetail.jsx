@@ -16,7 +16,8 @@ import Detail from "metabase/reference/components/Detail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 
 import {
-    tryUpdateData
+    tryUpdateData,
+    getQuestionUrl
 } from '../utils';
 
 import {
@@ -76,7 +77,27 @@ import * as actions from 'metabase/reference/reference';
 //         }),
 //         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
 //     }
-
+const interestingQuestions = (table) => {
+    return [
+        {
+            text: `Count of ${table.display_name}`,
+            icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+            link: getQuestionUrl({
+                dbId: table.db_id,
+                tableId: table.id,
+                getCount: true
+            })
+        },
+        {
+            text: `See raw data for ${table.display_name}`,
+            icon: "table2",
+            link: getQuestionUrl({
+                dbId: table.db_id,
+                tableId: table.id,
+            })
+        }
+    ]
+}
 const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
     const fields = getFields(state, props);
@@ -239,7 +260,7 @@ export default class TableDetail extends Component {
                             </li>
                             { !isEditing &&
                                 <li className="relative">
-                                    <UsefulQuestions questions={section.questions} />
+                                    <UsefulQuestions questions={interestingQuestions(this.props.table)} />
                                 </li>
                             }
                         </List>

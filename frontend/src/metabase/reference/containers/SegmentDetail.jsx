@@ -14,7 +14,8 @@ import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 
 import {
-    tryUpdateData
+    tryUpdateData,
+    getQuestionUrl
 } from '../utils';
 
 import {
@@ -42,27 +43,6 @@ import * as actions from 'metabase/reference/reference';
 //         name: 'Details',
 //         update: 'updateSegment',
 //         type: 'segment',
-//         questions: [
-//             {
-//                 text: `Number of ${segment.name}`,
-//                 icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-//                 link: getQuestionUrl({
-//                     dbId: table && table.db_id,
-//                     tableId: segment.table_id,
-//                     segmentId: segment.id,
-//                     getCount: true
-//                 })
-//             },
-//             {
-//                 text: `See all ${segment.name}`,
-//                 icon: "table2",
-//                 link: getQuestionUrl({
-//                     dbId: table && table.db_id,
-//                     tableId: segment.table_id,
-//                     segmentId: segment.id
-//                 })
-//             }
-//         ],
 //         breadcrumb: `${segment.name}`,
 //         fetch: {
 //             fetchSegmentTable: [segment.id]
@@ -77,6 +57,30 @@ import * as actions from 'metabase/reference/reference';
 //         }),
 //         parent: referenceSections[`/reference/segments`]
 //     }
+
+const interestingQuestions = (table, segment) => {
+    return [
+        {
+            text: `Number of ${segment.name}`,
+            icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+            link: getQuestionUrl({
+                dbId: table && table.db_id,
+                tableId: table.id,
+                segmentId: segment.id,
+                getCount: true
+            })
+        },
+        {
+            text: `See all ${segment.name}`,
+            icon: "table2",
+            link: getQuestionUrl({
+                dbId: table && table.db_id,
+                tableId: table.id,
+                segmentId: segment.id
+            })
+        }
+    ]
+}
 
 const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
@@ -259,7 +263,7 @@ export default class SegmentDetail extends Component {
                             }
                             { hasQuestions && !isEditing &&
                                 <li className="relative">
-                                    <UsefulQuestions questions={section.questions} />
+                                    <UsefulQuestions questions={interestingQuestions(this.props.table, this.props.entity)} />
                                 </li>
                             }
                         </List>

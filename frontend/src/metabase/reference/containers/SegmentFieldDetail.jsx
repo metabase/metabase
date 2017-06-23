@@ -16,7 +16,8 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 
 import {
-    tryUpdateData
+    tryUpdateData,
+    getQuestionUrl
 } from '../utils';
 
 import {
@@ -45,27 +46,6 @@ import * as actions from 'metabase/reference/reference';
 //         name: 'Details',
 //         update: 'updateField',
 //         type: 'field',
-//         questions: [
-//             {
-//                 text: `Number of ${table && table.display_name} grouped by ${field.display_name}`,
-//                 icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-//                 link: getQuestionUrl({
-//                     dbId: table && table.db_id,
-//                     tableId: field.table_id,
-//                     fieldId: field.id,
-//                     getCount: true
-//                 })
-//             },
-//             {
-//                 text: `All distinct values of ${field.display_name}`,
-//                 icon: "table2",
-//                 link: getQuestionUrl({
-//                     dbId: table && table.db_id,
-//                     tableId: field.table_id,
-//                     fieldId: field.id
-//                 })
-//             }
-//         ],
 //         breadcrumb: `${field.display_name}`,
 //         fetch: {
 //             fetchSegmentFields: [segment.id]
@@ -75,6 +55,30 @@ import * as actions from 'metabase/reference/reference';
 //         headerIcon: "field",
 //         parent: getSegmentSections(segment)[`/reference/segments/${segment.id}/fields`]
 //     }
+
+const interestingQuestions = (table, field) => {
+    return [
+        {
+            text: `Number of ${table && table.display_name} grouped by ${field.display_name}`,
+            icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+            link: getQuestionUrl({
+                dbId: table && table.db_id,
+                tableId: table.id,
+                fieldId: field.id,
+                getCount: true
+            })
+        },
+        {
+            text: `All distinct values of ${field.display_name}`,
+            icon: "table2",
+            link: getQuestionUrl({
+                dbId: table && table.db_id,
+                tableId: table.id,
+                fieldId: field.id
+            })
+        }
+    ]
+}
 
 const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
@@ -268,7 +272,7 @@ export default class SegmentFieldDetail extends Component {
                                 </li>
                             { !isEditing &&
                                 <li className="relative">
-                                    <UsefulQuestions questions={section.questions} />
+                                    <UsefulQuestions questions={interestingQuestions(this.props.table, this.props.entity)} />
                                 </li>
                             }
 

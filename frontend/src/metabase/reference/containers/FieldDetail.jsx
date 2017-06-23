@@ -17,13 +17,15 @@ import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 
 import {
-    tryUpdateData
+    tryUpdateData,
+    getQuestionUrl
 } from '../utils';
 
 import {
     getSection,
     getData,
     getTable,
+    getDatabase,
     getError,
     getLoading,
     getUser,
@@ -87,13 +89,52 @@ import * as actions from 'metabase/reference/reference';
 //         parent: getTableSections(database, table)[`/reference/databases/${database.id}/tables/${table.id}/fields`]
 //     }
 
+
+const interestingQuestions = (database, table, field) => {
+    return [
+        {
+            text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+            icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
+            link: getQuestionUrl({
+                dbId: database.id,
+                tableId: table.id,
+                fieldId: field.id,
+                getCount: true,
+                visualization: 'bar'
+            })
+        },
+        {
+            text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+            icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
+            link: getQuestionUrl({
+                dbId: database.id,
+                tableId: table.id,
+                fieldId: field.id,
+                getCount: true,
+                visualization: 'pie'
+            })
+        },
+        {
+            text: `All distinct values of ${field.display_name}`,
+            icon: "table2",
+            link: getQuestionUrl({
+                dbId: database.id,
+                tableId: table.id,
+                fieldId: field.id
+            })
+        }
+    ]
+}
+
 const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
 
     return {
         section: getSection(state, props),
         entity,
+        field: entity,
         table: getTable(state, props),
+        database: getDatabase(state, props),
         loading: getLoading(state, props),
         // naming this 'error' will conflict with redux form
         loadingError: getError(state, props),
@@ -129,6 +170,7 @@ export default class FieldDetail extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entity: PropTypes.object.isRequired,
+        field:  PropTypes.object.isRequired,
         table: PropTypes.object,
         user: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object,
@@ -157,6 +199,7 @@ export default class FieldDetail extends Component {
             style,
             section,
             entity,
+            field,
             table,
             loadingError,
             loading,
@@ -269,7 +312,7 @@ export default class FieldDetail extends Component {
                                 </li>
                             { !isEditing &&
                                 <li className="relative">
-                                    <UsefulQuestions questions={section.questions} />
+                                    <UsefulQuestions questions={interestingQuestions(this.props.database, this.props.table, this.props.field)} />
                                 </li>
                             }
 
