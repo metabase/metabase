@@ -301,33 +301,23 @@
     (some-> max-cost :query #{:sample}) (assoc :limit max-sample-size)))
 
 (defn fingerprint-field
-  [opts {:keys [field data]}]
+  [opts field data]
   (transduce identity (fingerprinter opts field) data))
 
 (defmethod fingerprint (class Field)
   [opts field]
-  (-> field
-      (metadata/field-values (extract-query-opts opts))
-      (->> (fingerprint-field opts))
-      (assoc :field field)))
+  (let [data (metadata/field-values field (extract-query-opts opts))]
+    (assoc (fingerprint-field opts field data) :field field)))
 
-(defn- transpose
-  [{:keys [rows columns cols]}]
-  (reduce (fn [acc row]
-            (reduce (fn [acc [k v]]
-                      (update-in acc [k :data] conj v))
-                    acc
-                    (map vector columns row)))
-          (zipmap columns (for [c cols]
-                            {:field c
-                             :data []}))
-          rows))
-
-(defn- fingerprint-query
-  [opts query-result]
-  (into {}
-    (for [[col field] (transpose query-result)]
-      [col (fingerprint-field opts field)])))
+(defn fingerprint-query
+  [opts {:keys [rows cols]}]
+  (transduce identity
+             (redux/fuse
+              (into {}
+                (for [[i field] (map-indexed vector cols)]
+                  [(:name field)
+                   (redux/pre-step (fingerprinter opts field) #(nth % i))])))
+             rows))
 
 (defmethod fingerprint (class Table)
   [opts table]
@@ -363,23 +353,20 @@
   [{:keys [resolution] :as opts} a b]
   (assert (= (:table_id a) (:table_id b)))
   {:fields (compare-fingerprints opts a b)
-   :fingerprint
-   (fingerprint-field
-    opts
-    {:field [a b]
-     :data (-> (metadata/query-values
-                (db-id a)
-                (merge (extract-query-opts opts)
-                       (if (isa? (field-type a) DateTime)
-                         {:source-table (:table_id a)                         
-                          :breakout [[:datetime-field [:field-id (:id a)]
-                                      (case resolution
-                                        :month :month
-                                        :day)]]
-                          :aggregation [:sum [:field-id (:id b)]]}
-                         {:source-table (:table_id a)
-                          :fields [[:field-id (:id a)]
-                                   [:field-id (:id b)]]})))
-               :rows)})})
+   :fingerprint (->> (metadata/query-values
+                      (db-id a)
+                      (merge (extract-query-opts opts)
+                             (if (isa? (field-type a) DateTime)
+                               {:source-table (:table_id a)
+                                :breakout [[:datetime-field [:field-id (:id a)]
+                                            (case resolution
+                                              :month :month
+                                              :day)]]
+                                :aggregation [:sum [:field-id (:id b)]]}
+                               {:source-table (:table_id a)
+                                :fields [[:field-id (:id a)]
+                                         [:field-id (:id b)]]})))
+                     :rows
+                     (fingerprint-field opts [a b]))})
 
 ;; TODO add db_id to Field, Card, and Segment

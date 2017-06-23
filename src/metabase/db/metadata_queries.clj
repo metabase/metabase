@@ -57,16 +57,15 @@
 (defn field-values 
   "Return all the values of FIELD."
   [field query]
-  {:field field
-   :data (->> (qp/process-query
-               {:type :query
-                :database (db/select-one-field :db_id Table, :id (:table_id field))
-                :query (merge {:fields [[:field-id (:id field)]]
-                               :source-table (:table_id field)}
-                              query)})
-              :data
-              :rows
-              (map first))})
+  (->> (qp/process-query
+         {:type :query
+          :database (db/select-one-field :db_id Table, :id (:table_id field))
+          :query (merge {:fields [[:field-id (:id field)]]
+                         :source-table (:table_id field)}
+                        query)})
+       :data
+       :rows
+       (map first)))
 
 (defn query-values
   "Return all values for query"
