@@ -112,6 +112,6 @@
   "classify called during startup; start the job for classify databases."
   []
   ;; build one job and one trigger for each database.
-  (let [triggers (doseq [database (db/select Database, #_:is_sample #_false)] ;; TODO: UN-COMMENT THESE
+  (let [triggers (doseq [database (db/select Database, :is_sample false)] ;; TODO: UN-COMMENT THESE
                    (schedule-db-sync-actions database))] ;; we're building a sequence of these jobs so they can be stopped later
     (reset! classify-databases-job triggers)))
