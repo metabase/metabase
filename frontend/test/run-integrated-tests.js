@@ -27,21 +27,21 @@ const init = async() => {
     );
 
     return new Promise((resolve, reject) => {
-        jestProcess.on('exit', () => { resolve(); })
+        jestProcess.on('exit', resolve)
     })
 }
 
-const cleanup = async () => {
+const cleanup = async (exitCode = 0) => {
     await jasmineAfterAllCleanup();
     await BackendResource.stop(server);
-    process.exit(0);
+    process.exit(exitCode);
 }
 
 init()
     .then(cleanup)
     .catch((e) => {
         console.error(e);
-        cleanup();
+        cleanup(1);
     });
 
 process.on('SIGTERM', () => {
