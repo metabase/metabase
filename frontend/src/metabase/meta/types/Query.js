@@ -1,10 +1,10 @@
 /* @flow */
 
 import type { TableId } from "./Table";
-import type { FieldId } from "./Field";
+import type { FieldId, BaseType } from "./Field";
 import type { SegmentId } from "./Segment";
-
-export type MetricId = number;
+import type { MetricId } from "./Metric";
+import type { ParameterType } from "./Parameter";
 
 export type ExpressionName = string;
 
@@ -19,16 +19,24 @@ export type RelativeDatetimePeriod = "current" | "last" | "next" | number;
 export type RelativeDatetimeUnit = "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
 export type DatetimeUnit = "default" | "minute" | "minute-of-hour" | "hour" | "hour-of-day" | "day" | "day-of-week" | "day-of-month" | "day-of-year" | "week" | "week-of-year" | "month" | "month-of-year" | "quarter" | "quarter-of-year" | "year";
 
+export type TemplateTagId = string;
+export type TemplateTagName = string;
+export type TemplateTagType = "text" | "number" | "date" | "dimension";
+
 export type TemplateTag = {
-    name: string,
+    id:           TemplateTagId,
+    name:         TemplateTagName,
     display_name: string,
-    type: string,
-    dimension?: ["field-id", number]
+    type:         TemplateTagType,
+    dimension?:   LocalFieldReference,
+    widget_type?: ParameterType,
+    required?:    boolean,
+    default?:     string,
 };
 
 export type NativeQuery = {
     query: string,
-    template_tags: { [key: string]: TemplateTag }
+    template_tags: { [key: TemplateTagName]: TemplateTag }
 };
 
 export type StructuredQuery = {
@@ -69,7 +77,8 @@ type StdDevAgg      = ["stddev", ConcreteField];
 type SumAgg         = ["sum", ConcreteField];
 type MinAgg         = ["min", ConcreteField];
 type MaxAgg         = ["max", ConcreteField];
-type MetricAgg      = ["metric", MetricId];
+// NOTE: currently the backend expects METRIC to be uppercase
+type MetricAgg      = ["METRIC", MetricId];
 
 export type BreakoutClause = Array<Breakout>;
 export type Breakout =
@@ -107,7 +116,8 @@ export type NotNullFilter      = ["not-null", ConcreteField];
 export type InsideFilter       = ["inside", ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral];
 export type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit];
 
-export type SegmentFilter      = ["segment", SegmentId];
+// NOTE: currently the backend expects SEGMENT to be uppercase
+export type SegmentFilter      = ["SEGMENT", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
 export type OrderBy = [Field, "descending"|"ascending"];
@@ -133,6 +143,9 @@ export type ForeignFieldReference =
 
 export type ExpressionReference =
     ["expression", ExpressionName];
+
+export type FieldLiteral =
+    ["field-literal", string, BaseType]; // ["field-literal", name, base-type]
 
 export type DatetimeField =
     ["datetime-field", LocalFieldReference | ForeignFieldReference, DatetimeUnit] |

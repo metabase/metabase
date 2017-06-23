@@ -1,35 +1,42 @@
 (ns metabase.driver.generic-sql
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
+            [clojure.java.jdbc :as jdbc]
             [clojure.math.numeric-tower :as math]
-            (clojure [set :as set]
-                     [string :as str])
             [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat])
-            (metabase [db :as db]
-                      [driver :as driver])
-            (metabase.models [field :as field]
-                             raw-table
-                             [table :as table])
-            metabase.query-processor.interface
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
+            [metabase
+             [db :as db]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [field :as field]
+             [table :as table]]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.DatabaseMetaData
-           java.util.Map
-           (clojure.lang Keyword PersistentVector)
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
+  (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
+           [java.sql DatabaseMetaData ResultSet]
+           java.util.Map
            metabase.models.field.FieldInstance
-           (metabase.query_processor.interface Field Value)))
+           [metabase.query_processor.interface Field Value]))
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
    Methods marked *OPTIONAL* have default implementations in `ISQLDriverDefaultsMixin`."
 
   (active-tables ^java.util.Set [this, ^DatabaseMetaData metadata]
-    "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
+    "*OPTIONAL* Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
      Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
-     this map should also include the string name of the table's `:schema`.")
+     this map should also include the string name of the table's `:schema`.
+
+   Two different implementations are provided in this namespace: `fast-active-tables` (the default), and `post-filtered-active-tables`. You should be fine using
+   the default, but refer to the documentation for those functions for more details on the differences.")
 
   ;; The following apply-* methods define how the SQL Query Processor handles given query clauses. Each method is called when a matching clause is present
   ;; in QUERY, and should return an appropriately modified version of KORMA-QUERY. Most drivers can use the default implementations for all of these methods,
@@ -59,11 +66,6 @@
   (date [this, ^Keyword unit, field-or-value]
     "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
-  (date-string->literal [this, ^String date-string]
-    "*OPTIONAL*. Return an appropriate HoneySQL form to represent a DATE-STRING literal.
-     The default implementation is just `hx/literal`; in other words, it just single-quotes DATE-STRING. Some drivers like BigQuery or Oracle need to do something more advanced.
-     (This is used for the implementation of SQL parameters).")
-
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
@@ -76,13 +78,24 @@
   (field-percent-urls [this field]
     "*OPTIONAL*. Implementation of the `:field-percent-urls-fn` to be passed to `make-analyze-table`.
      The default implementation is `fast-field-percent-urls`, which avoids a full table scan. Substitue this with `slow-field-percent-urls` for databases
-     where this doesn't work, such as SQL Server")
+     where this doesn't work, such as SQL Server.")
 
   (field->alias ^String [this, ^Field field]
     "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation calls `name`, which
      returns the *unqualified* name of `Field`.
 
      Return `nil` to prevent FIELD from being aliased.")
+
+  (prepare-sql-param [this obj]
+    "*OPTIONAL*. Do any neccesary type conversions, etc. to an object being passed as a prepared statment argument in a parameterized raw SQL query.
+     For example, a raw SQL query with a date param, `x`, e.g. `WHERE date > {{x}}`, is converted to SQL like `WHERE date > ?`, and the value of
+     `x` is passed as a `java.sql.Timestamp`. Some databases, notably SQLite, don't work with `Timestamps`, and dates must be passed as string literals
+     instead; the SQLite driver overrides this method to convert dates as needed.
+
+  The default implementation is `identity`.
+
+  NOTE - This method is only used for parameters in raw SQL queries. It's not needed for MBQL queries because other functions like `prepare-value` are
+  used for similar purposes; at some point in the future, we might be able to combine them into a single method used in both places.")
 
   (prepare-value [this, ^Value value]
     "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a HoneySQL form. By default, this returns VALUE's `:value` as-is, which
@@ -97,9 +110,10 @@
         (hsql/format ... :quoting (quote-style driver))")
 
   (set-timezone-sql ^String [this]
-    "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
+    "*OPTIONAL*. This should be a format string containing a SQL statement to be used to set the timezone for the current transaction.
+     The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific`.
 
-       \"SET @@session.timezone = ?;\"")
+       \"SET @@session.timezone = %s;\"")
 
   (stddev-fn ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults to `:STDDEV`.")
@@ -121,43 +135,47 @@
   (result-set-read-column [x _ _] (PersistentVector/adopt x)))
 
 
-(def ^:dynamic ^:private connection-pools
-  "A map of our currently open connection pools, keyed by DATABASE `:id`."
+(def ^:dynamic ^:private database-id->connection-pool
+  "A map of our currently open connection pools, keyed by Database `:id`."
   (atom {}))
 
 (defn- create-connection-pool
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given DATABASE."
   [{:keys [id engine details]}]
   (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
-  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (db/connection-pool (assoc spec
-                          :minimum-pool-size           1
-                          ;; prevent broken connections closed by dbs by testing them every 3 mins
-                          :idle-connection-test-period (* 3 60)
-                          ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                          :excess-timeout              (* 15 60)))))
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
+        spec (connection-details->spec (driver/engine->driver engine) details-with-tunnel)]
+    (assoc (db/connection-pool (assoc spec
+                                 :minimum-pool-size           1
+                                 ;; prevent broken connections closed by dbs by testing them every 3 mins
+                                 :idle-connection-test-period (* 3 60)
+                                 ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                                 :excess-timeout              (* 15 60)))
+      :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
 (defn- notify-database-updated
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
    the assumption that the connection details have changed."
   [_ {:keys [id]}]
-  (when-let [pool (get @connection-pools id)]
+  (when-let [pool (get @database-id->connection-pool id)]
     (log/debug (u/format-color 'red "Closing connection pool for database %d ..." id))
     ;; remove the cached reference to the pool so we don't try to use it anymore
-    (swap! connection-pools dissoc id)
+    (swap! database-id->connection-pool dissoc id)
     ;; now actively shut down the pool so that any open connections are closed
-    (.close ^ComboPooledDataSource (:datasource pool))))
+    (.close ^ComboPooledDataSource (:datasource pool))
+    (when-let [ssh-tunnel (:ssh-tunnel pool)]
+      (.disconnect ^com.jcraft.jsch.Session ssh-tunnel))))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
    Theses connection pools are cached so we don't create multiple ones to the same DB."
   [{:keys [id], :as database}]
-  (if (contains? @connection-pools id)
+  (if (contains? @database-id->connection-pool id)
     ;; we have an existing pool for this database, so use it
-    (get @connection-pools id)
+    (get @database-id->connection-pool id)
     ;; create a new pool and add it to our cache, then return it
     (u/prog1 (create-connection-pool database)
-      (swap! connection-pools assoc id <>))))
+      (swap! database-id->connection-pool assoc id <>))))
 
 (defn db->jdbc-connection-spec
   "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
@@ -167,12 +185,16 @@
 (defn handle-additional-options
   "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
    (Some drivers like MySQL provide this details field to allow special behavior where needed)."
-  {:arglists '([connection-spec details])}
-  [{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details}]
-  (-> (dissoc connection-spec :additional-options)
-      (assoc :subname (str connection-string (when (seq additional-options)
-                                               (str (if (str/includes? connection-string "?") "&" "?")
-                                                    additional-options))))))
+  {:arglists '([connection-spec] [connection-spec details])}
+  ;; single arity provided for cases when `connection-spec` is built by applying simple transformations to `details`
+  ([connection-spec]
+   (handle-additional-options connection-spec connection-spec))
+  ;; two-arity version provided for when `connection-spec` is being built up separately from `details` source
+  ([{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details}]
+   (-> (dissoc connection-spec :additional-options)
+       (assoc :subname (str connection-string (when (seq additional-options)
+                                                (str (if (str/includes? connection-string "?") "&" "?")
+                                                     additional-options)))))))
 
 
 (defn escape-field-name
@@ -180,9 +202,9 @@
   ^clojure.lang.Keyword [k]
   (keyword (hx/escape-dots (name k))))
 
-
 (defn- can-connect? [driver details]
-  (let [connection (connection-details->spec driver details)]
+  (let [details-with-tunnel (ssh/include-ssh-tunnel details)
+        connection (connection-details->spec driver details-with-tunnel)]
     (= 1 (first (vals (first (jdbc/query connection ["SELECT 1"])))))))
 
 (defn pattern-based-column->base-type
@@ -198,6 +220,7 @@
 
 (defn honeysql-form->sql+args
   "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
+  {:style/indent 1}
   [driver honeysql-form]
   {:pre [(map? honeysql-form)]}
   (let [[sql & args] (try (binding [hformat/*subquery?* false]
@@ -210,10 +233,8 @@
     (into [(hx/unescape-dots sql)] args)))
 
 (defn- qualify+escape ^clojure.lang.Keyword
-  ([table]
-   (hx/qualify-and-escape-dots (:schema table) (:name table)))
-  ([table field]
-   (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
+  ([table]       (hx/qualify-and-escape-dots (:schema table) (:name table)))
+  ([table field] (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
 
 
 (defn- query
@@ -317,7 +338,8 @@
             :foreign-keys
             :expressions
             :expression-aggregations
-            :native-parameters}
+            :native-parameters
+            :nested-queries}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 
@@ -330,6 +352,12 @@
      (let [~binding (.getMetaData conn#)]
        ~@body)))
 
+(defn- get-tables
+  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
+  ^ResultSet [^DatabaseMetaData metadata, ^String schema-or-nil]
+  (jdbc/result-set-seq (.getTables metadata nil schema-or-nil "%" ; tablePattern "%" = match all tables
+                                   (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))))
+
 (defn fast-active-tables
   "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
    Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
@@ -339,7 +367,7 @@
   (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
         schemas     (set/difference all-schemas (excluded-schemas driver))]
     (set (for [schema     schemas
-               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema "%" (into-array String ["TABLE", "VIEW", "FOREIGN TABLE"]))))] ; tablePattern "%" = match all tables
+               table-name (mapv :table_name (get-tables metadata schema))]
            {:name   table-name
             :schema schema}))))
 
@@ -348,7 +376,7 @@
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (jdbc/result-set-seq (.getTables metadata nil nil "%" (into-array String ["TABLE", "VIEW", "FOREIGN TABLE"]))))] ; tablePattern "%" = match all tables
+                           (get-tables metadata nil))]
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
@@ -416,7 +444,7 @@
   (require 'metabase.driver.generic-sql.query-processor)
   {:active-tables        fast-active-tables
    :apply-aggregation    (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
-   :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
+   :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout)    ; underlying impl changes we won't have to reload all the drivers
    :apply-fields         (resolve 'metabase.driver.generic-sql.query-processor/apply-fields)
    :apply-filter         (resolve 'metabase.driver.generic-sql.query-processor/apply-filter)
    :apply-join-tables    (resolve 'metabase.driver.generic-sql.query-processor/apply-join-tables)
@@ -425,11 +453,11 @@
    :apply-page           (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :column->special-type (constantly nil)
    :current-datetime-fn  (constantly :%now)
-   :date-string->literal (u/drop-first-arg hx/literal)
    :excluded-schemas     (constantly nil)
    :field->identifier    (u/drop-first-arg (comp (partial apply hsql/qualify) field/qualified-name-components))
    :field->alias         (u/drop-first-arg name)
    :field-percent-urls   fast-field-percent-urls
+   :prepare-sql-param    (u/drop-first-arg identity)
    :prepare-value        (u/drop-first-arg :value)
    :quote-style          (constantly :ansi)
    :set-timezone-sql     (constantly nil)

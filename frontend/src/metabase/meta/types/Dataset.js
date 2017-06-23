@@ -1,7 +1,9 @@
 /* @flow */
 
+import type { ISO8601Time } from ".";
 import type { FieldId } from "./Field";
 import type { DatasetQuery } from "./Card";
+import type { DatetimeUnit } from "./Query";
 
 export type ColumnName = string;
 
@@ -11,11 +13,12 @@ export type Column = {
     name: ColumnName,
     display_name: string,
     base_type: string,
-    special_type: ?string
+    special_type: ?string,
+    source?: "fields"|"aggregation"|"breakout",
+    unit?: DatetimeUnit
 };
 
-export type ISO8601Times = string;
-export type Value = string|number|ISO8601Times|boolean|null|{};
+export type Value = string|number|ISO8601Time|boolean|null|{};
 export type Row = Value[];
 
 export type DatasetData = {

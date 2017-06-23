@@ -6,14 +6,17 @@ import type {
     Breakout, BreakoutClause,
     Filter, FilterClause,
     LimitClause,
-    OrderBy, OrderByClause
+    OrderBy, OrderByClause,
+    ExpressionClause, ExpressionName, Expression
 } from "metabase/meta/types/Query";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 import * as A from "./aggregation";
 import * as B from "./breakout";
 import * as F from "./filter";
 import * as L from "./limit";
 import * as O from "./order_by";
+import * as E from "./expression";
 
 import Query from "metabase/lib/query";
 import _ from "underscore";
@@ -38,6 +41,8 @@ export const updateBreakout = (query: SQ, index: number, breakout: Breakout) => 
 export const removeBreakout = (query: SQ, index: number)                     => setBreakoutClause(query, B.removeBreakout(query.breakout, index));
 export const clearBreakouts = (query: SQ)                                    => setBreakoutClause(query, B.clearBreakouts(query.breakout));
 
+export const getBreakoutFields = (query: SQ, tableMetadata: TableMetadata) => B.getBreakoutFields(query.breakout, tableMetadata);
+
 // FILTER
 
 export const getFilters   = (query: SQ)                                 => F.getFilters(query.filter);
@@ -60,6 +65,19 @@ export const clearOrderBy  = (query: SQ)                                   => se
 
 export const updateLimit = (query: SQ, limit: LimitClause) => setLimitClause(query, L.updateLimit(query.limit, limit));
 export const clearLimit = (query: SQ) => setLimitClause(query, L.clearLimit(query.limit));
+
+// EXPRESSIONS
+
+export const getExpressions     = (query: SQ) => E.getExpressions(query.expressions);
+export const getExpressionsList = (query: SQ) => E.getExpressionsList(query.expressions);
+export const addExpression    = (query: SQ, name: ExpressionName, expression: Expression) =>
+    setExpressionClause(query, E.addExpression(query.expressions, name, expression));
+export const updateExpression = (query: SQ, name: ExpressionName, expression: Expression, oldName: ExpressionName) =>
+    setExpressionClause(query, E.updateExpression(query.expressions, name, expression, oldName));
+export const removeExpression = (query: SQ, name: ExpressionName) =>
+    setExpressionClause(query, E.removeExpression(query.expressions, name));
+export const clearExpression  = (query: SQ) =>
+    setExpressionClause(query, E.clearExpressions(query.expressions));
 
 // we can enforce various constraints in these functions:
 
@@ -95,9 +113,15 @@ function setOrderByClause(query: SQ, orderByClause: ?OrderByClause): SQ {
 function setLimitClause(query: SQ, limitClause: ?LimitClause): SQ {
     return setClause("limit", query, limitClause);
 }
+function setExpressionClause(query: SQ, expressionClause: ?ExpressionClause): SQ {
+    if (expressionClause && Object.keys(expressionClause).length === 0) {
+        expressionClause = null;
+    }
+    return setClause("expressions", query, expressionClause);
+}
 
 // TODO: remove mutation
-type FilterClauseName = "filter"|"aggregation"|"breakout"|"order_by"|"limit";
+type FilterClauseName = "filter"|"aggregation"|"breakout"|"order_by"|"limit"|"expressions";
 function setClause(clauseName: FilterClauseName, query: SQ, clause: ?any): SQ {
     if (clause == null) {
         delete query[clauseName];

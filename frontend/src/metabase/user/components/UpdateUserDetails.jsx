@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import FormField from "metabase/components/form/FormField.jsx";
@@ -82,7 +83,7 @@ export default class UpdateUserDetails extends Component {
     render() {
         const { updateUserResult, user } = this.props;
         const { formError, valid } = this.state;
-        const managed = user.google_auth
+        const managed = user.google_auth || user.ldap_auth;
 
         return (
             <div>
@@ -100,7 +101,7 @@ export default class UpdateUserDetails extends Component {
                     </FormField>
 
                     <FormField fieldName="email" formError={formError}>
-                        <FormLabel title={ managed ? "Sign in with Google Email address" : "Email address"} fieldName="email" formError={formError} ></FormLabel>
+                        <FormLabel title={ user.google_auth ? "Sign in with Google Email address" : "Email address"} fieldName="email" formError={formError} ></FormLabel>
                         <input
                             ref="email"
                             className={

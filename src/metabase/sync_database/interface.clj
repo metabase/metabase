@@ -1,9 +1,7 @@
 (ns metabase.sync-database.interface
   "Schemas describing the output expected from different DB sync functions."
-  (:require [schema.core :as s]
-            [metabase.models.field :as field]
-            [metabase.util.schema :as su]))
-
+  (:require [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 (def AnalyzeTable
   "Schema for the expected output of `analyze-table`."

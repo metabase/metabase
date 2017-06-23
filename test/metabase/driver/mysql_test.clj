@@ -1,15 +1,16 @@
 (ns metabase.driver.mysql-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            (metabase.driver [generic-sql :as sql]
-                             mysql)
+            [metabase
+             [sync-database :as sync-db]
+             [util :as u]]
+            [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
-            [metabase.sync-database :as sync-db]
             [metabase.test.data :as data]
-            (metabase.test.data [datasets :refer [expect-with-engine]]
-                                [interface :refer [def-database-definition]])
-            [metabase.test.util :as tu]
-            [metabase.util :as u])
+            [metabase.test.data
+             [datasets :refer [expect-with-engine]]
+             [interface :refer [def-database-definition]]]
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import metabase.driver.mysql.MySQLDriver))
 
 ;; MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL when returning them like we asked
@@ -63,7 +64,7 @@
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
   (data/with-temp-db [db tiny-int-ones]
-    (tu/with-temp Database [db {:engine "mysql"
+    (tt/with-temp Database [db {:engine "mysql"
                                 :details (assoc (:details db)
                                            :additional-options "tinyInt1isBit=false")}]
       (sync-db/sync-database! db)

@@ -1,14 +1,15 @@
 (ns metabase.query-processor-test.date-bucketing-test
   "Tests for date bucketing."
-  (:require [expectations :refer :all]
-            [metabase.driver :as driver]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor-test :refer :all]
+             [util :as u]]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets, :refer [*driver* *engine*]]
-                                [interface :as i])
-            [metabase.util :as u]))
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets :refer [*driver* *engine*]]
+             [interface :as i]]))
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -37,7 +38,7 @@
      ["2015-06-02 08:20:00" 1]
      ["2015-06-02 11:11:00" 1]]
 
-    (contains? #{:redshift :sqlserver :bigquery :mongo :postgres :vertica :h2 :oracle} *engine*)
+    (contains? #{:redshift :sqlserver :bigquery :mongo :postgres :vertica :h2 :oracle :presto} *engine*)
     [["2015-06-01T10:31:00.000Z" 1]
      ["2015-06-01T16:06:00.000Z" 1]
      ["2015-06-01T17:23:00.000Z" 1]
@@ -246,7 +247,7 @@
     (contains? #{:sqlserver :sqlite :crate :oracle} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (contains? #{:mongo :redshift :bigquery :postgres :vertica :h2} *engine*)
+    (contains? #{:mongo :redshift :bigquery :postgres :vertica :h2 :presto} *engine*)
     [[23 46] [24 47] [25 40] [26 60] [27 7]]
 
     :else
@@ -303,6 +304,7 @@
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly when it takes so long to load the data that the times are
 ;; no longer current (these tests pass locally if your machine isn't as slow as the CircleCI ones)
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
 (expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 

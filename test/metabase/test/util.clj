@@ -1,52 +1,32 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [clojure.walk :as walk]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
+            [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [expectations :refer :all]
-            [metabase.db :as db]
-            (metabase.models [card :refer [Card]]
-                             [collection :refer [Collection]]
-                             [dashboard :refer [Dashboard]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [metric :refer [Metric]]
-                             [permissions-group :refer [PermissionsGroup]]
-                             [pulse :refer [Pulse]]
-                             [pulse-channel :refer [PulseChannel]]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [revision :refer [Revision]]
-                             [segment :refer [Segment]]
-                             [setting :as setting]
-                             [table :refer [Table]]
-                             [user :refer [User]])
+            [metabase.models
+             [card :refer [Card]]
+             [collection :refer [Collection]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [permissions-group :refer [PermissionsGroup]]
+             [pulse :refer [Pulse]]
+             [pulse-channel :refer [PulseChannel]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]
+             [revision :refer [Revision]]
+             [segment :refer [Segment]]
+             [setting :as setting]
+             [table :refer [Table]]
+             [user :refer [User]]]
             [metabase.test.data :as data]
-            [metabase.util :as u]))
-
-(declare $->prop)
+            [metabase.util :as u]
+            [toucan.util.test :as test]))
 
 ;; ## match-$
-
-(defmacro match-$
-  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
-
-    {k $}     -> {k (k SOURCE-OBJECT)}
-    {k $symb} -> {k (:symb SOURCE-OBJECT)}
-    $$        -> {k SOURCE-OBJECT}
-  ex.
-
-    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
-  [source-obj dest-object]
-  {:pre [(map? dest-object)]}
-  (let [source##    (gensym)
-        dest-object (into {} (for [[k v] dest-object]
-                               {k (condp = v
-                                    '$ `(~k ~source##)
-                                    '$$ source##
-                                        v)}))]
-    `(let [~source## ~source-obj]
-       ~(clojure.walk/prewalk (partial $->prop source##)
-                              dest-object))))
 
 (defn- $->prop
   "If FORM is a symbol starting with a `$`, convert it to the form `(form-keyword SOURCE-OBJ)`.
@@ -62,13 +42,43 @@
           `(~(keyword (apply str (rest (name form)))) ~source-obj)))
       form))
 
+(defmacro ^:deprecated match-$
+  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
+
+    {k $}     -> {k (k SOURCE-OBJECT)}
+    {k $symb} -> {k (:symb SOURCE-OBJECT)}
+    $$        -> {k SOURCE-OBJECT}
+
+  ex.
+
+    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
+  ;; DEPRECATED - This is an old pattern for writing tests and is probably best avoided going forward.
+  ;; Tests that use this macro end up being huge, often with giant maps with many values that are `$`.
+  ;; It's better just to write a helper function that only keeps values relevant to the tests you're writing
+  ;; and use that to pare down the results (e.g. only keeping a handful of keys relevant to the test).
+  ;; Alternatively, you can also consider converting fields that naturally change to boolean values indiciating their presence;
+  ;; see the `boolean-ids-and-timestamps` function below
+  [source-obj dest-object]
+  {:pre [(map? dest-object)]}
+  (let [source##    (gensym)
+        dest-object (into {} (for [[k v] dest-object]
+                               {k (condp = v
+                                    '$ `(~k ~source##)
+                                    '$$ source##
+                                    v)}))]
+    `(let [~source## ~source-obj]
+       ~(walk/prewalk (partial $->prop source##)
+                      dest-object))))
+
 
 ;;; random-name
-(let [random-uppercase-letter (partial rand-nth (mapv char (range (int \A) (inc (int \Z)))))]
-  (defn random-name
-    "Generate a random string of 20 uppercase letters."
-    []
-    (apply str (repeatedly 20 random-uppercase-letter))))
+(def ^:private ^{:arglists '([])} random-uppercase-letter
+  (partial rand-nth (mapv char (range (int \A) (inc (int \Z))))))
+
+(defn random-name
+  "Generate a random string of 20 uppercase letters."
+  []
+  (apply str (repeatedly 20 random-uppercase-letter)))
 
 (defn random-email
   "Generate a random email address."
@@ -97,18 +107,11 @@
   (require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) username))
 
-(defn- rasta-id     [] (user-id :rasta))
+(defn- rasta-id [] (user-id :rasta))
 
-
-(defprotocol ^:private WithTempDefaults
-  (^:private with-temp-defaults [this]))
-
-(u/strict-extend Object
-  WithTempDefaults
-  {:with-temp-defaults (constantly {})})
 
 (u/strict-extend (class Card)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
                                 :dataset_query          {}
                                 :display                :table
@@ -116,31 +119,35 @@
                                 :visualization_settings {}})})
 
 (u/strict-extend (class Collection)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name  (random-name)
                                 :color "#ABCDEF"})})
 
 (u/strict-extend (class Dashboard)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
                                 :name         (random-name)})})
 
+(u/strict-extend (class DashboardCardSeries)
+  test/WithTempDefaults
+  {:with-temp-defaults (constantly {:position 0})})
+
 (u/strict-extend (class Database)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
                                 :engine    :yeehaw
                                 :is_sample false
                                 :name      (random-name)})})
 
 (u/strict-extend (class Field)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:base_type :type/Text
                                 :name      (random-name)
                                 :position  1
                                 :table_id  (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
@@ -148,39 +155,39 @@
                                 :table_id    (data/id :checkins)})})
 
 (u/strict-extend (class PermissionsGroup)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name (random-name)})})
 
 (u/strict-extend (class Pulse)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :name       (random-name)})})
 
 (u/strict-extend (class PulseChannel)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (constantly {:channel_type  :email
                                     :details       {}
                                     :schedule_type :daily
                                     :schedule_hour 15})})
 
 (u/strict-extend (class RawColumn)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class RawTable)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class Revision)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
                                 :is_creation  false
                                 :is_reversion false})})
 
 (u/strict-extend (class Segment)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
@@ -190,83 +197,20 @@
 ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
 (u/strict-extend (class Table)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class User)
-  WithTempDefaults
+  test/WithTempDefaults
   {:with-temp-defaults (fn [_] {:first_name (random-name)
                                 :last_name  (random-name)
                                 :email      (random-email)
                                 :password   (random-name)})})
 
 
-(defn do-with-temp
-  "Internal implementation of `with-temp` (don't call this directly)."
-  [entity attributes f]
-  (let [temp-object (db/insert! entity (merge (with-temp-defaults entity)
-                                              attributes))]
-    (try
-      (f temp-object)
-      (finally
-        (db/cascade-delete! entity :id (:id temp-object))))))
-
-
-;;; # with-temp
-(defmacro with-temp
-  "Create a temporary instance of ENTITY bound to BINDING-FORM, execute BODY,
-   then delete it via `cascade-delete`.
-
-   Our unit tests rely a heavily on the test data and make some assumptions about the
-   DB staying in the same *clean* state. This allows us to write very concise tests.
-   Generally this means tests should \"clean up after themselves\" and leave things the
-   way they found them.
-
-   `with-temp` should be preferrable going forward over creating random objects *without*
-   deleting them afterward.
-
-    (with-temp EmailReport [report {:creator_id (user->id :rasta)
-                                    :name       (random-name)}]
-      ...)"
-  [entity [binding-form & [options-map]] & body]
-  `(do-with-temp ~entity ~options-map (fn [~binding-form]
-                                        ~@body)))
-
-(defmacro with-temp*
-  "Like `with-temp` but establishes multiple temporary objects at the same time.
-
-     (with-temp* [Database [{database-id :id}]
-                  Table    [table {:db_id database-id}]]
-       ...)"
-  [entity-bindings & body]
-  (loop [[pair & more] (reverse (partition 2 entity-bindings)), body `(do ~@body)]
-    (let [body `(with-temp ~@pair
-                  ~body)]
-      (if (seq more)
-        (recur more body)
-        body))))
-
-(defmacro expect-with-temp
-  "Combines `expect` with a `with-temp*` form. The temporary objects established by `with-temp*` are available to both EXPECTED and ACTUAL.
-
-     (expect-with-temp [Database [{database-id :id}]]
-        database-id
-        (get-most-recent-database-id))"
-  {:style/indent 1}
-  ;; TODO - maybe it makes more sense to have the signature be [with-temp*-form expected & actual] and wrap `actual` in a `do` since it seems like a pretty common use-case.
-  ;; I'm not sure about the readability implications however :scream_cat:
-  [with-temp*-form expected actual]
-  ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
-  ;; to generate function names it will treat every usage of `expect-with-temp` as the same test and only a single one will end up being ran
-  (let [with-temp-form (gensym "with-temp-")]
-    `(let [~with-temp-form (delay (with-temp* ~with-temp*-form
-                                    [~expected ~actual]))]
-       (expect
-         (u/ignore-exceptions
-           (first @~with-temp-form))   ; if dereferencing with-temp-form throws an exception then expect Exception <-> Exception will pass; we don't want that, so make sure the expected
-         (second @~with-temp-form))))) ; case is nil if we encounter an exception so the two don't match and the test doesn't succeed
+;;; ------------------------------------------------------------ Other Util Fns ------------------------------------------------------------
 
 
 (defn- namespace-or-symbol? [x]
@@ -345,3 +289,33 @@
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
+
+(defn do-with-log-messages [f]
+  (let [messages (atom [])]
+    (with-redefs [log/log* (fn [_ & message]
+                             (swap! messages conj (vec message)))]
+      (f))
+    @messages))
+
+(defmacro with-log-messages
+  "Execute BODY, and return a vector of all messages logged using the `log/` family of functions.
+   Messages are of the format `[:level throwable message]`, and are returned in chronological order
+   from oldest to newest.
+
+     (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"
+  {:style/indent 0}
+  [& body]
+  `(do-with-log-messages (fn [] ~@body)))
+
+
+(defn vectorize-byte-arrays
+  "Walk form X and convert any byte arrays in the results to standard Clojure vectors.
+   This is useful when writing tests that return byte arrays (such as things that work with query hashes),
+   since identical arrays are not considered equal."
+  {:style/indent 0}
+  [x]
+  (walk/postwalk (fn [form]
+                   (if (instance? (Class/forName "[B") form)
+                     (vec form)
+                     form))
+                 x))

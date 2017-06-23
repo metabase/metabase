@@ -1,29 +1,32 @@
 (ns metabase.metabot
   (:refer-clojure :exclude [list +])
-  (:require (clojure [edn :as edn]
-                     [string :as str])
+  (:require [aleph.http :as aleph]
+            [cheshire.core :as json]
+            [clojure
+             [edn :as edn]
+             [string :as str]]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [aleph.http :as aleph]
-            [cheshire.core :as json]
-            (manifold [bus :as bus]
-                      [deferred :as d]
-                      [stream :as s])
-            [throttle.core :as throttle]
+            [manifold
+             [deferred :as d]
+             [stream :as s]]
+            [metabase
+             [pulse :as pulse]
+             [util :as u]]
             [metabase.api.common :refer [*current-user-permissions-set* read-check]]
-            [metabase.db :as db]
             [metabase.integrations.slack :as slack]
-            (metabase.models [card :refer [Card]]
-                             [interface :as models]
-                             [permissions :refer [Permissions]]
-                             [permissions-group :as perms-group]
-                             [setting :refer [defsetting], :as setting])
-            (metabase [pulse :as pulse]
-                      [util :as u])
-            [metabase.util.urls :as urls]))
+            [metabase.models
+             [card :refer [Card]]
+             [interface :as mi]
+             [permissions :refer [Permissions]]
+             [permissions-group :as perms-group]
+             [setting :as setting :refer [defsetting]]]
+            [metabase.util.urls :as urls]
+            [throttle.core :as throttle]
+            [toucan.db :as db]))
 
 (defsetting metabot-enabled
-  "Enable Metabot, which lets you search for and view your saved questions directly via Slack."
+  "Enable MetaBot, which lets you search for and view your saved questions directly via Slack."
   :type    :boolean
   :default false)
 
@@ -100,7 +103,7 @@
   "Implementation of the `metabot list cards` command."
   [& _]
   (let [cards (with-metabot-permissions
-                (filterv models/can-read? (db/select [Card :id :name :dataset_query], {:order-by [[:id :desc]], :limit 20})))]
+                (filterv mi/can-read? (db/select [Card :id :name :dataset_query], {:order-by [[:id :desc]], :limit 20})))]
     (str "Here's your " (count cards) " most recent cards:\n" (format-cards cards))))
 
 (defn- card-with-name [card-name]
@@ -126,7 +129,7 @@
      (do
        (with-metabot-permissions
          (read-check Card card-id))
-       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id)])]
+       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id, :context :metabot)])]
                    (slack/post-chat-message! *channel-id*
                                              nil
                                              attachments)))
@@ -319,10 +322,10 @@
   (disconnect-websocket!))
 
 (defn restart-metabot!
-  "Restart the Metabot listening process.
+  "Restart the MetaBot listening process.
    Used on settings changed"
   []
   (when @websocket-monitor-thread-id
-    (log/info "Metabot already running. Killing the previous WebSocket listener first.")
+    (log/info "MetaBot already running. Killing the previous WebSocket listener first.")
     (stop-metabot!))
   (start-metabot!))

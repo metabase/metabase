@@ -1,15 +1,15 @@
 (ns metabase.models.permissions-group-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            (metabase.models [database :refer [Database]]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :refer [PermissionsGroup], :as perm-group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [table :refer [Table]]
-                             [user :refer [User]])
+            [metabase.models
+             [database :refer [Database]]
+             [permissions :as perms :refer [Permissions]]
+             [permissions-group :as perm-group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
+             [user :refer [User]]]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import metabase.models.permissions_group.PermissionsGroupInstance))
 
 ;;; ---------------------------------------- Check that the root entry for Admin was created ----------------------------------------
@@ -28,9 +28,9 @@
 
 
 ;;; make sure we're not allowed to delete the magic groups
-(expect Exception (db/cascade-delete! PermissionsGroup :id (:id (perm-group/all-users))))
-(expect Exception (db/cascade-delete! PermissionsGroup :id (:id (perm-group/admin))))
-(expect Exception (db/cascade-delete! PermissionsGroup :id (:id (perm-group/metabot))))
+(expect Exception (db/delete! PermissionsGroup :id (:id (perm-group/all-users))))
+(expect Exception (db/delete! PermissionsGroup :id (:id (perm-group/admin))))
+(expect Exception (db/delete! PermissionsGroup :id (:id (perm-group/metabot))))
 
 
 ;;; make sure we're not allowed to edit the magic groups
@@ -41,21 +41,21 @@
 
 ;;; ---------------------------------------- newly created users should get added to the appropriate magic groups ----------------------------------------
 (expect
-  (tu/with-temp User [{user-id :id}]
+  (tt/with-temp User [{user-id :id}]
     (db/exists? PermissionsGroupMembership
       :user_id  user-id
       :group_id (:id (perm-group/all-users)))))
 
 (expect
   false
-  (tu/with-temp User [{user-id :id}]
+  (tt/with-temp User [{user-id :id}]
     (db/exists? PermissionsGroupMembership
       :user_id  user-id
       :group_id (:id (perm-group/admin)))))
 
 (expect
   false
-  (tu/with-temp User [{user-id :id}]
+  (tt/with-temp User [{user-id :id}]
     (db/exists? PermissionsGroupMembership
       :user_id  user-id
       :group_id (:id (perm-group/metabot)))))
@@ -64,13 +64,13 @@
   (do
     ;; make sure Crowberto is in the DB because otherwise the code will get snippy when the temp user is deleted since you're not allowed to delete the last member of Admin
     (test-users/user->id :crowberto)
-    (tu/with-temp User [{user-id :id} {:is_superuser true}]
+    (tt/with-temp User [{user-id :id} {:is_superuser true}]
       (db/exists? PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (perm-group/all-users))))))
 
 (expect
-  (tu/with-temp User [{user-id :id} {:is_superuser true}]
+  (tt/with-temp User [{user-id :id} {:is_superuser true}]
     (db/exists? PermissionsGroupMembership
       :user_id  user-id
       :group_id (:id (perm-group/admin)))))
@@ -88,15 +88,15 @@
     object    [:like (hx/concat :object (hx/literal "%"))]))
 
 (expect
-  (tu/with-temp Database [{database-id :id}]
+  (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/all-users)) (perms/object-path database-id))))
 
 (expect
-  (tu/with-temp Database [{database-id :id}]
+  (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/admin)) (perms/object-path database-id))))
 
 (expect
-  (tu/with-temp Database [{database-id :id}]
+  (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/metabot)) (perms/object-path database-id))))
 
 
@@ -104,7 +104,7 @@
 ;;; ---------------------------------------- flipping the is_superuser bit should add/remove user from Admin group as appropriate ----------------------------------------
 ;; adding user to Admin should set is_superuser -> true
 (expect
-  (tu/with-temp User [{user-id :id}]
+  (tt/with-temp User [{user-id :id}]
     (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (:id (perm-group/admin)))
     (db/select-one-field :is_superuser User, :id user-id)))
 
@@ -113,8 +113,8 @@
   false
   (do
     (test-users/user->id :crowberto)
-    (tu/with-temp User [{user-id :id} {:is_superuser true}]
-      (db/cascade-delete! PermissionsGroupMembership, :user_id user-id, :group_id (:id (perm-group/admin)))
+    (tt/with-temp User [{user-id :id} {:is_superuser true}]
+      (db/delete! PermissionsGroupMembership, :user_id user-id, :group_id (:id (perm-group/admin)))
       (db/select-one-field :is_superuser User, :id user-id))))
 
 ;; setting is_superuser -> true should add user to Admin
@@ -122,7 +122,7 @@
   false
   (do
     (test-users/user->id :crowberto)
-    (tu/with-temp User [{user-id :id} {:is_superuser true}]
+    (tt/with-temp User [{user-id :id} {:is_superuser true}]
       (db/update! User user-id, :is_superuser false)
       (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (:id (perm-group/admin))))))
 
@@ -130,6 +130,6 @@
 (expect
   (do
     (test-users/user->id :crowberto)
-    (tu/with-temp User [{user-id :id}]
+    (tt/with-temp User [{user-id :id}]
       (db/update! User user-id, :is_superuser true)
       (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (:id (perm-group/admin))))))

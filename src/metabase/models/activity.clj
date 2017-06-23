@@ -1,14 +1,17 @@
 (ns metabase.models.activity
-  (:require (metabase [db :as db]
-                      [events :as events])
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [interface :as i]
-                             [metric :refer [Metric]]
-                             [pulse :refer [Pulse]]
-                             [segment :refer [Segment]])
-            [metabase.util :as u]))
-
+  (:require [metabase
+             [events :as events]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [interface :as i]
+             [metric :refer [Metric]]
+             [pulse :refer [Pulse]]
+             [segment :refer [Segment]]]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 ;;; ------------------------------------------------------------ Perms Checking ------------------------------------------------------------
 
@@ -28,7 +31,7 @@
 
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 
-(i/defentity Activity :activity)
+(models/defmodel Activity :activity)
 
 (defn- pre-insert [activity]
   (let [defaults {:timestamp (u/new-sql-timestamp)
@@ -36,12 +39,14 @@
     (merge defaults activity)))
 
 (u/strict-extend (class Activity)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:types             (constantly {:details :json, :topic :keyword})
-          :can-read?         (partial can-? i/can-read?)
-          :can-write?        (partial can-? i/can-write?)
-          :pre-insert        pre-insert}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:types      (constantly {:details :json, :topic :keyword})
+          :pre-insert pre-insert})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?  (partial can-? i/can-read?)
+          :can-write? (partial can-? i/can-write?)}))
 
 
 ;;; ------------------------------------------------------------ Etc. ------------------------------------------------------------

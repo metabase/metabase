@@ -1,10 +1,10 @@
 (ns metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
   (:require [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             vertica)
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.driver.generic-sql :as sql]
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.vertica.VerticaDriver))
 
@@ -40,7 +40,7 @@
 
 
 (u/strict-extend VerticaDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:create-db-sql             (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
@@ -50,8 +50,8 @@
           :pk-sql-type               (constantly "INTEGER")
           :qualified-name-components (u/drop-first-arg qualified-name-components)
           :execute-sql!              generic/sequentially-execute-sql!})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (fn [& _] @db-connection-details)
           :default-schema                     (constantly "public")
           :engine                             (constantly :vertica)

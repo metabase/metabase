@@ -1,15 +1,16 @@
 (ns metabase.api.collection
   "/api/collection endpoints."
-  (:require [compojure.core :refer [GET POST DELETE PUT]]
-            [schema.core :as s]
+  (:require [compojure.core :refer [GET POST PUT]]
             [metabase.api.common :as api]
-            [metabase.db :as db]
-            (metabase.models [card :refer [Card]]
-                             [collection :refer [Collection], :as collection]
-                             [hydrate :refer [hydrate]]
-                             [interface :as models])
-            [metabase.util.schema :as su]))
-
+            [metabase.models
+             [card :refer [Card]]
+             [collection :as collection :refer [Collection]]
+             [interface :as mi]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for.
@@ -19,7 +20,7 @@
    By default, this returns non-archived Collections, but instead you can show archived ones by passing `?archived=true`."
   [archived]
   {archived (s/maybe su/BooleanString)}
-  (-> (filterv models/can-read? (db/select Collection :archived (Boolean/parseBoolean archived) {:order-by [[:%lower.name :asc]]}))
+  (-> (filterv mi/can-read? (db/select Collection :archived (Boolean/parseBoolean archived) {:order-by [[:%lower.name :asc]]}))
       (hydrate :can_write)))
 
 (api/defendpoint GET "/:id"

@@ -1,11 +1,14 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
-
-import Icon from "metabase/components/Icon.jsx";
-
+import React, { Component } from "react";
+import ReactDOM from "react-dom";
+import PropTypes from "prop-types";
 import cx from "classnames";
 import _ from "underscore";
+
+import {forceRedraw} from "metabase/lib/dom";
+
+import Icon from "metabase/components/Icon.jsx";
 
 import type { Operator, OperatorName } from "metabase/meta/types/Metadata"
 
@@ -19,7 +22,7 @@ type State = {
     expanded: bool
 };
 
-export default class OperatorSelector extends Component<*, Props, State> {
+export default class OperatorSelector extends Component {
     props: Props;
     state: State;
 
@@ -36,6 +39,13 @@ export default class OperatorSelector extends Component<*, Props, State> {
         operator: PropTypes.string,
         operators: PropTypes.array.isRequired,
         onOperatorChange: PropTypes.func.isRequired
+    };
+
+    expandOperators = () => {
+        this.setState({ expanded: true }, () => {
+            // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5075
+            forceRedraw(ReactDOM.findDOMNode(this));
+        });
     };
 
     render() {
@@ -64,7 +74,7 @@ export default class OperatorSelector extends Component<*, Props, State> {
                     </button>
                 )}
                 { !expanded && expandedOperators.length > 0 ?
-                    <div className="text-grey-3 cursor-pointer" onClick={() => this.setState({ expanded: true })}>
+                    <div className="text-grey-3 cursor-pointer" onClick={this.expandOperators}>
                         <Icon className="px1" name="chevrondown" size={14} />
                         More Options
                     </div>

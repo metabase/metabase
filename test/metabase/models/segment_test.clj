@@ -1,13 +1,15 @@
 (ns metabase.models.segment-test
   (:require [expectations :refer :all]
-            (metabase.models [database :refer [Database]]
-                             [hydrate :refer :all]
-                             [segment :refer :all, :as segment]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [database :refer [Database]]
+             [segment :as segment :refer :all]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
 
 (defn- user-details
   [username]
@@ -39,7 +41,7 @@
    :points_of_interest      nil
    :is_active               true
    :definition              {:clause ["a" "b"]}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]]
     (create-segment-then-select! table-id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
 
@@ -48,7 +50,7 @@
 (expect
   [true
    false]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}   {:db_id database-id}]
                   Segment  [{segment-id :id} {:table_id table-id}]]
     [(segment/exists? segment-id)
@@ -67,7 +69,7 @@
    :is_active               true
    :definition              {:database 45
                              :query    {:filter ["yay"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}   {:db_id database-id}]
                   Segment  [{segment-id :id} {:table_id   table-id
                                               :definition {:database 45
@@ -89,7 +91,7 @@
     :points_of_interest      nil
     :is_active               true
     :definition              {}}]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]
                   Table    [{table-id-2 :id}    {:db_id database-id}]
                   Segment  [{segement-id-1 :id} {:table_id table-id-1, :name "Segment 1", :description nil}]
@@ -119,7 +121,7 @@
    :is_active               true
    :definition              {:database 2
                              :query    {:filter ["not" "the toucans you're looking for"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id id}]]
     (update-segment-then-select! {:id                      id
@@ -145,7 +147,7 @@
    :points_of_interest      nil
    :is_active               false
    :definition              {}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id id}]]
     (delete-segment! id (user->id :crowberto) "revision message")
@@ -168,7 +170,7 @@
    :points_of_interest      nil
    :definition              {:filter ["AND",[">",4,"2014-10-19"]]}
    :is_active               true}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [segment        {:table_id   table-id
                                             :definition {:filter ["AND" [">" 4 "2014-10-19"]]}}]]
@@ -185,7 +187,7 @@
                  :after  "BBB"}
    :name        {:before "Toucans in the rainforest"
                  :after  "Something else"}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [segment        {:table_id   table-id
                                             :definition {:filter ["AND" [">" 4 "2014-10-19"]]}}]]

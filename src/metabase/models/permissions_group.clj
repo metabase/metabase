@@ -1,11 +1,13 @@
 (ns metabase.models.permissions-group
-  (:require [clojure.tools.logging :as log]
-            [clojure.string :as s]
-            [metabase.db :as db]
-            [metabase.models.interface :as i]
-            [metabase.util :as u]))
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
+            [metabase.models.setting :as setting]
+            [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
-(i/defentity PermissionsGroup :permissions_group)
+(models/defmodel PermissionsGroup :permissions_group)
 
 
 ;;; ------------------------------------------------------------ Magic Groups Getter Fns ------------------------------------------------------------
@@ -66,10 +68,16 @@
   (u/prog1 group
     (check-name-not-already-taken group-name)))
 
-(defn- pre-cascade-delete [{id :id, :as group}]
+(defn- pre-delete [{id :id, :as group}]
   (check-not-magic-group group)
-  (db/cascade-delete! 'Permissions                :group_id id)
-  (db/cascade-delete! 'PermissionsGroupMembership :group_id id))
+  (db/delete! 'Permissions                 :group_id id)
+  (db/delete! 'PermissionsGroupMembership  :group_id id)
+  ;; Remove from LDAP mappings
+  (setting/set-json! :ldap-group-mappings
+    (when-let [mappings (setting/get-json :ldap-group-mappings)]
+      (zipmap (keys mappings)
+              (for [val (vals mappings)]
+                (remove (partial = id) val))))))
 
 (defn- pre-update [{group-name :name, :as group}]
   (u/prog1 group
@@ -78,8 +86,8 @@
       (check-name-not-already-taken group-name))))
 
 (u/strict-extend (class PermissionsGroup)
-  i/IEntity (merge i/IEntityDefaults
-                   {:pre-cascade-delete pre-cascade-delete
+  models/IModel (merge models/IModelDefaults
+                   {:pre-delete pre-delete
                     :pre-insert         pre-insert
                     :pre-update         pre-update}))
 

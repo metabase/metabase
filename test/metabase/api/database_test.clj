@@ -1,15 +1,24 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
-            (metabase.test.data [datasets :as datasets]
-                                [users :refer :all])
-            [metabase.test.util :refer [match-$ random-name], :as tu]
-            [metabase.util :as u]))
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [card :refer [Card]]
+             [collection :refer [Collection]]
+             [database :as database :refer [Database]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :as data :refer :all]
+             [util :as tu :refer [match-$]]]
+            [metabase.test.data
+             [datasets :as datasets]
+             [users :refer :all]]
+            [toucan
+             [db :as db]
+             [hydrate :as hydrate]]
+            [toucan.util.test :as tt]))
 
 ;; HELPER FNS
 
@@ -30,7 +39,7 @@
     (try
       (f db)
       (finally
-        (db/cascade-delete! Database :id (:id db))))))
+        (db/delete! Database :id (:id db))))))
 
 (defmacro ^:private expect-with-temp-db-created-via-api {:style/indent 1} [[binding & [options]] expected actual]
   ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
@@ -43,24 +52,28 @@
          (u/ignore-exceptions (first @~result)) ; in case @result# barfs we don't want the test to succeed (Exception == Exception for expectations)
          (second @~result)))))
 
+(def ^:private default-db-details
+  {:engine             "h2"
+   :name               "test-data"
+   :is_sample          false
+   :is_full_sync       true
+   :description        nil
+   :caveats            nil
+   :points_of_interest nil})
+
 
 (defn- db-details
+  "Return default column values for a database (either the test database, via `(db)`, or optionally passed in)."
   ([]
    (db-details (db)))
   ([db]
-   (match-$ db
-     {:created_at         $
-      :engine             "h2"
-      :id                 $
-      :details            $
-      :updated_at         $
-      :name               "test-data"
-      :is_sample          false
-      :is_full_sync       true
-      :description        nil
-      :caveats            nil
-      :points_of_interest nil
-      :features           (mapv name (driver/features (driver/engine->driver (:engine db))))})))
+   (merge default-db-details
+          (match-$ db
+            {:created_at $
+             :id         $
+             :details    $
+             :updated_at $
+             :features   (mapv name (driver/features (driver/engine->driver (:engine db))))}))))
 
 
 ;; # DB LIFECYCLE ENDPOINTS
@@ -79,19 +92,16 @@
 ;; ## POST /api/database
 ;; Check that we can create a Database
 (expect-with-temp-db-created-via-api [db {:is_full_sync false}]
-  (match-$ db
-    {:created_at         $
-     :engine             :postgres
-     :id                 $
-     :details            {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-     :updated_at         $
-     :name               $
-     :is_sample          false
-     :is_full_sync       false
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :features           (vec (driver/features (driver/engine->driver :postgres)))})
+  (merge default-db-details
+         (match-$ db
+           {:created_at         $
+            :engine             :postgres
+            :is_full_sync       false
+            :id                 $
+            :details            {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
+            :updated_at         $
+            :name               $
+            :features           (driver/features (driver/engine->driver :postgres))}))
   (Database (:id db)))
 
 
@@ -116,26 +126,38 @@
       (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
               :features)))
 
+:description             nil
+                               :entity_type             nil
+                               :caveats                 nil
+                               :points_of_interest      nil
+                               :visibility_type         nil
+(def ^:private default-table-details
+  {:description             nil
+   :entity_name             nil
+   :entity_type             nil
+   :caveats                 nil
+   :points_of_interest      nil
+   :visibility_type         nil
+   :active                  true
+   :show_in_getting_started false})
 
 (defn- table-details [table]
-  (match-$ table
-    {:description             $
-     :entity_type             $
-     :caveats                 nil
-     :points_of_interest      nil
-     :visibility_type         $
-     :schema                  $
-     :name                    $
-     :display_name            $
-     :rows                    $
-     :updated_at              $
-     :entity_name             $
-     :active                  $
-     :id                      $
-     :db_id                   $
-     :show_in_getting_started false
-     :raw_table_id            $
-     :created_at              $}))
+  (merge default-table-details
+         (match-$ table
+           {:description     $
+            :entity_type     $
+            :visibility_type $
+            :schema          $
+            :name            $
+            :display_name    $
+            :rows            $
+            :updated_at      $
+            :entity_name     $
+            :active          $
+            :id              $
+            :db_id           $
+            :raw_table_id    $
+            :created_at      $})))
 
 
 ;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One day we should be able to remove this!
@@ -143,12 +165,12 @@
 (defn- ^:deprecated delete-randomly-created-databases!
   "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
   [& {:keys [skip]}]
-  (db/cascade-delete! Database :id [:not-in (into (set skip)
-                                                  (for [engine datasets/all-valid-engines
-                                                        :let   [id (datasets/when-testing-engine engine
-                                                                     (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
-                                                        :when  id]
-                                                    id))]))
+  (db/delete! Database :id [:not-in (into (set skip)
+                                          (for [engine datasets/all-valid-engines
+                                                :let   [id (datasets/when-testing-engine engine
+                                                             (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
+                                                :when  id]
+                                            id))]))
 
 
 ;; ## GET /api/database
@@ -157,32 +179,24 @@
 (expect-with-temp-db-created-via-api [{db-id :id}]
   (set (filter identity (conj (for [engine datasets/all-valid-engines]
                                 (datasets/when-testing-engine engine
-                                  (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
-                                    {:created_at         $
-                                     :engine             (name $engine)
-                                     :id                 $
-                                     :updated_at         $
-                                     :name               "test-data"
-                                     :native_permissions "write"
-                                     :is_sample          false
-                                     :is_full_sync       true
-                                     :description        nil
-                                     :caveats            nil
-                                     :points_of_interest nil
-                                     :features           (map name (driver/features (driver/engine->driver engine)))})))
-                              (match-$ (Database db-id)
-                                {:created_at         $
-                                 :engine             "postgres"
-                                 :id                 $
-                                 :updated_at         $
-                                 :name               $
-                                 :native_permissions "write"
-                                 :is_sample          false
-                                 :is_full_sync       true
-                                 :description        nil
-                                 :caveats            nil
-                                 :points_of_interest nil
-                                 :features           (map name (driver/features (driver/engine->driver :postgres)))}))))
+                                  (merge default-db-details
+                                         (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
+                                           {:created_at         $
+                                            :engine             (name $engine)
+                                            :id                 $
+                                            :updated_at         $
+                                            :name               "test-data"
+                                            :native_permissions "write"
+                                            :features           (map name (driver/features (driver/engine->driver engine)))}))))
+                              (merge default-db-details
+                                     (match-$ (Database db-id)
+                                       {:created_at         $
+                                        :engine             "postgres"
+                                        :id                 $
+                                        :updated_at         $
+                                        :name               $
+                                        :native_permissions "write"
+                                        :features           (map name (driver/features (driver/engine->driver :postgres)))})))))
   (do
     (delete-randomly-created-databases! :skip [db-id])
     (set ((user->client :rasta) :get 200 "database"))))
@@ -191,121 +205,98 @@
 
 ;; GET /api/databases (include tables)
 (expect-with-temp-db-created-via-api [{db-id :id}]
-  (set (cons (match-$ (Database db-id)
-               {:created_at         $
-                :engine             "postgres"
-                :id                 $
-                :updated_at         $
-                :name               $
-                :native_permissions "write"
-                :is_sample          false
-                :is_full_sync       true
-                :description        nil
-                :caveats            nil
-                :points_of_interest nil
-                :tables             []
-                :features           (map name (driver/features (driver/engine->driver :postgres)))})
+  (set (cons (merge default-db-details
+                    (match-$ (Database db-id)
+                      {:created_at         $
+                       :engine             "postgres"
+                       :id                 $
+                       :updated_at         $
+                       :name               $
+                       :native_permissions "write"
+                       :tables             []
+                       :features           (map name (driver/features (driver/engine->driver :postgres)))}))
              (filter identity (for [engine datasets/all-valid-engines]
                                 (datasets/when-testing-engine engine
                                   (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
-                                    (match-$ database
-                                      {:created_at         $
-                                       :engine             (name $engine)
-                                       :id                 $
-                                       :updated_at         $
-                                       :name               "test-data"
-                                       :native_permissions "write"
-                                       :is_sample          false
-                                       :is_full_sync       true
-                                       :description        nil
-                                       :caveats            nil
-                                       :points_of_interest nil
-                                       :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
-                                                                            (table-details table)))
-                                       :features           (map name (driver/features (driver/engine->driver engine)))})))))))
+                                    (merge default-db-details
+                                           (match-$ database
+                                             {:created_at         $
+                                              :engine             (name $engine)
+                                              :id                 $
+                                              :updated_at         $
+                                              :name               "test-data"
+                                              :native_permissions "write"
+                                              :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
+                                                                                   (table-details table)))
+                                              :features           (map name (driver/features (driver/engine->driver engine)))}))))))))
   (do
     (delete-randomly-created-databases! :skip [db-id])
     (set ((user->client :rasta) :get 200 "database" :include_tables true))))
 
+(def ^:private default-field-details
+  {:description        nil
+   :caveats            nil
+   :points_of_interest nil
+   :active             true
+   :position           0
+   :target             nil
+   :preview_display    true
+   :parent_id          nil})
+
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
 (expect
-  (match-$ (db)
-    {:created_at      $
-     :engine          "h2"
-     :id              $
-     :updated_at      $
-     :name            "test-data"
-     :is_sample       false
-     :is_full_sync    true
-     :description     nil
-     :caveats         nil
-     :points_of_interest nil
-     :features        (mapv name (driver/features (driver/engine->driver :h2)))
-     :tables          [(match-$ (Table (id :categories))
-                         {:description             nil
-                          :entity_type             nil
-                          :caveats                 nil
-                          :points_of_interest      nil
-                          :visibility_type         nil
-                          :schema                  "PUBLIC"
-                          :name                    "CATEGORIES"
-                          :display_name            "Categories"
-                          :fields                  [(match-$ (Field (id :categories :id))
-                                                      {:description        nil
-                                                       :table_id           (id :categories)
-                                                       :caveats            nil
-                                                       :points_of_interest nil
-                                                       :special_type       "type/PK"
-                                                       :name               "ID"
-                                                       :display_name       "ID"
-                                                       :updated_at         $
-                                                       :active             true
-                                                       :id                 $
-                                                       :raw_column_id      $
-                                                       :position           0
-                                                       :target             nil
-                                                       :preview_display    true
-                                                       :created_at         $
-                                                       :last_analyzed      $
-                                                       :base_type          "type/BigInteger"
-                                                       :visibility_type    "normal"
-                                                       :fk_target_field_id $
-                                                       :parent_id          nil
-                                                       :values             []})
-                                                    (match-$ (Field (id :categories :name))
-                                                      {:description        nil
-                                                       :table_id           (id :categories)
-                                                       :caveats            nil
-                                                       :points_of_interest nil
-                                                       :special_type       "type/Name"
-                                                       :name               "NAME"
-                                                       :display_name       "Name"
-                                                       :updated_at         $
-                                                       :active             true
-                                                       :id                 $
-                                                       :raw_column_id      $
-                                                       :position           0
-                                                       :target             nil
-                                                       :preview_display    true
-                                                       :created_at         $
-                                                       :last_analyzed      $
-                                                       :base_type          "type/Text"
-                                                       :visibility_type    "normal"
-                                                       :fk_target_field_id $
-                                                       :parent_id          nil
-                                                       :values             []})]
-                          :segments                []
-                          :metrics                 []
-                          :rows                    75
-                          :updated_at              $
-                          :entity_name             nil
-                          :active                  true
-                          :id                      (id :categories)
-                          :raw_table_id            $
-                          :db_id                   (id)
-                          :show_in_getting_started false
-                          :created_at              $})]})
+  (merge default-db-details
+         (match-$ (db)
+           {:created_at $
+            :engine     "h2"
+            :id         $
+            :updated_at $
+            :name       "test-data"
+            :features   (mapv name (driver/features (driver/engine->driver :h2)))
+            :tables     [(merge default-table-details
+                                (match-$ (Table (id :categories))
+                                  {:schema       "PUBLIC"
+                                   :name         "CATEGORIES"
+                                   :display_name "Categories"
+                                   :fields       [(merge default-field-details
+                                                         (match-$ (hydrate/hydrate (Field (id :categories :id)) :values)
+                                                           {:table_id           (id :categories)
+                                                            :special_type       "type/PK"
+                                                            :name               "ID"
+                                                            :display_name       "ID"
+                                                            :updated_at         $
+                                                            :id                 $
+                                                            :raw_column_id      $
+                                                            :created_at         $
+                                                            :last_analyzed      $
+                                                            :base_type          "type/BigInteger"
+                                                            :visibility_type    "normal"
+                                                            :fk_target_field_id $
+                                                            :values             $}))
+                                                  (merge default-field-details
+                                                         (match-$ (hydrate/hydrate (Field (id :categories :name)) :values)
+                                                           {:table_id           (id :categories)
+                                                            :special_type       "type/Name"
+                                                            :name               "NAME"
+                                                            :display_name       "Name"
+                                                            :updated_at         $
+                                                            :id                 $
+                                                            :raw_column_id      $
+                                                            :created_at         $
+                                                            :last_analyzed      $
+                                                            :base_type          "type/Text"
+                                                            :visibility_type    "normal"
+                                                            :fk_target_field_id $
+                                                            :values             $}))]
+                                   :segments     []
+                                   :metrics      []
+                                   :rows         75
+                                   :updated_at   $
+                                   :id           (id :categories)
+                                   :raw_table_id $
+                                   :db_id        (id)
+                                   :created_at   $}))]}))
   (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (id)))]
     (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
@@ -327,3 +318,112 @@
   [["CATEGORIES" "Table"]
    ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
   ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "cat"))
+
+
+;;; GET /api/database?include_cards=true
+;; Check that we get back 'virtual' tables for Saved Questions
+(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
+  (merge {:name          card-name
+          :database_id   (data/id)
+          :dataset_query {:database (data/id)
+                          :type     :native
+                          :native   {:query (format "SELECT * FROM VENUES")}}}
+         kvs))
+
+(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
+  {:name          card-name
+   :database_id   (data/id)
+   :dataset_query {:database (data/id)
+                   :type     :query
+                   :query    inner-query-clauses}})
+
+(defn- saved-questions-virtual-db {:style/indent 0} [& card-tables]
+  {:name     "Saved Questions"
+   :id       database/virtual-id
+   :features ["basic-aggregations"]
+   :tables   card-tables})
+
+(tt/expect-with-temp [Card [card (card-with-native-query "Kanye West Quote Views Per Month")]]
+  (saved-questions-virtual-db
+    {:id           (format "card__%d" (u/get-id card))
+     :db_id        database/virtual-id
+     :display_name "Kanye West Quote Views Per Month"
+     :schema       "All questions"
+     :description  nil})
+  (do
+    ;; run the Card which will populate its result_metadata column
+    ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+
+    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
+    (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
+
+;; make sure that GET /api/database?include_cards=true groups pretends COLLECTIONS are SCHEMAS
+(tt/expect-with-temp [Collection [stamp-collection {:name "Stamps"}]
+                      Collection [coin-collection  {:name "Coins"}]
+                      Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/get-id stamp-collection))]
+                      Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
+  (saved-questions-virtual-db
+    {:id           (format "card__%d" (u/get-id coin-card))
+     :db_id        database/virtual-id
+     :display_name "Total Coin Count"
+     :schema       "Coins"
+     :description  nil}
+    {:id           (format "card__%d" (u/get-id stamp-card))
+     :db_id        database/virtual-id
+     :display_name "Total Stamp Count"
+     :schema       "Stamps"
+     :description  nil})
+  (do
+    ;; run the Cards which will populate their result_metadata columns
+    (doseq [card [stamp-card coin-card]]
+      ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card))))
+    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their Collection name as their Schema
+    (last ((user->client :crowberto) :get 200 "database" :include_cards true))))
+
+(defn- virtual-table-for-card [card]
+  {:id           (format "card__%d" (u/get-id card))
+   :db_id        database/virtual-id
+   :display_name (:name card)
+   :schema       "All questions"
+   :description  nil})
+
+(defn- fetch-virtual-database []
+  (some #(when (= (:name %) "Saved Questions")
+           %)
+        ((user->client :crowberto) :get 200 "database" :include_cards true)))
+
+;; make sure that GET /api/database?include_cards=true removes Cards that have ambiguous columns
+(tt/expect-with-temp [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
+                      Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card ok-card))
+  (fetch-virtual-database))
+
+
+;; make sure that GET /api/database?include_cards=true removes Cards that use cumulative-sum and cumulative-count aggregations
+(defn- ok-mbql-card []
+  (assoc (card-with-mbql-query "OK Card"
+           :source-table (data/id :checkins))
+    :result_metadata [{:name "num_toucans"}]))
+
+;; cum count using the new-style multiple aggregation syntax
+(tt/expect-with-temp [Card [ok-card (ok-mbql-card)]
+                      Card [_ (assoc (card-with-mbql-query "Cum Count Card"
+                                       :source-table (data/id :checkins)
+                                       :aggregation  [[:cum-count]]
+                                       :breakout     [[:datetime-field [:field-id (data/id :checkins :date) :month]]])
+                                :result_metadata [{:name "num_toucans"}])]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card ok-card))
+  (fetch-virtual-database))
+
+;; cum sum using old-style single aggregation syntax
+(tt/expect-with-temp [Card [ok-card (ok-mbql-card)]
+                      Card [_ (assoc (card-with-mbql-query "Cum Sum Card"
+                                       :source-table (data/id :checkins)
+                                       :aggregation  [:cum-sum]
+                                       :breakout     [[:datetime-field [:field-id (data/id :checkins :date) :month]]])
+                                :result_metadata [{:name "num_toucans"}])]]
+  (saved-questions-virtual-db
+    (virtual-table-for-card ok-card))
+  (fetch-virtual-database))

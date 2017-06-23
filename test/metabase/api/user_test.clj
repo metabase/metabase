@@ -1,15 +1,17 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [session :refer [Session]]
-                             [user :refer [User]])
-            [metabase.test.data :refer :all]
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]]
+            [metabase.models.user :refer [User]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu :refer [match-$ random-name]]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name with-temp], :as tu]
-            [metabase.util :as u]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -30,7 +32,8 @@
        :last_login   $
        :first_name   "Crowberto"
        :email        "crowberto@metabase.com"
-       :google_auth  false})
+       :google_auth  false
+       :ldap_auth    false})
     (match-$ (fetch-user :lucky)
       {:common_name  "Lucky Pigeon"
        :last_name    "Pigeon"
@@ -39,7 +42,8 @@
        :last_login   $
        :first_name   "Lucky"
        :email        "lucky@metabase.com"
-       :google_auth  false})
+       :google_auth  false
+       :ldap_auth    false})
     (match-$ (fetch-user :rasta)
       {:common_name  "Rasta Toucan"
        :last_name    "Toucan"
@@ -48,11 +52,12 @@
        :last_login   $
        :first_name   "Rasta"
        :email        "rasta@metabase.com"
-       :google_auth  false})}
+       :google_auth  false
+       :ldap_auth    false})}
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
-      (db/cascade-delete! User :id [:not-in user-ids]))
+      (db/delete! User :id [:not-in user-ids]))
     ;; Now do the request
     (set ((user->client :rasta) :get 200 "user")))) ; as a set since we don't know what order the results will come back in
 
@@ -74,13 +79,13 @@
         (u/prog1 (db/select-one [User :email :first_name :last_name :is_superuser :is_qbnewb]
                    :email email)
           ;; clean up after ourselves
-          (db/cascade-delete! User :email email)))))
+          (db/delete! User :email email)))))
 
 
 ;; Test that reactivating a disabled account works
 (expect
   ;; create a random inactive user
-  (tu/with-temp User [user {:is_active false}]
+  (tt/with-temp User [user {:is_active false}]
     ;; now try creating the same user again, should re-activiate the original
     ((user->client :crowberto) :post 200 "user" {:first_name (:first_name user)
                                                  :last_name  "whatever"
@@ -130,6 +135,7 @@
      :is_superuser false
      :is_qbnewb    true
      :google_auth  false
+     :ldap_auth    false
      :id           $})
   ((user->client :rasta) :get 200 "user/current"))
 
@@ -176,7 +182,7 @@
 (expect
   [{:first_name "Cam", :last_name "Era",  :is_superuser true, :email "cam.era@metabase.com"}
    {:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}]
-  (tu/with-temp User [{user-id :id} {:first_name "Cam", :last_name "Era", :email "cam.era@metabase.com", :is_superuser true}]
+  (tt/with-temp User [{user-id :id} {:first_name "Cam", :last_name "Era", :email "cam.era@metabase.com", :is_superuser true}]
     (let [user (fn [] (into {} (dissoc (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
                                        :common_name)))]
       [(user)
@@ -206,8 +212,8 @@
 ;; ## PUT /api/user/:id/password
 ;; Test that a User can change their password (superuser and non-superuser)
 (defn- user-can-reset-password? [superuser?]
-  (tu/with-temp User [user {:password "def", :is_superuser (boolean superuser?)}]
-    (let [creds           {:email (:email user), :password "def"}
+  (tt/with-temp User [user {:password "def", :is_superuser (boolean superuser?)}]
+    (let [creds           {:username (:email user), :password "def"}
           hashed-password (db/select-one-field :password User, :email (:email user))]
       ;; use API to reset the users password
       (http/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
@@ -241,11 +247,11 @@
 (expect
   [{:success true}
    false]
-  (with-temp User [{:keys [id]} {:first_name (random-name)
+  (tt/with-temp User [{:keys [id]} {:first_name (random-name)
                                  :last_name  (random-name)
                                  :email      "def@metabase.com"
                                  :password   "def123"}]
-    (let [creds {:email    "def@metabase.com"
+    (let [creds {:username "def@metabase.com"
                  :password "def123"}]
       [(metabase.http-client/client creds :put 200 (format "user/%d/qbnewb" id))
        (db/select-one-field :is_qbnewb User, :id id)])))
@@ -260,7 +266,7 @@
 ;; Disable a user account
 (expect
   {:success true}
-  (tu/with-temp User [user]
+  (tt/with-temp User [user]
     ((user->client :crowberto) :delete 200 (format "user/%d" (:id user)) {})))
 
 ;; Check that a non-superuser CANNOT update someone else's password
@@ -278,7 +284,7 @@
 (expect
   {:is_active true, :google_auth false}
   (tu/with-temporary-setting-values [google-auth-client-id "ABCDEFG"]
-    (tu/with-temp User [user {:google_auth true}]
+    (tt/with-temp User [user {:google_auth true}]
       (db/update! User (u/get-id user)
         :is_active false)
       (tu/with-temporary-setting-values [google-auth-client-id nil]

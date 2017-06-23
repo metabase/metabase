@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 import { connect } from "react-redux";
 
 import Setup from "../components/Setup.jsx";

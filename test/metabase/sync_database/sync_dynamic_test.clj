@@ -1,21 +1,25 @@
 (ns metabase.sync-database.sync-dynamic-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [hydrate :as hydrate]
-                             [raw-table :refer [RawTable]]
-                             [table :refer [Table]])
-            (metabase.sync-database [introspect :as introspect]
-                                    [sync-dynamic :refer :all])
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [raw-table :refer [RawTable]]
+             [table :refer [Table]]]
+            [metabase.sync-database
+             [introspect :as introspect]
+             [sync-dynamic :refer :all]]
             [metabase.test.mock.toucanery :as toucanery]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
+            [toucan.util.test :as tt]))
 
 (tu/resolve-private-vars metabase.sync-database.sync-dynamic
   save-table-fields!)
 
 (defn- get-tables [database-id]
-  (->> (hydrate/hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
+  (->> (hydrate (db/select Table, :db_id database-id, {:order-by [:id]}) :fields)
        (mapv tu/boolean-ids-and-timestamps)))
 
 (def ^:private ^:const field-defaults
@@ -103,7 +107,7 @@
                            :name         "new"
                            :display_name "New"
                            :parent_id    true})]]
-  (tu/with-temp* [Database  [{database-id :id}]
+  (tt/with-temp* [Database  [{database-id :id}]
                   RawTable  [{raw-table-id :id}       {:database_id database-id}]
                   Table     [{table-id :id, :as table} {:db_id database-id, :raw_table_id raw-table-id}]]
     (let [get-fields   (fn []
@@ -138,7 +142,7 @@
    [(assoc (last toucanery/toucanery-tables-and-fields)
       :active false
       :fields [])]]
-  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :toucanery}]]
+  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :toucanery}]]
     (let [driver (toucanery/->ToucaneryDriver)]
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
@@ -175,13 +179,13 @@
          (assoc (last toucanery/toucanery-tables-and-fields)
            :active false
            :fields []))]
-  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :toucanery}]]
+  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :toucanery}]]
     (let [driver (toucanery/->ToucaneryDriver)]
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
 
       [ ;; first check that the raw tables stack up as expected, especially that fields were skipped because this is a :dynamic-schema db
-       (->> (hydrate/hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
+       (->> (hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
             (mapv tu/boolean-ids-and-timestamps))
        ;; now lets run a sync and check what we got
        (do

@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
 import Code from "metabase/components/Code.jsx";
 
@@ -48,16 +48,16 @@ const EXAMPLES = {
 }
 
 
-const TagExample = ({ datasetQuery, setQuery }) =>
+const TagExample = ({ datasetQuery, setDatasetQuery }) =>
     <div>
         <h5>Example:</h5>
         <p>
             <Code>{datasetQuery.native.query}</Code>
-            { setQuery && (
+            { setDatasetQuery && (
                 <div
                     className="Button Button--small"
                     data-metabase-event="QueryBuilder;Template Tag Example Query Used"
-                    onClick={() => setQuery(datasetQuery, true) }
+                    onClick={() => setDatasetQuery(datasetQuery, true) }
                 >
                     Try it
                 </div>
@@ -65,11 +65,11 @@ const TagExample = ({ datasetQuery, setQuery }) =>
         </p>
     </div>
 
-const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
+const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
     let setQueryWithSampleDatasetId = null;
     if (sampleDatasetId != null) {
         setQueryWithSampleDatasetId = (dataset_query, run) => {
-            setQuery({
+            setDatasetQuery({
                 ...dataset_query,
                 database: sampleDatasetId
             }, run);
@@ -91,7 +91,7 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
                 question. When this filter widget is filled in, that value replaces the variable in the SQL
                 template.
             </p>
-            <TagExample datasetQuery={EXAMPLES.variable} setQuery={setQueryWithSampleDatasetId} />
+            <TagExample datasetQuery={EXAMPLES.variable} setDatasetQuery={setQueryWithSampleDatasetId} />
 
             <h4>Dimensions</h4>
             <p>
@@ -109,13 +109,13 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
                 template. If "variable" is set, then the entire clause is placed into the template.
                 If not, then the entire clause is ignored.
             </p>
-            <TagExample datasetQuery={EXAMPLES.optional} setQuery={setQueryWithSampleDatasetId} />
+            <TagExample datasetQuery={EXAMPLES.optional} setDatasetQuery={setQueryWithSampleDatasetId} />
 
             <p>
                 To use multiple optional clauses you can include at least one non-optional WHERE clause
                 followed by optional clauses starting with "AND".
             </p>
-            <TagExample datasetQuery={EXAMPLES.multipleOptional} setQuery={setQueryWithSampleDatasetId} />
+            <TagExample datasetQuery={EXAMPLES.multipleOptional} setDatasetQuery={setQueryWithSampleDatasetId} />
 
             <p>
                 <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank" data-metabase-event="QueryBuilder;Template Tag Documentation Click">Read the full documentation</a>

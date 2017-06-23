@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon.jsx";
 import TagEditorParam from "./TagEditorParam.jsx";
 import TagEditorHelp from "./TagEditorHelp.jsx";
@@ -22,7 +23,7 @@ export default class TagEditorSidebar extends Component {
         onClose: PropTypes.func.isRequired,
         updateTemplateTag: PropTypes.func.isRequired,
         databaseFields: PropTypes.array,
-        setQuery: PropTypes.func.isRequired,
+        setDatasetQuery: PropTypes.func.isRequired,
         sampleDatasetId: PropTypes.number,
     };
 
@@ -63,7 +64,7 @@ export default class TagEditorSidebar extends Component {
                     { section === "settings" ?
                         <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag} databaseFields={this.props.databaseFields}/>
                     :
-                        <TagEditorHelp sampleDatasetId={this.props.sampleDatasetId} setQuery={this.props.setQuery}/>
+                        <TagEditorHelp sampleDatasetId={this.props.sampleDatasetId} setDatasetQuery={this.props.setDatasetQuery}/>
                     }
                 </div>
             </div>

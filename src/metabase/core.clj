@@ -1,39 +1,43 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.string :as s]
+  (:require [clojure
+             [pprint :as pprint]
+             [string :as s]]
             [clojure.tools.logging :as log]
             environ.core
-            [ring.adapter.jetty :as ring-jetty]
-            (ring.middleware [cookies :refer [wrap-cookies]]
-                             [gzip :refer [wrap-gzip]]
-                             [json :refer [wrap-json-response
-                                           wrap-json-body]]
-                             [keyword-params :refer [wrap-keyword-params]]
-                             [params :refer [wrap-params]]
-                             [session :refer [wrap-session]])
             [medley.core :as m]
-            (metabase [config :as config]
-                      [db :as db]
-                      [driver :as driver]
-                      [events :as events]
-                      [logger :as logger]
-                      [metabot :as metabot]
-                      [middleware :as mb-middleware]
-                      [plugins :as plugins]
-                      [routes :as routes]
-                      [sample-data :as sample-data]
-                      [setup :as setup]
-                      [task :as task]
-                      [util :as u])
-            [metabase.models.user :refer [User]])
+            [metabase
+             [config :as config]
+             [db :as mdb]
+             [driver :as driver]
+             [events :as events]
+             [metabot :as metabot]
+             [middleware :as mb-middleware]
+             [plugins :as plugins]
+             [routes :as routes]
+             [sample-data :as sample-data]
+             [setup :as setup]
+             [task :as task]
+             [util :as u]]
+            [metabase.core.initialization-status :as init-status]
+            [metabase.models.user :refer [User]]
+            [ring.adapter.jetty :as ring-jetty]
+            [ring.middleware
+             [cookies :refer [wrap-cookies]]
+             [gzip :refer [wrap-gzip]]
+             [json :refer [wrap-json-body wrap-json-response]]
+             [keyword-params :refer [wrap-keyword-params]]
+             [params :refer [wrap-params]]
+             [session :refer [wrap-session]]]
+            [toucan.db :as db])
   (:import org.eclipse.jetty.server.Server))
 
 ;;; CONFIG
 
 (def ^:private app
   "The primary entry point to the Ring HTTP server."
-  (-> routes/routes
+  (-> #'routes/routes                    ; the #' is to allow tests to redefine endpoints
       mb-middleware/log-api-call
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
@@ -45,6 +49,7 @@
       mb-middleware/wrap-current-user-id ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
       mb-middleware/wrap-api-key         ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
       mb-middleware/wrap-session-id      ; looks for a Metabase Session ID and assoc as :metabase-session-id
+      mb-middleware/maybe-set-site-url   ; set the value of `site-url` if it hasn't been set yet
       wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
       wrap-session                       ; reads in current HTTP session and sets :session/key
       wrap-gzip))                        ; GZIP response if client can handle it
@@ -52,23 +57,7 @@
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
 
-(defonce ^:private metabase-initialization-progress
-  (atom 0))
 
-(defn initialized?
-  "Is Metabase initialized and ready to be served?"
-  []
-  (= @metabase-initialization-progress 1.0))
-
-(defn initialization-progress
-  "Get the current progress of Metabase initialization."
-  []
-  @metabase-initialization-progress)
-
-(defn initialization-complete!
-  "Complete the Metabase initialization by setting its progress to 100%."
-  []
-  (reset! metabase-initialization-progress 1.0))
 
 (defn- -init-create-setup-token
   "Create and set a new setup token and log it."
@@ -95,46 +84,47 @@
   []
   (log/info (format "Starting Metabase version %s ..." config/mb-version-string))
   (log/info (format "System timezone is '%s' ..." (System/getProperty "user.timezone")))
-  (reset! metabase-initialization-progress 0.1)
+  (init-status/set-progress! 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
-  (reset! metabase-initialization-progress 0.2)
+  (init-status/set-progress! 0.2)
 
   ;; load any plugins as needed
   (plugins/load-plugins!)
-  (reset! metabase-initialization-progress 0.3)
+  (init-status/set-progress! 0.3)
 
   ;; Load up all of our Database drivers, which are used for app db work
   (driver/find-and-load-drivers!)
-  (reset! metabase-initialization-progress 0.4)
+  (init-status/set-progress! 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
-  (db/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
-  (reset! metabase-initialization-progress 0.5)
+  (log/info "Setting up and migrating Metabase DB. Please sit tight, this may take a minute...")
+  (mdb/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
+  (init-status/set-progress! 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
-  (let [new-install (not (db/exists? User))]
+  (let [new-install? (not (db/exists? User))]
 
     ;; Bootstrap the event system
     (events/initialize-events!)
-    (reset! metabase-initialization-progress 0.7)
+    (init-status/set-progress! 0.7)
 
     ;; Now start the task runner
     (task/start-scheduler!)
-    (reset! metabase-initialization-progress 0.8)
+    (init-status/set-progress! 0.8)
 
-    (when new-install
+    (when new-install?
       (log/info "Looks like this is a new installation ... preparing setup wizard")
       ;; create setup token
       (-init-create-setup-token)
       ;; publish install event
       (events/publish-event! :install {}))
-    (reset! metabase-initialization-progress 0.9)
+    (init-status/set-progress! 0.9)
 
     ;; deal with our sample dataset as needed
-    (if new-install
+    (if new-install?
       ;; add the sample dataset DB for fresh installs
       (sample-data/add-sample-dataset!)
       ;; otherwise update if appropriate
@@ -143,7 +133,7 @@
     ;; start the metabot thread
     (metabot/start-metabot!))
 
-  (initialization-complete!)
+  (init-status/set-complete!)
   (log/info "Metabase Initialization COMPLETE"))
 
 
@@ -171,7 +161,8 @@
                              (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
                              (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
                                                                       (merge jetty-ssl-config)))]
-      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint (m/filter-keys (fn [k] (not (re-matches #".*password.*" (str k)))) jetty-config))))
+      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (pprint/pprint (m/filter-keys #(not (re-matches #".*password.*" (str %)))
+                                                                                                                jetty-config))))
       ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
       (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
            (reset! jetty-instance)))))
@@ -207,7 +198,7 @@
 (defn ^:command migrate
   "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
-  (db/migrate! (keyword direction)))
+  (mdb/migrate! (keyword direction)))
 
 (defn ^:command load-from-h2
   "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
@@ -215,7 +206,7 @@
    (load-from-h2 nil))
   ([h2-connection-string]
    (require 'metabase.cmd.load-from-h2)
-   (binding [db/*disable-data-migrations* true]
+   (binding [mdb/*disable-data-migrations* true]
      ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
 
 (defn ^:command profile

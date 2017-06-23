@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -7,6 +8,7 @@ import Popover from "metabase/components/Popover.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { KEYCODE_ESCAPE, KEYCODE_COMMA, KEYCODE_TAB, KEYCODE_UP, KEYCODE_DOWN, KEYCODE_BACKSPACE } from "metabase/lib/keyboard";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -79,11 +81,11 @@ export default class RecipientPicker extends Component {
 
     onInputKeyDown(e) {
         // enter, tab, comma
-        if (e.keyCode === 13 || e.keyCode === 9 || e.keyCode === 188) {
+        if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_TAB || e.keyCode === KEYCODE_COMMA) {
             this.addCurrentRecipient();
         }
         // up arrow
-        else if (e.keyCode === 38) {
+        else if (e.keyCode === KEYCODE_UP) {
             e.preventDefault();
             let index = _.findIndex(this.state.filteredUsers, (u) => u.id === this.state.selectedUser);
             if (index > 0) {
@@ -91,7 +93,7 @@ export default class RecipientPicker extends Component {
             }
         }
         // down arrow
-        else if (e.keyCode === 40) {
+        else if (e.keyCode === KEYCODE_DOWN) {
             e.preventDefault();
             let index = _.findIndex(this.state.filteredUsers, (u) => u.id === this.state.selectedUser);
             if (index >= 0 && index < this.state.filteredUsers.length - 1) {
@@ -99,7 +101,7 @@ export default class RecipientPicker extends Component {
             }
         }
         // backspace
-        else if (e.keyCode === 8) {
+        else if (e.keyCode === KEYCODE_BACKSPACE) {
             let { recipients } = this.props;
             if (!this.state.inputValue && recipients.length > 0) {
                 this.removeRecipient(recipients[recipients.length - 1])
@@ -154,7 +156,7 @@ export default class RecipientPicker extends Component {
         let { recipients } = this.props;
 
         return (
-            <ul className={cx("px1 pb1 bordered rounded flex flex-wrap", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
+            <ul className={cx("px1 pb1 bordered rounded flex flex-wrap bg-white", { "input--focus": this.state.focused })} onMouseDownCapture={this.onMouseDownCapture}>
                 {recipients.map((recipient, index) =>
                     <li key={index} className="mr1 py1 pl1 mt1 rounded bg-grey-1">
                         <span className="h4 text-bold">{recipient.common_name || recipient.email}</span>
@@ -163,12 +165,11 @@ export default class RecipientPicker extends Component {
                         </a>
                     </li>
                 )}
-                <li className="flex-full mr1 py1 pl1 mt1" style={{ "minWidth": " 100px" }}>
+                <li className="flex-full mr1 py1 pl1 mt1 bg-white" style={{ "minWidth": " 100px" }}>
                     <input
                         ref="input"
                         type="text"
                         className="full h4 text-bold text-default no-focus borderless"
-                        style={{"backgroundColor": "transparent"}}
                         placeholder={recipients.length === 0 ? "Enter email addresses you'd like this data to go to" : null}
                         value={this.state.inputValue}
                         autoFocus={this.state.focused}

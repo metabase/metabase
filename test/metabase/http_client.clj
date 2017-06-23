@@ -1,12 +1,12 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
             [clj-http.client :as client]
-            [metabase.config :as config]
-            [metabase.util :as u]))
-
+            [clojure.string :as s]
+            [clojure.tools.logging :as log]
+            [metabase
+             [config :as config]
+             [util :as u]]))
 
 ;;; build-url
 
@@ -49,23 +49,28 @@
 (defn- parse-response
   "Deserialize the JSON response or return as-is if that fails."
   [body]
-  (try
-    (auto-deserialize-dates (json/parse-string body keyword))
-    (catch Throwable _
-      (when-not (s/blank? body)
-        body))))
+  (if-not (string? body)
+    body
+    (try
+      (auto-deserialize-dates (json/parse-string body keyword))
+      (catch Throwable _
+        (when-not (s/blank? body)
+          body)))))
 
 
 ;;; authentication
 
 (declare client)
 
-(defn authenticate [{:keys [email password] :as credentials}]
-  {:pre [(string? email) (string? password)]}
+(defn authenticate
+  "Authenticate a test user with USERNAME and PASSWORD, returning their Metabase Session token;
+   or throw an Exception if that fails."
+  [{:keys [username password], :as credentials}]
+  {:pre [(string? username) (string? password)]}
   (try
     (:id (client :post 200 "session" credentials))
     (catch Throwable e
-      (log/error "Failed to authenticate with email:" email "and password:" password ":" (.getMessage e)))))
+      (log/error "Failed to authenticate with username:" username "and password:" password ":" (.getMessage e)))))
 
 
 ;;; client
@@ -100,7 +105,7 @@
     :put    client/put
     :delete client/delete))
 
-(defn- -client [credentials method expected-status url http-body url-param-kwargs]
+(defn- -client [credentials method expected-status url http-body url-param-kwargs request-options]
   ;; Since the params for this function can get a little complicated make sure we validate them
   {:pre [(or (u/maybe? map? credentials)
              (string? credentials))
@@ -109,7 +114,7 @@
          (string? url)
          (u/maybe? map? http-body)
          (u/maybe? map? url-param-kwargs)]}
-  (let [request-map (build-request-map credentials http-body)
+  (let [request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url url-param-kwargs)
         method-name (s/upper-case (name method))
@@ -136,16 +141,16 @@
 
   Args:
 
-   *  CREDENTIALS           Optional map of `:email` and `:password` or `X-METABASE-SESSION` token of a User who we should perform the request as
+   *  CREDENTIALS           Optional map of `:username` and `:password` or `X-METABASE-SESSION` token of a User who we should perform the request as
    *  METHOD                `:get`, `:post`, `:delete`, or `:put`
    *  EXPECTED-STATUS-CODE  When passed, throw an exception if the response has a different status code.
    *  URL                   Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`
    *  HTTP-BODY-MAP         Optional map to send a the JSON-serialized HTTP body of the request
    *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params"
-  {:arglists '([credentials? method expected-status-code? url http-body-map? & url-kwargs])}
+  {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & url-kwargs])}
   [& args]
-  (let [[credentials [method & args]]     (u/optional #(or (map? %)
-                                                           (string? %)) args)
+  (let [[credentials [method & args]]     (u/optional #(or (map? %) (string? %)) args)
         [expected-status [url & args]]    (u/optional integer? args)
+        [{:keys [request-options]} args]  (u/optional #(and (map? %) (:request-options %)) args {:request-options {}})
         [body [& {:as url-param-kwargs}]] (u/optional map? args)]
-    (-client credentials method expected-status url body url-param-kwargs)))
+    (-client credentials method expected-status url body url-param-kwargs request-options)))

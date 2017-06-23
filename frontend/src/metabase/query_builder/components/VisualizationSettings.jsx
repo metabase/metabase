@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
+import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -60,6 +61,7 @@ export default class VisualizationSettings extends React.Component {
                     triggerId="VisualizationTrigger"
                     triggerElement={triggerElement}
                     triggerClasses="flex align-center"
+                    sizeToFit
                 >
                     <ul className="pt1 pb1">
                         { Array.from(visualizations).map(([vizType, viz], index) =>

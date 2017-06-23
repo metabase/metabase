@@ -2,17 +2,17 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            (metabase [config :as config]
-                      [db :as db])
-            (metabase.models [database :refer [Database]]
-                             field
-                             [query-execution :refer [QueryExecution]]
-                             [setting :refer [defsetting]])
-            [metabase.util :as u])
+            [metabase.models
+             [database :refer [Database]]
+             field
+             [setting :refer [defsetting]]
+             table]
+            [metabase.util :as u]
+            [toucan.db :as db])
   (:import clojure.lang.Keyword
            metabase.models.database.DatabaseInstance
-           metabase.models.field.FieldInstance))
-
+           metabase.models.field.FieldInstance
+           metabase.models.table.TableInstance))
 
 ;;; ## INTERFACE + CONSTANTS
 
@@ -32,7 +32,9 @@
 
 (def ^:const connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct."
+  {:cannot-connect-check-host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
+   :ssh-tunnel-auth-fail               "We couldn't connect to the ssh tunnel host. Check the username, password"
+   :ssh-tunnel-connection-fail         "We couldn't connect to the ssh tunnel host. Check the hostname and port"
    :database-name-incorrect            "Looks like the database name is incorrect."
    :invalid-hostname                   "It looks like your host is invalid. Please double-check it and try again."
    :password-incorrect                 "Looks like your password is incorrect."
@@ -136,7 +138,8 @@
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
   *  `:native-parameters` - Does the driver support parameter substitution on native queries?
-  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"")
+  *  `:expression-aggregations` - Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or \"avg(x + y)\"
+  *  `:nested-queries` - Does the driver support using a query as the `:source-query` of another MBQL query? Examples are CTEs or subselects in SQL queries.")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -321,6 +324,17 @@
       (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 
+(defn values->base-type
+  "Given a sequence of VALUES, return the most common base type."
+  [values]
+  (->> values
+       (take 100)                                   ; take up to 100 values
+       (filter (complement nil?))                   ; filter out `nil` values
+       (group-by (comp class->base-type class))     ; now group by their base-type
+       (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
+       ffirst))                                     ; take the base-type from the first pair
+
+
 ;; ## Driver Lookup
 
 (defn engine->driver
@@ -348,7 +362,8 @@
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
       {:pre [db-id]}
-      (engine->driver (db-id->engine db-id)))))
+      (when-let [engine (db-id->engine db-id)]
+        (engine->driver engine)))))
 
 
 ;; ## Implementation-Agnostic Driver API

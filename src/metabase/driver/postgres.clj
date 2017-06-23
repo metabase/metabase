@@ -1,19 +1,17 @@
 (ns metabase.driver.postgres
-  ;; TODO - rework this to be like newer-style namespaces that use `u/drop-first-arg`
-  (:require [clojure.java.jdbc :as jdbc]
-            (clojure [set :refer [rename-keys], :as set]
-                     [string :as s])
-            [clojure.tools.logging :as log]
+  (:require [clojure
+             [set :as set :refer [rename-keys]]
+             [string :as s]]
             [honeysql.core :as hsql]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
-  ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
-  (:import java.util.UUID
-           org.postgresql.ssl.NonValidatingFactory))
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [ssh :as ssh]])
+  (:import java.util.UUID))
 
 (def ^:private ^:const column->base-type
   "Map of Postgres column types -> Field base types.
@@ -116,8 +114,8 @@
     :seconds      (hsql/call :to_timestamp expr)
     :milliseconds (recur (hx// expr 1000) :seconds)))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
-(defn- extract    [unit expr] (hsql/call :extract    unit              expr))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -136,9 +134,9 @@
     :day-of-month    (extract-integer :day expr)
     :day-of-year     (extract-integer :doy expr)
     ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-    :week            (hx/- (date-trunc :week (hx/+ expr one-day))
+    :week            (hx/- (date-trunc :week (hx/+ (hx/->timestamp expr) one-day))
                            one-day)
-    :week-of-year    (extract-integer :week (hx/+ expr one-day))
+    :week-of-year    (extract-integer :week (hx/+ (hx/->timestamp expr) one-day))
     :month           (date-trunc :month expr)
     :month-of-year   (extract-integer :month expr)
     :quarter         (date-trunc :quarter expr)
@@ -180,23 +178,6 @@
       (isa? base-type :type/IPAddress) (hx/cast :inet value)
       :else                            value)))
 
-
-(defn- materialized-views
-  "Fetch the Materialized Views for a Postgres DATABASE.
-   These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
-  [database]
-  (try (set (jdbc/query (sql/db->jdbc-connection-spec database)
-                        ["SELECT schemaname AS \"schema\", matviewname AS \"name\" FROM pg_matviews;"]))
-       (catch Throwable e
-         (log/error "Failed to fetch materialized views for this database:" (.getMessage e)))))
-
-(defn- describe-database
-  "Custom implementation of `describe-database` for Postgres.
-   Postgres Materialized Views are not returned by normal JDBC methods: see [issue #2355](https://github.com/metabase/metabase/issues/2355); we have to manually fetch them.
-   This implementation combines the results from the generic SQL default implementation with materialized views fetched from `materialized-views`."
-  [driver database]
-  (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
-
 (defn- string-length-fn [field-key]
   (hsql/call :char_length (hx/cast :VARCHAR field-key)))
 
@@ -213,7 +194,7 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
+          :set-timezone-sql          (constantly "SET SESSION TIMEZONE TO %s;")
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
@@ -221,33 +202,33 @@
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval                     (u/drop-first-arg date-interval)
-          :describe-database                 describe-database
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      5432}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "birds_of_the_word"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"
-                                                           :required     true}
-                                                          {:name         "password"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "*******"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}
-                                                          {:name         "additional-options"
-                                                           :display-name "Additional JDBC connection string options"
-                                                           :placeholder  "prepareThreshold=0"}])
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      5432}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "birds_of_the_word"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"
+                                                             :required     true}
+                                                            {:name         "password"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "*******"}
+                                                            {:name         "ssl"
+                                                             :display-name "Use a secure connection (SSL)?"
+                                                             :type         :boolean
+                                                             :default      false}
+                                                            {:name         "additional-options"
+                                                             :display-name "Additional JDBC connection string options"
+                                                             :placeholder  "prepareThreshold=0"}]))
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver PostgresISQLDriverMixin)

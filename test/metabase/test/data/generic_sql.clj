@@ -2,28 +2,25 @@
   "Common functionality for various Generic SQL dataset drivers."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      [helpers :as h])
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]
+             [helpers :as h]]
             [medley.core :as m]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            (metabase.test.data [datasets :as datasets]
-                                [interface :as i])
+            [metabase.test.data.interface :as i]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
-           (metabase.test.data.interface DatabaseDefinition
-                                         FieldDefinition
-                                         TableDefinition)))
+           java.sql.SQLException
+           [metabase.test.data.interface DatabaseDefinition FieldDefinition TableDefinition]))
 
 ;;; ## ------------------------------------------------------------ IGenericDatasetLoader + default impls ------------------------------------------------------------
 
-(defprotocol IGenericSQLDatasetLoader
+(defprotocol IGenericSQLTestExtensions
   "Methods for loading `DatabaseDefinition` in a SQL database.
-   A type that implements `IGenericSQLDatasetLoader` can be made to implement most of `IDatasetLoader`
-   by using the `IDatasetLoaderMixin`.
+   A type that implements `IGenericSQLTestExtensions` can be made to implement most of `IDriverTestExtensions`
+   by using the `IDriverTestExtensionsMixin`.
 
    Methods marked *Optional* below have a default implementation specified in `DefaultsMixin`."
   (field-base-type->sql-type [this, ^Keyword base-type]
@@ -218,7 +215,7 @@
                                           :quoting             (sql/quote-style driver)
                                           :allow-dashed-names? true)))]
     (try (jdbc/execute! spec sql+args)
-         (catch java.sql.SQLException e
+         (catch SQLException e
            (println (u/format-color 'red "INSERT FAILED: \n%s\n" sql+args))
            (jdbc/print-sql-exception-chain e)))))
 
@@ -249,20 +246,20 @@
       (let [sql (s/replace sql #";+" ";")]
         (try
           (jdbc/execute! (database->spec driver context dbdef) [sql] {:transaction? false, :multi? true})
-          (catch java.sql.SQLException e
+          (catch SQLException e
             (println "Error executing SQL:" sql)
-            (println (format "Caught SQLException:\n%s"
-                             (with-out-str (jdbc/print-sql-exception-chain e))))
+            (printf "Caught SQLException:\n%s\n"
+                    (with-out-str (jdbc/print-sql-exception-chain e)))
             (throw e))
           (catch Throwable e
             (println "Error executing SQL:" sql)
-            (println (format "Caught Exception: %s %s\n%s" (class e) (.getMessage e)
-                             (with-out-str (.printStackTrace e))))
+            (printf "Caught Exception: %s %s\n%s\n" (class e) (.getMessage e)
+                    (with-out-str (.printStackTrace e)))
             (throw e)))))))
 
 
 (def DefaultsMixin
-  "Default implementations for methods marked *Optional* in `IGenericSQLDatasetLoader`."
+  "Default implementations for methods marked *Optional* in `IGenericSQLTestExtensions`."
   {:add-fk-sql                default-add-fk-sql
    :create-db-sql             default-create-db-sql
    :create-table-sql          default-create-table-sql
@@ -278,7 +275,7 @@
    :quote-name                default-quote-name})
 
 
-;; ## ------------------------------------------------------------ IDatasetLoader impl ------------------------------------------------------------
+;; ## ------------------------------------------------------------ IDriverTestExtensions impl ------------------------------------------------------------
 
 (defn sequentially-execute-sql!
   "Alternative implementation of `execute-sql!` that executes statements one at a time for drivers
@@ -318,9 +315,9 @@
   (doseq [tabledef table-definitions]
     (load-data! driver dbdef tabledef)))
 
-(def IDatasetLoaderMixin
-  "Mixin for `IGenericSQLDatasetLoader` types to implement `create-db!` from `IDatasetLoader`."
-  (merge i/IDatasetLoaderDefaultsMixin
+(def IDriverTestExtensionsMixin
+  "Mixin for `IGenericSQLTestExtensions` types to implement `create-db!` from `IDriverTestExtensions`."
+  (merge i/IDriverTestExtensionsDefaultsMixin
          {:create-db! create-db!}))
 
 
@@ -331,17 +328,21 @@
    Useful for doing engine-specific setup or teardown."
   {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
-  (datasets/when-testing-engine engine
-    (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
-    (jdbc/execute! (get-connection-spec) sql-and-args)
-    (println (u/format-color 'blue "[OK]"))))
+  ((resolve 'metabase.test.data.datasets/do-when-testing-engine)
+   engine
+   (fn []
+     (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
+     (jdbc/execute! (get-connection-spec) sql-and-args)
+     (println (u/format-color 'blue "[OK]")))))
 
 (defn query-when-testing!
   "Execute a prepared SQL-AND-ARGS **query** against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
    Useful for doing engine-specific setup or teardown where `execute-when-testing!` won't work because the query returns results."
   {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
-  (datasets/when-testing-engine engine
-    (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
-    (u/prog1 (jdbc/query (get-connection-spec) sql-and-args)
-      (println (u/format-color 'blue "[OK] -> %s" (vec <>))))))
+  ((resolve 'metabase.test.data.datasets/do-when-testing-engine)
+   engine
+   (fn []
+     (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
+     (u/prog1 (jdbc/query (get-connection-spec) sql-and-args)
+       (println (u/format-color 'blue "[OK] -> %s" (vec <>)))))))

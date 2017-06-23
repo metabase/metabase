@@ -2,18 +2,27 @@
   (:require [clojure.java.jdbc :as jdbc]
             [expectations :refer :all]
             [honeysql.core :as hsql]
-            (metabase [db :as db]
-                      [driver :as driver])
-            [metabase.driver.generic-sql :as sql]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]])
-            [metabase.query-processor-test :refer [rows]]
+            [metabase
+             [driver :as driver]
+             [query-processor-test :refer [rows]]
+             [sync-database :as sync-db]
+             [util :as u]]
+            [metabase.driver
+             [generic-sql :as sql]
+             postgres]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor.expand :as ql]
-            [metabase.test.data :as data]
-            (metabase.test.data [datasets :refer [expect-with-engine]]
-                                [interface :as i])
-            [metabase.test.util :as tu]
-            [metabase.util :as u])
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data
+             [datasets :refer [expect-with-engine]]
+             [interface :as i]]
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
   (:import metabase.driver.postgres.PostgresDriver))
 
 (def ^:private ^PostgresDriver pg-driver (PostgresDriver.))
@@ -111,7 +120,7 @@
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-query objects.stuff))
-      :data (dissoc :cols :native_form)))
+      :data (dissoc :cols :native_form :results_metadata)))
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
@@ -131,7 +140,7 @@
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-query people
           (ql/fields $name $bird_id->birds.name)))
-      :data (dissoc :cols :native_form)))
+      :data (dissoc :cols :native_form :results_metadata)))
 
 
 ;;; Check support for `inet` columns
@@ -150,11 +159,27 @@
             (ql/filter (ql/= $ip "192.168.1.1"))))))
 
 
+;;; Util Fns
+
+(defn- drop-if-exists-and-create-db! [db-name]
+  (let [spec (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))]
+    ;; kill any open connections
+    (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
+                         FROM pg_stat_activity
+                        WHERE pg_stat_activity.datname = ?;" db-name])
+    ;; create the DB
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS %s;
+                                  CREATE DATABASE %s;"
+                                 db-name db-name)]
+                   {:transaction? false})))
+
+
 ;; Check that we properly fetch materialized views.
 ;; As discussed in #2355 they don't come back from JDBC `DatabaseMetadata` so we have to fetch them manually.
 (expect-with-engine :postgres
   {:tables #{{:schema "public", :name "test_mview"}}}
   (do
+    (drop-if-exists-and-create-db! "materialized_views_test")
     (jdbc/execute! (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
                    ["DROP DATABASE IF EXISTS materialized_views_test;
                      CREATE DATABASE materialized_views_test;"]
@@ -164,17 +189,14 @@
                      ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
-      (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
+      (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
         (driver/describe-database pg-driver database)))))
 
 ;; Check that we properly fetch foreign tables.
 (expect-with-engine :postgres
   {:tables #{{:schema "public", :name "foreign_table"} {:schema "public", :name "local_table"}}}
   (do
-    (jdbc/execute! (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
-                   ["DROP DATABASE IF EXISTS fdw_test;
-                     CREATE DATABASE fdw_test;"]
-                   {:transaction? false})
+    (drop-if-exists-and-create-db! "fdw_test")
     (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test"})]
       (jdbc/execute! (sql/connection-details->spec pg-driver details)
                      [(str "CREATE EXTENSION IF NOT EXISTS postgres_fdw;
@@ -185,10 +207,40 @@
                             CREATE FOREIGN TABLE foreign_table (data text)
                                 SERVER foreign_server
                                 OPTIONS (schema_name 'public', table_name 'local_table');")])
-      (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
+      (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
         (driver/describe-database pg-driver database)))))
 
-;; timezone tests
+;; make sure that if a view is dropped and recreated that the original Table object is marked active rather than a new one being created (#3331)
+(expect-with-engine :postgres
+  [{:name "angry_birds", :active true}]
+  (let [details (i/database->connection-details pg-driver :db {:database-name "dropped_views_test"})
+        spec    (sql/connection-details->spec pg-driver details)
+        exec!   #(doseq [statement %]
+                   (jdbc/execute! spec [statement]))]
+    ;; create the postgres DB
+    (drop-if-exists-and-create-db! "dropped_views_test")
+    ;; create the DB object
+    (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
+      (let [sync! #(sync-db/sync-database! database, :full-sync? true)]
+        ;; populate the DB and create a view
+        (exec! ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
+                "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Kanye Nest');"
+                "CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+        ;; now sync the DB
+        (sync!)
+        ;; drop the view
+        (exec! ["DROP VIEW angry_birds;"])
+        ;; sync again
+        (sync!)
+        ;; recreate the view
+        (exec! ["CREATE VIEW angry_birds AS SELECT upper(name) AS name FROM birds;"])
+        ;; sync one last time
+        (sync!)
+        ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
+        (map (partial into {}) (db/select [Table :name :active] :db_id (u/get-id database), :name "angry_birds"))))))
+
+
+;;; timezone tests
 
 (tu/resolve-private-vars metabase.driver.generic-sql.query-processor
   run-query-with-timezone)

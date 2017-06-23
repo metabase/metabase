@@ -1,11 +1,10 @@
 (ns metabase.query-processor-test.parameters_test
   "Tests for query parameters."
-  (:require [expectations :refer :all]
-            [metabase.query-processor :as qp]
+  (:require [metabase
+             [query-processor :as qp]
+             [query-processor-test :refer :all]]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
-            [metabase.test.data :as data]
-            [metabase.util :as u]))
+            [metabase.test.data :as data]))
 
 (expect-with-non-timeseries-dbs
   [[9 "Nils Gotam"]]

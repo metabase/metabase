@@ -8,17 +8,15 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
 [![Leiningen Dependencies Status](https://jarkeeper.com/metabase/metabase/status.svg)](https://jarkeeper.com/metabase/metabase)
 [![NPM Dependencies Status](https://david-dm.org/metabase/metabase.svg)](https://david-dm.org/metabase/metabase)
-[![Issue Stats](http://issuestats.com/github/metabase/metabase/badge/pr)](http://issuestats.com/github/metabase/metabase)
-[![Issue Stats](http://issuestats.com/github/metabase/metabase/badge/issue)](http://issuestats.com/github/metabase/metabase)
- 
+
 # Features
 - 5 minute [setup](http://www.metabase.com/docs/latest/setting-up-metabase) (We're not kidding)
-- Let anyone on your team [ask questions](http://www.metabase.com/docs/latest/users-guide/03-asking-questions) without knowing SQL
-- Rich beautiful [dashboards](http://www.metabase.com/docs/latest/users-guide/05-sharing-answers) with auto refresh and fullscreen
+- Let anyone on your team [ask questions](http://www.metabase.com/docs/latest/users-guide/04-asking-questions) without knowing SQL
+- Rich beautiful [dashboards](http://www.metabase.com/docs/latest/users-guide/06-sharing-answers) with auto refresh and fullscreen
 - SQL Mode for analysts and data pros
-- Create canonical [segments and metrics](http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics) for your team to use
-- Send data to Slack or email on a schedule with [Pulses](http://www.metabase.com/docs/latest/users-guide/09-pulses)
-- View data in Slack anytime with [Metabot](http://www.metabase.com/docs/latest/users-guide/10-metabot)
+- Create canonical [segments and metrics](http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics) for your team to use
+- Send data to Slack or email on a schedule with [Pulses](http://www.metabase.com/docs/latest/users-guide/10-pulses)
+- View data in Slack anytime with [MetaBot](http://www.metabase.com/docs/latest/users-guide/11-metabot)
 - [Humanize data](http://www.metabase.com/docs/latest/administration-guide/03-metadata-editing) for your team by renaming, annotating and hiding fields
 
 For more information check out [metabase.com](http://www.metabase.com)
@@ -37,6 +35,7 @@ For more information check out [metabase.com](http://www.metabase.com)
 - CrateDB
 - Oracle
 - Vertica
+- Presto
 
 Don't see your favorite database? File an issue to let us know.
 
@@ -119,4 +118,4 @@ Unless otherwise noted, all Metabase source files are made available under the t
 
 See [LICENSE.txt](https://github.com/metabase/metabase/blob/master/LICENSE.txt) for details and exceptions.
 
-Unless otherwise noted, all files © 2016 Metabase, Inc.
+Unless otherwise noted, all files © 2017 Metabase, Inc.

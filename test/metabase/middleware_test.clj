@@ -1,15 +1,22 @@
 (ns metabase.middleware-test
   (:require [cheshire.core :as json]
+            [clojure.core.async :as async]
+            [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
+            [compojure.core :refer [GET]]
             [expectations :refer :all]
-            [ring.mock.request :as mock]
-            [metabase.api.common :refer [*current-user-id* *current-user*]]
-            (metabase [db :as db]
-                      [middleware :refer :all])
+            [metabase
+             [config :as config]
+             [middleware :as middleware :refer :all]
+             [routes :as routes]
+             [util :as u]]
+            [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.models.session :refer [Session]]
-            [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [ring.mock.request :as mock]
+            [ring.util.response :as resp]
+            [toucan.db :as db]
+            [clojure.string :as string]))
 
 ;;  ===========================  TEST wrap-session-id middleware  ===========================
 
@@ -21,7 +28,7 @@
 
 ;; no session-id in the request
 (expect nil
-  (-> (wrapped-handler (mock/request :get "/anyurl") )
+  (-> (wrapped-handler (mock/request :get "/anyurl"))
       :metabase-session-id))
 
 
@@ -64,13 +71,11 @@
   (str (java.util.UUID/randomUUID)))
 
 
-(tu/resolve-private-vars metabase.db simple-insert!)
-
 ;; valid session ID
 (expect
   (user->id :rasta)
   (let [session-id (random-session-id)]
-    (simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (u/new-sql-timestamp))
+    (db/simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (u/new-sql-timestamp))
     (-> (auth-enforced-handler (request-with-session-id session-id))
         :metabase-user-id)))
 
@@ -81,7 +86,7 @@
 (expect
   response-unauthentic
   (let [session-id (random-session-id)]
-    (simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (java.sql.Timestamp. 0))
+    (db/simple-insert! Session, :id session-id, :user_id (user->id :rasta), :created_at (java.sql.Timestamp. 0))
     (auth-enforced-handler (request-with-session-id session-id))))
 
 
@@ -91,7 +96,7 @@
 ;; NOTE that :trashbird is our INACTIVE test user
 (expect response-unauthentic
   (let [session-id (random-session-id)]
-    (simple-insert! Session, :id session-id, :user_id (user->id :trashbird), :created_at (u/new-sql-timestamp))
+    (db/simple-insert! Session, :id session-id, :user_id (user->id :trashbird), :created_at (u/new-sql-timestamp))
     (auth-enforced-handler (request-with-session-id session-id))))
 
 
@@ -179,3 +184,95 @@
 (expect "{\"my-bytes\":\"0xC42360D7\"}"
         (json/generate-string {:my-bytes (byte-array [196 35  96 215  8 106 108 248 183 215 244 143  17 160 53 186
                                                       213 30 116  25 87  31 123 172 207 108  47 107 191 215 76  92])}))
+;;; stuff here
+
+(defn- streaming-fast-success [_]
+  (resp/response {:success true}))
+
+(defn- streaming-fast-failure [_]
+  (throw (Exception. "immediate failure")))
+
+(defn- streaming-slow-success [_]
+  (Thread/sleep 7000)
+  (resp/response {:success true}))
+
+(defn- streaming-slow-failure [_]
+  (Thread/sleep 7000)
+  (throw (Exception. "delayed failure")))
+
+(defn- test-streaming-endpoint [handler]
+  (let [path (str handler)]
+    (with-redefs [metabase.routes/routes (compojure.core/routes
+                                          (GET (str "/" path) [] (middleware/streaming-json-response
+                                                                  handler)))]
+      (let  [connection (async/chan 1000)
+             reader (io/input-stream (str "http://localhost:" (config/config-int :mb-jetty-port) "/" path))]
+        (async/go-loop [next-char (.read reader)]
+          (if (pos? next-char)
+            (do
+              (async/>! connection (char next-char))
+              (recur (.read reader)))
+            (async/close! connection)))
+        (let [_ (Thread/sleep 1500)
+              first-second (async/poll! connection)
+              _ (Thread/sleep 1000)
+              second-second (async/poll! connection)
+              eventually (apply str (async/<!! (async/into [] connection)))]
+          [first-second second-second (string/trim eventually)])))))
+
+
+;;slow success
+(expect
+  [\newline \newline "{\"success\":true}"]
+  (test-streaming-endpoint streaming-slow-success))
+
+;; immediate success should have no padding
+(expect
+  [\{ \" "success\":true}"]
+  (test-streaming-endpoint streaming-fast-success))
+
+;; we know delayed failures (exception thrown) will just drop the connection
+(expect
+  [\newline \newline ""]
+  (test-streaming-endpoint streaming-slow-failure))
+
+;; immediate failures (where an exception is thown will return a 500
+(expect
+  #"Server returned HTTP response code: 500 for URL:.*"
+  (try
+    (test-streaming-endpoint streaming-fast-failure)
+    (catch java.io.IOException e
+      (.getMessage e))))
+
+;; test that handler is killed when connection closes
+(def test-slow-handler-state (atom :unset))
+
+(defn- test-slow-handler [_]
+  (log/debug (u/format-color 'yellow "starting test-slow-handler"))
+  (Thread/sleep 7000)  ;; this is somewhat long to make sure the keepalive polling has time to kill it.
+  (reset! test-slow-handler-state :ran-to-compleation)
+  (log/debug (u/format-color 'yellow "finished test-slow-handler"))
+  (resp/response {:success true}))
+
+(defn- start-and-maybe-kill-test-request [kill?]
+  (reset! test-slow-handler-state :initial-state)
+  (let [path "test-slow-handler"]
+    (with-redefs [metabase.routes/routes (compojure.core/routes
+                                          (GET (str "/" path) [] (middleware/streaming-json-response
+                                                                  test-slow-handler)))]
+      (let  [reader (io/input-stream (str "http://localhost:" (config/config-int :mb-jetty-port) "/" path))]
+        (Thread/sleep 1500)
+        (when kill?
+          (.close reader))
+        (Thread/sleep 10000)))) ;; this is long enough to ensure that the handler has run to completion if it was not killed.
+  @test-slow-handler-state)
+
+;; In this first test we will close the connection before the test handler gets to change the state
+(expect
+  :initial-state
+  (start-and-maybe-kill-test-request true))
+
+;; and to make sure this test actually works, run the same test again and let it change the state.
+(expect
+  :ran-to-compleation
+  (start-and-maybe-kill-test-request false))

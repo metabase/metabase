@@ -1,16 +1,17 @@
 (ns metabase.models.collection-revision
-  (:require [metabase.db :as db]
-            [metabase.models.interface :as i]
-            [metabase.util :as u]))
+  (:require [metabase.util :as u]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
-(i/defentity CollectionRevision :collection_revision)
+(models/defmodel CollectionRevision :collection_revision)
 
 (defn- pre-insert [revision]
   (assoc revision :created_at (u/new-sql-timestamp)))
 
 (u/strict-extend (class CollectionRevision)
-  i/IEntity
-  (merge i/IEntityDefaults
+  models/IModel
+  (merge models/IModelDefaults
          {:types      (constantly {:before :json
                                    :after  :json
                                    :remark :clob})

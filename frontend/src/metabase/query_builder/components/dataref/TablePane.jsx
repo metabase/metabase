@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import QueryButton from "metabase/components/QueryButton.jsx";
 import { createCard } from "metabase/lib/card";
@@ -61,7 +62,7 @@ export default class TablePane extends Component {
             var queryButton;
             if (table.rows != null) {
                 var text = `See the raw data for ${table.display_name}`
-                queryButton = (<QueryButton className="border-bottom border-top mb3" icon="illustration-icon-table" text={text} onClick={this.setQueryAllRows} />);
+                queryButton = (<QueryButton className="border-bottom border-top mb3" icon="table" text={text} onClick={this.setQueryAllRows} />);
             }
             var panes = {
                 "fields": table.fields.length,
@@ -114,7 +115,7 @@ export default class TablePane extends Component {
                     <h1>{table.display_name}</h1>
                     {description}
                     {queryButton}
-                    { table.metrics.length > 0 &&
+                    { table.metrics && (table.metrics.length > 0) &&
                         <ExpandableItemList
                             name="Metrics"
                             type="metrics"
@@ -122,7 +123,7 @@ export default class TablePane extends Component {
                             items={table.metrics}
                         />
                     }
-                    { table.segments.length > 0 &&
+                    { table.segments && (table.segments.length > 0) &&
                         <ExpandableItemList
                             name="Segments"
                             type="segments"

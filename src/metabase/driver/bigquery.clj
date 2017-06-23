@@ -1,36 +1,34 @@
 (ns metabase.driver.bigquery
-  (:require (clojure [set :as set]
-                     [string :as s]
-                     [walk :as walk])
+  (:require [clojure
+             [set :as set]
+             [string :as s]
+             [walk :as walk]]
             [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [helpers :as h])
-            [metabase.config :as config]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.driver.google :as google]
-            [metabase.driver.generic-sql :as sql]
+            [honeysql
+             [core :as hsql]
+             [helpers :as h]]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver
+             [generic-sql :as sql]
+             [google :as google]]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
-                             [table :as table])
+            [metabase.driver.generic-sql.util.unprepare :as unprepare]
+            [metabase.models
+             [database :refer [Database]]
+             [field :as field]
+             [table :as table]]
+            [metabase.query-processor.util :as qputil]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.query-processor :as qp]
-            metabase.query-processor.interface
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import (java.util Collections Date)
-           (com.google.api.client.googleapis.auth.oauth2 GoogleCredential GoogleCredential$Builder GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleTokenResponse)
-           com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
-           (com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException)
-           com.google.api.client.googleapis.services.AbstractGoogleClientRequest
-           com.google.api.client.http.HttpTransport
-           com.google.api.client.json.JsonFactory
-           com.google.api.client.json.jackson2.JacksonFactory
-           (com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes)
-           (com.google.api.services.bigquery.model Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema QueryRequest QueryResponse)
-           (metabase.query_processor.interface DateTimeValue Value)))
-
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db])
+  (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
+           [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
+           [java.util Collections Date]
+           [metabase.query_processor.interface DateTimeValue Value]))
 
 ;;; ------------------------------------------------------------ Client ------------------------------------------------------------
 
@@ -76,7 +74,8 @@
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
-  (boolean (describe-database {:details details-map})))
+  ;; check whether we can connect by just fetching the first page of tables for the database. If that succeeds we're g2g
+  (boolean (list-tables {:details details-map})))
 
 
 (defn- ^Table get-table
@@ -120,6 +119,8 @@
    {:pre [client (seq project-id) (seq query-string)]}
    (let [request (doto (QueryRequest.)
                    (.setTimeoutMs (* query-timeout-seconds 1000))
+                   ;; if the query contains a `#standardSQL` directive then use Standard SQL instead of legacy SQL
+                   (.setUseLegacySql (not (s/includes? (s/lower-case query-string) "#standardsql")))
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 
@@ -242,9 +243,6 @@
     :quarter-of-year (hx/quarter expr)
     :year            (hx/year expr)))
 
-(defn- date-string->literal [^String date-string]
-  (hx/->timestamp (hx/literal (u/format-date "yyyy-MM-dd 00:00" (u/->Date date-string)))))
-
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (hsql/call :sec_to_timestamp  expr)
@@ -297,8 +295,10 @@
        :table-name table-name
        :mbql?      true})))
 
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native, :as outer-query}]
-  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" sql)
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
+  (let [sql     (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
+                                                                     (unprepare/unprepare (cons sql params))
+                                                                     sql))
         results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
@@ -356,13 +356,71 @@
 ;; ORDER BY [sad_toucan_incidents.incidents.timestamp] ASC
 ;; LIMIT 10
 
-(defn- field->identitfier [field]
+(defn- deduplicate-aliases
+  "Given a sequence of aliases, return a sequence where duplicate aliases have been appropriately suffixed.
+
+     (deduplicate-aliases [\"sum\" \"count\" \"sum\" \"avg\" \"sum\" \"min\"])
+     ;; -> [\"sum\" \"count\" \"sum_2\" \"avg\" \"sum_3\" \"min\"]"
+  [aliases]
+  (loop [acc [], alias->use-count {}, [alias & more, :as aliases] aliases]
+    (let [use-count (get alias->use-count alias)]
+      (cond
+        (empty? aliases) acc
+        (not alias)      (recur (conj acc alias) alias->use-count more)
+        (not use-count)  (recur (conj acc alias) (assoc alias->use-count alias 1) more)
+        :else            (let [new-count (inc use-count)
+                               new-alias (str alias "_" new-count)]
+                           (recur (conj acc new-alias) (assoc alias->use-count alias new-count, new-alias 1) more))))))
+
+(defn- select-subclauses->aliases
+  "Return a vector of aliases used in HoneySQL SELECT-SUBCLAUSES.
+   (For clauses that aren't aliased, `nil` is returned as a placeholder)."
+  [select-subclauses]
+  (for [subclause select-subclauses]
+    (when (and (vector? subclause)
+               (= 2 (count subclause)))
+      (second subclause))))
+
+(defn update-select-subclause-aliases
+  "Given a vector of HoneySQL SELECT-SUBCLAUSES and a vector of equal length of NEW-ALIASES,
+   return a new vector with combining the original `SELECT` subclauses with the new aliases.
+
+   Subclauses that are not aliased are not modified; they are given a placeholder of `nil` in the NEW-ALIASES vector.
+
+     (update-select-subclause-aliases [[:user_id \"user_id\"] :venue_id]
+                                      [\"user_id_2\" nil])
+     ;; -> [[:user_id \"user_id_2\"] :venue_id]"
+  [select-subclauses new-aliases]
+  (for [[subclause new-alias] (partition 2 (interleave select-subclauses new-aliases))]
+    (if-not new-alias
+      subclause
+      [(first subclause) new-alias])))
+
+(defn- deduplicate-select-aliases
+  "Replace duplicate aliases in SELECT-SUBCLAUSES with appropriately suffixed aliases.
+
+   BigQuery doesn't allow duplicate aliases in `SELECT` statements; a statement like `SELECT sum(x) AS sum, sum(y) AS sum` is invalid. (See #4089)
+   To work around this, we'll modify the HoneySQL aliases to make sure the same one isn't used twice by suffixing duplicates appropriately.
+   (We'll generate SQL like `SELECT sum(x) AS sum, sum(y) AS sum_2` instead.)"
+  [select-subclauses]
+  (let [aliases (select-subclauses->aliases select-subclauses)
+        deduped (deduplicate-aliases aliases)]
+    (update-select-subclause-aliases select-subclauses deduped)))
+
+(defn- apply-aggregation
+  "BigQuery's implementation of `apply-aggregation` just hands off to the normal Generic SQL implementation, but calls `deduplicate-select-aliases` on the results."
+  [driver honeysql-form query]
+  (-> (sqlqp/apply-aggregation driver honeysql-form query)
+      (update :select deduplicate-select-aliases)))
+
+
+(defn- field->breakout-identifier [field]
   (hsql/raw (str \[ (field->alias field) \])))
 
 (defn- apply-breakout [honeysql-form {breakout-fields :breakout, fields-fields :fields}]
   (-> honeysql-form
       ;; Group by all the breakout fields
-      ((partial apply h/group)  (map field->identitfier breakout-fields))
+      ((partial apply h/group)  (map field->breakout-identifier breakout-fields))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
       ((partial apply h/merge-select) (for [field breakout-fields
                                             :when (not (contains? (set fields-fields) field))]
@@ -370,15 +428,21 @@
 
 (defn- apply-order-by [honeysql-form {subclauses :order-by}]
   (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(field->identitfier field) (case direction
-                                                                                      :ascending  :asc
-                                                                                      :descending :desc)])]
+    (let [honeysql-form (h/merge-order-by honeysql-form [(field->breakout-identifier field) (case direction
+                                                                                              :ascending  :asc
+                                                                                              :descending :desc)])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
 
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
+
+;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
+(defn- format-custom-field-name ^String [^String custom-field-name]
+  (s/join (take 128 (-> (s/trim custom-field-name)
+                        (s/replace #"[^\w\d_]" "_")
+                        (s/replace #"(^\d)" "_$1")))))
 
 
 (defrecord BigQueryDriver []
@@ -390,13 +454,13 @@
 (u/strict-extend BigQueryDriver
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:apply-breakout            (u/drop-first-arg apply-breakout)
+         {:apply-aggregation         apply-aggregation
+          :apply-breakout            (u/drop-first-arg apply-breakout)
           :apply-order-by            (u/drop-first-arg apply-order-by)
           :column->base-type         (constantly nil)                           ; these two are actually not applicable
           :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
-          :date-string->literal      (u/drop-first-arg date-string->literal)
           :field->alias              (u/drop-first-arg field->alias)
           :field->identifier         (u/drop-first-arg field->identifier)
           :prepare-value             (u/drop-first-arg prepare-value)
@@ -406,46 +470,45 @@
 
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table         analyze/generic-analyze-table
-          :can-connect?          (u/drop-first-arg can-connect?)
-          :date-interval         (u/drop-first-arg (comp prepare-value u/relative-date))
-          :describe-database     (u/drop-first-arg describe-database)
-          :describe-table        (u/drop-first-arg describe-table)
-          :details-fields        (constantly [{:name         "project-id"
-                                               :display-name "Project ID"
-                                               :placeholder  "praxis-beacon-120871"
-                                               :required     true}
-                                              {:name         "dataset-id"
-                                               :display-name "Dataset ID"
-                                               :placeholder  "toucanSightings"
-                                               :required     true}
-                                              {:name         "client-id"
-                                               :display-name "Client ID"
-                                               :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
-                                               :required     true}
-                                              {:name         "client-secret"
-                                               :display-name "Client Secret"
-                                               :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
-                                               :required     true}
-                                              {:name         "auth-code"
-                                               :display-name "Auth Code"
-                                               :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-                                               :required     true}])
-          :execute-query         (u/drop-first-arg execute-query)
+         {:analyze-table            analyze/generic-analyze-table
+          :can-connect?             (u/drop-first-arg can-connect?)
+          :date-interval            (u/drop-first-arg (comp prepare-value u/relative-date))
+          :describe-database        (u/drop-first-arg describe-database)
+          :describe-table           (u/drop-first-arg describe-table)
+          :details-fields           (constantly [{:name         "project-id"
+                                                  :display-name "Project ID"
+                                                  :placeholder  "praxis-beacon-120871"
+                                                  :required     true}
+                                                 {:name         "dataset-id"
+                                                  :display-name "Dataset ID"
+                                                  :placeholder  "toucanSightings"
+                                                  :required     true}
+                                                 {:name         "client-id"
+                                                  :display-name "Client ID"
+                                                  :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
+                                                  :required     true}
+                                                 {:name         "client-secret"
+                                                  :display-name "Client Secret"
+                                                  :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
+                                                  :required     true}
+                                                 {:name         "auth-code"
+                                                  :display-name "Auth Code"
+                                                  :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
+                                                  :required     true}])
+          :execute-query            (u/drop-first-arg execute-query)
           ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still allowed, which puts us in a weird position, however;
           ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
           ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
           ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
-          :features              (constantly (set/union #{:basic-aggregations
-                                                          :standard-deviation-aggregations
-                                                          :native-parameters
-                                                          ;; Expression aggregations *would* work, but BigQuery doesn't support the auto-generated column names. BQ column names
-                                                          ;; can only be alphanumeric or underscores. If we slugified the auto-generated column names, we could enable this feature.
-                                                          #_:expression-aggregations}
-                                                        (when-not config/is-test?
-                                                          ;; during unit tests don't treat bigquery as having FK support
-                                                          #{:foreign-keys})))
-          :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
-          :mbql->native          (u/drop-first-arg mbql->native)}))
+          :features                 (constantly (set/union #{:basic-aggregations
+                                                             :standard-deviation-aggregations
+                                                             :native-parameters
+                                                             :expression-aggregations}
+                                                           (when-not config/is-test?
+                                                             ;; during unit tests don't treat bigquery as having FK support
+                                                             #{:foreign-keys})))
+          :field-values-lazy-seq    (u/drop-first-arg field-values-lazy-seq)
+          :format-custom-field-name (u/drop-first-arg format-custom-field-name)
+          :mbql->native             (u/drop-first-arg mbql->native)}))
 
 (driver/register-driver! :bigquery driver)

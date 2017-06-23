@@ -1,11 +1,11 @@
 (ns metabase.util.schema
   "Various schemas that are useful throughout the app."
-  (:require [clojure.string :as str]
-            [cheshire.core :as json]
-            [schema.core :as s]
-            metabase.types
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
+            [medley.core :as m]
             [metabase.util :as u]
-            [metabase.util.password :as password]))
+            [metabase.util.password :as password]
+            [schema.core :as s]))
 
 (defn with-api-error-message
   "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails validation."
@@ -41,6 +41,12 @@
       (when (instance? schema.core.EnumSchema schema)
         (format "value must be one of: %s." (str/join ", " (for [v (sort (:vs schema))]
                                                              (str "`" v "`")))))
+      ;; For cond-pre schemas we'll generate something like
+      ;; value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
+      (when (instance? schema.core.CondPre schema)
+        (str "value must satisfy one of the following requirements: "
+             (str/join " " (for [[i child-schema] (m/indexed (:schemas schema))]
+                             (format "%d) %s" (inc i) (api-error-message child-schema))))))
       ;; do the same for sequences of a schema
       (when (vector? schema)
         (str "value must be an array." (when (= (count schema) 1)
@@ -73,9 +79,16 @@
   (s/named (s/cond-pre s/Keyword s/Str) "Keyword or string"))
 
 (def FieldType
-  "Schema for a valid Field type (does it derive from `:type/*`?"
+  "Schema for a valid Field type (does it derive from `:type/*`)?"
   (with-api-error-message (s/pred (u/rpartial isa? :type/*) "Valid field type")
     "value must be a valid field type."))
+
+(def FieldTypeKeywordOrString
+  "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
+   This is useful especially for validating API input or objects coming out of the DB as it is unlikely
+   those values will be encoded as keywords at that point."
+  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) "Valid field type (keyword or string)")
+    "value must be a valid field type (keyword or string)."))
 
 (def Map
   "Schema for a valid map."
@@ -113,9 +126,14 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
    Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
-    "value must be a valid boolean (true or false)."))
+    "value must be a valid boolean string ('true' or 'false')."))
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (json/parse-string %)))
     "value must be a valid JSON string."))
+
+(def EmbeddingParams
+  "Schema for a valid map of embedding params."
+  (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
+    "value must be a valid embedding params map."))

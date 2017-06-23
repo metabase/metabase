@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import FormField from "metabase/components/form/FormField.jsx";
@@ -122,6 +123,7 @@ export default class EditUserForm extends Component {
                         <FormField>
                             <FormLabel title="Permission Groups" offset={false}></FormLabel>
                             <PopoverWithTrigger
+                                sizeToFit
                                 triggerElement={
                                     <SelectButton>
                                         <GroupSummary groups={groups} selectedGroups={selectedGroups}/>

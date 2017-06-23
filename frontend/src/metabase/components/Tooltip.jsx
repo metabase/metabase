@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
 import TooltipPopover from "./TooltipPopover.jsx";
@@ -14,10 +15,11 @@ export default class Tooltip extends Component {
     }
 
     static propTypes = {
-        tooltip: PropTypes.node.isRequired,
+        tooltip: PropTypes.node,
         children: PropTypes.element.isRequired,
         isEnabled: PropTypes.bool,
-        verticalAttachments: PropTypes.array
+        verticalAttachments: PropTypes.array,
+        isOpen: PropTypes.bool
     };
 
     static defaultProps = {
@@ -44,7 +46,7 @@ export default class Tooltip extends Component {
 
     componentDidUpdate() {
         const { isEnabled, tooltip } = this.props;
-        const { isOpen } = this.state;
+        const isOpen = this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
         if (tooltip && isEnabled && isOpen) {
             ReactDOM.render(
                 <TooltipPopover isOpen={true} target={this} {...this.props} children={this.props.tooltip} />,

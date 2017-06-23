@@ -1,5 +1,6 @@
 import { createSelector } from 'reselect';
 import { assoc, getIn } from "icepick";
+import { getDashboardListing } from "../dashboards/selectors";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
 import {
@@ -13,7 +14,13 @@ import {
     getQuestionUrl
 } from "./utils";
 
+// import { getDatabases, getTables, getFields, getMetrics, getSegments } from "metabase/selectors/metadata";
+
+import { getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields, getShallowMetrics as getMetrics, getShallowSegments as getSegments } from "metabase/selectors/metadata";
+export { getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields, getShallowMetrics as getMetrics, getShallowSegments as getSegments } from "metabase/selectors/metadata";
+
 import _ from "underscore";
+
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
@@ -43,7 +50,7 @@ const referenceSections = {
             title: "Metrics are the official numbers that your team cares about",
             adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
             message: "Metrics will appear here once your admins have created some",
-            image: "/app/img/metrics-list",
+            image: "app/assets/img/metrics-list",
             adminAction: "Learn how to create metrics",
             adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
         },
@@ -63,7 +70,7 @@ const referenceSections = {
             title: "Segments are interesting subsets of tables",
             adminMessage: "Defining common segments for your team makes it even easier to ask questions",
             message: "Segments will appear here once your admins have created some",
-            image: "/app/img/segments-list",
+            image: "app/assets/img/segments-list",
             adminAction: "Learn how to create segments",
             adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
         },
@@ -82,7 +89,7 @@ const referenceSections = {
             title: "Metabase is no fun without any data",
             adminMessage: "Your databses will appear here once you connect one",
             message: "Databases will appear here once your admins have added some",
-            image: "/app/img/databases-list",
+            image: "app/assets/img/databases-list",
             adminAction: "Connect a database",
             adminLink: "/admin/databases/create"
         },
@@ -138,7 +145,10 @@ const getMetricSections = (metric, table, user) => metric ? {
         type: 'questions',
         sidebar: 'Questions about this metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetricTable: [metric.id], fetchQuestions: []},
+        fetch: {
+            fetchMetricTable: [metric.id],
+            fetchQuestions: []
+        },
         get: 'getMetricQuestions',
         icon: "all",
         headerIcon: "ruler",
@@ -150,7 +160,9 @@ const getMetricSections = (metric, table, user) => metric ? {
         sidebar: 'Revision history',
         breadcrumb: `${metric.name}`,
         hidden: user && !user.is_superuser,
-        fetch: {fetchMetricRevisions: [metric.id]},
+        fetch: {
+            fetchMetricRevisions: [metric.id]
+        },
         get: 'getMetricRevisions',
         icon: "history",
         headerIcon: "ruler",
@@ -186,7 +198,9 @@ const getSegmentSections = (segment, table, user) => segment ? {
             }
         ],
         breadcrumb: `${segment.name}`,
-        fetch: {fetchSegmentTable: [segment.id]},
+        fetch: {
+            fetchSegmentTable: [segment.id]
+        },
         get: 'getSegment',
         icon: "document",
         headerIcon: "segment",
@@ -205,7 +219,9 @@ const getSegmentSections = (segment, table, user) => segment ? {
             icon: "fields"
         },
         sidebar: 'Fields in this segment',
-        fetch: {fetchSegmentFields: [segment.id]},
+        fetch: {
+            fetchSegmentFields: [segment.id]
+        },
         get: "getFieldsBySegment",
         breadcrumb: `${segment.name}`,
         icon: "fields",
@@ -228,7 +244,10 @@ const getSegmentSections = (segment, table, user) => segment ? {
         type: 'questions',
         sidebar: 'Questions about this segment',
         breadcrumb: `${segment.name}`,
-        fetch: {fetchSegmentTable: [segment.id], fetchQuestions: []},
+        fetch: {
+            fetchSegmentTable: [segment.id],
+            fetchQuestions: []
+        },
         get: 'getSegmentQuestions',
         icon: "all",
         headerIcon: "segment",
@@ -240,7 +259,9 @@ const getSegmentSections = (segment, table, user) => segment ? {
         sidebar: 'Revision history',
         breadcrumb: `${segment.name}`,
         hidden: user && !user.is_superuser,
-        fetch: {fetchSegmentRevisions: [segment.id]},
+        fetch: {
+            fetchSegmentRevisions: [segment.id]
+        },
         get: 'getSegmentRevisions',
         icon: "history",
         headerIcon: "segment",
@@ -276,7 +297,9 @@ const getSegmentFieldSections = (segment, table, field, user) => segment && fiel
             }
         ],
         breadcrumb: `${field.display_name}`,
-        fetch: {fetchSegmentFields: [segment.id]},
+        fetch: {
+            fetchSegmentFields: [segment.id]
+        },
         get: "getFieldBySegment",
         icon: "document",
         headerIcon: "field",
@@ -291,7 +314,9 @@ const getDatabaseSections = (database) => database ? {
         update: 'updateDatabase',
         type: 'database',
         breadcrumb: `${database.name}`,
-        fetch: {fetchDatabaseMetadata: [database.id]},
+        fetch: {
+            fetchDatabaseMetadata: [database.id]
+        },
         get: 'getDatabase',
         icon: "document",
         headerIcon: "database",
@@ -307,7 +332,9 @@ const getDatabaseSections = (database) => database ? {
         },
         sidebar: 'Tables in this database',
         breadcrumb: `${database.name}`,
-        fetch: {fetchDatabaseMetadata: [database.id]},
+        fetch: {
+            fetchDatabaseMetadata: [database.id]
+        },
         get: 'getTablesByDatabase',
         icon: "table2",
         headerIcon: "database",
@@ -341,7 +368,9 @@ const getTableSections = (database, table) => database && table ? {
             }
         ],
         breadcrumb: `${table.display_name}`,
-        fetch: {fetchDatabaseMetadata: [database.id]},
+        fetch: {
+            fetchDatabaseMetadata: [database.id]
+        },
         get: 'getTable',
         icon: "document",
         headerIcon: "table2",
@@ -360,7 +389,9 @@ const getTableSections = (database, table) => database && table ? {
         },
         sidebar: 'Fields in this table',
         breadcrumb: `${table.display_name}`,
-        fetch: {fetchDatabaseMetadata: [database.id]},
+        fetch: {
+            fetchDatabaseMetadata: [database.id]
+        },
         get: "getFieldsByTable",
         icon: "fields",
         headerIcon: "table2",
@@ -381,7 +412,9 @@ const getTableSections = (database, table) => database && table ? {
         type: 'questions',
         sidebar: 'Questions about this table',
         breadcrumb: `${table.display_name}`,
-        fetch: {fetchDatabaseMetadata: [database.id], fetchQuestions: []},
+        fetch: {
+            fetchDatabaseMetadata: [database.id], fetchQuestions: []
+        },
         get: 'getTableQuestions',
         icon: "all",
         headerIcon: "table2",
@@ -429,7 +462,9 @@ const getTableFieldSections = (database, table, field) => database && table && f
             }
         ],
         breadcrumb: `${field.display_name}`,
-        fetch: {fetchDatabaseMetadata: [database.id]},
+        fetch: {
+            fetchDatabaseMetadata: [database.id]
+        },
         get: "getField",
         icon: "document",
         headerIcon: "field",
@@ -442,21 +477,19 @@ export const getUser = (state, props) => state.currentUser;
 export const getSectionId = (state, props) => props.location.pathname;
 
 export const getMetricId = (state, props) => Number.parseInt(props.params.metricId);
-export const getMetrics = (state, props) => state.metadata.metrics;
 export const getMetric = createSelector(
     [getMetricId, getMetrics],
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
 export const getSegmentId = (state, props) => Number.parseInt(props.params.segmentId);
-export const getSegments = (state, props) => state.metadata.segments;
 export const getSegment = createSelector(
     [getSegmentId, getSegments],
     (segmentId, segments) => segments[segmentId] || { id: segmentId }
 );
 
 export const getDatabaseId = (state, props) => Number.parseInt(props.params.databaseId);
-export const getDatabases = (state, props) => state.metadata.databases;
+
 const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
     (databaseId, databases) => databases[databaseId] || { id: databaseId }
@@ -464,7 +497,6 @@ const getDatabase = createSelector(
 
 export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
 // export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
-export const getTables = (state, props) => state.metadata.tables;
 const getTablesByDatabase = createSelector(
     [getTables, getDatabase],
     (tables, database) => tables && database && database.tables ?
@@ -487,7 +519,6 @@ export const getTable = createSelector(
 );
 
 export const getFieldId = (state, props) => Number.parseInt(props.params.fieldId);
-export const getFields = (state, props) => state.metadata.fields;
 const getFieldsByTable = createSelector(
     [getTable, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
@@ -697,7 +728,6 @@ export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaE
 
 export const getGuide = (state, props) => state.reference.guide;
 
-export const getDashboards = (state, props) => state.dashboard.dashboardListing &&
-    resourceListToMap(state.dashboard.dashboardListing);
+export const getDashboards = (state, props) => getDashboardListing(state) && resourceListToMap(getDashboardListing(state));
 
 export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;

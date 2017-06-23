@@ -1,5 +1,8 @@
 /* @flow weak */
 
+import 'babel-polyfill';
+import 'number-to-locale-string';
+
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
@@ -9,29 +12,25 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import api from "metabase/lib/api";
 
-import { getRoutes } from "./routes.jsx";
 import { getStore } from './store'
 
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { setErrorPage } from "metabase/redux/app";
 
-import { Router, browserHistory } from "react-router";
-import { push, syncHistoryWithStore } from 'react-router-redux'
+import { Router, useRouterHistory } from "react-router";
+import { createHistory } from 'history'
+import { syncHistoryWithStore } from 'react-router-redux';
 
-// we shouldn't redirect these URLs because we want to handle them differently
-const WHITELIST_FORBIDDEN_URLS = [
-    // on dashboards, we show permission errors for individual cards we don't have access to
-    /api\/card\/\d+\/query$/,
-    // metadata endpoints should not cause redirects
-    // we should gracefully handle cases where we don't have access to metadata
-    /api\/database\/\d+\/metadata$/,
-    /api\/database\/\d+\/fields/,
-    /api\/table\/\d+\/query_metadata$/,
-    /api\/table\/\d+\/fks$/
-];
+// remove trailing slash
+const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
-function init() {
-    const store = getStore(browserHistory);
+api.basename = BASENAME;
+
+const browserHistory = useRouterHistory(createHistory)({
+    basename: BASENAME
+});
+
+function _init(reducers, getRoutes, callback) {
+    const store = getStore(reducers, browserHistory);
     const routes = getRoutes(store);
     const history = syncHistoryWithStore(browserHistory, store);
 
@@ -57,26 +56,15 @@ function init() {
         window['ga-disable-' + MetabaseSettings.get('ga_code')] = MetabaseSettings.isTrackingEnabled() ? null : true;
     });
 
-    // received a 401 response
-    api.on("401", () => {
-        store.dispatch(push("/auth/login"));
-    });
-
-    // received a 403 response
-    api.on("403", (url) => {
-        if (url) {
-            for (const regex of WHITELIST_FORBIDDEN_URLS) {
-                if (regex.test(url)) {
-                    return;
-                }
-            }
-        }
-        store.dispatch(setErrorPage(403));
-    });
+    if (callback) {
+        callback(store);
+    }
 }
 
-if (document.readyState != 'loading') {
-    init();
-} else {
-    document.addEventListener('DOMContentLoaded', init);
+export function init(...args) {
+    if (document.readyState != 'loading') {
+        _init(...args);
+    } else {
+        document.addEventListener('DOMContentLoaded', () => _init(...args));
+    }
 }

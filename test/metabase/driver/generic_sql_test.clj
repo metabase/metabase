@@ -1,15 +1,15 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
-            (metabase.driver [generic-sql :refer :all]
-                             h2)
-            (metabase.models [field :refer [Field]]
-                             [table :refer [Table], :as table])
-            [metabase.test.data :refer :all]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets])
-            [metabase.test.util :refer [resolve-private-vars]])
+            [metabase.driver :as driver]
+            [metabase.driver.generic-sql :refer :all]
+            [metabase.models
+             [field :refer [Field]]
+             [table :as table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :refer [resolve-private-vars]]]
+            [metabase.test.data.datasets :as datasets]
+            [toucan.db :as db])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))
@@ -19,7 +19,7 @@
 (def ^:private generic-sql-engines
   (delay (set (for [engine datasets/all-valid-engines
                     :let   [driver (driver/engine->driver engine)]
-                    :when  (not= engine :bigquery)                                       ; bigquery doesn't use the generic sql implementations of things like `field-avg-length`
+                    :when  (not (contains? #{:bigquery :presto} engine))                 ; bigquery and presto don't use the generic sql implementations of things like `field-avg-length`
                     :when  (extends? ISQLDriver (class driver))]
                 (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
                     engine)))))
@@ -75,7 +75,7 @@
                {:id (id :venues :id)}
                {:id (id :venues :latitude)}
                {:id (id :venues :longitude)}
-               {:id (id :venues :name), :values nil}
+               {:id (id :venues :name), :values (db/select-one-field :values 'FieldValues, :field_id (id :venues :name))}
                {:id (id :venues :price), :values [1 2 3 4]}]}
   (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
 
@@ -123,3 +123,23 @@
     0.5)
   (dataset half-valid-urls
     (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))
+
+;;; Make sure invalid ssh credentials are detected if a direct connection is possible
+(expect
+  #"com.jcraft.jsch.JSchException:"
+  (try (let [engine :postgres
+             details {:ssl false,
+                      :password "changeme",
+                      :tunnel-host "localhost", ;; this test works if sshd is running or not
+                      :tunnel-pass "BOGUS-BOGUS-BOGUS",
+                      :port 5432,
+                      :dbname "test",
+                      :host "localhost",
+                      :tunnel-enabled true,
+                      :tunnel-port 22,
+                      :engine :postgres,
+                      :user "postgres",
+                      :tunnel-user "example"}]
+         (driver/can-connect-with-details? engine details :rethrow-exceptions))
+       (catch Exception e
+         (.getMessage e))))

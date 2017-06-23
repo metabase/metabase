@@ -1,12 +1,13 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
+import { connect } from "react-redux";
 
 import QueryModeButton from "./QueryModeButton.jsx";
 
 import ActionButton from 'metabase/components/ActionButton.jsx';
-import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.jsx';
+import AddToDashSelectDashModal from 'metabase/containers/AddToDashSelectDashModal.jsx';
 import ButtonBar from "metabase/components/ButtonBar.jsx";
-import DeleteQuestionModal from 'metabase/components/DeleteQuestionModal.jsx';
 import HeaderBar from "metabase/components/HeaderBar.jsx";
 import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -15,19 +16,27 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
 import Tooltip from "metabase/components/Tooltip.jsx";
 import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
+import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal"
 
 import SaveQuestionModal from 'metabase/containers/SaveQuestionModal.jsx';
+
+import { clearRequestState } from "metabase/redux/requests";
 
 import { CardApi, RevisionApi } from "metabase/services";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
 
+const mapDispatchToProps = {
+    clearRequestState
+};
+
+@connect(null, mapDispatchToProps)
 export default class QueryHeader extends Component {
     constructor(props, context) {
         super(props, context);
@@ -61,8 +70,8 @@ export default class QueryHeader extends Component {
 
     componentWillUnmount() {
         clearTimeout(this.timeout);
-        if (this.requesetPromise) {
-            this.requesetPromise.cancel();
+        if (this.requestPromise) {
+            this.requestPromise.cancel();
         }
     }
 
@@ -72,6 +81,24 @@ export default class QueryHeader extends Component {
         this.timeout = setTimeout(() =>
             this.setState({ recentlySaved: null })
         , 5000);
+    }
+
+    /// Add result_metadata and metadata_checksum columns to card as expected by the endpoints used for saving
+    /// and updating Cards. These values are returned as part of Query Processor results and fetched from there
+    addResultMetadata(card) {
+        let metadata = this.props.result && this.props.result.data && this.props.result.data.results_metadata;
+        let metadataChecksum = metadata && metadata.checksum;
+        let metadataColumns = metadata && metadata.columns;
+
+        card.result_metadata = metadataColumns;
+        card.metadata_checksum = metadataChecksum;
+    }
+
+    /// remove the databases in the store that are used to populate the QB databases list.
+    /// This is done when saving a Card because the newly saved card will be elligable for use as a source query
+    /// so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
+    clearQBDatabases() {
+        this.props.clearRequestState({ statePath: ["metadata", "databases"] });
     }
 
     onCreate(card, addToDash) {
@@ -87,9 +114,13 @@ export default class QueryHeader extends Component {
             Query.cleanQuery(card.dataset_query.query);
         }
 
+        this.addResultMetadata(card);
+
         // TODO: reduxify
-        this.requesetPromise = cancelable(CardApi.create(card));
-        return this.requesetPromise.then(newCard => {
+        this.requestPromise = cancelable(CardApi.create(card));
+        return this.requestPromise.then(newCard => {
+            this.clearQBDatabases();
+
             this.props.notifyCardCreatedFn(newCard);
 
             this.setState({
@@ -112,9 +143,13 @@ export default class QueryHeader extends Component {
             Query.cleanQuery(card.dataset_query.query);
         }
 
+        this.addResultMetadata(card);
+
         // TODO: reduxify
-        this.requesetPromise = cancelable(CardApi.update(card));
-        return this.requesetPromise.then(updatedCard => {
+        this.requestPromise = cancelable(CardApi.update(card));
+        return this.requestPromise.then(updatedCard => {
+            this.clearQBDatabases();
+
             if (this.props.fromUrl) {
                 this.onGoBack();
                 return;
@@ -186,7 +221,6 @@ export default class QueryHeader extends Component {
         if (isNew && isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
-                    full
                     form
                     key="save"
                     ref="saveModal"
@@ -256,22 +290,7 @@ export default class QueryHeader extends Component {
 
                 // delete button
                 buttonSections.push([
-                    <Tooltip key="delete" tooltip="Delete">
-                        <ModalWithTrigger
-                            ref="deleteModal"
-                            triggerElement={
-                                <span className="text-brand-hover">
-                                    <Icon name="trash" size={16} />
-                                </span>
-                            }
-                        >
-                            <DeleteQuestionModal
-                                card={this.props.card}
-                                deleteCardFn={this.onDelete}
-                                onClose={() => this.refs.deleteModal.toggle()}
-                            />
-                        </ModalWithTrigger>
-                    </Tooltip>
+                    <ArchiveQuestionModal questionId={this.props.card.id} />
                 ]);
 
                 buttonSections.push([
@@ -288,6 +307,10 @@ export default class QueryHeader extends Component {
                         <MoveToCollection
                             questionId={this.props.card.id}
                             initialCollectionId={this.props.card && this.props.card.collection_id}
+                            setCollection={(questionId, collection) => {
+                                this.props.onSetCardAttribute('collection', collection)
+                                this.props.onSetCardAttribute('collection_id', collection.id)
+                            }}
                         />
                     </ModalWithTrigger>
                 ]);
@@ -295,7 +318,7 @@ export default class QueryHeader extends Component {
         }
 
         // parameters
-        if (Query.isNative(this.props.query) && database && _.contains(database.features, "native-parameters")) {
+        if (Query.isNative(card && card.dataset_query) && database && _.contains(database.features, "native-parameters")) {
             const parametersButtonClasses = cx('transition-color', {
                 'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor

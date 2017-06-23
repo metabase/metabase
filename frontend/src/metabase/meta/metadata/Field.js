@@ -6,8 +6,9 @@ import Table from "./Table";
 import type { FieldId, Field as FieldObject } from "metabase/meta/types/Field";
 import type { TableId } from "metabase/meta/types/Table";
 
+import { getFieldValues } from "metabase/lib/query/field";
 import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
-import { isa, isPK, TYPE } from "metabase/lib/types";
+import { isa, isPK, isFK, TYPE } from "metabase/lib/types";
 
 export default class Field extends Base {
     static type = "fields";
@@ -43,19 +44,13 @@ export default class Field extends Base {
     isCategory()  { return isCategory(this._object); }
     isMetric()    { return isMetric(this._object); }
     isDimension() { return isDimension(this._object); }
-    isID()        { return isPK(this.special_type); }
+    isID()        { return isPK(this.special_type) || isFK(this.special_type); }
+    isPK()        { return isPK(this.special_type); }
+    isFK()        { return isFK(this.special_type); }
     isEntityName(){ return isa(this.special_type, TYPE.Name); }
 
     values(): Array<string> {
-        let values = this._object.values;
-        // https://github.com/metabase/metabase/issues/3417
-        if (Array.isArray(values)) {
-            return values;
-        } else if (values && Array.isArray(values.values)) {
-            return values.values;
-        } else {
-            return [];
-        }
+        return getFieldValues(this._object)
     }
 
     icon() {

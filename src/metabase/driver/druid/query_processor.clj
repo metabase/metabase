@@ -1,23 +1,22 @@
 (ns metabase.driver.druid.query-processor
-  (:require [clojure.core.match :refer [match]]
+  (:require [cheshire.core :as json]
+            [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
             [metabase.driver.druid.js :as js]
-            [metabase.query-processor :as qp]
-            (metabase.query-processor [annotate :as annotate]
-                                      [interface :as i])
+            [metabase.query-processor
+             [annotate :as annotate]
+             [interface :as i]]
             [metabase.util :as u])
-  (:import clojure.lang.Keyword
-           (metabase.query_processor.interface AgFieldRef
-                                               DateTimeField
-                                               DateTimeValue
-                                               Expression
-                                               Field
-                                               RelativeDateTimeValue
-                                               Value)))
+  (:import [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression Field RelativeDateTimeValue Value]))
 
+(def ^:private ^:const topN-max-results
+  "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
+
+   Coming from the default value hardcoded in the Druid engine itself
+   http://druid.io/docs/latest/querying/topnquery.html"
+  1000)
 
 ;;             +-----> ::select      +----> :groupBy
 ;; ::query ----|                     |
@@ -58,8 +57,8 @@
   Field                 (->rvalue [this] (:field-name this))
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
-  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value (get-timezone-id))))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount) (get-timezone-id)))))
+  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc unit value (get-timezone-id))))
+  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc unit (u/relative-date unit amount) (get-timezone-id)))))
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]
@@ -81,11 +80,11 @@
                   :granularity :all
                   :context     {:timeout 60000}}]
     {::select             (merge defaults {:queryType  :select
-                                           :pagingSpec {:threshold qp/absolute-max-results}})
+                                           :pagingSpec {:threshold i/absolute-max-results}})
      ::total              (merge defaults {:queryType :timeseries})
      ::grouped-timeseries (merge defaults {:queryType :timeseries})
      ::topN               (merge defaults {:queryType :topN
-                                           :threshold qp/absolute-max-results})
+                                           :threshold topN-max-results})
      ::groupBy            (merge defaults {:queryType :groupBy})}))
 
 
@@ -578,15 +577,16 @@
                                                      {:dimension (->rvalue field)
                                                       :direction direction}))))
 
-(defmethod handle-order-by ::grouped-timeseries [_ {[breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
-  (let [field             (->rvalue field)
-        breakout-field    (->rvalue breakout-field)
-        sort-by-breakout? (= field breakout-field)]
-    (if (and sort-by-breakout?
-             (= direction :descending))
-      (assoc druid-query :descending true)
-      druid-query)))
+;; Handle order by timstamp field
+(defn- handle-order-by-timestamp [field direction druid-query]
+  (assoc druid-query :descending (and (instance? DateTimeField field)
+                                      (= direction :descending))))
 
+(defmethod handle-order-by ::grouped-timeseries [_ {[{field :field, direction :direction}] :order-by} druid-query]
+  (handle-order-by-timestamp field direction druid-query))
+
+(defmethod handle-order-by ::select [_ {[{field :field, direction :direction}] :order-by} druid-query]
+  (handle-order-by-timestamp field direction druid-query))
 
 ;;; ### handle-fields
 

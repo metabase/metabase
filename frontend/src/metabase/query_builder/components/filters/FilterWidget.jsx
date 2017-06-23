@@ -1,6 +1,7 @@
 /* @flow */
 
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
 import FieldName from '../FieldName.jsx';
@@ -14,22 +15,23 @@ import { isDate } from "metabase/lib/schema_metadata";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { FieldFilter } from "metabase/meta/types/Query";
+import type { Filter } from "metabase/meta/types/Query";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 type Props = {
-    filter: FieldFilter,
+    filter: Filter,
     tableMetadata: TableMetadata,
     index: number,
-    updateFilter: (index: number, field: FieldFilter) => void,
-    removeFilter: (index: number) => void,
+    updateFilter?: (index: number, field: Filter) => void,
+    removeFilter?: (index: number) => void,
     maxDisplayValues?: number
 }
 type State = {
     isOpen: bool
 }
 
-export default class FilterWidget extends Component<*, Props, State> {
+export default class FilterWidget extends Component {
+    props: Props;
     state: State;
 
     constructor(props: Props) {
@@ -143,7 +145,7 @@ export default class FilterWidget extends Component<*, Props, State> {
                     <FilterPopover
                         filter={this.props.filter}
                         tableMetadata={this.props.tableMetadata}
-                        onCommitFilter={(filter) => this.props.updateFilter(this.props.index, filter)}
+                        onCommitFilter={(filter) => this.props.updateFilter && this.props.updateFilter(this.props.index, filter)}
                         onClose={this.close}
                     />
                 </Popover>

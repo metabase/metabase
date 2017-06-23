@@ -1,34 +1,38 @@
 (ns metabase.sync-database.analyze
   "Functions which handle the in-depth data shape analysis portion of the sync process."
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [cheshire.core :as json]
+            [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
-            [schema.core :as schema]
-            [metabase.db :as db]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.metadata-queries :as queries]
-            [metabase.driver :as driver]
-            (metabase.models [field :as field]
-                             [field-values :as field-values]
-                             [table :as table])
+            [metabase.models
+             [field :as field]
+             [field-values :as field-values]
+             [table :as table]]
             [metabase.sync-database.interface :as i]
-            [metabase.util :as u]))
+            [schema.core :as schema]
+            [toucan.db :as db]))
 
-(def ^:private ^:const percent-valid-url-threshold
+(def ^:private ^:const ^Float percent-valid-url-threshold
   "Fields that have at least this percent of values that are valid URLs should be given a special type of `:type/URL`."
   0.95)
 
-
-(def ^:private ^:const low-cardinality-threshold
+(def ^:private ^:const ^Integer low-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`."
-  40)
+  300)
 
-(def ^:private ^:const field-values-entry-max-length
+(def ^:private ^:const ^Integer field-values-entry-max-length
   "The maximum character length for a stored `FieldValues` entry."
   100)
 
+(def ^:private ^:const ^Integer field-values-total-max-length
+  "Maximum total length for a FieldValues entry (combined length of all values for the field)."
+  (* low-cardinality-threshold field-values-entry-max-length))
 
-(def ^:private ^:const average-length-no-preview-threshold
+(def ^:private ^:const ^Integer average-length-no-preview-threshold
   "Fields whose values' average length is greater than this amount should be marked as `preview_display = false`."
   50)
 
@@ -40,7 +44,7 @@
   (try
     (queries/table-row-count table)
     (catch Throwable e
-      (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
+      (log/warn (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
 (defn test-for-cardinality?
   "Should FIELD should be tested for cardinality?"
@@ -52,6 +56,12 @@
            (not (isa? (:base_type field) :type/Collection))
            (not (= (:base_type field) :type/*)))))
 
+(defn- field-values-below-low-cardinality-threshold? [non-nil-values]
+  (and (<= (count non-nil-values) low-cardinality-threshold)
+      ;; very simple check to see if total length of field-values exceeds (total values * max per value)
+       (let [total-length (reduce + (map (comp count str) non-nil-values))]
+         (<= total-length field-values-total-max-length))))
+
 (defn test:cardinality-and-extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
   [field field-stats]
@@ -59,10 +69,7 @@
   ;;       for example, :type/Category fields with more than MAX values don't need to be rescanned all the time
   (let [non-nil-values  (filter identity (queries/field-distinct-values field (inc low-cardinality-threshold)))
         ;; only return the list if we didn't exceed our MAX values and if the the total character count of our values is reasable (#2332)
-        distinct-values (when-not (or (< low-cardinality-threshold (count non-nil-values))
-                                      ;; very simple check to see if total length of field-values exceeds (total values * max per value)
-                                      (< (* low-cardinality-threshold
-                                            field-values-entry-max-length) (reduce + (map (comp count str) non-nil-values))))
+        distinct-values (when (field-values-below-low-cardinality-threshold? non-nil-values)
                           non-nil-values)]
     (cond-> (assoc field-stats :values distinct-values)
       (and (nil? (:special_type field))
@@ -131,8 +138,8 @@
     (if-not (values-are-valid-json? (take driver/max-sync-lazy-seq-results (driver/field-values-lazy-seq driver field)))
       field-stats
       (do
-        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :type/JSON." (field/qualified-name field)))
-        (assoc field-stats :special-type :type/JSON, :preview-display false)))))
+        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :type/SerializedJSON." (field/qualified-name field)))
+        (assoc field-stats :special-type :type/SerializedJSON, :preview-display false)))))
 
 (defn- values-are-valid-emails?
   "`true` if at every item in VALUES is `nil` or a valid email, and at least one of those is non-nil."
@@ -175,15 +182,19 @@
        (test:json-special-type  driver field)
        (test:email-special-type driver field)))
 
+;; TODO - It's weird that this one function requires other functions as args when the whole rest of the Metabase driver system
+;;        is built around protocols and record types. These functions should be put back in the `IDriver` protocol (where they
+;;        were originally) or in a special `IAnalyzeTable` protocol).
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
   {:style/indent 1}
-  [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
+  [driver & {:keys [field-avg-length-fn field-percent-urls-fn calculate-row-count?]
              :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
-                    field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
+                    field-percent-urls-fn (partial driver/default-field-percent-urls driver)
+                    calculate-row-count?  true}}]
   (fn [driver table new-field-ids]
     (let [driver (assoc driver :field-avg-length field-avg-length-fn, :field-percent-urls field-percent-urls-fn)]
-      {:row_count (u/try-apply table-row-count table)
+      {:row_count (when calculate-row-count? (u/try-apply table-row-count table))
        :fields    (for [{:keys [id] :as field} (table/fields table)]
                     (let [new-field? (contains? new-field-ids id)]
                       (cond->> {:id id}
@@ -235,7 +246,7 @@
   (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
 
   (let [start-time-ns         (System/nanoTime)
-        tables                (db/select table/Table, :db_id database-id, :active true)
+        tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
         tables-count          (count tables)
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]

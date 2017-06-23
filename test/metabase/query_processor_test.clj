@@ -4,12 +4,12 @@
    Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [expectations :refer :all]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            metabase.test.data.interface
-            [metabase.util :as u]))
+            [medley.core :as m]))
 
 ;; make sure all the driver test extension namespaces are loaded <3
 ;; if this isn't done some things will get loaded at the wrong time which can end up causing test databases to be created more than once, which fails
@@ -204,8 +204,9 @@
                                 {:target_table_id (data/id :venues)}
                                 {})
                 :target       (target-field (venues-col :id))
-                :special_type (when (data/fks-supported?)
-                                :type/FK)
+                :special_type (if (data/fks-supported?)
+                                :type/FK
+                                :type/Category)
                 :base_type    (data/expected-base-type->actual :type/Integer)
                 :name         (data/format-name "venue_id")
                 :display_name "Venue ID"}
@@ -256,10 +257,14 @@
 (defn breakout-col [column]
   (assoc column :source :breakout))
 
+;; TODO - maybe this needs a new name now that it also removes the results_metadata
 (defn booleanize-native-form
-  "Convert `:native_form` attribute to a boolean to make test results comparisons easier."
+  "Convert `:native_form` attribute to a boolean to make test results comparisons easier.
+   Remove `data.results_metadata` as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled."
   [m]
-  (update-in m [:data :native_form] boolean))
+  (-> m
+      (update-in [:data :native_form] boolean)
+      (m/dissoc-in [:data :results_metadata])))
 
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
@@ -285,7 +290,9 @@
                                          (printf "(%s %s) failed: %s" f v (.getMessage e))
                                          (throw e)))))))))))
 
-(def formatted-venues-rows (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
+(def ^{:arglists '([results])} formatted-venues-rows
+  "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
+  (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
 
 (defn rows
@@ -293,7 +300,7 @@
   {:style/indent 0}
   [results]
   (vec (or (get-in results [:data :rows])
-           (println (u/pprint-to-str 'red results))
+           (println (u/pprint-to-str 'red results)) ; DEBUG
            (throw (Exception. "Error!")))))
 
 (defn rows+column-names

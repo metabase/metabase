@@ -10,6 +10,14 @@
   overflow-y: auto;
 }
 
+/* On IE11, single flex item with `margin: auto` gets shifted to flex end
+ * https://github.com/philipwalton/flexbugs/issues/157
+ * Set margin to zero when using Flexbox in `WindowModal` component 
+ */
+.Modal-backdrop > .Modal, .Modal-backdrop--dark > .Modal {
+  margin: 0;
+}
+
 .Modal.Modal--small   { width: 480px; } /* TODO - why is this one px? */
 .Modal.Modal--medium  { width: 65%; }
 .Modal.Modal--wide    { width: 85%; }
@@ -32,7 +40,7 @@
     background-color: rgba(255, 255, 255, 0.6);
 }
 
-.Modal-backdrop-dark {
+.Modal-backdrop--dark {
     background-color: rgba(75, 75, 75, 0.7);
 }
 

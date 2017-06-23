@@ -1,19 +1,22 @@
 (ns metabase.models.metric
   (:require [medley.core :as m]
-            [metabase.db :as db]
-            [metabase.events :as events]
-            (metabase.models [dependency :as dependency]
-                             [hydrate :refer :all]
-                             [interface :as i]
-                             [revision :as revision])
-            [metabase.query :as q]
-            [metabase.util :as u]))
+            [metabase
+             [events :as events]
+             [query :as q]
+             [util :as u]]
+            [metabase.models
+             [dependency :as dependency]
+             [interface :as i]
+             [revision :as revision]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
+(models/defmodel Metric :metric)
 
-(i/defentity Metric :metric)
-
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'MetricImportantField :metric_id id))
+(defn- pre-delete [{:keys [id]}]
+  (db/delete! 'MetricImportantField :metric_id id))
 
 (defn- perms-objects-set [metric read-or-write]
   (let [table (or (:table metric)
@@ -21,14 +24,16 @@
     (i/perms-objects-set table read-or-write)))
 
 (u/strict-extend (class Metric)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:types              (constantly {:definition :json, :description :clob})
-          :timestamped?       (constantly true)
-          :perms-objects-set  perms-objects-set
-          :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :pre-cascade-delete pre-cascade-delete}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:types      (constantly {:definition :json, :description :clob})
+          :properties (constantly {:timestamped? true})
+          :pre-delete pre-delete})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:perms-objects-set perms-objects-set
+          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -46,8 +51,8 @@
                                                (select-keys metric1 [:name :description :definition])
                                                (select-keys metric2 [:name :description :definition]))]
       (cond-> (merge-with merge
-                          (m/map-vals (fn [v] {:after v}) (:after base-diff))
-                          (m/map-vals (fn [v] {:before v}) (:before base-diff)))
+                (m/map-vals (fn [v] {:after v}) (:after base-diff))
+                (m/map-vals (fn [v] {:before v}) (:before base-diff)))
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
                                                                           :after  (get-in metric2 [:definition])})))))
@@ -114,16 +119,20 @@
    (retrieve-metrics table-id :active))
   ([table-id state]
    {:pre [(integer? table-id) (keyword? state)]}
-   (-> (if (= :all state)
-         (db/select Metric, :table_id table-id, {:order-by [[:name :asc]]})
-         (db/select Metric, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
+   (-> (db/select Metric
+         {:where    [:and [:= :table_id table-id]
+                          (case state
+                            :all     true
+                            :active  [:= :is_active true]
+                            :deleted [:= :is_active false])]
+          :order-by [[:name :asc]]})
        (hydrate :creator))))
 
 (defn update-metric!
   "Update an existing `Metric`.
 
    Returns the updated `Metric` or throws an Exception."
-  [{:keys [id name description caveats points_of_interest how_is_this_calculated show_in_getting_started definition revision_message]} user-id]
+  [{:keys [id name definition revision_message], :as body} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -131,13 +140,7 @@
          (string? revision_message)]}
   ;; update the metric itself
   (db/update! Metric id
-    :name                    name
-    :description             description
-    :caveats                 caveats
-    :points_of_interest      points_of_interest
-    :how_is_this_calculated  how_is_this_calculated
-    :show_in_getting_started show_in_getting_started
-    :definition              definition)
+    (select-keys body #{:caveats :definition :description :how_is_this_calculated :name :points_of_interest :show_in_getting_started}))
   (u/prog1 (retrieve-metric id)
     (events/publish-event! :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 

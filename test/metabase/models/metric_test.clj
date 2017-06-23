@@ -1,13 +1,24 @@
 (ns metabase.models.metric-test
   (:require [expectations :refer :all]
-            (metabase.models [database :refer [Database]]
-                             [hydrate :refer :all]
-                             [metric :refer :all, :as metric]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [database :refer [Database]]
+             [metric :as metric :refer :all]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.util.test :as tt]))
+
+(def ^:private ^:const metric-defaults
+  {:description             nil
+   :how_is_this_calculated  nil
+   :show_in_getting_started false
+   :caveats                 nil
+   :points_of_interest      nil
+   :is_active               true
+   :definition              {}})
 
 (defn- user-details
   [username]
@@ -29,17 +40,12 @@
 
 ;; create-metric!
 (expect
-  {:creator_id              (user->id :rasta)
-   :creator                 (user-details :rasta)
-   :name                    "I only want *these* things"
-   :description             nil
-   :how_is_this_calculated  nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :is_active               true
-   :definition              {:clause ["a" "b"]}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (merge metric-defaults
+         {:creator_id (user->id :rasta)
+          :creator    (user-details :rasta)
+          :name       "I only want *these* things"
+          :definition {:clause ["a" "b"]}})
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]}      {:db_id database-id}]]
     (create-metric-then-select! id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
 
@@ -48,7 +54,7 @@
 (expect
   [true
    false]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-id :id}   {:table_id   table-id
                                                :definition {:database 45
@@ -59,18 +65,14 @@
 
 ;; retrieve-metric
 (expect
-  {:creator_id              (user->id :rasta)
-   :creator                 (user-details :rasta)
-   :name                    "Toucans in the rainforest"
-   :description             "Lookin' for a blueberry"
-   :how_is_this_calculated  nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :is_active               true
-   :definition              {:database 45
-                             :query    {:filter ["yay"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (merge metric-defaults
+         {:creator_id  (user->id :rasta)
+          :creator     (user-details :rasta)
+          :name        "Toucans in the rainforest"
+          :description "Lookin' for a blueberry"
+          :definition  {:database 45
+                        :query    {:filter ["yay"]}}})
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
                   Metric   [{metric-id :id}   {:table_id    table-id
                                                :definition  {:database 45
@@ -80,19 +82,13 @@
               :creator (u/rpartial dissoc :date_joined :last_login)))))
 
 
-;; retrieve-segements
+;; retrieve-metrics
 (expect
-  [{:creator_id              (user->id :rasta)
-    :creator                 (user-details :rasta)
-    :name                    "Metric 1"
-    :description             nil
-    :how_is_this_calculated  nil
-    :show_in_getting_started false
-    :caveats                 nil
-    :points_of_interest      nil
-    :is_active               true
-    :definition              {}}]
-  (tu/with-temp* [Database [{database-id :id}]
+  [(merge metric-defaults
+          {:creator_id (user->id :rasta)
+           :creator    (user-details :rasta)
+           :name       "Metric 1"})]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]
                   Table    [{table-id-2 :id}    {:db_id database-id}]
                   Metric   [{segement-id-1 :id} {:table_id table-id-1, :name "Metric 1", :description nil}]
@@ -112,18 +108,13 @@
 ;;  4. ability to modify the definition json
 ;;  5. revision is captured along with our commit message
 (expect
-  {:creator_id              (user->id :rasta)
-   :creator                 (user-details :rasta)
-   :name                    "Costa Rica"
-   :description             nil
-   :how_is_this_calculated  nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :is_active               true
-   :definition              {:database 2
-                             :query    {:filter ["not" "the toucans you're looking for"]}}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (merge metric-defaults
+         {:creator_id (user->id :rasta)
+          :creator    (user-details :rasta)
+          :name       "Costa Rica"
+          :definition {:database 2
+                       :query    {:filter ["not" "the toucans you're looking for"]}}})
+  (tt/with-temp* [Database [{database-id :id}]
                   Table  [{table-id :id}  {:db_id database-id}]
                   Metric [{metric-id :id} {:table_id table-id}]]
     (update-metric-then-select! {:id                      metric-id
@@ -141,17 +132,13 @@
 
 ;; delete-metric!
 (expect
-  {:creator_id              (user->id :rasta)
-   :creator                 (user-details :rasta)
-   :name                    "Toucans in the rainforest"
-   :description             "Lookin' for a blueberry"
-   :how_is_this_calculated  nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :is_active               false
-   :definition              {}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (merge metric-defaults
+         {:creator_id  (user->id :rasta)
+          :creator     (user-details :rasta)
+          :name        "Toucans in the rainforest"
+          :description "Lookin' for a blueberry"
+          :is_active   false})
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}  {:db_id database-id}]
                   Metric   [{metric-id :id} {:table_id table-id}]]
     (delete-metric! metric-id (user->id :crowberto) "revision message")
@@ -164,19 +151,15 @@
 
 ;; serialize-metric
 (expect
-  {:id                      true
-   :table_id                true
-   :creator_id              (user->id :rasta)
-   :name                    "Toucans in the rainforest"
-   :description             "Lookin' for a blueberry"
-   :how_is_this_calculated  nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :definition              {:aggregation ["count"]
-                             :filter      ["AND" [">" 4 "2014-10-19"]]}
-   :is_active               true}
-  (tu/with-temp* [Database [{database-id :id}]
+  (merge metric-defaults
+         {:id          true
+          :table_id    true
+          :creator_id  (user->id :rasta)
+          :name        "Toucans in the rainforest"
+          :description "Lookin' for a blueberry"
+          :definition  {:aggregation ["count"]
+                        :filter      ["AND" [">" 4 "2014-10-19"]]}})
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
                                             :definition {:aggregation ["count"]
@@ -194,7 +177,7 @@
                  :after  "BBB"}
    :name        {:before "Toucans in the rainforest"
                  :after  "Something else"}}
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [metric         {:table_id   table-id
                                             :definition {:filter ["AND" [">" 4 "2014-10-19"]]}}]]

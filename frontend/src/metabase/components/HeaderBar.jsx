@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
 
 import Input from "metabase/components/Input.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
@@ -42,15 +42,15 @@ export default class Header extends Component {
         }
 
         return (
-            <div className={cx("QueryBuilder-section flex align-center", className)}>
-                <div className={cx("py1 relative flex-full", { "pt2": badge })}>
+            <div className={cx("QueryBuilder-section pt2 sm-pt2 flex align-center", className)}>
+                <div className={cx("px2 sm-px0 pt2 relative flex-full")}>
                     { badge &&
-                        <div className="absolute top left">{badge}</div>
+                        <div className="absolute top left ml2 sm-ml2">{badge}</div>
                     }
                     {titleAndDescription}
                 </div>
 
-                <div className="flex-align-right">
+                <div className="flex-align-right hide sm-show">
                     {buttons}
                 </div>
             </div>

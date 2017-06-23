@@ -8,6 +8,7 @@
 *  [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)
 *  [Running database migrations manually](#running-metabase-database-migrations-manually)
 *  [Backing up Metabase Application Data](#backing-up-metabase-application-data)
+*  [Encrypting your database connection details at rest](#encrypting-your-database-connection-details-at-rest)
 *  [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)
 *  [Changing password complexity](#changing-metabase-password-complexity)
 *  [Handling Timezones](#handling-timezones-in-metabase)
@@ -69,15 +70,70 @@ Step-by-step instructions on how to upgrade Metabase running on Heroku.
 
 # Troubleshooting Common Problems
 
-### Metabase fails to startup
+### Metabase fails to start due to database locks
 
-Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly.
+Sometimes Metabase will fail to complete its startup due to a database lock that was not cleared properly. The error message will look something like:
+
+    liquibase.exception.DatabaseException: liquibase.exception.LockException: Could not acquire change log lock.
 
 When this happens, go to a terminal where Metabase is installed and run:
 
     java -jar metabase.jar migrate release-locks
 
-in the command line to manually clear the locks.  Then restart your Metabase instance.
+in the command line to manually clear the locks. Then restart your Metabase instance.
+
+### Metabase fails to start due to PermGen OutOfMemoryErrors
+
+On Java 7, Metabase may fail to launch with a message like
+
+    java.lang.OutOfMemoryError: PermGen space
+
+or one like
+
+    Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler
+
+If this happens, setting a few JVM options should fix your issue:
+
+    java -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m -jar target/uberjar/metabase.jar
+
+You can also pass JVM arguments by setting the environment variable `JAVA_TOOL_OPTIONS`, e.g.
+
+    JAVA_TOOL_OPTIONS='-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m'
+
+Alternatively, you can upgrade to Java 8 instead, which will fix the issue as well.
+
+### Metabase fails to start due to Heap Space OutOfMemoryErrors
+
+Normally, the JVM can figure out how much RAM is available on the system and automatically set a sensible upper bound for heap memory usage. On certain shared hosting
+environments, however, this doesn't always work perfectly. If Metabase fails to start with an error message like
+
+    java.lang.OutOfMemoryError: Java heap space
+
+You'll just need to set a JVM option to let it know explicitly how much memory it should use for the heap space:
+
+    java -Xmx2g -jar metabase.jar
+
+Adjust this number as appropriate for your shared hosting instance. Make sure to set the number lower than the total amount of RAM available on your instance, because Metabase isn't the only process that'll be running. Generally, leaving 1-2 GB of RAM for these other processes should be enough; for example, you might set `-Xmx` to `1g` for an instance with 2 GB of RAM, `2g` for one with 4 GB of RAM, `6g` for an instance with 8 GB of RAM, and so forth. You may need to experment with these settings a bit to find the right number.
+
+As above, you can use the environment variable `JAVA_TOOL_OPTIONS` to set JVM args instead of passing them directly to `java`. This is useful when running the Docker image,
+for example.
+
+    docker run -d -p 3000:3000 -e "JAVA_TOOL_OPTIONS=-Xmx2g" metabase/metabase
+
+### Metabase fails to connect to H2 Database on Windows 10
+
+In some situations the Metabase JAR needs to be unblocked so it has permissions to create local files for the application database.
+
+On Windows 10, if you see an error message like
+
+    Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to connect to Metabase DB.
+
+when running the JAR, you can unblock the file by right-clicking, clicking "Properties", and then clicking "Unblock".
+See Microsoft's documentation [here](https://blogs.msdn.microsoft.com/delay/p/unblockingdownloadedfile/) for more details on unblocking downloaded files.
+
+There are a few other reasons why Metabase might not be able to connect to your H2 DB. Metabase connects to the DB over a TCP port, and it's possible
+that something in your `ipconfig` configuration is blocking the H2 port. See the discussion [here](https://github.com/metabase/metabase/issues/1871) for
+details on how to resolve this issue.
 
 
 # Configuring the Metabase Application Database
@@ -221,6 +277,27 @@ Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.
 Simply follow the same instructions you would use for making any normal database backup.  It's a large topic more fit for a DBA to answer, but as long as you have a dump of the Metabase database you'll be good to go.
 
 
+# Encrypting your database connection details at rest
+
+Metabase stores connection information for the various databases you add in the Metabase application database. To prevent bad actors from being able to access these details if they were to gain access to
+the application DB, Metabase can automatically encrypt them when they are saved, and decrypt them on-the-fly whenever they are needed. The only thing you need to do is set the environment variable
+`MB_ENCRYPTION_SECRET_KEY`.
+
+Your secret key must be at least 16 characters (longer is even better!), and we recommend using a secure random key generator to generate it. `openssl` is a good choice:
+
+    openssl rand -base64 32
+
+This gives you a cryptographically-secure, randomly-generated 32-character key that will look something like `IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=`. Set it as an environment variable and
+start Metabase as usual:
+
+    MB_ENCRYPTION_SECRET_KEY='IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=' java -jar metabase.jar
+
+Metabase will securely encrypt and store the connection details for any new Databases you add. (Connection details for existing databases will be encrypted as well if you save them in the admin panel).
+Existing databases with unencrypted details will continue to work normally.
+
+Take care not to lose this key because you can't decrypt connection details without it. If you lose (or change) it, you'll have to reset all of the connection details that have been encrypted with it in the Admin Panel.
+
+
 # Customizing the Metabase Jetty webserver
 
 In most cases there will be no reason to modify any of the settings around how Metabase runs its embedded Jetty webserver to host the application, but if you wish to run HTTPS directly with your Metabase server or if you need to run on another port, that's all configurable.
@@ -289,6 +366,7 @@ To ensure proper reporting it's important that timezones be set consistently in 
 
 
 Common Pitfalls:
+
 1. Your database is using date/time columns without any timezone information.  Typically when this happens your database will assume all the data is from whatever timezone the database is configured in or possible just default to UTC (check your database vendor to be sure).
 2. Your JVM timezone is not the same as your Metabase `Report Timezone` choice.  This is a very common issue and can be corrected by launching java with the `-Duser.timezone=<timezone>` option properly set to match your Metabase report timezone.
 

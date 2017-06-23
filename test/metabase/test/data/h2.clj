@@ -1,11 +1,10 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
-  (:require [clojure.core.reducers :as r]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [metabase.db.spec :as dbspec]
-            metabase.driver.h2
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.h2.H2Driver))
 
@@ -52,7 +51,7 @@
 
 
 (u/strict-extend H2Driver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (let [{:keys [execute-sql!], :as mixin} generic/DefaultsMixin]
     (merge mixin
            {:create-db-sql             (constantly create-db-sql)
@@ -70,8 +69,8 @@
             :prepare-identifier        (u/drop-first-arg s/upper-case)
             :quote-name                (u/drop-first-arg quote-name)}))
 
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details       (u/drop-first-arg database->connection-details)
           :default-schema                     (constantly "PUBLIC")
           :engine                             (constantly :h2)

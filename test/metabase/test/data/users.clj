@@ -1,13 +1,14 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
-            (metabase [db :as db]
-                      [http-client :as http])
-            (metabase.models [permissions-group :as perms-group]
-                             [user :refer [User]])
-            [metabase.util :as u]
-            [metabase.test.util :refer [random-name]]))
+            [metabase
+             [config :as config]
+             [http-client :as http]
+             [util :as u]]
+            [metabase.core.initialization-status :as init-status]
+            [metabase.models.user :refer [User]]
+            [toucan.db :as db])
+  (:import clojure.lang.ExceptionInfo))
 
 ;;; ------------------------------------------------------------ User Definitions ------------------------------------------------------------
 
@@ -45,12 +46,29 @@
 
 ;;; ------------------------------------------------------------ Test User Fns ------------------------------------------------------------
 
+(defn- wait-for-initiailization
+  "Wait up to MAX-WAIT-SECONDS (default: 30) for Metabase to finish initializing.
+   (Sometimes it can take Metabase a while to reload during live development with `lein ring server`.)"
+  ([]
+   (wait-for-initiailization 30))
+  ([max-wait-seconds]
+   ;; only need to wait when running unit tests. When doing REPL dev and using the test users we're probably
+   ;; the server is probably a separate process (`lein ring server`)
+   (when config/is-test?
+     (when-not (init-status/complete?)
+       (when (<= max-wait-seconds 0)
+         (throw (Exception. "Metabase still hasn't finished initializing.")))
+       (printf "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)...\n" max-wait-seconds)
+       (Thread/sleep 1000)
+       (recur (dec max-wait-seconds))))))
+
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
   [& {:keys [email first last password superuser active]
       :or {superuser false
            active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
+  (wait-for-initiailization)
   (or (User :email email)
       (db/insert! User
         :email        email
@@ -63,15 +81,24 @@
 
 
 (defn fetch-user
-  "Fetch the User object associated with USERNAME.
+  "Fetch the User object associated with USERNAME. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
   [username]
   {:pre [(contains? usernames username)]}
   (m/mapply fetch-or-create-user! (user->info username)))
 
+(defn create-users-if-needed!
+  "Force creation of the test users if they don't already exist."
+  ([]
+   (apply create-users-if-needed! usernames))
+  ([& usernames]
+   (doseq [username usernames]
+     ;; fetch-user will force creation of users
+     (fetch-user username))))
+
 (def ^{:arglists '([username])} user->id
-  "Memoized fn that returns the ID of User associated with USERNAME.
+  "Memoized fn that returns the ID of User associated with USERNAME. Creates user if needed.
 
     (user->id :rasta) -> 4"
   (memoize
@@ -80,12 +107,14 @@
      (:id (fetch-user username)))))
 
 (defn user->credentials
-  "Return a map with `:email` and `:password` for User with USERNAME.
+  "Return a map with `:username` and `:password` for User with USERNAME.
 
-    (user->credentials :rasta) -> {:email \"rasta@metabase.com\", :password \"blueberries\"}"
+    (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
   [username]
   {:pre [(contains? usernames username)]}
-  (select-keys (user->info username) [:email :password]))
+  (let [{:keys [email password]} (user->info username)]
+    {:username email
+     :password password}))
 
 (def ^{:arglists '([id])} id->user
   "Reverse of `user->id`.
@@ -95,7 +124,7 @@
     (fn [id]
       (@m id))))
 
-(def ^:private tokens (atom {}))
+(defonce ^:private tokens (atom {}))
 
 (defn- username->token [username]
   (or (@tokens username)
@@ -103,32 +132,29 @@
         (swap! tokens assoc username <>))
       (throw (Exception. (format "Authentication failed for %s with credentials %s" username (user->credentials username))))))
 
-;; TODO - does it make sense just to make this a non-higher-order function? Or a group of functions, e.g.
-;; (GET :rasta 200 "field/10/values")
-;; vs.
-;; ((user->client :rasta) :get 200 "field/10/values")
+(defn- client-fn [username & args]
+  (try
+    (apply http/client (username->token username) args)
+    (catch ExceptionInfo e
+      (let [{:keys [status-code]} (ex-data e)]
+        (when-not (= status-code 401)
+          (throw e))
+        ;; If we got a 401 unauthenticated clear the tokens cache + recur
+        (reset! tokens {})
+        (apply client-fn username args)))))
+
 (defn user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
    In addition, it forces lazy creation of the User if needed.
 
      ((user->client) :get 200 \"meta/table\")"
   [username]
-  ;; Force lazy creation of User if need be
-  (user->id username)
-  (fn client-fn [& args]
-    (try
-      (apply http/client (username->token username) args)
-      (catch Throwable e
-        (let [{:keys [status-code]} (ex-data e)]
-          (when-not (= status-code 401)
-            (throw e))
-          ;; If we got a 401 unauthenticated clear the tokens cache + recur
-          (reset! tokens {})
-          (apply client-fn args))))))
+  (create-users-if-needed! username)
+  (partial client-fn username))
 
 
 (defn ^:deprecated delete-temp-users!
   "Delete all users besides the 4 persistent test users.
    This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to remove this. (TODO)"
   []
-  (db/cascade-delete! 'User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))
+  (db/delete! User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))

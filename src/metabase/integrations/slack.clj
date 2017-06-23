@@ -1,10 +1,9 @@
 (ns metabase.integrations.slack
-  (:require [clojure.tools.logging :as log]
-            [cheshire.core :as json]
+  (:require [cheshire.core :as json]
             [clj-http.client :as http]
-            [metabase.models.setting :as setting, :refer [defsetting]]
+            [clojure.tools.logging :as log]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]))
-
 
 ;; Define a setting which captures our Slack api token
 (defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
@@ -37,14 +36,6 @@
 (def ^{:arglists '([endpoint & {:as params}]), :style/indent 1} GET  "Make a GET request to the Slack API."  (partial do-slack-request http/get  :query-params))
 (def ^{:arglists '([endpoint & {:as params}]), :style/indent 1} POST "Make a POST request to the Slack API." (partial do-slack-request http/post :form-params))
 
-(def ^:private ^{:arglists '([channel-id & {:as args}])} create-channel!
-  "Calls Slack api `channels.create` for CHANNEL."
-  (partial POST :channels.create, :name))
-
-(def ^:private ^{:arglists '([channel-id & {:as args}])} archive-channel!
-  "Calls Slack api `channels.archive` for CHANNEL."
-  (partial POST :channels.archive, :channel))
-
 (def ^{:arglists '([& {:as args}])} channels-list
   "Calls Slack api `channels.list` function and returns the list of available channels."
   (comp :channels (partial GET :channels.list, :exclude_archived 1)))
@@ -53,29 +44,26 @@
   "Calls Slack api `users.list` function and returns the list of available users."
   (comp :members (partial GET :users.list)))
 
-(defn- create-files-channel!
-  "Convenience function for creating our Metabase files channel to store file uploads."
-  []
-  (when-let [{files-channel :channel, :as response} (create-channel! files-channel-name)]
-    (when-not files-channel
-      (log/error (u/pprint-to-str 'red response))
-      (throw (ex-info "Error creating Slack channel for Metabase file uploads" response)))
-    ;; Right after creating our files channel, archive it. This is because we don't need users to see it.
-    (u/prog1 files-channel
-      (archive-channel! (:id <>)))))
+(def ^:private ^:const ^String channel-missing-msg
+  (str "Slack channel named `metabase_files` is missing! Please create the channel in order to complete "
+       "the Slack integration. The channel is used for storing graphs that are included in pulses and "
+       "MetaBot answers."))
 
-(defn- files-channel
-  "Return the `metabase_files` channel (as a map) if it exists."
+(defn- maybe-get-files-channel
+  "Return the `metabase_files channel (as a map) if it exists."
   []
   (some (fn [channel] (when (= (:name channel) files-channel-name)
                         channel))
         (channels-list :exclude_archived 0)))
 
-(defn get-or-create-files-channel!
-  "Calls Slack api `channels.info` and `channels.create` function as needed to ensure that a #metabase_files channel exists."
+(defn files-channel
+  "Calls Slack api `channels.info` to check whether a channel named #metabase_files exists. If it doesn't,
+   throws an error that advices an admin to create it."
   []
-  (or (files-channel)
-      (create-files-channel!)))
+  (or (maybe-get-files-channel)
+      (do (log/error (u/format-color 'red channel-missing-msg))
+          (throw (ex-info channel-missing-msg {:status-code 400})))))
+
 
 (defn upload-file!
   "Calls Slack api `files.upload` function and returns the body of the uploaded file."

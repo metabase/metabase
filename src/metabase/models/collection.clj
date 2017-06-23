@@ -1,20 +1,24 @@
 (ns metabase.models.collection
-  (:require (clojure [data :as data]
-                     [string :as str])
-            [schema.core :as s]
+  (:require [clojure
+             [data :as data]
+             [string :as str]]
             [metabase.api.common :refer [*current-user-id*]]
-            [metabase.db :as db]
-            (metabase.models [collection-revision :refer [CollectionRevision], :as collection-revision]
-                             [interface :as i]
-                             [permissions :as perms])
+            [metabase.models
+             [collection-revision :as collection-revision :refer [CollectionRevision]]
+             [interface :as i]
+             [permissions :as perms]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]
+            [toucan
+             [db :as db]
+             [models :as models]]))
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
   254)
 
-(i/defentity Collection :collection)
+(models/defmodel Collection :collection)
 
 (defn- assert-unique-slug [slug]
   (when (db/exists? Collection :slug slug)
@@ -57,7 +61,7 @@
                               (or (db/exists? Collection, :slug <>, :id id) ; if slug hasn't changed no need to check for uniqueness
                                   (assert-unique-slug <>))))))              ; otherwise check to make sure the new slug is unique
 
-(defn- pre-cascade-delete [collection]
+(defn- pre-delete [collection]
   ;; unset the collection_id for Cards in this collection. This is mostly for the sake of tests since IRL we shouldn't be deleting collections, but rather archiving them instead
   (db/update-where! 'Card {:collection_id (u/get-id collection)}
     :collection_id nil))
@@ -72,16 +76,18 @@
 
 
 (u/strict-extend (class Collection)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:hydration-keys     (constantly [:collection])
-          :types              (constantly {:name :clob, :description :clob})
-          :pre-insert         pre-insert
-          :pre-update         pre-update
-          :pre-cascade-delete pre-cascade-delete
-          :can-read?          (partial i/current-user-has-full-permissions? :read)
-          :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :perms-objects-set  perms-objects-set}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:hydration-keys (constantly [:collection])
+          :types          (constantly {:name :clob, :description :clob})
+          :pre-insert     pre-insert
+          :pre-update     pre-update
+          :pre-delete     pre-delete})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)
+          :perms-objects-set perms-objects-set}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+

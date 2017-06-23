@@ -1,10 +1,10 @@
 (ns metabase.models.card-favorite
-  (:require [metabase.models.interface :as i]
-            [metabase.util :as u]))
+  (:require [metabase.util :as u]
+            [toucan.models :as models]))
 
-(i/defentity CardFavorite :report_cardfavorite)
+(models/defmodel CardFavorite :report_cardfavorite)
 
 (u/strict-extend (class CardFavorite)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped? (constantly true)}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties   (constantly {:timestamped? true})}))

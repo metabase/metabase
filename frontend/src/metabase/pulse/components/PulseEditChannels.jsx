@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import _ from "underscore";
 import { assoc, assocIn } from "icepick";
@@ -38,7 +39,8 @@ export default class PulseEditChannels extends Component {
         user: PropTypes.object.isRequired,
         userList: PropTypes.array.isRequired,
         setPulse: PropTypes.func.isRequired,
-        testPulse: PropTypes.func.isRequired
+        testPulse: PropTypes.func.isRequired,
+        cardPreviews: PropTypes.array
     };
     static defaultProps = {};
 
@@ -134,6 +136,15 @@ export default class PulseEditChannels extends Component {
         return this.props.testPulse({ ...this.props.pulse, channels: [channel] });
     }
 
+    willPulseSkip = () => {
+        let cards = _.pluck(this.props.pulse.cards, 'id');
+        let cardPreviews = this.props.cardPreviews;
+        let previews = _.map(cards, function (id) { return _.find(cardPreviews, function(card){ return (id == card.id);})});
+        let types = _.pluck(previews, 'pulse_card_type');
+        let empty = _.isEqual( _.uniq(types), ["empty"]);
+        return (empty && this.props.pulse.skip_if_empty);
+    }
+
     renderFields(channel, index, channelSpec) {
         return (
             <div>
@@ -142,7 +153,7 @@ export default class PulseEditChannels extends Component {
                         <span className="h4 text-bold mr1">{field.displayName}</span>
                         { field.type === "select" ?
                             <Select
-                                className="h4 text-bold"
+                                className="h4 text-bold bg-white"
                                 value={channel.details[field.name]}
                                 options={field.options}
                                 optionNameFn={o => o}
@@ -160,6 +171,9 @@ export default class PulseEditChannels extends Component {
         let isValid = this.props.pulseIsValid && channelIsValid(channel, channelSpec);
         return (
             <li key={index} className="py2">
+                { channelSpec.error &&
+                    <div className="pb2 text-bold text-error">{channelSpec.error}</div>
+                }
                 { channelSpec.recipients &&
                     <div>
                         <div className="h4 text-bold mb1">To:</div>
@@ -191,7 +205,8 @@ export default class PulseEditChannels extends Component {
                             "Send to  " + channelSpec.name + " now"}
                         activeText="Sending…"
                         failedText="Sending failed"
-                        successText="Pulse sent"
+                        successText={ this.willPulseSkip() ?  "Didn’t send because the pulse has no results." : "Pulse sent"}
+                        forceActiveStyle={ this.willPulseSkip() }
                     />
                 </div>
             </li>

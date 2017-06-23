@@ -1,9 +1,10 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./Labels.css";
 import color from 'color'
-import Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 
 import EmojiIcon from "metabase/components/EmojiIcon.jsx"
 

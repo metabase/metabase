@@ -1,13 +1,10 @@
 (ns metabase.test.data.redshift
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             redshift)
-            (metabase.test.data [generic-sql :as generic]
-                                [interface :as i]
-                                [postgres :as postgres])
+            [metabase.driver.generic-sql :as sql]
+            [metabase.test.data
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.redshift.RedshiftDriver))
 
@@ -51,7 +48,7 @@
 
 
 (u/strict-extend RedshiftDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:create-db-sql             (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
@@ -60,8 +57,8 @@
           :pk-sql-type               (constantly "INTEGER IDENTITY(1,1)")
           :qualified-name-components (partial i/single-db-qualified-name-components session-schema-name)})
 
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (fn [& _]
                                           @db-connection-details)
           :default-schema               (constantly session-schema-name)

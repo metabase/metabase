@@ -1,12 +1,9 @@
 (ns metabase.events.metabot-lifecycle
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.events :as events]
-            [metabase.metabot :as metabot]
-            [metabase.models.database :refer [Database]]))
-
+            [metabase
+             [events :as events]
+             [metabot :as metabot]]))
 
 (def ^:const ^:private metabot-lifecycle-topics
   "The `Set` of event topics which are subscribed to for use in metabot lifecycle."
@@ -30,9 +27,9 @@
       (when (and (contains? object :metabot-enabled) (contains? object :slack-token))
         (let [{:keys [slack-token metabot-enabled]} object]
           (cond
-            (nil? slack-token)      (metabot/stop-metabot!)
-            (not metabot-enabled)   (metabot/stop-metabot!)
-            :else                   (metabot/restart-metabot!))))
+            (nil? slack-token)    (metabot/stop-metabot!)
+            (not metabot-enabled) (metabot/stop-metabot!)
+            :else                 (metabot/restart-metabot!))))
       (catch Throwable e
         (log/warn (format "Failed to process driver notifications event. %s" topic) e)))))
 

@@ -1,12 +1,12 @@
 (ns metabase.api.geojson
-  (:require [clojure.java.io :as io]
-            [cheshire.core :as json]
-            [compojure.core :refer [defroutes GET]]
-            [schema.core :as s]
-            [metabase.api.common :refer :all]
-            [metabase.models.setting :refer [defsetting], :as setting]
+  (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
+            [compojure.core :refer [GET]]
+            [metabase.api.common :refer [defendpoint define-routes]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 (defn- valid-json?
   "Does this URL-OR-RESOURCE point to valid JSON?
@@ -17,11 +17,11 @@
   true)
 
 (defn- valid-json-resource?
-  "Does this RELATIVE-PATH point to a valid local JSON resource? (RELATIVE-PATH is something like \"app/charts/us-states.json\".)"
+  "Does this RELATIVE-PATH point to a valid local JSON resource? (RELATIVE-PATH is something like \"app/assets/geojson/us-states.json\".)"
   [relative-path]
   (when-let [^java.net.URI uri (u/ignore-exceptions (java.net.URI. relative-path))]
     (when-not (.isAbsolute uri)
-      (valid-json? (io/resource (str "frontend_client" uri))))))
+      (valid-json? (io/resource (str "frontend_client/" uri))))))
 
 (defn- valid-json-url?
   "Is URL a valid HTTP URL and does it point to valid JSON?"
@@ -47,12 +47,12 @@
 
 (def ^:private ^:const builtin-geojson
   {:us_states       {:name        "United States"
-                     :url         "/app/charts/us-states.json"
+                     :url         "app/assets/geojson/us-states.json"
                      :region_key  "name"
                      :region_name "name"
                      :builtin     true}
    :world_countries {:name        "World"
-                     :url         "/app/charts/world.json"
+                     :url         "app/assets/geojson/world.json"
                      :region_key  "ISO_A2"
                      :region_name "NAME"
                      :builtin     true}})

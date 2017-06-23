@@ -1,10 +1,11 @@
 (ns metabase.api.getting-started
   (:require [compojure.core :refer [GET]]
             [medley.core :as m]
-            [metabase.api.common :refer :all]
-            [metabase.db :as db]
-            (metabase.models [interface :as models]
-                             [setting :refer [defsetting]])))
+            [metabase.api.common :as api]
+            [metabase.models
+             [interface :as mi]
+             [setting :refer [defsetting]]]
+            [toucan.db :as db]))
 
 (defsetting getting-started-things-to-know
   "'Some things to know' text field for the Getting Started guide.")
@@ -16,17 +17,17 @@
   "Email of somebody users can contact for help in the Getting Started guide.")
 
 
-(defendpoint GET "/"
+(api/defendpoint GET "/"
   "Fetch basic info for the Getting Started guide."
   []
-  (let [metric-ids  (map :id (filter models/can-read? (db/select ['Metric :table_id :id]     :show_in_getting_started true, {:order-by [:%lower.name]})))
-        table-ids   (map :id (filter models/can-read? (db/select ['Table :db_id :schema :id] :show_in_getting_started true, {:order-by [:%lower.name]})))
-        segment-ids (map :id (filter models/can-read? (db/select ['Segment :table_id :id]    :show_in_getting_started true, {:order-by [:%lower.name]})))]
+  (let [metric-ids  (map :id (filter mi/can-read? (db/select ['Metric :table_id :id]     :show_in_getting_started true, {:order-by [:%lower.name]})))
+        table-ids   (map :id (filter mi/can-read? (db/select ['Table :db_id :schema :id] :show_in_getting_started true, {:order-by [:%lower.name]})))
+        segment-ids (map :id (filter mi/can-read? (db/select ['Segment :table_id :id]    :show_in_getting_started true, {:order-by [:%lower.name]})))]
     {:things_to_know           (getting-started-things-to-know)
      :contact                  {:name  (getting-started-contact-name)
                                 :email (getting-started-contact-email)}
      :most_important_dashboard (when-let [dashboard (db/select-one ['Dashboard :id] :show_in_getting_started true)]
-                                 (when (models/can-read? dashboard)
+                                 (when (mi/can-read? dashboard)
                                    (:id dashboard)))
      :important_metrics        metric-ids
      :important_tables         table-ids
@@ -37,4 +38,4 @@
                                                                   (db/select ['MetricImportantField :field_id :metric_id]
                                                                     :metric_id [:in metric-ids]))))}))
 
-(define-routes)
+(api/define-routes)

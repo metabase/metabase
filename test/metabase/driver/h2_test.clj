@@ -1,7 +1,8 @@
 (ns metabase.driver.h2-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
+            [metabase
+             [db :as mdb]
+             [driver :as driver]]
             [metabase.driver.h2 :refer :all]
             [metabase.test.util :refer [resolve-private-vars]])
   (:import metabase.driver.h2.H2Driver))
@@ -35,5 +36,5 @@
 
 ;; Check that we can connect to a non-existent Database when we enable potentailly unsafe connections (e.g. to the Metabase database)
 (expect true
-  (binding [db/*allow-potentailly-unsafe-connections* true]
+  (binding [mdb/*allow-potentailly-unsafe-connections* true]
     (driver/can-connect? (H2Driver.) {:db (str (System/getProperty "user.dir") "/pigeon_sightings")})))

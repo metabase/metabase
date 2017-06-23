@@ -1,11 +1,12 @@
 (ns ^:deprecated metabase.models.card-label
   (:require [metabase.models.interface :as i]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.models :as models]))
 
-(i/defentity ^:deprecated CardLabel :card_label)
+(models/defmodel ^:deprecated CardLabel :card_label)
 
 (u/strict-extend (class CardLabel)
-  i/IEntity
-  (merge i/IEntityDefaults
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
          {:can-read?  (constantly true)
           :can-write? (constantly true)}))

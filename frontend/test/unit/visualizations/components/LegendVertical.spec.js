@@ -1,7 +1,7 @@
 
 import React from "react";
 import ReactDOM from "react-dom";
-import { renderIntoDocument } from "react-addons-test-utils";
+import { renderIntoDocument } from "react-dom/test-utils";
 
 import LegendVertical from "metabase/visualizations/components/LegendVertical.jsx";
 

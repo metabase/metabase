@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import ExpandableString from './ExpandableString.jsx';
 import Icon from 'metabase/components/Icon.jsx';
@@ -8,6 +9,7 @@ import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
 import { TYPE, isa, isPK } from "metabase/lib/types";
 import { singularize, inflect } from 'inflection';
 import { formatValue } from "metabase/lib/formatting";
+import { isQueryable } from "metabase/lib/table";
 
 import cx from "classnames";
 
@@ -115,17 +117,20 @@ export default class QueryVisualizationObjectDetailTable extends Component {
     renderRelationships() {
         if (!this.props.tableForeignKeys) return false;
 
-        if (this.props.tableForeignKeys.length < 1) {
+        var tableForeignKeys = this.props.tableForeignKeys.filter(function (fk) {
+            return isQueryable(fk.origin.table);
+        });
+
+        if (tableForeignKeys.length < 1) {
             return (<p className="my4 text-centered">No relationships found.</p>);
         }
 
-        const fkCountsByTable = foreignKeyCountsByOriginTable(this.props.tableForeignKeys);
+        const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
 
         var component = this;
-        var relationships = this.props.tableForeignKeys.sort(function(a, b) {
+        var relationships = tableForeignKeys.sort(function(a, b) {
             return a.origin.table.display_name.localeCompare(b.origin.table.display_name);
         }).map(function(fk) {
-
             var fkCount = (
                 <LoadingSpinner size={25} />
             ),

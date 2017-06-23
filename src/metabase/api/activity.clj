@@ -1,14 +1,16 @@
 (ns metabase.api.activity
   (:require [clojure.set :as set]
             [compojure.core :refer [GET]]
-            [metabase.api.common :refer :all]
-            [metabase.db :as db]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [hydrate :refer [hydrate]]
-                             [interface :as models]
-                             [view-log :refer [ViewLog]])))
+            [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [interface :as mi]
+             [view-log :refer [ViewLog]]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]))
 
 (defn- dashcard-activity? [activity]
   (contains? #{:dashboard-add-cards :dashboard-remove-cards}
@@ -57,7 +59,7 @@
 (defendpoint GET "/"
   "Get recent activity."
   []
-  (filter models/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
+  (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
                                (hydrate :user :table :database)
                                add-model-exists-info)))
 
@@ -78,7 +80,7 @@
                                  "dashboard" (db/select-one [Dashboard :id :name :description],                    :id (:model_id view-log))
                                  nil)]
         :when    (and model-object
-                      (models/can-read? model-object))]
+                      (mi/can-read? model-object))]
     (assoc view-log :model_object (dissoc model-object :dataset_query))))
 
 

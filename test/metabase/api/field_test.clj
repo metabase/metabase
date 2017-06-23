@@ -1,14 +1,16 @@
 (ns metabase.api.field-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
             [metabase.driver :as driver]
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [table :refer [Table]])
-            [metabase.test.data :refer :all]
+            [metabase.models
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :refer :all]
+             [util :as tu]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]))
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; Helper Fns
 
@@ -99,7 +101,7 @@
     :description     nil
     :special_type    nil
     :visibility_type :sensitive}]
-  (tu/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (let [original-val (simple-field-details (Field field-id))]
       ;; set it
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:name            "something else"
@@ -119,7 +121,7 @@
 (expect
   [true
    nil]
-  (tu/with-temp* [Field [{fk-field-id :id}]
+  (tt/with-temp* [Field [{fk-field-id :id}]
                   Field [{field-id :id}    {:special_type :type/FK, :fk_target_field_id fk-field-id}]]
     (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
       ;; unset the :type/FK special-type
@@ -131,7 +133,7 @@
 ;; check that you *can* set it if it *is* the proper base type
 (expect
   :type/UNIXTimestampSeconds
-  (tu/with-temp* [Field [{field-id :id} {:base_type :type/Integer}]]
+  (tt/with-temp* [Field [{field-id :id} {:base_type :type/Integer}]]
     ((user->client :crowberto) :put 200 (str "field/" field-id) {:special_type :type/UNIXTimestampSeconds})
     (db/select-one-field :special_type Field, :id field-id)))
 

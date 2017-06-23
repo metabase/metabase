@@ -1,24 +1,26 @@
 (ns metabase.sync-database.introspect-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            (metabase.models [database :refer [Database]]
-                             [hydrate :as hydrate]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]])
+            [metabase.models
+             [database :refer [Database]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]]
             [metabase.sync-database.introspect :as introspect]
             [metabase.test.mock.moviedb :as moviedb]
             [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
+            [toucan.util.test :as tt]))
 
 (tu/resolve-private-vars metabase.sync-database.introspect
   save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
 
 (defn get-tables [database-id]
-  (->> (hydrate/hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
+  (->> (hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
        (mapv tu/boolean-ids-and-timestamps)))
 
 (defn get-table [table-id]
-  (->> (hydrate/hydrate (RawTable :raw_table_id table-id) :columns)
+  (->> (hydrate (RawTable :raw_table_id table-id) :columns)
        (mapv tu/boolean-ids-and-timestamps)))
 
 (def ^:private ^:const field-defaults
@@ -43,7 +45,7 @@
     (merge field-defaults {:name "user_id"})]
    [(merge field-defaults {:name "id"})
     (merge field-defaults {:name "user_id", :fk_target_column_id true})]]
-  (tu/with-temp* [Database  [{database-id :id}]
+  (tt/with-temp* [Database  [{database-id :id}]
                   RawTable  [{raw-table-id1 :id, :as table}  {:database_id database-id, :schema "customer1", :name "photos"}]
                   RawColumn [_                               {:raw_table_id raw-table-id1, :name "id"}]
                   RawColumn [_                               {:raw_table_id raw-table-id1, :name "user_id"}]
@@ -99,7 +101,7 @@
     (merge field-defaults
            {:name    "num_feathers"
             :details {:count 12000, :base-type "type/Integer"}})]]
-  (tu/with-temp* [Database [{database-id :id}]
+  (tt/with-temp* [Database [{database-id :id}]
                   RawTable [{raw-table-id :id, :as table} {:database_id database-id}]]
     (let [get-columns #(->> (db/select RawColumn, :raw_table_id raw-table-id, {:order-by [:id]})
                             (mapv tu/boolean-ids-and-timestamps))]
@@ -153,7 +155,7 @@
                              {:name    "beak_size"
                               :is_pk   true
                               :details {:inches 7, :base-type "type/Integer"}})]})]]
-  (tu/with-temp* [Database [{database-id :id, :as db}]]
+  (tt/with-temp* [Database [{database-id :id, :as db}]]
     [(get-tables database-id)
      ;; now add a table
      (do
@@ -188,7 +190,7 @@
                              {:name    "beak_size"
                               :is_pk   true
                               :details {:inches 7, :base-type "type/Integer"}})]})]]
-  (tu/with-temp* [Database [{database-id :id, :as db}]
+  (tt/with-temp* [Database [{database-id :id, :as db}]
                   RawTable [table {:database_id database-id
                                    :schema      "aviary"
                                    :name        "toucanery"
@@ -226,7 +228,7 @@
             :name    "2"
             :columns [(merge field-defaults {:active false, :name "beak_size"})]
             :active  false})]]
-  (tu/with-temp* [Database  [{database-id :id, :as db}]
+  (tt/with-temp* [Database  [{database-id :id, :as db}]
                   RawTable  [t1 {:database_id database-id, :schema "a", :name "1"}]
                   RawColumn [c1 {:raw_table_id (:id t1), :name "size"}]
                   RawTable  [t2 {:database_id database-id, :schema "a", :name "2"}]
@@ -250,7 +252,7 @@
                                   (assoc column
                                     :active              false
                                     :fk_target_column_id false))))))]
-  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tt/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     [(get-tables database-id)
      ;; first sync should add all the tables, fields, etc
      (do

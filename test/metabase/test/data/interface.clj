@@ -1,17 +1,19 @@
 (ns metabase.test.data.interface
   "`Definition` types for databases, tables, fields; related protocols, helper functions.
 
-   Objects that implement `IDatasetLoader` know how to load a `DatabaseDefinition` into an
+   Objects that implement `IDriverTestExtensions` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as str]
-            [schema.core :as s]
-            (metabase [db :as db]
-                      [driver :as driver])
-            (metabase.models [database :refer [Database]]
-                             [field :refer [Field] :as field]
-                             [table :refer [Table]])
-            [metabase.util :as u]
-            [metabase.util.schema :as su])
+            [metabase
+             [db :as db]
+             [driver :as driver]
+             [util :as u]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :as field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import clojure.lang.Keyword))
 
 (s/defrecord FieldDefinition [field-name      :- su/NonBlankString
@@ -30,8 +32,9 @@
 
 (defn escaped-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."
-  ^String [^DatabaseDefinition database-definition]
-  (str/replace (:database-name database-definition) #"\s+" "_"))
+  ^String [^DatabaseDefinition {:keys [database-name]}]
+  {:pre [(string? database-name)]}
+  (str/replace database-name #"\s+" "_"))
 
 (defn db-qualified-table-name
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
@@ -82,11 +85,11 @@
     (Database :name database-name, :engine (name engine-kw))))
 
 
-;; ## IDatasetLoader
+;; ## IDriverTestExtensions
 
-(defprotocol IDatasetLoader
+(defprotocol IDriverTestExtensions
   "Methods for creating, deleting, and populating *pyhsical* DBMS databases, tables, and fields.
-   Methods marked *OPTIONAL* have default implementations in `IDatasetLoaderDefaultsMixin`."
+   Methods marked *OPTIONAL* have default implementations in `IDriverTestExtensionsDefaultsMixin`."
   (engine ^clojure.lang.Keyword [this]
     "Return the engine keyword associated with this database, e.g. `:h2` or `:mongo`.")
 
@@ -123,7 +126,8 @@
   (id-field-type ^clojure.lang.Keyword [this]
     "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."))
 
-(def IDatasetLoaderDefaultsMixin
+(def IDriverTestExtensionsDefaultsMixin
+  "Default implementations for the `IDriverTestExtensions` methods marked *OPTIONAL*."
   {:expected-base-type->actual         (u/drop-first-arg identity)
    :default-schema                     (constantly nil)
    :format-name                        (u/drop-first-arg identity)

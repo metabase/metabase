@@ -1,10 +1,10 @@
 (ns metabase.driver.sqlserver-test
-  (:require  [cheshire.core :as json]
-             [expectations :refer :all]
-             [metabase.test.data :as data]
-             (metabase.test.data [datasets :refer [expect-with-engine]]
-                                 [interface :refer [def-database-definition]])
-             [metabase.test.util :refer [obj->json->obj]]))
+  (:require [metabase.test
+             [data :as data]
+             [util :refer [obj->json->obj]]]
+            [metabase.test.data
+             [datasets :refer [expect-with-engine]]
+             [interface :refer [def-database-definition]]]))
 
 ;;; ------------------------------------------------------------ VARCHAR(MAX) ------------------------------------------------------------
 ;; VARCHAR(MAX) comes back from jTDS as a "ClobImpl" so make sure it gets encoded like a normal string by Cheshire

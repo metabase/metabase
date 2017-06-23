@@ -1,14 +1,15 @@
 (ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
    There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  (:require [expectations :refer :all]
+  (:require [metabase
+             [query-processor-test :refer [first-row format-rows-by rows]]
+             [util :as u]]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [format-rows-by rows first-row]]
             [metabase.test.data :as data]
-            (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets]
-                                [interface :as i])
-            [metabase.util :as u]))
+            [metabase.test.data
+             [dataset-definitions :as defs]
+             [datasets :as datasets]
+             [interface :as i]]))
 
 (def ^:private ^:const event-based-dbs
   #{:druid})
@@ -45,7 +46,7 @@
 
 (defn- data [results]
   (when-let [data (or (:data results)
-                      (println (u/pprint-to-str results)))]
+                      (println (u/pprint-to-str results)))] ; DEBUG
     (-> data
         (select-keys [:columns :rows])
         (update :rows vec))))
@@ -69,6 +70,44 @@
   (data (data/run-query checkins
           (ql/limit 2))))
 
+;;; "bare rows" query, limit, order-by timestamp desc
+(expect-with-timeseries-dbs
+  {:columns ["id"
+             "timestamp"
+             "count"
+             "user_last_login"
+             "user_name"
+             "venue_category_name"
+             "venue_latitude"
+             "venue_longitude"
+             "venue_name"
+             "venue_price"]
+   :rows [["693", "2015-12-29T08:00:00.000Z", 1, "2014-07-03T19:30:00.000Z", "Frans Hevel", "Mexican", "34.0489", "-118.238", "Señor Fish",       "2"]
+          ["570", "2015-12-26T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",    "Chinese", "37.7949", "-122.406", "Empress of China", "3"]]}
+  (data (data/run-query checkins
+          (ql/order-by (ql/desc $timestamp))
+          (ql/limit 2))))
+
+;;; "bare rows" query, limit, order-by timestamp asc
+(expect-with-timeseries-dbs
+  {:columns ["id"
+             "timestamp"
+             "count"
+             "user_last_login"
+             "user_name"
+             "venue_category_name"
+             "venue_latitude"
+             "venue_longitude"
+             "venue_name"
+             "venue_price"]
+   :rows [["931", "2013-01-03T08:00:00.000Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
+          ["285", "2013-01-10T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
+  (data (data/run-query checkins
+          (ql/order-by (ql/asc $timestamp))
+          (ql/limit 2))))
+
+
+
 ;;; fields clause
 (expect-with-timeseries-dbs
   {:columns ["venue_name" "venue_category_name" "timestamp"],
@@ -77,6 +116,28 @@
   (data (data/run-query checkins
           (ql/fields $venue_name $venue_category_name)
           (ql/limit 2))))
+
+;;; fields clause, order by timestamp asc
+(expect-with-timeseries-dbs
+  {:columns ["venue_name" "venue_category_name" "timestamp"],
+   :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00.000Z"]
+             ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00.000Z"]]}
+  (data (data/run-query checkins
+          (ql/fields $venue_name $venue_category_name)
+          (ql/order-by (ql/asc $timestamp))
+          (ql/limit 2))))
+
+;;; fields clause, order by timestamp desc
+(expect-with-timeseries-dbs
+  {:columns ["venue_name" "venue_category_name" "timestamp"],
+   :rows    [["Señor Fish"       "Mexican" "2015-12-29T08:00:00.000Z"]
+             ["Empress of China" "Chinese" "2015-12-26T08:00:00.000Z"]]}
+  (data (data/run-query checkins
+          (ql/fields $venue_name $venue_category_name)
+          (ql/order-by (ql/desc $timestamp))
+          (ql/limit 2))))
+
+
 
 ;;; count
 (expect-with-timeseries-dbs

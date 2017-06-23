@@ -1,12 +1,13 @@
 /* @flow weak */
 
-import React, { Component, PropTypes } from "react";
+import React from "react";
 
-import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
+import { Route } from "metabase/hoc/Title";
+import { Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
-import { refreshCurrentUser } from "metabase/redux/user";
+import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
@@ -14,12 +15,15 @@ import App from "metabase/App.jsx";
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
-import LogoutApp from "metabase/auth/containers/LogoutApp.jsx"; import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
+import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
+import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
-import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
+import Dashboards from "metabase/dashboards/containers/Dashboards.jsx";
+import DashboardsArchive from "metabase/dashboards/containers/DashboardsArchive.jsx";
+import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
@@ -63,6 +67,9 @@ import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
 import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx";
 
+import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
+import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
+
 const MetabaseIsSetup = UserAuthWrapper({
     predicate: authData => !authData.hasSetupToken,
     failureRedirectPath: "/setup",
@@ -76,7 +83,16 @@ const UserIsAuthenticated = UserAuthWrapper({
     failureRedirectPath: '/auth/login',
     authSelector: state => state.currentUser,
     wrapperDisplayName: 'UserIsAuthenticated',
-    redirectAction: routerActions.replace,
+    redirectAction: (location) =>
+        // HACK: workaround for redux-auth-wrapper not including hash
+        // https://github.com/mjrussell/redux-auth-wrapper/issues/121
+        routerActions.replace({
+            ...location,
+            query: {
+                ...location.query,
+                redirect: location.query.redirect + (window.location.hash || "")
+            }
+        })
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -102,7 +118,7 @@ const IsAdmin = MetabaseIsSetup(UserIsAuthenticated(UserIsAdmin(({ children }) =
 const IsNotAuthenticated = MetabaseIsSetup(UserIsNotAuthenticated(({ children }) => children));
 
 export const getRoutes = (store) =>
-    <Route component={App}>
+    <Route title="Metabase" component={App}>
         {/* SETUP */}
         <Route path="/setup" component={SetupApp} onEnter={(nextState, replace) => {
             if (!MetabaseSettings.hasSetupToken()) {
@@ -110,16 +126,22 @@ export const getRoutes = (store) =>
             }
         }} />
 
+        {/* PUBLICLY SHARED LINKS */}
+        <Route path="public">
+            <Route path="question/:uuid" component={PublicQuestion} />
+            <Route path="dashboard/:uuid" component={PublicDashboard} />
+        </Route>
+
         {/* APP */}
         <Route onEnter={async (nextState, replace, done) => {
-            await store.dispatch(refreshCurrentUser());
+            await store.dispatch(loadCurrentUser());
             done();
         }}>
             {/* AUTH */}
             <Route path="/auth">
                 <IndexRedirect to="/auth/login" />
                 <Route component={IsNotAuthenticated}>
-                    <Route path="login" component={LoginApp} />
+                    <Route path="login" title="Login" component={LoginApp} />
                 </Route>
                 <Route path="logout" component={LogoutApp} />
                 <Route path="forgot_password" component={ForgotPasswordApp} />
@@ -132,18 +154,22 @@ export const getRoutes = (store) =>
                 {/* HOME */}
                 <Route path="/" component={HomepageApp} />
 
-                {/* DASHBOARD */}
-                <Route path="/dash/:dashboardId" component={DashboardApp} />
+                {/* DASHBOARD LIST */}
+                <Route path="/dashboards" title="Dashboards" component={Dashboards} />
+                <Route path="/dashboards/archive" title="Dashboards" component={DashboardsArchive} />
+
+                {/* INDIVIDUAL DASHBOARDS */}
+                <Route path="/dashboard/:dashboardId" title="Dashboard" component={DashboardApp} />
 
                 {/* QUERY BUILDER */}
-                <Route path="/card/:cardId" component={QueryBuilder} />
-                <Route path="/q" component={QueryBuilder} />
+                <Route path="/question" component={QueryBuilder} />
+                <Route path="/question/:cardId" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
-                <Route path="/questions">
+                <Route path="/questions" title="Questions">
                     <IndexRoute component={QuestionIndex} />
-                    <Route path="search" component={SearchResults} />
-                    <Route path="archive" component={Archive} />
+                    <Route path="search" title={({ location: { query: { q } }}) => "Search: " + q} component={SearchResults} />
+                    <Route path="archive" title="Archive" component={Archive} />
                     <Route path="collections/:collectionSlug" component={CollectionPage} />
                 </Route>
 
@@ -164,9 +190,9 @@ export const getRoutes = (store) =>
                 </Route>
 
                 {/* REFERENCE */}
-                <Route path="/reference" component={ReferenceApp}>
+                <Route path="/reference" title="Data Reference" component={ReferenceApp}>
                     <IndexRedirect to="/reference/guide" />
-                    <Route path="guide" component={ReferenceGettingStartedGuide} />
+                    <Route path="guide" title="Getting Started" component={ReferenceGettingStartedGuide} />
                     <Route path="metrics" component={ReferenceEntityList} />
                     <Route path="metrics/:metricId" component={ReferenceEntity} />
                     <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
@@ -187,23 +213,27 @@ export const getRoutes = (store) =>
                 </Route>
 
                 {/* PULSE */}
-                <Route path="/pulse" component={PulseListApp} />
-                <Route path="/pulse/create" component={PulseEditApp} />
-                <Route path="/pulse/:pulseId" component={PulseEditApp} />
+                <Route path="/pulse" title="Pulses">
+                    <IndexRoute component={PulseListApp} />
+                    <Route path="create" component={PulseEditApp} />
+                    <Route path=":pulseId" component={PulseEditApp} />
+                </Route>
 
                 {/* USER */}
                 <Route path="/user/edit_current" component={UserSettingsApp} />
             </Route>
 
             {/* ADMIN */}
-            <Route path="/admin" component={IsAdmin}>
+            <Route path="/admin" title="Admin" component={IsAdmin}>
                 <IndexRedirect to="/admin/settings" />
 
-                <Route path="databases" component={DatabaseListApp} />
-                <Route path="databases/create" component={DatabaseEditApp} />
-                <Route path="databases/:databaseId" component={DatabaseEditApp} />
+                <Route path="databases" title="Databases">
+                    <IndexRoute component={DatabaseListApp} />
+                    <Route path="create" component={DatabaseEditApp} />
+                    <Route path=":databaseId" component={DatabaseEditApp} />
+                </Route>
 
-                <Route path="datamodel">
+                <Route path="datamodel" title="Data Model">
                     <IndexRedirect to="database" />
                     <Route path="database" component={MetadataEditorApp} />
                     <Route path="database/:databaseId" component={MetadataEditorApp} />
@@ -217,27 +247,44 @@ export const getRoutes = (store) =>
                 </Route>
 
                 {/* PEOPLE */}
-                <Route path="people" component={AdminPeopleApp}>
+                <Route path="people" title="People" component={AdminPeopleApp}>
                     <IndexRoute component={PeopleListingApp} />
-                    <Route path="groups">
+                    <Route path="groups" title="Groups">
                         <IndexRoute component={GroupsListingApp} />
                         <Route path=":groupId" component={GroupDetailApp} />
                     </Route>
                 </Route>
 
-                <Route path="settings" component={SettingsEditorApp} />
-                <Route path="settings/:section" component={SettingsEditorApp} />
+                {/* SETTINGS */}
+                <Route path="settings" title="Settings">
+                    <IndexRedirect to="/admin/settings/setup" />
+                    {/* <IndexRoute component={SettingsEditorApp} /> */}
+                    <Route path=":section" component={SettingsEditorApp} />
+                </Route>
 
                 {getAdminPermissionsRoutes(store)}
             </Route>
 
+            {/* INTERNAL */}
+            <Route
+                path="/_internal"
+                getChildRoutes={(partialNextState, callback) =>
+                    // $FlowFixMe: flow doesn't know about require.ensure
+                    require.ensure([], (require) => {
+                        callback(null, [require("metabase/internal/routes").default])
+                    })
+                }
+            >
+            </Route>
+
+            {/* DEPRECATED */}
+            {/* NOTE: these custom routes are needed because <Redirect> doesn't preserve the hash */}
+            <Route path="/q" onEnter={({ location }, replace) => replace({ pathname: "/question", hash: location.hash })} />
+            <Route path="/card/:cardId" onEnter={({ location, params }, replace) => replace({ pathname: `/question/${params.cardId}`, hash: location.hash })} />
+            <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
+
             {/* MISC */}
             <Route path="/unauthorized" component={Unauthorized} />
             <Route path="/*" component={NotFound} />
-
-            {/* LEGACY */}
-            <Redirect from="/card" to="/questions" />
-            <Redirect from="/card/:cardId/:serializedCard" to="/questions/:cardId#:serializedCard" />
-            <Redirect from="/q/:serializedCard" to="/q#:serializedCard" />
         </Route>
     </Route>

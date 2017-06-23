@@ -1,14 +1,15 @@
 (ns metabase.driver.h2
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
+  (:require [clojure.string :as s]
             [honeysql.core :as hsql]
-            [metabase.db :as db]
+            [metabase
+             [db :as mdb]
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.models.database :refer [Database]]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db]))
 
 (def ^:private ^:const column->base-type
   {:ARRAY                       :type/*
@@ -105,7 +106,7 @@
                                                           "ACCESS_MODE_DATA" "r"}))))
 
 (defn- connection-details->spec [details]
-  (dbspec/h2 (if db/*allow-potentailly-unsafe-connections*
+  (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
                details
                (update details :db connection-string-set-safe-options))))
 

@@ -1,22 +1,27 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.string :as s]
+  (:require [cheshire.core :as json]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]
-            (monger [collection :as mc]
-                    [command :as cmd]
-                    [conversion :as conv]
-                    [db :as mdb]
-                    [query :as mq])
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            (metabase.driver.mongo [query-processor :as qp]
-                                   [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
-                             [table :as table])
+            [metabase
+             [driver :as driver]
+             [util :as u]]
+            [metabase.driver.mongo
+             [query-processor :as qp]
+             [util :refer [*mongo-connection* with-mongo-connection]]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :as field]
+             [table :as table]]
             [metabase.sync-database.analyze :as analyze]
-            [metabase.util :as u])
+            [metabase.util.ssh :as ssh]
+            [monger
+             [collection :as mc]
+             [command :as cmd]
+             [conversion :as conv]
+             [db :as mdb]
+             [query :as mq]]
+            [toucan.db :as db])
   (:import com.mongodb.DB))
 
 ;;; ## MongoDriver
@@ -38,6 +43,12 @@
 
     #"^Password can not be null when the authentication mechanism is unspecified$"
     (driver/connection-error-messages :password-required)
+
+    #"^com.jcraft.jsch.JSchException: Auth fail$"
+    (driver/connection-error-messages :ssh-tunnel-auth-fail)
+
+    #".*JSchException: java.net.ConnectException: Connection refused.*"
+    (driver/connection-error-messages :ssh-tunnel-connection-fail)
 
     #".*"                               ; default
     message))
@@ -76,20 +87,17 @@
       fields
       (recur more-keys (update fields k (partial update-field-attrs (k field-value)))))))
 
-(defn- safe-inc [n]
-  (inc (or n 0)))
-
 (defn- update-field-attrs [field-value field-def]
   (-> field-def
-      (update :count safe-inc)
+      (update :count u/safe-inc)
       (update :len #(if (string? field-value)
                       (+ (or % 0) (count field-value))
                       %))
       (update :types (fn [types]
-                       (update types (type field-value) safe-inc)))
+                       (update types (type field-value) u/safe-inc)))
       (update :special-types (fn [special-types]
                                (if-let [st (val->special-type field-value)]
-                                 (update special-types st safe-inc)
+                                 (update special-types st u/safe-inc)
                                  special-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)
@@ -173,31 +181,35 @@
           :can-connect?                      (u/drop-first-arg can-connect?)
           :describe-database                 (u/drop-first-arg describe-database)
           :describe-table                    (u/drop-first-arg describe-table)
-          :details-fields                    (constantly [{:name         "host"
-                                                           :display-name "Host"
-                                                           :default      "localhost"}
-                                                          {:name         "port"
-                                                           :display-name "Port"
-                                                           :type         :integer
-                                                           :default      27017}
-                                                          {:name         "dbname"
-                                                           :display-name "Database name"
-                                                           :placeholder  "carrierPigeonDeliveries"
-                                                           :required     true}
-                                                          {:name         "user"
-                                                           :display-name "Database username"
-                                                           :placeholder  "What username do you use to login to the database?"}
-                                                          {:name         "pass"
-                                                           :display-name "Database password"
-                                                           :type         :password
-                                                           :placeholder  "******"}
-                                                          {:name         "authdb"
-                                                           :display-name "Authentication Database"
-                                                           :placeholder  "Optional database to use when authenticating"}
-                                                          {:name         "ssl"
-                                                           :display-name "Use a secure connection (SSL)?"
-                                                           :type         :boolean
-                                                           :default      false}])
+          :details-fields                    (constantly (ssh/with-tunnel-config
+                                                           [{:name         "host"
+                                                             :display-name "Host"
+                                                             :default      "localhost"}
+                                                            {:name         "port"
+                                                             :display-name "Port"
+                                                             :type         :integer
+                                                             :default      27017}
+                                                            {:name         "dbname"
+                                                             :display-name "Database name"
+                                                             :placeholder  "carrierPigeonDeliveries"
+                                                             :required     true}
+                                                            {:name         "user"
+                                                             :display-name "Database username"
+                                                             :placeholder  "What username do you use to login to the database?"}
+                                                            {:name         "pass"
+                                                             :display-name "Database password"
+                                                             :type         :password
+                                                             :placeholder  "******"}
+                                                            {:name         "authdb"
+                                                             :display-name "Authentication Database"
+                                                             :placeholder  "Optional database to use when authenticating"}
+                                                            {:name         "ssl"
+                                                             :display-name "Use a secure connection (SSL)?"
+                                                             :type         :boolean
+                                                             :default      false}
+                                                            {:name         "additional-options"
+                                                             :display-name "Additional Mongo connection string options"
+                                                             :placeholder  "readPreference=nearest&replicaSet=test"}]))
           :execute-query                     (u/drop-first-arg qp/execute-query)
           :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
           :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)

@@ -1,15 +1,15 @@
 (ns metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations and for named aggregations."
-  (:require [expectations :refer :all]
-            [metabase.driver :as driver]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor :as qp]
+             [query-processor-test :refer :all]
+             [util :as u]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets, :refer [*engine* *driver*]]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.test.data.datasets :as datasets :refer [*driver* *engine*]]
+            [toucan.util.test :as tt]))
 
 ;; sum, *
 (datasets/expect-with-engines (engines-that-support :expression-aggregations)
@@ -192,7 +192,7 @@
   [[2 119]
    [3  40]
    [4  25]]
-  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+  (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (format-rows-by [int int]
@@ -210,7 +210,7 @@
              [4  24]]
    :columns [(data/format-name "price")
              (driver/format-custom-field-name *driver* "My Cool Metric")]}
-  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+  (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (format-rows-by [int int]
@@ -228,7 +228,7 @@
              [4  24]]
    :columns [(data/format-name "price")
              (driver/format-custom-field-name *driver* "My Cool Metric")]}
-  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+  (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [[:sum [:field-id (data/id :venues :price)]]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (format-rows-by [int int]

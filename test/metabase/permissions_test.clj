@@ -2,28 +2,28 @@
   "A test suite around permissions. Nice!"
   (:require [clojure.string :as s]
             [expectations :refer :all]
-            [metabase.db :as db]
-            (metabase.models [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [database :refer [Database]]
-                             [field :refer [Field]]
-                             [metric :refer [Metric]]
-                             [permissions :refer [Permissions], :as perms]
-                             [permissions-group :refer [PermissionsGroup], :as group]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [pulse :refer [Pulse]]
-                             [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel]]
-                             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]])
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [metric :refer [Metric]]
+             [permissions :as perms]
+             [permissions-group :as group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
             [metabase.query-processor.expand :as ql]
-            [metabase.sync-database :as sync]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
 ;; 3 users:
 ;; crowberto, member of Admin, All Users
@@ -38,7 +38,7 @@
 
 (defn- with-ops-group [f]
   (fn []
-    (tu/with-temp* [PermissionsGroup [group {:name "Operations"}]]
+    (tt/with-temp* [PermissionsGroup [group {:name "Operations"}]]
       ;; add lucky to Ops group
       (db/insert! PermissionsGroupMembership
         :group_id (u/get-id group)
@@ -72,7 +72,7 @@
 
 (defn- with-db [db-name f]
   (fn []
-    (tu/with-temp Database [db (test-db db-name)]
+    (tt/with-temp Database [db (test-db db-name)]
       ;; syncing is slow as f**k so just manually insert the Tables
       (doseq [table-name ["venues" "users" "checkins"]]
         (db/insert! Table :db_id (u/get-id db), :active true, :name table-name))
@@ -129,7 +129,7 @@
      :table_id      (u/get-id table)
      :dataset_query {:database (u/get-id db)
                      :type     "native"
-                     :query    (format "SELECT count(*) FROM \"%s\";" (:name table))}}))
+                     :native   {:query (format "SELECT count(*) FROM \"%s\";" (:name table))}}}))
 
 
 (def ^:dynamic *card:db1-count-of-venues*)
@@ -156,7 +156,7 @@
 
 (defn- with-cards [f]
   (fn []
-    (tu/with-temp* [Card [db1-count-of-venues    (count-card     *db1* :venues   "DB 1 Count of Venues")]
+    (tt/with-temp* [Card [db1-count-of-venues    (count-card     *db1* :venues   "DB 1 Count of Venues")]
                     Card [db1-count-of-users     (count-card     *db1* :users    "DB 1 Count of Users")]
                     Card [db1-count-of-checkins  (count-card     *db1* :checkins "DB 1 Count of Checkins")]
                     Card [db1-sql-count-of-users (sql-count-card *db1* :venues   "DB 1 SQL Count of Users")]
@@ -197,7 +197,7 @@
 
 (defn- with-dashboards [f]
   (fn []
-    (tu/with-temp* [Dashboard [db1-all    {:name "All DB 1"}]
+    (tt/with-temp* [Dashboard [db1-all    {:name "All DB 1"}]
                     Dashboard [db2-all    {:name "All DB 2"}]
                     Dashboard [db2-public {:name "Public DB 2"}]]
       (add-cards-to-dashboard! db1-all
@@ -253,7 +253,7 @@
 
 (defn- with-pulses [f]
   (fn []
-    (tu/with-temp* [Pulse [all            {:name "All of Everything"}]
+    (tt/with-temp* [Pulse [all            {:name "All of Everything"}]
                     Pulse [db1-all        {:name "All DB 1"}]
                     Pulse [db2-all        {:name "All DB 2"}]
                     Pulse [db2-public     {:name "Public DB 2"}]
@@ -318,7 +318,7 @@
 
 (defn- with-metrics [f]
   (fn []
-    (tu/with-temp* [Metric [db1-venues-count (count-metric "DB 1 Count of Venues" (table *db1* :venues))]
+    (tt/with-temp* [Metric [db1-venues-count (count-metric "DB 1 Count of Venues" (table *db1* :venues))]
                     Metric [db2-venues-count (count-metric "DB 2 Count of Venues" (table *db2* :venues))]
                     Metric [db2-users-count  (count-metric "DB 2 Count of Users"  (table *db2* :users))]]
       (binding [*metric:db1-venues-count* db1-venues-count
@@ -357,7 +357,7 @@
 
 (defn- with-segments [f]
   (fn []
-    (tu/with-temp* [Segment [db1-expensive-venues (expensive-venues-segment "DB 1 Expensive Venues" (table *db1* :venues))]
+    (tt/with-temp* [Segment [db1-expensive-venues (expensive-venues-segment "DB 1 Expensive Venues" (table *db1* :venues))]
                     Segment [db2-expensive-venues (expensive-venues-segment "DB 2 Expensive Venues" (table *db2* :venues))]
                     Segment [db2-todays-users     (todays-users-segment     "DB 2 Today's Users"    (table *db2* :users))]]
       (binding [*segment:db1-expensive-venues* db1-expensive-venues
@@ -678,9 +678,9 @@
 
 ;; admin should see all 3
 (expect-with-test-data
-  ["DB 1 Count of Venues"
-   "DB 2 Count of Venues"
-   "DB 2 Count of Users"]
+ ["DB 1 Count of Venues"
+  "DB 2 Count of Users"
+  "DB 2 Count of Venues"]
   (GET-metric :crowberto))
 
 ;; regular should only see metric for DB 1

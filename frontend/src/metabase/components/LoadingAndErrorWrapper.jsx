@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
@@ -27,7 +28,8 @@ export default class LoadingAndErrorWrapper extends Component {
     getErrorMessage() {
         const { error } = this.props;
         return (
-            error.data ||
+            // NOTE Atte Keinänen 5/10/17 Dashboard API endpoint returns the error as JSON with `message` field
+            error.data && (error.data.message ? error.data.message : error.data) ||
             error.statusText ||
             error.message ||
             "An error occured"
@@ -59,7 +61,7 @@ export default class LoadingAndErrorWrapper extends Component {
             <div className={this.props.className} style={this.props.style}>
                 { error ?
                     <div className={contentClassName}>
-                        <h2 className="text-normal text-grey-2">{this.getErrorMessage()}</h2>
+                        <h2 className="text-normal text-grey-2 ie-wrap-content-fix">{this.getErrorMessage()}</h2>
                     </div>
                 : loading ?
                     <div className={contentClassName}>

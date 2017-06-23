@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -385,6 +386,10 @@ export default class PeopleListingApp extends Component {
                                         <Tooltip tooltip="Signed up via Google">
                                             <Icon name='google' />
                                         </Tooltip> : null}
+                                      {user.ldap_auth ?
+                                        <Tooltip tooltip="Signed up via LDAP">
+                                            <Icon name='ldap' />
+                                        </Tooltip> : null }
                                     </td>
                                     <td>{user.email}</td>
                                     <td>

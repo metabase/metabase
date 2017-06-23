@@ -7,6 +7,7 @@
   --grey-2: color(var(--base-grey) shade(20%));
   --grey-3: color(var(--base-grey) shade(30%));
   --grey-4: color(var(--base-grey) shade(40%));
+  --grey-5: color(var(--base-grey) shade(50%));
 
   --grey-text-color: #797979;
   --alt-color: #F5F7F9;
@@ -25,9 +26,14 @@
   --error-color: #EF8C8C;
   --slate-color: #9BA5B1;
   --slate-light-color: #DFE8EA;
+  --slate-extra-light-color: #F9FBFC;
 }
 
 .text-default, :local(.text-default) {
+    color: var(--default-font-color);
+}
+
+.text-default-hover:hover {
     color: var(--default-font-color);
 }
 
@@ -121,6 +127,7 @@
 
 .text-slate { color: var(--slate-color); }
 .text-slate-light { color: var(--slate-light-color); }
+.text-slate-extra-light { background-color: var(--slate-extra-light-color); }
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
@@ -143,15 +150,20 @@
 .text-grey-4,
 .text-grey-4-hover:hover { color: var(--grey-4) }
 
+.text-grey-5,
+.text-grey-5-hover:hover { color: var(--grey-5) }
+
 .bg-grey-0,
 .bg-grey-0-hover:hover { background-color: var(--base-grey) }
 .bg-grey-1 { background-color: var(--grey-1) }
 .bg-grey-2 { background-color: var(--grey-2) }
 .bg-grey-3 { background-color: var(--grey-3) }
 .bg-grey-4 { background-color: var(--grey-4) }
+.bg-grey-5 { background-color: var(--grey-5) }
 
 .bg-slate { background-color: var(--slate-color); }
 .bg-slate-light { background-color: var(--slate-light-color); }
+.bg-slate-extra-light { background-color: var(--slate-extra-light-color); }
 
 .text-dark, :local(.text-dark) {
     color: var(--dark-color);
@@ -183,3 +195,5 @@
   color: #CFE4F5
 }
 .text-slate { color: #606E7B; }
+
+.bg-transparent { background-color: transparent }

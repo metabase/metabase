@@ -1,6 +1,5 @@
 (ns metabase.db-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-vars metabase.db parse-connection-string)
@@ -19,36 +18,3 @@
 (expect
   {:type :postgres, :user "tom", :password "1234", :host "localhost", :port "5432", :dbname "toms_cool_db", :ssl "true", :sslfactory "org.postgresql.ssl.NonValidatingFactory"}
   (parse-connection-string "postgres://tom:1234@localhost:5432/toms_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"))
-
-
-;;; call counting
-
-(expect
-  0
-  (db/with-call-counting [call-count]
-    (call-count)))
-
-(expect
-  1
-  (db/with-call-counting [call-count]
-    (db/select-one-count 'Database)
-    (call-count)))
-
-(expect
-  5
-  (db/with-call-counting [call-count]
-    (doseq [_ (range 5)]
-      (db/select-one-count 'Database))
-    (call-count)))
-
-
-;; tests for filename-without-path-or-prefix
-
-(tu/resolve-private-vars metabase.db filename-without-path-or-prefix)
-
-(expect "my_migration" (filename-without-path-or-prefix "migrations/my_migration.json"))
-(expect "my_migration" (filename-without-path-or-prefix "migrations/my_migration.yaml"))
-(expect "my_migration" (filename-without-path-or-prefix "my_migration.json"))
-(expect "my_migration" (filename-without-path-or-prefix "my_migration.yaml"))
-(expect "my_migration" (filename-without-path-or-prefix "migrations/my_migration"))
-(expect "my_migration" (filename-without-path-or-prefix "my_migration"))

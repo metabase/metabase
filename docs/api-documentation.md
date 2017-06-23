@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.22.0-snapshot
+# API Documentation for Metabase v0.24.0-snapshot
 
 ## `GET /api/activity/`
 
@@ -13,6 +13,17 @@ Get the list of 10 things the current user has been viewing most recently.
 ## `DELETE /api/card/:card-id/favorite`
 
 Unfavorite a Card.
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+
+## `DELETE /api/card/:card-id/public_link`
+
+Delete the publically-accessible link to this Card.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -62,6 +73,20 @@ Get `Card` with ID.
 *  **`id`** 
 
 
+## `GET /api/card/embeddable`
+
+Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints and a signed JWT.
+
+You must be a superuser to do this.
+
+
+## `GET /api/card/public`
+
+Fetch a list of Cards with public UUIDs. These cards are publically-accessible *if* public sharing is enabled.
+
+You must be a superuser to do this.
+
+
 ## `POST /api/card/`
 
 Create a new `Card`.
@@ -102,6 +127,19 @@ Update the set of `Labels` that apply to a `Card`.
 *  **`label_ids`** value must be an array. Each value must be an integer greater than zero.
 
 
+## `POST /api/card/:card-id/public_link`
+
+Generate publically-accessible links for this Card. Returns UUID to be used in public links.
+   (If this Card has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+
 ## `POST /api/card/:card-id/query`
 
 Run the query associated with a Card.
@@ -112,25 +150,18 @@ Run the query associated with a Card.
 
 *  **`parameters`** 
 
-
-## `POST /api/card/:card-id/query/csv`
-
-Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
-
-##### PARAMS:
-
-*  **`card-id`** 
-
-*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+*  **`ignore_cache`** value may be nil, or if non-nil, value must be a boolean.
 
 
-## `POST /api/card/:card-id/query/json`
+## `POST /api/card/:card-id/query/:export-format`
 
-Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
+Run the query associated with a Card, and return its results as a file in the specified format. Note that this expects the parameters as serialized JSON in the 'parameters' parameter
 
 ##### PARAMS:
 
 *  **`card-id`** 
+
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
@@ -153,21 +184,25 @@ Update a `Card`.
 
 ##### PARAMS:
 
-*  **`id`** 
-
-*  **`dataset_query`** 
-
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
-
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
+
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
+*  **`enable_embedding`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
+
+*  **`dataset_query`** value may be nil, or if non-nil, value must be a map.
+
+*  **`id`** 
+
+*  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
 
 
 ## `GET /api/collection/`
@@ -180,7 +215,7 @@ Fetch a list of all Collections that the current user has read permissions for.
 
 ##### PARAMS:
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean (true or false).
+*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 
 ## `GET /api/collection/:id`
@@ -196,10 +231,14 @@ Fetch a specific (non-archived) Collection, including cards that belong to it.
 
 Fetch a graph of all Collection Permissions.
 
+You must be a superuser to do this.
+
 
 ## `POST /api/collection/`
 
 Create a new Collection.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -213,6 +252,8 @@ Create a new Collection.
 ## `PUT /api/collection/:id`
 
 Modify an existing Collection, including archiving or unarchiving it.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -231,9 +272,22 @@ Modify an existing Collection, including archiving or unarchiving it.
 
 Do a batch update of Collections Permissions by passing in a modified graph.
 
+You must be a superuser to do this.
+
 ##### PARAMS:
 
 *  **`body`** value must be a map.
+
+
+## `DELETE /api/dashboard/:dashboard-id/public_link`
+
+Delete the publically-accessible link to this Dashboard.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
 
 
 ## `DELETE /api/dashboard/:id`
@@ -256,16 +310,26 @@ Remove a `DashboardCard` from a `Dashboard`.
 *  **`dashcardId`** value must be a valid integer greater than zero.
 
 
+## `DELETE /api/dashboard/:id/favorite`
+
+Unfavorite a Dashboard.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
 ## `GET /api/dashboard/`
 
 Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
-  *  `all` - Return all `Dashboards`.
-  *  `mine` - Return `Dashboards` created by the current user.
+  *  `all`      - Return all Dashboards.
+  *  `mine`     - Return Dashboards created by the current user.
+  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)
 
 ##### PARAMS:
 
-*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `mine`.
+*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `mine`.
 
 
 ## `GET /api/dashboard/:id`
@@ -286,6 +350,20 @@ Fetch `Revisions` for `Dashboard` with ID.
 *  **`id`** 
 
 
+## `GET /api/dashboard/embeddable`
+
+Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding endpoints and a signed JWT.
+
+You must be a superuser to do this.
+
+
+## `GET /api/dashboard/public`
+
+Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is enabled.
+
+You must be a superuser to do this.
+
+
 ## `POST /api/dashboard/`
 
 Create a new `Dashboard`.
@@ -297,6 +375,19 @@ Create a new `Dashboard`.
 *  **`parameters`** value must be an array. Each value must be a map.
 
 *  **`dashboard`** 
+
+
+## `POST /api/dashboard/:dashboard-id/public_link`
+
+Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links.
+   (If this Dashboard has already been shared, it will return the existing public link rather than creating a new one.)
+   Public sharing must be enabled.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
 
 
 ## `POST /api/dashboard/:id/cards`
@@ -316,6 +407,15 @@ Add a `Card` to a `Dashboard`.
 *  **`dashboard-card`** 
 
 
+## `POST /api/dashboard/:id/favorite`
+
+Favorite a Dashboard.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
 ## `POST /api/dashboard/:id/revert`
 
 Revert a `Dashboard` to a prior `Revision`.
@@ -331,34 +431,45 @@ Revert a `Dashboard` to a prior `Revision`.
 
 Update a `Dashboard`.
 
+   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate permissions for the Cards belonging to this Dashboard),
+   but to change the value of `enable_embedding` you must be a superuser.
+
 ##### PARAMS:
+
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a map.
+
+*  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
+
+*  **`description`** value may be nil, or if non-nil, value must be a string.
+
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`enable_embedding`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`caveats`** value may be nil, or if non-nil, value must be a string.
+
+*  **`dashboard`** 
+
+*  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
 
 *  **`id`** 
 
-*  **`description`** 
-
-*  **`name`** value must be a non-blank string.
-
-*  **`parameters`** value must be an array. Each value must be a map.
-
-*  **`caveats`** 
-
-*  **`points_of_interest`** 
-
-*  **`show_in_getting_started`** 
-
-*  **`dashboard`** 
+*  **`position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `PUT /api/dashboard/:id/cards`
 
 Update `Cards` on a `Dashboard`. Request body should have the form:
 
-    {:cards [{:id ...
-              :sizeX ...
-              :sizeY ...
-              :row ...
-              :col ...
+    {:cards [{:id     ...
+              :sizeX  ...
+              :sizeY  ...
+              :row    ...
+              :col    ...
               :series [{:id 123
                         ...}]} ...]}
 
@@ -500,18 +611,20 @@ You must be a superuser to do this.
 
 ## `POST /api/dataset/`
 
-Execute an MQL query and retrieve the results as JSON.
+Execute a query and retrieve the results in the usual format.
 
 ##### PARAMS:
 
 *  **`database`** 
 
 
-## `POST /api/dataset/csv`
+## `POST /api/dataset/:export-format`
 
-Execute a query and download the result data as a CSV file.
+Execute a query and download the result data as a file in the specified format.
 
 ##### PARAMS:
+
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
 *  **`query`** value must be a valid JSON string.
 
@@ -525,15 +638,6 @@ Get historical query execution duration.
 *  **`database`** 
 
 *  **`query`** 
-
-
-## `POST /api/dataset/json`
-
-Execute a query and download the result data as a JSON file.
-
-##### PARAMS:
-
-*  **`query`** value must be a valid JSON string.
 
 
 ## `POST /api/email/test`
@@ -552,6 +656,89 @@ You must be a superuser to do this.
 ##### PARAMS:
 
 *  **`settings`** value must be a map.
+
+
+## `GET /api/embed/card/:token`
+
+Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}}
+
+##### PARAMS:
+
+*  **`token`** 
+
+
+## `GET /api/embed/card/:token/query`
+
+Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}
+      :params   <parameters>}
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/embed/card/:token/query/:export-format`
+
+Like `GET /api/embed/card/query`, but returns the results as a file in the specified format.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/embed/dashboard/:token`
+
+Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:dashboard <dashboard-id>}}
+
+##### PARAMS:
+
+*  **`token`** 
+
+
+## `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+
+Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:dashboard <dashboard-id>}
+      :params   <parameters>}
+
+   Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`dashcard-id`** 
+
+*  **`card-id`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
 
 
 ## `GET /api/field/:id`
@@ -751,23 +938,13 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`points_of_interest`** 
-
-*  **`description`** 
+*  **`id`** 
 
 *  **`definition`** value must be a map.
 
-*  **`revision_message`** value must be a non-blank string.
-
-*  **`show_in_getting_started`** 
-
 *  **`name`** value must be a non-blank string.
 
-*  **`caveats`** 
-
-*  **`id`** 
-
-*  **`how_is_this_calculated`** 
+*  **`revision_message`** value must be a non-blank string.
 
 
 ## `PUT /api/metric/:id/important_fields`
@@ -911,6 +1088,124 @@ You must be a superuser to do this.
 *  **`name`** value must be a non-blank string.
 
 
+## `GET /api/preview-embed/card/:token`
+
+Fetch a Card you're considering embedding by passing a JWT TOKEN.
+
+##### PARAMS:
+
+*  **`token`** 
+
+
+## `GET /api/preview-embed/card/:token/query`
+
+Fetch the query results for a Card you're considering embedding by passing a JWT TOKEN.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/preview-embed/dashboard/:token`
+
+Fetch a Dashboard you're considering embedding by passing a JWT TOKEN. 
+
+##### PARAMS:
+
+*  **`token`** 
+
+
+## `GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+
+Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT TOKEN.
+
+##### PARAMS:
+
+*  **`token`** 
+
+*  **`dashcard-id`** 
+
+*  **`card-id`** 
+
+*  **`&`** 
+
+*  **`query-params`** 
+
+
+## `GET /api/public/card/:uuid`
+
+Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+
+## `GET /api/public/card/:uuid/query`
+
+Fetch a publically-accessible Card an return query results as well as `:card` information. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/card/:uuid/query/:export-format`
+
+Fetch a publically-accessible Card and return query results in the specified format. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/dashboard/:uuid`
+
+Fetch a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+
+## `GET /api/public/dashboard/:uuid/card/:card-id`
+
+Fetch the results for a Card in a publically-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
+
+##### PARAMS:
+
+*  **`uuid`** 
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `GET /api/public/oembed`
+
+oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL.
+
+##### PARAMS:
+
+*  **`url`** value must be a non-blank string.
+
+*  **`format`** value may be nil, or if non-nil, value must be one of: `json`.
+
+*  **`maxheight`** value may be nil, or if non-nil, value must be a valid integer.
+
+*  **`maxwidth`** value may be nil, or if non-nil, value must be a valid integer.
+
+
 ## `DELETE /api/pulse/:id`
 
 Delete a `Pulse`.
@@ -978,6 +1273,8 @@ Create a new `Pulse`.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
 
+*  **`skip_if_empty`** value must be a boolean.
+
 
 ## `POST /api/pulse/test`
 
@@ -990,6 +1287,8 @@ Test send an unsaved pulse.
 *  **`cards`** value must be an array. Each value must be a map. The array cannot be empty.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
+
+*  **`skip_if_empty`** value must be a boolean.
 
 
 ## `PUT /api/pulse/:id`
@@ -1005,6 +1304,8 @@ Update a `Pulse` with ID.
 *  **`cards`** value must be an array. Each value must be a map. The array cannot be empty.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
+
+*  **`skip_if_empty`** value must be a boolean.
 
 
 ## `GET /api/revision/`
@@ -1113,14 +1414,6 @@ You must be a superuser to do this.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`description`** 
-
-*  **`caveats`** 
-
-*  **`points_of_interest`** 
-
-*  **`show_in_getting_started`** 
-
 *  **`definition`** value must be a map.
 
 *  **`revision_message`** value must be a non-blank string.
@@ -1173,8 +1466,6 @@ Send a reset email when user has forgotten their password.
 *  **`email`** value must be a valid email address.
 
 *  **`remote-address`** 
-
-*  **`request`** 
 
 
 ## `POST /api/session/google_auth`
@@ -1247,13 +1538,11 @@ Special endpoint for creating the first user during setup.
 
 *  **`engine`** 
 
-*  **`allow_tracking`** 
+*  **`allow_tracking`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
 
 *  **`email`** value must be a valid email address.
 
 *  **`first_name`** value must be a non-blank string.
-
-*  **`request`** 
 
 *  **`password`** Insufficient password strength
 
@@ -1337,7 +1626,7 @@ Get metadata about a `Table` useful for running queries.
 
 *  **`id`** 
 
-*  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean (true or false).
+*  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 
 ## `PUT /api/table/:id`
@@ -1390,7 +1679,7 @@ This endpoints provides an image with the appropriate pins rendered given a MBQL
 
 ## `DELETE /api/user/:id`
 
-Disable a `User`.  This does not remove the `User` from the db and instead disables their account.
+Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account.
 
 You must be a superuser to do this.
 
@@ -1420,7 +1709,7 @@ Fetch the current `User`.
 
 ## `POST /api/user/`
 
-Create a new `User`, or or reäctivate an existing one.
+Create a new `User`, or or reactivate an existing one.
 
 You must be a superuser to do this.
 
@@ -1478,7 +1767,7 @@ Update a user's password.
 
 ## `PUT /api/user/:id/qbnewb`
 
-Indicate that a user has been informed about the vast intricacies of 'the' QueryBuilder.
+Indicate that a user has been informed about the vast intricacies of 'the' Query Builder.
 
 ##### PARAMS:
 
@@ -1490,6 +1779,12 @@ Indicate that a user has been informed about the vast intricacies of 'the' Query
 Logs.
 
 You must be a superuser to do this.
+
+
+## `GET /api/util/random_token`
+
+Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
+   Intended for use when creating a value for `embedding-secret-key`.
 
 
 ## `GET /api/util/stats`

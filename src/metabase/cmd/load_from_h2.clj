@@ -15,49 +15,48 @@
    MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase lein run load-from-h2
    ```"
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
             [colorize.core :as color]
             [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.db :as db]
+            [metabase
+             [config :as config]
+             [db :as mdb]
+             [util :as u]]
             [metabase.db.migrations :refer [DataMigrations]]
-            (metabase.models [activity :refer [Activity]]
-                             [card :refer [Card]]
-                             [card-favorite :refer [CardFavorite]]
-                             [card-label :refer [CardLabel]]
-                             [collection :refer [Collection]]
-                             [collection-revision :refer [CollectionRevision]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [database :refer [Database]]
-                             [dependency :refer [Dependency]]
-                             [field :refer [Field]]
-                             [field-values :refer [FieldValues]]
-                             [label :refer [Label]]
-                             [metric :refer [Metric]]
-                             [metric-important-field :refer [MetricImportantField]]
-                             [permissions :refer [Permissions]]
-                             [permissions-group :refer [PermissionsGroup]]
-                             [permissions-group-membership :refer [PermissionsGroupMembership]]
-                             [permissions-revision :refer [PermissionsRevision]]
-                             [pulse :refer [Pulse]]
-                             [pulse-card :refer [PulseCard]]
-                             [pulse-channel :refer [PulseChannel]]
-                             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-                             [query-execution :refer [QueryExecution]]
-                             [raw-column :refer [RawColumn]]
-                             [raw-table :refer [RawTable]]
-                             [revision :refer [Revision]]
-                             [segment :refer [Segment]]
-                             [session :refer [Session]]
-                             [setting :refer [Setting]]
-                             [table :refer [Table]]
-                             [user :refer [User]]
-                             [view-log :refer [ViewLog]])
-            [metabase.util :as u]
-            [clojure.tools.logging :as log]))
-
+            [metabase.models
+             [activity :refer [Activity]]
+             [card :refer [Card]]
+             [card-favorite :refer [CardFavorite]]
+             [card-label :refer [CardLabel]]
+             [collection :refer [Collection]]
+             [collection-revision :refer [CollectionRevision]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [dashboard-favorite :refer [DashboardFavorite]]
+             [database :refer [Database]]
+             [dependency :refer [Dependency]]
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]
+             [label :refer [Label]]
+             [metric :refer [Metric]]
+             [metric-important-field :refer [MetricImportantField]]
+             [permissions :refer [Permissions]]
+             [permissions-group :refer [PermissionsGroup]]
+             [permissions-group-membership :refer [PermissionsGroupMembership]]
+             [permissions-revision :refer [PermissionsRevision]]
+             [pulse :refer [Pulse]]
+             [pulse-card :refer [PulseCard]]
+             [pulse-channel :refer [PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]
+             [raw-column :refer [RawColumn]]
+             [raw-table :refer [RawTable]]
+             [revision :refer [Revision]]
+             [segment :refer [Segment]]
+             [session :refer [Session]]
+             [setting :refer [Setting]]
+             [table :refer [Table]]
+             [user :refer [User]]
+             [view-log :refer [ViewLog]]]))
 
 (defn- println-ok [] (println (color/green "[OK]")))
 
@@ -88,7 +87,6 @@
    DashboardCard
    DashboardCardSeries
    Activity
-   QueryExecution
    Pulse
    PulseCard
    PulseChannel
@@ -101,13 +99,14 @@
    PermissionsRevision
    Collection
    CollectionRevision
+   DashboardFavorite
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 
 
 (defn- h2-details [h2-connection-string-or-nil]
   (let [h2-filename (or h2-connection-string-or-nil @metabase.db/db-file)]
-    (db/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
+    (mdb/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
 
 
 (defn- insert-entity! [target-db-conn entity objs]
@@ -168,13 +167,13 @@
 
 (defn- disable-db-constraints! [target-db-conn]
   (println (u/format-color 'blue "Temporarily disabling DB constraints..."))
-  ((case (db/db-type)
+  ((case (mdb/db-type)
       :postgres disable-db-constraints:postgres!
       :mysql    disable-db-constraints:mysql!) target-db-conn)
   (println-ok))
 
 (defn- reënable-db-constraints-if-needed! [target-db-conn]
-  (when (= (db/db-type) :mysql)
+  (when (= (mdb/db-type) :mysql)
     (println (u/format-color 'blue "Reënabling DB constraints..."))
     (reënable-db-constraints:mysql! target-db-conn)
     (println-ok)))
@@ -189,8 +188,8 @@
 (defn- set-postgres-sequence-values-if-needed!
   "When loading data into a Postgres DB, update the sequence nextvals."
   []
-  (when (= (db/db-type) :postgres)
-    (jdbc/with-db-transaction [target-db-conn (db/jdbc-details)]
+  (when (= (mdb/db-type) :postgres)
+    (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
       (println (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
       (doseq [e     entities
               :when (not (contains? entities-without-autoinc-ids e))
@@ -209,11 +208,11 @@
 
    Defaults to using `@metabase.db/db-file` as the connection string."
   [h2-connection-string-or-nil]
-  (db/setup-db!)
-  (jdbc/with-db-transaction [target-db-conn (db/jdbc-details)]
+  (mdb/setup-db!)
+  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
     (jdbc/db-set-rollback-only! target-db-conn)
     (disable-db-constraints! target-db-conn)
     (load-data! target-db-conn h2-connection-string-or-nil)
-    (reënable-db-constraints-if-needed! (db/jdbc-details))
+    (reënable-db-constraints-if-needed! (mdb/jdbc-details))
     (jdbc/db-unset-rollback-only! target-db-conn))
   (set-postgres-sequence-values-if-needed!))

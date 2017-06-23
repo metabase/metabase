@@ -1,18 +1,31 @@
 (ns metabase.middleware
   "Metabase-specific middleware functions & configuration."
-  (:require [clojure.tools.logging :as log]
-            (cheshire factory
-                      [generate :refer [add-encoder encode-str encode-nil]])
-            monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
-            [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
-            (metabase [config :as config]
-                      [db :as db])
-            (metabase.models [interface :as models]
-                             [session :refer [Session]]
-                             [setting :refer [defsetting]]
-                             [user :refer [User], :as user])
-            [metabase.util :as u])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require [cheshire
+             [core :as json]
+             [generate :refer [add-encoder encode-nil encode-str]]]
+            [clojure.core.async :as async]
+            [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
+            [metabase
+             [config :as config]
+             [db :as mdb]
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
+            [metabase.api.common.internal :refer [*automatically-catch-api-exceptions*]]
+            [metabase.core.initialization-status :as init-status]
+            [metabase.models
+             [session :refer [Session]]
+             [setting :refer [defsetting]]
+             [user :as user :refer [User]]]
+            monger.json
+            [ring.core.protocols :as protocols]
+            [ring.util.response :as response]
+            [toucan
+             [db :as db]
+             [models :as models]])
+  (:import com.fasterxml.jackson.core.JsonGenerator
+           java.io.OutputStream))
 
 ;;; # ------------------------------------------------------------ UTIL FNS ------------------------------------------------------------
 
@@ -28,8 +41,18 @@
   (or (zero? (count uri))
       (not (or (re-matches #"^/app/.*$" uri)
                (re-matches #"^/api/.*$" uri)
+               (re-matches #"^/public/.*$" uri)
                (re-matches #"^/favicon.ico$" uri)))))
 
+(defn- public?
+  "Is this ring request one that will serve `public.html`?"
+  [{:keys [uri]}]
+  (re-matches #"^/public/.*$" uri))
+
+(defn- embed?
+  "Is this ring request one that will serve `public.html`?"
+  [{:keys [uri]}]
+  (re-matches #"^/embed/.*$" uri))
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
@@ -53,27 +76,42 @@
                     (assoc request :metabase-session-id session-id)
                     request))))
 
+(defn- session-with-id
+  "Fetch a session with SESSION-ID, and include the User ID and superuser status associated with it."
+  [session-id]
+  (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
+    (mdb/join [Session :user_id] [User :id])
+    (db/qualify User :is_active) true
+    (db/qualify Session :id) session-id))
 
-(defn- add-current-user-id [{:keys [metabase-session-id] :as request}]
-  (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-        (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-                             (db/join [Session :user_id] [User :id])
-                             (db/qualify User :is_active) true
-                             (db/qualify Session :id) metabase-session-id)]
-          (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
-                                                                   (.getTime created-at))
-                                                                 0))]
-            ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-            (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-              (assoc request
-                :metabase-user-id (:user_id session)
-                :is-superuser?    (:is_superuser session))))))
-      request))
+(defn- session-age-ms [session]
+  (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                      (.getTime created-at))
+                                    0)))
+
+(defn- session-age-minutes [session]
+  (quot (session-age-ms session) 60000))
+
+(defn- session-expired? [session]
+  (> (session-age-minutes session)
+     (config/config-int :max-session-age)))
+
+(defn- current-user-info-for-session
+  "Return User ID and superuser status for Session with SESSION-ID if it is valid and not expired."
+  [session-id]
+  (when (and session-id (init-status/complete?))
+    (when-let [session (session-with-id session-id)]
+      (when-not (session-expired? session)
+        {:metabase-user-id (:user_id session)
+         :is-superuser?    (:is_superuser session)}))))
+
+(defn- add-current-user-info [{:keys [metabase-session-id], :as request}]
+  (merge request (current-user-info-for-session metabase-session-id)))
 
 (defn wrap-current-user-id
   "Add `:metabase-user-id` to the request if a valid session token was passed."
   [handler]
-  (comp handler add-current-user-id))
+  (comp handler add-current-user-info))
 
 
 (defn enforce-authentication
@@ -85,7 +123,7 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :google_auth] (models/default-fields User))))
+  (vec (concat [User :is_active :google_auth :ldap_auth] (models/default-fields User))))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and `*current-user-permissions-set*`.
@@ -156,11 +194,10 @@
                                                                     "https://www.google-analytics.com" ; Safari requires the protocol
                                                                     "https://*.googleapis.com"
                                                                     "*.gstatic.com"
-                                                                    "js.intercomcdn.com"
-                                                                    "*.intercom.io"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
-                                                      :frame-src   ["https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
+                                                      :child-src   ["'self'"
+                                                                    "https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
@@ -170,11 +207,9 @@
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
                                                       :img-src     ["*"
-                                                                    "self data:"]
+                                                                    "'self' data:"]
                                                       :connect-src ["'self'"
                                                                     "metabase.us10.list-manage.com"
-                                                                    "*.intercom.io"
-                                                                    "wss://*.intercom.io" ; allow websockets as well
                                                                     (when config/is-dev?
                                                                       "localhost:8080 ws://localhost:8080")]}]
                                           (format "%s %s; " (name k) (apply str (interpose " " vs)))))})
@@ -192,13 +227,14 @@
          strict-transport-security-header
          #_(public-key-pins-header)))
 
-(defn- index-page-security-headers []
+(defn- html-page-security-headers [& {:keys [allow-iframes?] }]
   (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
          #_(public-key-pins-header)
-         {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
-          "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
+         (when-not allow-iframes?
+           {"X-Frame-Options"                 "DENY"})        ; Tell browsers not to render our site as an iframe (prevent clickjacking)
+         {"X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
           "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.
           "X-Content-Type-Options"            "nosniff"}))    ; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
 
@@ -209,7 +245,27 @@
     (let [response (handler request)]
       (update response :headers merge (cond
                                         (api-call? request) (api-security-headers)
-                                        (index? request)    (index-page-security-headers))))))
+                                        (public? request)   (html-page-security-headers, :allow-iframes? true)
+                                        (embed? request)    (html-page-security-headers, :allow-iframes? true)
+                                        (index? request)    (html-page-security-headers))))))
+
+
+;;; # ------------------------------------------------------------ SETTING SITE-URL ------------------------------------------------------------
+
+;; It's important for us to know what the site URL is for things like returning links, etc.
+;; this is stored in the `site-url` Setting; we can set it automatically by looking at the `Origin` or `Host` headers sent with a request.
+;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting the (initial) value of `site-url`
+
+(defn maybe-set-site-url
+  "Middleware to set the `site-url` Setting if it's unset the first time a request is made."
+  [handler]
+  (fn [{{:strs [origin host] :as headers} :headers, :as request}]
+    (when (mdb/db-is-setup?)
+      (when-not (public-settings/site-url)
+        (when-let [site-url (or origin host)]
+          (log/info "Setting Metabase site URL to" site-url)
+          (public-settings/site-url site-url))))
+    (handler request)))
 
 
 ;;; # ------------------------------------------------------------ JSON SERIALIZATION CONFIG ------------------------------------------------------------
@@ -274,3 +330,101 @@
         (db/with-call-counting [call-count]
           (u/prog1 (handler request)
             (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))
+
+
+;;; ------------------------------------------------------------ EXCEPTION HANDLING ------------------------------------------------------------
+
+(defn genericize-exceptions
+  "Catch any exceptions thrown in the request handler body and rethrow a generic 400 exception instead.
+   This minimizes information available to bad actors when exceptions occur on public endpoints."
+  [handler]
+  (fn [request]
+    (try (binding [*automatically-catch-api-exceptions* false]
+           (handler request))
+         (catch Throwable e
+           (log/warn (.getMessage e))
+           {:status 400, :body "An error occurred."}))))
+
+(defn message-only-exceptions
+  "Catch any exceptions thrown in the request handler body and rethrow a 400 exception that only has
+   the message from the original instead (i.e., don't rethrow the original stacktrace).
+   This reduces the information available to bad actors but still provides some information that will
+   prove useful in debugging errors."
+  [handler]
+  (fn [request]
+    (try (binding [*automatically-catch-api-exceptions* false]
+           (handler request))
+         (catch Throwable e
+           {:status 400, :body (.getMessage e)}))))
+
+;;; ------------------------------------------------------------ EXCEPTION HANDLING ------------------------------------------------------------
+
+(def ^:private ^:const streaming-response-keep-alive-interval-ms
+  "Interval between sending newline characters to keep Heroku from terminating
+   requests like queries that take a long time to complete."
+  (* 1 1000))
+
+;; Handle ring response maps that contain a core.async chan in the :body key:
+;;
+;; {:status 200
+;;  :body (async/chan)}
+;;
+;; and send each string sent to that queue back to the browser as it arrives
+;; this avoids output buffering in the default stream handling which was not sending
+;; any responses until ~5k characters where in the queue.
+(extend-protocol protocols/StreamableResponseBody
+  clojure.core.async.impl.channels.ManyToManyChannel
+  (write-body-to-stream [output-queue _ ^OutputStream output-stream]
+    (log/debug (u/format-color 'green "starting streaming request"))
+    (with-open [out (io/writer output-stream)]
+      (loop [chunk (async/<!! output-queue)]
+        (when-not (= chunk ::EOF)
+          (.write out (str chunk))
+          (try
+            (.flush out)
+            (catch org.eclipse.jetty.io.EofException e
+              (log/info (u/format-color 'yellow "connection closed, canceling request %s" (type e)))
+              (async/close! output-queue)
+              (throw e)))
+          (recur (async/<!! output-queue)))))))
+
+(defn streaming-json-response
+  "This midelware assumes handlers fail early or return success
+   Run the handler in a future and send newlines to keep the connection open
+   and help detect when the browser is no longer listening for the response.
+   Waits for one second to see if the handler responds immediately, If it does
+   then there is no need to stream the response and it is sent back directly.
+   In cases where it takes longer than a second, assume the eventual result will
+   be a success and start sending newlines to keep the connection open."
+  [handler]
+  (fn [request]
+    (let [response            (future (handler request))
+          optimistic-response (deref response streaming-response-keep-alive-interval-ms ::no-immediate-response)]
+      (if (= optimistic-response ::no-immediate-response)
+        ;; if we didn't get a normal response in the first poling interval assume it's going to be slow
+        ;; and start sending keepalive packets.
+        (let [output (async/chan 1)]
+          ;; the output channel will be closed by the adapter when the incoming connection is closed.
+          (future
+            (loop []
+              (Thread/sleep streaming-response-keep-alive-interval-ms)
+              (when-not (realized? response)
+                (log/debug (u/format-color 'blue "Response not ready, writing one byte & sleeping..."))
+                ;; a newline padding character is used because it forces output flushing in jetty.
+                ;; if sending this character fails because the connection is closed, the chan will then close.
+                ;; Newlines are no-ops when reading JSON which this depends upon.
+                (when-not (async/>!! output "\n")
+                  (log/info (u/format-color 'yellow "canceled request %s" (future-cancel response)))
+                  (future-cancel response)) ;; try our best to kill the thread running the query.
+                (recur))))
+          (future
+            (try
+              ;; This is the part where we make this assume it's a JSON response we are sending.
+              (async/>!! output (json/encode (:body @response)))
+              (finally
+                (async/>!! output ::EOF)
+                (async/close! response))))
+          ;; here we assume a successful response will be written to the output channel.
+          (assoc (response/response output)
+            :content-type "applicaton/json"))
+          optimistic-response))))

@@ -1,48 +1,84 @@
+import { serializeCardForUrl } from "metabase/lib/card";
+import MetabaseSettings from "metabase/lib/settings"
+
 // provides functions for building urls to things we care about
-var Urls = {
-    card: function(card_id) {
-        // NOTE that this is for an ephemeral card link, not an editable card
-        return "/card/"+card_id;
-    },
 
-    dashboard: function(dashboard_id) {
-        return "/dash/"+dashboard_id;
-    },
+export function question(cardId, hash = "", query = "") {
+    if (hash && typeof hash === "object") {
+        hash = serializeCardForUrl(hash);
+    }
+    if (query && typeof query === "object") {
+        query = Object.entries(query)
+            .map(kv => kv.map(encodeURIComponent).join("="))
+            .join("&");
+    }
+    if (hash && hash.charAt(0) !== "#") {
+        hash = "#" + hash;
+    }
+    if (query && query.charAt(0) !== "?") {
+        query = "?" + query;
+    }
+    // NOTE that this is for an ephemeral card link, not an editable card
+    return cardId != null
+        ? `/question/${cardId}${query}${hash}`
+        : `/question${query}${hash}`;
+}
 
-    modelToUrl: function(model, model_id) {
-        switch (model) {
-            case "card":      return Urls.card(model_id);
-            case "dashboard": return Urls.dashboard(model_id);
-            case "pulse":     return Urls.pulse(model_id);
-            default:          return null;
-        }
-    },
+export function dashboard(dashboardId, {addCardWithId} = {}) {
+    return addCardWithId != null
+        ? `/dashboard/${dashboardId}#add=${addCardWithId}`
+        : `/dashboard/${dashboardId}`;
+}
 
-    pulse: function(pulse_id) {
-        return "/pulse/#"+pulse_id;
-    },
-
-    tableRowsQuery: function(database_id, table_id, metric_id, segment_id) {
-        let url = "/q/?db="+database_id+"&table="+table_id;
-
-        if (metric_id) {
-            url = url + "&metric="+metric_id;
-        }
-
-        if (segment_id) {
-            url = url + "&segment="+segment_id;
-        }
-
-        return url;
-    },
-
-    collection(collection) {
-        return `/questions/collections/${encodeURIComponent(collection.slug)}`;
-    },
-
-    label(label) {
-        return `/questions/search?label=${encodeURIComponent(label.slug)}`;
+export function modelToUrl(model, modelId) {
+    switch (model) {
+        case "card":
+            return question(modelId);
+        case "dashboard":
+            return dashboard(modelId);
+        case "pulse":
+            return pulse(modelId);
+        default:
+            return null;
     }
 }
 
-export default Urls;
+export function pulse(pulseId) {
+    return `/pulse/#${pulseId}`;
+}
+
+export function tableRowsQuery(databaseId, tableId, metricId, segmentId) {
+    let query = `?db=${databaseId}&table=${tableId}`;
+
+    if (metricId) {
+        query += `&metric=${metricId}`;
+    }
+
+    if (segmentId) {
+        query += `&segment=${segmentId}`;
+    }
+
+    return question(null, query);
+}
+
+export function collection(collection) {
+    return `/questions/collections/${encodeURIComponent(collection.slug)}`;
+}
+
+export function label(label) {
+    return `/questions/search?label=${encodeURIComponent(label.slug)}`;
+}
+
+export function publicCard(uuid, type = null) {
+    const siteUrl = MetabaseSettings.get("site-url");
+    return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : ``);
+}
+
+export function publicDashboard(uuid) {
+    const siteUrl = MetabaseSettings.get("site-url");
+    return `${siteUrl}/public/dashboard/${uuid}`;
+}
+
+export function embedCard(token, type = null) {
+    return `/embed/question/${token}` + (type ? `.${type}` : ``);
+}

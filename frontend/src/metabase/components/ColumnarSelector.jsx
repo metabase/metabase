@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import "./ColumnarSelector.css";
 
@@ -35,7 +36,7 @@ export default class ColumnarSelector extends Component {
                             'no-decoration': true,
                             'cursor-default': isItemDisabled(item, column)
                         });
-                        var checkIcon = lastColumn ? <Icon name="check" size={14}/> : null;
+                        var checkIcon = lastColumn ? <Icon name="check" size={14} /> : null;
                         var descriptionElement;
                         var description = column.itemDescriptionFn && column.itemDescriptionFn(item);
                         if (description) {
@@ -45,7 +46,7 @@ export default class ColumnarSelector extends Component {
                             <li key={rowIndex}>
                                 <a className={itemClasses} onClick={!isItemDisabled(item, column) && column.itemSelectFn.bind(null, item)}>
                                     {checkIcon}
-                                    <div className="flex flex-column">
+                                    <div className="flex flex-column ml1">
                                         {column.itemTitleFn(item)}
                                         {descriptionElement}
                                     </div>

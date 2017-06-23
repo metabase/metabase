@@ -1,15 +1,17 @@
 (ns metabase.sample-dataset.generate
   "Logic for generating the sample dataset.
    Run this with `lein generate-sample-dataset`."
-  (:require (clojure.java [io :as io]
-                          [jdbc :as jdbc])
+  (:require [clojure.java
+             [io :as io]
+             [jdbc :as jdbc]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
-            (faker [address :as address]
-                   [company :as company]
-                   [lorem :as lorem]
-                   [internet :as internet]
-                   [name :as name])
+            [faker
+             [address :as address]
+             [company :as company]
+             [internet :as internet]
+             [lorem :as lorem]
+             [name :as name]]
             [incanter.distributions :as dist]
             [metabase.db.spec :as dbspec]
             [metabase.util :as u])
@@ -253,7 +255,7 @@
           (= (count (:products %)) products)
           (every? keyword? (keys %))
           (every? sequential? (vals %))]}
-  (println (format "Generating random data: %d people, %d products..." people products))
+  (printf "Generating random data: %d people, %d products...\n" people products)
   (let [products (mapv product-add-reviews (create-randoms products random-product))
         people   (mapv (partial person-add-orders products) (create-randoms people random-person))]
     {:people   (mapv #(dissoc % :orders) people)
@@ -416,6 +418,6 @@
 
 (defn -main [& [filename]]
   (let [filename (or filename sample-dataset-filename)]
-    (println (format "Writing sample dataset to %s..." filename))
+    (printf "Writing sample dataset to %s...\n" filename)
     (create-h2-db filename)
     (System/exit 0)))

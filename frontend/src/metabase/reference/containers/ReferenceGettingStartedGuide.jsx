@@ -1,13 +1,11 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from 'react-redux';
-import { push } from 'react-router-redux';
 import { reduxForm } from "redux-form";
-import { assoc } from "icepick";
-import cx from "classnames";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import cx from "classnames";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
@@ -22,10 +20,7 @@ import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.j
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 import { clearRequestState } from "metabase/redux/requests";
-import {
-    updateDashboard,
-    createDashboard
-} from 'metabase/dashboard/dashboard';
+import { createDashboard, updateDashboard } from 'metabase/dashboards/dashboards';
 
 import {
     updateSetting
@@ -37,15 +32,15 @@ import {
     getGuide,
     getUser,
     getDashboards,
-    getMetrics,
-    getSegments,
-    getTables,
-    getFields,
-    getDatabases,
     getLoading,
     getError,
     getIsEditing,
-    getIsDashboardModalOpen
+    getIsDashboardModalOpen,
+    getDatabases,
+    getTables,
+    getFields,
+    getMetrics,
+    getSegments,
 } from '../selectors';
 
 import {
@@ -70,20 +65,23 @@ const mapStateToProps = (state, props) => {
     const initialValues = guide && {
         things_to_know: guide.things_to_know || null,
         contact: guide.contact || {name: null, email: null},
-        most_important_dashboard: guide.most_important_dashboard !== null ?
+        most_important_dashboard: dashboards !== null && guide.most_important_dashboard !== null ?
             dashboards[guide.most_important_dashboard] :
             {},
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ?
             guide.important_metrics
-                .map(metricId => metrics[metricId] && assoc(metrics[metricId], 'important_fields', guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId]))) :
+                .map(metricId => metrics[metricId] && {
+                    ...metrics[metricId],
+                    important_fields: guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId])
+                }) :
             [],
         important_segments_and_tables:
             (guide.important_segments && guide.important_segments.length > 0) ||
             (guide.important_tables && guide.important_tables.length > 0) ?
                 guide.important_segments
-                    .map(segmentId => segments[segmentId] && assoc(segments[segmentId], 'type', 'segment'))
+                    .map(segmentId => segments[segmentId] && { ...segments[segmentId], type: 'segment' })
                     .concat(guide.important_tables
-                        .map(tableId => tables[tableId] && assoc(tables[tableId], 'type', 'table'))
+                        .map(tableId => tables[tableId] && { ...tables[tableId], type: 'table' })
                     ) :
                 []
     };
@@ -113,7 +111,6 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
-    push,
     updateDashboard,
     createDashboard,
     updateSetting,
@@ -167,7 +164,6 @@ export default class ReferenceGettingStartedGuide extends Component {
         isDashboardModalOpen: PropTypes.bool,
         showDashboardModal: PropTypes.func,
         hideDashboardModal: PropTypes.func,
-        push: PropTypes.func
     };
 
     render() {
@@ -201,7 +197,6 @@ export default class ReferenceGettingStartedGuide extends Component {
             isDashboardModalOpen,
             showDashboardModal,
             hideDashboardModal,
-            push
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
@@ -224,14 +219,11 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <CreateDashboardModal
                             createDashboardFn={async (newDashboard) => {
                                 try {
-                                    const action = await createDashboard(newDashboard, true);
-                                    push(`/dash/${action.payload.id}`);
+                                    await createDashboard(newDashboard, { redirect: true });
                                 }
                                 catch(error) {
                                     console.error(error);
                                 }
-
-                                MetabaseAnalytics.trackEvent("Dashboard", "Create");
                             }}
                             onClose={hideDashboardModal}
                         />
@@ -293,7 +285,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             collapsedTitle="Do you have any commonly referenced metrics?"
                             collapsedIcon="ruler"
                             linkMessage="Learn how to define a metric"
-                            link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-metric"
+                            link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-metric"
                             expand={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null, important_fields: null})}
                         >
                             <div className="my2">
@@ -346,7 +338,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             collapsedTitle="Do you have any commonly referenced segments or tables?"
                             collapsedIcon="table2"
                             linkMessage="Learn how to create a segment"
-                            link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-segment"
+                            link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-segment"
                             expand={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                         >
                             <div>
@@ -485,7 +477,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     />
                                 </div>
                             ]}
-                            { Object.keys(metrics) > 0  && (
+                            { Object.keys(metrics).length > 0  && (
                                     <div className="my4 pt4">
                                         <SectionHeader trim={guide.important_metrics.length === 0}>
                                             { guide.important_metrics && guide.important_metrics.length > 0 ? 'Numbers that we pay attention to' : 'Metrics' }
@@ -519,7 +511,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                 Metrics are important numbers your company cares about. They often represent a core indicator of how the business is performing.
                                             </GuideText>
                                         }
-                                        <div className="mt4">
+                                        <div>
                                             <Link className="Button Button--primary" to={'/reference/metrics'}>
                                                 See all metrics
                                             </Link>
@@ -530,56 +522,53 @@ export default class ReferenceGettingStartedGuide extends Component {
 
                             <div className="mt4 pt4">
                                 <SectionHeader trim={(!has(guide.important_segments) && !has(guide.important_tables))}>
-                                    { Object.keys(segments) > 0 ? 'Segments and tables' : 'Tables' }
+                                    { Object.keys(segments).length > 0 ? 'Segments and tables' : 'Tables' }
                                 </SectionHeader>
-                                { has(guide.important_segments) || has(guide.important_tables) ? [
-                                        <div className="mt2">
-                                            { guide.important_segments.map((segmentId) =>
-                                                <GuideDetail
-                                                    key={segmentId}
-                                                    type="segment"
-                                                    entity={segments[segmentId]}
-                                                    tables={tables}
-                                                />
-                                            )}
-                                            { guide.important_tables.map((tableId) =>
-                                                <GuideDetail
-                                                    key={tableId}
-                                                    type="table"
-                                                    entity={tables[tableId]}
-                                                    tables={tables}
-                                                />
-                                            )}
-                                        </div>
-                                    ] : (
-                                        <div>
-                                            <GuideText>
-                                                { Object.keys(segments) > 0 ? (
-                                                    <span>
-                                                        Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>
-                                                    </span>
-                                                ) : "Tables are the building blocks of your company's data."
-                                                }
-                                            </GuideText>
-                                            <div>
-                                                { Object.keys(segments) > 0 && (
-                                                    <Link className="Button Button--purple mr2" to={'/reference/segments'}>
-                                                        See all segments
-                                                    </Link>
-                                                )}
-                                                <Link
-                                                    className={cx(
-                                                        { 'text-purple text-bold no-decoration text-underline-hover' : Object.keys(segments) > 0 },
-                                                        { 'Button Button--purple' : Object.keys(segments) === 0 }
-                                                    )}
-                                                    to={'/reference/databases'}
-                                                >
-                                                    See all tables
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    )
+                                { has(guide.important_segments) || has(guide.important_tables) ?
+                                    <div className="my2">
+                                        { guide.important_segments.map((segmentId) =>
+                                            <GuideDetail
+                                                key={segmentId}
+                                                type="segment"
+                                                entity={segments[segmentId]}
+                                                tables={tables}
+                                            />
+                                        )}
+                                        { guide.important_tables.map((tableId) =>
+                                            <GuideDetail
+                                                key={tableId}
+                                                type="table"
+                                                entity={tables[tableId]}
+                                                tables={tables}
+                                            />
+                                        )}
+                                    </div>
+                                :
+                                    <GuideText>
+                                        { Object.keys(segments).length > 0 ? (
+                                            <span>
+                                                Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>
+                                            </span>
+                                        ) : "Tables are the building blocks of your company's data."
+                                        }
+                                    </GuideText>
                                 }
+                                <div>
+                                    { Object.keys(segments).length > 0 && (
+                                        <Link className="Button Button--purple mr2" to={'/reference/segments'}>
+                                            See all segments
+                                        </Link>
+                                    )}
+                                    <Link
+                                        className={cx(
+                                            { 'text-purple text-bold no-decoration text-underline-hover' : Object.keys(segments).length > 0 },
+                                            { 'Button Button--purple' : Object.keys(segments).length === 0 }
+                                        )}
+                                        to={'/reference/databases'}
+                                    >
+                                        See all tables
+                                    </Link>
+                                </div>
                             </div>
 
                             <div className="mt4 pt4">
@@ -632,4 +621,4 @@ const AdminInstructions = ({ children }) => // eslint-disable-line react/prop-ty
     </div>
 
 const SectionHeader = ({ trim, children }) => // eslint-disable-line react/prop-types
-    <h2 className={cx('text-dark text-measure', {  "mb0" : trim }, { "mb4" : !trim })}>{children}</h2> 
+    <h2 className={cx('text-dark text-measure', {  "mb0" : trim }, { "mb4" : !trim })}>{children}</h2>

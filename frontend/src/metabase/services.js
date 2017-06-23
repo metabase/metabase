@@ -1,6 +1,12 @@
 /* @flow */
 
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import api from "metabase/lib/api";
+const { GET, PUT, POST, DELETE } = api;
+
+import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+
+// use different endpoints for embed previews
+const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 // $FlowFixMe: Flow doesn't understand webpack loader syntax
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
@@ -12,7 +18,7 @@ export const ActivityApi = {
 
 export const CardApi = {
     list:                        GET("/api/card", (cards, { data }) =>
-                                    // support for the "q" query param until backend implements it
+                                    // HACK: support for the "q" query param until backend implements it
                                     cards.filter(card => !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0)
                                  ),
     create:                     POST("/api/card"),
@@ -24,6 +30,11 @@ export const CardApi = {
     favorite:                   POST("/api/card/:cardId/favorite"),
     unfavorite:               DELETE("/api/card/:cardId/favorite"),
     updateLabels:               POST("/api/card/:cardId/labels"),
+
+    listPublic:                  GET("/api/card/public"),
+    listEmbeddable:              GET("/api/card/embeddable"),
+    createPublicLink:           POST("/api/card/:id/public_link"),
+    deletePublicLink:         DELETE("/api/card/:id/public_link"),
 };
 
 export const DashboardApi = {
@@ -35,16 +46,37 @@ export const DashboardApi = {
     addcard:                    POST("/api/dashboard/:dashId/cards"),
     removecard:               DELETE("/api/dashboard/:dashId/cards"),
     reposition_cards:            PUT("/api/dashboard/:dashId/cards"),
+    favorite:                   POST("/api/dashboard/:dashId/favorite"),
+    unfavorite:               DELETE("/api/dashboard/:dashId/favorite"),
+
+    listPublic:                  GET("/api/dashboard/public"),
+    listEmbeddable:              GET("/api/dashboard/embeddable"),
+    createPublicLink:           POST("/api/dashboard/:id/public_link"),
+    deletePublicLink:         DELETE("/api/dashboard/:id/public_link"),
 };
 
 export const CollectionsApi = {
-    list:                        GET("/api/collection"),//  () => []),
+    list:                        GET("/api/collection"),
     create:                     POST("/api/collection"),
     get:                         GET("/api/collection/:id"),
     update:                      PUT("/api/collection/:id"),
     delete:                   DELETE("/api/collection/:id"),
     graph:                       GET("/api/collection/graph"),
     updateGraph:                 PUT("/api/collection/graph"),
+};
+
+export const PublicApi = {
+    card:                        GET("/api/public/card/:uuid"),
+    cardQuery:                   GET("/api/public/card/:uuid/query"),
+    dashboard:                   GET("/api/public/dashboard/:uuid"),
+    dashboardCardQuery:          GET("/api/public/dashboard/:uuid/card/:cardId")
+};
+
+export const EmbedApi = {
+    card:                        GET(embedBase + "/card/:token"),
+    cardQuery:                   GET(embedBase + "/card/:token/query"),
+    dashboard:                   GET(embedBase + "/dashboard/:token"),
+    dashboardCardQuery:          GET(embedBase + "/dashboard/:token/dashcard/:dashcardId/card/:cardId")
 };
 
 export const EmailApi = {
@@ -56,9 +88,13 @@ export const SlackApi = {
     updateSettings:              PUT("/api/slack/settings"),
 };
 
+export const LdapApi = {
+    updateSettings:              PUT("/api/ldap/settings")
+};
+
 export const MetabaseApi = {
     db_list:                     GET("/api/database"),
-    db_list_with_tables:         GET("/api/database?include_tables=true"),
+    db_list_with_tables:         GET("/api/database?include_tables=true&include_cards=true"),
     db_create:                  POST("/api/database"),
     db_add_sample_dataset:      POST("/api/database/sample_dataset"),
     db_get:                      GET("/api/database/:dbId"),
@@ -89,7 +125,7 @@ export const MetabaseApi = {
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
-    // field_values:                GET("/api/field/:fieldId/values"),
+    field_values:                GET("/api/field/:fieldId/values"),
     // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
     field_update:                PUT("/api/field/:id"),
     dataset:                    POST("/api/dataset"),
@@ -177,6 +213,7 @@ export const GettingStartedApi = {
 export const SetupApi = {
     create:                     POST("/api/setup"),
     validate_db:                POST("/api/setup/validate"),
+    admin_checklist:             GET("/api/setup/admin_checklist"),
 };
 
 export const UserApi = {
@@ -193,6 +230,12 @@ export const UserApi = {
 
 export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
+    random_token:                GET("/api/util/random_token"),
+    logs:                        GET("/api/util/logs"),
+};
+
+export const GeoJSONApi = {
+    get:                         GET("/api/geojson/:id"),
 };
 
 global.services = exports;

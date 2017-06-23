@@ -1,24 +1,26 @@
 (ns metabase.pulse.render
-  (:require [clojure.java.io :as io]
-            (clojure [pprint :refer [cl-format]]
-                     [string :as s])
+  (:require [clj-time
+             [coerce :as c]
+             [core :as t]
+             [format :as f]]
+            [clojure
+             [pprint :refer [cl-format]]
+             [string :as s]]
+            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            (clj-time [coerce :as c]
-                      [core :as t]
-                      [format :as f])
-            [hiccup.core :refer [html h]]
-            [metabase.util.urls :as urls]
-            [metabase.util :as u])
-  (:import (java.awt BasicStroke Color Dimension RenderingHints)
+            [hiccup.core :refer [h html]]
+            [metabase.util :as u]
+            [metabase.util.urls :as urls])
+  (:import cz.vutbr.web.css.MediaSpec
+           [java.awt BasicStroke Color Dimension RenderingHints]
            java.awt.image.BufferedImage
-           (java.io ByteArrayInputStream ByteArrayOutputStream)
+           [java.io ByteArrayInputStream ByteArrayOutputStream]
            java.nio.charset.StandardCharsets
            java.util.Date
            javax.imageio.ImageIO
-           cz.vutbr.web.css.MediaSpec
            org.apache.commons.io.IOUtils
-           (org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin)
-           (org.fit.cssbox.io DefaultDOMSource StreamDocumentSource)
+           [org.fit.cssbox.css CSSNorm DOMAnalyzer DOMAnalyzer$Origin]
+           [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
            org.fit.cssbox.layout.BrowserCanvas
            org.fit.cssbox.misc.Base64Coder))
 
@@ -213,7 +215,7 @@
     (ImageIO/write (.getImage content-canvas) "png" os)))
 
 (defn- render-html-to-png
-  [html-body width]
+  ^bytes [html-body width]
   (let [html (html [:html [:body {:style (style {:margin           0
                                                  :padding          0
                                                  :background-color :white})}
@@ -374,7 +376,7 @@
 (defn- render:empty [_ _]
   [:div {:style (style {:text-align :center})}
    [:img {:style (style {:width :104px})
-          :src   (render-image-with-filename "frontend_client/app/img/pulse_no_results@2x.png")}]
+          :src   (render-image-with-filename "frontend_client/app/assets/img/pulse_no_results@2x.png")}]
    [:div {:style (style {:margin-top :8px
                          :color      color-gray-4})}
     "No results"]])
@@ -390,7 +392,9 @@
     (cond
       (or (= aggregation :rows)
           (contains? #{:pin_map :state :country} (:display card))) nil
-      (zero? row-count)                                            :empty
+      (or (zero? row-count)
+          ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+          (= [[nil]] (-> data :rows)))                             :empty
       (and (= col-count 1)
            (= row-count 1))                                        :scalar
       (and (= col-count 2)
@@ -402,7 +406,7 @@
       :else                                                        :table)))
 
 (defn render-pulse-card
-  "Render a single CARD for a `Pulse`. RESULT is the QP results."
+  "Render a single CARD for a `Pulse` to Hiccup HTML. RESULT is the QP results."
   [card {:keys [data error]}]
   [:a {:href   (card-href card)
        :target "_blank"
@@ -422,7 +426,7 @@
          (when *include-buttons*
            [:img {:style (style {:width :16px})
                   :width 16
-                  :src   (render-image-with-filename "frontend_client/app/img/external_link.png")}])]]]])
+                  :src   (render-image-with-filename "frontend_client/app/assets/img/external_link.png")}])]]]])
   (try
     (when error
       (throw (Exception. (str "Card has errors: " error))))
@@ -446,7 +450,7 @@
 
 
 (defn render-pulse-section
-  "Render a specific section of a Pulse, i.e. a single Card."
+  "Render a specific section of a Pulse, i.e. a single Card, to Hiccup HTML."
   [{:keys [card result]}]
   [:div {:style (style {:margin-top       :10px
                         :margin-bottom    :20px
@@ -459,6 +463,5 @@
 
 (defn render-pulse-card-to-png
   "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
-
-  [pulse-card result]
+  ^bytes [pulse-card result]
   (render-html-to-png (render-pulse-card pulse-card result) card-width))

@@ -1,37 +1,35 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
   (:require [clojure.java.jdbc :as jdbc]
-            (clojure [string :as s]
-                     [walk :as walk])
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            (honeysql [core :as hsql]
-                      [format :as hformat]
-                      [helpers :as h]
-                      types)
-            (metabase [config :as config]
-                      [driver :as driver])
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]
+             [helpers :as h]]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.query-processor :as qp]
-            (metabase.query-processor [annotate :as annotate]
-                                      interface)
-            [metabase.util :as u]
+            [metabase.query-processor
+             [annotate :as annotate]
+             [interface :as i]
+             [util :as qputil]]
             [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.Timestamp
-           java.util.Date
-           clojure.lang.Keyword
-           (metabase.query_processor.interface AgFieldRef
-                                               DateTimeField
-                                               DateTimeValue
-                                               Field
-                                               Expression
-                                               ExpressionRef
-                                               JoinTable
-                                               RelativeDateTimeValue
-                                               Value)))
+  (:import clojure.lang.Keyword
+           java.sql.SQLException
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Expression ExpressionRef Field FieldLiteral RelativeDateTimeValue Value]))
 
 (def ^:dynamic *query*
   "The outer query currently being processed."
   nil)
+
+(def ^:private ^:dynamic *nested-query-level*
+  "How many levels deep are we into nested queries? (0 = top level.)
+   We keep track of this so we know what level to find referenced aggregations
+  (otherwise something like [:aggregate-field 0] could be ambiguous in a nested query).
+  Each nested query increments this counter by 1."
+  0)
 
 (defn- driver [] {:pre [(map? *query*)]} (:driver *query*))
 
@@ -56,6 +54,17 @@
   [expression-name]
   (or (get-in *query* [:query :expressions (keyword expression-name)]) (:expressions (:query *query*))
       (throw (Exception. (format "No expression named '%s'." (name expression-name))))))
+
+(defn- aggregation-at-index
+  "Fetch the aggregation at index. This is intended to power aggregate field references (e.g. [:aggregate-field 0]).
+   This also handles nested queries, which could be potentially ambiguous if multiple levels had aggregations."
+  ([index]
+   (aggregation-at-index index (:query *query*) *nested-query-level*))
+  ;; keep recursing deeper into the query until we get to the same level the aggregation reference was defined at
+  ([index query aggregation-level]
+   (if (zero? aggregation-level)
+     (nth (:aggregation query) index)
+     (recur index (:source-query query) (dec aggregation-level)))))
 
 ;; TODO - maybe this fn should be called `->honeysql` instead.
 (defprotocol ^:private IGenericSQLFormattable
@@ -87,6 +96,10 @@
         (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp (driver) field :milliseconds)
         :else                                               field)))
 
+  FieldLiteral
+  (formatted [{:keys [field-name]}]
+    (keyword (hx/escape-dots (name field-name))))
+
   DateTimeField
   (formatted [{unit :unit, field :field}]
     (sql/date (driver) unit (formatted field)))
@@ -94,7 +107,7 @@
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef
   (formatted [{index :index}]
-    (let [{:keys [aggregation-type]} (nth (:aggregation (:query *query*)) index)]
+    (let [{:keys [aggregation-type]} (aggregation-at-index index)]
       ;; For some arcane reason we name the results of a distinct aggregation "count",
       ;; everything else is named the same as the aggregation
       (if (= aggregation-type :distinct)
@@ -151,7 +164,7 @@
 
 (defn- apply-expression-aggregation [driver honeysql-form expression]
   (h/merge-select honeysql-form [(expression-aggregation->honeysql driver expression)
-                                 (hx/escape-dots (annotate/aggregation-name expression))]))
+                                 (hx/escape-dots (driver/format-custom-field-name driver (annotate/aggregation-name expression)))]))
 
 (defn- apply-single-aggregation [driver honeysql-form {:keys [aggregation-type field], :as aggregation}]
   (h/merge-select honeysql-form [(aggregation->honeysql driver aggregation-type field)
@@ -253,16 +266,28 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
-(defn- apply-source-table [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
+(defn- apply-source-table [honeysql-form {{table-name :name, schema :schema} :source-table}]
   {:pre [table-name]}
   (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
+
+(declare apply-clauses)
+
+(defn- apply-source-query [driver honeysql-form {{:keys [native], :as source-query} :source-query}]
+  ;; TODO - what alias should we give the source query?
+  (assoc honeysql-form
+    :from [[(if native
+              (hsql/raw (str "(" (str/replace native #";+\s*$" "") ")")) ; strip off any trailing slashes
+              (binding [*nested-query-level* (inc *nested-query-level*)]
+                (apply-clauses driver {} source-query)))
+            :source]]))
 
 (def ^:private clause-handlers
   ;; 1) Use the vars rather than the functions themselves because them implementation
   ;;    will get swapped around and  we'll be left with old version of the function that nobody implements
   ;; 2) This is a vector rather than a map because the order the clauses get handled is important for some drivers.
   ;;    For example, Oracle needs to wrap the entire query in order to apply its version of limit (`WHERE ROWNUM`).
-  [:source-table apply-source-table
+  [:source-table (u/drop-first-arg apply-source-table)
+   :source-query apply-source-query
    :aggregation  #'sql/apply-aggregation
    :breakout     #'sql/apply-breakout
    :fields       #'sql/apply-fields
@@ -281,7 +306,8 @@
                           honeysql-form)]
       (if (seq more)
         (recur honeysql-form more)
-        honeysql-form))))
+        ;; ok, we're done; if no `:select` clause was specified (for whatever reason) put a default (`SELECT *`) one in
+        (update honeysql-form :select #(if (seq %) % [:*]))))))
 
 
 (defn build-honeysql-form
@@ -289,7 +315,7 @@
   [driverr {inner-query :query}]
   {:pre [(map? inner-query)]}
   (u/prog1 (apply-clauses driverr {} inner-query)
-    (when-not qp/*disable-qp-logging*
+    (when-not i/*disable-qp-logging*
       (log/debug "HoneySQL Form: 🍯\n" (u/pprint-to-str 'cyan <>)))))
 
 (defn mbql->native
@@ -310,7 +336,7 @@
     {:rows    (or rows [])
      :columns columns}))
 
-(defn- exception->nice-error-message ^String [^java.sql.SQLException e]
+(defn- exception->nice-error-message ^String [^SQLException e]
   (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
            (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
            second)             ; so just return the part of the exception that is relevant
@@ -318,7 +344,7 @@
 
 (defn- do-with-try-catch {:style/indent 0} [f]
   (try (f)
-       (catch java.sql.SQLException e
+       (catch SQLException e
          (log/error (jdbc/print-sql-exception-chain e))
          (throw (Exception. (exception->nice-error-message e))))))
 
@@ -340,10 +366,12 @@
 (defn- set-timezone!
   "Set the timezone for the current connection."
   [driver settings connection]
-  (let [timezone (:report-timezone settings)
-        sql      (sql/set-timezone-sql driver)]
-    (log/debug (u/pprint-to-str 'green [sql timezone]))
-    (jdbc/db-do-prepared connection [sql timezone])))
+  (let [timezone      (u/prog1 (:report-timezone settings)
+                        (assert (re-matches #"[A-Za-z\/_]+" <>)))
+        format-string (sql/set-timezone-sql driver)
+        sql           (format format-string (str \' timezone \'))]
+    (log/debug (u/format-color 'green "Setting timezone with statement: %s" sql))
+    (jdbc/db-do-prepared connection [sql])))
 
 (defn- run-query-without-timezone [driver settings connection query]
   (do-in-transaction connection (partial run-query query)))
@@ -353,15 +381,18 @@
     (do-in-transaction connection (fn [transaction-connection]
                                     (set-timezone! driver settings transaction-connection)
                                     (run-query query transaction-connection)))
-    (catch java.sql.SQLException e
+    (catch SQLException e
       (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (run-query-without-timezone driver settings connection query))
+    (catch Throwable e
+      (log/error "Failed to set timezone:\n" (.getMessage e))
       (run-query-without-timezone driver settings connection query))))
 
 
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native, :as outer-query}]
-  (let [query (assoc query :remark (qp/query->remark outer-query))]
+  (let [query (assoc query :remark (qputil/query->remark outer-query))]
     (do-with-try-catch
       (fn []
         (let [db-connection (sql/db->jdbc-connection-spec database)]

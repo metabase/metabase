@@ -1,7 +1,9 @@
 (ns metabase.util.stats-test
   (:require [expectations :refer :all]
+            [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.test.util :as tu]
             [metabase.util.stats :refer :all]
-            [metabase.test.util :as tu]))
+            [toucan.db :as db]))
 
 (tu/resolve-private-vars metabase.util.stats
   bin-micro-number bin-small-number bin-medium-number bin-large-number)
@@ -12,7 +14,6 @@
 (expect "2" (bin-micro-number 2))
 (expect "3+" (bin-micro-number 3))
 (expect "3+" (bin-micro-number 100))
-
 
 (expect "0" (bin-small-number 0))
 (expect "1-5" (bin-small-number 1))
@@ -65,3 +66,24 @@
 (expect false ((anonymous-usage-stats) :slack_configured))
 (expect false ((anonymous-usage-stats) :sso_configured))
 (expect false ((anonymous-usage-stats) :has_sample_data))
+
+;;; check that the new lazy-seq version of the executions metrics works the same way the old one did
+(tu/resolve-private-vars metabase.util.stats
+  execution-metrics histogram)
+
+(def ^:private large-histogram (partial histogram bin-large-number))
+
+(defn- old-execution-metrics []
+  (let [executions (db/select [QueryExecution :executor_id :running_time :error])]
+    {:executions     (count executions)
+     :by_status      (frequencies (for [{error :error} executions]
+                                    (if error
+                                      "failed"
+                                      "completed")))
+     :num_per_user   (large-histogram executions :executor_id)
+     :num_by_latency (frequencies (for [{latency :running_time} executions]
+                                    (bin-large-number (/ latency 1000))))}))
+
+(expect
+  (old-execution-metrics)
+  (execution-metrics))

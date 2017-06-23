@@ -1,5 +1,5 @@
 /*global ace*/
-
+import React from 'react'
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { assocIn } from "icepick";
@@ -7,26 +7,31 @@ import moment from "moment";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
+import { setErrorPage } from "metabase/redux/app";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl, serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { formatSQL, humanize } from "metabase/lib/formatting";
 import Query, { createQuery } from "metabase/lib/query";
-import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
-import { applyParameters } from "metabase/meta/Card";
+import { addUndo } from "metabase/redux/undo";
+import { applyParameters, cardIsEquivalent } from "metabase/meta/Card";
 
-import { isDirty, getParameters, getNativeDatabases } from "./selectors";
+import { getParameters, getTableMetadata, getNativeDatabases } from "./selectors";
+import { getDatabases, getTables, getDatabasesList } from "metabase/selectors/metadata";
+
+import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
+import querystring from "querystring";
+import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils";
 
-export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
-const setCurrentState = createAction(SET_CURRENT_STATE);
+export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE"; const setCurrentState = createAction(SET_CURRENT_STATE);
 
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(POP_STATE, (location) =>
@@ -41,8 +46,24 @@ export const popState = createThunkAction(POP_STATE, (location) =>
     }
 );
 
+export const CREATE_PUBLIC_LINK = "metabase/card/CREATE_PUBLIC_LINK";
+export const createPublicLink = createAction(CREATE_PUBLIC_LINK, ({ id }) => CardApi.createPublicLink({ id }));
+
+export const DELETE_PUBLIC_LINK = "metabase/card/DELETE_PUBLIC_LINK";
+export const deletePublicLink = createAction(DELETE_PUBLIC_LINK, ({ id }) => CardApi.deletePublicLink({ id }));
+
+export const UPDATE_ENABLE_EMBEDDING = "metabase/card/UPDATE_ENABLE_EMBEDDING";
+export const updateEnableEmbedding = createAction(UPDATE_ENABLE_EMBEDDING, ({ id }, enable_embedding) =>
+    CardApi.update({ id, enable_embedding })
+);
+
+export const UPDATE_EMBEDDING_PARAMS = "metabase/card/UPDATE_EMBEDDING_PARAMS";
+export const updateEmbeddingParams = createAction(UPDATE_EMBEDDING_PARAMS, ({ id }, embedding_params) =>
+    CardApi.update({ id, embedding_params })
+);
+
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
-export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, replaceState = false) =>
+export const updateUrl = createThunkAction(UPDATE_URL, (card, { dirty = false, replaceState = false, preserveParameters = true }) =>
     (dispatch, getState) => {
         if (!card) {
             return;
@@ -60,7 +81,7 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
             return;
         }
 
-        var url = urlForCardState(newState, isDirty);
+        var url = urlForCardState(newState, dirty);
 
         // if the serialized card is identical replace the previous state instead of adding a new one
         // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
@@ -69,7 +90,7 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
         const urlParsed = urlParse(url);
         const locationDescriptor = {
             pathname: urlParsed.pathname,
-            search: urlParsed.search,
+            search: preserveParameters ? window.location.search : "",
             hash: urlParsed.hash,
             state: newState
         };
@@ -94,7 +115,7 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
-export const INITIALIZE_QB = "INITIALIZE_QB";
+export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
     return async (dispatch, getState) => {
         // do this immediately to ensure old state is cleared before the user sees it
@@ -103,63 +124,93 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         const { currentUser } = getState();
 
-        let card, databases, originalCard, uiControls = { isEditing: false };
+        let card, databasesList, originalCard;
+        let uiControls = {
+            isEditing: false,
+            isShowingTemplateTagsEditor: false
+        };
 
         // always start the QB by loading up the databases for the application
         try {
-            databases = await MetabaseApi.db_list_with_tables();
+            await dispatch(fetchDatabases());
+            databasesList = getDatabasesList(getState());
         } catch(error) {
-            console.log("error fetching dbs", error);
+            console.error("error fetching dbs", error);
 
             // if we can't actually get the databases list then bail now
-            return {
-                uiControls: {
-                    is500: true
-                }
-            }
+            dispatch(setErrorPage(error));
+
+            return { uiControls };
         }
 
         // load up or initialize the card we'll be working on
-        const serializedCard = location.hash || null;
-        const sampleDataset = _.findWhere(databases, { is_sample: true });
+        let options = {};
+        let serializedCard;
+        // hash can contain either query params starting with ? or a base64 serialized card
+        if (location.hash) {
+            let hash = location.hash.replace(/^#/, "");
+            if (hash.charAt(0) === "?") {
+                options = querystring.parse(hash.substring(1));
+            } else {
+                serializedCard = hash;
+            }
+        }
+        const sampleDataset = _.findWhere(databasesList, { is_sample: true });
+
+        let preserveParameters = false;
         if (params.cardId || serializedCard) {
             // existing card being loaded
             try {
+                // if we have a serialized card then unpack it and use it
+                card = serializedCard ? deserializeCardFromUrl(serializedCard) : {};
+
+                // load the card either from `cardId` parameter or the serialized card
                 if (params.cardId) {
                     card = await loadCard(params.cardId);
-
-                    // when we are loading from a card id we want an explict clone of the card we loaded which is unmodified
-                    originalCard = JSON.parse(JSON.stringify(card));
-                }
-
-                // if we have a serialized card then unpack it and use it
-                if (serializedCard) {
-                    let deserializedCard = deserializeCardFromUrl(serializedCard);
-                    card = card ? _.extend(card, deserializedCard) : deserializedCard;
+                    // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
+                    originalCard = Utils.copy(card);
+                    // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
+                    // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
+                    card.original_card_id = card.id;
+                } else if (card.original_card_id) {
+                    // deserialized card contains the card id, so just populate originalCard
+                    originalCard = await loadCard(card.original_card_id);
+                    // if the cards are equal then show the original
+                    if (cardIsEquivalent(card, originalCard)) {
+                        card = Utils.copy(originalCard);
+                    }
                 }
 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
 
                 // if we have deserialized card from the url AND loaded a card by id then the user should be dropped into edit mode
-                uiControls.isEditing = (location.query.edit || (params.cardId && serializedCard)) ? true : false;
+                uiControls.isEditing = !!options.edit;
 
                 // if this is the users first time loading a saved card on the QB then show them the newb modal
                 if (params.cardId && currentUser.is_qbnewb) {
                     uiControls.isShowingNewbModal = true;
                     MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
                 }
-            } catch(error) {
-                console.warn(error)
-                card = null;
 
-                if (error.status === 404) {
-                    uiControls.is404 = true;
-                } else {
-                    uiControls.is500 = true;
+                if (card.archived) {
+                    // use the error handler in App.jsx for showing "This question has been archived" message
+                    dispatch(setErrorPage({
+                        data: {
+                            error_code: "archived"
+                        },
+                        context: "query-builder"
+                    }));
+                    card = null;
                 }
+
+                preserveParameters = true;
+            } catch(error) {
+                console.warn(error);
+                card = null;
+                dispatch(setErrorPage(error));
             }
 
-        } else if (location.query.tutorial !== undefined && sampleDataset) {
+        } else if (options.tutorial !== undefined && sampleDataset) {
             // we are launching the QB tutorial
             card = startNewCard("query", sampleDataset.id);
 
@@ -168,63 +219,68 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         } else {
             // we are starting a new/empty card
-            const databaseId = (location.query.db) ? parseInt(location.query.db) : (databases && databases.length > 0 && databases[0].id);
+            const databaseId = (options.db) ? parseInt(options.db) : (databasesList && databasesList.length > 0 && databasesList[0].id);
 
             card = startNewCard("query", databaseId);
 
             // initialize parts of the query based on optional parameters supplied
-            if (location.query.table != undefined && card.dataset_query.query) {
-                card.dataset_query.query.source_table = parseInt(location.query.table);
+            if (options.table != undefined && card.dataset_query.query) {
+                card.dataset_query.query.source_table = parseInt(options.table);
             }
 
-            if (location.query.segment != undefined && card.dataset_query.query) {
-                card.dataset_query.query.filter = ["AND", ["SEGMENT", parseInt(location.query.segment)]];
+            if (options.segment != undefined && card.dataset_query.query) {
+                card.dataset_query.query.filter = ["AND", ["SEGMENT", parseInt(options.segment)]];
             }
 
-            if (location.query.metric != undefined && card.dataset_query.query) {
-                card.dataset_query.query.aggregation = ["METRIC", parseInt(location.query.metric)];
+            if (options.metric != undefined && card.dataset_query.query) {
+                card.dataset_query.query.aggregation = ["METRIC", parseInt(options.metric)];
             }
 
             MetabaseAnalytics.trackEvent("QueryBuilder", "Query Started", card.dataset_query.type);
         }
 
-
         dispatch(loadMetadataForCard(card));
 
         // if we have loaded up a card that we can run then lets kick that off as well
         if (card && card.dataset_query && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
-            dispatch(runQuery(card, false));
+            // NOTE: timeout to allow Parameters widget to set parameterValues
+            setTimeout(() =>
+                dispatch(runQuery(card, { shouldUpdateUrl: false }))
+            , 0);
         }
 
         // clean up the url and make sure it reflects our card state
-        dispatch(updateUrl(card, isCardDirty(card, originalCard)));
+        dispatch(updateUrl(card, {
+            dirty: isCardDirty(card, originalCard),
+            replaceState: true,
+            preserveParameters
+        }));
 
         return {
             card,
             originalCard,
-            databases,
             uiControls
         };
     };
 });
 
 
-export const TOGGLE_DATA_REFERENCE = "TOGGLE_DATA_REFERENCE";
+export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Data Reference");
 });
 
-export const TOGGLE_TEMPLATE_TAGS_EDITOR = "TOGGLE_TEMPLATE_TAGS_EDITOR";
+export const TOGGLE_TEMPLATE_TAGS_EDITOR = "metabase/qb/TOGGLE_TEMPLATE_TAGS_EDITOR";
 export const toggleTemplateTagsEditor = createAction(TOGGLE_TEMPLATE_TAGS_EDITOR, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Template Tags Editor");
 });
 
-export const CLOSE_QB_TUTORIAL = "CLOSE_QB_TUTORIAL";
+export const CLOSE_QB_TUTORIAL = "metabase/qb/CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Tutorial Close");
 });
 
-export const CLOSE_QB_NEWB_MODAL = "CLOSE_QB_NEWB_MODAL";
+export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     return async (dispatch, getState) => {
         // persist the fact that this user has seen the NewbModal
@@ -235,31 +291,31 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
 });
 
 
-export const BEGIN_EDITING = "BEGIN_EDITING";
+export const BEGIN_EDITING = "metabase/qb/BEGIN_EDITING";
 export const beginEditing = createAction(BEGIN_EDITING, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Begin");
 });
 
-export const CANCEL_EDITING = "CANCEL_EDITING";
+export const CANCEL_EDITING = "metabase/qb/CANCEL_EDITING";
 export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     return (dispatch, getState) => {
         const { qb: { originalCard } } = getState();
 
         // clone
-        let card = JSON.parse(JSON.stringify(originalCard));
+        let card = Utils.copy(originalCard);
 
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
-        dispatch(updateUrl(card, false));
+        dispatch(runQuery(card, { shouldUpdateUrl: false }));
+        dispatch(updateUrl(card, { dirty: false }));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Edit Cancel");
         return card;
     };
 });
 
-export const LOAD_METADATA_FOR_CARD = "LOAD_METADATA_FOR_CARD";
+export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
 export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (card) => {
     return async (dispatch, getState) => {
         // if we have a card with a known source table then dispatch an action to load up that info
@@ -273,25 +329,22 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
     }
 });
 
-export const LOAD_TABLE_METADATA = "LOAD_TABLE_METADATA";
+export const LOAD_TABLE_METADATA = "metabase/qb/LOAD_TABLE_METADATA";
 export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId) => {
     return async (dispatch, getState) => {
-        // if we already have the metadata loaded for the given table then we are done
-        const { qb: { tableMetadata } } = getState();
-        if (tableMetadata && tableMetadata.id === tableId) {
-            return tableMetadata;
-        }
-
         try {
-            return await loadTableAndForeignKeys(tableId);
+            await dispatch(fetchTableMetadata(tableId));
+            // TODO: finish moving this to metadata duck:
+            const foreignKeys = await MetabaseApi.table_fks({ tableId });
+            return { foreignKeys }
         } catch(error) {
-            console.log('error getting table metadata', error);
+            console.error('error getting table metadata', error);
             return {};
         }
     };
 });
 
-export const LOAD_DATABASE_FIELDS = "LOAD_DATABASE_FIELDS";
+export const LOAD_DATABASE_FIELDS = "metabase/qb/LOAD_DATABASE_FIELDS";
 export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId) => {
     return async (dispatch, getState) => {
         // if we already have the metadata loaded for the given table then we are done
@@ -316,10 +369,18 @@ export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId)
 });
 
 function updateVisualizationSettings(card, isEditing, display, vizSettings) {
+    // don't need to store undefined
+    vizSettings = Utils.copy(vizSettings)
+    for (const name in vizSettings) {
+        if (vizSettings[name] === undefined) {
+            delete vizSettings[name];
+        }
+    }
+
     // make sure that something actually changed
     if (card.display === display && _.isEqual(card.visualization_settings, vizSettings)) return card;
 
-    let updatedCard = JSON.parse(JSON.stringify(card));
+    let updatedCard = Utils.copy(card);
 
     // when the visualization changes on saved card we change this into a new card w/ a known starting point
     if (!isEditing && updatedCard.id) {
@@ -334,45 +395,45 @@ function updateVisualizationSettings(card, isEditing, display, vizSettings) {
     return updatedCard;
 }
 
-export const SET_CARD_ATTRIBUTE = "SET_CARD_ATTRIBUTE";
+export const SET_CARD_ATTRIBUTE = "metabase/qb/SET_CARD_ATTRIBUTE";
 export const setCardAttribute = createAction(SET_CARD_ATTRIBUTE, (attr, value) => ({attr, value}));
 
-export const SET_CARD_VISUALIZATION = "SET_CARD_VISUALIZATION";
+export const SET_CARD_VISUALIZATION = "metabase/qb/SET_CARD_VISUALIZATION";
 export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (display) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
         let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, display, card.visualization_settings);
-        dispatch(updateUrl(updatedCard, true));
+        dispatch(updateUrl(updatedCard, { dirty: true }));
         return updatedCard;
     }
 });
 
-export const UPDATE_CARD_VISUALIZATION_SETTINGS = "UPDATE_CARD_VISUALIZATION_SETTINGS";
+export const UPDATE_CARD_VISUALIZATION_SETTINGS = "metabase/qb/UPDATE_CARD_VISUALIZATION_SETTINGS";
 export const updateCardVisualizationSettings = createThunkAction(UPDATE_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
         let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, { ...card.visualization_settings, ...settings });
-        dispatch(updateUrl(updatedCard, true));
+        dispatch(updateUrl(updatedCard, { dirty: true }));
         return updatedCard;
     };
 });
 
-export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS = "REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
+export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS = "metabase/qb/REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
 export const replaceAllCardVisualizationSettings = createThunkAction(REPLACE_ALL_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
         let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, settings);
-        dispatch(updateUrl(updatedCard, true));
+        dispatch(updateUrl(updatedCard, { dirty: true }));
         return updatedCard;
     };
 });
 
-export const UPDATE_TEMPLATE_TAG = "UPDATE_TEMPLATE_TAG";
+export const UPDATE_TEMPLATE_TAG = "metabase/qb/UPDATE_TEMPLATE_TAG";
 export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templateTag) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
 
-        let updatedCard = JSON.parse(JSON.stringify(card));
+        let updatedCard = Utils.copy(card);
 
         // when the query changes on saved card we change this into a new query w/ a known starting point
         if (!uiControls.isEditing && updatedCard.id) {
@@ -385,15 +446,15 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
     };
 });
 
-export const SET_PARAMETER_VALUE = "SET_PARAMETER_VALUE";
+export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId, value) => {
     return { id: parameterId, value };
 });
 
-export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
+export const NOTIFY_CARD_CREATED = "metabase/qb/NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
     return (dispatch, getState) => {
-        dispatch(updateUrl(card, false));
+        dispatch(updateUrl(card, { dirty: false }));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Create Card", card.dataset_query.type);
 
@@ -401,10 +462,10 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
     }
 });
 
-export const NOTIFY_CARD_UPDATED = "NOTIFY_CARD_UPDATED";
-export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (card) => {
+export const NOTIFY_CARD_UPDATED = "metabase/qb/NOTIFY_CARD_UPDATED";
+export const notifyCardUpdatedFn = createThunkAction(NOTIFY_CARD_UPDATED, (card) => {
     return (dispatch, getState) => {
-        dispatch(updateUrl(card, false));
+        dispatch(updateUrl(card, { dirty: false }));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Update Card", card.dataset_query.type);
 
@@ -413,51 +474,90 @@ export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (car
 });
 
 // reloadCard
-export const RELOAD_CARD = "RELOAD_CARD";
+export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     return async (dispatch, getState) => {
         const { qb: { originalCard } } = getState();
 
         // clone
-        let card = JSON.parse(JSON.stringify(originalCard));
+        let card = Utils.copy(originalCard);
 
         dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
-        dispatch(updateUrl(card, false));
+        dispatch(runQuery(card, { shouldUpdateUrl: false }));
+        dispatch(updateUrl(card, { dirty: false }));
 
         return card;
     };
 });
 
-// setCardAndRun
-export const SET_CARD_AND_RUN = "SET_CARD_AND_RUN";
-export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shouldUpdateUrl = true) => {
+/**
+ * `setCardAndRun` is used when:
+ *     - navigating browser history
+ *     - clicking in the entity details view
+ *     - `navigateToNewCardInsideQB` is being called (see below)
+ */
+export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
+export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (nextCard, shouldUpdateUrl = true) => {
     return async (dispatch, getState) => {
         // clone
-        let card = JSON.parse(JSON.stringify(runCard));
+        const card = Utils.copy(nextCard);
+
+        const originalCard = card.original_card_id ?
+            // If the original card id is present, dynamically load its information for showing lineage
+            await loadCard(card.original_card_id)
+            // Otherwise, use a current card as the original card if the card has been saved
+            // This is needed for checking whether the card is in dirty state or not
+            : (card.id ? card : null);
 
         dispatch(loadMetadataForCard(card));
 
-        dispatch(runQuery(card, shouldUpdateUrl));
+        dispatch(runQuery(card, { shouldUpdateUrl: shouldUpdateUrl }));
 
-        return card;
+        return {
+            card,
+            originalCard
+        };
     };
 });
 
+/**
+ * User-triggered events that are handled with this action:
+ *     - clicking a legend:
+ *         * series legend (multi-aggregation, multi-breakout, multiple questions)
+ *     - clicking the visualization itself
+ *         * drill-through (single series, multi-aggregation, multi-breakout, multiple questions)
+ *         * (not in 0.24.2 yet: drag on line/area/bar visualization)
+ *     - clicking an action widget action
+ *
+ * All these events can be applied either for an unsaved question or a saved question.
+ */
+export const NAVIGATE_TO_NEW_CARD = "metabase/qb/NAVIGATE_TO_NEW_CARD";
+export const navigateToNewCardInsideQB = createThunkAction(NAVIGATE_TO_NEW_CARD, ({ nextCard, previousCard }) => {
+    return async (dispatch, getState) => {
+        const nextCardIsClean = _.isEqual(previousCard.dataset_query, nextCard.dataset_query) && previousCard.display === nextCard.display;
 
-// setQuery
-export const SET_QUERY = "SET_QUERY";
-export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false) => {
+        if (nextCardIsClean) {
+            // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
+            dispatch(setCardAndRun(await loadCard(nextCard.id)));
+        } else {
+            dispatch(setCardAndRun(getCardAfterVisualizationClick(nextCard, previousCard)));
+        }
+    }
+});
+
+export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
+export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
-        const { qb: { card, uiControls, databases } } = getState();
+        const { qb: { card, uiControls } } = getState();
+        const databasesList = getDatabasesList(getState());
 
         const databaseId = card.dataset_query.database;
-        const database = _.findWhere(databases, { id: databaseId });
+        const database = _.findWhere(databasesList, { id: databaseId });
         const supportsNativeParameters = database && _.contains(database.features, "native-parameters");
 
-        let updatedCard = JSON.parse(JSON.stringify(card)),
+        let updatedCard = Utils.copy(card),
             openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
 
         // when the query changes on saved card we change this into a new query w/ a known starting point
@@ -467,7 +567,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
             delete updatedCard.description;
         }
 
-        updatedCard.dataset_query = JSON.parse(JSON.stringify(dataset_query));
+        updatedCard.dataset_query = Utils.copy(dataset_query);
 
         // special handling for NATIVE cards to automatically detect parameters ... {{varname}}
         if (Query.isNative(dataset_query) && !_.isEmpty(dataset_query.native.query) && supportsNativeParameters) {
@@ -551,10 +651,11 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
 });
 
 // setQueryMode
-export const SET_QUERY_MODE = "SET_QUERY_MODE";
+export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
-        const { qb: { card, queryResult, tableMetadata, uiControls } } = getState();
+        const { qb: { card, queryResult, uiControls } } = getState();
+        const tableMetadata = getTableMetadata(getState());
 
         // if the type didn't actually change then nothing has been modified
         if (type === card.dataset_query.type) {
@@ -563,7 +664,7 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 
         // if we are going from MBQL -> Native then attempt to carry over the query
         if (type === "native" && queryResult && queryResult.data && queryResult.data.native_form) {
-            let updatedCard = JSON.parse(JSON.stringify(card));
+            let updatedCard = Utils.copy(card);
             let datasetQuery = updatedCard.dataset_query;
             let nativeQuery = _.pick(queryResult.data.native_form, "query", "collection");
 
@@ -615,10 +716,11 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 });
 
 // setQueryDatabase
-export const SET_QUERY_DATABASE = "SET_QUERY_DATABASE";
+export const SET_QUERY_DATABASE = "metabase/qb/SET_QUERY_DATABASE";
 export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseId) => {
     return async (dispatch, getState) => {
-        const { qb: { card, databases, uiControls } } = getState();
+        const { qb: { card, uiControls } } = getState();
+        const databases = getDatabases(getState());
 
         // picking the same database doesn't change anything
         if (databaseId === card.dataset_query.database) {
@@ -636,7 +738,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
             // set the initial collection for the query if this is a native query
             // this is only used for Mongo queries which need to be ran against a specific collection
             if (updatedCard.dataset_query.type === 'native') {
-                let database = _.findWhere(databases, { id: databaseId }),
+                let database = databases[databaseId],
                     tables   = database ? database.tables : [],
                     table    = tables.length > 0 ? tables[0] : null;
                 if (table) updatedCard.dataset_query.native.collection = table.name;
@@ -648,7 +750,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
         } else {
             // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
             // TODO: should this clear the visualization as well?
-            let updatedCard = JSON.parse(JSON.stringify(card));
+            let updatedCard = Utils.copy(card);
             updatedCard.dataset_query = createQuery(card.dataset_query.type, databaseId);
             if (existingQuery) {
                 updatedCard.dataset_query.native.query = existingQuery;
@@ -663,7 +765,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
 });
 
 // setQuerySourceTable
-export const SET_QUERY_SOURCE_TABLE = "SET_QUERY_SOURCE_TABLE";
+export const SET_QUERY_SOURCE_TABLE = "metabase/qb/SET_QUERY_SOURCE_TABLE";
 export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (sourceTable) => {
     return async (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
@@ -684,15 +786,9 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
         if (_.isObject(sourceTable)) {
             databaseId = sourceTable.db_id;
         } else {
-            // this is a bit hacky and slow
-            const { qb: { databases } } = getState();
-            for (var i=0; i < databases.length; i++) {
-                const database = databases[i];
-
-                if (_.findWhere(database.tables, { id: tableId })) {
-                    databaseId = database.id;
-                    break;
-                }
+            const table = getTables(getState())[tableId];
+            if (table) {
+                databaseId = table.db_id;
             }
         }
 
@@ -703,61 +799,116 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
             // TODO: should this clear the visualization as well?
             let query = createQuery(card.dataset_query.type, databaseId, tableId);
 
-            let updatedCard = JSON.parse(JSON.stringify(card));
+            let updatedCard = Utils.copy(card);
             updatedCard.dataset_query = query;
             return updatedCard;
         }
     };
 });
 
-// setQuerySort
-export const SET_QUERY_SORT = "SET_QUERY_SORT";
-export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
-    return (dispatch, getState) => {
-        const { qb: { card } } = getState();
-
-        // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
-        if (card.dataset_query.type === "query") {
-            let field = null;
-            if (column.id == null) {
-                // ICK.  this is hacky for dealing with aggregations.  need something better
-                // DOUBLE ICK.  we also need to deal with custom fields now as well
-                if (_.contains(_.keys(Query.getExpressions(card.dataset_query.query)), column.display_name)) {
-                    field = ["expression", column.display_name];
-                } else {
-                    field = ["aggregation", 0];
-                }
-            } else {
-                field = column.id;
+function createQueryAction(action, updaterFunction, event) {
+    return createThunkAction(action, (...args) =>
+        (dispatch, getState) => {
+            const { qb: { card } } = getState();
+            if (card.dataset_query.type === "query") {
+                const datasetQuery = Utils.copy(card.dataset_query);
+                updaterFunction(datasetQuery.query, ...args);
+                dispatch(setDatasetQuery(datasetQuery));
+                MetabaseAnalytics.trackEvent(...(typeof event === "function" ? event(...args) : event));
             }
-
-            let dataset_query = JSON.parse(JSON.stringify(card.dataset_query)),
-                sortClause = [field, "ascending"];
-
-            if (card.dataset_query.query.order_by &&
-                card.dataset_query.query.order_by.length > 0 &&
-                card.dataset_query.query.order_by[0].length > 0 &&
-                card.dataset_query.query.order_by[0][1] === "ascending" &&
-                Query.isSameField(card.dataset_query.query.order_by[0][0], field)) {
-                // someone triggered another sort on the same column, so flip the sort direction
-                sortClause = [field, "descending"];
-            }
-
-            // set clause
-            dataset_query.query.order_by = [sortClause];
-
-            // update and run the query
-            dispatch(setQuery(dataset_query, true));
+            return null;
         }
+    );
+}
 
-        return null;
-    };
-});
-
+export const addQueryBreakout = createQueryAction(
+    "metabase/qb/ADD_QUERY_BREAKOUT",
+    Query.addBreakout,
+    ["QueryBuilder", "Add GroupBy"]
+);
+export const updateQueryBreakout = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_BREAKOUT",
+    Query.updateBreakout,
+    ["QueryBuilder", "Modify GroupBy"]
+);
+export const removeQueryBreakout = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_BREAKOUT",
+    Query.removeBreakout,
+    ["QueryBuilder", "Remove GroupBy"]
+);
+export const addQueryFilter = createQueryAction(
+    "metabase/qb/ADD_QUERY_FILTER",
+    Query.addFilter,
+    ["QueryBuilder", "Add Filter"]
+);
+export const updateQueryFilter = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_FILTER",
+    Query.updateFilter,
+    ["QueryBuilder", "Modify Filter"]
+);
+export const removeQueryFilter = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_FILTER",
+    Query.removeFilter,
+    ["QueryBuilder", "Remove Filter"]
+);
+export const addQueryAggregation = createQueryAction(
+    "metabase/qb/ADD_QUERY_AGGREGATION",
+    Query.addAggregation,
+    ["QueryBuilder", "Add Aggregation"]
+);
+export const updateQueryAggregation = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_AGGREGATION",
+    Query.updateAggregation,
+    ["QueryBuilder", "Set Aggregation"]
+);
+export const removeQueryAggregation = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_AGGREGATION",
+    Query.removeAggregation,
+    ["QueryBuilder", "Remove Aggregation"]
+);
+export const addQueryOrderBy = createQueryAction(
+    "metabase/qb/ADD_QUERY_ORDER_BY",
+    Query.addOrderBy,
+    ["QueryBuilder", "Add OrderBy"]
+);
+export const updateQueryOrderBy = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_ORDER_BY",
+    Query.updateOrderBy,
+    ["QueryBuilder", "Set OrderBy"]
+);
+export const removeQueryOrderBy = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_ORDER_BY",
+    Query.removeOrderBy,
+    ["QueryBuilder", "Remove OrderBy"]
+);
+export const updateQueryLimit = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_LIMIT",
+    Query.updateLimit,
+    ["QueryBuilder", "Update Limit"]
+);
+export const addQueryExpression = createQueryAction(
+    "metabase/qb/ADD_QUERY_EXPRESSION",
+    Query.addExpression,
+    ["QueryBuilder", "Add Expression"]
+);
+export const updateQueryExpression = createQueryAction(
+    "metabase/qb/UPDATE_QUERY_EXPRESSION",
+    Query.updateExpression,
+    ["QueryBuilder", "Set Expression"]
+);
+export const removeQueryExpression = createQueryAction(
+    "metabase/qb/REMOVE_QUERY_EXPRESSION",
+    Query.removeExpression,
+    ["QueryBuilder", "Remove Expression"]
+);
 
 // runQuery
-export const RUN_QUERY = "RUN_QUERY";
-export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = true, parameterValues) => {
+export const RUN_QUERY = "metabase/qb/RUN_QUERY";
+export const runQuery = createThunkAction(RUN_QUERY, (card, {
+    shouldUpdateUrl = true,
+    ignoreCache = false, // currently only implemented for saved cards
+    parameterValues
+} = {}) => {
     return async (dispatch, getState) => {
         const state = getState();
         const parameters = getParameters(state);
@@ -768,13 +919,8 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
 
         const cardIsDirty = isCardDirty(card, state.qb.originalCard);
 
-        card = {
-            ...card,
-            dataset_query: applyParameters(card, parameters, parameterValues)
-        };
-
         if (shouldUpdateUrl) {
-            dispatch(updateUrl(card, cardIsDirty));
+            dispatch(updateUrl(card, { dirty: cardIsDirty }));
         }
 
         let cancelQueryDeferred = defer();
@@ -789,11 +935,17 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
             dispatch(queryErrored(startTime, error));
         }
 
+        const datasetQuery = applyParameters(card, parameters, parameterValues);
+
         // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
-        if (card && card.id && !isDirty(state)) {
-            CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+        if (card.id != null && !cardIsDirty) {
+            CardApi.query({
+                cardId: card.id,
+                parameters: datasetQuery.parameters,
+                ignore_cache: ignoreCache
+            }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
-            MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+            MetabaseApi.dataset(datasetQuery, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         }
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);
@@ -805,7 +957,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
     };
 });
 
-export const QUERY_COMPLETED = "QUERY_COMPLETED";
+export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryResult) => {
     return async (dispatch, getState) => {
         let cardDisplay = card.display;
@@ -816,13 +968,13 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
         if (!isScalarVisualization &&
                 queryResult.data.rows &&
                 queryResult.data.rows.length === 1 &&
-                queryResult.data.columns.length === 1) {
+                queryResult.data.cols.length === 1) {
             // if we have a 1x1 data result then this should always be viewed as a scalar
             cardDisplay = "scalar";
 
         } else if (isScalarVisualization &&
                     queryResult.data.rows &&
-                    (queryResult.data.rows.length > 1 || queryResult.data.columns.length > 1)) {
+                    (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)) {
             // any time we were a scalar and now have more than 1x1 data switch to table view
             cardDisplay = "table";
 
@@ -832,13 +984,14 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
         }
 
         return {
+            card,
             cardDisplay,
             queryResult
         }
     };
 });
 
-export const QUERY_ERRORED = "QUERY_ERRORED";
+export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) => {
     return async (dispatch, getState) => {
         if (error && error.status === 0) {
@@ -851,7 +1004,7 @@ export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) 
 })
 
 // cancelQuery
-export const CANCEL_QUERY = "CANCEL_QUERY";
+export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
     return async (dispatch, getState) => {
         const { qb: { uiControls, queryExecutionPromise } } = getState();
@@ -863,7 +1016,7 @@ export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
 });
 
 // cellClicked
-export const CELL_CLICKED = "CELL_CLICKED";
+export const CELL_CLICKED = "metabase/qb/CELL_CLICKED";
 export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnIndex, filter) => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult } } = getState();
@@ -878,7 +1031,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 
         if (isPK(coldef.special_type)) {
             // action is on a PK column
-            let newCard = startNewCard("query", card.dataset_query.database);
+            let newCard: Card = startNewCard("query", card.dataset_query.database);
 
             newCard.dataset_query.query.source_table = coldef.table_id;
             newCard.dataset_query.query.aggregation = ["rows"];
@@ -902,7 +1055,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "FK");
         } else {
             // this is applying a filter by clicking on a cell value
-            let dataset_query = JSON.parse(JSON.stringify(card.dataset_query));
+            let dataset_query = Utils.copy(card.dataset_query);
 
             if (coldef.unit && coldef.unit != "default" && filter === "=") {
                 // this is someone using quick filters on a datetime value
@@ -922,14 +1075,14 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             }
 
             // update and run the query
-            dispatch(setQuery(dataset_query, true));
+            dispatch(setDatasetQuery(dataset_query, true));
 
             MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "Quick Filter");
         }
     };
 });
 
-export const FOLLOW_FOREIGN_KEY = "FOLLOW_FOREIGN_KEY";
+export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult } } = getState();
@@ -957,7 +1110,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
 });
 
 
-export const LOAD_OBJECT_DETAIL_FK_REFERENCES = "LOAD_OBJECT_DETAIL_FK_REFERENCES";
+export const LOAD_OBJECT_DETAIL_FK_REFERENCES = "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL_FK_REFERENCES, () => {
     return async (dispatch, getState) => {
         const { qb: { card, queryResult, tableForeignKeys } } = getState();
@@ -988,7 +1141,7 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
                     info["value"] = "Unknown";
                 }
             } catch (error) {
-                console.log("error getting fk count", error, fkQuery);
+                console.error("error getting fk count", error, fkQuery);
             } finally {
                 info["status"] = 1;
             }
@@ -1011,16 +1164,46 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
     };
 });
 
+// TODO - this is pretty much a duplicate of SET_ARCHIVED in questions/questions.js
+// unfortunately we have to do this because that action relies on its part of the store
+// for the card lookup
+// A simplified version of a similar method in questions/questions.js
+function createUndo(type, action) {
+    return {
+        type: type,
+        count: 1,
+        message: (undo) => // eslint-disable-line react/display-name
+                <div> { "Question  was " + type + "."} </div>,
+        actions: [action]
+    };
+}
+
+export const ARCHIVE_QUESTION = 'metabase/qb/ARCHIVE_QUESTION';
+export const archiveQuestion = createThunkAction(ARCHIVE_QUESTION, (questionId, archived = true) =>
+    async (dispatch, getState) => {
+        let card = {
+            ...getState().qb.card, // grab the current card
+            archived
+        }
+        let response = await CardApi.update(card)
+
+        dispatch(addUndo(createUndo(
+            archived ? "archived" : "unarchived",
+            archiveQuestion(card.id, !archived)
+        )));
+
+        dispatch(push('/questions'))
+        return response
+    }
+)
+
+
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;
 export const onBeginEditing = beginEditing;
 export const onCancelEditing = cancelEditing;
 export const setQueryModeFn = setQueryMode;
-export const setSortFn = setQuerySort;
-export const setQueryFn = setQuery;
-export const runQueryFn = runQuery;
-export const cancelQueryFn = cancelQuery;
 export const setDatabaseFn = setQueryDatabase;
 export const setSourceTableFn = setQuerySourceTable;
 export const setDisplayFn = setCardVisualization;

@@ -8,17 +8,9 @@ import Modal from "metabase/components/Modal";
 
 import { reduxForm } from "redux-form";
 
-import { normal } from "metabase/lib/colors";
+import { normal, getRandomColor } from "metabase/lib/colors";
 
-const COLLECTION_COLORS = [
-    ...Object.values(normal),
-    '#F1B556',
-    '#A6E7F3',
-    '#7172AD',
-    '#7B8797',
-];
-
-@reduxForm({
+const formConfig = {
     form: 'collection',
     fields: ['id', 'name', 'description', 'color'],
     validate: (values) => {
@@ -37,25 +29,43 @@ const COLLECTION_COLORS = [
         name: "",
         description: "",
         // pick a random color to start so everything isn't blue all the time
-        color: COLLECTION_COLORS[Math.floor(Math.random() * COLLECTION_COLORS.length)]
+        color: getRandomColor(normal)
     }
-})
-export default class CollectionEditorForm extends Component {
+}
+
+export const getFormTitle = ({ id, name }) =>
+    id.value ? name.value : "New collection"
+
+export const getActionText = ({ id }) =>
+    id.value ? "Update": "Create"
+
+
+export const CollectionEditorFormActions = ({ handleSubmit, invalid, onClose, fields}) =>
+    <div>
+        <Button className="mr1" onClick={onClose}>
+            Cancel
+        </Button>
+        <Button primary disabled={invalid} onClick={handleSubmit}>
+            { getActionText(fields) }
+        </Button>
+    </div>
+
+export class CollectionEditorForm extends Component {
+    props: {
+        fields: Object,
+        onClose: Function,
+        invalid: Boolean,
+        handleSubmit: Function,
+    }
+
     render() {
-        const { fields, handleSubmit, invalid, onClose } = this.props;
+        const { fields, onClose } = this.props;
         return (
             <Modal
                 inline
                 form
-                title={fields.id.value != null ? fields.name.value : "New collection"}
-                footer={[
-                    <Button className="mr1" onClick={onClose}>
-                        Cancel
-                    </Button>,
-                    <Button primary disabled={invalid} onClick={handleSubmit}>
-                        { fields.id.value != null ? "Update" : "Create" }
-                    </Button>
-                ]}
+                title={getFormTitle(fields)}
+                footer={<CollectionEditorFormActions {...this.props} />}
                 onClose={onClose}
             >
                 <div className="NewForm ml-auto mr-auto mt4 pt2" style={{ width: 540 }}>
@@ -84,13 +94,12 @@ export default class CollectionEditorForm extends Component {
                         displayName="Color"
                         {...fields.color}
                     >
-                        <ColorPicker
-                            {...fields.color}
-                            colors={COLLECTION_COLORS}
-                        />
+                        <ColorPicker {...fields.color} />
                     </FormField>
                 </div>
             </Modal>
         )
     }
 }
+
+export default reduxForm(formConfig)(CollectionEditorForm)

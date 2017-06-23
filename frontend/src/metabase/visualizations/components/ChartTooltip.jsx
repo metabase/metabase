@@ -1,4 +1,5 @@
-import React, { Component, PropTypes } from "react";
+import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import TooltipPopover from "metabase/components/TooltipPopover.jsx"
 import Value from "metabase/components/Value.jsx";
@@ -19,7 +20,7 @@ export default class ChartTooltip extends Component {
     };
 
     componentWillReceiveProps({ hovered }) {
-        if (hovered && !Array.isArray(hovered.data)) {
+        if (hovered && hovered.data && !Array.isArray(hovered.data)) {
             console.warn("hovered.data should be an array of { key, value, col }", hovered.data);
         }
     }
@@ -71,7 +72,12 @@ const TooltipRow = ({ name, value, column }) =>
             { React.isValidElement(value) ?
                 value
             :
-                <Value value={value} column={column} majorWidth={0} />
+                <Value
+                    type="tooltip"
+                    value={value}
+                    column={column}
+                    majorWidth={0}
+                />
             }
         </td>
     </tr>

@@ -1,16 +1,19 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
-            (metabase [db :as db]
-                      [events :as events])
-            (metabase.models [card :refer [Card], :as card]
-                             [dashboard-card :refer [DashboardCard], :as dashboard-card]
-                             [hydrate :refer [hydrate]]
-                             [interface :as i]
-                             [permissions :as perms]
-                             [revision :as revision])
+            [metabase
+             [events :as events]
+             [public-settings :as public-settings]
+             [util :as u]]
+            [metabase.models
+             [card :as card :refer [Card]]
+             [dashboard-card :as dashboard-card :refer [DashboardCard]]
+             [interface :as i]
+             [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
-            [metabase.util :as u]))
-
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]
+             [models :as models]]))
 
 ;;; ---------------------------------------- Perms Checking ----------------------------------------
 
@@ -31,26 +34,29 @@
 
 ;;; ---------------------------------------- Entity & Lifecycle ----------------------------------------
 
-(defn- pre-cascade-delete [dashboard]
-  (db/cascade-delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
-  (db/cascade-delete! DashboardCard :dashboard_id (u/get-id dashboard)))
+(defn- pre-delete [dashboard]
+  (db/delete! 'Revision :model "Dashboard" :model_id (u/get-id dashboard))
+  (db/delete! DashboardCard :dashboard_id (u/get-id dashboard)))
 
 (defn- pre-insert [dashboard]
   (let [defaults {:parameters   []}]
     (merge defaults dashboard)))
 
 
-(i/defentity Dashboard :report_dashboard)
+(models/defmodel Dashboard :report_dashboard)
 
 (u/strict-extend (class Dashboard)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:timestamped?       (constantly true)
-          :types              (constantly {:description :clob, :parameters :json})
-          :can-read?          can-read?
-          :can-write?         can-read?
-          :pre-cascade-delete pre-cascade-delete
-          :pre-insert         pre-insert}))
+  models/IModel
+  (merge models/IModelDefaults
+         {:properties  (constantly {:timestamped? true})
+          :types       (constantly {:description :clob, :parameters :json, :embedding_params :json})
+          :pre-delete  pre-delete
+          :pre-insert  pre-insert
+          :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+  i/IObjectPermissions
+  (merge i/IObjectPermissionsDefaults
+         {:can-read?  can-read?
+          :can-write? can-read?}))
 
 
 ;;; ---------------------------------------- Hydration ----------------------------------------
@@ -82,23 +88,6 @@
          :parameters  (or parameters [])
          :creator_id  user-id)
        (events/publish-event! :dashboard-create)))
-
-(defn update-dashboard!
-  "Update a `Dashboard`"
-  [{:keys [id name description parameters caveats points_of_interest show_in_getting_started], :as dashboard} user-id]
-  {:pre [(map? dashboard)
-         (integer? id)
-         (u/maybe? u/sequence-of-maps? parameters)
-         (integer? user-id)]}
-  (db/update-non-nil-keys! Dashboard id
-    :description             description
-    :name                    name
-    :parameters              parameters
-    :caveats                 caveats
-    :points_of_interest      points_of_interest
-    :show_in_getting_started show_in_getting_started)
-  (u/prog1 (Dashboard id)
-    (events/publish-event! :dashboard-update (assoc <> :actor_id user-id))))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------

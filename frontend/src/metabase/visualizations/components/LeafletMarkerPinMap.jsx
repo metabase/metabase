@@ -1,4 +1,4 @@
-import React, { Component, PropTypes } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
 
 import LeafletMap from "./LeafletMap.jsx";
@@ -7,7 +7,7 @@ import L from "leaflet";
 import { formatValue } from "metabase/lib/formatting";
 
 const MARKER_ICON = L.icon({
-    iconUrl: "/app/img/pin.png",
+    iconUrl: "app/assets/img/pin.png",
     iconSize: [28, 32],
     iconAnchor: [15, 24],
     popupAnchor: [0, -13]

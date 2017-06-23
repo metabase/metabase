@@ -60,4 +60,9 @@ declare module "underscore" {
 
   // TODO: improve this
   declare function chain<S>(obj: S): any;
+
+  declare function constant<S>(obj: S): () => S;
+
+  declare function isMatch(object: Object, properties: Object): boolean;
+  declare function identity<T>(o: T): T;
 }

@@ -3,11 +3,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [environ.core :refer [env]]
-            (metabase.driver [generic-sql :as sql]
-                             sqlserver)
-            (metabase.test.data [datasets :as datasets]
-                                [generic-sql :as generic]
-                                [interface :as i])
+            [metabase.driver.generic-sql :as sql]
+            [metabase.test.data
+             [datasets :as datasets]
+             [generic-sql :as generic]
+             [interface :as i]]
             [metabase.util :as u])
   (:import metabase.driver.sqlserver.SQLServerDriver))
 
@@ -75,15 +75,15 @@
 
 
 (u/strict-extend SQLServerDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     (u/drop-first-arg drop-db-if-exists-sql)
           :drop-table-if-exists-sql  (u/drop-first-arg drop-table-if-exists-sql)
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :pk-sql-type               (constantly "INT IDENTITY(1,1)")
           :qualified-name-components (u/drop-first-arg qualified-name-components)})
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (u/drop-first-arg database->connection-details)
           :default-schema               (constantly "dbo")
           :engine                       (constantly :sqlserver)}))
@@ -102,7 +102,7 @@
       (with-redefs [+suffix identity]
         (doseq [db leftover-dbs]
           (u/ignore-exceptions
-            (println (format "Deleting leftover SQL Server DB '%s'..." db))
+            (printf "Deleting leftover SQL Server DB '%s'...\n" db)
             ;; Don't try to kill other connections to this DB with SET SINGLE_USER -- some other instance (eg CI) might be using it
             (jdbc/execute! connection-spec [(format "DROP DATABASE \"%s\";" db)])
             (println "[ok]")))))))

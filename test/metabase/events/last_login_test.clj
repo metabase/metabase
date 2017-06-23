@@ -2,14 +2,13 @@
   (:require [expectations :refer :all]
             [metabase.events.last-login :refer [process-last-login-event]]
             [metabase.models.user :refer [User]]
-            [metabase.test.util :as tu]))
-
+            [toucan.util.test :as tt]))
 
 ;; `:user-login` event
 (expect
   {:orig-last-login nil
    :upd-last-login  false}
-  (tu/with-temp User [{user-id :id, last-login :last_login}]
+  (tt/with-temp User [{user-id :id, last-login :last_login}]
     (process-last-login-event {:topic :user-login
                                :item  {:user_id    user-id
                                        :session_id "doesntmatter"}})

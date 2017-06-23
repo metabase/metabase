@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import moment from "moment";
+import _ from "underscore";
 
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
@@ -101,7 +102,7 @@ export function computeTimeseriesTicksInterval(xDomain, xInterval, chartWidth, m
     // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
     // TODO: compute this directly instead of iteratively
     let maxTickCount = Math.round(chartWidth / minPixels);
-    let index = TIMESERIES_INTERVALS.indexOf(xInterval);
+    let index = _.findIndex(TIMESERIES_INTERVALS, ({ interval, count }) => interval === xInterval.interval && count === xInterval.count);
     while (index < TIMESERIES_INTERVALS.length - 1) {
         let interval = TIMESERIES_INTERVALS[index];
         let intervalMs = moment(0).add(interval.count, interval.interval).valueOf();

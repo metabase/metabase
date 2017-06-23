@@ -1,5 +1,5 @@
 (ns metabase.models.dashboard-card-series
-  (:require [metabase.models.interface :as i]))
+  (:require [toucan.models :as models]))
 
 
-(i/defentity DashboardCardSeries :dashboardcard_series)
+(models/defmodel DashboardCardSeries :dashboardcard_series)

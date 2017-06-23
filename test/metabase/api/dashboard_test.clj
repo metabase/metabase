@@ -1,20 +1,23 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require [expectations :refer :all]
-            (metabase [db :as db]
-                      [http-client :as http]
-                      [middleware :as middleware])
-            (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer [Card]]
-                             [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
-                             [dashboard-card-series :refer [DashboardCardSeries]]
-                             [revision :refer [Revision]]
-                             [user :refer [User]])
-            [metabase.test.data :refer :all]
+            [medley.core :as m]
+            [metabase
+             [http-client :as http]
+             [middleware :as middleware]
+             [util :as u]]
+            [metabase.api.card-test :as card-api-test]
+            [metabase.models
+             [card :refer [Card]]
+             [dashboard :refer [Dashboard]]
+             [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
+             [dashboard-card-series :refer [DashboardCardSeries]]
+             [revision :refer [Revision]]]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]))
-
+            [metabase.test.util :as tu]
+            [toucan.db :as db]
+            [toucan.util.test :as tt])
+  (:import java.util.UUID))
 
 ;; ## Helper Fns
 
@@ -81,16 +84,28 @@
   ((user->client :crowberto) :post 400 "dashboard" {:name       "Test"
                                                     :parameters "abc"}))
 
-(expect
-  {:name                    "Test Create Dashboard"
-   :description             nil
-   :show_in_getting_started false
+(def ^:private ^:const dashboard-defaults
+  {:archived                false
    :caveats                 nil
+   :created_at              true ; assuming you call dashboard-response on the results
+   :description             nil
+   :embedding_params        nil
+   :enable_embedding        false
+   :made_public_by_id       nil
+   :parameters              []
    :points_of_interest      nil
-   :creator_id              (user->id :rasta)
-   :parameters              [{:hash "abc123", :name "test", :type "date"}]
-   :updated_at              true
-   :created_at              true}
+   :position                nil
+   :public_uuid             nil
+   :show_in_getting_started false
+   :updated_at              true})
+
+(expect
+  (merge dashboard-defaults
+         {:name       "Test Create Dashboard"
+          :creator_id (user->id :rasta)
+          :parameters [{:hash "abc123", :name "test", :type "date"}]
+          :updated_at true
+          :created_at true})
   (-> ((user->client :rasta) :post 200 "dashboard" {:name       "Test Create Dashboard"
                                                     :parameters [{:hash "abc123", :name "test", :type "date"}]})
       dashboard-response))
@@ -98,37 +113,31 @@
 
 ;; ## GET /api/dashboard/:id
 (expect
-  {:name                    "Test Dashboard"
-   :description             nil
-   :show_in_getting_started false
-   :caveats                 nil
-   :points_of_interest      nil
-   :creator_id              (user->id :rasta)
-   :creator                 (user-details (fetch-user :rasta))
-   :updated_at              true
-   :created_at              true
-   :parameters              []
-   :ordered_cards           [{:sizeX                  2
-                              :sizeY                  2
-                              :col                    0
-                              :row                    0
-                              :updated_at             true
-                              :created_at             true
-                              :parameter_mappings     []
-                              :visualization_settings {}
-                              :card                   {:name                   "Dashboard Test Card"
-                                                       :description            nil
-                                                       :creator_id             (user->id :rasta)
-                                                       :creator                (user-details (fetch-user :rasta))
-                                                       :display                "table"
-                                                       :query_type             nil
-                                                       :dataset_query          {}
-                                                       :visualization_settings {}
-                                                       :collection_id          nil
-                                                       :archived               false}
-                              :series                 []}]}
+  (merge dashboard-defaults
+         {:name          "Test Dashboard"
+          :creator_id    (user->id :rasta)
+          :creator       (user-details (fetch-user :rasta))
+          :ordered_cards [{:sizeX                  2
+                           :sizeY                  2
+                           :col                    0
+                           :row                    0
+                           :updated_at             true
+                           :created_at             true
+                           :parameter_mappings     []
+                           :visualization_settings {}
+                           :card                   (merge card-api-test/card-defaults
+                                                          {:name                   "Dashboard Test Card"
+                                                           :creator_id             (user->id :rasta)
+                                                           :creator                (user-details (fetch-user :rasta))
+                                                           :display                "table"
+                                                           :query_type             nil
+                                                           :dataset_query          {}
+                                                           :visualization_settings {}
+                                                           :query_average_duration nil
+                                                           :result_metadata        nil})
+                           :series                 []}]})
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+  (tt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                   Card          [{card-id :id}      {:name "Dashboard Test Card"}]
                   DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
     (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))
@@ -136,34 +145,15 @@
 
 ;; ## PUT /api/dashboard/:id
 (expect
-  [{:name                    "Test Dashboard"
-    :description             nil
-    :show_in_getting_started false
-    :caveats                 nil
-    :points_of_interest      nil
-    :creator_id              (user->id :rasta)
-    :updated_at              true
-    :created_at              true
-    :parameters              []}
-   {:name                    "My Cool Dashboard"
-    :description             "Some awesome description"
-    :show_in_getting_started false
-    :caveats                 nil
-    :points_of_interest      nil
-    :creator_id              (user->id :rasta)
-    :updated_at              true
-    :created_at              true
-    :parameters              []}
-   {:name                    "My Cool Dashboard"
-    :description             "Some awesome description"
-    :show_in_getting_started false
-    :caveats                 nil
-    :points_of_interest      nil
-    :creator_id              (user->id :rasta)
-    :updated_at              true
-    :created_at              true
-    :parameters              []}]
-  (tu/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+  [(merge dashboard-defaults {:name        "Test Dashboard"
+                              :creator_id  (user->id :rasta)})
+   (merge dashboard-defaults {:name        "My Cool Dashboard"
+                              :description "Some awesome description"
+                              :creator_id  (user->id :rasta)})
+   (merge dashboard-defaults {:name        "My Cool Dashboard"
+                              :description "Some awesome description"
+                              :creator_id  (user->id :rasta)})]
+  (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
     (mapv dashboard-response [(Dashboard dashboard-id)
                               ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:name         "My Cool Dashboard"
                                                                                                :description  "Some awesome description"
@@ -171,11 +161,36 @@
                                                                                                :creator_id   (user->id :trashbird)})
                               (Dashboard dashboard-id)])))
 
+;; allow "caveats" and "points_of_interest" to be empty strings, and "show_in_getting_started" should be a boolean
+(expect
+  (merge dashboard-defaults {:name        "Test Dashboard"
+                             :creator_id  (user->id :rasta)
+                             :caveats                 ""
+                             :points_of_interest      ""
+                             :show_in_getting_started true})
+  (tt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+    (dashboard-response ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:caveats                 ""
+                                                                                         :points_of_interest      ""
+                                                                                         :show_in_getting_started true}))))
+
+;; Can we clear the description of a Dashboard? (#4738)
+(expect
+  nil
+  (tt/with-temp Dashboard [dashboard {:description "What a nice Dashboard"}]
+    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description nil})
+    (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
+
+(expect
+  ""
+  (tt/with-temp Dashboard [dashboard {:description "What a nice Dashboard"}]
+    ((user->client :rasta) :put 200 (str "dashboard/" (u/get-id dashboard)) {:description ""})
+    (db/select-one-field :description Dashboard :id (u/get-id dashboard))))
+
 
 ;; ## DELETE /api/dashboard/:id
 (expect
   [nil nil]
-  (tu/with-temp Dashboard [{dashboard-id :id}]
+  (tt/with-temp Dashboard [{dashboard-id :id}]
     [((user->client :rasta) :delete 204 (format "dashboard/%d" dashboard-id))
      (Dashboard dashboard-id)]))
 
@@ -200,7 +215,7 @@
      :row                    4
      :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
      :visualization_settings {}}]]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
     [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId                 card-id
                                                                                       :row                    4
@@ -208,8 +223,8 @@
                                                                                       :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
                                                                                       :visualization_settings {}})
          (dissoc :id :dashboard_id :card_id)
-         (update :created_at #(boolean %))
-         (update :updated_at #(boolean %)))
+         (update :created_at boolean)
+         (update :updated_at boolean))
      (map (partial into {})
           (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings], :dashboard_id dashboard-id))]))
 
@@ -233,7 +248,7 @@
      :col   4
      :row   4}]
    #{0}]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
     (let [dashboard-card ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
@@ -252,7 +267,7 @@
    {:success true}
    0]
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp* [Dashboard           [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard           [{dashboard-id :id}]
                   Card                [{card-id :id}]
                   Card                [{series-id-1 :id}]
                   Card                [{series-id-2 :id}]
@@ -308,7 +323,7 @@
      :created_at             true
      :updated_at             true}]]
   ;; fetch a dashboard WITH a dashboard card on it
-  (tu/with-temp* [Dashboard     [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
                   DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
@@ -353,7 +368,7 @@
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         nil
     :description  nil}]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Revision  [_ {:model        "Dashboard"
                                 :model_id     dashboard-id
                                 :object       {:name         "b"
@@ -424,7 +439,7 @@
                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
      :diff         nil
      :description  nil}]]
-  (tu/with-temp* [Dashboard [{dashboard-id :id}]
+  (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Revision  [{revision-id :id} {:model        "Dashboard"
                                                 :model_id     dashboard-id
                                                 :object       {:name         "a"
@@ -441,3 +456,156 @@
     [(dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" dashboard-id))]
               (dissoc revision :timestamp :id)))]))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                                    PUBLIC SHARING ENDPOINTS                                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+(defn- shared-dashboard []
+  {:public_uuid       (str (UUID/randomUUID))
+   :made_public_by_id (user->id :crowberto)})
+
+;;; ------------------------------------------------------------ POST /api/dashboard/:id/public_link ------------------------------------------------------------
+
+;; Test that we can share a Dashboard
+(expect
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard]
+      (let [{uuid :uuid} ((user->client :crowberto) :post 200 (format "dashboard/%d/public_link" (u/get-id dashboard)))]
+        (db/exists? Dashboard :id (u/get-id dashboard), :public_uuid uuid)))))
+
+;; Test that we *cannot* share a Dashboard if we aren't admins
+(expect
+  "You don't have permissions to do that."
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard]
+      ((user->client :rasta) :post 403 (format "dashboard/%d/public_link" (u/get-id dashboard))))))
+
+;; Test that we *cannot* share a Dashboard if the setting is disabled
+(expect
+  "Public sharing is not enabled."
+  (tu/with-temporary-setting-values [enable-public-sharing false]
+    (tt/with-temp Dashboard [dashboard]
+      ((user->client :crowberto) :post 400 (format "dashboard/%d/public_link" (u/get-id dashboard))))))
+
+;; Test that we get a 404 if the Dashboard doesn't exist
+(expect
+  "Not found."
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    ((user->client :crowberto) :post 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE))))
+
+;; Test that if a Dashboard has already been shared we reüse the existing UUID
+(expect
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard (shared-dashboard)]
+      (= (:public_uuid dashboard)
+         (:uuid ((user->client :crowberto) :post 200 (format "dashboard/%d/public_link" (u/get-id dashboard))))))))
+
+
+
+;;; ------------------------------------------------------------ DELETE /api/dashboard/:id/public_link ------------------------------------------------------------
+
+;; Test that we can unshare a Dashboard
+(expect
+  false
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard (shared-dashboard)]
+      ((user->client :crowberto) :delete 204 (format "dashboard/%d/public_link" (u/get-id dashboard)))
+      (db/exists? Dashboard :id (u/get-id dashboard), :public_uuid (:public_uuid dashboard)))))
+
+;; Test that we *cannot* unshare a Dashboard if we are not admins
+(expect
+  "You don't have permissions to do that."
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard (shared-dashboard)]
+      ((user->client :rasta) :delete 403 (format "dashboard/%d/public_link" (u/get-id dashboard))))))
+
+;; Test that we get a 404 if Dashboard isn't shared
+(expect
+  "Not found."
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard]
+      ((user->client :crowberto) :delete 404 (format "dashboard/%d/public_link" (u/get-id dashboard))))))
+
+;; Test that we get a 404 if Dashboard doesn't exist
+(expect
+  "Not found."
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    ((user->client :crowberto) :delete 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE))))
+
+;; Test that we can fetch a list of publically-accessible dashboards
+(expect
+  [{:name true, :id true, :public_uuid true}]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Dashboard [dashboard (shared-dashboard)]
+      (for [dash ((user->client :crowberto) :get 200 "dashboard/public")]
+        (m/map-vals boolean (select-keys dash [:name :id :public_uuid]))))))
+
+;; Test that we can fetch a list of embeddable-accessible dashboards
+(expect
+  [{:name true, :id true}]
+  (tu/with-temporary-setting-values [enable-embedding true]
+    (tt/with-temp Dashboard [dashboard {:enable_embedding true}]
+      (for [dash ((user->client :crowberto) :get 200 "dashboard/embeddable")]
+        (m/map-vals boolean (select-keys dash [:name :id]))))))
+
+
+;;; ------------------------------------------------------------ Tests for including query average duration info ------------------------------------------------------------
+
+(tu/resolve-private-vars metabase.api.dashboard
+  dashcard->query-hashes
+  dashcards->query-hashes
+  add-query-average-duration-to-dashcards)
+
+(expect
+  [[-109 -42 53 92 -31 19 -111 13 -11 -111 127 -110 -12 53 -42 -3 -58 -61 60 97 123 -65 -117 -110 -27 -2 -99 102 -59 -29 49 27]
+   [43 -96 52 23 -69 81 -59 15 -74 -59 -83 -9 -110 40 1 -64 -117 -44 -67 79 -123 -9 -107 20 113 -59 -93 25 60 124 -110 -30]]
+  (tu/vectorize-byte-arrays
+    (dashcard->query-hashes {:card {:dataset_query {:database 1}}})))
+
+(expect
+  [[89 -75 -86 117 -35 -13 -69 -36 -17 84 37 86 -121 -59 -3 1 37 -117 -86 -42 -127 -42 -74 101 83 72 10 44 75 -126 43 66]
+   [55 56 16 11 -121 -29 71 -99 -89 -92 41 25 87 -78 34 100 54 -3 53 -9 38 41 -75 -121 63 -119 43 23 57 11 63 32]
+   [-90 55 65 61 72 22 -99 -75 111 49 -3 21 -80 68 -14 120 30 -84 -103 16 -68 73 -121 -93 -55 54 72 84 -8 118 -101 114]
+   [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]
+   [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]
+   [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]]
+  (tu/vectorize-byte-arrays
+    (dashcard->query-hashes {:card   {:dataset_query {:database 2}}
+                             :series [{:dataset_query {:database 3}}
+                                      {:dataset_query {:database 4}}]})))
+
+(expect
+  [[-109 -42 53 92 -31 19 -111 13 -11 -111 127 -110 -12 53 -42 -3 -58 -61 60 97 123 -65 -117 -110 -27 -2 -99 102 -59 -29 49 27]
+   [43 -96 52 23 -69 81 -59 15 -74 -59 -83 -9 -110 40 1 -64 -117 -44 -67 79 -123 -9 -107 20 113 -59 -93 25 60 124 -110 -30]
+   [89 -75 -86 117 -35 -13 -69 -36 -17 84 37 86 -121 -59 -3 1 37 -117 -86 -42 -127 -42 -74 101 83 72 10 44 75 -126 43 66]
+   [55 56 16 11 -121 -29 71 -99 -89 -92 41 25 87 -78 34 100 54 -3 53 -9 38 41 -75 -121 63 -119 43 23 57 11 63 32]
+   [-90 55 65 61 72 22 -99 -75 111 49 -3 21 -80 68 -14 120 30 -84 -103 16 -68 73 -121 -93 -55 54 72 84 -8 118 -101 114]
+   [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]
+   [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]
+   [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]]
+  (tu/vectorize-byte-arrays (dashcards->query-hashes [{:card   {:dataset_query {:database 1}}}
+                                                      {:card   {:dataset_query {:database 2}}
+                                                       :series [{:dataset_query {:database 3}}
+                                                                {:dataset_query {:database 4}}]}])))
+
+(expect
+  [{:card   {:dataset_query {:database 1}, :query_average_duration 111}
+    :series []}
+   {:card   {:dataset_query {:database 2}, :query_average_duration 333}
+    :series [{:dataset_query {:database 3}, :query_average_duration 555}
+             {:dataset_query {:database 4}, :query_average_duration 777}]}]
+  (add-query-average-duration-to-dashcards
+   [{:card   {:dataset_query {:database 1}}}
+    {:card   {:dataset_query {:database 2}}
+     :series [{:dataset_query {:database 3}}
+              {:dataset_query {:database 4}}]}]
+   {[-109 -42 53 92 -31 19 -111 13 -11 -111 127 -110 -12 53 -42 -3 -58 -61 60 97 123 -65 -117 -110 -27 -2 -99 102 -59 -29 49 27] 111
+    [43 -96 52 23 -69 81 -59 15 -74 -59 -83 -9 -110 40 1 -64 -117 -44 -67 79 -123 -9 -107 20 113 -59 -93 25 60 124 -110 -30]     222
+    [89 -75 -86 117 -35 -13 -69 -36 -17 84 37 86 -121 -59 -3 1 37 -117 -86 -42 -127 -42 -74 101 83 72 10 44 75 -126 43 66]       333
+    [55 56 16 11 -121 -29 71 -99 -89 -92 41 25 87 -78 34 100 54 -3 53 -9 38 41 -75 -121 63 -119 43 23 57 11 63 32]               444
+    [-90 55 65 61 72 22 -99 -75 111 49 -3 21 -80 68 -14 120 30 -84 -103 16 -68 73 -121 -93 -55 54 72 84 -8 118 -101 114]         555
+    [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]            666
+    [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]          777
+    [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]   888}))

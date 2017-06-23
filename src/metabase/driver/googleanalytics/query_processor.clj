@@ -1,21 +1,12 @@
 (ns metabase.driver.googleanalytics.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format."
-  (:require (clojure [string :as s])
-            [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
             [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
-            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor.util :as qputil]
             [metabase.util :as u])
-  (:import java.sql.Timestamp
-           java.util.Date
-           clojure.lang.PersistentArrayMap
-           (com.google.api.services.analytics.model GaData GaData$ColumnHeaders)
-           (metabase.query_processor.interface AgFieldRef
-                                               DateTimeField
-                                               DateTimeValue
-                                               Field
-                                               RelativeDateTimeValue
-                                               Value)))
+  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
+           [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue Value]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date "today")
@@ -260,7 +251,7 @@
   [{query :query}]
   (let [[aggregation-type metric-name] (first-aggregation query)]
     (when (and aggregation-type
-               (= :metric (ql/normalize-token aggregation-type))
+               (= :metric (qputil/normalize-token aggregation-type))
                (string? metric-name))
       metric-name)))
 
@@ -275,7 +266,7 @@
 (defn- filter-type ^clojure.lang.Keyword [filter-clause]
   (when (and (sequential? filter-clause)
              (u/string-or-keyword? (first filter-clause)))
-    (ql/normalize-token (first filter-clause))))
+    (qputil/normalize-token (first filter-clause))))
 
 (defn- compound-filter? [filter-clause]
   (contains? #{:and :or :not} (filter-type filter-clause)))

@@ -7,6 +7,11 @@ import { Driver } from "webchauffeur";
 
 const DEFAULT_TIMEOUT = 50000;
 
+// these are sessions persisted in the fixture dbs, to avoid having to login
+const DEFAULT_SESSIONS = {
+    "bob@metabase.com": "068a6678-db09-4853-b7d5-d0ef6cb9cbc8"
+}
+
 const log = (message) => {
     console.log(message);
 };
@@ -144,11 +149,11 @@ export const checkLoggedIn = async (server, driver, email) => {
 }
 
 const getSessionId = (server, email) => {
-    server.sessions = server.sessions || {};
+    server.sessions = server.sessions || { ...DEFAULT_SESSIONS };
     return server.sessions[email];
 }
 const setSessionId = (server, email, sessionId) => {
-    server.sessions = server.sessions || {};
+    server.sessions = server.sessions || { ...DEFAULT_SESSIONS };
     server.sessions[email] = sessionId;
 }
 

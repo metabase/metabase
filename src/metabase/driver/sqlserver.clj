@@ -1,12 +1,11 @@
 (ns metabase.driver.sqlserver
-  (:require [clojure.string :as s]
-            [honeysql.core :as hsql]
-            [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
+  (:require [honeysql.core :as hsql]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.generic-sql :as sql]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.ssh :as ssh]))
 
 (defn- column->base-type
   "See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details."
@@ -48,27 +47,26 @@
     :xml              :type/*
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
-(defn- connection-details->spec [{:keys [domain instance ssl], :as details}]
-  (-> ;; Having the `:ssl` key present, even if it is `false`, will make the driver attempt to connect with SSL
-      (dbspec/mssql (if ssl
-                      details
-                      (dissoc details :ssl)))
-      ;; swap out Microsoft Driver details for jTDS ones
-      (assoc :classname   "net.sourceforge.jtds.jdbc.Driver"
-             :subprotocol "jtds:sqlserver")
 
-      ;; adjust the connection URL to match up with the jTDS format (see http://jtds.sourceforge.net/faq.html#urlFormat)
-      (update :subname (fn [subname]
-                         ;; jTDS uses a "/" instead of ";database="
-                         (cond-> (s/replace subname #";database=" "/")
-                           ;; and add the ;instance= option if applicable
-                           (seq instance) (str ";instance=" instance)
+(defn- connection-details->spec [{:keys [user password db host port instance domain ssl]
+                                  :or   {user "dbuser", password "dbpassword", db "", host "localhost", port 1433}
+                                  :as   details}]
+  {:classname    "net.sourceforge.jtds.jdbc.Driver"
+   :subprotocol  "jtds:sqlserver"
+   :loginTimeout 5 ; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
+   :subname      (str "//" host ":" port "/" db)
+   ;; everything else gets passed as `java.util.Properties` to the JDBC connection. See full list of properties here: `http://jtds.sourceforge.net/faq.html#urlFormat`
+   ;; (passing these as Properties instead of part of the `:subname` is preferable because they support things like passwords with special characters)
+   :user         user
+   :password     password
+   :instance     instance
+   :domain       domain
+   :useNTLMv2    (boolean domain) ; if domain is specified, send LMv2/NTLMv2 responses when using Windows authentication
+   ;; for whatever reason `ssl=request` doesn't work with RDS (it hangs indefinitely), so just set ssl=off (disabled) if SSL isn't being used
+   :ssl          (if ssl
+                   "require"
+                   "off")})
 
-                           ;; add Windows domain for Windows domain authentication if applicable. useNTLMv2 = send LMv2/NTLMv2 responses when using Windows auth
-                           (seq domain) (str ";domain=" domain ";useNTLMv2=true")
-
-                           ;; If SSL is specified append ;ssl=require, which enables SSL and throws exception if SSL connection cannot be made
-                           ssl (str ";ssl=require"))))))
 
 (defn- date-part [unit expr]
   (hsql/call :datepart (hsql/raw (name unit)) expr))
@@ -148,35 +146,36 @@
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
          {:date-interval  (u/drop-first-arg date-interval)
-          :details-fields (constantly [{:name         "host"
-                                        :display-name "Host"
-                                        :default      "localhost"}
-                                       {:name         "port"
-                                        :display-name "Port"
-                                        :type         :integer
-                                        :default      1433}
-                                       {:name         "db"
-                                        :display-name "Database name"
-                                        :placeholder  "BirdsOfTheWorld"
-                                        :required     true}
-                                       {:name         "instance"
-                                        :display-name "Database instance name"
-                                        :placeholder  "N/A"}
-                                       {:name         "domain"
-                                        :display-name "Windows domain"
-                                        :placeholder  "N/A"}
-                                       {:name         "user"
-                                        :display-name "Database username"
-                                        :placeholder  "What username do you use to login to the database?"
-                                        :required     true}
-                                       {:name         "password"
-                                        :display-name "Database password"
-                                        :type         :password
-                                        :placeholder  "*******"}
-                                       {:name         "ssl"
-                                        :display-name "Use a secure connection (SSL)?"
-                                        :type         :boolean
-                                        :default      false}])})
+          :details-fields (constantly (ssh/with-tunnel-config
+                                        [{:name         "host"
+                                          :display-name "Host"
+                                          :default      "localhost"}
+                                         {:name         "port"
+                                          :display-name "Port"
+                                          :type         :integer
+                                          :default      1433}
+                                         {:name         "db"
+                                          :display-name "Database name"
+                                          :placeholder  "BirdsOfTheWorld"
+                                          :required     true}
+                                         {:name         "instance"
+                                          :display-name "Database instance name"
+                                          :placeholder  "N/A"}
+                                         {:name         "domain"
+                                          :display-name "Windows domain"
+                                          :placeholder  "N/A"}
+                                         {:name         "user"
+                                          :display-name "Database username"
+                                          :placeholder  "What username do you use to login to the database?"
+                                          :required     true}
+                                         {:name         "password"
+                                          :display-name "Database password"
+                                          :type         :password
+                                          :placeholder  "*******"}
+                                         {:name         "ssl"
+                                          :display-name "Use a secure connection (SSL)?"
+                                          :type         :boolean
+                                          :default      false}]))})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

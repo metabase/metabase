@@ -4,17 +4,20 @@
   (:require [clojure.core.cache :as cache]
             [hiccup.core :refer [html]]
             [medley.core :as m]
-            (stencil [core :as stencil]
-                     [loader :as stencil-loader])
-            (metabase [config :as config]
-                      [db :as db]
-                      [email :as email])
-            [metabase.models.setting :as setting]
+            [metabase
+             [config :as config]
+             [email :as email]
+             [public-settings :as public-settings]
+             [util :as u]]
             [metabase.pulse.render :as render]
-            [metabase.util :as u]
-            (metabase.util [quotation :as quotation]
-                           [urls :as url]))
-  (:import (java.io File FileOutputStream)
+            [metabase.util
+             [quotation :as quotation]
+             [urls :as url]]
+            [stencil
+             [core :as stencil]
+             [loader :as stencil-loader]]
+            [toucan.db :as db])
+  (:import [java.io File FileOutputStream]
            java.util.Arrays))
 
 ;; Dev only -- disable template caching
@@ -49,7 +52,7 @@
 (defn send-new-user-email!
   "Send an email to INVITIED letting them know INVITOR has invited them to join Metabase."
   [invited invitor join-url]
-  (let [company      (or (setting/get :site-name) "Unknown")
+  (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
                        (merge {:emailType    "new_user_invite"
                                :invitedName  (:first_name invited)
@@ -67,37 +70,35 @@
       :message      message-body)))
 
 (defn- all-admin-recipients
-  "Return a `:recipients` vector for all Admin users."
+  "Return a sequence of email addresses for all Admin users.
+   The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in `mailto` links
+   (e.g., for the new user to email with any questions)."
   []
-  (concat (db/select-field :email 'User, :is_superuser true, :is_active true)
-          (when-let [admin-email (setting/get :admin-email)]
-            [admin-email])))
+  (concat (when-let [admin-email (public-settings/admin-email)]
+            [admin-email])
+          (db/select-field :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the INVITOR (the Admin who invited NEW-USER) letting them know NEW-USER has joined."
-  [new-user {invitor-email :email} google-auth?]
-  {:pre [(map? new-user)
-         (m/boolean? google-auth?)
-         (or google-auth?
-             (u/is-email? invitor-email))]}
-  (email/send-message!
-    :subject      (format (if google-auth?
-                            "%s created a Metabase account"
-                            "%s accepted your Metabase invite")
-                          (:common_name new-user))
-    :recipients   (if google-auth?
-                    (all-admin-recipients)
-                    [invitor-email])
-    :message-type :html
-    :message      (stencil/render-file "metabase/email/user_joined_notification"
-                    (merge {:logoHeader        true
-                            :joinedUserName    (:first_name new-user)
-                            :joinedViaSSO      google-auth?
-                            :joinedUserEmail   (:email new-user)
-                            :joinedDate        (u/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
-                            :invitorEmail      invitor-email
-                            :joinedUserEditUrl (str (setting/get :-site-url) "/admin/people")}
-                           (random-quote-context)))))
+  [new-user & {:keys [google-auth?]}]
+  {:pre [(map? new-user)]}
+  (let [recipients (all-admin-recipients)]
+    (email/send-message!
+      :subject      (format (if google-auth?
+                              "%s created a Metabase account"
+                              "%s accepted their Metabase invite")
+                            (:common_name new-user))
+      :recipients   recipients
+      :message-type :html
+      :message      (stencil/render-file "metabase/email/user_joined_notification"
+                      (merge {:logoHeader        true
+                              :joinedUserName    (:first_name new-user)
+                              :joinedViaSSO      google-auth?
+                              :joinedUserEmail   (:email new-user)
+                              :joinedDate        (u/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                              :adminEmail        (first recipients)
+                              :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
+                             (random-quote-context))))))
 
 
 (defn send-password-reset-email!
@@ -148,7 +149,7 @@
   [email context]
   {:pre [(u/is-email? email) (map? context)]}
   (let [context      (merge (update context :dependencies build-dependencies)
-                            (notification-context)
+                            notification-context
                             (random-quote-context))
         message-body (stencil/render-file "metabase/email/notification" context)]
     (email/send-message!
@@ -164,11 +165,11 @@
   (let [subject      (if (= "abandon" msg-type)
                        "[Metabase] Help make Metabase better."
                        "[Metabase] Tell us how things are going.")
-        context      (merge (notification-context)
+        context      (merge notification-context
                             (random-quote-context)
                             (if (= "abandon" msg-type)
-                              (abandonment-context)
-                              (follow-up-context)))
+                              abandonment-context
+                              follow-up-context))
         message-body (stencil/render-file "metabase/email/follow_up_email" context)]
     (email/send-message!
       :subject      subject
