@@ -1,5 +1,3 @@
-/* @flow weak */
-
 import {
     DATABASE_ID, ORDERS_TABLE_ID, metadata,
     ORDERS_TOTAL_FIELD_ID

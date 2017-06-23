@@ -1,4 +1,4 @@
-/* @flow weak */
+/* eslint-disable flowtype/require-valid-file-annotation */
 describe("QuickFilterDrill", () => {
     it("should return correct operators for various inputs", () => {
         // This could also be in a separate unit test file

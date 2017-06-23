@@ -23,7 +23,8 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
             return [];
         }
 
-        const tableMetadata = query.table();
+        // $FlowFixMe
+        const tableMetadata: TableMetadata = query.table();
 
         // Click target types: metric value
         if (

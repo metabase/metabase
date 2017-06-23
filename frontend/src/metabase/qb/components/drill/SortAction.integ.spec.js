@@ -1,4 +1,4 @@
-/* @flow weak */
+/* eslint-disable flowtype/require-valid-file-annotation */
 describe("SortAction drill", () => {
     it("should return correct sort options for various inputs", () => {
         pending();

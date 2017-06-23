@@ -75,8 +75,7 @@ export default class StructuredQuery extends AtomicQuery {
     ) {
         super(question, datasetQuery);
 
-        // $FlowFixMe
-        this._structuredDatasetQuery = datasetQuery;
+         this._structuredDatasetQuery = (datasetQuery: StructuredDatasetQuery);
     }
 
     static newStucturedQuery(

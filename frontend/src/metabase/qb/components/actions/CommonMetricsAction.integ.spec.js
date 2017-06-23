@@ -1,4 +1,4 @@
-/* @flow weak */
+/* eslint-disable flowtype/require-valid-file-annotation */
 
 describe("CommonMetricsAction", () => {
     it("should produce correct query results for various inputs", () => {

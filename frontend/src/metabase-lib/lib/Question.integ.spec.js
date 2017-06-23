@@ -1,20 +1,11 @@
-/* @flow weak */
-
 import { DATABASE_ID, ORDERS_TABLE_ID, metadata } from "metabase/__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
 import { login } from "metabase/__support__/integrated_tests";
 import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/lib/queries/NativeQuery";
 
-// const question = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
-// // count of rows summarization
-// const results = await summarizedQuestion.getResults()
-// expect(results[0]).toBeDefined();
-//
-// // sum of subtotal aggregation
-// const results = await summarizedQuestion.getResults()
-// expect(results[0]).toBeDefined();
-//
-// expect(results[0].data.rows[0][0]).toBeCloseTo(1034792.85, 2);
+// TODO Atte Keinänen 6/22/17: This could include tests that run each "question drill action" (summarize etc)
+// and check that the result is correct
+
 describe("Question", () => {
     beforeAll(async () => {
         await login();

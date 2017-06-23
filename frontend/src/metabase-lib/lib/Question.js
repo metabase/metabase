@@ -101,14 +101,14 @@ export default class Question {
             parameterValues?: ParameterValues
         }
     ) {
-        const card = {
+        // $FlowFixMe
+        const card: Card = {
             name: cardProps.name || null,
             display: cardProps.display || "table",
             visualization_settings: cardProps.visualization_settings || {},
             dataset_query: STRUCTURED_QUERY_TEMPLATE // temporary placeholder
         };
 
-        // $FlowFixMe Passing an incomplete card object
         const initialQuestion = new Question(metadata, card, parameterValues);
         const query = StructuredQuery.newStucturedQuery({
             question: initialQuestion,
@@ -272,7 +272,7 @@ export default class Question {
     mode(): ?Mode {
         return Mode.forQuestion(this);
     }
-b
+
     /**
      * A user-defined name for the question
      */
@@ -351,7 +351,8 @@ b
     }
 
     parametersList(): ParameterObject[] {
-        return Object.values(this.parameters());
+        // $FlowFixMe
+        return (Object.values(this.parameters()): ParameterObject[]);
     }
 
     // predicate function that dermines if the question is "dirty" compared to the given question
@@ -410,7 +411,7 @@ b
             parameters: this._card.parameters,
             visualization_settings: this._card.visualization_settings,
             ...(includeOriginalCardId
-                ? // $FlowFixMe
+                ?
                   { original_card_id: this._card.original_card_id }
                 : {})
         };

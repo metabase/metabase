@@ -1,4 +1,4 @@
-/* @flow weak */
+/* eslint-disable flowtype/require-valid-file-annotation */
 
 import { DATABASE_ID, ORDERS_TABLE_ID, metadata } from "metabase/__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";

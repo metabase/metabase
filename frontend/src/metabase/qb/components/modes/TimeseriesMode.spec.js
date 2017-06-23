@@ -1,6 +1,4 @@
-/* @flow weak */
-
-// HACK: needed due to cyclical dependency issue
+/* eslint-disable flowtype/require-valid-file-annotation */
 import "metabase-lib/lib/Question";
 
 import React from 'react';

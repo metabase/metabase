@@ -207,7 +207,6 @@ export const initializeQB = (location, params) => {
                     // deserialized card contains the card id, so just populate originalCard
                     originalCard = await loadCard(card.original_card_id);
                     // if the cards are equal then show the original
-                    // $FlowFixMe:
                     if (cardIsEquivalent(card, originalCard)) {
                         card = Utils.copy(originalCard);
                     }
@@ -282,7 +281,6 @@ export const initializeQB = (location, params) => {
         // Fetch the question metadata
         dispatch(loadMetadataForCard(card));
 
-        // $FlowFixMe
         const question = card && new Question(getMetadata(getState()), card);
 
         // if we have loaded up a card that we can run then lets kick that off as well
@@ -1060,11 +1058,8 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             // action is on a PK column
             let newCard: Card = startNewCard("query", card.dataset_query.database);
 
-            // $FlowFixMe
             newCard.dataset_query.query.source_table = coldef.table_id;
-            // $FlowFixMe
             newCard.dataset_query.query.aggregation = ["rows"];
-            // $FlowFixMe
             newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
             // run it
