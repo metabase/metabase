@@ -53,14 +53,12 @@ export type ClickActionProps = {
 }
 
 export type ClickActionPopoverProps = {
-    onChangeCardAndRun: (card: ?Card) => void,
+    onChangeCardAndRun: (Object) => void,
     onClose: () => void,
 }
 
-// type Visualization = Component<*, VisualizationProps, *>;
-
-// $FlowFixMe
-export type Series = { card: Card, data: DatasetData }[] & { _raw: Series }
+export type SingleSeries = { card: Card, data: DatasetData };
+export type Series = SingleSeries[] & { _raw: Series }
 
 export type VisualizationProps = {
     series: Series,
@@ -83,7 +81,7 @@ export type VisualizationProps = {
     onHoverChange: (?HoverObject) => void,
     onVisualizationClick: (?ClickObject) => void,
     visualizationIsClickable: (?ClickObject) => boolean,
-    onChangeCardAndRun: (card: Card) => void,
+    onChangeCardAndRun: (Object) => void,
 
     onUpdateVisualizationSettings: ({ [key: string]: any }) => void
 }

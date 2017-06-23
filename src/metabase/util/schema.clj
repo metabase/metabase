@@ -79,9 +79,16 @@
   (s/named (s/cond-pre s/Keyword s/Str) "Keyword or string"))
 
 (def FieldType
-  "Schema for a valid Field type (does it derive from `:type/*`?"
+  "Schema for a valid Field type (does it derive from `:type/*`)?"
   (with-api-error-message (s/pred (u/rpartial isa? :type/*) "Valid field type")
     "value must be a valid field type."))
+
+(def FieldTypeKeywordOrString
+  "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
+   This is useful especially for validating API input or objects coming out of the DB as it is unlikely
+   those values will be encoded as keywords at that point."
+  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) "Valid field type (keyword or string)")
+    "value must be a valid field type (keyword or string)."))
 
 (def Map
   "Schema for a valid map."

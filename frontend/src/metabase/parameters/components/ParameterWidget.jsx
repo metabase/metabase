@@ -11,6 +11,8 @@ import _ from "underscore";
 
 import FieldSet from "../../components/FieldSet";
 
+import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
+
 export default class ParameterWidget extends Component {
     state = {
         isEditingName: false,
@@ -77,7 +79,7 @@ export default class ParameterWidget extends Component {
                         onChange={(e) => setName(e.target.value)}
                         onBlur={() => this.setState({ isEditingName: false })}
                         onKeyUp={(e) => {
-                                if (e.keyCode === 27 || e.keyCode === 13) {
+                                if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_ENTER) {
                                     e.target.blur();
                                 }
                             }}

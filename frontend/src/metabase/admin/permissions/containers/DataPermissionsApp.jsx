@@ -4,12 +4,12 @@ import { connect } from "react-redux"
 import PermissionsApp from "./PermissionsApp.jsx";
 
 import { PermissionsApi } from "metabase/services";
-import { loadMetadata } from "../permissions";
+import { fetchDatabases } from "metabase/redux/metadata";
 
-@connect(null, { loadMetadata })
+@connect(null, { fetchDatabases })
 export default class DataPermissionsApp extends Component {
     componentWillMount() {
-        this.props.loadMetadata();
+        this.props.fetchDatabases();
     }
     render() {
         return (

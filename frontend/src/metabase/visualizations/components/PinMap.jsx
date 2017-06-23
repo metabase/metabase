@@ -36,7 +36,10 @@ const MAP_COMPONENTS_BY_TYPE = {
     "grid": LeafletGridHeatMap,
 }
 
-export default class PinMap extends Component<*, Props, State> {
+export default class PinMap extends Component {
+    props: Props;
+    state: State;
+
     static uiName = "Pin Map";
     static identifier = "pin_map";
     static iconName = "pinmap";

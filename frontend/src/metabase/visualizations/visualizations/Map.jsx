@@ -16,7 +16,7 @@ import _ from "underscore";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat"]);
 
-export default class Map extends Component<*, VisualizationProps, *> {
+export default class Map extends Component {
     static uiName = "Map";
     static identifier = "map";
     static iconName = "pinmap";

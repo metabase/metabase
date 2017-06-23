@@ -9,7 +9,6 @@ import Popover from "metabase/components/Popover";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import type { ClickObject, ClickAction } from "metabase/meta/types/Visualization";
-import type { Card } from "metabase/meta/types/Card";
 
 import _ from "underscore";
 
@@ -52,9 +51,9 @@ Object.values(SECTIONS).map((section, index) => {
 });
 
 type Props = {
-    clicked: ClickObject,
+    clicked: ?ClickObject,
     clickActions: ?ClickAction[],
-    onChangeCardAndRun: (card: ?Card) => void,
+    onChangeCardAndRun: (Object) => void,
     onClose: () => void
 };
 
@@ -62,7 +61,8 @@ type State = {
     popoverAction: ?ClickAction;
 }
 
-export default class ChartClickActions extends Component<*, Props, State> {
+export default class ChartClickActions extends Component {
+    props: Props;
     state: State = {
         popoverAction: null
     };
@@ -79,12 +79,12 @@ export default class ChartClickActions extends Component<*, Props, State> {
         if (action.popover) {
             this.setState({ popoverAction: action });
         } else if (action.card) {
-            const card = action.card();
+            const nextCard = action.card();
             MetabaseAnalytics.trackEvent("Actions", "Executed Click Action", `${action.section||""}:${action.name||""}`);
-            onChangeCardAndRun(card);
+            onChangeCardAndRun({ nextCard });
             this.close();
         }
-    }
+    };
 
     render() {
         const { clicked, clickActions, onChangeCardAndRun } = this.props;
@@ -99,11 +99,11 @@ export default class ChartClickActions extends Component<*, Props, State> {
             const PopoverContent = popoverAction.popover;
             popover = (
                 <PopoverContent
-                    onChangeCardAndRun={(card) => {
+                    onChangeCardAndRun={({ nextCard }) => {
                         if (popoverAction) {
                             MetabaseAnalytics.trackEvent("Action", "Executed Click Action", `${popoverAction.section||""}:${popoverAction.name||""}`);
                         }
-                        onChangeCardAndRun(card);
+                        onChangeCardAndRun({ nextCard });
                     }}
                     onClose={() => {
                         MetabaseAnalytics.trackEvent("Action", "Dismissed Click Action Menu");

@@ -31,9 +31,9 @@ const PERCENT_REGEX = /percent/i;
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-type Props = VisualizationProps;
+export default class PieChart extends Component {
+    props: VisualizationProps;
 
-export default class PieChart extends Component<*, Props, *> {
     static uiName = "Pie";
     static identifier = "pie";
     static iconName = "pie";

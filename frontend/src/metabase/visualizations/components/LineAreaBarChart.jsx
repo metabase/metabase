@@ -43,7 +43,9 @@ for (let i = 0; i < MAX_SERIES; i++) {
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
-export default class LineAreaBarChart extends Component<*, VisualizationProps, *> {
+export default class LineAreaBarChart extends Component {
+    props: VisualizationProps;
+
     static identifier: string;
     static renderer: (element: Element, props: VisualizationProps) => any;
 
@@ -186,13 +188,18 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
 
         let titleHeaderSeries, multiseriesHeaderSeries;
 
+        // $FlowFixMe
         let originalSeries = series._raw || series;
         let cardIds = _.uniq(originalSeries.map(s => s.card.id))
+        const isComposedOfMultipleQuestions = cardIds.length > 1;
 
         if (showTitle && settings["card.title"]) {
             titleHeaderSeries = [{ card: {
                 name: settings["card.title"],
-                id: cardIds.length === 1 ? cardIds[0] : null
+                ...(isComposedOfMultipleQuestions ? {} : {
+                    id: cardIds[0],
+                    dataset_query: originalSeries[0].card.dataset_query
+                }),
             }}];
         }
 
@@ -208,7 +215,9 @@ export default class LineAreaBarChart extends Component<*, VisualizationProps, *
                         series={titleHeaderSeries}
                         description={settings["card.description"]}
                         actionButtons={actionButtons}
-                        onChangeCardAndRun={onChangeCardAndRun}
+                        // If a dashboard card is composed of multiple questions, its custom card title
+                        // shouldn't act as a link as it's ambiguous that which question it should open
+                        onChangeCardAndRun={ isComposedOfMultipleQuestions ? null : onChangeCardAndRun }
                     />
                 : null }
                 { multiseriesHeaderSeries || (!titleHeaderSeries && actionButtons) ? // always show action buttons if we have them

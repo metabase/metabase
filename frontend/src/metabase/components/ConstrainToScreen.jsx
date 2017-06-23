@@ -11,7 +11,9 @@ type Props = {
     children: React$Element<any>
 };
 
-export default class ConstrainToScreen extends Component<*, Props, *> {
+export default class ConstrainToScreen extends Component {
+    props: Props;
+
     static defaultProps = {
         directions: ["top", "bottom"],
         padding: 10

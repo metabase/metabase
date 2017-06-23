@@ -1,25 +1,33 @@
+/* @flow */
 
 import { optionsToHashParams } from "./embed";
 
-export const getPublicEmbedOptions = ({ iframeUrl }) => [
+export type CodeSampleOption = {
+    name: string,
+    source: () => string,
+    mode?: string,
+    embedOption?: string
+};
+
+export const getPublicEmbedOptions = ({ iframeUrl }: { iframeUrl: string }): CodeSampleOption[] => [
     { name: "HTML",    source: () => html({ iframeUrl: `"${iframeUrl}"` }), mode: "ace/mode/html" }
 ];
 
-export const getSignedEmbedOptions = () => [
+export const getSignedEmbedOptions = (): CodeSampleOption[] => [
     { name: "Mustache",   source: () => html({ iframeUrl: `"{{iframeUrl}}"`, mode: "ace/mode/html" })},
     { name: "Pug / Jade", source: () =>  pug({ iframeUrl: `iframeUrl` })},
     { name: "ERB",        source: () => html({ iframeUrl: `"<%= @iframe_url %>"` })},
     { name: "JSX",        source: () =>  jsx({ iframeUrl: `{iframeUrl}`,     mode: "ace/mode/jsx" })},
 ];
 
-export const getSignTokenOptions = (params) => [
+export const getSignTokenOptions = (params: any): CodeSampleOption[] => [
     { name: "Node.js", source: () => node(params),    mode: "ace/mode/javascript", embedOption: "Pug / Jade" },
     { name: "Ruby",    source: () => ruby(params),    mode: "ace/mode/ruby",       embedOption: "ERB" },
     { name: "Python",  source: () => python(params),  mode: "ace/mode/python" },
     { name: "Clojure", source: () => clojure(params), mode: "ace/mode/clojure" },
 ];
 
-export const getPublicEmbedHTML = (iframeUrl) => html({ iframeUrl: JSON.stringify(iframeUrl )});
+export const getPublicEmbedHTML = (iframeUrl: string): string => html({ iframeUrl: JSON.stringify(iframeUrl )});
 
 const html = ({ iframeUrl }) =>
 `<iframe
@@ -91,7 +99,7 @@ METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
 METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
 
 payload = {
-  "resource": "{${resourceType}": ${resourceId}},
+  "resource": {"${resourceType}": ${resourceId}},
   "params": {
     ${Object.entries(params).map(([key,value]) => JSON.stringify(key) + ": " + JSON.stringify(value)).join(",\n    ")}
   }

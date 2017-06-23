@@ -1,8 +1,8 @@
 
-import { createAction, createThunkAction, momentifyArraysTimestamps } from "metabase/lib/redux";
+import {createAction, createThunkAction, mergeEntities, momentifyArraysTimestamps} from "metabase/lib/redux";
 
 import { normalize, schema } from "normalizr";
-import { getIn, assoc, assocIn, updateIn, merge, chain } from "icepick";
+import { getIn, assocIn, updateIn, chain } from "icepick";
 import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";
@@ -217,6 +217,7 @@ const initialState = {
     lastEntityType: null,
     lastEntityQuery: null,
     entities: {},
+    loadingInitialEntities: true,
     itemsBySection: {},
     searchText: "",
     selectedIds: {},
@@ -224,10 +225,6 @@ const initialState = {
 };
 
 export default function(state = initialState, { type, payload, error }) {
-    if (payload && payload.entities) {
-        state = assoc(state, "entities", merge(state.entities, payload.entities));
-    }
-
     switch (type) {
         case SET_SEARCH_TEXT:
             return { ...state, searchText: payload };
@@ -240,6 +237,8 @@ export default function(state = initialState, { type, payload, error }) {
                 return assocIn(state, ["itemsBySection", payload.entityType, payload.entityQuery, "error"], payload.error);
             } else {
                 return (chain(state)
+                    .assoc("loadingInitialEntities", false)
+                    .assoc("entities", mergeEntities(state.entities, payload.entities))
                     .assoc("lastEntityType", payload.entityType)
                     .assoc("lastEntityQuery", payload.entityQuery)
                     .assoc("selectedIds", {})

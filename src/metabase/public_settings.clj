@@ -121,6 +121,7 @@
    :engines               ((resolve 'metabase.driver/available-drivers))
    :ga_code               "UA-60817802-1"
    :google_auth_client_id (setting/get :google-auth-client-id)
+   :ldap_configured       ((resolve 'metabase.integrations.ldap/ldap-configured?))
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :map_tile_server_url   (map-tile-server-url)
    :password_complexity   password/active-password-complexity

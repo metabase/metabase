@@ -19,7 +19,7 @@ type SelectOption = {
 type Props = {
     options: Array<SelectOption>,
     values: Array<string>,
-    onValuesChange: (values: any) => void,
+    onValuesChange: (values: any[]) => void,
     placeholder?: string,
     multi?: bool
 }
@@ -29,7 +29,7 @@ type State = {
     searchRegex: ?RegExp,
 }
 
-export default class SelectPicker extends Component<*, Props, State> {
+export default class SelectPicker extends Component {
     state: State;
     props: Props;
 
