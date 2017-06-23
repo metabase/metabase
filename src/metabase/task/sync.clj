@@ -59,21 +59,38 @@
       (catch Throwable e
         (log/error (format "Error fetching field values for database %d: (%s)" db-id (:name database)) e)))))
 
+(defn- db-task-names
+  "makes DB task and trigger names based on DB id."
+  [db-id action]
+  [(format classify-databases-trigger-key action db-id)
+   (format classify-databases-job-key action db-id)])
+
+(defn- db-task-keys
+  "make tack and trigger keys from job and trigger names"
+  [job-name trigger-name]
+  [(jobs/key job-name) (triggers/key trigger-name)])
+
+(defn unschedule-all-tasks-for-db
+  "Stop all scheduled sync tasks for this database. Called when a DB is deleted."
+  [{db-id :id :as database}]
+  (doseq [action ["classify" "cache-values" "analyze" "sync"]]
+    (let [[trigger-name job-name] (db-task-names db-id action)
+          [job-key trigger-key] (db-task-keys trigger-name job-name)]
+      (log/info (u/format-color 'cyan "unscheduling %s for database-id: %d (%s) named %s" action db-id (:name database) job-name))
+      (task/delete-task! job-key trigger-key))))
 
 (defn schedule-db-sync-actions
   "Schedule the Sync, Analyze, Cache-field-values, and classify jobs for a database
    Deletes and replaces any existing schedules"
-  [database]
+  [{db-id :id :as database}]
+  (unschedule-all-tasks-for-db database)
   (doseq [[action db-keyword job-type] [["classify"     :classify_schedule           ClassifyDatabase]
                                         ["cache-values" :cache_field_values_schedule CacheFieldValuesForDatabase]
                                         ["analyze"      :analyze_schedule            AnalyzeDatabase]
                                         ["sync"         :sync_schedule SyncDatabase]]]
-    (let [db-id (:id database)
-          trigger-name (format classify-databases-trigger-key action db-id)
-          trigger-key  (triggers/key trigger-name)
-          job-name     (format classify-databases-job-key action db-id)
-          job-key      (jobs/key job-name)
-          schedule (or (db-keyword database) "0 50 * * * ? *")
+    (let [[trigger-name job-name] (db-task-names db-id action)
+          [job-key trigger-key] (db-task-keys trigger-name job-name)
+          schedule (db-keyword database)
           job     (jobs/build
                    (jobs/of-type job-type)
                    (jobs/using-job-data {"db-id" db-id})
@@ -85,10 +102,9 @@
                      (cron/schedule
                       (cron/cron-schedule schedule)
                       (cron/with-misfire-handling-instruction-do-nothing))))] ;; drop tasks if they start to back up
-      (log/error (u/format-color 'green "scheduling %s for database-id: %d (%s) at %s named %s" action db-id (:name database) schedule job-name))
-      ;; clear any existing schedules for this job:
-      (task/delete-task! job-key trigger-key)
-      ;; submit a new job to the scheduler
+      (log/info (u/format-color 'green "scheduling %s for database-id: %d (%s) at %s named %s" action db-id (:name database) schedule job-name))
+
+      ;; submit a new job to the scheduler, but only if it still exists. this function is called when a DB is deleted.
       (task/schedule-task! job trigger)
       job-name)))
 

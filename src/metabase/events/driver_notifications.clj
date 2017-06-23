@@ -1,7 +1,6 @@
 (ns metabase.events.driver-notifications
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
-            [metabase.task.sync-cache-analyze-classify-databases :as schedule_sync]
             [metabase
              [driver :as driver]
              [events :as events]]
@@ -27,7 +26,6 @@
     (try
       ;; notify the appropriate driver about the updated database
       (driver/notify-database-updated (driver/engine->driver (:engine database)) database)
-      (schedule_sync/schedule-db-sync-actions database)
       (catch Throwable e
         (log/warn (format "Failed to process driver notifications event. %s" (:topic driver-notifications-event)) e)))))
 

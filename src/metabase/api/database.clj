@@ -231,7 +231,8 @@
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event. Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is-full-sync?))
-        (events/publish-event! :database-create <>))
+        (events/publish-event! :database-create <>)
+        (events/publish-event! :database-schedule-update <>))
       ;; failed to connect, return error
       {:status 400
        :body   details-or-error})))
@@ -280,7 +281,9 @@
                            :description        description
                            :caveats            caveats
                            :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
-          (events/publish-event! :database-update (Database id)))
+          (let [db (Database id)]
+            (events/publish-event! :database-update db)
+            (events/publish-event! :database-schedule-update db)))
         ;; failed to connect, return error
         {:status 400
          :body   conn-error}))))
@@ -293,7 +296,8 @@
   (api/let-404 [db (Database id)]
     (api/write-check db)
     (db/delete! Database :id id)
-    (events/publish-event! :database-delete db))
+    (events/publish-event! :database-delete db)
+    (events/publish-event! :database-schedule-delete db))
   api/generic-204-no-content)
 
 
