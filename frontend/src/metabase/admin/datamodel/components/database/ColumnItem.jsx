@@ -1,8 +1,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Link, withRouter } from "react-router";
 
 import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
+import Icon from "metabase/components/Icon";
 
 import * as MetabaseCore from "metabase/lib/core";
 import { titleize, humanize } from "metabase/lib/formatting";
@@ -11,6 +13,7 @@ import { TYPE, isa, isFK } from "metabase/lib/types";
 
 import _  from "underscore";
 
+@withRouter
 export default class Column extends Component {
     constructor(props, context) {
         super(props, context);
@@ -108,6 +111,9 @@ export default class Column extends Component {
                                 />
                                 {targetSelect}
                             </div>
+                            <Link to={`${this.props.location.pathname}/${this.props.field.id}`}>
+                                <Icon name="gear" />
+                            </Link>
                         </div>
                     </div>
                 </div>
@@ -118,3 +124,4 @@ export default class Column extends Component {
         )
     }
 }
+
