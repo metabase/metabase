@@ -104,6 +104,27 @@ export const rFetchDatabaseMetadata = (props, databaseID) => {
     endLoading();
 }
 
+
+
+export const fetchDatabaseMetadataWithLoading = createThunkAction(FETCH_GUIDE, (reload = false) => {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["reference", 'guide'];
+        const existingStatePath = requestStatePath;
+        const getData = async () => {
+            return await GettingStartedApi.get();
+        };
+
+        return await fetchData({
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
+            reload
+        });
+    };
+});
+
 export const rFetchDatabaseMetadataAndQuestion = async (props, databaseID) => {
         clearError();
         startLoading();

@@ -41,6 +41,9 @@ import ReferenceHeader from "../components/ReferenceHeader.jsx";
 //         headerIcon: "ruler",
 //         parent: referenceSections[`/reference/metrics`]
 //     }
+const emptyStateData =  {
+    message: "There are no revisions for this metric"
+}
 
 const mapStateToProps = (state, props) => {
     return {
@@ -125,7 +128,7 @@ export default class MetricRevisions extends Component {
                         </div>
                         :
                         <div className={S.empty}>
-                          <EmptyState message={empty.message} icon={empty.icon} />
+                          <EmptyState {...emptyStateData}/>
                         </div>
                     }
                 </LoadingAndErrorWrapper>

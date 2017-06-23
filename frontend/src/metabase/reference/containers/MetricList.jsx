@@ -13,7 +13,7 @@ import R from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
-import EmptyState from "metabase/components/EmptyState.jsx";
+import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -150,23 +150,7 @@ export default class MetricList extends Component {
                     :
                     <div className={S.empty}>
                         { section.empty &&
-                            <EmptyState
-                                title={section.empty.title}
-                                message={user.is_superuser ?
-                                    section.empty.adminMessage || section.empty.message :
-                                    section.empty.message
-                                }
-                                icon={section.empty.icon}
-                                image={section.empty.image}
-                                action={user.is_superuser ?
-                                    section.empty.adminAction || section.empty.action :
-                                    section.empty.action
-                                }
-                                link={user.is_superuser ?
-                                    section.empty.adminLink || section.empty.link :
-                                    section.empty.link
-                                }
-                            />
+                            <AdminAwareEmptyState {...emptyStateData}/>
                         }
                     </div>
                 }

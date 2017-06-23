@@ -13,14 +13,15 @@ import R from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
-import EmptyState from "metabase/components/EmptyState.jsx";
+import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    separateTablesBySchema, getQuestionUrl
+    separateTablesBySchema, 
+    getQuestionUrl
 } from '../utils';
 
 
@@ -30,7 +31,9 @@ import {
     getUser,
     getHasSingleSchema,
     getError,
-    getLoading
+    getLoading,
+    getTableBySegment,
+    getSegment
 } from "../selectors";
 
 import * as metadataActions from "metabase/redux/metadata";
@@ -61,7 +64,21 @@ import * as metadataActions from "metabase/redux/metadata";
 //         parent: referenceSections[`/reference/segments`]
 //     }
 
+const emptyStateData = (table, segment) =>{  
+    return {
+        message: "Questions about this segment will appear here as they're added",
+        icon: "all",
+        action: "Ask a question",
+        link: getQuestionUrl({
+            dbId: table && table.db_id,
+            tableId: segment.table_id,
+            segmentId: segment.id
+        })
+    };
+}
 const mapStateToProps = (state, props) => ({
+    segment: getSegment(state,props),
+    table: getTableBySegment(state,props),
     section: getSection(state, props),
     entities: getData(state, props),
     user: getUser(state, props),
@@ -101,6 +118,8 @@ const createSchemaSeparator = (entity) =>
 @connect(mapStateToProps, mapDispatchToProps)
 export default class SegmentQuestions extends Component {
     static propTypes = {
+        table: PropTypes.object.isRequired,
+        segment: PropTypes.object.isRequired,
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
         user: PropTypes.object.isRequired,
@@ -145,23 +164,7 @@ export default class SegmentQuestions extends Component {
                     :
                     <div className={S.empty}>
                         { section.empty &&
-                            <EmptyState
-                                title={section.empty.title}
-                                message={user.is_superuser ?
-                                    section.empty.adminMessage || section.empty.message :
-                                    section.empty.message
-                                }
-                                icon={section.empty.icon}
-                                image={section.empty.image}
-                                action={user.is_superuser ?
-                                    section.empty.adminAction || section.empty.action :
-                                    section.empty.action
-                                }
-                                link={user.is_superuser ?
-                                    section.empty.adminLink || section.empty.link :
-                                    section.empty.link
-                                }
-                            />
+                            <AdminAwareEmptyState {...emptyStateData(this.props.table, this.props.segment)}/>
                         }
                     </div>
                 }

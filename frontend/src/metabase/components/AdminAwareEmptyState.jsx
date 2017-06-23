@@ -1,4 +1,5 @@
 import React from "react";
+import EmptyState from "metabase/components/EmptyState.jsx";
 /*
  * AdminAwareEmptyState is a component that can
  *  1) Produce a custom message for admins in empty results
@@ -7,17 +8,17 @@ import React from "react";
 const AdminAwareEmptyState = ({user, title, message, adminMessage, icon, image, imageHeight, imageClassName, action, adminAction, link, adminLink, onActionClick, smallDescription = false}) =>
          <EmptyState 
             title={title}
-            message={user.is_superuser ?
+            message={user && user.is_superuser ?
                 adminMessage || message :
                 message
             }
             icon={icon}
             image={image}
-            action={user.is_superuser ?
+            action={user && user.is_superuser ?
                 adminAction || action :
                 action
             }
-            link={user.is_superuser ?
+            link={user && user.is_superuser ?
                 adminLink || link :
                 link
             }

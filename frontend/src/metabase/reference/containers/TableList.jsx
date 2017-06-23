@@ -15,6 +15,7 @@ import List from "metabase/components/List.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
@@ -143,23 +144,7 @@ export default class TableList extends Component {
                     :
                     <div className={S.empty}>
                         { section.empty &&
-                            <EmptyState
-                                title={section.empty.title}
-                                message={user.is_superuser ?
-                                    section.empty.adminMessage || section.empty.message :
-                                    section.empty.message
-                                }
-                                icon={section.empty.icon}
-                                image={section.empty.image}
-                                action={user.is_superuser ?
-                                    section.empty.adminAction || section.empty.action :
-                                    section.empty.action
-                                }
-                                link={user.is_superuser ?
-                                    section.empty.adminLink || section.empty.link :
-                                    section.empty.link
-                                }
-                            />
+                            <EmptyState {...emptyStateData}/>
                         }
                     </div>
                 }

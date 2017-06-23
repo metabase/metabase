@@ -42,6 +42,10 @@ import ReferenceHeader from "../components/ReferenceHeader.jsx";
 //         parent: referenceSections[`/reference/segments`]
 //     }
 
+const emptyStateData =  {
+    message: "There are no revisions for this segment"
+}
+
 const mapStateToProps = (state, props) => {
     return {
         section: getSection(state, props),
@@ -125,7 +129,7 @@ export default class SegmentRevisions extends Component {
                         </div>
                         :
                         <div className={S.empty}>
-                          <EmptyState message={empty.message} icon={empty.icon} />
+                          <EmptyState {...emptyStateData}/>
                         </div>
                     }
                 </LoadingAndErrorWrapper>
