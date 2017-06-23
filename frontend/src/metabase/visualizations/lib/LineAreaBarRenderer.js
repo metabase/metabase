@@ -30,6 +30,7 @@ import {
 
 import { determineSeriesIndexFromElement } from "./tooltip";
 
+import { clipPathReference } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 import { isStructured } from "metabase/meta/Card";
@@ -588,7 +589,7 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis, isStacked
                 .enter().append("svg:path")
                     .filter((d) => d != undefined)
                     .attr("d", (d) => "M" + d.join("L") + "Z")
-                    .attr("clip-path", (d,i) => "url(#clip-"+i+")")
+                    .attr("clip-path", (d,i) => clipPathReference("clip-" + i))
                     .on("mousemove", ({ point }) => {
                         let e = point[2];
                         dispatchUIEvent(e, "mousemove");
@@ -1073,9 +1074,9 @@ export default function lineAreaBar(element, {
             const card = series[0].card;
             const [start, end] = range;
             if (isDimensionTimeseries) {
-                onChangeCardAndRun(updateDateTimeFilter(card, column, start, end));
+                onChangeCardAndRun({ nextCard: updateDateTimeFilter(card, column, start, end) });
             } else {
-                onChangeCardAndRun(updateNumericFilter(card, column, start, end));
+                onChangeCardAndRun({ nextCard: updateNumericFilter(card, column, start, end) });
             }
         }
     }
