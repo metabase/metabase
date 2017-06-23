@@ -160,7 +160,6 @@ describe("NativeQuery", () => {
                 const newQuery = makeQuery().updateQueryText(
                     "SELECT * from ORDERS where total < {{max_price}}"
                 );
-                console.log(newQuery.templateTags());
                 expect(newQuery.templateTags().length).toBe(1);
             });
         });
