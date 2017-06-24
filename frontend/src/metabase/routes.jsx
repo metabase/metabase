@@ -61,7 +61,7 @@ import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsLi
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
-import FieldXRay from "metabase/reference/containers/FieldXRay.jsx";
+import FieldXRay from "metabase/reference/containers/FieldXray.jsx";
 import TableXRay from "metabase/reference/containers/TableXRay.jsx";
 import SegmentXRay from "metabase/reference/containers/SegmentXRay.jsx";
 

@@ -28,11 +28,12 @@ class SegmentXRay extends Component {
                 <h3>XRAY</h3>
                 <div className="Grid Grid--1of2 Grid--gutters mt1">
                     <div className="Grid-cell">
-                        <h2>Fingerprint</h2>  
-                        <code className="bordered rounded shadowed py2">
-                             { JSON.stringify(this.props.fingerprint, null, 2) }
-                        </code>
-
+                        <h2>Fingerprint</h2>
+                        <pre>
+                            <code>
+                                 { JSON.stringify(this.props.fingerprint, null, 2) }
+                            </code>
+                        </pre>
                     </div>
                 </div>
             </div>
@@ -42,7 +43,7 @@ class SegmentXRay extends Component {
 
 // TODO - create selectors
 const mapStateToProps = state => ({
-    fingerprint: state.reference.segmentFingerprint, 
+    fingerprint: state.reference.segmentFingerprint,
 })
 
 const mapDispatchToProps = {
