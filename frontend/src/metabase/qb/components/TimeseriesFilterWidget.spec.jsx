@@ -47,5 +47,14 @@ describe("TimeseriesFilterWidget", () => {
         const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
         expect(widget.find(".AdminSelect-content").text()).toBe("Is Empty")
     })
+    it("should display 'Not Empty' text if that filter is selected", () => {
+        const questionWithFilter = questionWithoutFilter
+            .query()
+            .addFilter(["NOT_NULL", ["field-id", 1]])
+            .question()
+
+        const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
+        expect(widget.find(".AdminSelect-content").text()).toBe("Not Empty")
+    })
 })
 

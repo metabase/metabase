@@ -106,6 +106,10 @@ export default class TimeseriesFilterWidget extends Component {
                 currentDescription = "After " + currentDescription;
             } else if (currentFilter[0] === "<") {
                 currentDescription = "Before " + currentDescription;
+            } else if (currentFilter[0] === "IS_NULL") {
+                currentDescription = "Is Empty";
+            } else if (currentFilter[0] === "NOT_NULL") {
+                currentDescription = "Not Empty";
             }
         } else {
             currentDescription = "All Time";
