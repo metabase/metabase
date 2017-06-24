@@ -107,8 +107,7 @@
 (def Any [:type/* :type/*])
 (def Text [:type/Text :type/*])
 
-(defmulti fingerprinter (fn [opts field]
-                          (field-type field)))
+(defmulti fingerprinter #(field-type %2))
 
 (defmethod fingerprinter Num
   [{:keys [max-cost]} field]
@@ -119,7 +118,7 @@
                 :skewness stats/skewness
                 :sum (redux/with-xform + (remove nil?))
                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
-                                                          (map #(* % %))))})
+                                                          (map math/sq)))})
    (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
      (if (pos? (total-count histogram))
        (let [nil-count (nil-count histogram)
@@ -292,9 +291,9 @@
 (prefer-method fingerprinter Category Text)
 (prefer-method fingerprinter Num Category)
 
-(defmulti fingerprint (fn [_ x] (class x)))
+(defmulti fingerprint #(class %2))
 
-(def ^:private ^:const max-sample-size 10000)
+(def ^:private ^:const sample-size 10000)
 
 ;; COSTS
 ;;
@@ -304,7 +303,7 @@
 (defn- extract-query-opts
   [{:keys [max-cost]}]
   (cond-> {}
-    (some-> max-cost :query #{:sample}) (assoc :limit max-sample-size)))
+    (some-> max-cost :query #{:sample}) (assoc :limit sample-size)))
 
 (defn fingerprint-field
   [opts field data]
