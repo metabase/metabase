@@ -62,7 +62,8 @@
 
 (defn growth
   [b a]
-  (safe-divide (* (if (neg? a) -1 1) (- b a)) a)) 
+  (when (every? some? [a b])
+    (safe-divide (* (if (neg? a) -1 1) (- b a)) a)))
 
 (defn- bins
   [histogram]
@@ -120,44 +121,46 @@
                 :sum-of-squares (redux/with-xform + (comp (remove nil?)
                                                           (map #(* % %))))})
    (fn [{:keys [histogram cardinality kurtosis skewness sum sum-of-squares]}]
-     (let [nil-count (nil-count histogram)
-           total-count (total-count histogram)           
-           unique% (/ cardinality (max total-count 1))
-           var (hist/variance histogram)
-           sd (math/sqrt var)
-           min (hist/minimum histogram)
-           max (hist/maximum histogram)
-           mean (hist/mean histogram)
-           median (hist/median histogram)
-           range (- max min)]
-       {:histogram (bins histogram)
-        :percentiles (apply hist/percentiles histogram percentiles)
-        :sum sum
-        :sum-of-squares sum-of-squares
-        :positive-definite? (>= min 0)
-        :%>mean (- 1 ((hist/cdf histogram) mean))
-        :cardinality-vs-count unique%
-        :var>sd? (> var sd)
-        :nil-conunt nil-count
-        :has-nils? (pos? nil-count)
-        :0<=x<=1? (<= 0 min max 1)
-        :-1<=x<=1? (<= -1 min max 1)
-        :range-vs-sd (safe-divide range sd)
-        :range-vs-spread (safe-divide range (- mean median))
-        :range range
-        :cardinality cardinality
-        :min min
-        :max max
-        :mean mean
-        :median median
-        :var var
-        :sd sd
-        :count total-count
-        :kurtosis kurtosis
-        :skewness skewness
-        :all-distinct? (>= unique% (- 1 cardinality-error))
-        :entropy (binned-entropy histogram)
-        :type Number}))))
+     (if (pos? (total-count histogram))
+       (let [nil-count (nil-count histogram)
+             total-count (total-count histogram)           
+             unique% (/ cardinality (max total-count 1))
+             var (or (hist/variance histogram) 0)
+             sd (math/sqrt var)
+             min (hist/minimum histogram)
+             max (hist/maximum histogram)
+             mean (hist/mean histogram)
+             median (hist/median histogram)
+             range (- max min)]
+         {:histogram (bins histogram)
+          :percentiles (apply hist/percentiles histogram percentiles)
+          :sum sum
+          :sum-of-squares sum-of-squares
+          :positive-definite? (>= min 0)
+          :%>mean (- 1 ((hist/cdf histogram) mean))
+          :cardinality-vs-count unique%
+          :var>sd? (> var sd)
+          :nil-conunt nil-count
+          :has-nils? (pos? nil-count)
+          :0<=x<=1? (<= 0 min max 1)
+          :-1<=x<=1? (<= -1 min max 1)
+          :range-vs-sd (safe-divide range sd)
+          :range-vs-spread (safe-divide range (- mean median))
+          :range range
+          :cardinality cardinality
+          :min min
+          :max max
+          :mean mean
+          :median median
+          :var var
+          :sd sd
+          :count total-count
+          :kurtosis kurtosis
+          :skewness skewness
+          :all-distinct? (>= unique% (- 1 cardinality-error))
+          :entropy (binned-entropy histogram)
+          :type Number})
+       {:count 0}))))
 
 (defmethod fingerprinter [Num Num]
   [{:keys [max-cost]} [x y]]
@@ -177,12 +180,12 @@
             (take-while (partial >= (-> ts last first)))
             (map (fn [t]
                    [t (ts-index t 0)])))
-      (-> ts
-          ffirst
-          (/ timestamp-truncation-factor)
-          long
-          t.coerce/from-long
-          (t.periodic/periodic-seq step)))))
+      (some-> ts
+              ffirst
+              (/ timestamp-truncation-factor)
+              long
+              t.coerce/from-long
+              (t.periodic/periodic-seq step)))))
 
 (defmethod fingerprinter [DateTime Num]
   [{:keys [max-cost resolution]} [x y]]
@@ -195,11 +198,14 @@
                                                      :month (t/months 1) 
                                                      (t/days 1))))})
     (fn [{:keys [series linear-regression]}]
-      (let [{:keys [trend seasonal reminder]} (when-not (-> max-cost
-                                                            :computation
-                                                            #{:linear})
-                                                (tide/decompose 12 series))
-            ys-r (reverse (map second series))]        
+      (let [{:keys [trend seasonal reminder]}
+            (let [period (case resolution
+                           :month 12
+                           52)]
+              (when (and (>= (count series) (* 2 period))
+                         (-> max-cost :computation #{:linear} nil?))
+                (tide/decompose period series)))            
+            ys-r (not-empty (reverse (map second series)))]        
         (merge {:series series         
                 :linear-regression linear-regression
                 :trend trend
@@ -211,13 +217,13 @@
                          :MoM (growth (first ys-r) (second ys-r))
                          :MoM-previous (growth (second ys-r) (nth ys-r 2))}
                  {:DoD (growth (first ys-r) (second ys-r))
-                  :DoD-previous (growth (second ys-r) (nth ys-r 2)) })))))
+                  :DoD-previous (growth (second ys-r) (nth ys-r 2))})))))
    (fn [[x y]]     
      [(-> x t.format/parse t.coerce/to-long truncate-timestamp) y])))
 
 (defmethod fingerprinter [Category Any]
-  [{:keys [max-cost]} [x y]]
-  (rollup (redux/pre-step (fingerprinter y) second) first))
+  [{:keys [max-cost] :as opts} [x y]]
+  (rollup (redux/pre-step (fingerprinter opts y) second) first))
 
 (defmethod fingerprinter Text
   [{:keys [max-cost]} field]
@@ -271,15 +277,15 @@
                 :cardinality cardinality})
    (fn [{:keys [histogram cardinality]}]
      (let [nil-count (nil-count histogram)
-           total-count (total-count histogram)]
+           total-count (total-count histogram)
+           unique% (/ cardinality (max total-count 1))]
        {:histogram (bins histogram)
-        :cardinality-vs-count (/ cardinality total-count)
+        :cardinality-vs-count unique%
         :nil-conunt nil-count
         :has-nils? (pos? nil-count)
         :cardinality cardinality
         :count total-count
-        :all-distinct? (>= (/ cardinality total-count)
-                           (- 1 cardinality-error))
+        :all-distinct? (>= unique% (- 1 cardinality-error))
         :entropy (binned-entropy histogram)
         :type Category}))))
 
@@ -292,7 +298,7 @@
 
 ;; COSTS
 ;;
-;; {:query #{:sample :full-scan :joins}
+;; {:query #{:dont-touch :sample :full-scan :joins}
 ;;  :computation #{:linear :unbounded :yolo}}
 
 (defn- extract-query-opts
