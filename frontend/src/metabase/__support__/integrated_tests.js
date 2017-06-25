@@ -15,6 +15,7 @@ import { Provider } from 'react-redux';
 import { createMemoryHistory } from 'history'
 import { getStore } from "metabase/store";
 import { useRouterHistory } from "react-router";
+import _ from 'underscore';
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from 'isomorphic-fetch';
@@ -56,8 +57,11 @@ api._makeRequest = async (method, url, headers, body, data, options) => {
         }
     } else {
         const error = {status: result.status, data: await result.json()}
-        console.log('A request made in a test failed with the following error:')
-        console.dir(error, { depth: null })
+        console.log('A request made in a test failed with the following error:');
+        console.dir(error, { depth: null });
+        console.log(`The original request: ${method} ${url}`);
+        if (body) console.log(`Payload: ${body}`);
+
 
         throw error
     }
@@ -78,7 +82,55 @@ export const createReduxStore = () => {
 }
 export const createReduxStoreWithBrowserHistory = () => {
     const history = useRouterHistory(createMemoryHistory)();
-    const store = getStore(reducers, history);
+    const store = getStore(reducers, history, undefined, (createStore) => {
+        return (...args) => {
+            const store = createStore(...args);
+
+            store._originalDispatch = store.dispatch;
+
+            store._triggeredActions = []
+            store.dispatch = (action) => {
+                store._triggeredActions = store._triggeredActions.concat([action]);
+                return store._originalDispatch(action);
+            }
+
+            /**
+             * Waits until all actions with given type identifiers have been called.
+             * The polling interval is defined in `interval` and the maximum waiting time in `timeout`.
+             *
+             * Convenient in tests for waiting specific actions to be executed after mounting a React container.
+             */
+            store.waitForActions = (actionTypes, {timeout = 2000, interval = 10} = {}) => {
+                actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes]
+
+                return new Promise((resolve, reject) => {
+                    let remainingTime = timeout;
+
+                    const intervalId = setInterval(() => {
+                        if (remainingTime < 0) {
+                            clearInterval(intervalId);
+                            return reject(new Error(`Expected to find ${actionTypes.join(", ")} within ${timeout}ms, but it was never found.`))
+                        }
+
+                        const allActionsTriggered = _.every(actionTypes, actionType =>
+                            store._triggeredActions.filter((action) => action.type === actionType).length > 0
+                        )
+                        if (allActionsTriggered) {
+                            clearInterval(intervalId);
+                            return resolve();
+                        }
+
+                        remainingTime = remainingTime - interval;
+                    }, interval)
+                });
+            }
+
+            return store;
+        }
+    });
+
+
+
     return { history, store }
 }
 
