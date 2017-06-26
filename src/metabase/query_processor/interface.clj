@@ -4,7 +4,7 @@
    should go in `metabase.query-processor.middleware.expand`."
   (:require [metabase.models
              [field :as field]
-             [dimensions :as dim]]
+             [dimension :as dim]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s])

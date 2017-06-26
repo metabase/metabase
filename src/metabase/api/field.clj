@@ -3,7 +3,7 @@
             [metabase.api.common :as api]
             [metabase.db.metadata-queries :as metadata]
             [metabase.models
-             [dimensions :refer [Dimensions]]
+             [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
              [field-values :refer [create-field-values-if-needed! field-should-have-field-values? FieldValues]]]
             [metabase.util :as u]
@@ -83,17 +83,17 @@
    dimension-name         su/NonBlankString
    human_readable_field_id (s/maybe s/Int)}
   (let [field (api/read-check Field id)]
-    (if-let [dimension (Dimensions :field_id id)]
-      (db/update! Dimensions (:id dimension)
+    (if-let [dimension (Dimension :field_id id)]
+      (db/update! Dimension (:id dimension)
         {:type dimension-type
          :name dimension-name
          :human_readable_field_id human_readable_field_id})
-      (db/insert! Dimensions
+      (db/insert! Dimension
                   {:field_id id
                    :type dimension-type
                    :name dimension-name
                    :human_readable_field_id human_readable_field_id}))
-    (Dimensions :field_id id)))
+    (Dimension :field_id id)))
 
 (defn validate-human-readable-pairs
   "Human readable values are optional, but if present they must be

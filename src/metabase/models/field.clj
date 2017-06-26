@@ -6,7 +6,7 @@
              [config :as config]
              [util :as u]]
             [metabase.models
-             [dimensions :refer [Dimensions]]
+             [dimension :refer [Dimension]]
              [field-values :refer [FieldValues]]
              [humanization :as humanization]
              [interface :as i]
@@ -120,10 +120,10 @@
       (assoc field :values (get id->field-values (:id field) [])))))
 
 (defn with-dimensions
-  "Efficiently hydrate the `Dimensions` for a collection of FIELDS."
+  "Efficiently hydrate the `Dimension` for a collection of FIELDS."
   {:batched-hydrate :dimensions}
   [fields]
-  (let [id->dimensions (keyed-by-field-ids fields Dimensions)]
+  (let [id->dimensions (keyed-by-field-ids fields Dimension)]
     (for [field fields]
       (assoc field :dimensions (get id->dimensions (:id field) [])))))
 

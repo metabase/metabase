@@ -9,7 +9,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.models
-             [dimensions :refer [Dimensions]]
+             [dimension :refer [Dimension]]
              [field-values :refer [FieldValues]]]
             [toucan.db :as db]
             [metabase.test.data.dataset-definitions :as defs]))
@@ -99,9 +99,9 @@
   (data/with-data
     (fn []
       (let [venue-names (defs/field-values defs/test-data-map "categories" "name")]
-        [(db/insert! Dimensions {:field_id (data/id :venues :category_id)
-                                 :name "Foo"
-                                 :type :internal})
+        [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                                :name "Foo"
+                                :type :internal})
          (db/insert! FieldValues {:field_id (data/id :venues :category_id)
                                   :values (json/generate-string (range 0 (count venue-names)))
                                   :human_readable_values (json/generate-string venue-names)})]))

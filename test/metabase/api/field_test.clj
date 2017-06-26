@@ -2,7 +2,6 @@
   (:require [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.models
-             [dimensions :refer [Dimensions]]
              [field :refer [Field]]
              [field-values :refer [FieldValues]]
              [table :refer [Table]]]

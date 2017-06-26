@@ -10,7 +10,6 @@
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
-             [dimensions :refer [Dimensions]]
              [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as perms-group]
@@ -21,9 +20,6 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [users :refer :all]]
-            [toucan
-             [db :as db]
-             [hydrate :as hydrate]]
             [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)

@@ -3675,7 +3675,7 @@ databaseChangeLog:
       author: senior
       changes:
         - createTable:
-            tableName: dimensions
+            tableName: dimension
             remarks: 'Stores references to alternate views of existing fields, such as remapping an integer to a description, like an enum'
             columns:
               - column:
@@ -3732,6 +3732,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
         - addUniqueConstraint:
-            tableName: dimensions
+            tableName: dimension
             columnNames: field_id, name
             constraintName: unique_dimension_field_id_name
+        - createIndex:
+            tableName: dimension
+            indexName: idx_dimension_field_id
+            columns:
+              - column:
+                  name: field_id

@@ -1,15 +1,15 @@
-(ns metabase.models.dimensions
+(ns metabase.models.dimension
   (:require [toucan.models :as models]
             [metabase.util :as u]))
 
 (def dimension-types
-  "Possible values for `Dimensions.type`"
+  "Possible values for `Dimension.type`"
   #{:internal
     :external})
 
-(models/defmodel Dimensions :dimensions)
+(models/defmodel Dimension :dimension)
 
-(u/strict-extend (class Dimensions)
+(u/strict-extend (class Dimension)
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:type :keyword})

@@ -13,7 +13,7 @@
             metabase.driver.h2
             [metabase.models
              [database :refer [Database]]
-             [dimensions :refer [Dimensions]]
+             [dimension :refer [Dimension]]
              [field :as field :refer [Field]]
              [field-values :refer [FieldValues]]
              [table :refer [Table]]]
@@ -317,9 +317,9 @@
   `with-data` invocation."
   [remapping-name]
   (fn []
-    [(db/insert! Dimensions {:field_id (id :venues :category_id)
-                             :name remapping-name
-                             :type :internal})
+    [(db/insert! Dimension {:field_id (id :venues :category_id)
+                            :name remapping-name
+                            :type :internal})
      (db/insert! FieldValues {:field_id (id :venues :category_id)
                               :values (json/generate-string (range 0 (count venue-categories)))
                               :human_readable_values (json/generate-string (map first venue-categories))})]))
@@ -330,7 +330,7 @@
   `with-data` invocation."
   [remapping-name]
   (fn []
-    [(db/insert! Dimensions {:field_id (id :venues :category_id)
-                             :name remapping-name
-                             :type :external
-                             :human_readable_field_id (id :categories :name)})]))
+    [(db/insert! Dimension {:field_id (id :venues :category_id)
+                            :name remapping-name
+                            :type :external
+                            :human_readable_field_id (id :categories :name)})]))
