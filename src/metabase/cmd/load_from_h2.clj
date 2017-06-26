@@ -68,42 +68,42 @@
   "Entities in the order they should be serialized/deserialized.
    This is done so we make sure that we load load instances of entities before others
    that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
-  [Database
-   RawTable
-   RawColumn
-   User
-   Setting
-   Dependency
-   Table
-   Field
-   FieldValues
-   Segment
-   Metric
-   MetricImportantField
-   Revision
-   ViewLog
-   Session
-   Dashboard
+  [Activity
    Card
    CardFavorite
+   CardLabel
+   Collection
+   CollectionRevision
+   Dashboard
    DashboardCard
    DashboardCardSeries
-   Activity
+   DashboardFavorite
+   Database
+   Dependency
+   Field
+   FieldFingerprint
+   FieldValues
+   Label
+   Metric
+   MetricImportantField
+   Permissions
+   PermissionsGroup
+   PermissionsGroupMembership
+   PermissionsRevision
    Pulse
    PulseCard
    PulseChannel
    PulseChannelRecipient
-   Label
-   CardLabel
-   PermissionsGroup
-   PermissionsGroupMembership
-   Permissions
-   PermissionsRevision
-   Collection
-   CollectionRevision
-   DashboardFavorite
-   FieldFingerprint
+   RawColumn
+   RawTable
+   Revision
+   Segment
+   Session
+   Setting
+   Table
    TableFingerprint
+   User
+   ViewLog
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed above this line)
    DataMigrations])
 
