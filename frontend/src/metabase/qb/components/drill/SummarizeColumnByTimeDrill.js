@@ -37,11 +37,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
         question: () =>
             question
                 .summarize([aggregation, getFieldRefFromColumn(column)])
-                .pivot([
+                .pivot([[
                     "datetime-field",
                     getFieldRefFromColumn(dateField),
                     "as",
                     "day"
-                ])
+                ]])
     }));
 };

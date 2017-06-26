@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import moment from "moment";
+import _ from "underscore";
 
 import Q from "metabase/lib/query"; // legacy query lib
 import * as Card from "metabase/meta/Card";
@@ -9,7 +10,7 @@ import * as Field from "metabase/lib/query/field";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
 import { rangeForValue } from "metabase/lib/dataset";
-import { isDate, isState, isCountry } from "metabase/lib/schema_metadata";
+import { isDate, isState, isCountry, isCoordinate } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
 import type Table from "metabase-lib/lib/metadata/Table";
@@ -172,39 +173,53 @@ export const drillDownForDimensions = dimensions => {
     const binnedDimensions = dimensions.filter(
         dimension => dimension.column.binning_info
     );
+    // single timeseries breakout
     if (timeDimensions.length === 1) {
         const column = timeDimensions[0].column;
         let nextUnit = getNextUnit(column.unit);
         if (nextUnit && nextUnit !== column.unit) {
             return {
                 name: column.unit,
-                breakout: [
+                breakouts: [[
                     "datetime-field",
                     getFieldRefFromColumn(column),
                     nextUnit
-                ]
+                ]]
             };
         }
-    } else if (binnedDimensions.length === 1) {
+    }
+    // single generic numeric binned breakout
+    else if (binnedDimensions.length === 1) {
         const column = binnedDimensions[0].column;
         if (column.binning_info.binning_strategy === "num-bins") {
             return {
-                breakout: [
+                breakouts: [[
                     "binning-strategy",
                     getFieldRefFromColumn(column),
                     "num-bins",
                     column.binning_info.num_bins
-                ]
+                ]]
             }
         } else {
             return {
-                breakout: [
+                breakouts: [[
                     "binning-strategy",
                     getFieldRefFromColumn(column),
                     "bin-width",
                     column.binning_info.bin_width / 10
-                ]
+                ]]
             }
+        }
+    }
+    // binned lat/lon breakouts
+    else if (binnedDimensions.length === 2 && _.all(dimensions, ({ column }) => isCoordinate(column))) {
+        return {
+            breakouts: binnedDimensions.map(dimension => [
+                "binning-strategy",
+                getFieldRefFromColumn(dimension.column),
+                "num-bins",
+                dimension.column.binning_info.num_bins
+            ])
         }
     }
 };
@@ -342,8 +357,8 @@ export const updateNumericFilter = (card, column, start, end) => {
 
 export const pivot = (
     card: CardObject,
-    breakout,
     tableMetadata: Table,
+    breakouts: Breakout[] = [],
     dimensions: DimensionValue[] = []
 ): ?CardObject => {
     if (card.dataset_query.type !== "query") {
@@ -369,11 +384,13 @@ export const pivot = (
         }
     }
 
-    newCard.dataset_query.query = Query.addBreakout(
-        // $FlowFixMe
-        newCard.dataset_query.query,
-        breakout
-    );
+    for (const breakout of breakouts) {
+        newCard.dataset_query.query = Query.addBreakout(
+            // $FlowFixMe
+            newCard.dataset_query.query,
+            breakout
+        );
+    }
 
     guessVisualization(newCard, tableMetadata);
 
@@ -421,6 +438,9 @@ const guessVisualization = (card: CardObject, tableMetadata: Table) => {
         if (!VISUALIZATIONS_TWO_BREAKOUTS.has(card.display)) {
             if (isDate(breakoutFields[0])) {
                 card.display = "line";
+            } else if (_.all(breakoutFields, isCoordinate)) {
+                card.display = "map";
+                card.visualization_settings["map.type"] = "grid";
             } else {
                 card.display = "bar";
             }

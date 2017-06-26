@@ -116,6 +116,11 @@ export function getDefaultDimensionAndMetric([{ data: { cols, rows } }]) {
             dimension: cols[0].name,
             metric: cols[1].name
         };
+    } else if (type === DIMENSION_DIMENSION_METRIC) {
+        return {
+            dimension: null,
+            metric: cols[2].name
+        };
     } else {
         return {
             dimension: null,

@@ -21,7 +21,8 @@ export default class LeafletMap extends Component {
             const map = this.map = L.map(element, {
                 scrollWheelZoom: false,
                 minZoom: 2,
-                drawControlTooltips: false
+                drawControlTooltips: false,
+                zoomSnap: false
             });
 
             const drawnItems = new L.FeatureGroup();
@@ -123,11 +124,25 @@ export default class LeafletMap extends Component {
         );
     }
 
-    _getLatLongIndexes() {
+    _getLatLonIndexes() {
         const { settings, series: [{ data: { cols }}] } = this.props;
         return {
             latitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]),
             longitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.longitude_column"])
         };
+    }
+
+    _getLatLonColumns() {
+        const { series: [{ data: { cols }}] } = this.props;
+        const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
+        return {
+            latitudeColumn: cols[latitudeIndex],
+            longitudeColumn: cols[longitudeIndex]
+        };
+    }
+
+    _getMetricColumn() {
+        const { settings, series: [{ data: { cols }}] } = this.props;
+        return _.findWhere(cols, { name: settings["map.metric_column"] });
     }
 }

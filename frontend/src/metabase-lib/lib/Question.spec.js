@@ -263,10 +263,10 @@ describe("Question", () => {
     describe("canPivot", () => {
         const ordersCountQuestion = new Question(metadata, ordersCountDataCard);
         it("pivoting by datetime dimension works", () => {
-            const pivotedCard = ordersCountQuestion.pivot([
+            const pivotedCard = ordersCountQuestion.pivot([[
                 "field-id",
                 ORDERS_CREATED_DATE_FIELD_ID
-            ]);
+            ]]);
             expect(pivotedCard.canRun()).toBe(true);
 
             // if I actually call the .query() method below, this blows up garbage collection =/
@@ -286,10 +286,10 @@ describe("Question", () => {
             });
         });
         it("pivoting by a PK dimension works", () => {
-            const pivotedCard = ordersCountQuestion.pivot([
+            const pivotedCard = ordersCountQuestion.pivot([[
                 "field-id",
                 ORDERS_PK_FIELD_ID
-            ]);
+            ]]);
             expect(pivotedCard.canRun()).toBe(true);
 
             // if I actually call the .query() method below, this blows up garbage collection =/

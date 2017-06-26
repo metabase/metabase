@@ -64,6 +64,15 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
     }
 }
 
+export function formatCoordinate(value: number, options: FormattingOptions = {}) {
+    const binWidth = options.column && options.column.binning_info && options.column.binning_info.bin_width;
+    return DECIMAL_DEGREES_FORMATTER(value) + "°";
+}
+
+export function formatRange(range: [number, number], formatter: (value: number) => string, options: FormattingOptions = {}) {
+    return range.map(value => formatter(value, options)).join(` ${RANGE_SEPARATOR} `);
+}
+
 function formatMajorMinor(major, minor, options = {}) {
     options = {
         jsx: false,
@@ -219,15 +228,14 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
     } else if (typeof value === "string") {
         return formatStringFallback(value, options);
     } else if (typeof value === "number") {
-        if (isCoordinate(column)) {
-            return DECIMAL_DEGREES_FORMATTER(value);
+        const formatter = isCoordinate(column) ?
+            formatCoordinate :
+            formatNumber;
+        const range = rangeForValue(value, options.column);
+        if (range) {
+            return formatRange(range, formatter, options);
         } else {
-            const range = rangeForValue(value, options.column);
-            if (range) {
-                return range.map(v => formatNumber(v, options)).join(` ${RANGE_SEPARATOR} `);
-            } else {
-                return formatNumber(value, options);
-            }
+            return formatter(value, options);
         }
     } else if (typeof value === "object") {
         // no extra whitespace for table cells

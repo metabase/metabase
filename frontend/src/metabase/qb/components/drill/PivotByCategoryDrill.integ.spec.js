@@ -17,7 +17,7 @@ describe("PivotByCategoryDrill", () => {
             .addAggregation(["count"])
             .question()
 
-        const pivotedQuestion = question.pivot(["field-id", 4], [])
+        const pivotedQuestion = question.pivot([["field-id", 4]])
 
         const results = await pivotedQuestion.getResults()
         expect(results[0]).toBeDefined();

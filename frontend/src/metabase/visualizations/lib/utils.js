@@ -203,9 +203,9 @@ export function getChartTypeFromData(cols, rows, strict = true) {
     if (isDimensionMetricMetric(cols, strict)) {
         return DIMENSION_METRIC_METRIC;
     } else if (isDimensionDimensionMetric(cols, strict)) {
-        if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
+        // if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
             return DIMENSION_DIMENSION_METRIC;
-        }
+        // }
     } else if (isDimensionMetric(cols, strict)) {
         return DIMENSION_METRIC;
     }

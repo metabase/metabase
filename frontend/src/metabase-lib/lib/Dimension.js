@@ -476,14 +476,14 @@ export class BinnedDimension extends FieldDimension {
     }
 
     subDisplayName(): string {
-        if (this._args[0] === "default") {
+        if (this._args[0] === "default" || this._args[0] === "num-bins") {
             return `Quantized into ${this._args[1]} ${inflect("bins", this._args[1])}`;
         }
         return JSON.stringify(this._args);
     }
 
     subTriggerDisplayName(): string {
-        if (this._args[0] === "default") {
+        if (this._args[0] === "default" || this._args[0] === "num-bins") {
             return `${this._args[1]} ${inflect("bins", this._args[1])}`;
         }
         return "";
