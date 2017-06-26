@@ -36,9 +36,8 @@
              [database :refer [Database]]
              [dependency :refer [Dependency]]
              [field :refer [Field]]
-             [field-values :refer [FieldValues]]
              [field-fingerprint :refer [FieldFingerprint]]
-             [table-fingerprint :refer [TableFingerprint]]
+             [field-values :refer [FieldValues]]
              [label :refer [Label]]
              [metric :refer [Metric]]
              [metric-important-field :refer [MetricImportantField]]
@@ -57,6 +56,7 @@
              [session :refer [Session]]
              [setting :refer [Setting]]
              [table :refer [Table]]
+             [table-fingerprint :refer [TableFingerprint]]
              [user :refer [User]]
              [view-log :refer [ViewLog]]]))
 

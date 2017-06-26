@@ -152,10 +152,8 @@
 (defn- analyze-table [table new-field-ids]
   ;; this is actually for caching values.
   ;; We only care about 1) table counts and 2) field values
-  {#_:row_count #_(cached-values/table-row-count table)
-   :fields    (for [{:keys [id] :as field} (table/fields table)
-                    #_:when #_(classify/test-for-cardinality? field (contains? new-field-ids (:id field)))]
-                (cached-values/extract-field-values field {:id id}))})
+  {:fields (for [{:keys [id] :as field} (table/fields table)]
+             (cached-values/extract-field-values field {:id id}))})
 
 (defn- field-values-lazy-seq [{:keys [qualified-name-components table], :as field}]
   (assert (and (map? field)

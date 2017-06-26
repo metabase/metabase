@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [GET PUT]]
             [metabase
+             [driver :as driver]
              [sync-database :as sync-database]
              [util :as u]]
             [metabase.api.common :as api]
@@ -12,14 +13,13 @@
              [table :as table :refer [Table]]]
             [metabase.sync-database
              [analyze :as analyze]
-             [cached-values :as cached-values]]
+             [cached-values :as cached-values]
+             [classify :as classify]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [metabase.sync-database.classify :as classify]
-            [metabase.driver :as driver]))
+             [hydrate :refer [hydrate]]]))
 
 ;; TODO - I don't think this is used for anything any more
 (def ^:private ^:deprecated TableEntityType
@@ -71,7 +71,7 @@
                      :description             description))
     (api/check-500 (db/update! Table id, :visibility_type visibility_type))
     (let [updated-table (Table id)
-          driver (->> id table/table-id->database-id driver/database-id->driver) ;; is this the easy way to do this?
+          driver (driver/database-id->driver (:db_id updated-table))
           new-visibility (visible-state? (:visibility_type updated-table))
           old-visibility (visible-state? original-visibility-type)
           table-now-visible? (and (not= new-visibility

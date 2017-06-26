@@ -15,11 +15,11 @@
   (async/chan))
 
 (def ^:private sync-update-channel
-  "Channel for receiving event notifications we want to subscribe to for database sync events."
+  "channel for events that happen when a DB is changed or a new DB created."
   (async/chan))
 
 (def ^:private sync-delete-channel
-  "Channel for receiving event notifications we want to subscribe to for database sync events."
+  "channel for events where a manual sync has been requested."
   (async/chan))
 
 

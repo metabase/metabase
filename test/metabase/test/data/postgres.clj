@@ -24,17 +24,17 @@
   (merge {:host     (or (env :mb-test-db-host)
                         "localhost")
           :port     (or (env :mb-test-db-port)
-                        5432) 
+                        5432)
           :timezone :America/Los_Angeles}
          (when (env :circleci)
            {:user "ubuntu"})
          (when (= context :db)
            {:db database-name})
-         (when-let [password (env :mb-test-db-pass)]
+         (when-let [password (env :mb-pg-test-db-pass)]
            {:password password})
-         (when-let [user (env :mb-test-db-user)]
+         (when-let [user (env :mb-pg-test-db-user)]
            {:user user})
-         (when-let [db (env :mb-test-db-dbname)]
+         (when-let [db (env :mb-pg-test-db-dbname)]
            {:db db})))
 
 (defn- kill-connections-to-db-sql

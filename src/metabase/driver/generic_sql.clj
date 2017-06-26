@@ -276,54 +276,6 @@
 (defn- table-rows-seq [driver database table]
   (query driver database table {:select [:*]}))
 
-#_(defn- field-avg-length [driver field]
-  (let [table (field/table field)
-        db    (table/database table)]
-    (or (some-> (query driver db table {:select [[(hsql/call :avg (string-length-fn driver (qualify+escape table field))) :len]]})
-                first
-                :len
-                math/round
-                int)
-        0)))
-
-#_(defn- url-percentage [url-count total-count]
-  (double (if (and total-count (pos? total-count) url-count)
-            ;; make sure to coerce to Double before dividing because if it's a BigDecimal division can fail for non-terminating floating-point numbers
-            (/ (double url-count)
-               (double total-count))
-            0.0)))
-
-;; TODO - Full table scan!?! Maybe just fetch first N non-nil values and do in Clojure-land instead
-#_(defn slow-field-percent-urls
-  "Slow implementation of `field-percent-urls` that (probably) requires a full table scan.
-   Only use this for DBs where `fast-field-percent-urls` doesn't work correctly, like SQLServer."
-  [driver field]
-  (let [table       (field/table field)
-        db          (table/database table)
-        field-k     (qualify+escape table field)
-        total-count (:count (first (query driver db table {:select [[:%count.* :count]]
-                                                           :where  [:not= field-k nil]})))
-        url-count   (:count (first (query driver db table {:select [[:%count.* :count]]
-                                                           :where  [:like field-k (hx/literal "http%://_%.__%")]})))]
-    (url-percentage url-count total-count)))
-
-
-#_(defn fast-field-percent-urls
-  "Fast, default implementation of `field-percent-urls` that avoids a full table scan."
-  [driver field]
-  (let [table       (field/table field)
-        db          (table/database table)
-        field-k     (qualify+escape table field)
-        pk-field    (field/Field (table/pk-field-id table))
-        results     (map :is_url (query driver db table (merge {:select [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
-                                                                :where  [:not= field-k nil]
-                                                                :limit  driver/max-sync-lazy-seq-results}
-                                                               (when pk-field
-                                                                 {:order-by [[(qualify+escape table pk-field) :asc]]}))))
-        total-count (count results)
-        url-count   (count (filter #(or (true? %) (= % 1)) results))]
-    (url-percentage url-count total-count)))
-
 
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."

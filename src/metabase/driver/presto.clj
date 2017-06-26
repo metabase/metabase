@@ -16,11 +16,10 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.analyze :as analyze]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]
-            [metabase.sync-database.cached-values :as cached-values])
+             [ssh :as ssh]])
   (:import java.util.Date
            [metabase.query_processor.interface DateTimeValue Value]))
 
@@ -125,9 +124,7 @@
     (if (= v "NaN") 0.0 v)))
 
 (defn- analyze-table [driver table new-table-ids]
-  ((cached-values/make-field-extractor driver
-     :field-avg-length-fn   field-avg-length
-     :field-percent-urls-fn field-percent-urls) driver table new-table-ids))
+  ((cached-values/make-field-extractor driver) driver table new-table-ids))
 
 (defn- can-connect? [{:keys [catalog] :as details}]
   (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog) " LIKE 'information_schema'"))]
