@@ -34,9 +34,11 @@ export default class FieldApp extends Component {
                         <FieldRemapping />
                     </Section>
 
+                    { /*
                     <Section>
                         <FieldCache />
                     </Section>
+                    */}
                 </div>
             </div>
         )
