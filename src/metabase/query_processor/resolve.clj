@@ -100,7 +100,7 @@
 
 ;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
-(defn- field-ph-resolve-field [{:keys [field-id datetime-unit fk-field-id binning-strategy], :as this} field-id->field]
+(defn- field-ph-resolve-field [{:keys [field-id datetime-unit fk-field-id binning-strategy binning-param], :as this} field-id->field]
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
                                                                i/map->Field
                                                                (assoc :fk-field-id fk-field-id))]
@@ -109,9 +109,20 @@
           (isa? special-type :type/DateTime))
       (i/map->DateTimeField {:field field
                              :unit  (or datetime-unit :day)}) ; default to `:day` if a unit wasn't specified
-      binning-strategy
+
+      (= :num-bins binning-strategy)
       (i/map->BinnedField {:field field
-                           :num-bins binning-strategy})
+                           :strategy binning-strategy
+                           :num-bins binning-param})
+
+      (= :bin-width binning-strategy)
+      (i/map->BinnedField {:field     field
+                           :strategy  binning-strategy
+                           :bin-width binning-param})
+
+      binning-strategy
+      (throw (Exception. (format "Unregonized binning strategy '%s'" binning-strategy)))
+
       :else field)
     ;; If that fails just return ourselves as-is
     this))

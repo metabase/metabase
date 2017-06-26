@@ -19,6 +19,9 @@
                                {k (obj->map v)}))
     :else           o))
 
+(def ^:private field-ph-defaults
+  {:fk-field-id      nil, :datetime-unit nil,
+   :binning-strategy nil, :binning-param nil})
 
 ;; basic rows query w/ filter
 (expect
@@ -27,14 +30,10 @@
     :type     :query
     :query    {:source-table (id :venues)
                :filter       {:filter-type :>
-                              :field       {:field-id         (id :venues :price)
-                                            :fk-field-id      nil
-                                            :datetime-unit    nil
-                                            :binning-strategy nil}
-                              :value       {:field-placeholder {:field-id         (id :venues :price)
-                                                                :fk-field-id      nil
-                                                                :datetime-unit    nil
-                                                                :binning-strategy nil}
+                              :field       (merge field-ph-defaults
+                                                  {:field-id (id :venues :price)})
+                              :value       {:field-placeholder (merge field-ph-defaults
+                                                                      {:field-id (id :venues :price)})
                                             :value             1}}}}
    ;; resolved form
    {:database     (id)
@@ -92,14 +91,12 @@
     :type     :query
     :query    {:source-table (id :venues)
                :filter       {:filter-type :=
-                              :field       {:field-id         (id :categories :name)
-                                            :fk-field-id      (id :venues :category_id)
-                                            :datetime-unit    nil
-                                            :binning-strategy nil}
-                              :value       {:field-placeholder {:field-id         (id :categories :name)
-                                                                :fk-field-id      (id :venues :category_id)
-                                                                :datetime-unit    nil
-                                                                :binning-strategy nil}
+                              :field       (merge field-ph-defaults
+                                                  {:field-id         (id :categories :name)
+                                                   :fk-field-id      (id :venues :category_id)})
+                              :value       {:field-placeholder (merge field-ph-defaults
+                                                                      {:field-id         (id :categories :name)
+                                                                       :fk-field-id      (id :venues :category_id)})
                                             :value             "abc"}}}}
    ;; resolved form
    {:database     (id)
@@ -165,14 +162,14 @@
     :type     :query
     :query    {:source-table (id :checkins)
                :filter       {:filter-type :>
-                              :field       {:field-id         (id :users :last_login)
-                                            :fk-field-id      (id :checkins :user_id)
-                                            :datetime-unit    :year
-                                            :binning-strategy nil}
-                              :value       {:field-placeholder {:field-id         (id :users :last_login)
-                                                                :fk-field-id      (id :checkins :user_id)
-                                                                :datetime-unit    :year
-                                                                :binning-strategy nil}
+                              :field       (merge field-ph-defaults
+                                                  {:field-id         (id :users :last_login)
+                                                   :fk-field-id      (id :checkins :user_id)
+                                                   :datetime-unit    :year})
+                              :value       {:field-placeholder (merge field-ph-defaults
+                                                                      {:field-id         (id :users :last_login)
+                                                                       :fk-field-id      (id :checkins :user_id)
+                                                                       :datetime-unit    :year})
                                             :value             "1980-01-01"}}}}
    ;; resolved form
    {:database     (id)
@@ -241,14 +238,12 @@
     :query    {:source-table (id :checkins)
                :aggregation  [{:aggregation-type :sum
                                :custom-name      nil
-                               :field            {:field-id      (id :venues :price)
-                                                  :fk-field-id   (id :checkins :venue_id)
-                                                  :datetime-unit nil
-                                                  :binning-strategy nil}}]
-               :breakout     [{:field-id      (id :checkins :date)
-                               :fk-field-id   nil
-                               :datetime-unit :day-of-week
-                               :binning-strategy nil}]}}
+                               :field            (merge field-ph-defaults
+                                                        {:field-id      (id :venues :price)
+                                                         :fk-field-id   (id :checkins :venue_id)})}]
+               :breakout     [(merge field-ph-defaults
+                                     {:field-id      (id :checkins :date)
+                                      :datetime-unit :day-of-week})]}}
    ;; resolved form
    {:database     (id)
     :type         :query
