@@ -9,10 +9,13 @@ import { parse as urlParse } from "url";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { mount } from "enzyme";
-import { DATABASE_ID, ORDERS_TABLE_ID, metadata } from "metabase/__support__/sample_dataset_fixture";
+import {
+    DATABASE_ID, ORDERS_TABLE_ID, metadata,
+    ORDERS_TOTAL_FIELD_ID
+} from "metabase/__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
 import { CardApi } from "metabase/services";
-import { INITIALIZE_QB, QUERY_COMPLETED, QUERY_ERRORED } from "metabase/query_builder/actions";
+import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import QueryHeader from "metabase/query_builder/components/QueryHeader";
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
 
@@ -58,17 +61,17 @@ describe("QueryBuilder", () => {
             const location = urlParse("/question")
             const qbContainer = mount(getQBContainer(location));
             await store.waitForActions([INITIALIZE_QB]);
-            expect(qbContainer.find(QueryHeader).length).toBe(1)
+            expect(qbContainer.find(QueryHeader).find("h1").text()).toBe("New question")
         });
     });
 
     describe("for saved questions", async () => {
         it("renders normally on page load", async () => {
-            const question = await createSavedQuestion()
-            const location = urlParse(`/question/${question.id()}`)
-            const qbContainer = mount(getQBContainer(location, question.id()));
+            const savedQuestion = await createSavedQuestion()
+            const location = urlParse(`/question/${savedQuestion.id()}`)
+            const qbContainer = mount(getQBContainer(location, savedQuestion.id()));
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
-            expect(qbContainer.find(QueryHeader).length).toBe(1)
+            expect(qbContainer.find(QueryHeader).find("h1").text()).toBe(savedQuestion.displayName())
         });
     });
 
@@ -78,7 +81,7 @@ describe("QueryBuilder", () => {
                 const location = urlParse(unsavedQuestion.getUrl())
                 const qbContainer = mount(getQBContainer(location));
                 await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
-                expect(qbContainer.find(QueryHeader).length).toBe(1)
+                expect(qbContainer.find(QueryHeader).find("h1").text()).toBe("New question")
             });
             it("fails with a proper error message if the query is invalid", async () => {
                 const invalidQuestion = unsavedQuestion.query()
@@ -90,14 +93,29 @@ describe("QueryBuilder", () => {
                 // TODO: How to get rid of the delay? There is asynchronous initialization in some of VisualizationError parent components
                 // Making the delay shorter causes Jest test runner to crash, see https://stackoverflow.com/a/44075568
                 await delay(1000);
+                expect(qbContainer.find(QueryHeader).find("h1").text()).toBe("New question")
                 expect(qbContainer.find(VisualizationError).length).toBe(1)
-                // Maybe these should be in VisualizationError test instead:
-                expect(qbContainer.find(".QueryError-image").length).toBe(1)
-                expect(qbContainer.find(".QueryError-image").children().length).toBeGreaterThan(0)
             });
         })
         describe("with original saved question", () => {
-            pending();
+            it("should render normally on page load", async () => {
+                const savedQuestion = await createSavedQuestion();
+
+                const dirtyQuestion = savedQuestion
+                    .query()
+                    .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID])
+                    .question()
+                dirtyQuestion._card = { ...dirtyQuestion._card, original_card_id: dirtyQuestion.id() }
+
+                const location = urlParse(dirtyQuestion.getUrl())
+                const qbContainer = mount(getQBContainer(location));
+                await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
+                await delay(1000);
+
+                const title = qbContainer.find(QueryHeader).find("h1")
+                expect(title.text()).toBe("New question")
+                expect(title.parent().children().at(1).text()).toBe(`started from ${savedQuestion.displayName()}`)
+            });
         });
     });
 
