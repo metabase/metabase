@@ -1018,7 +1018,7 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) => {
     return async (dispatch, getState) => {
-        if (error && error.status === 0) {
+        if (error && error.isCancelled) {
             // cancelled, do nothing
             return null;
         } else {
@@ -1031,10 +1031,10 @@ export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) 
 export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
     return async (dispatch, getState) => {
-        const { qb: { uiControls, queryExecutionPromise } } = getState();
+        const { qb: { uiControls, cancelQueryDeferred } } = getState();
 
-        if (uiControls.isRunning && queryExecutionPromise) {
-            queryExecutionPromise.resolve();
+        if (uiControls.isRunning && cancelQueryDeferred) {
+            cancelQueryDeferred.resolve();
         }
     };
 });
