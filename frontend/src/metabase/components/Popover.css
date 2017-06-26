@@ -170,3 +170,25 @@
 	height: 6px;
 	pointer-events: none;
 }
+
+ /* transition classes */
+
+.Popover-appear,
+.Popover-enter {
+  opacity: 0.01;
+}
+
+.Popover-appear.Popover-appear-active,
+.Popover-enter.Popover-enter-active {
+  opacity: 1;
+  transition: opacity 100ms ease-in;
+}
+
+.Popover-leave {a
+  opacity: 1;
+}
+
+.Popover-leave.Popover-leave-active {
+  opacity: 0.01;
+  transition: opacity 100ms ease-in;
+}
