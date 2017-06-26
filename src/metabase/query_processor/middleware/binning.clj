@@ -31,6 +31,10 @@
   (u/round-to-decimals 5 (/ (- max-value min-value)
                             num-bins)))
 
+(defn- calculate-num-bins [min-value max-value bin-width]
+  (Math/ceil (/ (- max-value min-value)
+                bin-width)))
+
 (defn- extract-bounds
   "Given query criteria, find a min/max value for the binning strategy
   using the greatest user specified min value and the smallest user
@@ -60,17 +64,23 @@
   specified crtieria that could impact that min/max. Throws an
   Exception if no min/max values are found."
   [breakouts filter-field-map]
-  (mapv (fn [{:keys [field num-bins] :as breakout}]
+  (mapv (fn [{:keys [field num-bins bin-width] :as breakout}]
           (if (instance? BinnedField breakout)
-            (let [[min-value max-value] (extract-bounds field filter-field-map)]
+            (let [[min-value max-value] (extract-bounds field filter-field-map)
+                  updated-breakout (assoc breakout :min-value min-value :max-value max-value)]
               (when-not (and min-value max-value)
                 (throw (Exception. (format "Unable to bin field '%s' with id '%s' without a min/max value"
                                            (get-in breakout [:field :field-name])
                                            (get-in breakout [:field :field-id])))))
-              (assoc breakout
-                :min-value min-value
-                :max-value max-value
-                :bin-width (calculate-bin-width min-value max-value num-bins)))
+              (cond
+
+                (= :num-bins (:strategy updated-breakout))
+                (assoc updated-breakout
+                  :bin-width (calculate-bin-width min-value max-value num-bins))
+
+                (= :bin-width (:strategy updated-breakout))
+                (assoc updated-breakout
+                  :num-bins (calculate-num-bins min-value max-value bin-width))))
             breakouts))
         breakouts))
 
