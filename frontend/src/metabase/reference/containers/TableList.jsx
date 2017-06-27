@@ -2,11 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import moment from "moment";
 
-import visualizations from "metabase/visualizations";
 import { isQueryable } from "metabase/lib/table";
-import * as Urls from "metabase/lib/urls";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -23,7 +20,6 @@ import ReferenceHeader from "../components/ReferenceHeader.jsx";
 import {
     getSection,
     getData,
-    getUser,
     getHasSingleSchema,
     getError,
     getLoading
@@ -40,7 +36,6 @@ const emptyStateData = {
 const mapStateToProps = (state, props) => ({
     section: getSection(state, props),
     entities: getData(state, props),
-    user: getUser(state, props),
     hasSingleSchema: getHasSingleSchema(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
@@ -97,7 +92,6 @@ export default class TableList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
-        user: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         loading: PropTypes.bool,
@@ -107,7 +101,6 @@ export default class TableList extends Component {
     render() {
         const {
             entities,
-            user,
             style,
             section,
             hasSingleSchema,
