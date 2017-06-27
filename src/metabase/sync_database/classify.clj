@@ -172,7 +172,7 @@
 
 (defn classify-tables!
   "classify and save all previously saved fingerprints for tables in this database"
-  [driver {database-id :id, :as database}]
+  [{database-id :id, :as database}]
   (let [start-time-ns         (System/nanoTime)
         tables                (db/select table/Table, :db_id database-id, :active true, :visibility_type nil)
         tables-count          (count tables)
@@ -186,9 +186,9 @@
           (u/prog1 (swap! finished-tables-count inc)
             (log/info (u/format-color 'blue "%s Classified table '%s'." (u/emoji-progress-bar <> tables-count) table-name))))))
 
-    (log/info (u/format-color 'blue "Classification of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
+    (log/info (u/format-color 'blue "Classification of %s database '%s' completed (%s)." (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
 
 (defn classify-database!
   "analyze all the tables in one database"
   [db]
-  (classify-tables! (->> db :id driver/database-id->driver) db))
+  (classify-tables! db))
