@@ -99,7 +99,7 @@
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
 (expect-with-non-timeseries-dbs
-  [[10.1 1] [33.1 61] [36.9 38]]
+  [[10.1 1] [33.1 61] [36.9 37] [40.8 1]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
