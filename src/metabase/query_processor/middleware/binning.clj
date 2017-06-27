@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.binning
   (:require [clojure.walk :as walk]
             [metabase.util :as u]
-            [metabase.query-processor.interface :as i])
+            [metabase.query-processor.interface :as i]
+            [metabase.public-settings :as public-settings])
   (:import [metabase.query_processor.interface BinnedField ComparisonFilter BetweenFilter]))
 
 (defn- update!
@@ -59,6 +60,19 @@
            (apply min user-maxes))
          global-max)]))
 
+(defn- resolve-default-strategy [{:keys [strategy field min-value max-value] :as breakout}]
+  (if (isa? (:special-type field) :type/Coordinate)
+    (let [bin-width (public-settings/breakout-bin-width)]
+      (assoc breakout
+        :strategy  :bin-width
+        :bin-width bin-width
+        :num-bins  (calculate-num-bins min-value max-value bin-width)))
+    (let [num-bins (public-settings/breakout-bins-num)]
+      (assoc breakout
+        :strategy  :num-bins
+        :num-bins  num-bins
+        :bin-width (calculate-bin-width min-value max-value num-bins)))))
+
 (defn- update-bin-width
   "Calculates the bin width given the global min/max and user
   specified crtieria that could impact that min/max. Throws an
@@ -68,19 +82,23 @@
           (if (instance? BinnedField breakout)
             (let [[min-value max-value] (extract-bounds field filter-field-map)
                   updated-breakout (assoc breakout :min-value min-value :max-value max-value)]
+
               (when-not (and min-value max-value)
                 (throw (Exception. (format "Unable to bin field '%s' with id '%s' without a min/max value"
                                            (get-in breakout [:field :field-name])
                                            (get-in breakout [:field :field-id])))))
-              (cond
+              (case (:strategy updated-breakout)
 
-                (= :num-bins (:strategy updated-breakout))
+                :num-bins
                 (assoc updated-breakout
                   :bin-width (calculate-bin-width min-value max-value num-bins))
 
-                (= :bin-width (:strategy updated-breakout))
+                :bin-width
                 (assoc updated-breakout
-                  :num-bins (calculate-num-bins min-value max-value bin-width))))
+                  :num-bins (calculate-num-bins min-value max-value bin-width))
+
+                :default
+                (resolve-default-strategy updated-breakout)))
             breakouts))
         breakouts))
 

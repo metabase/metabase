@@ -91,10 +91,17 @@
   BinnedField
   (formatted [{:keys [bin-width min-value max-value field]}]
     (let [formatted-field (formatted field)]
-      (apply hsql/call :case
-             (mapcat (fn [bin-floor]
-                       [[:and [:>= formatted-field bin-floor] [:< formatted-field (+ bin-floor bin-width)]] bin-floor])
-                     (range min-value max-value bin-width)))))
+      ;;
+      ;; Equation is | (value - min) |
+      ;;             | ------------- | * bin-width + min-value
+      ;;             |_  bin-width  _|
+      ;;
+      (-> formatted-field
+          (hx/- min-value)
+          (hx// bin-width)
+          hx/floor
+          (hx/* bin-width)
+          (hx/+ min-value))))
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef
@@ -180,11 +187,7 @@
     (apply h/merge-select new-hsql (for [field breakout-fields
                                          :when (not (contains? (set fields-fields) field))]
                                      (as (formatted field) field)))
-    (apply h/group new-hsql (map (fn [field]
-                                   (if (instance? BinnedField field)
-                                     (qualified-alias field)
-                                     (formatted field)))
-                                 breakout-fields))))
+    (apply h/group new-hsql (map formatted breakout-fields))))
 
 (defn apply-fields
   "Apply a `fields` clause to HONEYSQL-FORM. Default implementation of `apply-fields` for SQL drivers."
@@ -246,11 +249,9 @@
   [_ honeysql-form {subclauses :order-by breakout-fields :breakout}]
   (let [[{:keys [special-type] :as first-breakout-field}] breakout-fields]
     (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
-      (let [honeysql-form (h/merge-order-by honeysql-form (if (instance? BinnedField field)
-                                                            (qualified-alias field)
-                                                            [(formatted field) (case direction
-                                                                                 :ascending  :asc
-                                                                                 :descending :desc)]))]
+      (let [honeysql-form (h/merge-order-by honeysql-form [(formatted field) (case direction
+                                                                               :ascending  :asc
+                                                                               :descending :desc)])]
         (if (seq more)
           (recur honeysql-form more)
           honeysql-form)))))

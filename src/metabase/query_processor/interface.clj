@@ -142,7 +142,8 @@
   (getName [_] (name field)))
 
 (def binning-strategies
-  #{:num-bins :bin-width})
+  "Valid binning strategies for a `BinnedField`"
+  #{:num-bins :bin-width :default})
 
 (s/defrecord BinnedField [field     :- Field
                           strategy  :- (apply s/enum binning-strategies)

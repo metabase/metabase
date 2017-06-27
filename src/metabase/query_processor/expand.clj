@@ -4,7 +4,6 @@
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require [clojure.core :as core]
             [clojure.tools.logging :as log]
-            [metabase.public-settings :as public-settings]
             [metabase.query-processor
              [interface :as i]
              [util :as qputil]]
@@ -179,9 +178,7 @@
   ([f strategy-name & [strategy-param]]
    (let [strategy (qputil/normalize-token strategy-name)
          field (field f)]
-     (if (clojure.core/= :default strategy)
-       (assoc field :binning-strategy :num-bins, :binning-param (public-settings/breakout-bins-num))
-       (assoc field :binning-strategy strategy, :binning-param strategy-param)))))
+     (assoc field :binning-strategy strategy, :binning-param strategy-param))))
 
 (defn- fields-list-clause
   ([k query] query)
