@@ -151,7 +151,7 @@ const testStoreEnhancer = (createStore, history) => {
         const testStoreExtensions = {
             _originalDispatch: store.dispatch,
             _onActionDispatched: null,
-            _triggeredActions: [],
+            _dispatchedActions: [],
             _finalStoreInstance: null,
 
             setFinalStoreInstance: (finalStore) => {
@@ -160,7 +160,7 @@ const testStoreEnhancer = (createStore, history) => {
 
             dispatch: (action) => {
                 const result = store._originalDispatch(action);
-                store._triggeredActions = store._triggeredActions.concat([action]);
+                store._dispatchedActions = store._dispatchedActions.concat([action]);
                 if (store._onActionDispatched) store._onActionDispatched();
                 return result;
             },
@@ -175,7 +175,7 @@ const testStoreEnhancer = (createStore, history) => {
                 actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes]
 
                 const allActionsAreTriggered = () => _.every(actionTypes, actionType =>
-                    store._triggeredActions.filter((action) => action.type === actionType).length > 0
+                    store._dispatchedActions.filter((action) => action.type === actionType).length > 0
                 );
 
                 if (allActionsAreTriggered()) {
@@ -191,12 +191,16 @@ const testStoreEnhancer = (createStore, history) => {
                             return reject(
                                 new Error(
                                     `Actions ${actionTypes.join(", ")} were not dispatched within ${timeout}ms. ` +
-                                    `Dispatched actions so far: ${store._triggeredActions.map((a) => a.type).join(", ")}`
+                                    `Dispatched actions so far: ${store._dispatchedActions.map((a) => a.type).join(", ")}`
                                 )
                             )
                         }, timeout)
                     });
                 }
+            },
+
+            getDispatchedActions: () => {
+                return store._dispatchedActions;
             },
 
             pushPath: (path) => history.push(path),
