@@ -1,6 +1,6 @@
 import {
     login,
-    createTestStore, createSavedQuestion
+    createTestStore, createSavedQuestion, clickRouterLink
 } from "metabase/__support__/integrated_tests";
 
 import React from 'react';
@@ -14,9 +14,12 @@ import { VisualizationEmptyState } from "metabase/query_builder/components/Query
 import HomepageApp from "metabase/home/containers/HomepageApp";
 import { createMetric, createSegment } from "metabase/admin/datamodel/datamodel";
 import { FETCH_ACTIVITY, FETCH_RECENT_VIEWS } from "metabase/home/actions";
+import { QUERY_COMPLETED } from "metabase/query_builder/actions";
+
 import Activity from "metabase/home/components/Activity";
 import ActivityItem from "metabase/home/components/ActivityItem";
 import ActivityStory from "metabase/home/components/ActivityStory";
+import Scalar from "metabase/visualizations/visualizations/Scalar";
 
 describe("HomepageApp", () => {
     beforeAll(async () => {
@@ -45,7 +48,7 @@ describe("HomepageApp", () => {
         const metric = await createMetric({
             "id": null,
             "name": "Vendor count",
-            "description": "Tells how many vendors we have atm",
+            "description": "Tells how many vendors we have",
             "table_id": 3,
             "definition": {
                 "aggregation": [
@@ -58,9 +61,7 @@ describe("HomepageApp", () => {
                     ]
                 ],
                 "source_table": 3
-            },
-            "revision_message": "really nothing actually",
-            "show_in_getting_started": false
+            }
         });
 
         await delay(100);
@@ -82,7 +83,7 @@ describe("HomepageApp", () => {
             expect(activityStories.length).toBeGreaterThanOrEqual(3);
 
             expect(activityItems.at(0).text()).toMatch(/Vendor count/);
-            expect(activityStories.at(0).text()).toMatch(/Tells how many vendors we have atm/);
+            expect(activityStories.at(0).text()).toMatch(/Tells how many vendors we have/);
 
             expect(activityItems.at(1).text()).toMatch(/Past 30 days/);
             expect(activityStories.at(1).text()).toMatch(/Past 30 days created at/);
@@ -93,6 +94,23 @@ describe("HomepageApp", () => {
 
 
         });
+        it("shows successfully open QB for a metric when clicking the metric name", async () => {
+            const store = await createTestStore()
+
+            store.pushPath("/");
+
+            // In this test we have to render the whole app in order to get links work properly
+            const app = mount(store.getAppContainer())
+            await store.waitForActions([FETCH_ACTIVITY])
+            const homepageApp = app.find(HomepageApp);
+
+            const activityFeed = homepageApp.find(Activity);
+            const metricLink = activityFeed.find(ActivityItem).find('a[children="Vendor count"]').first();
+            clickRouterLink(metricLink)
+            
+            await store.waitForActions([QUERY_COMPLETED]);
+            expect(app.find(Scalar).text()).toBe("200");
+        })
     });
 
 });

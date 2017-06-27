@@ -220,7 +220,7 @@ const testStoreEnhancer = (createStore, history) => {
             },
 
             getAppContainer: () => {
-                store._connectWithStore(
+                return store._connectWithStore(
                     <Router history={history}>
                         {getRoutes(store._finalStoreInstance)}
                     </Router>
@@ -237,6 +237,9 @@ const testStoreEnhancer = (createStore, history) => {
         return Object.assign(store, testStoreExtensions);
     }
 }
+
+export const clickRouterLink = async (linkEnzymeWrapper) =>
+    linkEnzymeWrapper.simulate('click', { button: 0 });
 
 // Commonly used question helpers that are temporarily here
 // TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
