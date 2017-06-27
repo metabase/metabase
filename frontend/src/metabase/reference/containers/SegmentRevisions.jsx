@@ -26,22 +26,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import EmptyState from "metabase/components/EmptyState.jsx";
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
-
-// const section = {
-//         id: `/reference/segments/${segment.id}/revisions`,
-//         name: `Revision history for ${segment.name}`,
-//         sidebar: 'Revision history',
-//         breadcrumb: `${segment.name}`,
-//         hidden: user && !user.is_superuser,
-//         fetch: {
-//             fetchSegmentRevisions: [segment.id]
-//         },
-//         get: 'getSegmentRevisions',
-//         icon: "history",
-//         headerIcon: "segment",
-//         parent: referenceSections[`/reference/segments`]
-//     }
-
 const emptyStateData =  {
     message: "There are no revisions for this segment"
 }
@@ -91,11 +75,6 @@ export default class SegmentRevisions extends Component {
         } = this.props;
 
         const entity = metric.id ? metric : segment;
-
-        const empty = {
-            icon: 'mine',
-            message: 'You haven\'t added any databases yet.'
-        };
 
         const userColorAssignments = user && Object.keys(revisions).length > 0 ?
             assignUserColors(

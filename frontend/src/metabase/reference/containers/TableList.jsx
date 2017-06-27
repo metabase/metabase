@@ -31,24 +31,6 @@ import {
 
 import * as metadataActions from "metabase/redux/metadata";
 
-// const section = {
-//         id: `/reference/databases/${database.id}/tables`,
-//         name: `Tables in ${database.name}`,
-//         type: 'tables',
-//         empty: {
-//             message: `Tables in this database will appear here as they're added`,
-//             icon: "table2"
-//         },
-//         sidebar: 'Tables in this database',
-//         breadcrumb: `${database.name}`,
-//         fetch: {
-//             fetchDatabaseMetadata: [database.id]
-//         },
-//         get: 'getTablesByDatabase',
-//         icon: "table2",
-//         headerIcon: "database",
-//         parent: referenceSections[`/reference/databases`]
-//     }
 
 const emptyStateData = {
             message: `Tables in this database will appear here as they're added`,

@@ -39,23 +39,6 @@ import { getIconForField } from "metabase/lib/schema_metadata";
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from 'metabase/reference/reference';
 
-// const section = {
-//         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
-//         name: `Fields in ${table.display_name}`,
-//         empty: {
-//             message: `Fields in this table will appear here as they're added`,
-//             icon: "fields"
-//         },
-//         sidebar: 'Fields in this table',
-//         breadcrumb: `${table.display_name}`,
-//         fetch: {
-//             fetchDatabaseMetadata: [database.id]
-//         },
-//         get: "getFieldsByTable",
-//         icon: "fields",
-//         headerIcon: "table2",
-//         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
-//     }
 
 const emptyStateData = {
             message: `Fields in this table will appear here as they're added`,

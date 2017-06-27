@@ -27,20 +27,6 @@ import EmptyState from "metabase/components/EmptyState.jsx";
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 
-// const section = {
-//         id: `/reference/metrics/${metric.id}/revisions`,
-//         name: `Revision history for ${metric.name}`,
-//         sidebar: 'Revision history',
-//         breadcrumb: `${metric.name}`,
-//         hidden: user && !user.is_superuser,
-//         fetch: {
-//             fetchMetricRevisions: [metric.id]
-//         },
-//         get: 'getMetricRevisions',
-//         icon: "history",
-//         headerIcon: "ruler",
-//         parent: referenceSections[`/reference/metrics`]
-//     }
 const emptyStateData =  {
     message: "There are no revisions for this metric"
 }
@@ -90,11 +76,6 @@ export default class MetricRevisions extends Component {
         } = this.props;
 
         const entity = metric.id ? metric : segment;
-
-        const empty = {
-            icon: 'mine',
-            message: 'You haven\'t added any databases yet.'
-        };
 
         const userColorAssignments = user && Object.keys(revisions).length > 0 ?
             assignUserColors(

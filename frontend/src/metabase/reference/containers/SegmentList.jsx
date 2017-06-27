@@ -30,26 +30,6 @@ import {
 
 import * as metadataActions from "metabase/redux/metadata";
 
-// const section = {
-//         id: `/reference/segments`,
-//         name: "Segments",
-//         empty: {
-//             title: "Segments are interesting subsets of tables",
-//             adminMessage: "Defining common segments for your team makes it even easier to ask questions",
-//             message: "Segments will appear here once your admins have created some",
-//             image: "app/assets/img/segments-list",
-//             adminAction: "Learn how to create segments",
-//             adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
-//         },
-//         breadcrumb: "Segments",
-//         fetch: {
-//             fetchMetrics: [],
-//             fetchSegments: []
-//         },
-//         get: 'getSegments',
-//         icon: "segment"
-//     }
-
 const emptyStateData = {
             title: "Segments are interesting subsets of tables",
             adminMessage: "Defining common segments for your team makes it even easier to ask questions",
@@ -71,18 +51,6 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
     ...metadataActions
 };
-
-const createListItem = (entity, index, section) =>
-    <li className="relative" key={entity.id}>
-        <ListItem
-            id={entity.id}
-            index={index}
-            name={entity.display_name || entity.name}
-            description={ entity.description }
-            url={ `${section.id}/${entity.id}` }
-            icon={ section.icon }
-        />
-    </li>;
 
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -118,7 +86,16 @@ export default class SegmentList extends Component {
                             {
                                 Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
-                                        createListItem(entity, index, section)
+                                         <li className="relative" key={entity.id}>
+                                            <ListItem
+                                                id={entity.id}
+                                                index={index}
+                                                name={entity.display_name || entity.name}
+                                                description={ entity.description }
+                                                url={ `${section.id}/${entity.id}` }
+                                                icon={ section.icon }
+                                            />
+                                        </li>
                                 )
                             }
                         </List>

@@ -36,31 +36,6 @@ import {
 
 import * as metadataActions from "metabase/redux/metadata";
 
-
-// const section = {
-//         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
-//         name: `Questions about ${table.display_name}`,
-        // empty: {
-        //     message: `Questions about this table will appear here as they're added`,
-        //     icon: "all",
-        //     action: "Ask a question",
-        //     link: getQuestionUrl({
-        //         dbId: table.db_id,
-        //         tableId: table.id,
-        //     })
-        // },
-//         type: 'questions',
-//         sidebar: 'Questions about this table',
-//         breadcrumb: `${table.display_name}`,
-//         fetch: {
-//             fetchDatabaseMetadata: [database.id], fetchQuestions: []
-//         },
-//         get: 'getTableQuestions',
-//         icon: "all",
-//         headerIcon: "table2",
-//         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
-//     }
-
 const emptyStateData = (table) =>  {
     return {
         message: "Questions about this table will appear here as they're added",
@@ -88,17 +63,6 @@ const mapDispatchToProps = {
     ...metadataActions
 };
 
-const createListItem = (entity, index, section) =>
-    <li className="relative" key={entity.id}>
-        <ListItem
-            id={entity.id}
-            index={index}
-            name={entity.display_name || entity.name}
-            description={ `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}` }
-            url={ Urls.question(entity.id) }
-            icon={ visualizations.get(entity.display).iconName }
-        />
-    </li>;
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class TableQuestions extends Component {
@@ -134,7 +98,16 @@ export default class TableQuestions extends Component {
                             { 
                                 Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
-                                        createListItem(entity, index, section)
+                                            <li className="relative" key={entity.id}>
+                                                <ListItem
+                                                    id={entity.id}
+                                                    index={index}
+                                                    name={entity.display_name || entity.name}
+                                                    description={ `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}` }
+                                                    url={ Urls.question(entity.id) }
+                                                    icon={ visualizations.get(entity.display).iconName }
+                                                />
+                                            </li>
                                 )
                             }
                         </List>

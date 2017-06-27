@@ -37,32 +37,6 @@ import {
 
 import * as metadataActions from "metabase/redux/metadata";
 
-// const section = {
-//         id: `/reference/segments/${segment.id}/questions`,
-//         name: `Questions about ${segment.name}`,
-//         empty: {
-//             message: `Questions about this segment will appear here as they're added`,
-//             icon: "all",
-//             action: "Ask a question",
-//             link: getQuestionUrl({
-//                 dbId: table && table.db_id,
-//                 tableId: segment.table_id,
-//                 segmentId: segment.id
-//             })
-//         },
-//         type: 'questions',
-//         sidebar: 'Questions about this segment',
-//         breadcrumb: `${segment.name}`,
-//         fetch: {
-//             fetchSegmentTable: [segment.id],
-//             fetchQuestions: []
-//         },
-//         get: 'getSegmentQuestions',
-//         icon: "all",
-//         headerIcon: "segment",
-//         parent: referenceSections[`/reference/segments`]
-//     }
-
 const emptyStateData = (table, segment) =>{  
     return {
         message: "Questions about this segment will appear here as they're added",
@@ -89,18 +63,6 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
     ...metadataActions
 };
-
-const createListItem = (entity, index, section) =>
-    <li className="relative" key={entity.id}>
-        <ListItem
-            id={entity.id}
-            index={index}
-            name={entity.display_name || entity.name}
-            description={ `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}` }
-            url={ Urls.question(entity.id) }
-            icon={ visualizations.get(entity.display).iconName }
-        />
-    </li>;
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class SegmentQuestions extends Component {
@@ -137,7 +99,16 @@ export default class SegmentQuestions extends Component {
                             { 
                                 Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
-                                        createListItem(entity, index, section)
+                                            <li className="relative" key={entity.id}>
+                                                <ListItem
+                                                    id={entity.id}
+                                                    index={index}
+                                                    name={entity.display_name || entity.name}
+                                                    description={ `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}` }
+                                                    url={ Urls.question(entity.id) }
+                                                    icon={ visualizations.get(entity.display).iconName }
+                                                />
+                                            </li>
                                 )
                             }
                         </List>
