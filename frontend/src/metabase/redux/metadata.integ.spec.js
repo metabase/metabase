@@ -6,7 +6,7 @@
  */
 import { getMetadata } from "metabase/selectors/metadata"
 import {
-    createReduxStore,
+    createTestStore,
     login,
 } from "metabase/__support__/integrated_tests";
 import {
@@ -25,7 +25,7 @@ describe("metadata/redux", () => {
     describe("METRIC ACTIONS", () => {
         describe("fetchMetrics()", () => {
             it("fetches no metrics in empty db", async () => {
-                const store = createReduxStore();
+                const store = createTestStore();
                 await store.dispatch(fetchMetrics());
                 expect(metadata(store).metricsList().length).toBe(0)
             })
@@ -59,7 +59,7 @@ describe("metadata/redux", () => {
             pending();
             it("fetches the sample dataset", async () => {
 
-                const store = createReduxStore();
+                const store = createTestStore();
                 expect(metadata(store).tablesList().length).toBe(0);
                 expect(metadata(store).databasesList().length).toBe(0);
 
@@ -83,7 +83,7 @@ describe("metadata/redux", () => {
             pending();
             it("fetches the sample dataset tables", async () => {
                 // what is the difference between fetchDatabases and fetchTables?
-                const store = createReduxStore();
+                const store = createTestStore();
                 expect(metadata(store).tablesList().length).toBe(0);
                 expect(metadata(store).databasesList().length).toBe(0);
 

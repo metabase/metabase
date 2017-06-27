@@ -33,6 +33,7 @@ if (DEBUG) {
 const devToolsExtension = window.devToolsExtension ? window.devToolsExtension() : (f => f);
 
 export function getStore(reducers, history, intialState, enhancer = (a) => a) {
+
     const reducer = combineReducers({
         ...reducers,
         form,

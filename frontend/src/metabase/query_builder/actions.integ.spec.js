@@ -5,9 +5,8 @@ import {
 import Question from "metabase-lib/lib/Question";
 import { parse as urlParse } from "url";
 import {
-    login,
-    globalReduxStore as store,
-    globalBrowserHistory as history
+    createTestStore,
+    login
 } from "metabase/__support__/integrated_tests";
 import { initializeQB } from "./actions";
 import { getCard, getOriginalCard, getQueryResults } from "./selectors";
@@ -16,6 +15,8 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 
 jest.mock('metabase/lib/analytics');
 
+// TODO: Convert completely to modern style
+const store = createTestStore()
 
 describe("QueryBuilder", () => {
     let unsavedQuestion: Question = null;
@@ -66,11 +67,7 @@ describe("QueryBuilder", () => {
             })
 
             it("keeps the url same after initialization is finished", async () => {
-                const location = urlParse(unsavedQuestion.getUrl())
-
-                // can't get the location from Redux state for some reason so just query the emulated history object directly
-                expect(history.getCurrentLocation().pathname).toBe(location.pathname)
-                expect(history.getCurrentLocation().hash).toBe(location.hash)
+                expect(store.getPath()).toBe(unsavedQuestion.getUrl())
             })
 
             // TODO: setTimeout for
@@ -94,11 +91,7 @@ describe("QueryBuilder", () => {
                     expect(getOriginalCard(store.getState())).toMatchObject(savedCleanQuestion.card())
                 })
                 it("keeps the url same after initialization is finished", async () => {
-                    const location = urlParse(savedCleanQuestion.getUrl(savedCleanQuestion))
-
-                    // can't get the location from Redux state for some reason so just query the emulated history object directly
-                    expect(history.getCurrentLocation().pathname).toBe(location.pathname)
-                    expect(history.getCurrentLocation().hash).toBe(location.hash || "")
+                    expect(store.getPath()).toBe(savedCleanQuestion.getUrl(savedCleanQuestion))
                 })
             })
             describe("with dirty state", () => {
@@ -115,11 +108,7 @@ describe("QueryBuilder", () => {
                     expect(getOriginalCard(store.getState())).toMatchObject(savedCleanQuestion.card())
                 })
                 it("keeps the url same after initialization is finished", async () => {
-                    const location = urlParse(dirtyQuestion.getUrl(savedCleanQuestion))
-
-                    // can't get the location from Redux state for some reason so just query the emulated history object directly
-                    expect(history.getCurrentLocation().pathname).toBe(location.pathname)
-                    expect(history.getCurrentLocation().hash).toBe(location.hash || "")
+                    expect(store.getPath()).toBe(dirtyQuestion.getUrl())
                 })
             })
         })
