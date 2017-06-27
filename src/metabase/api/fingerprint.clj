@@ -5,13 +5,19 @@
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]]
                              [segment :refer [Segment]]
-                             [card :refer [Card]])
-            [schema.core :as s]
-            [metabase.util.schema :as su]))
+                             [card :refer [Card]])            
+            [schema.core :as s]))
 
-(def MaxQueryCost (s/maybe (s/enum "sample" "full-scan" "joins")))
-(def MaxComputationCost (s/maybe (s/enum "linear" "unbounded" "yolo")))
-(def Resolution (s/maybe (s/enum "month" "day")))
+(def ^:private ^:const MaxQueryCost       (s/maybe (s/enum "dont-touch"
+                                                           "sample"
+                                                           "full-scan"
+                                                           "joins")))
+(def ^:private ^:const MaxComputationCost (s/maybe (s/enum "linear"
+                                                           "unbounded"
+                                                           "yolo")))
+(def ^:private ^:const Resolution         (s/maybe (s/enum "month"
+                                                           "day"
+                                                           "raw")))
 
 (defn- max-cost
   [query computation]
@@ -25,8 +31,8 @@
    max_computation_cost MaxComputationCost}
   (->> id
        (api/read-check Field)
-       (fingerprinting/fingerprint
-        {:max-cost (max-cost max_query_cost max_computation_cost)})))
+       (fingerprinting/fingerprint {:max-cost (max-cost max_query_cost
+                                                        max_computation_cost)})))
 
 (api/defendpoint GET "/table/:id"
   "Get fingerprint for a `Tield` with ID."
@@ -35,8 +41,8 @@
    max_computation_cost MaxComputationCost}
   (->> id
        (api/read-check Table)
-       (fingerprinting/fingerprint
-        {:max-cost (max-cost max_query_cost max_computation_cost)})))
+       (fingerprinting/fingerprint {:max-cost (max-cost max_query_cost
+                                                        max_computation_cost)})))
 
 (api/defendpoint GET "/segment/:id"
   "Get fingerprint for a `Segment` with ID."
@@ -45,8 +51,8 @@
    max_computation_cost MaxComputationCost}
   (->> id
        (api/read-check Segment)
-       (fingerprinting/fingerprint
-        {:max-cost (max-cost max_query_cost max_computation_cost)})))
+       (fingerprinting/fingerprint {:max-cost (max-cost max_query_cost
+                                                        max_computation_cost)})))
 
 (api/defendpoint GET "/card/:id"
   "Get fingerprint for a `Card` with ID."
@@ -55,8 +61,8 @@
    max_computation_cost MaxComputationCost}
   (->> id
        (api/read-check Card)
-       (fingerprinting/fingerprint
-        {:max-cost (max-cost max_query_cost max_computation_cost)})))
+       (fingerprinting/fingerprint {:max-cost (max-cost max_query_cost
+                                                        max_computation_cost)})))
 
 (api/defendpoint GET "/fields/:id1/:id2"
   "Get a multi-field fingerprint for `Field`s with ID1 and ID2."
@@ -67,8 +73,7 @@
   (->> [id1 id2]         
        (map (partial api/read-check Field))
        (apply fingerprinting/multifield-fingerprint
-              {:max-cost {:query (keyword max_query_cost)
-                          :computation (keyword max_computation_cost)}
+              {:max-cost   (max-cost max_query_cost max_computation_cost)
                :resolution (keyword resolution)})))
 
 (api/defendpoint GET "/compare/fields/:id1/:id2"
@@ -79,8 +84,7 @@
   (->> [id2 id2]       
        (map (partial api/read-check Field))
        (apply fingerprinting/compare-fingerprints
-              {:max-cost {:query (keyword max_query_cost)
-                          :computation (keyword max_computation_cost)}})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)})))
 
 (api/defendpoint GET "/compare/tables/:id1/:id2"
   "Get comparison fingerprints for `Table`s with ID1 and ID2."
@@ -90,8 +94,7 @@
   (->> [id2 id2]       
        (map (partial api/read-check Table))
        (apply fingerprinting/compare-fingerprints
-              {:max-cost {:query (keyword max_query_cost)
-                          :computation (keyword max_computation_cost)}})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)})))
 
 (api/defendpoint GET "/compare/cards/:id1/:id2"
   "Get comparison fingerprints for `Card`s with ID1 and ID2."
@@ -101,8 +104,7 @@
   (->> [id2 id2]       
        (map (partial api/read-check Card))
        (apply fingerprinting/compare-fingerprints
-              {:max-cost {:query (keyword max_query_cost)
-                          :computation (keyword max_computation_cost)}})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)})))
 
 (api/defendpoint GET "/compare/segments/:id1/:id2"
   "Get comparison fingerprints for `Segment`s with ID1 and ID2."
@@ -112,7 +114,6 @@
   (->> [id2 id2]       
        (map (partial api/read-check Segment))
        (apply fingerprinting/compare-fingerprints
-              {:max-cost {:query (keyword max_query_cost)
-                          :computation (keyword max_computation_cost)}})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)})))
 
 (api/define-routes)
