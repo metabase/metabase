@@ -119,7 +119,7 @@
   #(field-type %2))
 
 (defmethod fingerprinter Num
-  [_ field]
+  [_ _]
   (redux/post-complete
    (redux/fuse {:histogram      histogram
                 :cardinality    cardinality
@@ -171,7 +171,7 @@
        {:count 0}))))
 
 (defmethod fingerprinter [Num Num]
-  [_ [x y]]
+  [_ _]
   (redux/fuse {:correlation       (stats/correlation first second)
                :covariance        (stats/covariance first second)
                :linear-regression (stats/simple-linear-regression first second)}))
@@ -200,7 +200,7 @@
               (t.periodic/periodic-seq step)))))
 
 (defmethod fingerprinter [DateTime Num]
-  [{:keys [max-cost resolution]} [x y]]
+  [{:keys [max-cost resolution]} _]
   (redux/post-complete
    (redux/pre-step
     (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
@@ -242,14 +242,14 @@
   (rollup (redux/pre-step (fingerprinter opts y) second) first))
 
 (defmethod fingerprinter Text
-  [_ field]
+  [_ _]
   (redux/post-complete
    (redux/fuse {:histogram (redux/pre-step histogram (stats/somef count))})
    (fn [{:keys [histogram]}]
      (let [nil-count (nil-count histogram)]
        {:min        (hist/minimum histogram)
         :max        (hist/maximum histogram)
-        :hisogram   (bins histogram)
+        :histogram  (bins histogram)
         :count      (total-count histogram)
         :nil-conunt nil-count
         :has-nils?  (pos? nil-count)
@@ -260,7 +260,7 @@
   (Math/ceil (/ (t/month dt) 3)))
 
 (defmethod fingerprinter DateTime
-  [_ field]
+  [_ _]
   (redux/post-complete
    (redux/pre-step
     (redux/fuse {:histogram         (redux/pre-step histogram t.coerce/to-long)
@@ -276,22 +276,22 @@
    (fn [{:keys [histogram histogram-hour histogram-day histogram-month
                 histogram-quarter]}]
      (let [nil-count (nil-count histogram)]
-       {:min              (hist/minimum histogram)
-        :max              (hist/maximum histogram)
-        :hisogram         (bins histogram)
-        :percentiles      (apply hist/percentiles histogram percentiles)
-        :hisogram-hour    (bins histogram-hour)
-        :hisogram-day     (bins histogram-day)
-        :hisogram-month   (bins histogram-month)
-        :hisogram-quarter (bins histogram-quarter)
-        :count            (total-count histogram)
-        :nil-conunt       nil-count
-        :has-nils?        (pos? nil-count)
-        :entropy          (binned-entropy histogram)
-        :type             DateTime}))))
+       {:min               (hist/minimum histogram)
+        :max               (hist/maximum histogram)
+        :histogram         (bins histogram)
+        :percentiles       (apply hist/percentiles histogram percentiles)
+        :histogram-hour    (bins histogram-hour)
+        :histogram-day     (bins histogram-day)
+        :histogram-month   (bins histogram-month)
+        :histogram-quarter (bins histogram-quarter)
+        :count             (total-count histogram)
+        :nil-conunt        nil-count
+        :has-nils?         (pos? nil-count)
+        :entropy           (binned-entropy histogram)
+        :type              DateTime}))))
 
 (defmethod fingerprinter Category
-  [_ field]
+  [_ _]
   (redux/post-complete
    (redux/fuse {:histogram   histogram-categorical
                 :cardinality cardinality})
@@ -308,6 +308,18 @@
         :all-distinct?        (>= unique% (- 1 cardinality-error))
         :entropy              (binned-entropy histogram)
         :type                 Category}))))
+
+(defmethod fingerprinter :default
+  [_ field]
+  (redux/post-complete
+   (redux/fuse {:total-count stats/count
+                :nil-count   (redux/with-xform stats/count (filter nil?))})
+   (fn [{:keys [total-count nil-count]}]
+     {:count       total-count
+      :nil-count   nil-count
+      :has-nils?   (pos? nil-count)
+      :type        nil
+      :actual-type (field-type field)})))
 
 (prefer-method fingerprinter Category Text)
 (prefer-method fingerprinter Num Category)
