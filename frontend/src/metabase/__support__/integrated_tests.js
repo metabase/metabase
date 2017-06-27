@@ -6,7 +6,7 @@
 
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
-import { SessionApi } from "metabase/services";
+import { CardApi, SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
 import reducers from 'metabase/reducers-main';
 
@@ -26,6 +26,7 @@ import "./integrated_tests_mocks";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getRoutes } from "metabase/routes";
 
+let hasCreatedStore = false;
 let loginSession = null; // Stores the current login session
 let simulateOfflineMode = false;
 
@@ -33,6 +34,14 @@ let simulateOfflineMode = false;
  * Login to the Metabase test instance with default credentials
  */
 export async function login() {
+    if (hasCreatedStore) {
+        console.warn(
+            "Warning: You have created a test store before calling login() which means that up-to-date site settings " +
+            "won't be in the store unless you call `refreshSiteSettings` action manually. Please prefer " +
+            "logging in before all tests and creating the store inside an individual test or describe block."
+        )
+    }
+
     loginSession = await SessionApi.create({ username: "bob@metabase.com", password: "12341234"});
 }
 
@@ -125,10 +134,12 @@ if (process.env.E2E_HOST) {
  */
 
 export const createTestStore = () => {
+    hasCreatedStore = true;
 
     const history = useRouterHistory(createMemoryHistory)();
     const store = getStore(reducers, history, undefined, (createStore) => testStoreEnhancer(createStore, history));
     store.setFinalStoreInstance(store);
+
     store.dispatch(refreshSiteSettings());
     return store;
 }
@@ -221,6 +232,15 @@ const testStoreEnhancer = (createStore, history) => {
 
         return Object.assign(store, testStoreExtensions);
     }
+}
+
+// Commonly used question helpers that are temporarily here
+// TODO Atte Keinänen 6/27/17: Put all metabase-lib -related test helpers to one file
+export const createSavedQuestion = async (unsavedQuestion) => {
+    const savedCard = await CardApi.create(unsavedQuestion.card())
+    const savedQuestion = unsavedQuestion.setCard(savedCard);
+    savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
+    return savedQuestion
 }
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;

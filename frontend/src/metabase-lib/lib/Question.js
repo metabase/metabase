@@ -278,6 +278,12 @@ export default class Question {
         return this._card && this._card.name;
     }
 
+    setDisplayName(name: String) {
+        return this.setCard(
+            assoc(this.card(), "name", name)
+        );
+    }
+
     id(): number {
         return this._card && this._card.id;
     }
@@ -384,7 +390,9 @@ export default class Question {
                 return false;
             }
         } else {
-            const origCardSerialized = originalQuestion._serializeForUrl();
+            const origCardSerialized = originalQuestion._serializeForUrl({
+                includeOriginalCardId: false
+            });
             const currentCardSerialized = this._serializeForUrl({
                 includeOriginalCardId: false
             });

@@ -1,18 +1,17 @@
 import {
     login,
     whenOffline,
-    createTestStore
+    createTestStore,
+    createSavedQuestion
 } from "metabase/__support__/integrated_tests";
 
 import React from 'react';
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { mount } from "enzyme";
 import {
-    DATABASE_ID, ORDERS_TABLE_ID, metadata,
-    ORDERS_TOTAL_FIELD_ID
+    ORDERS_TOTAL_FIELD_ID,
+    unsavedOrderCountQuestion
 } from "metabase/__support__/sample_dataset_fixture";
-import Question from "metabase-lib/lib/Question";
-import { CardApi } from "metabase/services";
 import { CANCEL_QUERY, INITIALIZE_QB, QUERY_COMPLETED, QUERY_ERRORED, RUN_QUERY } from "metabase/query_builder/actions";
 import QueryHeader from "metabase/query_builder/components/QueryHeader";
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
@@ -21,21 +20,6 @@ import { VisualizationEmptyState } from "metabase/query_builder/components/Query
 import Visualization from "metabase/visualizations/components/Visualization";
 import RunButton from "metabase/query_builder/components/RunButton";
 import { SET_ERROR_PAGE } from "metabase/redux/app";
-
-
-let unsavedQuestion = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
-    .query()
-    .addAggregation(["count"])
-    .question()
-unsavedQuestion._card = { ...unsavedQuestion._card, name: "Order count" }
-
-const createSavedQuestion = async () => {
-    const savedCard = await CardApi.create(unsavedQuestion.card())
-    const savedQuestion = unsavedQuestion.setCard(savedCard);
-    savedQuestion._card = { ...savedQuestion._card, original_card_id: savedQuestion.id() }
-
-    return savedQuestion
-}
 
 describe("QueryBuilder", () => {
     beforeAll(async () => {
@@ -61,7 +45,7 @@ describe("QueryBuilder", () => {
     describe("for saved questions", async () => {
         let savedQuestion = null;
         beforeAll(async () => {
-            savedQuestion = await createSavedQuestion()
+            savedQuestion = await createSavedQuestion(unsavedOrderCountQuestion)
         })
 
         it("renders normally on page load", async () => {
@@ -94,7 +78,7 @@ describe("QueryBuilder", () => {
             expect(runButton.simulate("click"));
 
             await store.waitForActions([CANCEL_QUERY, QUERY_ERRORED]);
-            expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe("Order count")
+            expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe(savedQuestion.displayName())
             expect(qbWrapper.find(VisualizationEmptyState).length).toBe(1)
         })
     });
@@ -104,7 +88,7 @@ describe("QueryBuilder", () => {
         describe("without original saved question", () => {
             it("renders normally on page load", async () => {
                 const store = await createTestStore()
-                store.pushPath(unsavedQuestion.getUrl());
+                store.pushPath(unsavedOrderCountQuestion.getUrl());
                 const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
                 await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
 
@@ -112,7 +96,7 @@ describe("QueryBuilder", () => {
                 expect(qbWrapper.find(Visualization).length).toBe(1)
             });
             it("fails with a proper error message if the query is invalid", async () => {
-                const invalidQuestion = unsavedQuestion.query()
+                const invalidQuestion = unsavedOrderCountQuestion.query()
                     .addBreakout(["datetime-field", ["field-id", 12345], "day"])
                     .question();
 
@@ -131,7 +115,7 @@ describe("QueryBuilder", () => {
                 const store = await createTestStore()
 
                 await whenOffline(async () => {
-                    store.pushPath(unsavedQuestion.getUrl());
+                    store.pushPath(unsavedOrderCountQuestion.getUrl());
                     const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
                     await store.waitForActions([INITIALIZE_QB, QUERY_ERRORED]);
 
@@ -142,7 +126,7 @@ describe("QueryBuilder", () => {
             })
             it("doesn't execute the query if user cancels it", async () => {
                 const store = await createTestStore()
-                store.pushPath(unsavedQuestion.getUrl());
+                store.pushPath(unsavedOrderCountQuestion.getUrl());
                 const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
                 await store.waitForActions([INITIALIZE_QB, RUN_QUERY]);
 
@@ -158,7 +142,7 @@ describe("QueryBuilder", () => {
         describe("with original saved question", () => {
             it("should render normally on page load", async () => {
                 const store = await createTestStore()
-                const savedQuestion = await createSavedQuestion();
+                const savedQuestion = await createSavedQuestion(unsavedOrderCountQuestion);
 
                 const dirtyQuestion = savedQuestion
                     .query()

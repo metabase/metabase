@@ -236,7 +236,7 @@ export const initializeQB = (location, params) => {
 
                 preserveParameters = true;
             } catch(error) {
-                console.warn(error);
+                console.warn('initializeQb failed because of an error:', error);
                 card = null;
                 dispatch(setErrorPage(error));
             }

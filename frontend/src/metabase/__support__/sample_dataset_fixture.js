@@ -1,6 +1,7 @@
 import Question from "metabase-lib/lib/Question";
 import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
+import _ from "underscore";
 
 export const DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
@@ -1395,6 +1396,8 @@ export const state = {
 export const metadata = getMetadata(state);
 
 export const card = {
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1405,6 +1408,8 @@ export const card = {
 };
 
 export const product_card = {
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1417,6 +1422,8 @@ export const product_card = {
 export const orders_raw_card = {
     id: 1,
     name: "Raw orders data",
+    display: 'table',
+    visualization_settings: {},
     can_write: true,
     dataset_query: {
         type: "query",
@@ -1430,6 +1437,8 @@ export const orders_raw_card = {
 export const orders_count_card = {
     id: 2,
     name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1443,6 +1452,8 @@ export const orders_count_card = {
 export const native_orders_count_card = {
     id: 2,
     name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "native",
         database: DATABASE_ID,
@@ -1455,6 +1466,8 @@ export const native_orders_count_card = {
 export const invalid_orders_count_card = {
     id: 2,
     name: "# orders data",
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "nosuchqueryprocessor",
         database: DATABASE_ID,
@@ -1468,6 +1481,8 @@ export const orders_count_by_id_card = {
     id: 2,
     name: "# orders data",
     can_write: false,
+    display: 'table',
+    visualization_settings: {},
     dataset_query: {
         type: "query",
         database: DATABASE_ID,
@@ -1525,6 +1540,7 @@ export function makeQuestion(fn = (card, state) => ({ card, state })) {
 }
 
 export const question = new Question(metadata, card);
+export const unsavedOrderCountQuestion = new Question(metadata, _.omit(orders_count_card, 'id'));
 export const productQuestion = new Question(metadata, product_card);
 const NoFieldsMetadata = getMetadata(assocIn(state, ["metadata", "tables", ORDERS_TABLE_ID, "fields"], []))
 export const questionNoFields = new Question(NoFieldsMetadata, card);
