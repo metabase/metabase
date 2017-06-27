@@ -161,7 +161,7 @@
                                                 :last_analyzed      $
                                                 :min_value          1.0
                                                 :max_value          75.0
-                                                :dimension_options  (var-get numeric-dimension-indexes)}))
+                                                :dimension_options  []}))
                              (merge defaults (match-$ (Field (id :categories :name))
                                                {:special_type       "type/Name"
                                                 :name               "NAME"
@@ -225,7 +225,7 @@
                                                 :last_analyzed      $
                                                 :min_value          1.0
                                                 :max_value          15.0
-                                                :dimension_options  (var-get numeric-dimension-indexes)}))
+                                                :dimension_options  []}))
                              (merge defaults (match-$ (Field (id :users :last_login))
                                                {:special_type       nil
                                                 :name               "LAST_LOGIN"
@@ -310,7 +310,7 @@
                                                 :last_analyzed      $
                                                 :min_value          1.0
                                                 :max_value          15.0
-                                                :dimension_options  (var-get numeric-dimension-indexes)}))
+                                                :dimension_options  []}))
                              (merge defaults (match-$ (Field (id :users :last_login))
                                                {:special_type       nil
                                                 :name               "LAST_LOGIN"
@@ -499,12 +499,24 @@
 ;; Numeric fields without min/max values should not have binning strategies
 (expect
   []
-  (let [{:keys [min_value max_value]} (Field (id :categories :id))]
+  (let [{:keys [min_value max_value]} (Field (id :venues :latitude))]
     (try
-      (db/update! Field (id :categories :id) :min_value nil :max_value nil)
+      (db/update! Field (id :venues :latitude) :min_value nil :max_value nil)
       (-> ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories)))
           (get-in [:fields])
           first
           :dimension_options)
       (finally
-        (db/update! Field (id :categories :id) :min_value min_value :max_value max_value)))))
+        (db/update! Field (id :venues :latitude) :min_value min_value :max_value max_value)))))
+
+;; Lat/Long fields should use bin-width rather than num-bins
+(expect
+  #{"bin-width" "default"}
+  (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues)))
+        lat-dim-options (-> response
+                            :fields
+                            (nth 2)
+                            :dimension_options)]
+    (set (for [dim-index lat-dim-options
+               :let [{[_ _ strategy _] :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
+           strategy))))
