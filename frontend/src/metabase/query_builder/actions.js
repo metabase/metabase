@@ -279,7 +279,7 @@ export const initializeQB = (location, params) => {
         });
 
         // Fetch the question metadata
-        dispatch(loadMetadataForCard(card));
+        card && dispatch(loadMetadataForCard(card));
 
         const question = card && new Question(getMetadata(getState()), card);
 
