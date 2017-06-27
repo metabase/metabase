@@ -37,7 +37,7 @@
         database (Database db-id)]
     (try
       (log/debug (u/format-color 'green "running scheduled analysis for database-id: %s: %s" db-id database))
-      (analyze/analyze-database database)
+      (analyze/analyze-database! database)
       (catch Throwable e
         (log/error (format "Error analyzing database %d: (%s)" db-id (:name database)) e)))))
 

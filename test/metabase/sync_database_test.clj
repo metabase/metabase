@@ -150,13 +150,13 @@
     (Thread/sleep 60)
     (sync-database! db)
     (cached-values/cache-field-values-for-database! db)
-    (analyze/analyze-database db)
+    (analyze/analyze-database! db)
     (classify/classify-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
     ;; on resync of a database, such as adding tables that already exist or duplicating fields
     (sync-database! db)
     (cached-values/cache-field-values-for-database! db)
-    (analyze/analyze-database db)
+    (analyze/analyze-database! db)
     (classify/classify-database! db)
     (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
 

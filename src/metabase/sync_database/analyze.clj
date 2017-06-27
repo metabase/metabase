@@ -176,7 +176,7 @@
 
     (log/info (u/format-color 'blue "Analysis of %s database '%s' completed (%s)." (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))
 
-(defn analyze-database
+(defn analyze-database!
   "analyze all the tables in one database"
   [db]
   (analyze-data-shape-for-tables! (->> db

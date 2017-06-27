@@ -297,7 +297,7 @@
   (try
     (future (sync-database/sync-database! database)
             (cached-values/cache-field-values-for-database! database)
-            (analyze/analyze-database database)
+            (analyze/analyze-database! database)
             (classify/classify-database! database))
     (catch Throwable e
         (log/error (format "Error syncing Database: %d" (:id database))))))
