@@ -238,7 +238,7 @@ const testStoreEnhancer = (createStore, history) => {
     }
 }
 
-export const clickRouterLink = async (linkEnzymeWrapper) =>
+export const clickRouterLink = (linkEnzymeWrapper) =>
     linkEnzymeWrapper.simulate('click', { button: 0 });
 
 // Commonly used question helpers that are temporarily here
