@@ -24,16 +24,22 @@
     :else           o))
 
 (def ^:private resolve'
+  "Testing the resolve middleware requires that the source table be
+  resolved before calling the resolve function. In the query pipeline
+  this is two separate steps. This function combines the function for
+  resolving the source table and the middleware that resolves the rest
+  of the expanded query into a single function to make tests more
+  concise."
   (comp resolve/resolve (st/resolve-source-table-middleware identity)))
 
-(def field-ph-defaults
+(def ^:private field-ph-defaults
   {:fk-field-id        nil
    :datetime-unit      nil
    :remapped-from      nil
    :remapped-to        nil
    :field-display-name nil})
 
-(def field-defaults
+(def ^:private field-defaults
   {:fk-field-id     nil
    :visibility-type :normal
    :position        nil
@@ -46,7 +52,7 @@
    :dimensions      []
    :values          []})
 
-(def price-field-values
+(def ^:private price-field-values
   {:field-value-id true
    :created-at true
    :updated-at true

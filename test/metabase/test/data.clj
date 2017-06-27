@@ -288,7 +288,7 @@
   `(with-temp-db [_# (resolve-dbdef '~dataset)]
      ~@body))
 
-(defn delete-model-instance!
+(defn- delete-model-instance!
   "Allows deleting a row by the model instance toucan returns when
   it's inserted"
   [{:keys [id] :as instance}]
@@ -308,7 +308,7 @@
 (defmacro with-data [data-load-fn & body]
   `(call-with-data ~data-load-fn (fn [] ~@body)))
 
-(def  venue-categories
+(def venue-categories
   (map vector (defs/field-values defs/test-data-map "categories" "name")))
 
 (defn create-venue-category-remapping

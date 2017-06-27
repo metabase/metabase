@@ -498,7 +498,7 @@
   []
   ((user->client :crowberto) :get 200 "table/card__1000/fks"))
 
-(defn narrow-fields [category-names api-response]
+(defn- narrow-fields [category-names api-response]
   (for [field (:fields api-response)
         :when (contains? (set category-names) (:name field))]
     (-> field

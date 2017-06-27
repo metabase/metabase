@@ -9,7 +9,7 @@
              [util :as tu]]
             [metabase.test.data.datasets :refer [expect-with-engine]]))
 
-(def col-defaults
+(def ^:private col-defaults
   {:remapped_to nil, :remapped_from nil})
 
 ;; Test native queries

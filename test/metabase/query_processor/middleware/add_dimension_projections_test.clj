@@ -9,7 +9,7 @@
 
 (tu/resolve-private-vars metabase.query-processor.middleware.add-dimension-projections remap-results add-fk-remaps)
 
-(def col-defaults
+(def ^:private col-defaults
   {:description nil
      :source :fields,
      :extra_info {},
@@ -21,7 +21,7 @@
      :remapped_from nil,
      :remapped_to nil})
 
-(def example-resultset
+(def ^:private example-resultset
   {:rows
    [[1 "Red Medicine" 4 3]
     [2 "Stout Burgers & Beers" 11 2]
@@ -100,12 +100,12 @@
                         :remapped_to nil}))))
   (remap-results example-resultset))
 
-(def field-defaults
+(def ^:private field-defaults
   {:dimensions [],
    :values [],
    :visibility-type :normal})
 
-(def example-query
+(def ^:private example-query
   {:query
    {:fields
     (mapv #(merge field-defaults %)
@@ -155,7 +155,7 @@
                                             :field-display-name "Product"}))
   (add-fk-remaps example-query))
 
-(def external-remapped-result
+(def ^:private external-remapped-result
   (-> example-resultset
       (update :cols conj {:description "The name of the product as it should be displayed to customers.",
                           :table_id 3,

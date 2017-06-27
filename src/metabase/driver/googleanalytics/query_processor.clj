@@ -4,7 +4,6 @@
             [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
             [metabase.query-processor.util :as qputil]
-            [metabase.query-processor.middleware.expand :as ql]
             [metabase.util :as u])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
            [metabase.query_processor.interface AgFieldRef DateTimeField DateTimeValue Field RelativeDateTimeValue Value]))

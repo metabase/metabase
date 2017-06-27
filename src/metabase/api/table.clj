@@ -83,11 +83,10 @@
 (defn- format-fields-for-response [resp]
   (update resp :fields
           (fn [fields]
-            (map (fn [{:keys [values] :as field}]
-                   (if (seq values)
-                     (update field :values fv/field-values->pairs)
-                     field))
-                 fields))))
+            (for [{:keys [values] :as field} fields]
+              (if (seq values)
+                (update field :values fv/field-values->pairs)
+                field)))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.

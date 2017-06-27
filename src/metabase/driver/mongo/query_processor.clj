@@ -201,7 +201,7 @@
   (let [all-fields (distinct (annotate/collect-fields query :keep-date-time-fields))]
     (if-not (seq all-fields)
       pipeline-ctx
-      (let [projections (doall (map #(vector (->lvalue %) (->initial-rvalue %)) all-fields))]
+      (let [projections (map #(vector (->lvalue %) (->initial-rvalue %)) all-fields)]
         (-> pipeline-ctx
             (assoc  :projections (doall (map (comp keyword first) projections)))
             (update :query conj {$project (into (hash-map) projections)}))))))

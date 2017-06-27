@@ -36,7 +36,7 @@
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
    display_name       (s/maybe su/NonBlankString)
-   fk_target_field_id (s/maybe s/Int)
+   fk_target_field_id (s/maybe su/IntGreaterThanZero)
    points_of_interest (s/maybe su/NonBlankString)
    special_type       (s/maybe FieldType)
    visibility_type    (s/maybe FieldVisibilityType)}
@@ -81,7 +81,7 @@
   [id :as {{dimension-type :type dimension-name :name human_readable_field_id :human_readable_field_id} :body}]
   {dimension-type         (s/enum "internal" "external")
    dimension-name         su/NonBlankString
-   human_readable_field_id (s/maybe s/Int)}
+   human_readable_field_id (s/maybe su/IntGreaterThanZero)}
   (let [field (api/read-check Field id)]
     (if-let [dimension (Dimension :field_id id)]
       (db/update! Dimension (:id dimension)
@@ -107,14 +107,14 @@
       [400 "If remapped values are specified, they must be specified for all field values"])
     has-human-readable-values?))
 
-(defn- update-field-values [field-value-id value-pairs]
+(defn- update-field-values! [field-value-id value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
     (api/check-500 (db/update! FieldValues field-value-id
                      :values (map first value-pairs)
                      :human_readable_values (when human-readable-values?
                                               (map second value-pairs))))))
 
-(defn- create-field-values
+(defn- create-field-values!
   [field value-pairs]
   (let [human-readable-values? (validate-human-readable-pairs value-pairs)]
     (db/insert! FieldValues
@@ -133,8 +133,8 @@
       (api/check (field-should-have-field-values? field)
         [400 "You can only update the human readable values of a mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."])
       (if-let [field-value-id (db/select-one-id FieldValues, :field_id id)]
-        (update-field-values field-value-id value-pairs)
-        (create-field-values field value-pairs)))
+        (update-field-values! field-value-id value-pairs)
+        (create-field-values! field value-pairs)))
     (catch Exception e (println "fail") (.printStackTrace e) (throw e)))
   {:status :success})
 

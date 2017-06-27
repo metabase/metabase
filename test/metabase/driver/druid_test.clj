@@ -45,7 +45,6 @@
    :data      {:columns     ["timestamp" "id" "user_name" "venue_price" "venue_name" "count"]
                :rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
                              ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
-
                :cols        (mapv #(merge col-defaults %)
                                   [{:name "timestamp",   :display_name "Timestamp"}
                                    {:name "id",          :display_name "ID"}
