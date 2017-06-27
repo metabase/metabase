@@ -1,4 +1,5 @@
 (ns metabase.fingerprinting
+  "Fingerprinting (feature extraction) for various models."
   (:require [bigml.histogram.core :as hist]
             [bigml.sketchy.hyper-loglog :as hyper-loglog]
             (clj-time [coerce :as t.coerce]
@@ -13,8 +14,7 @@
                              [segment :refer [Segment]]
                              [table :refer [Table]])
             [redux.core :as redux]
-            [tide.core :as tide]
-            [toucan.db :as db]))
+            [tide.core :as tide]))
 
 (def ^:private ^:const percentiles (range 0 1 0.1))
 
@@ -103,19 +103,40 @@
     (mapv field-type field)
     [(:base_type field) (or (:special_type field) :type/Nil)]))
 
-(def ^:private ^:const Num      [:type/Number :type/*])
-(def ^:private ^:const DateTime [:type/DateTime :type/*])
-(def ^:private ^:const Category [:type/* :type/Category])
-(def ^:private ^:const Any      [:type/* :type/*])
-(def ^:private ^:const Text     [:type/Text :type/*])
+(def ^:private Num      [:type/Number :type/*])
+(def ^:private DateTime [:type/DateTime :type/*])
+(def ^:private Category [:type/* :type/Category])
+(def ^:private Any      [:type/* :type/*])
+(def ^:private Text     [:type/Text :type/*])
+
+(def linear-computation? ^:private ^{:arglist '([max-cost])}
+  (comp #{:linear} :computation))
+
+(def unbounded-computation? ^:private ^{:arglist '([max-cost])}
+  (comp #{:unbounded :yolo} :computation))
+
+(def yolo-computation? ^:private ^{:arglist '([max-cost])}
+  (comp #{:yolo} :computation))
+
+(def dont-touch-db? ^:private ^{:arglist '([max-cost])}
+  (comp #{:dont-touch} :query))
+
+(def sample-only? ^:private ^{:arglist '([max-cost])}
+  (comp #{:sample} :query))
+
+(def full-scan? ^:private ^{:arglist '([max-cost])}
+  (comp #{:full-scan :joins} :query))
+
+(def alow-joins? ^:private ^{:arglist '([max-cost])}
+  (comp #{:joins} :query))
 
 (defmulti fingerprinter
   "Transducer that summarizes (_fingerprints_) given coll. What features are
-  extracted depends on the type of corresponding `Field`(s), amount of data
-  points available (some algorithms have a minimum data points requirement)
-  and `max-cost.computation` setting.
-  Note we are heavily using data sketches so some summary values may be
-  approximate."
+   extracted depends on the type of corresponding `Field`(s), amount of data
+   points available (some algorithms have a minimum data points requirement)
+   and `max-cost.computation` setting.
+   Note we are heavily using data sketches so some summary values may be
+   approximate."
   #(field-type %2))
 
 (defmethod fingerprinter Num
@@ -176,7 +197,7 @@
                :covariance        (stats/covariance first second)
                :linear-regression (stats/simple-linear-regression first second)}))
 
-(def ^:private ^:cost timestamp-truncation-factor (/ 1 1000 60 60 24))
+(def ^:private ^:const timestamp-truncation-factor (/ 1 1000 60 60 24))
 
 (def ^:private ^{:arglist '([t])} truncate-timestamp
   "Truncate UNIX timestamp from ms to days."
@@ -184,7 +205,7 @@
 
 (defn- fill-timeseries
   "Given a coll of `[DateTime, Any]` pairs with periodicty `step` fill missing
-  periods with 0."
+   periods with 0."
   [step ts]
   (let [ts-index (into {} ts)]
     (into []
@@ -198,6 +219,17 @@
               long
               t.coerce/from-long
               (t.periodic/periodic-seq step)))))
+
+(defn- decompose-timeseries
+  "Decompose given timeseries with expected periodicty `resolution` into trend,
+   seasonal component, and reminder. 
+   `resolution` can be one of `:day`, or `:month`."
+  [resolution ts]
+  (let [period (case resolution
+                 :month 12
+                 :day   52)]
+    (when (>= (count ts) (* 2 period))
+      (tide/decompose period ts))))
 
 (defmethod fingerprinter [DateTime Num]
   [{:keys [max-cost resolution]} _]
@@ -215,15 +247,11 @@
     (fn [[x y]]
       [(-> x t.format/parse t.coerce/to-long truncate-timestamp) y]))
    (fn [{:keys [series linear-regression]}]
-     (let [{:keys [trend seasonal reminder]}
-           (let [period (case resolution
-                          :month 12
-                          :day   52)]
-             (when (and (not= resolution :raw)
-                        (>= (count series) (* 2 period))
-                        (-> max-cost :computation #{:linear} nil?))
-               (tide/decompose period series)))
-           ys-r (not-empty (reverse (map second series)))]
+     (let [ys-r (not-empty (reverse (map second series)))
+           {:keys [trend seasonal reminder]}
+           (when (and (not= resolution :raw)
+                      (unbounded-computation? max-cost))
+             (decompose-timeseries resolution series))]
        (merge {:series            series
                :linear-regression linear-regression
                :trend             trend
@@ -235,7 +263,8 @@
                         :MoM          (growth (first ys-r) (second ys-r))
                         :MoM-previous (growth (second ys-r) (nth ys-r 2))}
                 :day   {:DoD          (growth (first ys-r) (second ys-r))
-                        :DoD-previous (growth (second ys-r) (nth ys-r 2))}))))))
+                        :DoD-previous (growth (second ys-r) (nth ys-r 2))}
+                :raw   nil))))))
 
 (defmethod fingerprinter [Category Any]
   [opts [x y]]
@@ -345,28 +374,27 @@
 (def ^:private ^:const ^Long max-sample-size 10000)
 
 (defmulti fingerprint
-  "Given an entity (`Field(s)`, `Card`, `Segment`, `Table`), fetch corresponding
-  dataset and compute its fingerprint.
+  "Given a model, fetch corresponding dataset and compute its fingerprint.
 
-  Takes a map of options as first argument. Recognized options:
-  * `:max-cost`         a map with keys `:computation` and `:query` which 
-                        limits maximal resource expenditure when computing the
-                        fingerprint. `:computation` can be one of `:linear` 
-                        (O(n) or better), `:unbounded`, or `:yolo` (full blown 
-                        machine learning etc.). `query` can be one of 
-                        `:dont-touch` (use only cached data), `:sample` (sample
-                        up to `max-sample-size` rows), `:full-scan` (full table 
-                        scan), or `:joins` (bring in data from other tables if 
-                        needed).
+   Takes a map of options as first argument. Recognized options:
+   * `:max-cost`         a map with keys `:computation` and `:query` which 
+                         limits maximal resource expenditure when computing the
+                         fingerprint. `:computation` can be one of `:linear` 
+                         (O(n) or better), `:unbounded`, or `:yolo` (full blown 
+                         machine learning etc.). `query` can be one of 
+                         `:dont-touch` (use only cached data), `:sample` (sample
+                         up to `max-sample-size` rows), `:full-scan` (full table 
+                         scan), or `:joins` (bring in data from other tables if 
+                         needed).
 
-  * `:resolution`       controls pre-aggregation by time. Can be one of `:day`,
-                       `:month`, or `:raw`"
+   * `:resolution`       controls pre-aggregation by time. Can be one of `:day`,
+                        `:month`, or `:raw`"
   #(class %2))
 
 (defn- extract-query-opts
   [{:keys [max-cost]}]
   (cond-> {}
-    (some-> max-cost :query #{:sample}) (assoc :limit max-sample-size)))
+    (sample-only? max-cost) (assoc :limit max-sample-size)))
 
 (defmethod fingerprint (class Field)
   [opts field]
@@ -396,16 +424,15 @@
                                   (:definition segment)))))
 
 (defn compare-fingerprints
-  "Compare fingerprints of two entities (`Field(s)`, `Card`, `Segment`, 
-  `Table`)."
+  "Compare fingerprints of two models."
   [opts a b]
   {(:name a) (fingerprint opts a)
    (:name b) (fingerprint opts b)})
 
 (defn multifield-fingerprint
   "Holistically fingerprint dataset with multiple columns.
-  Takes and additional option `:resolution` which controls how timeseries data
-  is aggregated. Possible values: `:month`, `:day`, `:raw`."
+   Takes and additional option `:resolution` which controls how timeseries data
+   is aggregated. Possible values: `:month`, `:day`, `:raw`."
   [{:keys [resolution] :as opts} a b]
   (assert (= (:table_id a) (:table_id b)))
   {:fingerprint (->> (metadata/query-values
