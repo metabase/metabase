@@ -13,13 +13,14 @@ import {
 } from "metabase/__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
 import { CardApi } from "metabase/services";
-import { INITIALIZE_QB, QUERY_COMPLETED, QUERY_ERRORED, RUN_QUERY } from "metabase/query_builder/actions";
+import { CANCEL_QUERY, INITIALIZE_QB, QUERY_COMPLETED, QUERY_ERRORED, RUN_QUERY } from "metabase/query_builder/actions";
 import QueryHeader from "metabase/query_builder/components/QueryHeader";
 import VisualizationError from "metabase/query_builder/components/VisualizationError";
 
 import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
 import Visualization from "metabase/visualizations/components/Visualization";
 import RunButton from "metabase/query_builder/components/RunButton";
+import { SET_ERROR_PAGE } from "metabase/redux/app";
 
 
 let unsavedQuestion = Question.create({databaseId: DATABASE_ID, tableId: ORDERS_TABLE_ID, metadata})
@@ -58,20 +59,43 @@ describe("QueryBuilder", () => {
     });
 
     describe("for saved questions", async () => {
+        let savedQuestion = null;
+        beforeAll(async () => {
+            savedQuestion = await createSavedQuestion()
+        })
+
         it("renders normally on page load", async () => {
             const store = await createTestStore()
-            const savedQuestion = await createSavedQuestion()
             store.pushPath(savedQuestion.getUrl(savedQuestion));
             const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
 
             await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
             expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe(savedQuestion.displayName())
         });
-        it("fails with a proper error message if the server is offline", async () => {
+        it("shows an error page if the server is offline", async () => {
+            const store = await createTestStore()
 
+            await whenOffline(async () => {
+                store.pushPath(savedQuestion.getUrl());
+                mount(store.connectContainer(<QueryBuilder />));
+                // only test here that the error page action is dispatched
+                // (it is set on the root level of application React tree)
+                await store.waitForActions([INITIALIZE_QB, SET_ERROR_PAGE]);
+            })
         })
-        it("fails with a proper error message if user cancels the query", async () => {
+        it("doesn't execute the query if user cancels it", async () => {
+            const store = await createTestStore()
+            store.pushPath(savedQuestion.getUrl());
+            const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
+            await store.waitForActions([INITIALIZE_QB, RUN_QUERY]);
 
+            const runButton = qbWrapper.find(RunButton);
+            expect(runButton.text()).toBe("Cancel");
+            expect(runButton.simulate("click"));
+
+            await store.waitForActions([CANCEL_QUERY, QUERY_ERRORED]);
+            expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe("Order count")
+            expect(qbWrapper.find(VisualizationEmptyState).length).toBe(1)
         })
     });
 
@@ -126,7 +150,7 @@ describe("QueryBuilder", () => {
                 expect(runButton.text()).toBe("Cancel");
                 expect(runButton.simulate("click"));
 
-                await store.waitForActions([QUERY_ERRORED]);
+                await store.waitForActions([CANCEL_QUERY, QUERY_ERRORED]);
                 expect(qbWrapper.find(QueryHeader).find("h1").text()).toBe("New question")
                 expect(qbWrapper.find(VisualizationEmptyState).length).toBe(1)
             })
