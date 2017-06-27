@@ -158,6 +158,9 @@ class ValueMaps extends Component {
                         </li>
                     )}
                 </ol>
+                <div className="flex align-center">
+                    <Button className="ml-auto" primary>Save</Button>
+                </div>
             </div>
         )
     }
