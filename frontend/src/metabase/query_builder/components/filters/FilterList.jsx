@@ -7,6 +7,7 @@ import FilterWidget from './FilterWidget.jsx';
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { Filter } from "metabase/meta/types/Query";
+import Dimension from "metabase-lib/lib/Dimension";
 
 type Props = {
     query: StructuredQuery,
@@ -49,7 +50,7 @@ export default class FilterList extends Component {
     }
 
     render() {
-        const { query, filters } = this.props;
+        const { query, filters, tableMetadata } = this.props;
         return (
             <div className="Query-filterList scroll-x scroll-show scroll-show--horizontal">
                 {filters.map((filter, index) =>
@@ -57,7 +58,10 @@ export default class FilterList extends Component {
                         key={index}
                         placeholder="Item"
                         // $FlowFixMe: update widgets that are still passing tableMetadata instead of query
-                        query={query || { table: () => this.props.tableMetadata }}
+                        query={query || {
+                            table: () => tableMetadata,
+                            parseFieldReference: (fieldRef) => Dimension.parseMBQL(fieldRef, tableMetadata)
+                        }}
                         filter={filter}
                         index={index}
                         removeFilter={this.props.removeFilter}
