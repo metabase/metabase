@@ -99,15 +99,15 @@
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
 (expect-with-non-timeseries-dbs
-  [[10.1 1] [33.1 61] [36.9 37] [40.8 1]]
+ [[10.1 1] [30.1 90] [40.1 9]]
   (format-rows-by [(partial u/round-to-decimals 1) int]
     (rows (data/run-query venues
             (ql/aggregation (ql/count))
             (ql/breakout (ql/binning-strategy $latitude :default))))))
 
 (expect-with-non-timeseries-dbs
-  [[10.1 1] [30.5 99]]
-  (tu/with-temporary-setting-values [breakout-bins-num 3]
+ [[10.1 1] [30.1 61] [35.1 29] [40.1 9]]
+  (tu/with-temporary-setting-values [breakout-bin-width 5.0]
     (format-rows-by [(partial u/round-to-decimals 1) int]
       (rows (data/run-query venues
               (ql/aggregation (ql/count))
@@ -131,7 +131,7 @@
 
 (expect-with-non-timeseries-dbs
   [[33.0 4] [34.0 57]]
-  (tu/with-temporary-setting-values [breakout-bins-num 15]
+  (tu/with-temporary-setting-values [breakout-bin-width 1.0]
     (format-rows-by [(partial u/round-to-decimals 1) int]
       (rows (data/run-query venues
               (ql/aggregation (ql/count))
@@ -143,14 +143,14 @@
 (expect-with-non-timeseries-dbs
   (merge (venues-col :latitude)
          {:min_value 10.0646, :source :breakout,
-          :max_value 40.7794, :binning_info {:binning_strategy "num-bins", :bin_width 10.23827, :num_bins 3
-                                             :min_value 10.0646, :max_value 40.7794}})
-  (tu/with-temporary-setting-values [breakout-bins-num 3]
-    (-> (data/run-query venues
-          (ql/aggregation (ql/count))
-          (ql/breakout (ql/binning-strategy $latitude :default)))
-        (get-in [:data :cols])
-        first)))
+          :max_value 40.7794, :binning_info {:binning_strategy "num-bins", :bin_width 10.0,
+                                             :num_bins         4.0,        :min_value 10.0646,
+                                             :max_value        40.7794}})
+  (-> (data/run-query venues
+                      (ql/aggregation (ql/count))
+                      (ql/breakout (ql/binning-strategy $latitude :default)))
+      (get-in [:data :cols])
+      first))
 
 ;;Validate binning info is returned with the binning-strategy
 (expect-with-non-timeseries-dbs

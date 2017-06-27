@@ -143,7 +143,7 @@
 
 (def binning-strategies
   "Valid binning strategies for a `BinnedField`"
-  #{:num-bins :bin-width})
+  #{:num-bins :bin-width :default})
 
 (s/defrecord BinnedField [field     :- Field
                           strategy  :- (apply s/enum binning-strategies)
