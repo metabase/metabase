@@ -21,11 +21,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    separateTablesBySchema,
-    emptyStateForUser
-} from '../utils';
-
-import {
     getSection,
     getData,
     getUser,
@@ -79,23 +74,41 @@ const createListItem = (entity, index, section) =>
             id={entity.id}
             index={index}
             name={entity.display_name || entity.name}
-            description={section.type !== 'questions' ?
-                entity.description :
-                `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}`
-            }
-            url={section.type !== 'questions' ?
-                `${section.id}/${entity.id}` :
-                Urls.question(entity.id)
-            }
-            icon={section.type === 'questions' ?
-                visualizations.get(entity.display).iconName :
-                section.icon
-            }
+            description={ entity.description }
+            url={ `${section.id}/${entity.id}` }
+            icon={ section.icon }
         />
     </li>;
 
+
 const createSchemaSeparator = (entity) =>
     <li className={R.schemaSeparator}>{entity.schema}</li>;
+
+
+const separateTablesBySchema = (
+    tables,
+    section,
+    createSchemaSeparator,
+    createListItem
+) => Object.values(tables)
+    .sort((table1, table2) => table1.schema > table2.schema ? 1 :
+        table1.schema === table2.schema ? 0 : -1
+    )
+    .map((table, index, sortedTables) => {
+        if (!table || !table.id || !table.name) {
+            return;
+        }
+        // add schema header for first element and if schema is different from previous
+        const previousTableId = Object.keys(sortedTables)[index - 1];
+        return index === 0 ||
+            sortedTables[previousTableId].schema !== table.schema ?
+                [
+                    createSchemaSeparator(table),
+                    createListItem(table, index, section)
+                ] :
+                createListItem(table, index, section);
+    });
+
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class TableList extends Component {
@@ -127,7 +140,7 @@ export default class TableList extends Component {
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>
-                            { section.type === "tables" && !hasSingleSchema ?
+                            { !hasSingleSchema ?
                                 separateTablesBySchema(
                                     entities,
                                     section,
@@ -143,9 +156,7 @@ export default class TableList extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                        { section.empty &&
-                            <EmptyState {...emptyStateData}/>
-                        }
+                        <EmptyState {...emptyStateData}/>
                     </div>
                 }
                 </LoadingAndErrorWrapper>

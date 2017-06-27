@@ -46,10 +46,24 @@ import {
 import {
     getQuestionUrl,
     has,
-    isGuideEmpty,
     tryUpdateGuide
 } from '../utils';
 
+const isGuideEmpty = ({
+    things_to_know,
+    contact,
+    most_important_dashboard,
+    important_metrics,
+    important_segments,
+    important_tables
+} = {}) => things_to_know ? false :
+    contact && contact.name ? false :
+    contact && contact.email ? false :
+    most_important_dashboard ? false :
+    important_metrics && important_metrics.length !== 0 ? false :
+    important_segments && important_segments.length !== 0 ? false :
+    important_tables && important_tables.length !== 0 ? false :
+    true;
 
 const mapStateToProps = (state, props) => {
     const guide = getGuide(state, props);

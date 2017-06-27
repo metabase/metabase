@@ -31,8 +31,7 @@ import {
 
 import {
     tryUpdateFields,
-    fieldsToFormFields,
-    emptyStateForUser
+    fieldsToFormFields
 } from '../utils';
 
 import { getIconForField } from "metabase/lib/schema_metadata";
@@ -184,9 +183,7 @@ export default class SegmentFieldList extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                        { section.empty &&
-                            <EmptyState {...emptyStateData}/>
-                        }
+                        <EmptyState {...emptyStateData}/>
                     </div>
                 }
                 </LoadingAndErrorWrapper>

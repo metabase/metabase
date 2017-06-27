@@ -408,29 +408,6 @@ export const fieldsToFormFields = (fields) => Object.keys(fields)
     ])
     .reduce((array, keys) => array.concat(keys), []);
 
-export const separateTablesBySchema = (
-    tables,
-    section,
-    createSchemaSeparator,
-    createListItem
-) => Object.values(tables)
-    .sort((table1, table2) => table1.schema > table2.schema ? 1 :
-        table1.schema === table2.schema ? 0 : -1
-    )
-    .map((table, index, sortedTables) => {
-        if (!table || !table.id || !table.name) {
-            return;
-        }
-        // add schema header for first element and if schema is different from previous
-        const previousTableId = Object.keys(sortedTables)[index - 1];
-        return index === 0 ||
-            sortedTables[previousTableId].schema !== table.schema ?
-                [
-                    createSchemaSeparator(table),
-                    createListItem(table, index, section)
-                ] :
-                createListItem(table, index, section);
-    });
 
 export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization}) => {
     const newQuestion = startNewCard('query', dbId, tableId);
@@ -462,22 +439,6 @@ export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCou
 
 export const getQuestionUrl = getQuestionArgs => Urls.question(null, getQuestion(getQuestionArgs));
 
-export const isGuideEmpty = ({
-    things_to_know,
-    contact,
-    most_important_dashboard,
-    important_metrics,
-    important_segments,
-    important_tables
-} = {}) => things_to_know ? false :
-    contact && contact.name ? false :
-    contact && contact.email ? false :
-    most_important_dashboard ? false :
-    important_metrics && important_metrics.length !== 0 ? false :
-    important_segments && important_segments.length !== 0 ? false :
-    important_tables && important_tables.length !== 0 ? false :
-    true;
-
 export const typeToLinkClass = {
     dashboard: 'text-green',
     metric: 'text-brand',
@@ -492,30 +453,6 @@ export const typeToBgClass = {
     table: 'bg-purple'
 };
 
-export const emptyStateForUser = (emptyStateData, user) => {
-    const title = emptyStateData.title
-    
-    const message= user.is_superuser ?
-        emptyStateData.adminMessage || emptyStateData.message :
-        emptyStateData.message
-    
-       
-    const action=user.is_superuser ?
-        emptyStateData.adminAction || emptyStateData.action :
-        emptyStateData.action
-    
-    
-    const link=user.is_superuser ?
-        emptyStateData.adminLink || emptyStateData.link :
-        emptyStateData.link
-    
-    return {title : title, 
-            message : message, 
-            icon: emptyStateData.icon, 
-            image: emptyStateData.image, 
-            action: action,
-            link: link}
-};
 
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states

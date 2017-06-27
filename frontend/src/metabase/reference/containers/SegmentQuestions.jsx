@@ -20,7 +20,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    separateTablesBySchema, 
     getQuestionUrl
 } from '../utils';
 
@@ -97,23 +96,11 @@ const createListItem = (entity, index, section) =>
             id={entity.id}
             index={index}
             name={entity.display_name || entity.name}
-            description={section.type !== 'questions' ?
-                entity.description :
-                `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}`
-            }
-            url={section.type !== 'questions' ?
-                `${section.id}/${entity.id}` :
-                Urls.question(entity.id)
-            }
-            icon={section.type === 'questions' ?
-                visualizations.get(entity.display).iconName :
-                section.icon
-            }
+            description={ `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}` }
+            url={ Urls.question(entity.id) }
+            icon={ visualizations.get(entity.display).iconName }
         />
     </li>;
-
-const createSchemaSeparator = (entity) =>
-    <li className={R.schemaSeparator}>{entity.schema}</li>;
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class SegmentQuestions extends Component {
@@ -147,13 +134,7 @@ export default class SegmentQuestions extends Component {
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>
-                            { section.type === "tables" && !hasSingleSchema ?
-                                separateTablesBySchema(
-                                    entities,
-                                    section,
-                                    createSchemaSeparator,
-                                    createListItem
-                                ) :
+                            { 
                                 Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
                                         createListItem(entity, index, section)
@@ -163,9 +144,7 @@ export default class SegmentQuestions extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                        { section.empty &&
-                            <AdminAwareEmptyState {...emptyStateData(this.props.table, this.props.segment)}/>
-                        }
+                        <AdminAwareEmptyState {...emptyStateData(this.props.table, this.props.segment)}/>
                     </div>
                 }
                 </LoadingAndErrorWrapper>
