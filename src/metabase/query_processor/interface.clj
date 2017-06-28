@@ -231,9 +231,14 @@
                                     field  :- (s/cond-pre DateTimeField
                                                           FieldPlaceholder)])
 
+;; e.g. an absolute point in time (literal)
+(s/defrecord DateTimeValue [value :- Timestamp
+                            field :- DateTimeField])
+
 (def OrderableValue
   "Schema for an instance of `Value` whose `:value` property is itself orderable (a datetime or number, i.e. a `OrderableValueLiteral`)."
   (s/named (s/cond-pre
+            DateTimeValue
             RelativeDateTimeValue
             (s/constrained Value (fn [{value :value}]
                                    (nil? (s/check OrderableValueLiteral value)))))
@@ -243,10 +248,6 @@
   "Schema for an instance of `Value` whose `:value` property is itself a string (a datetime or string, i.e. a `OrderableValueLiteral`)."
   (s/named (s/constrained Value (comp string? :value))
            "Value that is a string (Value whose :value is a string)"))
-
-;; e.g. an absolute point in time (literal)
-(s/defrecord DateTimeValue [value :- Timestamp
-                            field :- DateTimeField])
 
 (defprotocol ^:private IDateTimeValue
   (unit [this]
