@@ -46,7 +46,7 @@ export default class SegmentPane extends Component {
     };
 
     componentWillMount() {
-        fetchTableMetadata(this.props.segment.table_id);
+        this.props.fetchTableMetadata(this.props.segment.table_id);
     }
 
     filterBy() {

@@ -167,6 +167,10 @@ const testStoreEnhancer = (createStore, history) => {
                 return result;
             },
 
+            resetDispatchedActions: () => {
+                store._dispatchedActions = [];
+            },
+
             /**
              * Waits until all actions with given type identifiers have been called or fails if the maximum waiting
              * time defined in `timeout` is exceeded.
@@ -190,12 +194,19 @@ const testStoreEnhancer = (createStore, history) => {
                         };
                         setTimeout(() => {
                             store._onActionDispatched = null;
-                            return reject(
-                                new Error(
-                                    `Actions ${actionTypes.join(", ")} were not dispatched within ${timeout}ms. ` +
-                                    `Dispatched actions so far: ${store._dispatchedActions.map((a) => a.type).join(", ")}`
+
+                            if (allActionsAreTriggered()) {
+                                // TODO: Figure out why we sometimes end up here instead of _onActionDispatched hook
+                                resolve()
+                            } else {
+                                return reject(
+                                    new Error(
+                                        `Actions ${actionTypes.join(", ")} were not dispatched within ${timeout}ms. ` +
+                                        `Dispatched actions so far: ${store._dispatchedActions.map((a) => a.type).join(", ")}`
+                                    )
                                 )
-                            )
+                            }
+
                         }, timeout)
                     });
                 }

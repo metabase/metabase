@@ -234,7 +234,7 @@ export const fetchTables = createThunkAction(FETCH_TABLES, (reload = false) => {
     };
 });
 
-const FETCH_TABLE_METADATA = "metabase/metadata/FETCH_TABLE_METADATA";
+export const FETCH_TABLE_METADATA = "metabase/metadata/FETCH_TABLE_METADATA";
 export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, function(tableId, reload = false) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "tables", tableId];

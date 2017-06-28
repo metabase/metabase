@@ -45,6 +45,7 @@ import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils"
 import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { getIsShowingDataReference } from "metabase/query_builder/selectors";
 
 type UiControls = {
     isEditing?: boolean,
@@ -618,14 +619,13 @@ export const updateQuestion = (newQuestion) => {
         dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
         // See if the template tags editor should be shown/hidden
-
         const oldQuestion = getQuestion(getState());
         const oldTagCount = getTemplateTagCount(oldQuestion);
         const newTagCount = getTemplateTagCount(newQuestion);
 
         if (newTagCount > oldTagCount) {
             dispatch(setIsShowingTemplateTagsEditor(true));
-        } else if (newTagCount === 0) {
+        } else if (newTagCount === 0 && !getIsShowingDataReference(getState())) {
             dispatch(setIsShowingTemplateTagsEditor(false));
         }
     };

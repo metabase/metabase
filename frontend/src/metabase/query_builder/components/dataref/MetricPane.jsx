@@ -42,7 +42,7 @@ export default class MetricPane extends Component {
     };
 
     componentWillMount() {
-        fetchTableMetadata(this.props.metric.table_id);
+        this.props.fetchTableMetadata(this.props.metric.table_id);
     }
 
     newCard() {
