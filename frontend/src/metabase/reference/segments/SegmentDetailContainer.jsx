@@ -5,7 +5,7 @@ import { connect } from 'react-redux';
 
 import Sidebar from 'metabase/components/Sidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
-import SegmentDetail from "metabase/reference/containers/SegmentDetail.jsx"
+import SegmentDetail from "metabase/reference/segments/SegmentDetail.jsx"
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';

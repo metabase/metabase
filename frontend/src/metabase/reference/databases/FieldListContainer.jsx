@@ -5,7 +5,7 @@ import { connect } from 'react-redux';
 
 import Sidebar from 'metabase/components/Sidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
-import FieldList from "metabase/reference/containers/FieldList.jsx"
+import FieldList from "metabase/reference/databases/FieldList.jsx"
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';

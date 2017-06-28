@@ -5,7 +5,7 @@ import { connect } from 'react-redux';
 
 import Sidebar from 'metabase/components/Sidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
-import MetricList from "metabase/reference/containers/MetricList.jsx"
+import MetricList from "metabase/reference/metrics/MetricList.jsx"
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';

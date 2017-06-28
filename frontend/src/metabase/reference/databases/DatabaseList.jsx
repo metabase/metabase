@@ -66,7 +66,9 @@ export default class DatabaseList extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader section={section} />
+                <ReferenceHeader 
+                    name="Databases and tables"
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">

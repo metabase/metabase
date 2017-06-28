@@ -6,7 +6,7 @@ import { connect } from 'react-redux';
 import Sidebar from 'metabase/components/Sidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 
-import TableQuestions from "metabase/reference/containers/TableQuestions.jsx"
+import TableQuestions from "metabase/reference/databases/TableQuestions.jsx"
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 

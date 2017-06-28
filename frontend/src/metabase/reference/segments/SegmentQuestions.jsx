@@ -82,7 +82,11 @@ export default class SegmentQuestions extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader section={section} />
+                <ReferenceHeader 
+                    name={section.name}
+                    type='questions'
+                    headerIcon="segment"
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">

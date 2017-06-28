@@ -66,7 +66,9 @@ export default class SegmentList extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader section={section} />
+                <ReferenceHeader 
+                    name="Segments"
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">

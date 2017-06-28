@@ -9,7 +9,7 @@ import List from "metabase/components/List.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
 import Detail from "metabase/reference/components/Detail.jsx";
 
 import {
@@ -156,7 +156,7 @@ export default class DatabaseDetail extends Component {
                         revisionMessageFormField={revision_message}
                     />
                 }
-                <ReferenceHeader
+                <EditableReferenceHeader
                     entity={entity}
                     table={table}
                     section={section}

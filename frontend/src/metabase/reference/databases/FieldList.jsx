@@ -14,7 +14,7 @@ import EmptyState from "metabase/components/EmptyState.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
 
 import cx from "classnames";
 
@@ -131,7 +131,7 @@ export default class FieldList extends Component {
                         submitting={submitting}
                     />
                 }
-                <ReferenceHeader section={section} user={user} isEditing={isEditing} startEditing={startEditing} />
+                <EditableReferenceHeader section={section} user={user} isEditing={isEditing} startEditing={startEditing} />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">

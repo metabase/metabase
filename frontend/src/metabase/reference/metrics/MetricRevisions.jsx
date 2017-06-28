@@ -86,7 +86,10 @@ export default class MetricRevisions extends Component {
 
         return (
             <div style={style} className="full">
-                <ReferenceHeader section={section} />
+                <ReferenceHeader 
+                    name={section.name}
+                    headerIcon="ruler"
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                     { () => Object.keys(revisions).length > 0 && tables[entity.table_id] ?
                         <div className="wrapper wrapper--trim">
