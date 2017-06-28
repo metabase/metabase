@@ -202,7 +202,7 @@ export default class Scalar extends Component {
                                     "cursor-pointer": !!onChangeCardAndRun
                                 })}
                             >
-                                {settings["card.title"]}
+                                <span className="Scalar-title">{settings["card.title"]}</span>
                             </span>
 
                         </Ellipsified>
