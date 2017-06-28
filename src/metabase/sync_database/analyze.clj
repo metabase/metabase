@@ -25,39 +25,42 @@
     (catch Throwable e
       (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
-(defn- values-are-valid-json?
-  "`true` if at every item in VALUES is `nil` or a valid string-encoded JSON dictionary or array, and at least one of those is non-nil."
-  [values]
+(defn- value-is-valid-json?
+ "If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
+  types of valid JSON values as :json (e.g. a string representation of a number or boolean)"
+  [value]
   (try
-    (loop [at-least-one-non-nil-value? false, [val & more] values]
-      (cond
-        (and (not val)
-             (not (seq more))) at-least-one-non-nil-value?
-        (s/blank? val)         (recur at-least-one-non-nil-value? more)
-        ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
-        ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
-        :else                  (do (u/prog1 (json/parse-string val)
-                                     (assert (or (map? <>)
-                                                 (sequential? <>))))
-                                   (recur true more))))
+    (if (and value (not (s/blank? value)))
+      (let [json-val (json/parse-string value)]
+        (or (map? json-val)
+            (sequential? json-val)))
+      false)
     (catch Throwable _
       false)))
 
-(defn- values-are-valid-emails?
-  "`true` if at every item in VALUES is `nil` or a valid email, and at least one of those is non-nil."
-  [values]
+(defn- value-is-valid-email?
+  "`true` if this looks somewhat like an email address"
+  [value]
   (try
-    (loop [at-least-one-non-nil-value? false, [val & more] values]
-      (cond
-        (and (not val)
-             (not (seq more))) at-least-one-non-nil-value?
-        (s/blank? val)         (recur at-least-one-non-nil-value? more)
-        ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
-        ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
-        :else                  (do (assert (u/is-email? val))
-                                   (recur true more))))
+    (u/is-email? value)
     (catch Throwable _
       false)))
+
+(defn- percent-match
+  [predicate values]
+  (if-let [non-nil-values (remove nil? values)]
+    (if (seq non-nil-values)
+      (as-> non-nil-values x
+        (filter predicate x)
+        (count x)
+        (/ x (count non-nil-values))
+        (* x 100)
+        (int x))
+      0)
+    0))
+
+(def ^:private percent-json  (partial percent-match value-is-valid-json?))
+(def ^:private percent-email (partial percent-match value-is-valid-email?))
 
 (defn- percent-valid-urls
   "Recursively count the values of non-nil values in VS that are valid URLs, and return it as a percentage."
@@ -94,8 +97,8 @@
                      :is_fk                   (isa? (:special_type field) :type/FK)
                      :cardinality             (count (distinct values))
                      :field_percent_urls      (percent-valid-urls values)
-                     :field_percent_json      (if (values-are-valid-json? values) 100 0)
-                     :field_percent_email     (if (values-are-valid-emails? values) 100 0)
+                     :field_percent_json      (percent-json values)
+                     :field_percent_email     (percent-email values)
                      :field_avg_length        (field-avg-length values)
                      :field_id                field-id
                      :table_id                (:id table)
