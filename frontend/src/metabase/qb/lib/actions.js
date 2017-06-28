@@ -127,8 +127,10 @@ export const addOrUpdateBreakout = (card, breakout) => {
     let breakouts = Query.getBreakouts(newCard.dataset_query.query);
     for (let index = 0; index < breakouts.length; index++) {
         if (
-            Field.getFieldTargetId(breakouts[index]) ===
-            Field.getFieldTargetId(breakout)
+            fieldIdsEq(
+                Field.getFieldTargetId(breakouts[index]),
+                Field.getFieldTargetId(breakout)
+            )
         ) {
             newCard.dataset_query.query = Query.updateBreakout(
                 newCard.dataset_query.query,
