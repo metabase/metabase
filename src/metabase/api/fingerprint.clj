@@ -8,7 +8,7 @@
                              [card :refer [Card]])            
             [schema.core :as s]))
 
-(def ^:private ^:const MaxQueryCost       (s/maybe (s/enum "dont-touch"
+(def ^:private ^:const MaxQueryCost       (s/maybe (s/enum "cache"
                                                            "sample"
                                                            "full-scan"
                                                            "joins")))

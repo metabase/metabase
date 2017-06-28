@@ -51,7 +51,7 @@
   [numerator & denominators]
   (when (or (and (not-empty denominators) (not-any? zero? denominators))
             (and (not (zero? numerator)) (empty? denominators)))
-    (double (apply / numerator denominators))))
+    (apply / numerator denominators)))
 
 (defn growth
   "Relative difference between `x1` an `x2`."
@@ -60,7 +60,7 @@
     (safe-divide (* (if (neg? x1) -1 1) (- x2 x1)) x1)))
 
 (defn bins
-  "Return centers of bins and thier hight of a given histogram."
+  "Return centers of bins and thier frequencies of a given histogram."
   [histogram]
   (let [bins (hist/bins histogram)]
     (or (some->> bins first :target :counts (into {}))
@@ -90,10 +90,8 @@
   "Calculate entropy of given histogram."
   [histogram]
   (let [total (hist/total-count histogram)]
-    (transduce (comp (map val)
-                     (filter pos?)
-                     (map #(let [p (/ % total)]
-                             (* p (math/log p)))))
+    (transduce (map #(let [p (/ (val %) total)]
+                       (* p (math/log p))))
                (redux/post-complete + -)
                (bins histogram))))
 
@@ -118,8 +116,8 @@
 (def yolo-computation? ^:private ^{:arglist '([max-cost])}
   (comp #{:yolo} :computation))
 
-(def dont-touch-db? ^:private ^{:arglist '([max-cost])}
-  (comp #{:dont-touch} :query))
+(def cache-only? ^:private ^{:arglist '([max-cost])}
+  (comp #{:cache} :query))
 
 (def sample-only? ^:private ^{:arglist '([max-cost])}
   (comp #{:sample} :query))
@@ -188,7 +186,7 @@
           :skewness             skewness
           :all-distinct?        (>= unique% (- 1 cardinality-error))
           :entropy              (binned-entropy histogram)
-          :type                 Number})
+          :type                 Num})
        {:count 0}))))
 
 (defmethod fingerprinter [Num Num]
@@ -286,7 +284,7 @@
 
 (defn- quarter
   [dt]
-  (Math/ceil (/ (t/month dt) 3)))
+  (-> (t/month dt) (/ 3) Math/ceil long))
 
 (defmethod fingerprinter DateTime
   [_ _]
@@ -382,7 +380,7 @@
                          fingerprint. `:computation` can be one of `:linear` 
                          (O(n) or better), `:unbounded`, or `:yolo` (full blown 
                          machine learning etc.). `query` can be one of 
-                         `:dont-touch` (use only cached data), `:sample` (sample
+                         `:cache` (use only cached data), `:sample` (sample
                          up to `max-sample-size` rows), `:full-scan` (full table 
                          scan), or `:joins` (bring in data from other tables if 
                          needed).
@@ -444,9 +442,7 @@
                                 (not= resolution :raw))
                          {:source-table (:table_id a)
                           :breakout     [[:datetime-field [:field-id (:id a)]
-                                          (case resolution
-                                            :month :month
-                                            :day :day)]]
+                                          resolution]]
                           :aggregation  [:sum [:field-id (:id b)]]}
                          {:source-table (:table_id a)
                           :fields       [[:field-id (:id a)]
