@@ -368,18 +368,18 @@ export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (ca
 
         const query = card && new Question(getMetadata(getState()), card).query();
 
-        function loadMetadataForAtomicQuery(singleQuery) {
+        async function loadMetadataForAtomicQuery(singleQuery) {
             if (singleQuery instanceof StructuredQuery && singleQuery.tableId() != null) {
-                dispatch(loadTableMetadata(singleQuery.tableId()));
+                await dispatch(loadTableMetadata(singleQuery.tableId()));
             }
 
             if (singleQuery instanceof NativeQuery && singleQuery.databaseId() != null) {
-                dispatch(loadDatabaseFields(singleQuery.databaseId()));
+                await dispatch(loadDatabaseFields(singleQuery.databaseId()));
             }
         }
 
         if (query) {
-            loadMetadataForAtomicQuery(query);
+            await loadMetadataForAtomicQuery(query);
         }
     }
 });

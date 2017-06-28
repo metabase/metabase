@@ -28,14 +28,9 @@ jest.mock("ace/snippets/json", () => {}, {virtual: true});
 jest.mock("ace/snippets/json", () => {}, {virtual: true});
 jest.mock("ace/ext-language_tools", () => {}, {virtual: true});
 
-// TODO Atte Keinänen 6/22/17: Write functional mock implementations of Modal and Tooltip
-// We can't use the original classes because they do DOM mutation
-jest.mock("metabase/components/Modal", () => {
-    const MockedModal = () => <div className="mocked-modal" />
-    return MockedModal
-});
-jest.mock("metabase/components/Tooltip", () => {
-    const MockedTooltip = ({ children }) => <div className="mocked-tooltip" >{ children }</div>
-    return MockedTooltip
-});
+import * as modal from "metabase/components/Modal";
+const MockedModal = () => <div className="mocked-modal" />;
+modal.default = MockedModal;
 
+import * as tooltip from "metabase/components/Tooltip";
+tooltip.default = tooltip.TestTooltip

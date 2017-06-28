@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import AccordianList from "metabase/components/AccordianList.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 

@@ -1544,3 +1544,33 @@ export const unsavedOrderCountQuestion = new Question(metadata, _.omit(orders_co
 export const productQuestion = new Question(metadata, product_card);
 const NoFieldsMetadata = getMetadata(assocIn(state, ["metadata", "tables", ORDERS_TABLE_ID, "fields"], []))
 export const questionNoFields = new Question(NoFieldsMetadata, card);
+
+export const orders_past_30_days_segment = {
+    "id": null,
+    "name": "Past 30 days",
+    "description": "Past 30 days created at",
+    "table_id": 1,
+    "definition": {
+        "source_table": 1,
+        "filter": ["time-interval", ["field-id", 1], -30, "day"]
+    }
+};
+
+export const vendor_count_metric = {
+    "id": null,
+    "name": "Vendor count",
+    "description": "Tells how many vendors we have",
+    "table_id": 3,
+    "definition": {
+        "aggregation": [
+            [
+                "distinct",
+                [
+                    "field-id",
+                    28
+                ]
+            ]
+        ],
+        "source_table": 3
+    }
+};

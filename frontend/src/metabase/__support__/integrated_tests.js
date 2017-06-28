@@ -4,6 +4,10 @@
  * Import this file before other imports in integrated tests
  */
 
+// Mocks in a separate file as they would clutter this file
+// This must be before all other imports
+import "./integrated_tests_mocks";
+
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
 import { CardApi, SessionApi } from "metabase/services";
@@ -15,14 +19,12 @@ import { Provider } from 'react-redux';
 
 import { createMemoryHistory } from 'history'
 import { getStore } from "metabase/store";
-import { createRoutes, match, Router, useRouterHistory, withRouter } from "react-router";
+import { createRoutes, Router, useRouterHistory } from "react-router";
 import _ from 'underscore';
 
 // Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
 import fetch from 'isomorphic-fetch';
 
-// Mocks in a separate file as they would clutter this file
-import "./integrated_tests_mocks";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getRoutes } from "metabase/routes";
 

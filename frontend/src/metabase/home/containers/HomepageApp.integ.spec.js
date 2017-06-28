@@ -6,7 +6,9 @@ import {
 import React from 'react';
 import { mount } from "enzyme";
 import {
-    unsavedOrderCountQuestion
+    orders_past_30_days_segment,
+    unsavedOrderCountQuestion,
+    vendor_count_metric
 } from "metabase/__support__/sample_dataset_fixture";
 import { delay } from 'metabase/lib/promise';
 
@@ -32,37 +34,11 @@ describe("HomepageApp", () => {
         // Delays are required for having separable creation times for each entity
         await delay(100);
 
-        const segment = await createSegment({
-            "id": null,
-            "name": "Past 30 days",
-            "description": "Past 30 days created at",
-            "table_id": 1,
-            "definition": {
-                "source_table": 1,
-                "filter": ["time-interval", ["field-id", 1], -30, "day"]
-            }
-        });
+        const segment = await createSegment(orders_past_30_days_segment);
 
         await delay(100);
 
-        const metric = await createMetric({
-            "id": null,
-            "name": "Vendor count",
-            "description": "Tells how many vendors we have",
-            "table_id": 3,
-            "definition": {
-                "aggregation": [
-                    [
-                        "distinct",
-                        [
-                            "field-id",
-                            28
-                        ]
-                    ]
-                ],
-                "source_table": 3
-            }
-        });
+        const metric = await createMetric(vendor_count_metric);
 
         await delay(100);
     })
