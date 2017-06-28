@@ -237,7 +237,7 @@ export const breakout = (card, breakout, tableMetadata) => {
 // min number of points when switching units
 const MIN_INTERVALS = 4;
 
-export const updateDateTimeFilter = (card, column, start, end) => {
+export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     let newCard = clone(card);
 
     let fieldRef = getFieldRefFromColumn(column);
