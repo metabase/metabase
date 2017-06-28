@@ -100,17 +100,12 @@
   "Return User ID and superuser status for Session with SESSION-ID if it is valid and not expired."
   [session-id]
   (when (and session-id (init-status/complete?))
-    (when-let [session (or (session-with-id session-id)
-                           (println "no matching session with ID") ; DEBUG
-                           )]
-      (if (session-expired? session)
-        (printf "session-is-expired! %d min / %d min\n" (session-age-minutes session) (config/config-int :max-session-age)) ; DEBUG
+    (when-let [session (session-with-id session-id)]
+      (when-not (session-expired? session)
         {:metabase-user-id (:user_id session)
          :is-superuser?    (:is_superuser session)}))))
 
 (defn- add-current-user-info [{:keys [metabase-session-id], :as request}]
-  (when-not (init-status/complete?)
-    (println "Metabase is not initialized yet!")) ; DEBUG
   (merge request (current-user-info-for-session metabase-session-id)))
 
 (defn wrap-current-user-id
@@ -128,7 +123,7 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :google_auth] (models/default-fields User))))
+  (vec (concat [User :is_active :google_auth :ldap_auth] (models/default-fields User))))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and `*current-user-permissions-set*`.
@@ -347,7 +342,7 @@
     (try (binding [*automatically-catch-api-exceptions* false]
            (handler request))
          (catch Throwable e
-           (log/error (.getMessage e))
+           (log/warn (.getMessage e))
            {:status 400, :body "An error occurred."}))))
 
 (defn message-only-exceptions

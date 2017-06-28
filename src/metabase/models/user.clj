@@ -1,6 +1,7 @@
 (ns metabase.models.user
   (:require [cemerick.friend.credentials :as creds]
             [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
@@ -42,12 +43,12 @@
   (u/prog1 user
     ;; add the newly created user to the magic perms groups
     (binding [perm-membership/*allow-changing-all-users-group-members* true]
-      #_(log/info (format "Adding user %d to All Users permissions group..." user-id))
+      (log/info (format "Adding user %d to All Users permissions group..." user-id))
       (db/insert! PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (group/all-users))))
     (when superuser?
-      #_(log/info (format "Adding user %d to Admin permissions group..." user-id))
+      (log/info (format "Adding user %d to Admin permissions group..." user-id))
       (db/insert! PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (group/admin))))))
@@ -142,7 +143,15 @@
     ;; send an email to everyone including the site admin if that's set
     (email/send-user-joined-admin-notification-email! <>, :google-auth? true)))
 
-
+(defn create-new-ldap-auth-user!
+  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins will recieve an email right away."
+  [first-name last-name email-address password]
+  {:pre [(string? first-name) (string? last-name) (u/is-email? email-address)]}
+  (db/insert! User :email      email-address
+                   :first_name first-name
+                   :last_name  last-name
+                   :password   password
+                   :ldap_auth  true))
 
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."

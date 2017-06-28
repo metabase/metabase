@@ -5,16 +5,17 @@
              [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
-             [util :as u]
-             [sync-database :as sync-database]]
+             [sync-database :as sync-database]
+             [util :as u]]
             [metabase.models
-             [database :refer [Database]]
+             [card :refer [Card]]
+             [database :as database :refer [Database]]
              [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :refer [Table]]]
             [metabase.test
-             [data :refer :all]
+             [data :as data :refer :all]
              [util :as tu :refer [match-$ resolve-private-vars]]]
             [metabase.test.data
              [dataset-definitions :as defs]
@@ -429,62 +430,108 @@
 (expect
   (let [checkins-user-field (Field (id :checkins :user_id))
         users-id-field      (Field (id :users :id))]
-
     (dissoc-time-based-keys
-     [{:origin_id      (:id checkins-user-field)
-       :destination_id (:id users-id-field)
-       :relationship   "Mt1"
-       :origin         (merge (dissoc field-defaults :target)
-                              (match-$ checkins-user-field
-                                {:id                 $
-                                 :table_id           $
-                                 :raw_column_id      $
-                                 :name               "USER_ID"
-                                 :display_name       "User ID"
-                                 :base_type          "type/Integer"
-                                 :preview_display    $
-                                 :position           $
-                                 :special_type       "type/FK"
-                                 :fk_target_field_id $
-                                 :created_at         $
-                                 ;;:updated_at       $
-                                 :last_analyzed      $
-                                 :table              (merge (dissoc (table-defaults) :segments :field_values :metrics)
-                                                            (match-$ (Table (id :checkins))
-                                                              {:schema       "PUBLIC"
-                                                               :name         "CHECKINS"
-                                                               :display_name "Checkins"
-                                                               :rows         1000
-                                                               ;;:updated_at   $
-                                                               :id           $
-                                                               :raw_table_id $
-                                                               :created_at   $}))}))
-       :destination    (merge (dissoc field-defaults :target)
-                              (match-$ users-id-field
-                                {:id                 $
-                                 :table_id           $
-                                 :raw_column_id      $
-                                 :name               "ID"
-                                 :display_name       "ID"
-                                 :base_type          "type/BigInteger"
-                                 :preview_display    $
-                                 :position           $
-                                 :special_type       "type/PK"
-                                 :fk_target_field_id $
-                                 :created_at         $
-                                 ;;:updated_at       $
-                                 :last_analyzed      $
-                                 :table              (merge (dissoc (table-defaults) :db :segments :field_values :metrics)
-                                                            (match-$ (Table (id :users))
-                                                              {:schema       "PUBLIC"
-                                                               :name         "USERS"
-                                                               :display_name "Users"
-                                                               :rows         15
-                                                               ;:updated_at  $
-                                                               :id           $
-                                                               :raw_table_id $
-                                                               :created_at   $}))}))}]))
-  (do (cached-values/cache-field-values-for-table! (Table (id :users)))
+    [{:origin_id      (:id checkins-user-field)
+      :destination_id (:id users-id-field)
+      :relationship   "Mt1"
+      :origin         (merge (dissoc field-defaults :target)
+                             (match-$ checkins-user-field
+                               {:id                 $
+                                :table_id           $
+                                :raw_column_id      $
+                                :name               "USER_ID"
+                                :display_name       "User ID"
+                                :base_type          "type/Integer"
+                                :preview_display    $
+                                :position           $
+                                :special_type       "type/FK"
+                                :fk_target_field_id $
+                                :created_at         $
+                                :updated_at         $
+                                :last_analyzed      $
+                                :table              (merge (dissoc (table-defaults) :segments :field_values :metrics)
+                                                           (match-$ (Table (id :checkins))
+                                                             {:schema       "PUBLIC"
+                                                              :name         "CHECKINS"
+                                                              :display_name "Checkins"
+                                                              :rows         1000
+                                                              :updated_at   $
+                                                              :id           $
+                                                              :raw_table_id $
+                                                              :created_at   $}))}))
+      :destination    (merge (dissoc field-defaults :target)
+                             (match-$ users-id-field
+                               {:id                 $
+                                :table_id           $
+                                :raw_column_id      $
+                                :name               "ID"
+                                :display_name       "ID"
+                                :base_type          "type/BigInteger"
+                                :preview_display    $
+                                :position           $
+                                :special_type       "type/PK"
+                                :fk_target_field_id $
+                                :created_at         $
+                                :updated_at         $
+                                :last_analyzed      $
+                                :table              (merge (dissoc (table-defaults) :db :segments :field_values :metrics)
+                                                           (match-$ (Table (id :users))
+                                                             {:schema       "PUBLIC"
+                                                              :name         "USERS"
+                                                              :display_name "Users"
+                                                              :rows         15
+                                                              :updated_at   $
+                                                              :id           $
+                                                              :raw_table_id $
+                                                              :created_at   $}))}))}]))
+(do (cached-values/cache-field-values-for-table! (Table (id :users)))
       (analyze/analyze-table (Table (id :users)))
       (classify/classify-table! (Table (id :users)))
       (dissoc-time-based-keys ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))))
+
+
+;; Make sure metadata for 'virtual' tables comes back as expected from GET /api/table/:id/query_metadata
+(tt/expect-with-temp [Card [card {:name          "Go Dubs!"
+                                  :database_id   (data/id)
+                                  :dataset_query {:database (data/id)
+                                                  :type     :native
+                                                  :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]]
+  (let [card-virtual-table-id (str "card__" (u/get-id card))]
+    {:display_name "Go Dubs!"
+     :db_id        database/virtual-id
+     :id           card-virtual-table-id
+     :fields       [{:name         "NAME"
+                     :display_name "Name"
+                     :base_type    "type/Text"
+                     :table_id     card-virtual-table-id
+                     :id           ["field-literal" "NAME" "type/Text"]
+                     :special_type nil}
+                    {:name         "ID"
+                     :display_name "ID"
+                     :base_type    "type/Integer"
+                     :table_id     card-virtual-table-id
+                     :id           ["field-literal" "ID" "type/Integer"]
+                     :special_type nil}
+                    {:name         "PRICE"
+                     :display_name "Price"
+                     :base_type    "type/Integer"
+                     :table_id     card-virtual-table-id
+                     :id           ["field-literal" "PRICE" "type/Integer"]
+                     :special_type nil}
+                    {:name         "LATITUDE"
+                     :display_name "Latitude"
+                     :base_type    "type/Float"
+                     :table_id     card-virtual-table-id
+                     :id           ["field-literal" "LATITUDE" "type/Float"]
+                     :special_type nil}]})
+  (do
+    ;; run the Card which will populate its result_metadata column
+    ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+
+    ;; Now fetch the metadata for this "table"
+    ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))))
+
+;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables
+(expect
+  []
+  ((user->client :crowberto) :get 200 "table/card__1000/fks"))

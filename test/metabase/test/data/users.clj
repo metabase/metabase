@@ -70,7 +70,6 @@
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (wait-for-initiailization)
   (or (User :email email)
-      (println "Creating test user:" email) ; DEBUG
       (db/insert! User
         :email        email
         :first_name   first
@@ -108,12 +107,14 @@
      (:id (fetch-user username)))))
 
 (defn user->credentials
-  "Return a map with `:email` and `:password` for User with USERNAME.
+  "Return a map with `:username` and `:password` for User with USERNAME.
 
-    (user->credentials :rasta) -> {:email \"rasta@metabase.com\", :password \"blueberries\"}"
+    (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
   [username]
   {:pre [(contains? usernames username)]}
-  (select-keys (user->info username) [:email :password]))
+  (let [{:keys [email password]} (user->info username)]
+    {:username email
+     :password password}))
 
 (def ^{:arglists '([id])} id->user
   "Reverse of `user->id`.
@@ -139,7 +140,6 @@
         (when-not (= status-code 401)
           (throw e))
         ;; If we got a 401 unauthenticated clear the tokens cache + recur
-        (printf "Got 401 (Unauthenticated) for %s. Clearing cached auth tokens and retrying request.\n" username) ; DEBUG
         (reset! tokens {})
         (apply client-fn username args)))))
 

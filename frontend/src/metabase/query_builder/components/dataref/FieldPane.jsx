@@ -112,7 +112,7 @@ export default class FieldPane extends Component {
         }
 
         // TODO: allow for filters/grouping via foreign keys
-        if (!datasetQuery.query || datasetQuery.query.source_table == undefined || datasetQuery.query.source_table === field.table_id) {
+        if (!datasetQuery || !datasetQuery.query || datasetQuery.query.source_table == undefined || datasetQuery.query.source_table === field.table_id) {
             // NOTE: disabled this for now because we need a way to capture the completed filter before adding it to the query, or to pop open the filter widget here?
             // useForCurrentQuestion.push(<UseForButton title={"Filter by " + name} onClick={this.filterBy} />);
 

@@ -216,6 +216,7 @@
 
 (defn honeysql-form->sql+args
   "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
+  {:style/indent 1}
   [driver honeysql-form]
   {:pre [(map? honeysql-form)]}
   (let [[sql & args] (try (binding [hformat/*subquery?* false]
@@ -285,7 +286,8 @@
             :foreign-keys
             :expressions
             :expression-aggregations
-            :native-parameters}
+            :native-parameters
+            :nested-queries}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 

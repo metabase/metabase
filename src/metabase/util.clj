@@ -503,24 +503,29 @@
     identity
     (constantly "")))
 
-(def ^String ^{:style/indent 2, :arglists '([color-symb x] [color-symb format-str & args])}
-  format-color
+(def ^:private ^{:arglists '([color-symb x])} colorize
+  "Colorize string X with the function matching COLOR-SYMB, but only if `MB_COLORIZE_LOGS` is enabled (the default)."
+  (if (config/config-bool :mb-colorize-logs)
+    (fn [color-symb x]
+      (let [color-fn (or (ns-resolve 'colorize.core color-symb)
+                         (throw (Exception. (str "Invalid color symbol: " color-symb))))]
+        (color-fn x)))
+    (fn [_ x]
+      x)))
+
+(defn format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
    `cyan`, `magenta`, etc. See the entire list of avaliable colors
    [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
 
      (format-color 'red \"Fatal error: %s\" error-message)"
-  (if (config/config-bool :mb-colorize-logs)
-    (fn
-      ([color-symb x]
-       {:pre [(symbol? color-symb)]}
-       ((ns-resolve 'colorize.core color-symb) x))
-      ([color-symb format-string & args]
-       (format-color color-symb (apply format format-string args))))
-    (fn
-      ([_ x] x)
-      ([_ format-string & args] (apply format format-string args)))))
+  {:style/indent 2}
+  (^String [color-symb x]
+   {:pre [(symbol? color-symb)]}
+   (colorize color-symb x))
+  (^String [color-symb format-string & args]
+   (colorize color-symb (apply format format-string args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing X as a string.
@@ -528,11 +533,11 @@
    function from `colorize.core`.
 
      (pprint-to-str 'green some-obj)"
-  ([x]
+  (^String [x]
    (when x
      (with-out-str (pprint x))))
-  ([color-symb x]
-   ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
+  (^String [color-symb x]
+   (colorize color-symb (pprint-to-str x))))
 
 (def emoji-progress-bar
   "Create a string that shows progress for something, e.g. a database sync process.
@@ -825,10 +830,10 @@
 
 (defn occurances-of-substring
   "Return the number of times SUBSTR occurs in string S."
-  ^Integer [^String s, ^String substr]
+  ^Long [^String s, ^String substr]
   (when (and (seq s) (seq substr))
     (loop [index 0, cnt 0]
-      (if-let [new-index (s/index-of s substr index)]
+      (if-let [^long new-index (s/index-of s substr index)]
         (recur (inc new-index) (inc cnt))
         cnt))))
 

@@ -11,11 +11,13 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
+             [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
              [field :refer [Field]]
              [interface :as mi]
              [permissions :as perms]
              [table :refer [Table]]]
+            [metabase.query-processor.util :as qputil]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -30,12 +32,11 @@
 
 ;;; ------------------------------------------------------------ GET /api/database ------------------------------------------------------------
 
-
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
-                                                                  :active true
-                                                                  :db_id  [:in (map :id dbs)]
-                                                                  {:order-by [[:%lower.display_name :asc]]})))]
+                                                              :active true
+                                                              :db_id  [:in (map :id dbs)]
+                                                              {:order-by [[:%lower.display_name :asc]]})))]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
@@ -47,16 +48,91 @@
                                       (user-has-perms? perms/native-read-path)      :read
                                       :else                                         :none)))))
 
-(defn- dbs-list [include-tables?]
+(defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
+  (when database-id
+    (when-let [driver (driver/database-id->driver database-id)]
+      (driver/driver-supports? driver :nested-queries)
+      (mi/can-read? card))))
+
+(defn- card-has-ambiguous-columns?
+  "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
+   clojure.java.jdbc 'helpfully' does for us automatically.
+   Presence of ambiguous columns disqualifies a query for use as a source query because something like
+
+     SELECT name
+     FROM (
+       SELECT x.name, y.name
+       FROM x
+       LEFT JOIN y on x.id = y.id
+     )
+
+   would be ambiguous. Too many things break when attempting to use a query like this. In the future, this may be
+   supported, but it will likely require rewriting the source SQL query to add appropriate aliases (this is even
+   trickier if the source query uses `SELECT *`)."
+  [{result-metadata :result_metadata}]
+  (some (partial re-find #"_2$")
+        (map (comp name :name) result-metadata)))
+
+(defn- card-uses-unnestable-aggregation?
+  "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that
+   use queries with those aggregations as source queries. This function determines whether CARD is using one
+   of those queries so we can filter it out in Clojure-land."
+  [{{{aggregations :aggregation} :query} :dataset_query}]
+  (when (seq aggregations)
+    (some (fn [[ag-type]]
+            (contains? #{:cum-count :cum-sum} (qputil/normalize-token ag-type)))
+          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate over list of ags
+          (if-not (sequential? (first aggregations))
+            [aggregations]
+            aggregations))))
+
+(defn- source-query-cards
+  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
+  []
+  (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
+          :result_metadata [:not= nil]
+          {:order-by [[:%lower.name :asc]]}) <>
+    (filter card-database-supports-nested-queries? <>)
+    (remove card-uses-unnestable-aggregation? <>)
+    (remove card-has-ambiguous-columns? <>)
+    (map #(dissoc % :result_metadata) <>)      ; frontend has no use for result_metadata just yet so strip it out because it can be big
+    (hydrate <> :collection)))
+
+(defn- cards-virtual-tables
+  "Return a sequence of 'virtual' Table metadata for eligible Cards.
+   (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query Builder.)"
+  []
+  (for [card (source-query-cards)]
+    {:id           (str "card__" (u/get-id card))
+     :db_id        database/virtual-id
+     :display_name (:name card)
+     :schema       (get-in card [:collection :name] "All questions")
+     :description  (:description card)}))
+
+;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
+(defn- add-virtual-tables-for-saved-cards [dbs]
+  (let [virtual-tables (cards-virtual-tables)]
+    ;; only add the 'Saved Questions' DB if there are Cards that can be used
+    (if-not (seq virtual-tables)
+      dbs
+      (conj (vec dbs)
+            {:name     "Saved Questions"
+             :id       database/virtual-id
+             :features #{:basic-aggregations}
+             :tables   virtual-tables}))))
+
+(defn- dbs-list [include-tables? include-cards?]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name]})))]
-    (add-native-perms-info (if-not include-tables?
-                             dbs
-                             (add-tables dbs)))))
+    (cond-> (add-native-perms-info dbs)
+      include-tables? add-tables
+      include-cards?  add-virtual-tables-for-saved-cards)))
 
 (api/defendpoint GET "/"
   "Fetch all `Databases`."
-  [include_tables]
-  (or (dbs-list include_tables)
+  [include_tables include_cards]
+  {include_tables (s/maybe su/BooleanString)
+   include_cards  (s/maybe su/BooleanString)}
+  (or (dbs-list include_tables include_cards)
       []))
 
 
@@ -246,6 +322,7 @@
   (api/check-superuser)
   (sample-data/add-sample-dataset!)
   (Database :is_sample true))
+
 
 ;;; ------------------------------------------------------------ PUT /api/database/:id ------------------------------------------------------------
 

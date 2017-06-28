@@ -12,6 +12,23 @@
              [db :as db]
              [models :as models]]))
 
+
+;;; ------------------------------------------------------------ Constants ------------------------------------------------------------
+
+(def ^:const ^Integer virtual-id
+  "The ID used to signify that a database is 'virtual' rather than physical.
+
+   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using something that would otherwise
+   be a legal ID, *nothing* need change there, and the frontend can query against this 'database' none the wiser. (This integer ID is negative
+   which means it will never conflict with a *real* database ID.)
+
+   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is this 'virtual' database and
+   take the appropriate actions."
+  -1337)
+;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize if not completely eliminate
+;; any changes to the frontend. After experimenting with several possible ways to do this this implementation seemed simplest and best met the goal.
+;; Luckily this is the only place this "magic number" is defined and the entire frontend can remain blissfully unaware of its value.
+
 ;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
 
 (models/defmodel Database :metabase_database)

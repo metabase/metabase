@@ -23,7 +23,7 @@
   (try
     (metadata-queries/table-row-count table)
     (catch Throwable e
-      (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
+      (log/warn (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
 (defn- value-is-valid-json?
  "If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other

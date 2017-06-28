@@ -88,9 +88,15 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) =>
                         fieldOptions={fieldOptions}
                         customFieldOptions={customFieldOptions}
                         onCommitBreakout={breakout => {
-                            onChangeCardAndRun(
-                                pivot(card, breakout, tableMetadata, dimensions)
+                            const nextCard = pivot(
+                                card,
+                                breakout,
+                                tableMetadata,
+                                dimensions
                             );
+                            if (nextCard) {
+                                onChangeCardAndRun({ nextCard });
+                            }
                         }}
                         onClose={onClose}
                     />

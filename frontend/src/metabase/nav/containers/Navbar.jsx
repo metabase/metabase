@@ -125,10 +125,10 @@ export default class Navbar extends Component {
                             <LogoIcon dark={true}></LogoIcon>
                         </Link>
                     </li>
-                    <li className="pl3 hide sm-show">
+                    <li className="pl3 hide xs-show">
                         <MainNavLink to="/dashboards" name="Dashboards" eventName="Dashboards" />
                     </li>
-                    <li className="pl1 hide sm-show">
+                    <li className="pl1 hide xs-show">
                         <MainNavLink to="/questions" name="Questions" eventName="Questions" />
                     </li>
                     <li className="pl1 hide sm-show">

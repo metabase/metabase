@@ -52,8 +52,10 @@ export type ClickActionProps = {
     clicked?: ClickObject
 }
 
+export type OnChangeCardAndRun = ({ nextCard: Card, previousCard?: ?Card }) => void
+
 export type ClickActionPopoverProps = {
-    onChangeCardAndRun: (card: ?Card) => void,
+    onChangeCardAndRun: OnChangeCardAndRun,
     onClose: () => void,
 }
 
@@ -77,11 +79,16 @@ export type VisualizationProps = {
     isEditing: boolean,
     actionButtons: Node,
 
+    onRender: ({
+        yAxisSplit?: number[][],
+        warnings?: string[]
+    }) => void,
+
     hovered: ?HoverObject,
     onHoverChange: (?HoverObject) => void,
     onVisualizationClick: (?ClickObject) => void,
     visualizationIsClickable: (?ClickObject) => boolean,
-    onChangeCardAndRun: (card: Card) => void,
+    onChangeCardAndRun: OnChangeCardAndRun,
 
     onUpdateVisualizationSettings: ({ [key: string]: any }) => void
 }

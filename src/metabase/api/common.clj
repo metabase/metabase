@@ -40,6 +40,8 @@
   "Assertion mechanism for use inside API functions.
    Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
 
+   MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional details, such as an `:error_code`.
+
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is generated.
 
   `check` can be called with the form
@@ -59,7 +61,9 @@
                                       [code-or-code-message-pair rest-args]
                                       [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
      (when-not tst
-       (throw (ex-info message {:status-code code})))
+       (throw (if (map? message)
+                (ex-info (:message message) (assoc message :status-code code))
+                (ex-info message            {:status-code code}))))
      (if (empty? rest-args) tst
          (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
 
@@ -313,8 +317,9 @@
     [400 "Embedding is not enabled."]))
 
 (defn check-not-archived
-  "Check that the OBJECT is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
+  "Check that the OBJECT exists and is not `:archived`, or throw a `404`. Returns OBJECT as-is if check passes."
   [object]
   (u/prog1 object
+    (check-404 object)
     (check (not (:archived object))
-      [404 "The object has been archived."])))
+      [404 {:message "The object has been archived.", :error_code "archived"}])))

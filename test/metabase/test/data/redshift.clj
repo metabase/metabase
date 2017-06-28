@@ -48,7 +48,7 @@
 
 
 (u/strict-extend RedshiftDriver
-  generic/IGenericSQLDatasetLoader
+  generic/IGenericSQLTestExtensions
   (merge generic/DefaultsMixin
          {:create-db-sql             (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
@@ -57,8 +57,8 @@
           :pk-sql-type               (constantly "INTEGER IDENTITY(1,1)")
           :qualified-name-components (partial i/single-db-qualified-name-components session-schema-name)})
 
-  i/IDatasetLoader
-  (merge generic/IDatasetLoaderMixin
+  i/IDriverTestExtensions
+  (merge generic/IDriverTestExtensionsMixin
          {:database->connection-details (fn [& _]
                                           @db-connection-details)
           :default-schema               (constantly session-schema-name)
