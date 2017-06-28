@@ -2,17 +2,18 @@
   "Fingerprinting (feature extraction) for various models."
   (:require [bigml.histogram.core :as hist]
             [bigml.sketchy.hyper-loglog :as hyper-loglog]
-            (clj-time [coerce :as t.coerce]
-                      [core :as t]
-                      [format :as t.format]
-                      [periodic :as t.periodic])
-            [kixi.stats.math :as math]
+            [clj-time.coerce :as t.coerce]
+            [clj-time.core :as t]
+            [clj-time.format :as t.format]
+            [clj-time.periodic :as t.periodic]
             [kixi.stats.core :as stats]
+            [kixi.stats.math :as math]
+            [medley.core :as m]
             [metabase.db.metadata-queries :as metadata]
-            (metabase.models [card :refer [Card]]
-                             [field :refer [Field]]
-                             [segment :refer [Segment]]
-                             [table :refer [Table]])
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
             [redux.core :as redux]
             [tide.core :as tide]))
 
@@ -68,7 +69,7 @@
           (map (juxt :mean :count))
           bins))))
 
-(def ^{:arglist '([histogram])} nil-count
+(def ^{:arglists '([histogram])} nil-count
   "Return number of nil values histogram holds."
   (comp :count hist/missing-bin))
 
@@ -99,7 +100,7 @@
   [field]
   (if (sequential? field)
     (mapv field-type field)
-    [(:base_type field) (or (:special_type field) :type/Nil)]))
+    [(:base_type field) (or (:special_type field) :type/*)]))
 
 (def ^:private Num      [:type/Number :type/*])
 (def ^:private DateTime [:type/DateTime :type/*])
@@ -107,25 +108,25 @@
 (def ^:private Any      [:type/* :type/*])
 (def ^:private Text     [:type/Text :type/*])
 
-(def linear-computation? ^:private ^{:arglist '([max-cost])}
+(def linear-computation? ^:private ^{:arglists '([max-cost])}
   (comp #{:linear} :computation))
 
-(def unbounded-computation? ^:private ^{:arglist '([max-cost])}
+(def unbounded-computation? ^:private ^{:arglists '([max-cost])}
   (comp #{:unbounded :yolo} :computation))
 
-(def yolo-computation? ^:private ^{:arglist '([max-cost])}
+(def yolo-computation? ^:private ^{:arglists '([max-cost])}
   (comp #{:yolo} :computation))
 
-(def cache-only? ^:private ^{:arglist '([max-cost])}
+(def cache-only? ^:private ^{:arglists '([max-cost])}
   (comp #{:cache} :query))
 
-(def sample-only? ^:private ^{:arglist '([max-cost])}
+(def sample-only? ^:private ^{:arglists '([max-cost])}
   (comp #{:sample} :query))
 
-(def full-scan? ^:private ^{:arglist '([max-cost])}
+(def full-scan? ^:private ^{:arglists '([max-cost])}
   (comp #{:full-scan :joins} :query))
 
-(def alow-joins? ^:private ^{:arglist '([max-cost])}
+(def alow-joins? ^:private ^{:arglists '([max-cost])}
   (comp #{:joins} :query))
 
 (defmulti fingerprinter
@@ -197,9 +198,13 @@
 
 (def ^:private ^:const timestamp-truncation-factor (/ 1 1000 60 60 24))
 
-(def ^:private ^{:arglist '([t])} truncate-timestamp
+(def ^:private ^{:arglists '([t])} truncate-timestamp
   "Truncate UNIX timestamp from ms to days."
-  (partial * timestamp-truncation-factor))
+  (comp long (partial * timestamp-truncation-factor)))
+
+(def ^:private ^{:arglists '([t])} pad-timestamp
+  "Pad truncated timestamp back into a proper UNIX (ms) timestamp."
+  (comp long (partial * (/ timestamp-truncation-factor))))
 
 (defn- fill-timeseries
   "Given a coll of `[DateTime, Any]` pairs with periodicty `step` fill missing
@@ -213,8 +218,7 @@
                    [t (ts-index t 0)])))
       (some-> ts
               ffirst
-              (/ timestamp-truncation-factor)
-              long
+              pad-timestamp
               t.coerce/from-long
               (t.periodic/periodic-seq step)))))
 
@@ -225,44 +229,46 @@
   [resolution ts]
   (let [period (case resolution
                  :month 12
-                 :day   52)]
+                 :day 52)]
     (when (>= (count ts) (* 2 period))
       (tide/decompose period ts))))
 
 (defmethod fingerprinter [DateTime Num]
   [{:keys [max-cost resolution]} _]
-  (redux/post-complete
-   (redux/pre-step
-    (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                 :series            (if (= resolution :raw)
-                                      conj
-                                      (redux/post-complete
-                                       conj
-                                       (partial fill-timeseries
-                                                (case resolution
-                                                  :month (t/months 1)
-                                                  :day   (t/days 1)))))})
-    (fn [[x y]]
-      [(-> x t.format/parse t.coerce/to-long truncate-timestamp) y]))
-   (fn [{:keys [series linear-regression]}]
-     (let [ys-r (not-empty (reverse (map second series)))
-           {:keys [trend seasonal reminder]}
-           (when (and (not= resolution :raw)
-                      (unbounded-computation? max-cost))
-             (decompose-timeseries resolution series))]
-       (merge {:series            series
-               :linear-regression linear-regression
-               :trend             trend
-               :seasonal          seasonal
-               :reminder          reminder}
-              (case resolution
-                :month {:YoY          (growth (first ys-r) (nth ys-r 11))
-                        :YoY-previous (growth (second ys-r) (nth ys-r 12))
-                        :MoM          (growth (first ys-r) (second ys-r))
-                        :MoM-previous (growth (second ys-r) (nth ys-r 2))}
-                :day   {:DoD          (growth (first ys-r) (second ys-r))
-                        :DoD-previous (growth (second ys-r) (nth ys-r 2))}
-                :raw   nil))))))
+  (let [resolution (or resolution :raw)]
+    (redux/post-complete
+     (redux/pre-step
+      (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
+                   :series            (if (= resolution :raw)
+                                        conj
+                                        (redux/post-complete
+                                         conj
+                                         (partial fill-timeseries
+                                                  (case resolution
+                                                    :month (t/months 1)
+                                                    :day (t/days 1)))))})
+      (fn [[x y]]
+        [(-> x t.format/parse t.coerce/to-long truncate-timestamp) y]))
+     (fn [{:keys [series linear-regression]}]
+       (let [ys-r (->> series (map second) reverse not-empty)
+             {:keys [trend seasonal reminder]}
+             (when (and (not= resolution :raw)
+                        (unbounded-computation? max-cost))
+               (decompose-timeseries resolution series))]
+         (merge {:series            (for [[x y] series]
+                                      [(t.coerce/from-long (pad-timestamp x)) y])
+                 :linear-regression linear-regression
+                 :trend             trend
+                 :seasonal          seasonal
+                 :reminder          reminder}
+                (case resolution
+                  :month {:YoY          (growth (first ys-r) (nth ys-r 11))
+                          :YoY-previous (growth (second ys-r) (nth ys-r 12))
+                          :MoM          (growth (first ys-r) (second ys-r))
+                          :MoM-previous (growth (second ys-r) (nth ys-r 2))}
+                  :day   {:DoD          (growth (first ys-r) (second ys-r))
+                          :DoD-previous (growth (second ys-r) (nth ys-r 2))}
+                  :raw   nil)))))))
 
 (defmethod fingerprinter [Category Any]
   [opts [x y]]
@@ -302,11 +308,14 @@
     t.format/parse)
    (fn [{:keys [histogram histogram-hour histogram-day histogram-month
                 histogram-quarter]}]
-     (let [nil-count (nil-count histogram)]
-       {:min               (hist/minimum histogram)
-        :max               (hist/maximum histogram)
-        :histogram         (bins histogram)
-        :percentiles       (apply hist/percentiles histogram percentiles)
+     (let [nil-count (nil-count histogram)
+           ->datetime (comp t.coerce/from-long long)]
+       {:min               (->datetime (hist/minimum histogram))
+        :max               (->datetime (hist/maximum histogram))
+        :histogram         (m/map-keys ->datetime (bins histogram))
+        :percentiles       (m/map-vals ->datetime
+                                       (apply hist/percentiles histogram
+                                              percentiles))
         :histogram-hour    (bins histogram-hour)
         :histogram-day     (bins histogram-day)
         :histogram-month   (bins histogram-month)

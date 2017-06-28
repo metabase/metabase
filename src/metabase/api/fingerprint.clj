@@ -1,23 +1,29 @@
 (ns metabase.api.fingerprint
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.fingerprinting :as fingerprinting]
-            (metabase.models [field :refer [Field]]
-                             [table :refer [Table]]
-                             [segment :refer [Segment]]
-                             [card :refer [Card]])
+            [metabase.models.card :refer [Card]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.segment :refer [Segment]]
+            [metabase.models.table :refer [Table]]
             [schema.core :as s]))
 
-(def ^:private ^:const MaxQueryCost       (s/maybe (s/enum "cache"
-                                                           "sample"
-                                                           "full-scan"
-                                                           "joins")))
-(def ^:private ^:const MaxComputationCost (s/maybe (s/enum "linear"
-                                                           "unbounded"
-                                                           "yolo")))
-(def ^:private ^:const Resolution         (s/maybe (s/enum "month"
-                                                           "day"
-                                                           "raw")))
+;; See metabase.fingerprinting/fingerprint for description of these settings.
+(def ^:private ^:const MaxQueryCost
+  (s/maybe (s/enum "cache"
+                   "sample"
+                   "full-scan"
+                   "joins")))
+
+(def ^:private ^:const MaxComputationCost
+  (s/maybe (s/enum "linear"
+                   "unbounded"
+                   "yolo")))
+
+(def ^:private ^:const Resolution
+  (s/maybe (s/enum "month"
+                   "day"
+                   "raw")))
 
 (defn- max-cost
   [query computation]
@@ -74,7 +80,7 @@
        (map (partial api/read-check Field))
        (apply fingerprinting/multifield-fingerprint
               {:max-cost   (max-cost max_query_cost max_computation_cost)
-               :resolution (keyword resolution)})))
+               :resolution (or (keyword resolution) :day)})))
 
 (api/defendpoint GET "/compare/fields/:id1/:id2"
   "Get comparison fingerprints for `Field`s with ID1 and ID2."

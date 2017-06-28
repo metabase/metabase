@@ -60,7 +60,7 @@
                  [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.8.2"]                                   ; Transform Clojure data structures to SQL
-                 [kixi/stats "0.3.8"]                                 ; Various statistic measures implemented as transducers 
+                 [kixi/stats "0.3.8"]                                 ; Various statistic measures implemented as transducers
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -88,7 +88,7 @@
                  [toucan "1.0.3"                                      ; Model layer, hydration, and DB utilities
                   :exclusions [honeysql]]]
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
-  :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables            
+  :plugins [[lein-environ "1.1.0"]                                    ; easy access to environment variables
             [lein-ring "0.11.0"                                       ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
   :main ^:skip-aot metabase.core

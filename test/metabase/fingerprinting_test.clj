@@ -1,17 +1,19 @@
 (ns metabase.fingerprinting-test
-  (:require (clj-time [coerce :as t.coerce]
-                      [core :as t])
+  (:require [clj-time.coerce :as t.coerce]
+            [clj-time.core :as t]
             [expectations :refer :all]
-            [metabase.fingerprinting :refer :all :as f]
+            [metabase.fingerprinting :as f :refer :all]
             [redux.core :as redux]))
 
-(def numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
-(def datetimes [(t/date-time 2016 1) (t/date-time 2016 2) nil (t/date-time 2016 5)
-                (t/date-time 2016 7 23) (t/date-time 2016 10 2)])
-(def categories [:foo :baz :bar :bar nil :foo])
+(def ^:private numbers [0.1 0.4 0.2 nil 0.5 0.3 0.51 0.55 0.22])
+(def ^:private datetimes [(t/date-time 2016 1) (t/date-time 2016 2) nil
+                          (t/date-time 2016 5) (t/date-time 2016 7 23)
+                          (t/date-time 2016 10 2)])
+(def ^:private categories [:foo :baz :bar :bar nil :foo])
 
-(def hist (transduce identity histogram (take 100 (cycle numbers))))
-(def hist-c (transduce identity histogram-categorical (take 100 (cycle categories))))
+(def ^:private hist (transduce identity histogram (take 100 (cycle numbers))))
+(def ^:private hist-c (transduce identity histogram-categorical
+                                 (take 100 (cycle categories))))
 
 (expect
   [2
@@ -40,7 +42,7 @@
   [(bins hist)])
 
 (expect
-b  [100.0
+  [100.0
    11]
   [(total-count hist)
    (nil-count hist)])
