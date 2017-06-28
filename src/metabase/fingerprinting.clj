@@ -220,7 +220,7 @@
 
 (defn- decompose-timeseries
   "Decompose given timeseries with expected periodicty `resolution` into trend,
-   seasonal component, and reminder. 
+   seasonal component, and reminder.
    `resolution` can be one of `:day`, or `:month`."
   [resolution ts]
   (let [period (case resolution
@@ -375,14 +375,14 @@
   "Given a model, fetch corresponding dataset and compute its fingerprint.
 
    Takes a map of options as first argument. Recognized options:
-   * `:max-cost`         a map with keys `:computation` and `:query` which 
+   * `:max-cost`         a map with keys `:computation` and `:query` which
                          limits maximal resource expenditure when computing the
-                         fingerprint. `:computation` can be one of `:linear` 
-                         (O(n) or better), `:unbounded`, or `:yolo` (full blown 
-                         machine learning etc.). `query` can be one of 
+                         fingerprint. `:computation` can be one of `:linear`
+                         (O(n) or better), `:unbounded`, or `:yolo` (full blown
+                         machine learning etc.). `query` can be one of
                          `:cache` (use only cached data), `:sample` (sample
-                         up to `max-sample-size` rows), `:full-scan` (full table 
-                         scan), or `:joins` (bring in data from other tables if 
+                         up to `max-sample-size` rows), `:full-scan` (full table
+                         scan), or `:joins` (bring in data from other tables if
                          needed).
 
    * `:resolution`       controls pre-aggregation by time. Can be one of `:day`,
