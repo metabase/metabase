@@ -55,25 +55,28 @@ import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
 // Reference Guide
-import GettingStartedGuideContainer from "metabase/reference/new_containers/GettingStartedGuideContainer.jsx";
-import FieldDetailContainer from "metabase/reference/new_containers/FieldDetailContainer.jsx";
-import FieldListContainer from "metabase/reference/new_containers/FieldListContainer.jsx";
-import TableDetailContainer from "metabase/reference/new_containers/TableDetailContainer.jsx";
-import TableListContainer from "metabase/reference/new_containers/TableListContainer.jsx";
-import TableQuestionsContainer from "metabase/reference/new_containers/TableQuestionsContainer.jsx";
-import SegmentDetailContainer from "metabase/reference/new_containers/SegmentDetailContainer.jsx";
-import SegmentListContainer from "metabase/reference/new_containers/SegmentListContainer.jsx";
-import SegmentQuestionsContainer from "metabase/reference/new_containers/SegmentQuestionsContainer.jsx";
-import SegmentRevisionsContainer from "metabase/reference/new_containers/SegmentRevisionsContainer.jsx";
-import SegmentFieldDetailContainer from "metabase/reference/new_containers/SegmentFieldDetailContainer.jsx";
-import SegmentFieldListContainer from "metabase/reference/new_containers/SegmentFieldListContainer.jsx";
+import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
+// Reference Metrics 
+import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
+import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
+import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
+import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer.jsx";
+// Reference Segments
+import SegmentListContainer from "metabase/reference/segments/SegmentListContainer.jsx";
+import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer.jsx";
+import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer.jsx";
+import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer.jsx";
+import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer.jsx";
+import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer.jsx";
+// Reference Databases
+import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer.jsx";
+import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer.jsx";
+import TableListContainer from "metabase/reference/databases/TableListContainer.jsx";
+import TableDetailContainer from "metabase/reference/databases/TableDetailContainer.jsx";
+import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer.jsx";
+import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
+import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
 
-import DatabaseDetailContainer from "metabase/reference/new_containers/DatabaseDetailContainer.jsx";
-import DatabaseListContainer from "metabase/reference/new_containers/DatabaseListContainer.jsx";
-import MetricDetailContainer from "metabase/reference/new_containers/MetricDetailContainer.jsx";
-import MetricListContainer from "metabase/reference/new_containers/MetricListContainer.jsx";
-import MetricQuestionsContainer from "metabase/reference/new_containers/MetricQuestionsContainer.jsx";
-import MetricRevisionsContainer from "metabase/reference/new_containers/MetricRevisionsContainer.jsx";
 
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
