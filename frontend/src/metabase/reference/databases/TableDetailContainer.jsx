@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
-import Sidebar from 'metabase/components/Sidebar.jsx';
+import TableSidebar from './TableSidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 import TableDetail from "metabase/reference/databases/TableDetail.jsx"
 
@@ -11,21 +11,21 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 import {
+    getDatabase,
+    getTable,
     getDatabaseId,
     getSectionId,
-    getSections,
     getSection,
-    getBreadcrumbs,
     getIsEditing
 } from '../selectors';
 
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
+    database: getDatabase(state, props),    
+    table: getTable(state, props),    
     databaseId: getDatabaseId(state, props),
-    sections: getSections(state, props),
     section: getSection(state, props),
-    breadcrumbs: getBreadcrumbs(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -38,9 +38,9 @@ const mapDispatchToProps = {
 export default class TableDetailContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
-        breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
-        sections: PropTypes.object.isRequired,
+        database: PropTypes.object.isRequired,
+        table: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
@@ -64,8 +64,8 @@ export default class TableDetailContainer extends Component {
 
     render() {
         const {
-            sections,
-            breadcrumbs,
+            database,
+            table,
             isEditing
         } = this.props;
 
@@ -73,7 +73,7 @@ export default class TableDetailContainer extends Component {
             <SidebarLayout
                 className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+                sidebar={<TableSidebar database={database} table={table}/>}
             >
                 <TableDetail {...this.props} />
             </SidebarLayout>

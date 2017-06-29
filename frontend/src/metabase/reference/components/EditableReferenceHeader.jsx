@@ -17,7 +17,10 @@ import EditButton from "metabase/reference/components/EditButton.jsx";
 const EditableReferenceHeader = ({
     entity = {},
     table,
-    section,
+    type,
+    headerIcon,
+    headerLink,
+    name,
     user,
     isEditing,
     hasSingleSchema,
@@ -27,30 +30,30 @@ const EditableReferenceHeader = ({
     nameFormField
 }) =>
     <div className="wrapper wrapper--trim">
-        <div className={cx("relative", L.header)} style={section.type === 'segment' ? {marginBottom: 0} : {}}>
+        <div className={cx("relative", L.header)} style={type === 'segment' ? {marginBottom: 0} : {}}>
             <div className={L.leftIcons}>
-                { section.headerIcon &&
+                { headerIcon &&
                     <IconBorder
                         borderWidth="0"
                         style={{backgroundColor: "#E9F4F8"}}
                     >
                         <Icon
                             className="text-brand"
-                            name={section.headerIcon}
+                            name={headerIcon}
                             width={24}
                             height={24}
                         />
                     </IconBorder>
                 }
             </div>
-            { section.type === 'table' && !hasSingleSchema && !isEditing &&
+            { type === 'table' && !hasSingleSchema && !isEditing &&
                 <div className={S.headerSchema}>{entity.schema}</div>
             }
             <div
                 className={S.headerBody}
-                style={isEditing && section.name === 'Details' ? {alignItems: "flex-start"} : {}}
+                style={isEditing && name === 'Details' ? {alignItems: "flex-start"} : {}}
             >
-                { isEditing && section.name === 'Details' ?
+                { isEditing && name === 'Details' ?
                     hasDisplayName ?
                         <input
                             className={S.headerTextInput}
@@ -69,25 +72,25 @@ const EditableReferenceHeader = ({
                     [
                         <Ellipsified
                             key="1"
-                            className={!section.headerLink && "flex-full"}
+                            className={!headerLink && "flex-full"}
                             tooltipMaxWidth="100%"
                         >
-                            { section.name === 'Details' ?
+                            { name === 'Details' ?
                                 hasDisplayName ?
                                     entity.display_name || entity.name :
                                     entity.name :
-                                section.name
+                                name
                             }
                         </Ellipsified>,
-                        section.headerLink &&
+                        headerLink &&
                             <div key="2" className={cx("flex-full", S.headerButton)}>
                                 <Link
-                                    to={section.headerLink}
+                                    to={headerLink}
                                     className={cx("Button", "Button--borderless", "ml3", E.editButton)}
-                                    data-metabase-event={`Data Reference;Entity -> QB click;${section.type}`}
+                                    data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
                                 >
                                     <div className="flex align-center relative">
-                                        <span className="mr1 flex-no-shrink">See this {section.type}</span>
+                                        <span className="mr1 flex-no-shrink">See this {type}</span>
                                         <Icon name="chevronright" size={16} />
                                     </div>
                                 </Link>
@@ -99,7 +102,7 @@ const EditableReferenceHeader = ({
                 }
             </div>
         </div>
-        { section.type === 'segment' && table &&
+        { type === 'segment' && table &&
             <div className={S.subheader}>
                 <div className={cx(S.subheaderBody)}>
                     A subset of <Link
@@ -115,7 +118,10 @@ const EditableReferenceHeader = ({
 EditableReferenceHeader.propTypes = {
     entity: PropTypes.object,
     table: PropTypes.object,
-    section: PropTypes.object.isRequired,
+    type: PropTypes.string,
+    headerIcon: PropTypes.string,
+    headerLink: PropTypes.string,
+    name: PropTypes.string,
     user: PropTypes.object,
     isEditing: PropTypes.bool,
     hasSingleSchema: PropTypes.bool,

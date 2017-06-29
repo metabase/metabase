@@ -21,7 +21,6 @@ import {
 } from '../utils';
 
 import {
-    getSection,
     getData,
     getTable,
     getFields,
@@ -39,22 +38,6 @@ import {
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
-
-
-// const section = {
-//         id: `/reference/segments/${segment.id}/fields/${field.id}`,
-//         name: 'Details',
-//         update: 'updateField',
-//         type: 'field',
-//         breadcrumb: `${field.display_name}`,
-//         fetch: {
-//             fetchSegmentFields: [segment.id]
-//         },
-//         get: "getFieldBySegment",
-//         icon: "document",
-//         headerIcon: "field",
-//         parent: getSegmentSections(segment)[`/reference/segments/${segment.id}/fields`]
-//     }
 
 const interestingQuestions = (table, field) => {
     return [
@@ -94,7 +77,6 @@ const mapStateToProps = (state, props) => {
     };
 
     return {
-        section: getSection(state, props),
         entity,
         table: getTable(state, props),
         guide,
@@ -145,7 +127,6 @@ export default class SegmentFieldDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
@@ -158,7 +139,6 @@ export default class SegmentFieldDetail extends Component {
         const {
             fields: { name, display_name, description, revision_message, points_of_interest, caveats, special_type, fk_target_field_id },
             style,
-            section,
             entity,
             table,
             loadingError,
@@ -197,7 +177,9 @@ export default class SegmentFieldDetail extends Component {
                 <EditableReferenceHeader
                     entity={entity}
                     table={table}
-                    section={section}
+                    headerIcon="field"
+                    name="Details"
+                    type="field"
                     user={user}
                     isEditing={isEditing}
                     hasSingleSchema={hasSingleSchema}
@@ -233,7 +215,7 @@ export default class SegmentFieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this ${section.type} is interesting`}
+                                    name={`Why this field is interesting`}
                                     description={entity.points_of_interest}
                                     placeholder="Nothing interesting yet"
                                     isEditing={isEditing}
@@ -243,7 +225,7 @@ export default class SegmentFieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this ${section.type}`}
+                                    name={`Things to be aware of about this field`}
                                     description={entity.caveats}
                                     placeholder="Nothing to be aware of yet"
                                     isEditing={isEditing}

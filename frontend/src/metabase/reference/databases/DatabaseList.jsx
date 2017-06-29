@@ -16,7 +16,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    getSection,
     getData,
     getError,
     getLoading
@@ -34,7 +33,6 @@ const emptyStateData = {
         }
 
 const mapStateToProps = (state, props) => ({
-    section: getSection(state, props),
     entities: getData(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
@@ -50,7 +48,6 @@ export default class DatabaseList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object
     };
@@ -59,7 +56,6 @@ export default class DatabaseList extends Component {
         const {
             entities,
             style,
-            section,
             loadingError,
             loading
         } = this.props;
@@ -82,8 +78,8 @@ export default class DatabaseList extends Component {
                                                 index={index}
                                                 name={entity.display_name || entity.name}
                                                 description={ entity.description }
-                                                url={ `${section.id}/${entity.id}` }
-                                                icon={ section.icon }
+                                                url={ `/reference/databases/${entity.id}` }
+                                                icon="database"
                                             />
                                         </li>
                                 )

@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
-import Sidebar from 'metabase/components/Sidebar.jsx';
+import MetricSidebar from './MetricSidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 import MetricDetail from "metabase/reference/metrics/MetricDetail.jsx"
 
@@ -11,11 +11,11 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 import {
+    getUser,
+    getMetric,
     getDatabaseId,
     getSectionId,
-    getSections,
     getSection,
-    getBreadcrumbs,
     getIsEditing
 } from '../selectors';
 
@@ -25,11 +25,11 @@ import {
 
 
 const mapStateToProps = (state, props) => ({
+    user: getUser(state, props),
+    metric: getMetric(state, props),
     sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
-    sections: getSections(state, props),
     section: getSection(state, props),
-    breadcrumbs: getBreadcrumbs(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -42,9 +42,9 @@ const mapDispatchToProps = {
 export default class MetricDetailContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
-        breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
-        sections: PropTypes.object.isRequired,
+        user: PropTypes.object.isRequired,
+        metric: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
@@ -68,16 +68,16 @@ export default class MetricDetailContainer extends Component {
 
     render() {
         const {
-            sections,
-            breadcrumbs,
-            isEditing
+            isEditing,
+            user,
+            metric
         } = this.props;
 
         return (
             <SidebarLayout
                 className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+                sidebar={<MetricSidebar metric={metric} user={user}/>}
             >
                 <MetricDetail {...this.props} />
             </SidebarLayout>

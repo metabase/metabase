@@ -18,7 +18,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    getSection,
+    getDatabase,
     getData,
     getHasSingleSchema,
     getError,
@@ -34,7 +34,7 @@ const emptyStateData = {
         }
 
 const mapStateToProps = (state, props) => ({
-    section: getSection(state, props),
+    database: getDatabase(state, props),
     entities: getData(state, props),
     hasSingleSchema: getHasSingleSchema(state, props),
     loading: getLoading(state, props),
@@ -45,15 +45,15 @@ const mapDispatchToProps = {
     ...metadataActions
 };
 
-const createListItem = (entity, index, section) =>
+const createListItem = (entity, index) =>
     <li className="relative" key={entity.id}>
         <ListItem
             id={entity.id}
             index={index}
             name={entity.display_name || entity.name}
             description={ entity.description }
-            url={ `${section.id}/${entity.id}` }
-            icon={ section.icon }
+            url={ `/reference/databases/${entity.db_id}/tables/${entity.id}` }
+            icon="table2"
         />
     </li>;
 
@@ -64,7 +64,6 @@ const createSchemaSeparator = (entity) =>
 
 const separateTablesBySchema = (
     tables,
-    section,
     createSchemaSeparator,
     createListItem
 ) => Object.values(tables)
@@ -81,9 +80,9 @@ const separateTablesBySchema = (
             sortedTables[previousTableId].schema !== table.schema ?
                 [
                     createSchemaSeparator(table),
-                    createListItem(table, index, section)
+                    createListItem(table, index)
                 ] :
-                createListItem(table, index, section);
+                createListItem(table, index);
     });
 
 
@@ -92,7 +91,7 @@ export default class TableList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
+        database: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object
@@ -102,7 +101,7 @@ export default class TableList extends Component {
         const {
             entities,
             style,
-            section,
+            database,
             hasSingleSchema,
             loadingError,
             loading
@@ -111,7 +110,7 @@ export default class TableList extends Component {
         return (
             <div style={style} className="full">
                 <ReferenceHeader 
-                    name={section.name}
+                    name={`Tables in ${database.name}`}
                     type="tables"
                     headerIcon="database"
                 />
@@ -122,13 +121,12 @@ export default class TableList extends Component {
                             { !hasSingleSchema ?
                                 separateTablesBySchema(
                                     entities,
-                                    section,
                                     createSchemaSeparator,
                                     createListItem
                                 ) :
                                 Object.values(entities).filter(isQueryable).map((entity, index) =>
                                     entity && entity.id && entity.name &&
-                                        createListItem(entity, index, section)
+                                        createListItem(entity, index)
                                 )
                             }
                         </List>

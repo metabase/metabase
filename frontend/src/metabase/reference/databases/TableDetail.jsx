@@ -21,7 +21,6 @@ import {
 } from '../utils';
 
 import {
-    getSection,
     getData,
     getTable,
     getFields,
@@ -40,43 +39,7 @@ import {
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
-// const section = {
-//         id: `/reference/databases/${database.id}/tables/${table.id}`,
-//         name: 'Details',
-//         update: 'updateTable',
-//         type: 'table',
-//         questions: [
-//             {
-//                 text: `Count of ${table.display_name}`,
-//                 icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-//                 link: getQuestionUrl({
-//                     dbId: table.db_id,
-//                     tableId: table.id,
-//                     getCount: true
-//                 })
-//             },
-//             {
-//                 text: `See raw data for ${table.display_name}`,
-//                 icon: "table2",
-//                 link: getQuestionUrl({
-//                     dbId: table.db_id,
-//                     tableId: table.id,
-//                 })
-//             }
-//         ],
-//         breadcrumb: `${table.display_name}`,
-//         fetch: {
-//             fetchDatabaseMetadata: [database.id]
-//         },
-//         get: 'getTable',
-//         icon: "document",
-//         headerIcon: "table2",
-//         headerLink: getQuestionUrl({
-//             dbId: table.db_id,
-//             tableId: table.id,
-//         }),
-//         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
-//     }
+
 const interestingQuestions = (table) => {
     return [
         {
@@ -103,7 +66,6 @@ const mapStateToProps = (state, props) => {
     const fields = getFields(state, props);
 
     return {
-        section: getSection(state, props),
         entity,
         table: getTable(state, props),
         metadataFields: fields,
@@ -154,7 +116,6 @@ export default class TableDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
@@ -167,7 +128,6 @@ export default class TableDetail extends Component {
         const {
             fields: { name, display_name, description, revision_message, points_of_interest, caveats },
             style,
-            section,
             entity,
             table,
             loadingError,
@@ -205,7 +165,10 @@ export default class TableDetail extends Component {
                 <EditableReferenceHeader
                     entity={entity}
                     table={table}
-                    section={section}
+                    type="table"
+                    headerIcon="table2"
+                    headerLink={getQuestionUrl({ dbId: entity.db_id, tableId: entity.id})}
+                    name="Details"
                     user={user}
                     isEditing={isEditing}
                     hasSingleSchema={hasSingleSchema}
@@ -241,7 +204,7 @@ export default class TableDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this ${section.type} is interesting`}
+                                    name={`Why this table is interesting`}
                                     description={entity.points_of_interest}
                                     placeholder="Nothing interesting yet"
                                     isEditing={isEditing}
@@ -251,7 +214,7 @@ export default class TableDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this ${section.type}`}
+                                    name={`Things to be aware of about this table`}
                                     description={entity.caveats}
                                     placeholder="Nothing to be aware of yet"
                                     isEditing={isEditing}

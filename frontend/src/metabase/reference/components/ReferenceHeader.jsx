@@ -67,11 +67,11 @@ const ReferenceHeader = ({
     </div>;
 
 ReferenceHeader.propTypes = {
-    name: PropTypes.object.isRequired,
-    type: PropTypes.object,
-    headerIcon: PropTypes.object,
-    headerBody: PropTypes.object,
-    headerLink: PropTypes.object
+    name: PropTypes.string.isRequired,
+    type: PropTypes.string,
+    headerIcon: PropTypes.string,
+    headerBody: PropTypes.string,
+    headerLink: PropTypes.string
 
 };
 

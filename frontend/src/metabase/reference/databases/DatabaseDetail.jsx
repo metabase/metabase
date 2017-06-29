@@ -17,7 +17,6 @@ import {
 } from '../utils';
 
 import {
-    getSection,
     getData,
     getTable,
     getFields,
@@ -37,27 +36,11 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 
-// const section = {
-//         id: `/reference/databases/${database.id}`,
-//         name: 'Details',
-//         update: 'updateDatabase',
-//         type: 'database',
-//         breadcrumb: `${database.name}`,
-//         fetch: {
-//             fetchDatabaseMetadata: [database.id]
-//         },
-//         get: 'getDatabase',
-//         icon: "document",
-//         headerIcon: "database",
-//         parent: referenceSections[`/reference/databases`]
-//     }
-
 const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
     const fields = getFields(state, props);
 
     return {
-        section: getSection(state, props),
         entity,
         table: getTable(state, props),
         metadataFields: fields,
@@ -108,7 +91,6 @@ export default class DatabaseDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
@@ -121,7 +103,6 @@ export default class DatabaseDetail extends Component {
         const {
             fields: { name, display_name, description, revision_message, points_of_interest, caveats },
             style,
-            section,
             entity,
             table,
             loadingError,
@@ -159,7 +140,9 @@ export default class DatabaseDetail extends Component {
                 <EditableReferenceHeader
                     entity={entity}
                     table={table}
-                    section={section}
+                    type="database"
+                    headerIcon="database"
+                    name="Details"
                     user={user}
                     isEditing={isEditing}
                     hasSingleSchema={hasSingleSchema}
@@ -185,7 +168,7 @@ export default class DatabaseDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this ${section.type} is interesting`}
+                                    name={`Why this database is interesting`}
                                     description={entity.points_of_interest}
                                     placeholder="Nothing interesting yet"
                                     isEditing={isEditing}
@@ -195,7 +178,7 @@ export default class DatabaseDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this ${section.type}`}
+                                    name={`Things to be aware of about this database`}
                                     description={entity.caveats}
                                     placeholder="Nothing to be aware of yet"
                                     isEditing={isEditing}

@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
-import Sidebar from 'metabase/components/Sidebar.jsx';
+import BaseSidebar from 'metabase/reference/guide/BaseSidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 import MetricList from "metabase/reference/metrics/MetricList.jsx"
 
@@ -13,9 +13,7 @@ import * as actions from 'metabase/reference/reference';
 import {
     getDatabaseId,
     getSectionId,
-    getSections,
     getSection,
-    getBreadcrumbs,
     getIsEditing
 } from '../selectors';
 
@@ -26,9 +24,7 @@ import {
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
-    sections: getSections(state, props),
     section: getSection(state, props),
-    breadcrumbs: getBreadcrumbs(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -41,9 +37,7 @@ const mapDispatchToProps = {
 export default class MetricListContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
-        breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
-        sections: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
@@ -67,8 +61,6 @@ export default class MetricListContainer extends Component {
 
     render() {
         const {
-            sections,
-            breadcrumbs,
             isEditing
         } = this.props;
 
@@ -76,7 +68,7 @@ export default class MetricListContainer extends Component {
             <SidebarLayout
                 className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+                sidebar={<BaseSidebar/>}
             >
                 <MetricList {...this.props} />
             </SidebarLayout>

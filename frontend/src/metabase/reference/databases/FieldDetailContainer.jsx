@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
-import Sidebar from 'metabase/components/Sidebar.jsx';
+import FieldSidebar from './FieldSidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 import FieldDetail from "metabase/reference/databases/FieldDetail.jsx"
 
@@ -11,20 +11,22 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 import {
+    getDatabase,
+    getTable,
+    getField,
     getDatabaseId,
     getSectionId,
-    getSections,
     getSection,
-    getBreadcrumbs,
     getIsEditing
 } from '../selectors';
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
+    database: getDatabase(state, props),    
+    table: getTable(state, props),    
+    field: getField(state, props),    
     databaseId: getDatabaseId(state, props),
-    sections: getSections(state, props),
     section: getSection(state, props),
-    breadcrumbs: getBreadcrumbs(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -37,9 +39,10 @@ const mapDispatchToProps = {
 export default class FieldDetailContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
-        breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
-        sections: PropTypes.object.isRequired,
+        database: PropTypes.object.isRequired,
+        table: PropTypes.object.isRequired,
+        field: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
@@ -63,8 +66,9 @@ export default class FieldDetailContainer extends Component {
 
     render() {
         const {
-            sections,
-            breadcrumbs,
+            database,
+            table,
+            field,
             isEditing
         } = this.props;
 
@@ -72,7 +76,7 @@ export default class FieldDetailContainer extends Component {
             <SidebarLayout
                 className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+                sidebar={<FieldSidebar database={database} table={table} field={field}/>}
             >
                 <FieldDetail {...this.props} />
             </SidebarLayout>

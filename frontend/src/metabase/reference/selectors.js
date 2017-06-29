@@ -117,7 +117,8 @@ const getMetricSections = (metric, table, user) => metric ? {
         fetch: {
             fetchMetricTable: [metric.id],
             // currently the only way to fetch metrics important fields
-            fetchGuide: []
+            fetchGuide: [],
+            fetchMetrics: []
         },
         get: 'getMetric',
         icon: "document",
@@ -147,7 +148,8 @@ const getMetricSections = (metric, table, user) => metric ? {
         breadcrumb: `${metric.name}`,
         fetch: {
             fetchMetricTable: [metric.id],
-            fetchQuestions: []
+            fetchQuestions: [],
+            fetchMetrics: []
         },
         get: 'getMetricQuestions',
         icon: "all",
@@ -161,7 +163,8 @@ const getMetricSections = (metric, table, user) => metric ? {
         breadcrumb: `${metric.name}`,
         hidden: user && !user.is_superuser,
         fetch: {
-            fetchMetricRevisions: [metric.id]
+            fetchMetricRevisions: [metric.id],
+            fetchMetrics: []
         },
         get: 'getMetricRevisions',
         icon: "history",
@@ -527,7 +530,7 @@ const getFieldsBySegment = createSelector(
     [getTableBySegment, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
 );
-const getField = createSelector(
+export const getField = createSelector(
     [getFieldId, getFields],
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );

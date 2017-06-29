@@ -24,7 +24,6 @@ import {
 
 
 import {
-    getSection,
     getData,
     getError,
     getLoading,
@@ -49,7 +48,6 @@ const emptyStateData = (table, segment) =>{
 const mapStateToProps = (state, props) => ({
     segment: getSegment(state,props),
     table: getTableBySegment(state,props),
-    section: getSection(state, props),
     entities: getData(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
@@ -66,7 +64,6 @@ export default class SegmentQuestions extends Component {
         segment: PropTypes.object.isRequired,
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object
     };
@@ -75,7 +72,6 @@ export default class SegmentQuestions extends Component {
         const {
             entities,
             style,
-            section,
             loadingError,
             loading
         } = this.props;
@@ -83,7 +79,7 @@ export default class SegmentQuestions extends Component {
         return (
             <div style={style} className="full">
                 <ReferenceHeader 
-                    name={section.name}
+                    name={`Questions about ${this.props.segment.name}`}
                     type='questions'
                     headerIcon="segment"
                 />

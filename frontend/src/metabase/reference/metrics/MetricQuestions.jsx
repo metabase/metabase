@@ -23,7 +23,6 @@ import {
 } from '../utils';
 
 import {
-    getSection,
     getData,
     getError,
     getLoading,
@@ -50,7 +49,6 @@ const emptyStateData = (table, metric) => {
 const mapStateToProps = (state, props) => ({
     metric: getMetric(state, props),
     table: getTable(state, props),
-    section: getSection(state, props),
     entities: getData(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
@@ -66,7 +64,6 @@ export default class MetricQuestions extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         metric: PropTypes.object,
@@ -77,7 +74,6 @@ export default class MetricQuestions extends Component {
         const {
             entities,
             style,
-            section,
             loadingError,
             loading
         } = this.props;
@@ -85,7 +81,7 @@ export default class MetricQuestions extends Component {
         return (
             <div style={style} className="full">
                 <ReferenceHeader 
-                    name={section.name}
+                    name={`Questions about ${this.props.metric.name}`}
                     type="questions"
                     headerIcon="ruler"
                 />

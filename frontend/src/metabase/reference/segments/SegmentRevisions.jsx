@@ -11,7 +11,6 @@ import * as metadataActions from "metabase/redux/metadata";
 import { assignUserColors } from "metabase/lib/formatting";
 
 import {
-    getSection,
     getData,
     getMetric,
     getSegment,
@@ -32,7 +31,6 @@ const emptyStateData =  {
 
 const mapStateToProps = (state, props) => {
     return {
-        section: getSection(state, props),
         revisions: getData(state, props),
         metric: getMetric(state, props),
         segment: getSegment(state, props),
@@ -51,7 +49,6 @@ const mapDispatchToProps = {
 export default class SegmentRevisions extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
         metric: PropTypes.object.isRequired,
         segment: PropTypes.object.isRequired,
@@ -64,7 +61,6 @@ export default class SegmentRevisions extends Component {
     render() {
         const {
             style,
-            section,
             revisions,
             metric,
             segment,
@@ -86,7 +82,7 @@ export default class SegmentRevisions extends Component {
         return (
             <div style={style} className="full">
                 <ReferenceHeader 
-                    name={section.name}
+                    name={`Revision history for ${this.props.segment.name}`}
                     headerIcon="segment"
                 />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>

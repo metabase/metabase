@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
-import Sidebar from 'metabase/components/Sidebar.jsx';
+import SegmentFieldSidebar from './SegmentFieldSidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail.jsx"
 
@@ -11,11 +11,11 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 import {
+    getSegment,
+    getField,
     getDatabaseId,
     getSectionId,
-    getSections,
     getSection,
-    getBreadcrumbs,
     getIsEditing
 } from '../selectors';
 
@@ -26,10 +26,10 @@ import {
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
+    segment: getSegment(state, props),    
+    field: getField(state, props),    
     databaseId: getDatabaseId(state, props),
-    sections: getSections(state, props),
     section: getSection(state, props),
-    breadcrumbs: getBreadcrumbs(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -42,9 +42,9 @@ const mapDispatchToProps = {
 export default class SegmentFieldDetailContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
-        breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
-        sections: PropTypes.object.isRequired,
+        segment: PropTypes.object.isRequired,
+        field: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
@@ -68,8 +68,8 @@ export default class SegmentFieldDetailContainer extends Component {
 
     render() {
         const {
-            sections,
-            breadcrumbs,
+            segment,
+            field,
             isEditing
         } = this.props;
 
@@ -77,7 +77,7 @@ export default class SegmentFieldDetailContainer extends Component {
             <SidebarLayout
                 className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+                sidebar={<SegmentFieldSidebar segment={segment} field={field}/>}
             >
                 <SegmentFieldDetail {...this.props} />
             </SidebarLayout>

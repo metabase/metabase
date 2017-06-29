@@ -19,7 +19,6 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import cx from "classnames";
 
 import {
-    getSection,
     getData,
     getForeignKeys,
     getError,
@@ -27,6 +26,7 @@ import {
     getUser,
     getIsEditing,
     getHasRevisionHistory,
+    getSegment
 } from "../selectors";
 
 import {
@@ -49,7 +49,7 @@ const emptyStateData = {
 const mapStateToProps = (state, props) => {
     const data = getData(state, props);
     return {
-        section: getSection(state, props),
+        segment: getSegment(state,props),
         entities: data,
         foreignKeys: getForeignKeys(state, props),
         loading: getLoading(state, props),
@@ -77,6 +77,7 @@ const validate = (values, props) => {
 })
 export default class SegmentFieldList extends Component {
     static propTypes = {
+        segment: PropTypes.object.isRequired,
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object.isRequired,
@@ -91,7 +92,6 @@ export default class SegmentFieldList extends Component {
         handleSubmit: PropTypes.func.isRequired,
         user: PropTypes.object.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
@@ -100,11 +100,11 @@ export default class SegmentFieldList extends Component {
 
     render() {
         const {
+            segment,
             style,
             entities,
             fields,
             foreignKeys,
-            section,
             loadingError,
             loading,
             user,
@@ -131,7 +131,14 @@ export default class SegmentFieldList extends Component {
                         submitting={submitting}
                     />
                 }
-                <EditableReferenceHeader section={section} user={user} isEditing={isEditing} startEditing={startEditing} />
+                <EditableReferenceHeader 
+                    type="segment"
+                    headerIcon="segment"
+                    name={`Fields in ${segment.name}`}
+                    user={user} 
+                    isEditing={isEditing} 
+                    startEditing={startEditing} 
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
@@ -155,7 +162,7 @@ export default class SegmentFieldList extends Component {
                                         <Field
                                             field={entity}
                                             foreignKeys={foreignKeys}
-                                            url={`${section.id}/${entity.id}`}
+                                            url={`/reference/segments/${segment.id}/fields/${entity.id}`}
                                             icon={getIconForField(entity)}
                                             isEditing={isEditing}
                                             formField={fields[entity.id]}

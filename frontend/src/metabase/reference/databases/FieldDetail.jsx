@@ -22,7 +22,6 @@ import {
 } from '../utils';
 
 import {
-    getSection,
     getData,
     getTable,
     getDatabase,
@@ -40,54 +39,6 @@ import {
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
-
-// const section = {
-//         id: `/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`,
-//         name: 'Details',
-//         update: 'updateField',
-//         type: 'field',
-//         questions: [
-//             {
-//                 text: `Number of ${table.display_name} grouped by ${field.display_name}`,
-//                 icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
-//                 link: getQuestionUrl({
-//                     dbId: database.id,
-//                     tableId: table.id,
-//                     fieldId: field.id,
-//                     getCount: true,
-//                     visualization: 'bar'
-//                 })
-//             },
-//             {
-//                 text: `Number of ${table.display_name} grouped by ${field.display_name}`,
-//                 icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
-//                 link: getQuestionUrl({
-//                     dbId: database.id,
-//                     tableId: table.id,
-//                     fieldId: field.id,
-//                     getCount: true,
-//                     visualization: 'pie'
-//                 })
-//             },
-//             {
-//                 text: `All distinct values of ${field.display_name}`,
-//                 icon: "table2",
-//                 link: getQuestionUrl({
-//                     dbId: database.id,
-//                     tableId: table.id,
-//                     fieldId: field.id
-//                 })
-//             }
-//         ],
-//         breadcrumb: `${field.display_name}`,
-//         fetch: {
-//             fetchDatabaseMetadata: [database.id]
-//         },
-//         get: "getField",
-//         icon: "document",
-//         headerIcon: "field",
-//         parent: getTableSections(database, table)[`/reference/databases/${database.id}/tables/${table.id}/fields`]
-//     }
 
 
 const interestingQuestions = (database, table, field) => {
@@ -130,7 +81,6 @@ const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
 
     return {
-        section: getSection(state, props),
         entity,
         field: entity,
         table: getTable(state, props),
@@ -185,7 +135,6 @@ export default class FieldDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
@@ -198,7 +147,6 @@ export default class FieldDetail extends Component {
         const {
             fields: { name, display_name, description, revision_message, points_of_interest, caveats, special_type, fk_target_field_id },
             style,
-            section,
             entity,
             table,
             loadingError,
@@ -237,7 +185,9 @@ export default class FieldDetail extends Component {
                 <EditableReferenceHeader
                     entity={entity}
                     table={table}
-                    section={section}
+                    type="field"
+                    headerIcon="field"
+                    name="Details"
                     user={user}
                     isEditing={isEditing}
                     hasSingleSchema={hasSingleSchema}
@@ -273,7 +223,7 @@ export default class FieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this ${section.type} is interesting`}
+                                    name={`Why this field is interesting`}
                                     description={entity.points_of_interest}
                                     placeholder="Nothing interesting yet"
                                     isEditing={isEditing}
@@ -283,7 +233,7 @@ export default class FieldDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this ${section.type}`}
+                                    name={`Things to be aware of about this field`}
                                     description={entity.caveats}
                                     placeholder="Nothing to be aware of yet"
                                     isEditing={isEditing}

@@ -16,11 +16,11 @@ import Formula from "metabase/reference/components/Formula.jsx";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
 
 import {
-    tryUpdateMetric
+    tryUpdateMetric,
+    getQuestionUrl
 } from '../utils';
 
 import {
-    getSection,
     getData,
     getTable,
     getFields,
@@ -40,27 +40,6 @@ import {
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
-// const section = {
-//         id: `/reference/metrics/${metric.id}`,
-//         name: 'Details',
-//         update: 'updateMetric',
-//         type: 'metric',
-//         breadcrumb: `${metric.name}`,
-//         fetch: {
-//             fetchMetricTable: [metric.id],
-//             // currently the only way to fetch metrics important fields
-//             fetchGuide: []
-//         },
-//         get: 'getMetric',
-//         icon: "document",
-//         headerIcon: "ruler",
-//         headerLink: getQuestionUrl({
-//             dbId: table && table.db_id,
-//             tableId: metric.table_id,
-//             metricId: metric.id
-//         }),
-//         parent: referenceSections[`/reference/metrics`]
-//     }
 
 const mapStateToProps = (state, props) => {
     const entity = getData(state, props) || {};
@@ -76,7 +55,6 @@ const mapStateToProps = (state, props) => {
     };
 
     return {
-        section: getSection(state, props),
         entity,
         table: getTable(state, props),
         metadataFields: fields,
@@ -133,7 +111,6 @@ export default class MetricDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
         isFormulaExpanded: PropTypes.bool,
@@ -148,7 +125,6 @@ export default class MetricDetail extends Component {
         const {
             fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, important_fields },
             style,
-            section,
             entity,
             table,
             metadataFields,
@@ -192,7 +168,10 @@ export default class MetricDetail extends Component {
                 <EditableReferenceHeader
                     entity={entity}
                     table={table}
-                    section={section}
+                    type="metric"
+                    headerIcon="ruler"
+                    headerLink={getQuestionUrl({ dbId: table && table.db_id, tableId: entity.table_id, metricId: entity.id})}
+                    name="Details"
                     user={user}
                     isEditing={isEditing}
                     hasSingleSchema={hasSingleSchema}
@@ -218,7 +197,7 @@ export default class MetricDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this ${section.type} is interesting`}
+                                    name="Why this Metric is interesting"
                                     description={entity.points_of_interest}
                                     placeholder="Nothing interesting yet"
                                     isEditing={isEditing}
@@ -228,7 +207,7 @@ export default class MetricDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this ${section.type}`}
+                                    name="Things to be aware of about this Metric"
                                     description={entity.caveats}
                                     placeholder="Nothing to be aware of yet"
                                     isEditing={isEditing}
@@ -238,7 +217,7 @@ export default class MetricDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="how_is_this_calculated"
-                                    name={`How this ${section.type} is calculated`}
+                                    name="How this Metric is calculated"
                                     description={entity.how_is_this_calculated}
                                     placeholder="Nothing on how it's calculated yet"
                                     isEditing={isEditing}
@@ -248,7 +227,7 @@ export default class MetricDetail extends Component {
                             {   table && !isEditing &&
                                 <li className="relative">
                                     <Formula
-                                        type={section.type}
+                                        type="metric"
                                         entity={entity}
                                         table={table}
                                         isExpanded={isFormulaExpanded}
@@ -282,7 +261,7 @@ export default class MetricDetail extends Component {
                                             .map(fieldId => metadataFields[fieldId])
                                             .reduce((map, field) => ({ ...map, [field.id]: field }), {})
                                         }
-                                        databaseId={table.db_id}
+                                        databaseId={table && table.db_id}
                                         metric={entity}
                                         title={ guide && guide.metric_important_fields[entity.id] ?
                                             "Other fields you can group this metric by" :

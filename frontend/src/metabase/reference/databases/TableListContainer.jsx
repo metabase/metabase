@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import PropTypes from "prop-types";
 import { connect } from 'react-redux';
 
-import Sidebar from 'metabase/components/Sidebar.jsx';
+import DatabaseSidebar from './DatabaseSidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 import TableList from "metabase/reference/databases/TableList.jsx"
 
@@ -11,21 +11,19 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 import {
+    getDatabase,
     getDatabaseId,
     getSectionId,
-    getSections,
     getSection,
-    getBreadcrumbs,
     getIsEditing
 } from '../selectors';
 
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
+    database: getDatabase(state, props),    
     databaseId: getDatabaseId(state, props),
-    sections: getSections(state, props),
     section: getSection(state, props),
-    breadcrumbs: getBreadcrumbs(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -38,9 +36,8 @@ const mapDispatchToProps = {
 export default class TableListContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
-        breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
-        sections: PropTypes.object.isRequired,
+        database: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
@@ -64,8 +61,7 @@ export default class TableListContainer extends Component {
 
     render() {
         const {
-            sections,
-            breadcrumbs,
+            database,
             isEditing
         } = this.props;
 
@@ -73,7 +69,7 @@ export default class TableListContainer extends Component {
             <SidebarLayout
                 className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+                sidebar={<DatabaseSidebar database={database} />}
             >
                 <TableList {...this.props} />
             </SidebarLayout>

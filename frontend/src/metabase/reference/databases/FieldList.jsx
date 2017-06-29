@@ -19,7 +19,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import cx from "classnames";
 
 import {
-    getSection,
+    getTable,
     getData,
     getForeignKeys,
     getError,
@@ -49,7 +49,7 @@ const emptyStateData = {
 const mapStateToProps = (state, props) => {
     const data = getData(state, props);
     return {
-        section: getSection(state, props),
+        table: getTable(state, props),
         entities: data,
         foreignKeys: getForeignKeys(state, props),
         loading: getLoading(state, props),
@@ -91,7 +91,7 @@ export default class FieldList extends Component {
         handleSubmit: PropTypes.func.isRequired,
         user: PropTypes.object.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
+        table: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
@@ -104,7 +104,7 @@ export default class FieldList extends Component {
             entities,
             fields,
             foreignKeys,
-            section,
+            table,
             loadingError,
             loading,
             user,
@@ -131,7 +131,13 @@ export default class FieldList extends Component {
                         submitting={submitting}
                     />
                 }
-                <EditableReferenceHeader section={section} user={user} isEditing={isEditing} startEditing={startEditing} />
+                <EditableReferenceHeader 
+                    headerIcon="table2"
+                    name={`Fields in ${table.display_name}`}
+                    user={user} 
+                    isEditing={isEditing} 
+                    startEditing={startEditing} 
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
@@ -155,7 +161,7 @@ export default class FieldList extends Component {
                                         <Field
                                             field={entity}
                                             foreignKeys={foreignKeys}
-                                            url={`${section.id}/${entity.id}`}
+                                            url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
                                             icon={getIconForField(entity)}
                                             isEditing={isEditing}
                                             formField={fields[entity.id]}

@@ -19,7 +19,6 @@ import {
 } from '../utils';
 
 import {
-    getSection,
     getData,
     getTable,
     getFields,
@@ -37,26 +36,6 @@ import {
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
-
-// const section = {
-//         id: `/reference/segments/${segment.id}`,
-//         name: 'Details',
-//         update: 'updateSegment',
-//         type: 'segment',
-//         breadcrumb: `${segment.name}`,
-//         fetch: {
-//             fetchSegmentTable: [segment.id]
-//         },
-//         get: 'getSegment',
-//         icon: "document",
-//         headerIcon: "segment",
-//         headerLink: getQuestionUrl({
-//             dbId: table && table.db_id,
-//             tableId: segment.table_id,
-//             segmentId: segment.id
-//         }),
-//         parent: referenceSections[`/reference/segments`]
-//     }
 
 const interestingQuestions = (table, segment) => {
     return [
@@ -96,7 +75,6 @@ const mapStateToProps = (state, props) => {
     };
 
     return {
-        section: getSection(state, props),
         entity,
         table: getTable(state, props),
         metadataFields: fields,
@@ -150,7 +128,6 @@ export default class SegmentDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
         isFormulaExpanded: PropTypes.bool,
@@ -164,7 +141,6 @@ export default class SegmentDetail extends Component {
         const {
             fields: { name, display_name, description, revision_message, points_of_interest, caveats },
             style,
-            section,
             entity,
             table,
             loadingError,
@@ -206,7 +182,10 @@ export default class SegmentDetail extends Component {
                 <EditableReferenceHeader
                     entity={entity}
                     table={table}
-                    section={section}
+                    type="segment"
+                    headerIcon="segment"
+                    headerLink={getQuestionUrl({ dbId: table&&table.db_id, tableId: entity.table_id, segmentId: entity.id})}
+                    name="Details"
                     user={user}
                     isEditing={isEditing}
                     hasSingleSchema={hasSingleSchema}
@@ -232,7 +211,7 @@ export default class SegmentDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="points_of_interest"
-                                    name={`Why this ${section.type} is interesting`}
+                                    name={`Why this Segment is interesting`}
                                     description={entity.points_of_interest}
                                     placeholder="Nothing interesting yet"
                                     isEditing={isEditing}
@@ -242,7 +221,7 @@ export default class SegmentDetail extends Component {
                             <li className="relative">
                                 <Detail
                                     id="caveats"
-                                    name={`Things to be aware of about this ${section.type}`}
+                                    name={`Things to be aware of about this Segment`}
                                     description={entity.caveats}
                                     placeholder="Nothing to be aware of yet"
                                     isEditing={isEditing}
@@ -252,7 +231,7 @@ export default class SegmentDetail extends Component {
                             { table && !isEditing &&
                                 <li className="relative">
                                     <Formula
-                                        type={section.type}
+                                        type="segment"
                                         entity={entity}
                                         table={table}
                                         isExpanded={isFormulaExpanded}
