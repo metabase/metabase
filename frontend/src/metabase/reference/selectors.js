@@ -39,7 +39,6 @@ const referenceSections = {
             fetchDatabasesWithMetadata: []
         },
         icon: "reference",
-        sidebar: false
     },
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
@@ -104,7 +103,6 @@ const getMetricSections = (metric, table, user) => metric ? {
         id: `/reference/metrics/${metric.id}/questions`,
         name: `Questions about ${metric.name}`,
         type: 'questions',
-        sidebar: 'Questions about this metric',
         fetch: {
             fetchMetricTable: [metric.id],
             fetchQuestions: [],
@@ -118,7 +116,6 @@ const getMetricSections = (metric, table, user) => metric ? {
     [`/reference/metrics/${metric.id}/revisions`]: {
         id: `/reference/metrics/${metric.id}/revisions`,
         name: `Revision history for ${metric.name}`,
-        sidebar: 'Revision history',
         hidden: user && !user.is_superuser,
         fetch: {
             fetchMetricRevisions: [metric.id],
@@ -153,7 +150,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
     [`/reference/segments/${segment.id}/fields`]: {
         id: `/reference/segments/${segment.id}/fields`,
         name: `Fields in ${segment.name}`,
-        sidebar: 'Fields in this segment',
         fetch: {
             fetchSegmentFields: [segment.id]
         },
@@ -166,7 +162,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
         id: `/reference/segments/${segment.id}/questions`,
         name: `Questions about ${segment.name}`,
         type: 'questions',
-        sidebar: 'Questions about this segment',
         fetch: {
             fetchSegmentTable: [segment.id],
             fetchQuestions: []
@@ -179,7 +174,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
     [`/reference/segments/${segment.id}/revisions`]: {
         id: `/reference/segments/${segment.id}/revisions`,
         name: `Revision history for ${segment.name}`,
-        sidebar: 'Revision history',
         hidden: user && !user.is_superuser,
         fetch: {
             fetchSegmentRevisions: [segment.id]
@@ -225,7 +219,6 @@ const getDatabaseSections = (database) => database ? {
         id: `/reference/databases/${database.id}/tables`,
         name: `Tables in ${database.name}`,
         type: 'tables',
-        sidebar: 'Tables in this database',
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
         // },
@@ -257,7 +250,6 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
         name: `Fields in ${table.display_name}`,
-        sidebar: 'Fields in this table',
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
         // },
@@ -270,7 +262,6 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about ${table.display_name}`,
         type: 'questions',
-        sidebar: 'Questions about this table',
         // fetch: {
         //     fetchDatabaseMetadata: [database.id], fetchQuestions: []
         // },
