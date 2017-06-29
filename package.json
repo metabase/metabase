@@ -185,6 +185,11 @@
     ],
     "setupFiles": [
       "<rootDir>/frontend/test/metabase-bootstrap.js"
-    ]
+    ],
+    "globals": {
+      "ace": {},
+      "ga": {},
+      "document": {}
+    }
   }
 }

@@ -14,7 +14,6 @@ import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx"
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
-
 import {
     getEditingDatabase,
     getFormState
@@ -24,24 +23,27 @@ import {
     reset,
     initializeDatabase,
     saveDatabase,
-    syncDatabase, deleteDatabase,
+    syncDatabaseSchema,
+    rescanDatabaseFields,
+    discardSavedFieldValues,
+    deleteDatabase,
     selectEngine
 } from "../database";
-
+import ConfirmContent from "metabase/components/ConfirmContent";
 
 const mapStateToProps = (state, props) => ({
     database:  getEditingDatabase(state, props),
     formState: getFormState(state, props)
 });
 
-const Tab = ({ name, setTab, currentTab }) =>
+export const Tab = ({ name, setTab, currentTab }) =>
     <div
         className={cx('cursor-pointer py3', {'text-brand': currentTab === name.toLowerCase() })}
         onClick={() => setTab(name)}>
         <h3>{name}</h3>
     </div>
 
-const Tabs = ({ currentTab, setTab }) =>
+export const Tabs = ({ currentTab, setTab }) =>
     <div className="border-bottom">
         <ol className="Form-offset flex align center">
             {['Connection', 'Scheduling'].map((tab, index) =>
@@ -60,7 +62,9 @@ const mapDispatchToProps = {
     reset,
     initializeDatabase,
     saveDatabase,
-    syncDatabase,
+    syncDatabaseSchema,
+    rescanDatabaseFields,
+    discardSavedFieldValues,
     deleteDatabase,
     selectEngine
 };
@@ -79,7 +83,9 @@ export default class DatabaseEditApp extends Component {
         params: PropTypes.object.isRequired,
         reset: PropTypes.func.isRequired,
         initializeDatabase: PropTypes.func.isRequired,
-        syncDatabase: PropTypes.func.isRequired,
+        syncDatabaseSchema: PropTypes.func.isRequired,
+        rescanDatabaseFields: PropTypes.func.isRequired,
+        discardSavedFieldValues: PropTypes.func.isRequired,
         deleteDatabase: PropTypes.func.isRequired,
         saveDatabase: PropTypes.func.isRequired,
         selectEngine: PropTypes.func.isRequired,
@@ -131,8 +137,8 @@ export default class DatabaseEditApp extends Component {
                                     <ol>
                                         <li>
                                             <ActionButton
-                                                actionFn={() => this.props.syncDatabase(database.id)}
-                                                className="Button"
+                                                actionFn={() => this.props.syncDatabaseSchema(database.id)}
+                                                className="Button Button--syncDbSchema"
                                                 normalText="Sync database schema now"
                                                 activeText="Starting…"
                                                 failedText="Failed to sync"
@@ -141,8 +147,8 @@ export default class DatabaseEditApp extends Component {
                                         </li>
                                         <li>
                                             <ActionButton
-                                                actionFn={() => alert('I do a scan')}
-                                                className="Button"
+                                                actionFn={() => this.props.rescanDatabaseFields(database.id)}
+                                                className="Button Button--rescanFieldValues"
                                                 normalText="Re-scan field values now"
                                                 activeText="Starting…"
                                                 failedText="Failed to start scan"
@@ -155,8 +161,19 @@ export default class DatabaseEditApp extends Component {
                                 <div className="Actions-group Actions--dangerZone">
                                     <label className="Actions-groupLabel block text-bold">Danger Zone:</label>
                                     <ModalWithTrigger
+                                        ref="discardSavedFieldValuesModal"
+                                        triggerClasses="Button Button--danger Button--discardSavedFieldValues"
+                                        triggerElement="Discard saved field values"
+                                    >
+                                        <ConfirmContent
+                                            title="Discard saved field values"
+                                            onClose={() => this.refs.discardSavedFieldValuesModal.toggle()}
+                                            onAction={() => this.props.discardSavedFieldValues(database.id)}
+                                        />
+                                    </ModalWithTrigger>
+                                    <ModalWithTrigger
                                         ref="deleteDatabaseModal"
-                                        triggerClasses="Button Button--danger"
+                                        triggerClasses="Button Button--deleteDatabase Button--danger"
                                         triggerElement="Remove this database"
                                     >
                                         <DeleteDatabaseModal

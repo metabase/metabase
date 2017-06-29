@@ -12,7 +12,7 @@ const DB_SYNC_OPTIONS = [
     { name: 'Daily' },
 ]
 
-const SyncOption = ({ selected, name, description, children, select }) =>
+export const SyncOption = ({ selected, name, description, children, select }) =>
     <div className="py2 relative" onClick={() => select(name.toLowerCase()) }>
         <div
             className={cx('circle ml2 flex align-center justify-center absolute')}
