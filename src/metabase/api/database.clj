@@ -328,7 +328,7 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest
+  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest sync_and_analyze_trigger
                    cache_field_values_schedule sync_schedule analyze_schedule classify_schedule]} :body}]
   {name    su/NonBlankString
    engine  DBEngine
@@ -351,6 +351,9 @@
                            :engine             engine
                            :details            details
                            :is_full_sync       is_full_sync
+                           ;; this endpoint should maybe validate that the trigger is either :scheduled, :manual or :none
+                           ;; (see the UX design for corresponding choices for each trigger option)
+                           :sync_and_analyze_trigger sync_and_analyze_trigger
                            :sync_schedule      sync_schedule
                            :cache_field_values_schedule cache_field_values_schedule
                            :analyze_schedule   analyze_schedule
@@ -388,5 +391,24 @@
   (events/publish-event! :database-trigger-sync (api/write-check Database id))
   {:status :ok})
 
+;; NOTE Atte Keinänen: If you think that these endpoints could have more descriptive names, please change them.
+;; Currently these match the titles of the admin UI buttons that call these endpoints
+
+;; If the value of :sync_and_analyze_trigger is :none, not sure if these should be no-op
+;; (see again the UX design in https://github.com/metabase/metabase/pull/5363#issuecomment-311814084)
+
+;; Should somehow trigger sync-database/sync-database!
+(api/defendpoint POST "/:id/sync-schema"
+                 "Trigger a manual update of the schema metadata for this `Database`."
+                 [id]
+                 {:status :ok})
+
+;; Should somehow trigger cached-values/cache-field-values-for-database!
+;; Don't know whether analyze/analyze-database! and classify/classify-database! database should be triggered
+;; by this or by sync-schema
+(api/defendpoint POST "/:id/rescan-fields"
+                 "Trigger a manual Scan the field values for this `Database`."
+                 [id]
+                 {:status :ok})
 
 (api/define-routes)
