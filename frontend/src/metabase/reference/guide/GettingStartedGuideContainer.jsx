@@ -13,7 +13,6 @@ import {
     getSectionId,
     getSections,
     getSection,
-    getBreadcrumbs,
     getIsEditing
 } from '../selectors';
 
@@ -30,7 +29,6 @@ const mapStateToProps = (state, props) => ({
     databaseId: getDatabaseId(state, props),
     sections: getSections(state, props),
     section: getSection(state, props),
-    breadcrumbs: getBreadcrumbs(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -44,7 +42,6 @@ const mapDispatchToProps = {
 export default class GettingStartedGuideContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
-        breadcrumbs: PropTypes.array,
         location: PropTypes.object.isRequired,
         sections: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,

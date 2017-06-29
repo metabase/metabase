@@ -9,7 +9,6 @@ import {
 
 import {
     idsToObjectMap,
-    buildBreadcrumbs,
     databaseToForeignKeys,
     getQuestionUrl
 } from "./utils";
@@ -32,7 +31,6 @@ const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
         name: "Start here",
-        breadcrumb: "Guide",
         fetch: {
             fetchGuide: [],
             fetchDashboards: [],
@@ -46,7 +44,6 @@ const referenceSections = {
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
         name: "Metrics",
-        breadcrumb: "Metrics",
         // mapping of propname to args of dispatch function
         fetch: {
             fetchMetrics: [],
@@ -58,7 +55,6 @@ const referenceSections = {
     [`/reference/segments`]: {
         id: `/reference/segments`,
         name: "Segments",
-        breadcrumb: "Segments",
         fetch: {
             fetchMetrics: [],
             fetchSegments: []
@@ -69,7 +65,6 @@ const referenceSections = {
     [`/reference/databases`]: {
         id: `/reference/databases`,
         name: "Databases and tables",
-        breadcrumb: "Databases",
         fetch: {
             fetchMetrics: [],
             fetchSegments: [],
@@ -89,7 +84,6 @@ const getMetricSections = (metric, table, user) => metric ? {
         name: 'Details',
         update: 'updateMetric',
         type: 'metric',
-        breadcrumb: `${metric.name}`,
         fetch: {
             fetchMetricTable: [metric.id],
             // currently the only way to fetch metrics important fields
@@ -111,7 +105,6 @@ const getMetricSections = (metric, table, user) => metric ? {
         name: `Questions about ${metric.name}`,
         type: 'questions',
         sidebar: 'Questions about this metric',
-        breadcrumb: `${metric.name}`,
         fetch: {
             fetchMetricTable: [metric.id],
             fetchQuestions: [],
@@ -126,7 +119,6 @@ const getMetricSections = (metric, table, user) => metric ? {
         id: `/reference/metrics/${metric.id}/revisions`,
         name: `Revision history for ${metric.name}`,
         sidebar: 'Revision history',
-        breadcrumb: `${metric.name}`,
         hidden: user && !user.is_superuser,
         fetch: {
             fetchMetricRevisions: [metric.id],
@@ -145,7 +137,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
         name: 'Details',
         update: 'updateSegment',
         type: 'segment',
-        breadcrumb: `${segment.name}`,
         fetch: {
             fetchSegmentTable: [segment.id]
         },
@@ -167,7 +158,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
             fetchSegmentFields: [segment.id]
         },
         get: "getFieldsBySegment",
-        breadcrumb: `${segment.name}`,
         icon: "fields",
         headerIcon: "segment",
         parent: referenceSections[`/reference/segments`]
@@ -177,7 +167,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
         name: `Questions about ${segment.name}`,
         type: 'questions',
         sidebar: 'Questions about this segment',
-        breadcrumb: `${segment.name}`,
         fetch: {
             fetchSegmentTable: [segment.id],
             fetchQuestions: []
@@ -191,7 +180,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
         id: `/reference/segments/${segment.id}/revisions`,
         name: `Revision history for ${segment.name}`,
         sidebar: 'Revision history',
-        breadcrumb: `${segment.name}`,
         hidden: user && !user.is_superuser,
         fetch: {
             fetchSegmentRevisions: [segment.id]
@@ -209,7 +197,6 @@ const getSegmentFieldSections = (segment, table, field, user) => segment && fiel
         name: 'Details',
         update: 'updateField',
         type: 'field',
-        breadcrumb: `${field.display_name}`,
         fetch: {
             fetchSegmentFields: [segment.id]
         },
@@ -226,7 +213,6 @@ const getDatabaseSections = (database) => database ? {
         name: 'Details',
         update: 'updateDatabase',
         type: 'database',
-        breadcrumb: `${database.name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
         // },
@@ -240,7 +226,6 @@ const getDatabaseSections = (database) => database ? {
         name: `Tables in ${database.name}`,
         type: 'tables',
         sidebar: 'Tables in this database',
-        breadcrumb: `${database.name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
         // },
@@ -257,7 +242,6 @@ const getTableSections = (database, table) => database && table ? {
         name: 'Details',
         update: 'updateTable',
         type: 'table',
-        breadcrumb: `${table.display_name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
         // },
@@ -274,7 +258,6 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
         name: `Fields in ${table.display_name}`,
         sidebar: 'Fields in this table',
-        breadcrumb: `${table.display_name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
         // },
@@ -288,7 +271,6 @@ const getTableSections = (database, table) => database && table ? {
         name: `Questions about ${table.display_name}`,
         type: 'questions',
         sidebar: 'Questions about this table',
-        breadcrumb: `${table.display_name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id], fetchQuestions: []
         // },
@@ -305,7 +287,6 @@ const getTableFieldSections = (database, table, field) => database && table && f
         name: 'Details',
         update: 'updateField',
         type: 'field',
-        breadcrumb: `${field.display_name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
         // },
@@ -534,11 +515,6 @@ export const getData = (state, props) => {
 export const getLoading = (state, props) => state.reference.isLoading;
 
 export const getError = (state, props) => state.reference.error;
-
-export const getBreadcrumbs = createSelector(
-    [getSection],
-    buildBreadcrumbs
-)
 
 export const getHasSingleSchema = createSelector(
     [getTablesByDatabase],

@@ -363,23 +363,6 @@ export const tryUpdateGuide = async (formFields, props) => {
     endEditing();
 };
 
-const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?
-    [section.breadcrumb, section.id] : [section.breadcrumb];
-
-const getParentSections = (section) => {
-    if (!section.parent) {
-        return [section];
-    }
-
-    const parentSections = []
-        .concat(getParentSections(section.parent), section);
-
-    return parentSections;
-};
-
-export const buildBreadcrumbs = (section) => getParentSections(section)
-    .map(getBreadcrumb)
-    .slice(-3);
 
 export const databaseToForeignKeys = (database) => database && database.tables_lookup ?
     Object.values(database.tables_lookup)
