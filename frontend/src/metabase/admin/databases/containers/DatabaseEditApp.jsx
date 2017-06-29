@@ -14,7 +14,6 @@ import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx"
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
-
 import {
     getEditingDatabase,
     getFormState
@@ -24,10 +23,11 @@ import {
     reset,
     initializeDatabase,
     saveDatabase,
-    syncDatabase, deleteDatabase,
+    syncDatabaseSchema,
+    rescanDatabaseFields,
+    deleteDatabase,
     selectEngine
 } from "../database";
-
 
 const mapStateToProps = (state, props) => ({
     database:  getEditingDatabase(state, props),
@@ -60,7 +60,8 @@ const mapDispatchToProps = {
     reset,
     initializeDatabase,
     saveDatabase,
-    syncDatabase,
+    syncDatabaseSchema,
+    rescanDatabaseFields,
     deleteDatabase,
     selectEngine
 };
@@ -79,7 +80,8 @@ export default class DatabaseEditApp extends Component {
         params: PropTypes.object.isRequired,
         reset: PropTypes.func.isRequired,
         initializeDatabase: PropTypes.func.isRequired,
-        syncDatabase: PropTypes.func.isRequired,
+        syncDatabaseSchema: PropTypes.func.isRequired,
+        rescanDatabaseFields: PropTypes.func.isRequired,
         deleteDatabase: PropTypes.func.isRequired,
         saveDatabase: PropTypes.func.isRequired,
         selectEngine: PropTypes.func.isRequired,
@@ -131,7 +133,7 @@ export default class DatabaseEditApp extends Component {
                                     <ol>
                                         <li>
                                             <ActionButton
-                                                actionFn={() => this.props.syncDatabase(database.id)}
+                                                actionFn={() => this.props.syncDatabaseSchema(database.id)}
                                                 className="Button"
                                                 normalText="Sync database schema now"
                                                 activeText="Starting…"
@@ -141,7 +143,7 @@ export default class DatabaseEditApp extends Component {
                                         </li>
                                         <li>
                                             <ActionButton
-                                                actionFn={() => alert('I do a scan')}
+                                                actionFn={() => this.props.rescanDatabaseFields(database.id)}
                                                 className="Button"
                                                 normalText="Re-scan field values now"
                                                 activeText="Starting…"
