@@ -87,7 +87,7 @@
   (doseq [[action db-keyword job-type] [["classify"     :classify_schedule           ClassifyDatabase]
                                         ["cache-values" :cache_field_values_schedule CacheFieldValuesForDatabase]
                                         ["analyze"      :analyze_schedule            AnalyzeDatabase]
-                                        ["sync"         :sync_schedule SyncDatabase]]]
+                                        ["sync"         :sync_schedule               SyncDatabase]]]
     (let [[trigger-name job-name] (db-task-names db-id action)
           [job-key trigger-key] (db-task-keys trigger-name job-name)
           schedule (db-keyword database)
@@ -112,6 +112,6 @@
   "classify called during startup; start the job for classify databases."
   []
   ;; build one job and one trigger for each database.
-  (let [triggers (doseq [database (db/select Database, :is_sample false)] ;; TODO: UN-COMMENT THESE
+  (let [triggers (doseq [database (db/select Database, :is_sample false)]
                    (schedule-db-sync-actions database))] ;; we're building a sequence of these jobs so they can be stopped later
     (reset! classify-databases-job triggers)))
