@@ -383,7 +383,9 @@
 
 ;;; ------------------------------------------------------------ POST /api/database/:id/sync ------------------------------------------------------------
 
+
 ;; TODO - Shouldn't we just check for superuser status instead of write checking?
+;; NOTE Atte: This becomes maybe obsolete
 (api/defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."
   [id]
@@ -398,7 +400,7 @@
 ;; (see again the UX design in https://github.com/metabase/metabase/pull/5363#issuecomment-311814084)
 
 ;; Should somehow trigger sync-database/sync-database!
-(api/defendpoint POST "/:id/sync-schema"
+(api/defendpoint POST "/:id/sync_schema"
                  "Trigger a manual update of the schema metadata for this `Database`."
                  [id]
                  {:status :ok})
@@ -406,8 +408,14 @@
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
 ;; Don't know whether analyze/analyze-database! and classify/classify-database! database should be triggered
 ;; by this or by sync-schema
-(api/defendpoint POST "/:id/rescan-fields"
-                 "Trigger a manual Scan the field values for this `Database`."
+(api/defendpoint POST "/:id/rescan_values"
+                 "Trigger a manual scan of the field values for this `Database`."
+                 [id]
+                 {:status :ok})
+
+;; "Discard saved field values" action in db UI
+(api/defendpoint POST "/:id/discard_values"
+                 "Discards all saved field values for this `Database`."
                  [id]
                  {:status :ok})
 

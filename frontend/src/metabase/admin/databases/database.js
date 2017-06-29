@@ -18,6 +18,7 @@ export const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 export const SYNC_DATABASE_SCHEMA = "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
 export const RESCAN_DATABASE_FIELDS = "metabase/admin/databases/RESCAN_DATABASE_FIELDS";
+export const DISCARD_SAVED_FIELD_VALUES = "metabase/admin/databases/DISCARD_SAVED_FIELD_VALUES";
 
 export const reset = createAction(RESET);
 
@@ -129,9 +130,9 @@ export const deleteDatabase = createThunkAction(DELETE_DATABASE, function(databa
 
 // syncDatabaseSchema
 export const syncDatabaseSchema = createThunkAction(SYNC_DATABASE_SCHEMA, function(databaseId) {
-    return function(dispatch, getState) {
+    return async function(dispatch, getState) {
         try {
-            let call = MetabaseApi.db_sync_schema({"dbId": databaseId});
+            let call = await MetabaseApi.db_sync_schema({"dbId": databaseId});
             MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
             return call;
         } catch(error) {
@@ -142,9 +143,22 @@ export const syncDatabaseSchema = createThunkAction(SYNC_DATABASE_SCHEMA, functi
 
 // rescanDatabaseFields
 export const rescanDatabaseFields = createThunkAction(RESCAN_DATABASE_FIELDS, function(databaseId) {
-    return function(dispatch, getState) {
+    return async function(dispatch, getState) {
         try {
-            let call = MetabaseApi.db_rescan_fields({"dbId": databaseId});
+            let call = await MetabaseApi.db_rescan_values({"dbId": databaseId});
+            MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
+            return call;
+        } catch(error) {
+            console.log('error syncing database', error);
+        }
+    };
+});
+
+// discardSavedFieldValues
+export const discardSavedFieldValues = createThunkAction(DISCARD_SAVED_FIELD_VALUES, function(databaseId) {
+    return async function(dispatch, getState) {
+        try {
+            let call = await MetabaseApi.db_discard_values({"dbId": databaseId});
             MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
             return call;
         } catch(error) {
