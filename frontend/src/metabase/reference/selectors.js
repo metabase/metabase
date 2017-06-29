@@ -46,14 +46,6 @@ const referenceSections = {
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
         name: "Metrics",
-        // empty: {
-        //     title: "Metrics are the official numbers that your team cares about",
-        //     adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
-        //     message: "Metrics will appear here once your admins have created some",
-        //     image: "app/assets/img/metrics-list",
-        //     adminAction: "Learn how to create metrics",
-        //     adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
-        // },
         breadcrumb: "Metrics",
         // mapping of propname to args of dispatch function
         fetch: {
@@ -66,14 +58,6 @@ const referenceSections = {
     [`/reference/segments`]: {
         id: `/reference/segments`,
         name: "Segments",
-        // empty: {
-        //     title: "Segments are interesting subsets of tables",
-        //     adminMessage: "Defining common segments for your team makes it even easier to ask questions",
-        //     message: "Segments will appear here once your admins have created some",
-        //     image: "app/assets/img/segments-list",
-        //     adminAction: "Learn how to create segments",
-        //     adminLink: "http://www.metabase.com/docs/latest/administration-guide/06-segments-and-metrics.html"
-        // },
         breadcrumb: "Segments",
         fetch: {
             fetchMetrics: [],
@@ -85,14 +69,6 @@ const referenceSections = {
     [`/reference/databases`]: {
         id: `/reference/databases`,
         name: "Databases and tables",
-        // empty: {
-        //     title: "Metabase is no fun without any data",
-        //     adminMessage: "Your databases will appear here once you connect one",
-        //     message: "Databases will appear here once your admins have added some",
-        //     image: "app/assets/img/databases-list",
-        //     adminAction: "Connect a database",
-        //     adminLink: "/admin/databases/create"
-        // },
         breadcrumb: "Databases",
         fetch: {
             fetchMetrics: [],
@@ -133,16 +109,6 @@ const getMetricSections = (metric, table, user) => metric ? {
     [`/reference/metrics/${metric.id}/questions`]: {
         id: `/reference/metrics/${metric.id}/questions`,
         name: `Questions about ${metric.name}`,
-        // empty: {
-        //     message: `Questions about this metric will appear here as they're added`,
-        //     icon: "all",
-        //     action: "Ask a question",
-        //     link: getQuestionUrl({
-        //         dbId: table && table.db_id,
-        //         tableId: metric.table_id,
-        //         metricId: metric.id
-        //     })
-        // },
         type: 'questions',
         sidebar: 'Questions about this metric',
         breadcrumb: `${metric.name}`,
@@ -179,27 +145,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
         name: 'Details',
         update: 'updateSegment',
         type: 'segment',
-        // questions: [
-        //     {
-        //         text: `Number of ${segment.name}`,
-        //         icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-        //         link: getQuestionUrl({
-        //             dbId: table && table.db_id,
-        //             tableId: segment.table_id,
-        //             segmentId: segment.id,
-        //             getCount: true
-        //         })
-        //     },
-        //     {
-        //         text: `See all ${segment.name}`,
-        //         icon: "table2",
-        //         link: getQuestionUrl({
-        //             dbId: table && table.db_id,
-        //             tableId: segment.table_id,
-        //             segmentId: segment.id
-        //         })
-        //     }
-        // ],
         breadcrumb: `${segment.name}`,
         fetch: {
             fetchSegmentTable: [segment.id]
@@ -217,10 +162,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
     [`/reference/segments/${segment.id}/fields`]: {
         id: `/reference/segments/${segment.id}/fields`,
         name: `Fields in ${segment.name}`,
-        // empty: {
-        //     message: `Fields in this segment will appear here as they're added`,
-        //     icon: "fields"
-        // },
         sidebar: 'Fields in this segment',
         fetch: {
             fetchSegmentFields: [segment.id]
@@ -234,16 +175,6 @@ const getSegmentSections = (segment, table, user) => segment ? {
     [`/reference/segments/${segment.id}/questions`]: {
         id: `/reference/segments/${segment.id}/questions`,
         name: `Questions about ${segment.name}`,
-        // empty: {
-        //     message: `Questions about this segment will appear here as they're added`,
-        //     icon: "all",
-        //     action: "Ask a question",
-        //     link: getQuestionUrl({
-        //         dbId: table && table.db_id,
-        //         tableId: segment.table_id,
-        //         segmentId: segment.id
-        //     })
-        // },
         type: 'questions',
         sidebar: 'Questions about this segment',
         breadcrumb: `${segment.name}`,
@@ -278,27 +209,6 @@ const getSegmentFieldSections = (segment, table, field, user) => segment && fiel
         name: 'Details',
         update: 'updateField',
         type: 'field',
-        // questions: [
-        //     {
-        //         text: `Number of ${table && table.display_name} grouped by ${field.display_name}`,
-        //         icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-        //         link: getQuestionUrl({
-        //             dbId: table && table.db_id,
-        //             tableId: field.table_id,
-        //             fieldId: field.id,
-        //             getCount: true
-        //         })
-        //     },
-        //     {
-        //         text: `All distinct values of ${field.display_name}`,
-        //         icon: "table2",
-        //         link: getQuestionUrl({
-        //             dbId: table && table.db_id,
-        //             tableId: field.table_id,
-        //             fieldId: field.id
-        //         })
-        //     }
-        // ],
         breadcrumb: `${field.display_name}`,
         fetch: {
             fetchSegmentFields: [segment.id]
@@ -329,10 +239,6 @@ const getDatabaseSections = (database) => database ? {
         id: `/reference/databases/${database.id}/tables`,
         name: `Tables in ${database.name}`,
         type: 'tables',
-        // empty: {
-        //     message: `Tables in this database will appear here as they're added`,
-        //     icon: "table2"
-        // },
         sidebar: 'Tables in this database',
         breadcrumb: `${database.name}`,
         // fetch: {
@@ -351,25 +257,6 @@ const getTableSections = (database, table) => database && table ? {
         name: 'Details',
         update: 'updateTable',
         type: 'table',
-        // questions: [
-        //     {
-        //         text: `Count of ${table.display_name}`,
-        //         icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-        //         link: getQuestionUrl({
-        //             dbId: table.db_id,
-        //             tableId: table.id,
-        //             getCount: true
-        //         })
-        //     },
-        //     {
-        //         text: `See raw data for ${table.display_name}`,
-        //         icon: "table2",
-        //         link: getQuestionUrl({
-        //             dbId: table.db_id,
-        //             tableId: table.id,
-        //         })
-        //     }
-        // ],
         breadcrumb: `${table.display_name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
@@ -386,10 +273,6 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
         name: `Fields in ${table.display_name}`,
-        // empty: {
-        //     message: `Fields in this table will appear here as they're added`,
-        //     icon: "fields"
-        // },
         sidebar: 'Fields in this table',
         breadcrumb: `${table.display_name}`,
         // fetch: {
@@ -403,15 +286,6 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about ${table.display_name}`,
-        // empty: {
-        //     message: `Questions about this table will appear here as they're added`,
-        //     icon: "all",
-        //     action: "Ask a question",
-        //     link: getQuestionUrl({
-        //         dbId: table.db_id,
-        //         tableId: table.id,
-        //     })
-        // },
         type: 'questions',
         sidebar: 'Questions about this table',
         breadcrumb: `${table.display_name}`,
@@ -431,39 +305,6 @@ const getTableFieldSections = (database, table, field) => database && table && f
         name: 'Details',
         update: 'updateField',
         type: 'field',
-        // questions: [
-        //     {
-        //         text: `Number of ${table.display_name} grouped by ${field.display_name}`,
-        //         icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
-        //         link: getQuestionUrl({
-        //             dbId: database.id,
-        //             tableId: table.id,
-        //             fieldId: field.id,
-        //             getCount: true,
-        //             visualization: 'bar'
-        //         })
-        //     },
-        //     {
-        //         text: `Number of ${table.display_name} grouped by ${field.display_name}`,
-        //         icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
-        //         link: getQuestionUrl({
-        //             dbId: database.id,
-        //             tableId: table.id,
-        //             fieldId: field.id,
-        //             getCount: true,
-        //             visualization: 'pie'
-        //         })
-        //     },
-        //     {
-        //         text: `All distinct values of ${field.display_name}`,
-        //         icon: "table2",
-        //         link: getQuestionUrl({
-        //             dbId: database.id,
-        //             tableId: table.id,
-        //             fieldId: field.id
-        //         })
-        //     }
-        // ],
         breadcrumb: `${field.display_name}`,
         // fetch: {
         //     fetchDatabaseMetadata: [database.id]
