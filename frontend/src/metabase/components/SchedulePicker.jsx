@@ -34,11 +34,19 @@ const MONTH_DAY_OPTIONS = [
     { name: "15th (Midpoint)", value: "mid" }
 ];
 
+/**
+ * Picker for selecting a hourly/daily/weekly/monthly schedule.
+ *
+ * TODO Atte Keinänen 6/30/17: This could use text input fields instead of dropdown for time (hour + AM/PM) pickers
+ */
 export default class SchedulePicker extends Component {
+    // TODO: How does this tread an empty schedule?
+
     static propTypes = {
         // the currently chosen schedule, e.g. { schedule_day: "mon", schedule_frame: "null", schedule_hour: 4, schedule_type: "daily" }
         schedule: PropTypes.object.isRequired,
-        // available schedules, e.g. ["daily", "weekly", "monthly"]
+        // TODO: hourly option?
+        // available schedules, e.g. [ "daily", "weekly", "monthly"]
         scheduleOptions: PropTypes.object.isRequired,
         // text prepended to "12:00 PM PST, your Metabase timezone"
         textBeforeSendTime: PropTypes.string,
