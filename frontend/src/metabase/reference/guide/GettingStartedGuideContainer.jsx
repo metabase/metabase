@@ -18,11 +18,6 @@ import {
 
 
 import {
-    tryFetchData
-} from '../utils';
-
-
-import {
     fetchDashboards
 } from 'metabase/dashboards/dashboards';
 
@@ -52,7 +47,6 @@ export default class GettingStartedGuideContainer extends Component {
 
     async fetchContainerData() {
         await actions.rFetchGuide(this.props);
-        // await tryFetchData(this.props)
     }
 
     async componentWillMount() {
