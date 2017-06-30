@@ -59,19 +59,36 @@ export default class SchedulePicker extends Component {
             [name]: value
         };
 
-        // default to Monday when user wants a weekly schedule
-        if (name === "schedule_type" && value === "weekly") {
-            newSchedule = { ...newSchedule, "schedule_day": "mon" };
-        }
+        if (name === "schedule_type") {
+            // clear out other values than schedule_type for hourly schedule
+            if (value === "hourly") {
+                newSchedule = { ...newSchedule, "schedule_day": null, "schedule_frame": null, "schedule_hour": null };
+            }
 
-        // default to First, Monday when user wants a monthly schedule
-        if (name === "schedule_type" && value === "monthly") {
-            newSchedule = { ...newSchedule, "schedule_frame": "first", "schedule_day": "mon" };
-        }
+            // default to midnight for all schedules other than hourly
+            if (value !== "hourly") {
+                newSchedule = { ...newSchedule, "schedule_hour": newSchedule.schedule_hour || 0 }
+            }
 
-        // when the monthly schedule frame is the 15th, clear out the schedule_day
-        if (name === "schedule_frame" && value === "mid") {
-            newSchedule = { ...newSchedule, "schedule_day": null };
+            // clear out other values than schedule_type and schedule_day for daily schedule
+            if (value === "daily") {
+                newSchedule = { ...newSchedule, "schedule_day": null, "schedule_frame": null };
+            }
+
+            // default to Monday when user wants a weekly schedule + clear out schedule_frame
+            if (value === "weekly") {
+                newSchedule = { ...newSchedule, "schedule_day": "mon", "schedule_frame": null };
+            }
+
+            // default to First, Monday when user wants a monthly schedule
+            if (value === "monthly") {
+                newSchedule = { ...newSchedule, "schedule_frame": "first", "schedule_day": "mon" };
+            }
+
+            // when the monthly schedule frame is the 15th, clear out the schedule_day
+            if (value === "mid") {
+                newSchedule = { ...newSchedule, "schedule_day": null };
+            }
         }
 
         const changedProp = { name, value };
