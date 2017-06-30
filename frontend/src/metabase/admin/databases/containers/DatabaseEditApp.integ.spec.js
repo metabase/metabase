@@ -73,7 +73,7 @@ describe("DatabaseEditApp", () => {
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             expect(schedulingForm.length).toBe(1)
 
-            expect(schedulingForm.find(Select).first().text()).toEqual("Hourly");
+            expect(schedulingForm.find(Select).first().text()).toEqual("Daily");
 
             const syncOptions = schedulingForm.find(SyncOption);
             const syncOptionOften = syncOptions.first();
@@ -99,6 +99,7 @@ describe("DatabaseEditApp", () => {
             expect(dbSyncSelect.text()).toEqual("Daily");
 
             schedulingForm.find('button[children="Save"]').simulate("click");
+
             await store.waitForActions([SAVE_DATABASE])
         });
 
@@ -119,7 +120,7 @@ describe("DatabaseEditApp", () => {
             syncOptionRarely.simulate("click");
             expect(syncOptionRarely.props().selected).toEqual(true);
 
-            schedulingForm.find('button[children="Save"]').simulate("click");
+            schedulingForm.find('button[children="Save"]').get(0).click();
             await store.waitForActions([SAVE_DATABASE])
         });
 
@@ -140,10 +141,7 @@ describe("DatabaseEditApp", () => {
             syncOptionsNever.simulate("click");
             expect(syncOptionsNever.props().selected).toEqual(true);
 
-            const saveButton = schedulingForm.find('button[children="Save"]');
-            expect(saveButton.props().disabled).toBe(false);
-
-            schedulingForm.find('button[children="Save"]').simulate("click");
+            schedulingForm.find('button[children="Save"]').get(0).click();
             await store.waitForActions([SAVE_DATABASE])
 
         });
@@ -157,7 +155,7 @@ describe("DatabaseEditApp", () => {
             const schedulingForm = dbEditApp.find(DatabaseSchedulingForm)
             expect(schedulingForm.length).toBe(1)
 
-            expect(schedulingForm.find(Select).first().text()).toEqual("Daily");
+            expect(schedulingForm.find(Select).first().text()).toEqual("Hourly");
 
             const syncOptions = schedulingForm.find(SyncOption);
             const syncOptionOften = syncOptions.first();
@@ -171,8 +169,11 @@ describe("DatabaseEditApp", () => {
             // use a direct API call for the sake of simplicity / reliability
             const store = await createTestStore()
             const database = (await store.dispatch(initializeDatabase(1))).payload
-            // TODO: Create a copy of original db object with desired changes made
-            await store.dispatch(saveDatabase(database, database.details));
+            await store.dispatch(saveDatabase(
+                // reset to "Often" setting for field fingerprinting
+                { ...database, is_full_sync: true },
+                { ...database.details, is_static: false }
+            ))
         })
     })
 

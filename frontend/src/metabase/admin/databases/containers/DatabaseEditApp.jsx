@@ -30,6 +30,7 @@ import {
     selectEngine
 } from "../database";
 import ConfirmContent from "metabase/components/ConfirmContent";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 const mapStateToProps = (state, props) => ({
     database:  getEditingDatabase(state, props),
@@ -113,18 +114,30 @@ export default class DatabaseEditApp extends Component {
                                 currentTab={currentTab}
                                 setTab={tab => this.setState({ currentTab: tab.toLowerCase() })}
                             />
-                            { currentTab === 'connection' && (
-                                <DatabaseEditForms
-                                    database={database}
-                                    details={database ? database.details : null}
-                                    engines={MetabaseSettings.get('engines')}
-                                    hiddenFields={{ssl: true}}
-                                    formState={this.props.formState}
-                                    selectEngine={this.props.selectEngine}
-                                    save={this.props.saveDatabase}
-                                />
-                            )}
-                            { currentTab === 'scheduling' && <DatabaseSchedulingForm /> }
+                            <LoadingAndErrorWrapper loading={!database} error={null}>
+                                { () =>
+                                    <div>
+                                        { currentTab === 'connection' &&
+                                        <DatabaseEditForms
+                                            database={database}
+                                            details={database ? database.details : null}
+                                            engines={MetabaseSettings.get('engines')}
+                                            hiddenFields={{ssl: true}}
+                                            formState={this.props.formState}
+                                            selectEngine={this.props.selectEngine}
+                                            save={this.props.saveDatabase}
+                                        />
+                                        }
+                                        { currentTab === 'scheduling' &&
+                                        <DatabaseSchedulingForm
+                                            database={database}
+                                            formState={this.props.formState}
+                                            save={this.props.saveDatabase}
+                                        />
+                                        }
+                                    </div>
+                                }
+                            </LoadingAndErrorWrapper>
                         </div>
                     </div>
 
