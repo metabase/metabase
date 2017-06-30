@@ -21,7 +21,6 @@ import {
 } from '../utils';
 
 import {
-    getData,
     getTable,
     getFields,
     getError,
@@ -62,7 +61,7 @@ const interestingQuestions = (table) => {
     ]
 }
 const mapStateToProps = (state, props) => {
-    const entity = getData(state, props) || {};
+    const entity = getTable(state, props) || {};
     const fields = getFields(state, props);
 
     return {

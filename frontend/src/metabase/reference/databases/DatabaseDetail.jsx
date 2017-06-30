@@ -17,7 +17,7 @@ import {
 } from '../utils';
 
 import {
-    getData,
+    getDatabase,
     getTable,
     getFields,
     getError,
@@ -37,7 +37,7 @@ import * as actions from 'metabase/reference/reference';
 
 
 const mapStateToProps = (state, props) => {
-    const entity = getData(state, props) || {};
+    const entity = getDatabase(state, props) || {};
     const fields = getFields(state, props);
 
     return {

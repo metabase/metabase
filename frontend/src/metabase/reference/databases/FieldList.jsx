@@ -20,7 +20,7 @@ import cx from "classnames";
 
 import {
     getTable,
-    getData,
+    getFieldsByTable,
     getForeignKeys,
     getError,
     getLoading,
@@ -47,7 +47,7 @@ const emptyStateData = {
 
 
 const mapStateToProps = (state, props) => {
-    const data = getData(state, props);
+    const data = getFieldsByTable(state, props);
     return {
         table: getTable(state, props),
         entities: data,

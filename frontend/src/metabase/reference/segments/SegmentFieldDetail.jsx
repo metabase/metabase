@@ -21,7 +21,7 @@ import {
 } from '../utils';
 
 import {
-    getData,
+    getFieldBySegment,
     getTable,
     getFields,
     getGuide,
@@ -64,7 +64,7 @@ const interestingQuestions = (table, field) => {
 }
 
 const mapStateToProps = (state, props) => {
-    const entity = getData(state, props) || {};
+    const entity = getFieldBySegment(state, props) || {};
     const guide = getGuide(state, props);
     const fields = getFields(state, props);
 

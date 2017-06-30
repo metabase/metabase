@@ -24,7 +24,7 @@ import {
 
 
 import {
-    getData,
+    getSegmentQuestions,
     getError,
     getLoading,
     getTableBySegment,
@@ -48,7 +48,7 @@ const emptyStateData = (table, segment) =>{
 const mapStateToProps = (state, props) => ({
     segment: getSegment(state,props),
     table: getTableBySegment(state,props),
-    entities: getData(state, props),
+    entities: getSegmentQuestions(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
 });

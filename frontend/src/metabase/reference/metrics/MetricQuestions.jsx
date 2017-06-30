@@ -23,7 +23,7 @@ import {
 } from '../utils';
 
 import {
-    getData,
+    getMetricQuestions,
     getError,
     getLoading,
     getTable,
@@ -49,7 +49,7 @@ const emptyStateData = (table, metric) => {
 const mapStateToProps = (state, props) => ({
     metric: getMetric(state, props),
     table: getTable(state, props),
-    entities: getData(state, props),
+    entities: getMetricQuestions(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
 });

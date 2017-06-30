@@ -19,7 +19,7 @@ import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
     getDatabase,
-    getData,
+    getTablesByDatabase,
     getHasSingleSchema,
     getError,
     getLoading
@@ -35,7 +35,7 @@ const emptyStateData = {
 
 const mapStateToProps = (state, props) => ({
     database: getDatabase(state, props),
-    entities: getData(state, props),
+    entities: getTablesByDatabase(state, props),
     hasSingleSchema: getHasSingleSchema(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)

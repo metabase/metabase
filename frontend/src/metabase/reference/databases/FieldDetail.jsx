@@ -22,7 +22,7 @@ import {
 } from '../utils';
 
 import {
-    getData,
+    getField,
     getTable,
     getDatabase,
     getError,
@@ -78,7 +78,7 @@ const interestingQuestions = (database, table, field) => {
 }
 
 const mapStateToProps = (state, props) => {
-    const entity = getData(state, props) || {};
+    const entity = getField(state, props) || {};
 
     return {
         entity,

@@ -298,7 +298,7 @@ export const getDatabase = createSelector(
 
 export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
 // export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
-const getTablesByDatabase = createSelector(
+export const getTablesByDatabase = createSelector(
     [getTables, getDatabase],
     (tables, database) => tables && database && database.tables ?
         idsToObjectMap(database.tables, tables) : {}
@@ -320,11 +320,11 @@ export const getTable = createSelector(
 );
 
 export const getFieldId = (state, props) => Number.parseInt(props.params.fieldId);
-const getFieldsByTable = createSelector(
+export const getFieldsByTable = createSelector(
     [getTable, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
 );
-const getFieldsBySegment = createSelector(
+export const getFieldsBySegment = createSelector(
     [getTableBySegment, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
 );
@@ -332,14 +332,14 @@ export const getField = createSelector(
     [getFieldId, getFields],
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
-const getFieldBySegment = createSelector(
+export const getFieldBySegment = createSelector(
     [getFieldId, getFieldsBySegment],
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
 
 const getQuestions = (state, props) => getIn(state, ['questions', 'entities', 'cards']) || {};
 
-const getMetricQuestions = createSelector(
+export const getMetricQuestions = createSelector(
     [getMetricId, getQuestions],
     (metricId, questions) => Object.values(questions)
         .filter(question =>
@@ -353,17 +353,17 @@ const getMetricQuestions = createSelector(
 
 const getRevisions = (state, props) => state.metadata.revisions;
 
-const getMetricRevisions = createSelector(
+export const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
     (metricId, revisions) => getIn(revisions, ['metric', metricId]) || {}
 );
 
-const getSegmentRevisions = createSelector(
+export const getSegmentRevisions = createSelector(
     [getSegmentId, getRevisions],
     (segmentId, revisions) => getIn(revisions, ['segment', segmentId]) || {}
 );
 
-const getSegmentQuestions = createSelector(
+export const getSegmentQuestions = createSelector(
     [getSegmentId, getQuestions],
     (segmentId, questions) => Object.values(questions)
         .filter(question =>
@@ -374,7 +374,7 @@ const getSegmentQuestions = createSelector(
         .reduce((map, question) => assoc(map, question.id, question), {})
 );
 
-const getTableQuestions = createSelector(
+export const getTableQuestions = createSelector(
     [getTable, getQuestions],
     (table, questions) => Object.values(questions)
         .filter(question => question.table_id === table.id)

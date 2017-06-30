@@ -11,7 +11,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import { assignUserColors } from "metabase/lib/formatting";
 
 import {
-    getData,
+    getSegmentRevisions,
     getMetric,
     getSegment,
     getTables,
@@ -31,7 +31,7 @@ const emptyStateData =  {
 
 const mapStateToProps = (state, props) => {
     return {
-        revisions: getData(state, props),
+        revisions: getSegmentRevisions(state, props),
         metric: getMetric(state, props),
         segment: getSegment(state, props),
         tables: getTables(state, props),

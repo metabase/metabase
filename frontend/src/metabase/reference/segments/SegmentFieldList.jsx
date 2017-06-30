@@ -19,7 +19,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import cx from "classnames";
 
 import {
-    getData,
+    getFieldsBySegment,
     getForeignKeys,
     getError,
     getLoading,
@@ -47,7 +47,7 @@ const emptyStateData = {
 
 
 const mapStateToProps = (state, props) => {
-    const data = getData(state, props);
+    const data = getFieldsBySegment(state, props);
     return {
         segment: getSegment(state,props),
         entities: data,

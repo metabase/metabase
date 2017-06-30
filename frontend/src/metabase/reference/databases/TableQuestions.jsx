@@ -24,7 +24,7 @@ import {
 
 
 import {
-    getData,
+    getTableQuestions,
     getError,
     getLoading,
     getTable
@@ -47,7 +47,7 @@ const emptyStateData = (table) =>  {
 
 const mapStateToProps = (state, props) => ({
     table: getTable(state, props),
-    entities: getData(state, props),
+    entities: getTableQuestions(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
 });

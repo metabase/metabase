@@ -16,7 +16,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
-    getData,
+    getDatabases,
     getError,
     getLoading
 } from "../selectors";
@@ -33,7 +33,7 @@ const emptyStateData = {
         }
 
 const mapStateToProps = (state, props) => ({
-    entities: getData(state, props),
+    entities: getDatabases(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props)
 });
