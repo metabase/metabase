@@ -13,10 +13,6 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Detail from "metabase/reference/components/Detail.jsx";
 
 import {
-    tryUpdateData
-} from '../utils';
-
-import {
     getDatabase,
     getTable,
     getFields,
@@ -120,7 +116,7 @@ export default class DatabaseDetail extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
-            await tryUpdateData(fields, this.props)
+            await actions.rUpdateDatabaseDetail(fields, this.props)
         );
 
         return (

@@ -16,7 +16,6 @@ import Detail from "metabase/reference/components/Detail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 
 import {
-    tryUpdateData,
     getQuestionUrl
 } from '../utils';
 
@@ -144,7 +143,7 @@ export default class TableDetail extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
-            await tryUpdateData(fields, this.props)
+            await actions.rUpdateTableDetail(fields, this.props)
         );
 
         return (

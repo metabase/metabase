@@ -14,7 +14,6 @@ import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 
 import {
-    tryUpdateData,
     getQuestionUrl
 } from '../utils';
 
@@ -162,7 +161,7 @@ export default class SegmentDetail extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
-            await tryUpdateData(fields, this.props)
+            await actions.rUpdateSegmentDetail(fields, this.props)
         );
 
         return (

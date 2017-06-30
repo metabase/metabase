@@ -453,40 +453,6 @@ export const getSection = createSelector(
     (sectionId, sections) => sections[sectionId] || {}
 );
 
-const dataSelectors = {
-    getMetric,
-    getMetricQuestions,
-    getMetricRevisions,
-    getMetrics,
-    getSegment,
-    getSegmentQuestions,
-    getSegmentRevisions,
-    getSegments,
-    getDatabase,
-    getDatabases,
-    getTable,
-    getTableQuestions,
-    getTables,
-    getTablesByDatabase,
-    getField,
-    getFieldBySegment,
-    getFields,
-    getFieldsByTable,
-    getFieldsBySegment
-};
-
-export const getData = (state, props) => {
-    const section = getSection(state, props);
-    if (!section) {
-        return {};
-    }
-    const selector = dataSelectors[section.get];
-    if (!selector) {
-        return {};
-    }
-
-    return selector(state, props);
-};
 
 export const getLoading = (state, props) => state.reference.isLoading;
 

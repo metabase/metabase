@@ -53,35 +53,6 @@ export const tryFetchData = async (props) => {
     endLoading();
 }
 
-export const tryUpdateData = async (fields, props) => {
-    const {
-        entity,
-        section,
-        startLoading,
-        endLoading,
-        resetForm,
-        setError,
-        endEditing
-    } = props;
-
-    startLoading();
-    try {
-        const editedFields = filterUntouchedFields(fields, entity);
-        if (!isEmptyObject(editedFields)) {
-            const newEntity = {...entity, ...editedFields};
-            await props[section.update](newEntity);
-        }
-    }
-    catch(error) {
-        setError(error);
-        console.error(error);
-    }
-
-    resetForm();
-    endLoading();
-    endEditing();
-}
-
 export const tryUpdateMetric = async (fields, props) => {
     const {
         entity,

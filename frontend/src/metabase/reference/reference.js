@@ -225,6 +225,46 @@ export const rFetchSegmentFields = async (props, segmentID) => {
         )(segmentID)
 }
 // Update actions
+// these use the "fetchDataWrapper" for now. It should probably be renamed. 
+
+const updateDataWrapper = (props, fn) => {
+
+    return async (fields) => {
+        props.clearError();
+        props.startLoading();
+        try {
+            const editedFields = filterUntouchedFields(fields, props.entity);
+            if (!isEmptyObject(editedFields)) {
+                const newEntity = {...props.entity, ...editedFields};
+                await fn(newEntity);
+            }
+        }
+        catch(error) {
+            console.error(error);
+            props.setError(error);
+        }
+        props.resetForm();
+        props.endLoading();
+        props.endEditing();
+    }
+}
+
+export const rUpdateSegmentDetail = (fields, props) => {
+    updateDataWrapper(props, props.updateSegment)(fields)
+}
+export const rUpdateSegmentFieldDetail = (fields, props) => {
+    updateDataWrapper(props, props.updateField)(fields)
+}
+export const rUpdateDatabaseDetail = (fields, props) => {
+    updateDataWrapper(props, props.updateDatabase)(fields)
+}
+export const rUpdateTableDetail = (fields, props) => {
+    updateDataWrapper(props, props.updateTable)(fields)
+}
+export const rUpdateFieldDetail = (fields, props) => {
+    updateDataWrapper(props, props.updateField)(fields)
+}
+
 export const tryUpdateGuide = async (formFields, props) => {
     const {
         guide,
