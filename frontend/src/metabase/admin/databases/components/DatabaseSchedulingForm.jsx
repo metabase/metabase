@@ -117,7 +117,7 @@ export default class DatabaseSchedulingForm extends Component {
                                         ? unsavedDatabase.sync_schedule
                                         : {
                                             schedule_day: "mon",
-                                            schedule_frame: "null",
+                                            schedule_frame: null,
                                             schedule_hour: 4,
                                             schedule_type: "daily"
                                         }
@@ -149,7 +149,7 @@ export default class DatabaseSchedulingForm extends Component {
                                                         ? unsavedDatabase.cache_field_values_schedule
                                                         : {
                                                             schedule_day: "mon",
-                                                            schedule_frame: "null",
+                                                            schedule_frame: null,
                                                             schedule_hour: 4,
                                                             schedule_type: "daily"
                                                         }
