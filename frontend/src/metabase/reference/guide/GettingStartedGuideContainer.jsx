@@ -10,9 +10,6 @@ import * as actions from 'metabase/reference/reference';
 
 import {
     getDatabaseId,
-    getSectionId,
-    getSections,
-    getSection,
     getIsEditing
 } from '../selectors';
 
@@ -22,10 +19,7 @@ import {
 } from 'metabase/dashboards/dashboards';
 
 const mapStateToProps = (state, props) => ({
-    sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
-    sections: getSections(state, props),
-    section: getSection(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -40,8 +34,6 @@ export default class GettingStartedGuideContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        sections: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
 

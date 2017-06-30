@@ -15,8 +15,6 @@ import {
     getSegment,
     getSegmentId,
     getDatabaseId,
-    getSectionId,
-    getSection,
     getIsEditing
 } from '../selectors';
 
@@ -25,9 +23,7 @@ const mapStateToProps = (state, props) => ({
     user: getUser(state, props),
     segment: getSegment(state, props),
     segmentId: getSegmentId(state, props),
-    sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
-    section: getSection(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -43,7 +39,6 @@ export default class SegmentRevisionsContainer extends Component {
         location: PropTypes.object.isRequired,
         user: PropTypes.object.isRequired,
         segment: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
 

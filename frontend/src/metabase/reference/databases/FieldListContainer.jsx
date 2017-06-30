@@ -14,13 +14,11 @@ import {
     getDatabase,
     getTable,
     getDatabaseId,
-    getSectionId,
     getIsEditing
 } from '../selectors';
 
 
 const mapStateToProps = (state, props) => ({
-    sectionId: getSectionId(state, props),
     database: getDatabase(state, props),    
     table: getTable(state, props),    
     databaseId: getDatabaseId(state, props),

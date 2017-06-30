@@ -14,18 +14,14 @@ import {
     getDatabase,
     getTable,
     getDatabaseId,
-    getSectionId,
-    getSection,
     getIsEditing
 } from '../selectors';
 
 
 const mapStateToProps = (state, props) => ({
-    sectionId: getSectionId(state, props),
     database: getDatabase(state, props),    
     table: getTable(state, props),    
     databaseId: getDatabaseId(state, props),
-    section: getSection(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -41,7 +37,6 @@ export default class TableDetailContainer extends Component {
         location: PropTypes.object.isRequired,
         database: PropTypes.object.isRequired,
         table: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
 

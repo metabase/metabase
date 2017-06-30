@@ -12,15 +12,11 @@ import * as actions from 'metabase/reference/reference';
 
 import {
     getDatabaseId,
-    getSectionId,
-    getSection,
     getIsEditing
 } from '../selectors';
 
 const mapStateToProps = (state, props) => ({
-    sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
-    section: getSection(state, props),
     isEditing: getIsEditing(state, props)
 });
 
@@ -34,7 +30,6 @@ export default class DatabaseListContainer extends Component {
     static propTypes = {
         params: PropTypes.object.isRequired,
         location: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
 
