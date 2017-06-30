@@ -16,7 +16,6 @@ import Formula from "metabase/reference/components/Formula.jsx";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
 
 import {
-    tryUpdateMetric,
     getQuestionUrl
 } from '../utils';
 
@@ -28,11 +27,7 @@ import {
     getError,
     getLoading,
     getUser,
-    getHasQuestions,
     getIsEditing,
-    getHasDisplayName,
-    getHasRevisionHistory,
-    getHasSingleSchema,
     getIsFormulaExpanded,
     getForeignKeys
 } from "../selectors";
@@ -65,11 +60,7 @@ const mapStateToProps = (state, props) => {
         user: getUser(state, props),
         foreignKeys: getForeignKeys(state, props),
         isEditing: getIsEditing(state, props),
-        hasSingleSchema: getHasSingleSchema(state, props),
-        hasQuestions: getHasQuestions(state, props),
-        hasDisplayName: getHasDisplayName(state, props),
         isFormulaExpanded: getIsFormulaExpanded(state, props),
-        hasRevisionHistory: getHasRevisionHistory(state, props),
         initialValues,
     }
 };
@@ -80,10 +71,8 @@ const mapDispatchToProps = {
     onChangeLocation: push
 };
 
-const validate = (values, props) => props.hasRevisionHistory ?
-    !values.revision_message ?
-        { revision_message: "Please enter a revision message" } : {} :
-    {};
+const validate = (values, props) =>  !values.revision_message ? 
+    { revision_message: "Please enter a revision message" } : {} 
 
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
@@ -111,10 +100,7 @@ export default class MetricDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        hasSingleSchema: PropTypes.bool,
-        hasDisplayName: PropTypes.bool,
         isFormulaExpanded: PropTypes.bool,
-        hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
@@ -137,10 +123,7 @@ export default class MetricDetail extends Component {
             endEditing,
             expandFormula,
             collapseFormula,
-            hasSingleSchema,
-            hasDisplayName,
             isFormulaExpanded,
-            hasRevisionHistory,
             handleSubmit,
             resetForm,
             submitting,
@@ -157,7 +140,7 @@ export default class MetricDetail extends Component {
             >
                 { isEditing &&
                     <EditHeader
-                        hasRevisionHistory={hasRevisionHistory}
+                        hasRevisionHistory={true}
                         onSubmit={onSubmit}
                         endEditing={endEditing}
                         reinitializeForm={resetForm}
@@ -174,8 +157,8 @@ export default class MetricDetail extends Component {
                     name="Details"
                     user={user}
                     isEditing={isEditing}
-                    hasSingleSchema={hasSingleSchema}
-                    hasDisplayName={hasDisplayName}
+                    hasSingleSchema={false}
+                    hasDisplayName={false}
                     startEditing={startEditing}
                     displayNameFormField={display_name}
                     nameFormField={name}

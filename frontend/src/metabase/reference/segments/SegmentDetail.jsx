@@ -25,11 +25,7 @@ import {
     getError,
     getLoading,
     getUser,
-    getHasQuestions,
     getIsEditing,
-    getHasDisplayName,
-    getHasRevisionHistory,
-    getHasSingleSchema,
     getIsFormulaExpanded,
 } from "../selectors";
 
@@ -83,11 +79,7 @@ const mapStateToProps = (state, props) => {
         loadingError: getError(state, props),
         user: getUser(state, props),
         isEditing: getIsEditing(state, props),
-        hasSingleSchema: getHasSingleSchema(state, props),
-        hasQuestions: getHasQuestions(state, props),
-        hasDisplayName: getHasDisplayName(state, props),
         isFormulaExpanded: getIsFormulaExpanded(state, props),
-        hasRevisionHistory: getHasRevisionHistory(state, props),
         initialValues,
     }
 };
@@ -97,10 +89,9 @@ const mapDispatchToProps = {
     ...actions,
 };
 
-const validate = (values, props) => props.hasRevisionHistory ?
-    !values.revision_message ?
-        { revision_message: "Please enter a revision message" } : {} :
-    {};
+const validate = (values, props) =>  !values.revision_message ? 
+    { revision_message: "Please enter a revision message" } : {} 
+
 
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
@@ -115,7 +106,6 @@ export default class SegmentDetail extends Component {
         table: PropTypes.object,
         user: PropTypes.object.isRequired,
         isEditing: PropTypes.bool,
-        hasQuestions: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
@@ -127,10 +117,7 @@ export default class SegmentDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        hasSingleSchema: PropTypes.bool,
-        hasDisplayName: PropTypes.bool,
         isFormulaExpanded: PropTypes.bool,
-        hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
@@ -146,15 +133,11 @@ export default class SegmentDetail extends Component {
             loading,
             user,
             isEditing,
-            hasQuestions,
             startEditing,
             endEditing,
             expandFormula,
             collapseFormula,
-            hasSingleSchema,
-            hasDisplayName,
             isFormulaExpanded,
-            hasRevisionHistory,
             handleSubmit,
             resetForm,
             submitting,
@@ -170,7 +153,7 @@ export default class SegmentDetail extends Component {
             >
                 { isEditing &&
                     <EditHeader
-                        hasRevisionHistory={hasRevisionHistory}
+                        hasRevisionHistory={true}
                         onSubmit={onSubmit}
                         endEditing={endEditing}
                         reinitializeForm={resetForm}
@@ -187,8 +170,8 @@ export default class SegmentDetail extends Component {
                     name="Details"
                     user={user}
                     isEditing={isEditing}
-                    hasSingleSchema={hasSingleSchema}
-                    hasDisplayName={hasDisplayName}
+                    hasSingleSchema={false}
+                    hasDisplayName={false}
                     startEditing={startEditing}
                     displayNameFormField={display_name}
                     nameFormField={name}
@@ -239,7 +222,7 @@ export default class SegmentDetail extends Component {
                                     />
                                 </li>
                             }
-                            { hasQuestions && !isEditing &&
+                            { !isEditing &&
                                 <li className="relative">
                                     <UsefulQuestions questions={interestingQuestions(this.props.table, this.props.entity)} />
                                 </li>

@@ -28,9 +28,6 @@ import {
     getLoading,
     getUser,
     getIsEditing,
-    getHasDisplayName,
-    getHasRevisionHistory,
-    getHasSingleSchema,
     getForeignKeys,
     getIsFormulaExpanded
 } from "../selectors";
@@ -85,10 +82,7 @@ const mapStateToProps = (state, props) => {
         user: getUser(state, props),
         foreignKeys: getForeignKeys(state, props),
         isEditing: getIsEditing(state, props),
-        hasSingleSchema: getHasSingleSchema(state, props),
-        hasDisplayName: getHasDisplayName(state, props),
         isFormulaExpanded: getIsFormulaExpanded(state, props),
-        hasRevisionHistory: getHasRevisionHistory(state, props),
         initialValues,
     }
 };
@@ -98,10 +92,10 @@ const mapDispatchToProps = {
     ...actions
 };
 
-const validate = (values, props) => props.hasRevisionHistory ?
-    !values.revision_message ?
-        { revision_message: "Please enter a revision message" } : {} :
-    {};
+
+const validate = (values, props) => {
+    return {};
+}
 
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
@@ -126,9 +120,6 @@ export default class SegmentFieldDetail extends Component {
         handleSubmit: PropTypes.func.isRequired,
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
-        hasSingleSchema: PropTypes.bool,
-        hasDisplayName: PropTypes.bool,
-        hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
@@ -147,9 +138,6 @@ export default class SegmentFieldDetail extends Component {
             isEditing,
             startEditing,
             endEditing,
-            hasSingleSchema,
-            hasDisplayName,
-            hasRevisionHistory,
             handleSubmit,
             resetForm,
             submitting,
@@ -165,7 +153,7 @@ export default class SegmentFieldDetail extends Component {
             >
                 { isEditing &&
                     <EditHeader
-                        hasRevisionHistory={hasRevisionHistory}
+                        hasRevisionHistory={false}
                         onSubmit={onSubmit}
                         endEditing={endEditing}
                         reinitializeForm={resetForm}
@@ -181,8 +169,8 @@ export default class SegmentFieldDetail extends Component {
                     type="field"
                     user={user}
                     isEditing={isEditing}
-                    hasSingleSchema={hasSingleSchema}
-                    hasDisplayName={hasDisplayName}
+                    hasSingleSchema={false}
+                    hasDisplayName={true}
                     startEditing={startEditing}
                     displayNameFormField={display_name}
                     nameFormField={name}

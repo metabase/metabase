@@ -465,25 +465,6 @@ export const getHasSingleSchema = createSelector(
             .every((table, index, tables) => table.schema === tables[0].schema) : true
 )
 
-export const getHasDisplayName = createSelector(
-    [getSection],
-    (section) =>
-        section.type === 'table' ||
-        section.type === 'field'
-)
-
-export const getHasRevisionHistory = createSelector(
-    [getSection],
-    (section) =>
-        section.type === 'metric' ||
-        section.type === 'segment'
-)
-
-export const getHasQuestions = createSelector(
-    [getSection],
-    (section) => section.questions && section.questions.length > 0
-)
-
 export const getIsEditing = (state, props) => state.reference.isEditing;
 
 export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaExpanded;

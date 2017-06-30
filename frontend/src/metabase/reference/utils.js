@@ -22,42 +22,6 @@ export const filterUntouchedFields = (fields, entity = {}) => Object.keys(fields
 export const isEmptyObject = (object) => Object.keys(object).length === 0;
 
 
-export const tryUpdateFields = async (formFields, props) => {
-    const {
-        entities,
-        updateField,
-        startLoading,
-        endLoading,
-        endEditing,
-        resetForm,
-        setError
-    } = props;
-
-    startLoading();
-    try {
-        const updatedFields = Object.keys(formFields)
-            .map(fieldId => ({
-                field: entities[fieldId],
-                formField: filterUntouchedFields(formFields[fieldId], entities[fieldId])
-            }))
-            .filter(({field, formField}) => !isEmptyObject(formField))
-            .map(({field, formField}) => ({...field, ...formField}));
-
-        await Promise.all(updatedFields.map(updateField));
-    }
-    catch(error) {
-        setError(error);
-        console.error(error);
-    }
-
-    resetForm();
-    endLoading();
-    endEditing();
-}
-
-
-
-
 export const databaseToForeignKeys = (database) => database && database.tables_lookup ?
     Object.values(database.tables_lookup)
         // ignore tables without primary key

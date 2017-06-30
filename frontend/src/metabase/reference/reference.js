@@ -253,31 +253,31 @@ const updateDataWrapper = (props, fn) => {
     }
 }
 
-export const rUpdateSegmentDetail = (fields, props) => {
-    updateDataWrapper(props, props.updateSegment)(fields)
+export const rUpdateSegmentDetail = (formFields, props) => {
+    updateDataWrapper(props, props.updateSegment)(formFields)
 }
-export const rUpdateSegmentFieldDetail = (fields, props) => {
-    updateDataWrapper(props, props.updateField)(fields)
+export const rUpdateSegmentFieldDetail = (formFields, props) => {
+    updateDataWrapper(props, props.updateField)(formFields)
 }
-export const rUpdateDatabaseDetail = (fields, props) => {
-    updateDataWrapper(props, props.updateDatabase)(fields)
+export const rUpdateDatabaseDetail = (formFields, props) => {
+    updateDataWrapper(props, props.updateDatabase)(formFields)
 }
-export const rUpdateTableDetail = (fields, props) => {
-    updateDataWrapper(props, props.updateTable)(fields)
+export const rUpdateTableDetail = (formFields, props) => {
+    updateDataWrapper(props, props.updateTable)(formFields)
 }
-export const rUpdateFieldDetail = (fields, props) => {
-    updateDataWrapper(props, props.updateField)(fields)
+export const rUpdateFieldDetail = (formFields, props) => {
+    updateDataWrapper(props, props.updateField)(formFields)
 }
 
-export const rUpdateMetricDetail = async (metric, guide, fields, props) => {
+export const rUpdateMetricDetail = async (metric, guide, formFields, props) => {
     props.startLoading();
     try {
-        const editedFields = filterUntouchedFields(fields, metric);
+        const editedFields = filterUntouchedFields(formFields, metric);
         if (!isEmptyObject(editedFields)) {
             const newMetric = {...metric, ...editedFields};
             await props.updateMetric(newMetric);
 
-            const importantFieldIds = fields.important_fields.map(field => field.id);
+            const importantFieldIds = formFields.important_fields.map(field => field.id);
             const existingImportantFieldIds = guide.metric_important_fields && guide.metric_important_fields[metric.id];
 
             const areFieldIdsIdentitical = existingImportantFieldIds &&
@@ -299,6 +299,31 @@ export const rUpdateMetricDetail = async (metric, guide, fields, props) => {
     props.endLoading();
     props.endEditing();
 }
+
+export const rUpdateFields = async (fields, formFields, props) => {
+    props.startLoading();
+    try {
+        const updatedFields = Object.keys(formFields)
+            .map(fieldId => ({
+                field: fields[fieldId],
+                formField: filterUntouchedFields(formFields[fieldId], fields[fieldId])
+            }))
+            .filter(({field, formField}) => !isEmptyObject(formField))
+            .map(({field, formField}) => ({...field, ...formField}));
+
+        await Promise.all(updatedFields.map(props.updateField));
+    }
+    catch(error) {
+        props.setError(error);
+        console.error(error);
+    }
+
+    props.resetForm();
+    props.endLoading();
+    props.endEditing();
+}
+
+
 export const tryUpdateGuide = async (formFields, props) => {
     const {
         guide,

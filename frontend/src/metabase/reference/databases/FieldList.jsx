@@ -26,11 +26,9 @@ import {
     getLoading,
     getUser,
     getIsEditing,
-    getHasRevisionHistory,
 } from "../selectors";
 
 import {
-    tryUpdateFields,
     fieldsToFormFields
 } from '../utils';
 
@@ -56,7 +54,6 @@ const mapStateToProps = (state, props) => {
         loadingError: getError(state, props),
         user: getUser(state, props),
         isEditing: getIsEditing(state, props),
-        hasRevisionHistory: getHasRevisionHistory(state, props),
         fields: fieldsToFormFields(data)
     };
 }
@@ -81,7 +78,6 @@ export default class FieldList extends Component {
         entities: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object.isRequired,
         isEditing: PropTypes.bool,
-        hasRevisionHistory: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
@@ -109,7 +105,6 @@ export default class FieldList extends Component {
             loading,
             user,
             isEditing,
-            hasRevisionHistory,
             startEditing,
             endEditing,
             resetForm,
@@ -120,12 +115,12 @@ export default class FieldList extends Component {
         return (
             <form style={style} className="full"
                 onSubmit={handleSubmit(async (formFields) =>
-                    await tryUpdateFields(formFields, this.props)
+                    await actions.rUpdateFields(this.props.entities, formFields, this.props)
                 )}
             >
                 { isEditing &&
                     <EditHeader
-                        hasRevisionHistory={hasRevisionHistory}
+                        hasRevisionHistory={false}
                         reinitializeForm={resetForm}
                         endEditing={endEditing}
                         submitting={submitting}

@@ -25,10 +25,7 @@ import {
     getError,
     getLoading,
     getUser,
-    getHasQuestions,
     getIsEditing,
-    getHasDisplayName,
-    getHasRevisionHistory,
     getHasSingleSchema,
     getIsFormulaExpanded,
     getForeignKeys
@@ -74,10 +71,7 @@ const mapStateToProps = (state, props) => {
         foreignKeys: getForeignKeys(state, props),
         isEditing: getIsEditing(state, props),
         hasSingleSchema: getHasSingleSchema(state, props),
-        hasQuestions: getHasQuestions(state, props),
-        hasDisplayName: getHasDisplayName(state, props),
         isFormulaExpanded: getIsFormulaExpanded(state, props),
-        hasRevisionHistory: getHasRevisionHistory(state, props),
     }
 };
 
@@ -87,10 +81,9 @@ const mapDispatchToProps = {
     onChangeLocation: push
 };
 
-const validate = (values, props) => props.hasRevisionHistory ?
-    !values.revision_message ?
-        { revision_message: "Please enter a revision message" } : {} :
-    {};
+const validate = (values, props) => {
+    return {};
+}
 
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
@@ -115,8 +108,6 @@ export default class TableDetail extends Component {
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
-        hasDisplayName: PropTypes.bool,
-        hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
@@ -135,8 +126,6 @@ export default class TableDetail extends Component {
             startEditing,
             endEditing,
             hasSingleSchema,
-            hasDisplayName,
-            hasRevisionHistory,
             handleSubmit,
             resetForm,
             submitting,
@@ -152,7 +141,7 @@ export default class TableDetail extends Component {
             >
                 { isEditing &&
                     <EditHeader
-                        hasRevisionHistory={hasRevisionHistory}
+                        hasRevisionHistory={false}
                         onSubmit={onSubmit}
                         endEditing={endEditing}
                         reinitializeForm={resetForm}
@@ -170,7 +159,7 @@ export default class TableDetail extends Component {
                     user={user}
                     isEditing={isEditing}
                     hasSingleSchema={hasSingleSchema}
-                    hasDisplayName={hasDisplayName}
+                    hasDisplayName={true}
                     startEditing={startEditing}
                     displayNameFormField={display_name}
                     nameFormField={name}
