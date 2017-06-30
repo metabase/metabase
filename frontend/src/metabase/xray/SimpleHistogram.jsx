@@ -1,4 +1,5 @@
 import React from 'react'
+import cx from 'classnames'
 
 const SimpleHistogram = ({ data, height = 120, gridLines = true, legends = true , showValues = true}) => {
 
@@ -33,7 +34,7 @@ const SimpleHistogram = ({ data, height = 120, gridLines = true, legends = true 
                         }}
                     >
                         <span
-                            className="absolute left text-bold right text-centered"
+                            className={cx('absolute left text-bold right text-centered', { 'hidden': !showValues })}
                             style={{ top: -20 }}
                         >
                             {data[key]}

@@ -47,7 +47,7 @@ const FingerPrintList = ({ fingerprint }) =>
         </ol>
     </div>
 
-const FingerprintGrid = ({ fingerprint }) =>
+const FingerprintGrid = ({ fingerprint, fields, distribution }) =>
     <div className="full">
         <ol>
             <li className="border-bottom border-dark">
@@ -55,30 +55,16 @@ const FingerprintGrid = ({ fingerprint }) =>
                     <li className="Grid-cell">
                         <h3>Field</h3>
                     </li>
-                    <li className="Grid-cell">
-                        <h3>Skewness</h3>
-                    </li>
-                    <li className="Grid-cell">
-                        <h3>All distinct?</h3>
-                    </li>
-                    <li className="Grid-cell">
-                        <h3>Has nils?</h3>
-                    </li>
-                    <li className="Grid-cell">
-                        <h3>Mean</h3>
-                    </li>
-                    <li className="Grid-cell">
-                        <h3>Min</h3>
-                    </li>
-                    <li className="Grid-cell">
-                        <h3>Max</h3>
-                    </li>
-                    <li className="Grid-cell">
-                        <h3>Median</h3>
-                    </li>
-                    <li className="Grid-cell">
-                        <h3>Distribution</h3>
-                    </li>
+                    { fields.map(field =>
+                        <li className="Grid-cell">
+                            <h3>{field}</h3>
+                        </li>
+                    )}
+                    { distribution && (
+                        <li className="Grid-cell">
+                            <h3>Distribution</h3>
+                        </li>
+                    )}
                 </ol>
             </li>
             { Object.keys(fingerprint).map(key => {
@@ -89,9 +75,12 @@ const FingerprintGrid = ({ fingerprint }) =>
                             <li className="Grid-cell">
                                 <a className="link text-bold">{key}</a>
                             </li>
-                            <li className="Grid-cell">
-                                { field.skewness }
-                            </li>
+                            { fields.map(f =>
+                                <li className="Grid-cell">
+                                    { field[f] }
+                                </li>
+                            )}
+                            { /*
                             <li className="Grid-cell">
                                 { field['has-nils?'] }
                             </li>
@@ -110,14 +99,18 @@ const FingerprintGrid = ({ fingerprint }) =>
                             <li className="Grid-cell">
                                 { field.median }
                             </li>
-                            <li className="Grid-cell">
-                                <SimpleHistogram
-                                    data={field.histogram}
-                                    gridLines={false}
-                                    height={30}
-                                    legends={false}
-                                />
-                            </li>
+                            */}
+                            { distribution && (
+                                <li className="Grid-cell">
+                                    <SimpleHistogram
+                                        data={field.histogram}
+                                        gridLines={false}
+                                        height={30}
+                                        legends={false}
+                                        showValues={false}
+                                    />
+                                </li>
+                            )}
                         </ol>
                     </li>
                 )
@@ -140,14 +133,31 @@ class TableXRay extends Component {
     render () {
         const { fingerprint } = this.props
         return (
-            <div className="wrapper">
-                <h2>Fingerprint</h2>
+            <div className="wrapper" style={{ marginLeft: '6em', marginRight: '6em'}}>
+                <div className="my4 py4">
+                    <h1>Xray</h1>
+                </div>
                 <LoadingAndErrorWrapper loading={!fingerprint}>
                     { () =>
                         <div className="full">
                             { this.state.grid ?(
                                 <div className="mt3">
-                                    <FingerprintGrid fingerprint={fingerprint} />
+                                    <div className="my4">
+                                        <h2 className="py3 my3">Overview</h2>
+                                        <FingerprintGrid
+                                            fingerprint={fingerprint}
+                                            fields={['count', 'min', 'max', 'mean', 'median']}
+                                            distribution={false}
+                                        />
+                                    </div>
+                                    <div className="my4">
+                                        <h2 className="py3 my3">I am a cool math wizard</h2>
+                                        <FingerprintGrid
+                                            fingerprint={fingerprint}
+                                            fields={['skewness', 'has-nils?', 'all-distinct?', 'range-vs-spread', 'sum-of-squares', 'range-vs-sd']}
+                                            distribution={true}
+                                        />
+                                    </div>
                                 </div>
                             )
                             : (
