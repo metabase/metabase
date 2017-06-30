@@ -69,6 +69,11 @@
           (map (juxt :mean :count))
           bins))))
 
+(defn pmf
+  "Probability mass function for given histogram."
+  [histogram]
+  (m/map-vals (partial * (/ (hist/total-count histogram))) (bins histogram)))
+
 (def ^{:arglists '([histogram])} nil-count
   "Return number of nil values histogram holds."
   (comp :count hist/missing-bin))
@@ -90,11 +95,9 @@
 (defn binned-entropy
   "Calculate entropy of given histogram."
   [histogram]
-  (let [total (hist/total-count histogram)]
-    (transduce (map #(let [p (/ (val %) total)]
-                       (* p (math/log p))))
-               (redux/post-complete + -)
-               (bins histogram))))
+  (transduce (map (* % (math/log %)))
+             (redux/post-complete + -)
+             (vals (pmf histogram))))
 
 (defn- field-type
   [field]
@@ -160,7 +163,7 @@
              mean        (hist/mean histogram)
              median      (hist/median histogram)
              range       (- max min)]
-         {:histogram            (bins histogram)
+         {:histogram            (pmf histogram)
           :percentiles          (apply hist/percentiles histogram percentiles)
           :sum                  sum
           :sum-of-squares       sum-of-squares
@@ -282,7 +285,7 @@
      (let [nil-count (nil-count histogram)]
        {:min        (hist/minimum histogram)
         :max        (hist/maximum histogram)
-        :histogram  (bins histogram)
+        :histogram  (pmf histogram)
         :count      (total-count histogram)
         :nil-conunt nil-count
         :has-nils?  (pos? nil-count)
@@ -312,14 +315,14 @@
            ->datetime (comp t.coerce/from-long long)]
        {:min               (->datetime (hist/minimum histogram))
         :max               (->datetime (hist/maximum histogram))
-        :histogram         (m/map-keys ->datetime (bins histogram))
+        :histogram         (m/map-keys ->datetime (pmf histogram))
         :percentiles       (m/map-vals ->datetime
                                        (apply hist/percentiles histogram
                                               percentiles))
-        :histogram-hour    (bins histogram-hour)
-        :histogram-day     (bins histogram-day)
-        :histogram-month   (bins histogram-month)
-        :histogram-quarter (bins histogram-quarter)
+        :histogram-hour    (pmf histogram-hour)
+        :histogram-day     (pmf histogram-day)
+        :histogram-month   (pmf histogram-month)
+        :histogram-quarter (pmf histogram-quarter)
         :count             (total-count histogram)
         :nil-conunt        nil-count
         :has-nils?         (pos? nil-count)
@@ -335,7 +338,7 @@
      (let [nil-count   (nil-count histogram)
            total-count (total-count histogram)
            unique%     (/ cardinality (max total-count 1))]
-       {:histogram            (bins histogram)
+       {:histogram            (pmf histogram)
         :cardinality-vs-count unique%
         :nil-conunt           nil-count
         :has-nils?            (pos? nil-count)
