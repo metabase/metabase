@@ -347,17 +347,17 @@
           ;; TODO: is there really a reason to let someone change the engine on an existing database?
           ;;       that seems like the kind of thing that will almost never work in any practical way
           (api/check-500 (db/update-non-nil-keys! Database id
-                           :name               name
-                           :engine             engine
-                           :details            details
-                           :is_full_sync       is_full_sync
-                           :sync_schedule      sync_schedule
+                           :name                        name
+                           :engine                      engine
+                           :details                     details
+                           :is_full_sync                is_full_sync
+                           :sync_schedule               sync_schedule
                            :cache_field_values_schedule cache_field_values_schedule
-                           :analyze_schedule   analyze_schedule
-                           :classify_schedule  classify_schedule
-                           :description        description
-                           :caveats            caveats
-                           :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
+                           :analyze_schedule            analyze_schedule
+                           :classify_schedule           classify_schedule
+                           :description                 description
+                           :caveats                     caveats
+                           :points_of_interest          points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
           (let [db (Database id)]
             (events/publish-event! :database-update db)
             (events/publish-event! :database-schedule-update db)))
@@ -395,20 +395,21 @@
 
 ;; Should somehow trigger sync-database/sync-database!
 (api/defendpoint POST "/:id/sync_schema"
-                 "Trigger a manual update of the schema metadata for this `Database`."
-                 [id]
-                 {:status :ok})
+  "Trigger a manual update of the schema metadata for this `Database`."
+  [id]
+  {:status :ok})
 
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
 (api/defendpoint POST "/:id/rescan_values"
-                 "Trigger a manual scan of the field values for this `Database`."
-                 [id]
-                 {:status :ok})
+  "Trigger a manual scan of the field values for this `Database`."
+  [id]
+  {:status :ok})
 
 ;; "Discard saved field values" action in db UI
 (api/defendpoint POST "/:id/discard_values"
-                 "Discards all saved field values for this `Database`."
-                 [id]
-                 {:status :ok})
+  "Discards all saved field values for this `Database`."
+  [id]
+  {:status :ok})
+
 
 (api/define-routes)
