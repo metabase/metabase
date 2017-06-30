@@ -158,6 +158,39 @@ class TableXRay extends Component {
                                             distribution={true}
                                         />
                                     </div>
+                                    { fingerprint['CREATED_AT'] && (
+                                        <div className="my4">
+                                            <h2 className="py3 my3">Time breakdown</h2>
+                                            <div className="my3">
+                                                <h4>Hour</h4>
+                                                <SimpleHistogram
+                                                    data={fingerprint['CREATED_AT']['histogram-hour']}
+                                                    height={60}
+                                                />
+                                            </div>
+                                            <div className="my3">
+                                                <h4>Day</h4>
+                                                <SimpleHistogram
+                                                    data={fingerprint['CREATED_AT']['histogram-day']}
+                                                    height={60}
+                                                />
+                                            </div>
+                                            <div className="my3">
+                                                <h4>Month</h4>
+                                                <SimpleHistogram
+                                                    data={fingerprint['CREATED_AT']['histogram-month']}
+                                                    height={60}
+                                                />
+                                            </div>
+                                            <div className="my3">
+                                                <h4>Quarter</h4>
+                                                <SimpleHistogram
+                                                    data={fingerprint['CREATED_AT']['histogram-quarter']}
+                                                    height={60}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )
                             : (
