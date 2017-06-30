@@ -14,16 +14,15 @@
              [field-values :refer [FieldValues]]
              [raw-table :refer [RawTable]]
              [table :refer [Table]]]
-            metabase.sync-database.analyze
+            [metabase.sync-database
+             [analyze :as analyze]
+             [cached-values :as cached-values]
+             [classify :as classify]]
             [metabase.test
              [data :refer :all]
              [util :as tu]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.sync-database.cached-values :as cached-values]
-            [clojure.tools.logging :as log]
-            [metabase.sync-database.analyze :as analyze]
-            [metabase.sync-database.classify :as classify]))
+            [toucan.util.test :as tt]))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"

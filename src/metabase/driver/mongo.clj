@@ -13,7 +13,7 @@
              [database :refer [Database]]
              [field :as field]
              [table :as table]]
-            [metabase.sync-database.analyze :as analyze]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.util.ssh :as ssh]
             [monger
              [collection :as mc]
@@ -21,9 +21,7 @@
              [conversion :as conv]
              [db :as mdb]
              [query :as mq]]
-            [toucan.db :as db]
-            [metabase.sync-database.classify :as classify]
-            [metabase.sync-database.cached-values :as cached-values])
+            [toucan.db :as db])
   (:import com.mongodb.DB))
 
 ;;; ## MongoDriver

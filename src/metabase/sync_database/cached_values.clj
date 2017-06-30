@@ -4,16 +4,16 @@
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.db.metadata-queries :as queries]
             [metabase.models
              [field :as field]
              [field-values :as field-values]
              [table :as table]]
-            [metabase.sync-database.interface :as i]
+            [metabase.sync-database
+             [classify :as classify]
+             [interface :as i]]
             [schema.core :as schema]
-            [toucan.db :as db]
-            [metabase.db.metadata-queries :as queries]
-            [metabase.sync-database.classify :as classify]
-            [metabase.sync-database.infer-special-type :as infer-special-type]))
+            [toucan.db :as db]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Drivers use these to get field values

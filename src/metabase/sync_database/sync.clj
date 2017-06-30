@@ -6,17 +6,18 @@
             [metabase
              [db :as mdb]
              [driver :as driver]
+             [sync-database :as sync-database]
              [util :as u]]
             [metabase.models
              [field :as field :refer [Field]]
              [raw-column :refer [RawColumn]]
              [raw-table :as raw-table :refer [RawTable]]
              [table :as table :refer [Table]]]
-            [toucan.db :as db]
-            [metabase.sync-database :as sync-database]
-            [metabase.sync-database.cached-values :as cached-values]
-            [metabase.sync-database.analyze :as analyze]
-            [metabase.sync-database.classify :as classify])
+            [metabase.sync-database
+             [analyze :as analyze]
+             [cached-values :as cached-values]
+             [classify :as classify]]
+            [toucan.db :as db])
   (:import metabase.models.raw_table.RawTableInstance))
 
 ;;; ------------------------------------------------------------ FKs ------------------------------------------------------------

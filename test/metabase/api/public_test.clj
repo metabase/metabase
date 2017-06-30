@@ -6,6 +6,7 @@
             [metabase
              [http-client :as http]
              [query-processor-test :as qp-test]
+             [sync-database :as sync-database]
              [util :as u]]
             [metabase.models
              [card :refer [Card]]
@@ -20,8 +21,7 @@
              [util :as tu]]
             [metabase.test.data.users :as test-users]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.sync-database :as sync-database])
+            [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 

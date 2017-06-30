@@ -10,9 +10,8 @@
             [metabase.models
              [field :as field]
              [table :as table]]
-            [metabase.sync-database.analyze :as analyze]
-            [metabase.util.ssh :as ssh]
-            [metabase.sync-database.cached-values :as cached-values]))
+            [metabase.sync-database.cached-values :as cached-values]
+            [metabase.util.ssh :as ssh]))
 
 ;;; ### Request helper fns
 

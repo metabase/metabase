@@ -12,10 +12,9 @@
             [metabase.sync-database
              [analyze :as analyze]
              [introspect :as introspect]
-             [sync-schema :as sync-schema]
-             [sync-dynamic :as sync-dynamic]]
-            [toucan.db :as db]
-            [metabase.sync-database.classify :as classify]))
+             [sync-dynamic :as sync-dynamic]
+             [sync-schema :as sync-schema]]
+            [toucan.db :as db]))
 
 (defonce ^:private currently-syncing-dbs (atom #{}))
 

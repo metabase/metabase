@@ -21,10 +21,9 @@
              [field :as field]
              [table :as table]]
             [metabase.query-processor.util :as qputil]
-            [metabase.sync-database.analyze :as analyze]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]
-            [metabase.sync-database.cached-values :as cached-values])
+            [toucan.db :as db])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]

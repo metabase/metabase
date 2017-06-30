@@ -5,12 +5,12 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.test
              [data :refer :all]
              [util :refer [resolve-private-vars]]]
             [metabase.test.data.datasets :as datasets]
-            [toucan.db :as db]
-            [metabase.sync-database.cached-values :as cached-values])
+            [toucan.db :as db])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))

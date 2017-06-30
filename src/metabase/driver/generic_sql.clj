@@ -3,7 +3,6 @@
              [set :as set]
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
-            [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
@@ -15,11 +14,10 @@
             [metabase.models
              [field :as field]
              [table :as table]]
-            [metabase.sync-database.analyze :as analyze]
+            [metabase.sync-database.cached-values :as cached-values]
             [metabase.util
              [honeysql-extensions :as hx]
-             [ssh :as ssh]]
-            [metabase.sync-database.cached-values :as cached-values])
+             [ssh :as ssh]])
   (:import [clojure.lang Keyword PersistentVector]
            com.mchange.v2.c3p0.ComboPooledDataSource
            [java.sql DatabaseMetaData ResultSet]

@@ -14,6 +14,10 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :refer [Table]]]
+            [metabase.sync-database
+             [analyze :as analyze]
+             [cached-values :as cached-values]
+             [classify :as classify]]
             [metabase.test
              [data :as data :refer :all]
              [util :as tu :refer [match-$ resolve-private-vars]]]
@@ -21,10 +25,7 @@
              [dataset-definitions :as defs]
              [users :refer :all]]
             [toucan.hydrate :as hydrate]
-            [toucan.util.test :as tt]
-            [metabase.sync-database.cached-values :as cached-values]
-            [metabase.sync-database.classify :as classify]
-            [metabase.sync-database.analyze :as analyze]))
+            [toucan.util.test :as tt]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 
