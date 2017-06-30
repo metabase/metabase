@@ -224,8 +224,12 @@ export const rFetchSegmentFields = async (props, segmentID) => {
                 )}
         )(segmentID)
 }
+
 // Update actions
 // these use the "fetchDataWrapper" for now. It should probably be renamed. 
+// Using props to fire off actions, which imo should be refactored to 
+// dispatch directly, since there is no actual dependence with the props 
+// of that component
 
 const updateDataWrapper = (props, fn) => {
 
@@ -265,6 +269,36 @@ export const rUpdateFieldDetail = (fields, props) => {
     updateDataWrapper(props, props.updateField)(fields)
 }
 
+export const rUpdateMetricDetail = async (metric, guide, fields, props) => {
+    props.startLoading();
+    try {
+        const editedFields = filterUntouchedFields(fields, metric);
+        if (!isEmptyObject(editedFields)) {
+            const newMetric = {...metric, ...editedFields};
+            await props.updateMetric(newMetric);
+
+            const importantFieldIds = fields.important_fields.map(field => field.id);
+            const existingImportantFieldIds = guide.metric_important_fields && guide.metric_important_fields[metric.id];
+
+            const areFieldIdsIdentitical = existingImportantFieldIds &&
+                existingImportantFieldIds.length === importantFieldIds.length &&
+                existingImportantFieldIds.every(id => importantFieldIds.includes(id));
+
+            if (!areFieldIdsIdentitical) {
+                await props.updateMetricImportantFields(metric.id, importantFieldIds);
+                rFetchMetricDetail(props, metric.id);
+            }
+        }
+    }
+    catch(error) {
+        props.setError(error);
+        console.error(error);
+    }
+
+    props.resetForm();
+    props.endLoading();
+    props.endEditing();
+}
 export const tryUpdateGuide = async (formFields, props) => {
     const {
         guide,

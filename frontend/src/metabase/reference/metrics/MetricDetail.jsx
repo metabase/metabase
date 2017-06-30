@@ -148,7 +148,7 @@ export default class MetricDetail extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
-            await tryUpdateMetric(fields, this.props)
+            await actions.rUpdateMetricDetail(this.props.entity, this.props.guide, fields, this.props)
         );
 
         return (
