@@ -34,7 +34,7 @@ export default class MetricPane extends Component {
     static propTypes = {
         metric: PropTypes.object.isRequired,
         query: PropTypes.object,
-        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
+        fetchTableMetadata: PropTypes.func.isRequired,
         runQuestionQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired,

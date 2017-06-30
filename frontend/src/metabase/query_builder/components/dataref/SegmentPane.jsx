@@ -36,7 +36,7 @@ export default class SegmentPane extends Component {
     static propTypes = {
         segment: PropTypes.object.isRequired,
         datasetQuery: PropTypes.object,
-        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
+        fetchTableMetadata: PropTypes.func.isRequired,
         runQuestionQuery: PropTypes.func.isRequired,
         updateQuestion: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired,

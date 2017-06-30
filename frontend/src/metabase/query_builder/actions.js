@@ -29,7 +29,8 @@ import {
     getQuestion,
     getOriginalQuestion,
     getOriginalCard,
-    getIsEditing
+    getIsEditing,
+    getIsShowingDataReference
 } from "./selectors";
 
 import { getDatabases, getTables, getDatabasesList, getMetadata } from "metabase/selectors/metadata";
@@ -45,7 +46,6 @@ import {getCardAfterVisualizationClick} from "metabase/visualizations/lib/utils"
 import type { Card } from "metabase/meta/types/Card";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { getIsShowingDataReference } from "metabase/query_builder/selectors";
 
 type UiControls = {
     isEditing?: boolean,
