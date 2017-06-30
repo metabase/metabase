@@ -1,6 +1,6 @@
 import React from 'react'
 
-const SimpleHistogram = ({ data }) => {
+const SimpleHistogram = ({ data, height = 120, gridLines = true, legends = true , showValues = true}) => {
 
     const max = Math.max.apply(null, Object.values(data))
 
@@ -11,22 +11,23 @@ const SimpleHistogram = ({ data }) => {
     return (
         <div>
             <ol
-                className="flex full mt3"
+                className="flex full"
                 style={{
-                    height: 120,
-                    backgroundImage: `linear-gradient(to top,
+                    height,
+                    backgroundImage: gridLines ? `linear-gradient(to top,
                         rgba(0, 0, 0, 0.1) 2%,
-                        rgba(0, 0, 0, 0) 2%)`,
-                    backgroundSize: `100% ${120/4}px`,
+                        rgba(0, 0, 0, 0) 2%)` : null,
+                    backgroundSize: `100% ${height/4}px`,
                     backgroundPosition: 'left top',
                 }}
             >
                 { data && Object.keys(data).map(key =>
                     <li
+                        key={key}
                         className="relative flex-full bg-brand"
                         style={{
                             marginTop: 'auto',
-                            border: '1px solid #fff',
+                            border: '0.25px solid #fff',
                             height: `${getHeight(data[key])}%`,
                             opacity: 0.85
                         }}
@@ -40,17 +41,20 @@ const SimpleHistogram = ({ data }) => {
                     </li>
                 )}
             </ol>
-            <ol
-                className="flex full my2"
-            >
-                { data && Object.keys(data).map(key =>
-                    <li
-                        className="flex-full text-bold text-centered"
-                    >
-                        {key}
-                    </li>
-                )}
-            </ol>
+            { legends && (
+                <ol
+                    className="flex full my2"
+                >
+                    { data && Object.keys(data).map(key =>
+                        <li
+                            key={key}
+                            className="flex-full text-bold text-centered"
+                        >
+                            {key}
+                        </li>
+                    )}
+                </ol>
+            )}
         </div>
     )
 }
