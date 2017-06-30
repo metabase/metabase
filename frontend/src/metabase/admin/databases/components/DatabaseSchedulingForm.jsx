@@ -77,6 +77,8 @@ export default class DatabaseSchedulingForm extends Component {
     }
 
     setIsFullSyncAndIsStatic = (isFullSync, isStatic) => {
+        // TODO: Add event tracking
+
         this.setState({
             unsavedDatabase: {
                 ...this.state.unsavedDatabase,
@@ -121,7 +123,6 @@ export default class DatabaseSchedulingForm extends Component {
                                         }
                                     }
                                     scheduleOptions={["hourly", "daily"]}
-                                    textBeforeSendTime={`Fingerprints will be scanned at `}
                                     onScheduleChange={this.updateSchemaSyncSchedule}
                                 />
                             </div>
@@ -154,7 +155,6 @@ export default class DatabaseSchedulingForm extends Component {
                                                         }
                                                     }
                                                     scheduleOptions={["daily", "weekly", "monthly"]}
-                                                    textBeforeSendTime={`Fingerprints will be scanned at `}
                                                     onScheduleChange={this.updateFieldScanSchedule}
                                                 />
                                             </div>
