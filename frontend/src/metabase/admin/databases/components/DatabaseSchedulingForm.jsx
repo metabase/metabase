@@ -118,7 +118,7 @@ export default class DatabaseSchedulingForm extends Component {
                                         : {
                                             schedule_day: "mon",
                                             schedule_frame: null,
-                                            schedule_hour: 4,
+                                            schedule_hour: 0,
                                             schedule_type: "daily"
                                         }
                                     }
@@ -130,7 +130,7 @@ export default class DatabaseSchedulingForm extends Component {
                                 <h3>Field figerprinting</h3>
                                 <p className="text-paragraph text-measure">Metabase can scan the values present in each
                                     field in this database to enable checkbox filters in dashboards and questions. This
-                                    can be a somewhat resource-intensive process, particulary if you have a very large
+                                    can be a somewhat resource-intensive process, particularly if you have a very large
                                     database.</p>
 
                                 <h3>How often do the values in the tables of this database change?</h3>
@@ -150,7 +150,7 @@ export default class DatabaseSchedulingForm extends Component {
                                                         : {
                                                             schedule_day: "mon",
                                                             schedule_frame: null,
-                                                            schedule_hour: 4,
+                                                            schedule_hour: 0,
                                                             schedule_type: "daily"
                                                         }
                                                     }
