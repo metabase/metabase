@@ -47,9 +47,14 @@ export default class FieldDetailContainer extends Component {
         isEditing: PropTypes.bool
     };
 
-    async componentWillMount() {
+    async fetchContainerData(){
         await actions.rFetchDatabaseMetadata(this.props, this.props.databaseId);
     }
+
+    async componentWillMount() {
+        this.fetchContainerData()
+    }
+
 
     async componentWillReceiveProps(newProps) {
         if (this.props.location.pathname === newProps.location.pathname) {
@@ -60,8 +65,6 @@ export default class FieldDetailContainer extends Component {
         newProps.endLoading();
         newProps.clearError();
         newProps.collapseFormula();
-
-        await actions.rFetchDatabaseMetadata(newProps, newProps.databaseId);
     }
 
     render() {

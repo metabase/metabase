@@ -38,8 +38,12 @@ export default class DatabaseListContainer extends Component {
         isEditing: PropTypes.bool
     };
 
-    async componentWillMount() {
+    async fetchContainerData(){
         await actions.rFetchDatabases(this.props);
+    }
+
+    async componentWillMount() {
+        this.fetchContainerData()
     }
 
     async componentWillReceiveProps(newProps) {
@@ -52,7 +56,6 @@ export default class DatabaseListContainer extends Component {
         newProps.clearError();
         newProps.collapseFormula();
 
-        await actions.rFetchDatabases(newProps.props);
     }
 
     render() {

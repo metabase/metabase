@@ -9,8 +9,7 @@ import {
 
 import {
     idsToObjectMap,
-    databaseToForeignKeys,
-    getQuestionUrl
+    databaseToForeignKeys
 } from "./utils";
 
 // import { getDatabases, getTables, getFields, getMetrics, getSegments } from "metabase/selectors/metadata";

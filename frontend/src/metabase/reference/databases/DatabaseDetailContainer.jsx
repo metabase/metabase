@@ -42,8 +42,12 @@ export default class DatabaseDetailContainer extends Component {
         isEditing: PropTypes.bool
     };
 
-    async componentWillMount() {
+    async fetchContainerData(){
         await actions.rFetchDatabaseMetadata(this.props, this.props.databaseId);
+    }
+
+    async componentWillMount() {
+        this.fetchContainerData()
     }
 
     async componentWillReceiveProps(newProps) {
@@ -55,8 +59,6 @@ export default class DatabaseDetailContainer extends Component {
         newProps.endLoading();
         newProps.clearError();
         newProps.collapseFormula();
-
-        await actions.rFetchDatabaseMetadata(newProps, newProps.databaseId);
     }
 
     render() {

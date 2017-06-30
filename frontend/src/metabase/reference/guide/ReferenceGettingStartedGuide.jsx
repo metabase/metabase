@@ -45,8 +45,7 @@ import {
 
 import {
     getQuestionUrl,
-    has,
-    tryUpdateGuide
+    has
 } from '../utils';
 
 const isGuideEmpty = ({
@@ -215,7 +214,7 @@ export default class ReferenceGettingStartedGuide extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
-            await tryUpdateGuide(fields, this.props)
+            await actions.tryUpdateGuide(fields, this.props)
         );
 
         const getSelectedIds = fields => fields

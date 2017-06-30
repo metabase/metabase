@@ -13,20 +13,18 @@ import * as actions from 'metabase/reference/reference';
 import {
     getUser,
     getSegment,
+    getSegmentId,
     getDatabaseId,
     getSectionId,
     getSection,
     getIsEditing
 } from '../selectors';
 
-import {
-    tryFetchData
-} from '../utils';
-
 const mapStateToProps = (state, props) => ({
     user: getUser(state, props),
     segment: getSegment(state, props),
     sectionId: getSectionId(state, props),
+    segmentId: getSegmentId(state, props),
     databaseId: getDatabaseId(state, props),
     section: getSection(state, props),
     isEditing: getIsEditing(state, props)
@@ -48,8 +46,12 @@ export default class SegmentFieldListContainer extends Component {
         isEditing: PropTypes.bool
     };
 
+    async fetchContainerData(){
+        await actions.rFetchSegmentFields(this.props, this.props.segmentId);
+    }
+
     async componentWillMount() {
-        await tryFetchData(this.props);
+        this.fetchContainerData()
     }
 
     async componentWillReceiveProps(newProps) {
@@ -61,8 +63,6 @@ export default class SegmentFieldListContainer extends Component {
         newProps.endLoading();
         newProps.clearError();
         newProps.collapseFormula();
-
-        await tryFetchData(newProps);
     }
 
     render() {

@@ -13,15 +13,12 @@ import * as actions from 'metabase/reference/reference';
 import {
     getUser,
     getMetric,
+    getMetricId,
     getDatabaseId,
     getSectionId,
     getSection,
     getIsEditing
 } from '../selectors';
-
-import {
-    tryFetchData
-} from '../utils';
 
 import {
     loadEntities
@@ -30,6 +27,7 @@ import {
 const mapStateToProps = (state, props) => ({
     user: getUser(state, props),
     metric: getMetric(state, props),
+    metricId: getMetricId(state, props),
     sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
     section: getSection(state, props),
@@ -53,9 +51,12 @@ export default class MetricQuestionsContainer extends Component {
         isEditing: PropTypes.bool
     };
 
+    async fetchContainerData(){
+        await actions.rFetchMetricQuestions(this.props, this.props.metricId);
+    }
+
     async componentWillMount() {
-        await tryFetchData(this.props);
-        console.log("Got all the data I was looking for")
+        this.fetchContainerData()
     }
 
     async componentWillReceiveProps(newProps) {
@@ -67,8 +68,6 @@ export default class MetricQuestionsContainer extends Component {
         newProps.endLoading();
         newProps.clearError();
         newProps.collapseFormula();
-
-        await tryFetchData(newProps);
     }
 
     render() {

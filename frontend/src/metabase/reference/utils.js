@@ -1,5 +1,4 @@
 import { assoc, assocIn, chain } from "icepick";
-import _ from "underscore";
 
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard } from "metabase/lib/card";
@@ -13,14 +12,14 @@ export const idsToObjectMap = (ids, objects) => ids
     // hangs browser for large databases
     // .reduce((map, object) => assoc(map, object.id, object), {});
 
-const filterUntouchedFields = (fields, entity = {}) => Object.keys(fields)
+export const filterUntouchedFields = (fields, entity = {}) => Object.keys(fields)
     .filter(key =>
         fields[key] !== undefined &&
         entity[key] !== fields[key]
     )
     .reduce((map, key) => ({ ...map, [key]: fields[key] }), {});
 
-const isEmptyObject = (object) => Object.keys(object).length === 0;
+export const isEmptyObject = (object) => Object.keys(object).length === 0;
 
 
 export const tryFetchData = async (props) => {
@@ -57,9 +56,7 @@ export const tryFetchData = async (props) => {
 export const tryUpdateData = async (fields, props) => {
     const {
         entity,
-        guide,
         section,
-        updateMetricImportantFields,
         startLoading,
         endLoading,
         resetForm,
@@ -160,208 +157,7 @@ export const tryUpdateFields = async (formFields, props) => {
     endEditing();
 }
 
-export const tryUpdateGuide = async (formFields, props) => {
-    const {
-        guide,
-        dashboards,
-        metrics,
-        segments,
-        tables,
-        startLoading,
-        endLoading,
-        endEditing,
-        setError,
-        resetForm,
-        updateDashboard,
-        updateMetric,
-        updateSegment,
-        updateTable,
-        updateMetricImportantFields,
-        updateSetting,
-        fetchGuide,
-        clearRequestState
-    } = props;
 
-    startLoading();
-    try {
-        const updateNewEntities = ({
-            entities,
-            formFields,
-            updateEntity
-        }) => formFields.map(formField => {
-            if (!formField.id) {
-                return [];
-            }
-
-            const editedEntity = filterUntouchedFields(
-                assoc(formField, 'show_in_getting_started', true),
-                entities[formField.id]
-            );
-
-            if (isEmptyObject(editedEntity)) {
-                return [];
-            }
-
-            const newEntity = entities[formField.id];
-            const updatedNewEntity = {
-                ...newEntity,
-                ...editedEntity
-            };
-
-            const updatingNewEntity = updateEntity(updatedNewEntity);
-
-            return [updatingNewEntity];
-        });
-
-        const updateOldEntities = ({
-            newEntityIds,
-            oldEntityIds,
-            entities,
-            updateEntity
-        }) => oldEntityIds
-            .filter(oldEntityId => !newEntityIds.includes(oldEntityId))
-            .map(oldEntityId => {
-                const oldEntity = entities[oldEntityId];
-
-                const updatedOldEntity = assoc(
-                    oldEntity,
-                    'show_in_getting_started',
-                    false
-                );
-
-                const updatingOldEntity = updateEntity(updatedOldEntity);
-
-                return [updatingOldEntity];
-            });
-        //FIXME: necessary because revision_message is a mandatory field
-        // even though we don't actually keep track of changes to caveats/points_of_interest yet
-        const updateWithRevisionMessage = updateEntity => entity => updateEntity(assoc(
-            entity,
-            'revision_message',
-            'Updated in Getting Started guide.'
-        ));
-
-        const updatingDashboards = updateNewEntities({
-                entities: dashboards,
-                formFields: [formFields.most_important_dashboard],
-                updateEntity: updateDashboard
-            })
-            .concat(updateOldEntities({
-                newEntityIds: formFields.most_important_dashboard ?
-                    [formFields.most_important_dashboard.id] : [],
-                oldEntityIds: guide.most_important_dashboard ?
-                    [guide.most_important_dashboard] :
-                    [],
-                entities: dashboards,
-                updateEntity: updateDashboard
-            }));
-
-        const updatingMetrics = updateNewEntities({
-                entities: metrics,
-                formFields: formFields.important_metrics,
-                updateEntity: updateWithRevisionMessage(updateMetric)
-            })
-            .concat(updateOldEntities({
-                newEntityIds: formFields.important_metrics
-                    .map(formField => formField.id),
-                oldEntityIds: guide.important_metrics,
-                entities: metrics,
-                updateEntity: updateWithRevisionMessage(updateMetric)
-            }));
-
-        const updatingMetricImportantFields = formFields.important_metrics
-            .map(metricFormField => {
-                if (!metricFormField.id || !metricFormField.important_fields) {
-                    return [];
-                }
-                const importantFieldIds = metricFormField.important_fields
-                    .map(field => field.id);
-                const existingImportantFieldIds = guide.metric_important_fields[metricFormField.id];
-
-                const areFieldIdsIdentitical = existingImportantFieldIds &&
-                    existingImportantFieldIds.length === importantFieldIds.length &&
-                    existingImportantFieldIds.every(id => importantFieldIds.includes(id));
-                if (areFieldIdsIdentitical) {
-                    return [];
-                }
-
-                return [updateMetricImportantFields(metricFormField.id, importantFieldIds)];
-            });
-
-        const segmentFields = formFields.important_segments_and_tables
-            .filter(field => field.type === 'segment');
-
-        const updatingSegments = updateNewEntities({
-                entities: segments,
-                formFields: segmentFields,
-                updateEntity: updateWithRevisionMessage(updateSegment)
-            })
-            .concat(updateOldEntities({
-                newEntityIds: segmentFields
-                    .map(formField => formField.id),
-                oldEntityIds: guide.important_segments,
-                entities: segments,
-                updateEntity: updateWithRevisionMessage(updateSegment)
-            }));
-
-        const tableFields = formFields.important_segments_and_tables
-            .filter(field => field.type === 'table');
-
-        const updatingTables = updateNewEntities({
-                entities: tables,
-                formFields: tableFields,
-                updateEntity: updateTable
-            })
-            .concat(updateOldEntities({
-                newEntityIds: tableFields
-                    .map(formField => formField.id),
-                oldEntityIds: guide.important_tables,
-                entities: tables,
-                updateEntity: updateTable
-            }));
-
-        const updatingThingsToKnow = guide.things_to_know !== formFields.things_to_know ?
-            [updateSetting({key: 'getting-started-things-to-know', value: formFields.things_to_know })] :
-            [];
-
-        const updatingContactName = guide.contact && formFields.contact &&
-            guide.contact.name !== formFields.contact.name ?
-                [updateSetting({key: 'getting-started-contact-name', value: formFields.contact.name })] :
-                [];
-
-        const updatingContactEmail = guide.contact && formFields.contact &&
-            guide.contact.email !== formFields.contact.email ?
-                [updateSetting({key: 'getting-started-contact-email', value: formFields.contact.email })] :
-                [];
-
-        const updatingData = _.flatten([
-            updatingDashboards,
-            updatingMetrics,
-            updatingMetricImportantFields,
-            updatingSegments,
-            updatingTables,
-            updatingThingsToKnow,
-            updatingContactName,
-            updatingContactEmail
-        ]);
-
-        if (updatingData.length > 0) {
-            await Promise.all(updatingData);
-
-            clearRequestState({statePath: ['reference', 'guide']});
-
-            await fetchGuide();
-        }
-    }
-    catch(error) {
-        setError(error);
-        console.error(error);
-    }
-
-    resetForm();
-    endLoading();
-    endEditing();
-};
 
 
 export const databaseToForeignKeys = (database) => database && database.tables_lookup ?

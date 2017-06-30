@@ -50,8 +50,12 @@ export default class TableQuestionsContainer extends Component {
         isEditing: PropTypes.bool
     };
 
-    async componentWillMount() {
+    async fetchContainerData() {
         await actions.rFetchDatabaseMetadataAndQuestion(this.props, this.props.databaseId);
+    }
+
+    async componentWillMount() {
+        this.fetchContainerData()
     }
 
     async componentWillReceiveProps(newProps) {
@@ -63,8 +67,6 @@ export default class TableQuestionsContainer extends Component {
         newProps.endLoading();
         newProps.clearError();
         newProps.collapseFormula();
-
-        await actions.rFetchDatabaseMetadataAndQuestion(newProps, newProps.databaseId);
     }
 
     render() {

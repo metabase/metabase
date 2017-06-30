@@ -17,10 +17,6 @@ import {
     getIsEditing
 } from '../selectors';
 
-import {
-    tryFetchData
-} from '../utils';
-
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
@@ -42,9 +38,15 @@ export default class MetricListContainer extends Component {
         isEditing: PropTypes.bool
     };
 
-    async componentWillMount() {
-        await tryFetchData(this.props);
+
+    async fetchContainerData(){
+        await actions.rFetchMetrics(this.props);
     }
+
+    async componentWillMount() {
+        this.fetchContainerData()
+    }
+
 
     async componentWillReceiveProps(newProps) {
         if (this.props.location.pathname === newProps.location.pathname) {
@@ -55,8 +57,6 @@ export default class MetricListContainer extends Component {
         newProps.endLoading();
         newProps.clearError();
         newProps.collapseFormula();
-
-        await tryFetchData(newProps);
     }
 
     render() {
