@@ -83,8 +83,7 @@
 (defn- make-timestamp
   [y m]
   (-> (t/date-time y m)
-      t.coerce/to-long
-      ((var f/truncate-timestamp))))
+      ((var f/to-double))))
 
 (expect
   [[(make-timestamp 2016 1) 12]

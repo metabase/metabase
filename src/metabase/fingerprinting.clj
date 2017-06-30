@@ -95,7 +95,7 @@
 (defn binned-entropy
   "Calculate entropy of given histogram."
   [histogram]
-  (transduce (map (* % (math/log %)))
+  (transduce (map #(* % (math/log %)))
              (redux/post-complete + -)
              (vals (pmf histogram))))
 
@@ -191,7 +191,8 @@
           :all-distinct?        (>= unique% (- 1 cardinality-error))
           :entropy              (binned-entropy histogram)
           :type                 Num})
-       {:count 0}))))
+       {:count 0
+        :type  Num}))))
 
 (defmethod fingerprinter [Num Num]
   [_ _]
@@ -199,15 +200,13 @@
                :covariance        (stats/covariance first second)
                :linear-regression (stats/simple-linear-regression first second)}))
 
-(def ^:private ^:const timestamp-truncation-factor (/ 1 1000 60 60 24))
+(def ^:private ^{:arglists '([t])} to-double
+  "Coerce `DateTime` to `Double`."
+  (comp double t.coerce/to-long))
 
-(def ^:private ^{:arglists '([t])} truncate-timestamp
-  "Truncate UNIX timestamp from ms to days."
-  (comp long (partial * timestamp-truncation-factor)))
-
-(def ^:private ^{:arglists '([t])} pad-timestamp
-  "Pad truncated timestamp back into a proper UNIX (ms) timestamp."
-  (comp long (partial * (/ timestamp-truncation-factor))))
+(def ^:private ^{:arglists '([t])} from-double
+  "Coerce `Double` into a `DateTime`."
+  (comp t.coerce/from-long long))
 
 (defn- fill-timeseries
   "Given a coll of `[DateTime, Any]` pairs with periodicty `step` fill missing
@@ -215,56 +214,52 @@
   [step ts]
   (let [ts-index (into {} ts)]
     (into []
-      (comp (map (comp truncate-timestamp t.coerce/to-long))
+      (comp (map to-double)
             (take-while (partial >= (-> ts last first)))
             (map (fn [t]
                    [t (ts-index t 0)])))
       (some-> ts
               ffirst
-              pad-timestamp
-              t.coerce/from-long
+              from-double
               (t.periodic/periodic-seq step)))))
 
 (defn- decompose-timeseries
-  "Decompose given timeseries with expected periodicty `resolution` into trend,
+  "Decompose given timeseries with expected periodicty `period` into trend,
    seasonal component, and reminder.
-   `resolution` can be one of `:day`, or `:month`."
-  [resolution ts]
-  (let [period (case resolution
+   `period` can be one of `:day`, or `:month`."
+  [period ts]
+  (let [period (case period
                  :month 12
                  :day 52)]
     (when (>= (count ts) (* 2 period))
-      (tide/decompose period ts))))
+      (select-keys (tide/decompose period ts) [:trend :seasonal :reminder]))))
 
 (defmethod fingerprinter [DateTime Num]
-  [{:keys [max-cost resolution]} _]
-  (let [resolution (or resolution :raw)]
+  [{:keys [max-cost scale]} _]
+  (let [scale (or scale :raw)]
     (redux/post-complete
      (redux/pre-step
       (redux/fuse {:linear-regression (stats/simple-linear-regression first second)
-                   :series            (if (= resolution :raw)
+                   :series            (if (= scale :raw)
                                         conj
                                         (redux/post-complete
                                          conj
                                          (partial fill-timeseries
-                                                  (case resolution
+                                                  (case scale
                                                     :month (t/months 1)
                                                     :day (t/days 1)))))})
       (fn [[x y]]
-        [(-> x t.format/parse t.coerce/to-long truncate-timestamp) y]))
+        [(-> x t.format/parse to-double) y]))
      (fn [{:keys [series linear-regression]}]
-       (let [ys-r (->> series (map second) reverse not-empty)
-             {:keys [trend seasonal reminder]}
-             (when (and (not= resolution :raw)
-                        (unbounded-computation? max-cost))
-               (decompose-timeseries resolution series))]
-         (merge {:series            (for [[x y] series]
-                                      [(t.coerce/from-long (pad-timestamp x)) y])
-                 :linear-regression linear-regression
-                 :trend             trend
-                 :seasonal          seasonal
-                 :reminder          reminder}
-                (case resolution
+       (let [ys-r (->> series (map second) reverse not-empty)]
+         (merge {:series                 (for [[x y] series]
+                                           [(from-double x) y])
+                 :linear-regression      linear-regression
+                 :seasonal-decomposition
+                 (when (and (not= scale :raw)
+                            (unbounded-computation? max-cost))
+                   (decompose-timeseries scale series))}
+                (case scale
                   :month {:YoY          (growth (first ys-r) (nth ys-r 11))
                           :YoY-previous (growth (second ys-r) (nth ys-r 12))
                           :MoM          (growth (first ys-r) (second ys-r))
@@ -311,12 +306,11 @@
     t.format/parse)
    (fn [{:keys [histogram histogram-hour histogram-day histogram-month
                 histogram-quarter]}]
-     (let [nil-count (nil-count histogram)
-           ->datetime (comp t.coerce/from-long long)]
-       {:min               (->datetime (hist/minimum histogram))
-        :max               (->datetime (hist/maximum histogram))
-        :histogram         (m/map-keys ->datetime (pmf histogram))
-        :percentiles       (m/map-vals ->datetime
+     (let [nil-count (nil-count histogram)]
+       {:min               (from-double (hist/minimum histogram))
+        :max               (from-double (hist/maximum histogram))
+        :histogram         (m/map-keys from-double (pmf histogram))
+        :percentiles       (m/map-vals from-double
                                        (apply hist/percentiles histogram
                                               percentiles))
         :histogram-hour    (pmf histogram-hour)
@@ -366,19 +360,20 @@
 (defn- fingerprint-field
   "Transduce given column with corresponding fingerprinter."
   [opts field data]
-  (transduce identity (fingerprinter opts field) data))
+  (-> (transduce identity (fingerprinter opts field) data)
+      (assoc :field field)))
 
 (defn- fingerprint-query
   "Transuce each column in given dataset with corresponding fingerprinter."
   [opts {:keys [rows cols]}]
   (transduce identity
-             (redux/fuse
-              (into {}
-                (map-indexed (fn [i field]
-                               [(:name field)
-                                (redux/pre-step (fingerprinter opts field)
-                                                #(nth % i))]))
-                cols))
+             (redux/fuse (into {}
+                           (for [[i field] (m/indexed cols)]
+                             [(:name field)
+                              (redux/post-complete
+                               (redux/pre-step (fingerprinter opts field)
+                                               #(nth % i))
+                               #(assoc % :field field))])))
              rows))
 
 (def ^:private ^:const ^Long max-sample-size 10000)
@@ -397,8 +392,8 @@
                          scan), or `:joins` (bring in data from other tables if
                          needed).
 
-   * `:resolution`       controls pre-aggregation by time. Can be one of `:day`,
-                        `:month`, or `:raw`"
+   * `:scale`            controls pre-aggregation by time. Can be one of `:day`,
+                         `:month`, or `:raw`"
   #(class %2))
 
 (defn- extract-query-opts
@@ -408,9 +403,8 @@
 
 (defmethod fingerprint (class Field)
   [opts field]
-  (let [data (metadata/field-values field (extract-query-opts opts))]
-    (-> (fingerprint-field opts field data)
-        (assoc :field field))))
+  (->> (metadata/field-values field (extract-query-opts opts))
+       (fingerprint-field opts field)))
 
 (defmethod fingerprint (class Table)
   [opts table]
@@ -441,9 +435,9 @@
 
 (defn multifield-fingerprint
   "Holistically fingerprint dataset with multiple columns.
-   Takes and additional option `:resolution` which controls how timeseries data
+   Takes and additional option `:scale` which controls how timeseries data
    is aggregated. Possible values: `:month`, `:day`, `:raw`."
-  [{:keys [resolution] :as opts} a b]
+  [{:keys [scale] :as opts} a b]
   (assert (= (:table_id a) (:table_id b)))
   {:fingerprint (->> (metadata/query-values
                       (metadata/db-id a)
@@ -451,10 +445,10 @@
                        (extract-query-opts opts)
                        (if (and (isa? (field-type a) DateTime)
                                 (isa? (field-type b) Num)
-                                (not= resolution :raw))
+                                (not= scale :raw))
                          {:source-table (:table_id a)
                           :breakout     [[:datetime-field [:field-id (:id a)]
-                                          resolution]]
+                                          scale]]
                           :aggregation  [:sum [:field-id (:id b)]]}
                          {:source-table (:table_id a)
                           :fields       [[:field-id (:id a)]

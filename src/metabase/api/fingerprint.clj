@@ -20,7 +20,7 @@
                    "unbounded"
                    "yolo")))
 
-(def ^:private ^:const Resolution
+(def ^:private ^:const Scale
   (s/maybe (s/enum "month"
                    "day"
                    "raw")))
@@ -72,15 +72,15 @@
 
 (api/defendpoint GET "/fields/:id1/:id2"
   "Get a multi-field fingerprint for `Field`s with ID1 and ID2."
-  [id1 id2 max_query_cost max_computation_cost resolution]
+  [id1 id2 max_query_cost max_computation_cost scale]
   {max_query_cost       MaxQueryCost
    max_computation_cost MaxComputationCost
-   resolution           Resolution}
+   scale                Scale}
   (->> [id1 id2]
        (map (partial api/read-check Field))
        (apply fingerprinting/multifield-fingerprint
-              {:max-cost   (max-cost max_query_cost max_computation_cost)
-               :resolution (or (keyword resolution) :day)})))
+              {:max-cost (max-cost max_query_cost max_computation_cost)
+               :scale    (or (keyword scale) :day)})))
 
 (api/defendpoint GET "/compare/fields/:id1/:id2"
   "Get comparison fingerprints for `Field`s with ID1 and ID2."
