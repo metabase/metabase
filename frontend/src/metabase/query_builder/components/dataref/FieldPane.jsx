@@ -15,6 +15,8 @@ import inflection from 'inflection';
 
 import _ from "underscore";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { connect } from "react-redux";
+import Dimension from "metabase-lib/lib/Dimension";
 
 const mapDispatchToProps = {
     fetchTableMetadata,
@@ -28,8 +30,6 @@ const mapStateToProps = (state, props) => ({
 export default class FieldPane extends Component {
     constructor(props, context) {
         super(props, context);
-
-        _.bindAll(this, "groupBy", "setQuerySum", "setQueryDistinct", "setQueryCountGroupedBy");
     }
 
     static propTypes = {
@@ -37,6 +37,7 @@ export default class FieldPane extends Component {
         datasetQuery: PropTypes.object,
         question: PropTypes.object,
         originalQuestion: PropTypes.object,
+        metadata: PropTypes.object,
         fetchTableMetadata: PropTypes.func.isRequired,
         runQuestionQuery: PropTypes.func.isRequired,
         setDatasetQuery: PropTypes.func.isRequired,
@@ -45,7 +46,6 @@ export default class FieldPane extends Component {
     };
 
     componentWillMount() {
-        console.log(this.props);
         this.props.fetchTableMetadata(this.props.field.table_id);
     }
 
@@ -60,7 +60,24 @@ export default class FieldPane extends Component {
     //     this.props.setDatasetQuery(datasetQuery);
     // }
 
-    groupBy() {
+    /**
+     * Returns a default breakout for the current field.
+     *
+     * Tries to look up a default subdimension (like "Created At: Day" for "Created At" field)
+     * and if it isn't found, uses the plain field id dimension (like "Product ID") as a fallback.
+     */
+    getDefaultBreakout = () => {
+        const { metadata, field } = this.props;
+        const fieldIdDimension = metadata.fields[field.id].dimension();
+        const defaultSubDimension = fieldIdDimension.defaultDimension();
+        if (defaultSubDimension) {
+            return defaultSubDimension.mbql();
+        } else {
+            return fieldIdDimension.mbql();
+        }
+    }
+
+    groupBy = () => {
         let { question } = this.props;
         let query = question.query();
 
@@ -70,38 +87,49 @@ export default class FieldPane extends Component {
                 query = query.clearAggregations()
             }
 
-            query = query.addBreakout(["field-id", this.props.field.id]);
+            query = query.addBreakout(this.getDefaultBreakout());
 
             this.props.updateQuestion(query.question())
             this.props.runQuestionQuery();
         }
     }
 
-    newCard() {
+    newCard = () => {
+        const { metadata, field } = this.props;
+        const tableId = field.table_id;
+        const dbId = metadata.tables[tableId].database.id;
+
         let card = createCard();
-        card.dataset_query = createQuery("query", this.props.field.db_id, this.props.field.table_id);
+        card.dataset_query = createQuery("query", dbId, tableId);
         return card;
     }
 
-    setQuerySum() {
+    setQuerySum = () => {
+        const { field } = this.props;
         let card = this.newCard();
         card.dataset_query.query.aggregation = ["sum", this.props.field.id];
         this.props.setCardAndRun(card);
     }
 
-    setQueryDistinct() {
+    setQueryDistinct = () => {
         let card = this.newCard();
         card.dataset_query.query.aggregation = ["rows"];
-        card.dataset_query.query.breakout = [this.props.field.id];
+        card.dataset_query.query.breakout = [this.getDefaultBreakout()];
         this.props.setCardAndRun(card);
     }
 
-    setQueryCountGroupedBy(chartType) {
+    setQueryCountGroupedBy = (chartType) => {
         let card = this.newCard();
         card.dataset_query.query.aggregation = ["count"];
-        card.dataset_query.query.breakout = [this.props.field.id];
+        card.dataset_query.query.breakout = [this.getDefaultBreakout()];
         card.display = chartType;
         this.props.setCardAndRun(card);
+    }
+
+    isBreakoutWithCurrentField = (breakout) => {
+        const { field, metadata } = this.props;
+        const dimension = Dimension.parseMBQL(breakout, metadata);
+        return dimension && dimension.field().id === field.id;
     }
 
     render() {
@@ -128,7 +156,7 @@ export default class FieldPane extends Component {
             // useForCurrentQuestion.push(<UseForButton title={"Filter by " + name} onClick={this.filterBy} />);
 
             // current field must be a valid breakout option for this table AND cannot already be in the breakout clause of our query
-            if (validBreakout && !_.findWhere(query.breakouts(), {[0]: "field-id", [1]: field.id})) {
+            if (validBreakout && !_.some(query.breakouts(), this.isBreakoutWithCurrentField)) {
                 useForCurrentQuestion.push(<UseForButton title={"Group by " + name} onClick={this.groupBy} />);
             }
         }
