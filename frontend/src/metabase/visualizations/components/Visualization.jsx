@@ -193,7 +193,8 @@ export default class Visualization extends Component {
         const seriesIndex = clicked.seriesIndex || 0;
         const card = series[seriesIndex].card;
         const question = new Question(metadata, card);
-        return question.actionsForClick(clicked);
+        const mode = question.mode();
+        return mode ? mode.actionsForClick(clicked) : [];
     }
 
     visualizationIsClickable = (clicked: ClickObject) => {

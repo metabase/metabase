@@ -25,7 +25,8 @@ type Props = {
 type State = {
     isVisible: boolean,
     isOpen: boolean,
-    selectedActionIndex: ?number
+    isClosing: boolean,
+    selectedActionIndex: ?number,
 };
 
 const CIRCLE_SIZE = 48;
@@ -37,6 +38,7 @@ export default class ActionsWidget extends Component {
     state: State = {
         isVisible: false,
         isOpen: false,
+        isClosing: false,
         selectedActionIndex: null
     };
 
@@ -65,10 +67,15 @@ export default class ActionsWidget extends Component {
     );
 
     close = () => {
-        this.setState({ isOpen: false, selectedActionIndex: null });
+        this.setState({ isClosing: true, isOpen: false, selectedActionIndex: null });
+        // Needed because when closing the action widget by clicking compass, this is triggered first
+        // on mousedown (by OnClickOutsideWrapper) and toggle is triggered on mouseup
+        setTimeout(() => this.setState({ isClosing: false }), 500);
     };
 
     toggle = () => {
+        if (this.state.isClosing) return;
+
         if (!this.state.isOpen) {
             MetabaseAnalytics.trackEvent("Actions", "Opened Action Menu");
         }
@@ -86,23 +93,29 @@ export default class ActionsWidget extends Component {
 
     handleActionClick = (index: number) => {
         const { question } = this.props;
-        const action = question.actions()[index];
-        if (action && action.popover) {
-            this.setState({ selectedActionIndex: index });
-        } else if (action && action.question) {
-            const nextQuestion = action.question();
-            if (nextQuestion) {
-                MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
-                this.handleOnChangeCardAndRun({ nextCard: nextQuestion.card() });
+        const mode = question.mode()
+        if (mode) {
+            const action = mode.actions()[index];
+            if (action && action.popover) {
+                this.setState({ selectedActionIndex: index });
+            } else if (action && action.question) {
+                const nextQuestion = action.question();
+                if (nextQuestion) {
+                    MetabaseAnalytics.trackEvent("Actions", "Executed Action", `${action.section||""}:${action.name||""}`);
+                    this.handleOnChangeCardAndRun({ nextCard: nextQuestion.card() });
+                }
+                this.close();
             }
-            this.close();
+        } else {
+            console.warn("handleActionClick: Question mode is missing")
         }
     };
     render() {
         const { className, question } = this.props;
         const { isOpen, isVisible, selectedActionIndex } = this.state;
 
-        const actions = question.actions();
+        const mode = question.mode();
+        const actions = mode ? mode.actions() : [];
         if (actions.length === 0) {
             return null;
         }

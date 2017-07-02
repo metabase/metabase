@@ -17,7 +17,7 @@ const NUM_FIELDS = Object.keys(state.metadata.fields).length
 const NUM_METRICS = Object.keys(state.metadata.metrics).length
 const NUM_SEGMENTS = Object.keys(state.metadata.segments).length
 
-
+// NOTE: Also tests in redux/metadata.spec.js cover the use of metadata selectors
 describe('getMetadata', () => {
     it('should properly transfer metadata', () => {
         expect(metadata).toBeInstanceOf(Metadata)
@@ -55,9 +55,6 @@ describe('getMetadata', () => {
             expect(field.table).toEqual(metadata.tables[ORDERS_TABLE_ID])
         })
     })
-})
-
-describe('hydrate', () => {
 })
 
 describe('copyObjects', () => {

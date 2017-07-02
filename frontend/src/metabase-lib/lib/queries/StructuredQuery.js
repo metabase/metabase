@@ -76,8 +76,7 @@ export default class StructuredQuery extends AtomicQuery {
     ) {
         super(question, datasetQuery);
 
-        // $FlowFixMe
-        this._structuredDatasetQuery = datasetQuery;
+        this._structuredDatasetQuery = (datasetQuery: StructuredDatasetQuery);
     }
 
     static newStucturedQuery(
@@ -270,10 +269,26 @@ export default class StructuredQuery extends AtomicQuery {
     aggregationFieldOptions(agg): DimensionOptions {
         const aggregation = this.table().aggregation(agg);
         if (aggregation) {
-            return this.fieldOptions(
-                null,
-                field => aggregation.validFieldsFilters[0]([field]).length === 1
-            );
+            const fieldOptions = this.fieldOptions(field => {
+                return aggregation.validFieldsFilters[0]([field]).length === 1;
+            });
+
+            // HACK Atte Keinänen 6/18/17: Using `fieldOptions` with a field filter function
+            // ends up often omitting all expressions because the field object of ExpressionDimension is empty.
+            // Expressions can be applied to all aggregations so we can simply add all expressions to the
+            // dimensions list in this hack.
+            //
+            // A real solution would have a `dimensionOptions` method instead of `fieldOptions` which would
+            // enable filtering based on dimension properties.
+            return {
+                ...fieldOptions,
+                dimensions: _.uniq([
+                    ...this.expressionDimensions(),
+                    ...fieldOptions.dimensions.filter(
+                        d => !(d instanceof ExpressionDimension)
+                    )
+                ])
+            };
         } else {
             return { count: 0, fks: [], dimensions: [] };
         }
@@ -374,12 +389,21 @@ export default class StructuredQuery extends AtomicQuery {
     }
 
     /**
-     * @param breakout The breakout to include even if it's already used
+     * @param includedBreakout The breakout to include even if it's already used
      * @param fieldFilter An option @type {Field} predicate to filter out options
      * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
      */
-    breakoutOptions(breakout?: any, fieldFilter = () => true) {
-        return this.fieldOptions(breakout, fieldFilter);
+    breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
+        // the set of field ids being used by other breakouts
+        const usedFields = new Set(
+            this.breakouts()
+                .filter(b => !_.isEqual(b, includedBreakout))
+                .map(b => Q_deprecated.getFieldTargetId(b))
+        );
+
+        return this.fieldOptions(
+            field => fieldFilter(field) && !usedFields.has(field.id)
+        );
     }
 
     /**
@@ -491,11 +515,17 @@ export default class StructuredQuery extends AtomicQuery {
     sorts(): OrderBy[] {
         return Q.getOrderBys(this.query());
     }
-    sortOptions(sort, fieldFilter): DimensionOptions {
+    sortOptions(sort): DimensionOptions {
         let sortOptions = { count: 0, dimensions: [], fks: [] };
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
         if (this.isBareRows()) {
-            sortOptions = this.fieldOptions(sort, fieldFilter);
+            const usedFields = new Set(
+                this.sorts()
+                    .filter(b => !_.isEqual(b, sort))
+                    .map(b => Q_deprecated.getFieldTargetId(b[0]))
+            );
+
+            return this.fieldOptions(field => !usedFields.has(field.id));
         } else if (this.hasValidBreakout()) {
             for (const breakout of this.breakouts()) {
                 sortOptions.dimensions.push(
@@ -569,7 +599,9 @@ export default class StructuredQuery extends AtomicQuery {
 
     // FIELD OPTIONS
 
-    fieldOptions(fieldRef?: any, fieldFilter = () => true): DimensionOptions {
+    // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
+    // See aggregationFieldOptions for an explanation why that covers more use cases
+    fieldOptions(fieldFilter = () => true): DimensionOptions {
         const fieldOptions = {
             count: 0,
             fks: [],
@@ -578,38 +610,41 @@ export default class StructuredQuery extends AtomicQuery {
 
         const table = this.tableMetadata();
         if (table) {
-            // the set of field ids being used by other breakouts
-            const usedFields = new Set(
-                this.breakouts()
-                    .filter(b => !_.isEqual(b, fieldRef))
-                    .map(b => Q_deprecated.getFieldTargetId(b))
-            );
-
             const dimensionFilter = dimension => {
                 const field = dimension.field && dimension.field();
-                return !field ||
-                    (field.isDimension() &&
-                        fieldFilter(field) &&
-                        !usedFields.has(field.id));
+                return !field || (field.isDimension() && fieldFilter(field));
             };
 
-            for (const dimension of this.dimensions().filter(dimensionFilter)) {
-                const field = dimension.field && dimension.field();
-                if (field && field.isFK()) {
-                    const fkDimensions = dimension
-                        .dimensions([FKDimension])
-                        .filter(dimensionFilter);
-                    if (fkDimensions.length > 0) {
-                        fieldOptions.count += fkDimensions.length;
-                        fieldOptions.fks.push({
-                            field: field,
-                            dimension: dimension,
-                            dimensions: fkDimensions
-                        });
-                    }
-                }
+            const dimensionIsFKReference = dimension =>
+                dimension.field &&
+                dimension.field() &&
+                dimension.field().isFK();
+
+            const filteredNonFKDimensions = this.dimensions()
+                .filter(dimensionFilter)
+                .filter(d => !dimensionIsFKReference(d));
+
+            for (const dimension of filteredNonFKDimensions) {
                 fieldOptions.count++;
                 fieldOptions.dimensions.push(dimension);
+            }
+
+            const fkDimensions = this.dimensions().filter(
+                dimensionIsFKReference
+            );
+            for (const dimension of fkDimensions) {
+                const fkDimensions = dimension
+                    .dimensions()
+                    .filter(dimensionFilter);
+
+                if (fkDimensions.length > 0) {
+                    fieldOptions.count += fkDimensions.length;
+                    fieldOptions.fks.push({
+                        field: dimension.field(),
+                        dimension: dimension,
+                        dimensions: fkDimensions
+                    });
+                }
             }
         }
 

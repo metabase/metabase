@@ -105,6 +105,7 @@ export default class SaveQuestionModal extends Component {
             }
 
             await this.requestPromise;
+            this.requestPromise = null;
             this.props.onClose();
         } catch (error) {
             if (error && !error.isCanceled) {

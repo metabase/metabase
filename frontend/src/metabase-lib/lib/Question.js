@@ -26,14 +26,12 @@ import {
     toUnderlyingRecords,
     drillUnderlyingRecords
 } from "metabase/qb/lib/actions";
-import { getMode } from "metabase/qb/lib/modes";
 
 import _ from "underscore";
 import { chain, assoc } from "icepick";
 
 import type {
     Parameter as ParameterObject,
-    ParameterId,
     ParameterValues
 } from "metabase/meta/types/Parameter";
 import type {
@@ -41,22 +39,14 @@ import type {
     Card as CardObject
 } from "metabase/meta/types/Card";
 
-import type {
-    ClickAction,
-    ClickObject,
-    QueryMode
-} from "metabase/meta/types/Visualization";
 import { MetabaseApi, CardApi } from "metabase/services";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 import type { Dataset } from "metabase/meta/types/Dataset";
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
-
-// TODO: move these
-type DownloadFormat = "csv" | "json" | "xlsx";
-type RevisionId = number;
-type ParameterOptions = "FIXME";
+import * as Urls from "metabase/lib/urls";
+import Mode from "metabase-lib/lib/Mode";
 
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
@@ -111,14 +101,14 @@ export default class Question {
             parameterValues?: ParameterValues
         }
     ) {
-        const card = {
+        // $FlowFixMe
+        const card: Card = {
             name: cardProps.name || null,
             display: cardProps.display || "table",
             visualization_settings: cardProps.visualization_settings || {},
             dataset_query: STRUCTURED_QUERY_TEMPLATE // temporary placeholder
         };
 
-        // $FlowFixMe Passing an incomplete card object
         const initialQuestion = new Question(metadata, card, parameterValues);
         const query = StructuredQuery.newStucturedQuery({
             question: initialQuestion,
@@ -127,6 +117,27 @@ export default class Question {
         });
 
         return initialQuestion.setQuery(query);
+    }
+
+    metadata(): Metadata {
+        return this._metadata;
+    }
+
+    card() {
+        return this._card;
+    }
+    setCard(card: CardObject): Question {
+        return new Question(this._metadata, card, this._parameterValues);
+    }
+
+    withoutNameAndId() {
+        return this.setCard(
+            chain(this.card())
+                .dissoc("id")
+                .dissoc("name")
+                .dissoc("description")
+                .value()
+        );
     }
 
     /**
@@ -148,29 +159,6 @@ export default class Question {
         throw new Error("Unknown query type: " + datasetQuery.type);
     }
 
-    metadata(): Metadata {
-        return this._metadata;
-    }
-
-    setCard(card: CardObject): Question {
-        return new Question(this._metadata, card, this._parameterValues);
-    }
-
-    // TODO: Rename?
-    newQuestion() {
-        return this.setCard(
-            chain(this.card())
-                .dissoc("id")
-                .dissoc("name")
-                .dissoc("description")
-                .value()
-        );
-    }
-
-    isEmpty(): boolean {
-        return this.query().isEmpty();
-    }
-
     /**
      * Returns a new Question object with an updated query.
      * The query is saved to the `dataset_query` field of the Card object.
@@ -190,8 +178,13 @@ export default class Question {
         );
     }
 
-    card() {
-        return this._card;
+    /**
+     * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
+     */
+    atomicQueries(): AtomicQuery[] {
+        const query = this.query();
+        if (query instanceof AtomicQuery) return [query];
+        return [];
     }
 
     /**
@@ -200,11 +193,13 @@ export default class Question {
     display(): string {
         return this._card && this._card.display;
     }
-
     setDisplay(display) {
         return this.setCard(assoc(this.card(), "display", display));
     }
 
+    isEmpty(): boolean {
+        return this.query().isEmpty();
+    }
     /**
      * Question is valid (as far as we know) and can be executed
      */
@@ -214,15 +209,6 @@ export default class Question {
 
     canWrite(): boolean {
         return this._card && this._card.can_write;
-    }
-
-    /**
-     * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
-     */
-    atomicQueries(): AtomicQuery[] {
-        const query = this.query();
-        if (query instanceof AtomicQuery) return [query];
-        return [];
     }
 
     /**
@@ -281,32 +267,8 @@ export default class Question {
         }
     }
 
-    mode(): ?QueryMode {
-        return getMode(this.card(), this.tableMetadata());
-    }
-
-    actions(): ClickAction[] {
-        const mode = this.mode();
-        if (mode) {
-            return _.flatten(
-                mode.actions.map(actionCreator =>
-                    actionCreator({ question: this }))
-            );
-        } else {
-            return [];
-        }
-    }
-
-    actionsForClick(clicked: ?ClickObject): ClickAction[] {
-        const mode = this.mode();
-        if (mode) {
-            return _.flatten(
-                mode.drills.map(actionCreator =>
-                    actionCreator({ question: this, clicked }))
-            );
-        } else {
-            return [];
-        }
+    mode(): ?Mode {
+        return Mode.forQuestion(this);
     }
 
     /**
@@ -328,41 +290,13 @@ export default class Question {
         return this._card && this._card.public_uuid;
     }
 
-    getUrl(): string {
-        return "";
-    }
-    getLineage(): ?Question {
-        return null;
-    }
+    getUrl(originalQuestion?: Question): string {
+        const isDirty = !originalQuestion ||
+            this.isDirtyComparedTo(originalQuestion);
 
-    getPublicUrl(): string {
-        return "";
-    }
-    getDownloadURL(format: DownloadFormat): string {
-        return "";
-    }
-
-    // These methods require integration with Redux actions or REST API
-    update(): Promise<void> {
-        return new Promise(() => {});
-    }
-    save(): Promise<void> {
-        return new Promise(() => {});
-    }
-    revert(revisionId: RevisionId): Promise<void> {
-        return new Promise(() => {});
-    }
-    enablePublicSharing(): Promise<void> {
-        return new Promise(() => {});
-    }
-    disablePublicSharing(): Promise<void> {
-        return new Promise(() => {});
-    }
-    publishAsEmbeddable(): Promise<void> {
-        return new Promise(() => {});
-    }
-    getVersionHistory(): Promise<void> {
-        return new Promise(() => {});
+        return isDirty
+            ? Urls.question(null, this._serializeForUrl())
+            : Urls.question(this.id(), "");
     }
 
     /**
@@ -376,11 +310,15 @@ export default class Question {
     ): Promise<[Dataset]> {
         const canUseCardApiEndpoint = !isDirty && this.isSaved();
 
+        const parametersList = this.parametersList().map(param =>
+            _.pick(param, "target", "type", "value"));
+        const hasParameters = parametersList.length > 0;
+
         if (canUseCardApiEndpoint) {
             const queryParams = {
                 cardId: this.id(),
-                parameters: this.parameters(),
-                ignore_cache: ignoreCache
+                ignore_cache: ignoreCache,
+                ...(hasParameters ? { parameters: parametersList } : {})
             };
 
             return [
@@ -389,11 +327,17 @@ export default class Question {
                 })
             ];
         } else {
-            const getDatasetQueryResult = datasetQuery =>
-                MetabaseApi.dataset(
-                    datasetQuery,
+            const getDatasetQueryResult = datasetQuery => {
+                const datasetQueryWithParameters = {
+                    ...datasetQuery,
+                    ...(hasParameters ? { parameters: parametersList } : {})
+                };
+
+                return MetabaseApi.dataset(
+                    datasetQueryWithParameters,
                     cancelDeferred ? { cancelled: cancelDeferred.promise } : {}
                 );
+            };
 
             const datasetQueries = this.atomicQueries().map(query =>
                 query.datasetQuery());
@@ -401,13 +345,15 @@ export default class Question {
         }
     }
 
+    // TODO: Fix incorrect Flow signature
     parameters(): ParameterObject[] {
         return getParametersWithExtras(this.card(), this._parameterValues);
     }
 
-    createParameter(parameter: ParameterOptions) {}
-    updateParameter(id: ParameterId, parameter: ParameterOptions) {}
-    deleteParameter(id: ParameterId) {}
+    parametersList(): ParameterObject[] {
+        // $FlowFixMe
+        return (Object.values(this.parameters()): ParameterObject[]);
+    }
 
     // predicate function that dermines if the question is "dirty" compared to the given question
     isDirtyComparedTo(originalQuestion: Question) {
@@ -438,15 +384,17 @@ export default class Question {
                 return false;
             }
         } else {
-            const origCardSerialized = originalQuestion.serializeForUrl();
-            const currentCardSerialized = this.serializeForUrl({
+            const origCardSerialized = originalQuestion._serializeForUrl();
+            const currentCardSerialized = this._serializeForUrl({
                 includeOriginalCardId: false
             });
             return currentCardSerialized !== origCardSerialized;
         }
     }
 
-    serializeForUrl({ includeOriginalCardId = true } = {}) {
+    // Internal methods
+
+    _serializeForUrl({ includeOriginalCardId = true } = {}) {
         // TODO Atte Keinänen 5/31/17: Remove code mutation and unnecessary copying
         const dataset_query = Utils.copy(this._card.dataset_query);
         if (dataset_query.query) {
@@ -463,8 +411,7 @@ export default class Question {
             parameters: this._card.parameters,
             visualization_settings: this._card.visualization_settings,
             ...(includeOriginalCardId
-                ? // $FlowFixMe
-                  { original_card_id: this._card.original_card_id }
+                ? { original_card_id: this._card.original_card_id }
                 : {})
         };
 

@@ -370,7 +370,6 @@ export const pivot = (
     }
 
     newCard.dataset_query.query = Query.addBreakout(
-        // $FlowFixMe
         newCard.dataset_query.query,
         breakout
     );

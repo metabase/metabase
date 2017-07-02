@@ -1,12 +1,10 @@
 /* @flow weak */
 
 import Database from "../metadata/Database";
-import Action from "../Action";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
-import type { ActionClick } from "metabase-lib/lib/Action";
 import { memoize } from "metabase-lib/lib/utils";
 
 /**
@@ -85,20 +83,6 @@ export default class Query {
      */
     databases(): Database[] {
         return this._metadata.databasesList();
-    }
-
-    /**
-     * Top level actions that can be performed on this query
-     */
-    actions(): Action[] {
-        return [];
-    }
-
-    /**
-     * Drill through actions that can be performed on a part of the result setParameter
-     */
-    actionsForClick(click: ActionClick): Action[] {
-        return [];
     }
 
     /**

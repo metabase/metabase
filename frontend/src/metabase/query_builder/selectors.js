@@ -173,11 +173,17 @@ export const getIsResultDirty = createSelector(
     }
 )
 
-
 export const getQuestion = createSelector(
     [getMetadata, getCard, getParameterValues],
     (metadata, card, parameterValues) => {
         return metadata && card && new Question(metadata, card, parameterValues)
+    }
+)
+
+export const getLastRunQuestion = createSelector(
+    [getMetadata, getLastRunCard, getParameterValues],
+    (metadata, getLastRunCard, parameterValues) => {
+        return metadata && getLastRunCard && new Question(metadata, getLastRunCard, parameterValues)
     }
 )
 

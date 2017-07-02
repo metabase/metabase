@@ -11,6 +11,7 @@ import type { SchemaName } from "metabase/meta/types/Table";
 import Dimension from "../Dimension";
 
 import _ from "underscore";
+import type { FieldMetadata } from "metabase/meta/types/Metadata";
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
@@ -20,7 +21,7 @@ export default class Table extends Base {
     schema: ?SchemaName;
     db: Database;
 
-    fields: Field[];
+    fields: FieldMetadata[];
 
     // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
     get database() {

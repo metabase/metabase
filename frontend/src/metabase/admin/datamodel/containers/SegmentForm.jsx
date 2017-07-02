@@ -14,6 +14,8 @@ import { segmentFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
 
 import cx from "classnames";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Table from "metabase-lib/lib/metadata/Table";
 
 @reduxForm({
     form: "segment",
@@ -79,11 +81,17 @@ export default class SegmentForm extends Component {
                                 features={{
                                     filter: true
                                 }}
-                                metadata={metadata}
-                                tableMetadata={{
-                                    ...tableMetadata,
-                                    segments: null
-                                }}
+                                metadata={
+                                    metadata && tableMetadata && metadata.tables && metadata.tables[tableMetadata.id].fields && Object.assign(new Metadata(), metadata, {
+                                        tables: {
+                                            ...metadata.tables,
+                                            [tableMetadata.id]: Object.assign(new Table(), metadata.tables[tableMetadata.id], {
+                                                segments: []
+                                            })
+                                        }
+                                    })
+                                }
+                                tableMetadata={tableMetadata}
                                 previewSummary={previewSummary == null ? "" : formatValue(previewSummary) + " rows"}
                                 updatePreviewSummary={this.updatePreviewSummary.bind(this)}
                                 {...definition}

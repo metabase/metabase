@@ -1,7 +1,26 @@
-import { BackendResource } from "../../../test/e2e/support/backend.js";
+/* global process, jasmine */
+
+/**
+ * Import this file before other imports in integrated tests
+ */
+
 import api from "metabase/lib/api";
 import { SessionApi } from "metabase/services";
 import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
+import reducers from 'metabase/reducers-main';
+
+import React from 'react'
+import { Provider } from 'react-redux';
+
+import { createMemoryHistory } from 'history'
+import { getStore } from "metabase/store";
+import { useRouterHistory } from "react-router";
+
+// Importing isomorphic-fetch sets the global `fetch` and `Headers` objects that are used here
+import fetch from 'isomorphic-fetch';
+
+// Mocks in a separate file as they would clutter this file
+import "./integrated_tests_mocks";
 
 // Stores the current login session
 var loginSession = null;
@@ -30,32 +49,59 @@ api._makeRequest = async (method, url, headers, body, data, options) => {
 
     const result = await fetch(api.basename + url, fetchOptions);
     if (result.status >= 200 && result.status <= 299) {
-        return result.json();
+        try {
+            return await result.json();
+        } catch (e) {
+            return null;
+        }
     } else {
-        throw { status: result.status, data: result.json() }
+        const error = {status: result.status, data: await result.json()}
+        console.log('A request made in a test failed with the following error:')
+        console.dir(error, { depth: null })
+
+        throw error
     }
 }
 
-// Reference to the reusable/shared backend server resource
-const server = BackendResource.get({});
 // Set the correct base url to metabase/lib/api module
-api.basename = server.host;
+if (process.env.E2E_HOST) {
+    api.basename = process.env.E2E_HOST;
+} else {
+    console.log(
+        'Please use `yarn run test-integrated` or `yarn run test-integrated-watch` for running integration tests.'
+    )
+    process.quit(0)
+}
+
+export const createReduxStore = () => {
+    return getStore(reducers);
+}
+export const createReduxStoreWithBrowserHistory = () => {
+    const history = useRouterHistory(createMemoryHistory)();
+    const store = getStore(reducers, history);
+    return { history, store }
+}
 
 /**
- * Starts the backend process. Promise resolves when the backend has properly been initialized.
- * If the backend is already running, this resolves immediately
- * TODO: Should happen automatically before any tests have been run
+ * Returns the given React container with an access to a global Redux store
  */
-export const startServer = async () => await BackendResource.start(server);
+export function linkContainerToGlobalReduxStore(component) {
+    return (
+        <Provider store={globalReduxStore}>
+            {component}
+        </Provider>
+    );
+}
 
 /**
- * Stops the current backend process
- * TODO: This should happen automatically after tests have been run
+ * A Redux store that is shared between subsequent tests,
+ * intended to reduce the need for reloading metadata between every test
  */
-export const stopServer = async () => await BackendResource.stop(server);
+const {
+    history: globalBrowserHistory,
+    store: globalReduxStore
+} = createReduxStoreWithBrowserHistory()
+export { globalBrowserHistory, globalReduxStore }
 
-
-// TODO: How to have the high timeout interval only for integration tests?
-// or even better, just for the setup/teardown of server process?
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 120000;
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
 

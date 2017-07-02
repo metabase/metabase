@@ -148,6 +148,7 @@ export const resetQB = createAction(RESET_QB);
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
     return async (dispatch, getState) => {
+
         // do this immediately to ensure old state is cleared before the user sees it
         dispatch(resetQB());
         dispatch(cancelQuery());
@@ -206,7 +207,6 @@ export const initializeQB = (location, params) => {
                     // deserialized card contains the card id, so just populate originalCard
                     originalCard = await loadCard(card.original_card_id);
                     // if the cards are equal then show the original
-                    // $FlowFixMe:
                     if (cardIsEquivalent(card, originalCard)) {
                         card = Utils.copy(originalCard);
                     }
@@ -281,8 +281,7 @@ export const initializeQB = (location, params) => {
         // Fetch the question metadata
         dispatch(loadMetadataForCard(card));
 
-        // $FlowFixMe
-        const question = card && new Question(getMetadata(getState()), (card: Card));
+        const question = card && new Question(getMetadata(getState()), card);
 
         // if we have loaded up a card that we can run then lets kick that off as well
         if (question) {
@@ -297,7 +296,7 @@ export const initializeQB = (location, params) => {
             // clean up the url and make sure it reflects our card state
             const originalQuestion = originalCard && new Question(getMetadata(getState()), originalCard);
             dispatch(updateUrl(card, {
-                dirty: originalQuestion && question.isDirtyComparedTo(originalQuestion),
+                dirty: !originalQuestion || originalQuestion && question.isDirtyComparedTo(originalQuestion),
                 replaceState: true,
                 preserveParameters
             }));
@@ -612,7 +611,7 @@ export const updateQuestion = (newQuestion) => {
         // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
         // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
         if (!getIsEditing(getState()) && newQuestion.isSaved()) {
-            newQuestion = newQuestion.newQuestion();
+            newQuestion = newQuestion.withoutNameAndId();
         }
 
         // Replace the current question with a new one
@@ -644,7 +643,7 @@ export const setDatasetQuery = createThunkAction(SET_DATASET_QUERY, (dataset_que
 
         // when the query changes on saved card we change this into a new query w/ a known starting point
         if (!uiControls.isEditing && question.isSaved()) {
-            newQuestion = newQuestion.newQuestion();
+            newQuestion = newQuestion.withoutNameAndId();
         }
 
         newQuestion = newQuestion.setDatasetQuery(dataset_query);
@@ -1059,11 +1058,8 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             // action is on a PK column
             let newCard: Card = startNewCard("query", card.dataset_query.database);
 
-            // $FlowFixMe
             newCard.dataset_query.query.source_table = coldef.table_id;
-            // $FlowFixMe
             newCard.dataset_query.query.aggregation = ["rows"];
-            // $FlowFixMe
             newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
             // run it

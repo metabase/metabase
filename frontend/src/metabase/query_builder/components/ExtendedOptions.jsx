@@ -92,7 +92,7 @@ export default class ExtendedOptions extends Component {
                     query={query}
                     tableMetadata={query.table()}
                     sort={sort}
-                    fieldOptions={query.sortOptions(sort[0])}
+                    fieldOptions={query.sortOptions(sort)}
                     removeOrderBy={() => query.removeSort(index).update(setDatasetQuery)}
                     updateOrderBy={(orderBy) => query.updateSort(index, orderBy).update(setDatasetQuery)}
                 />

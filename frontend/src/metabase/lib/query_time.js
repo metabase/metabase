@@ -182,7 +182,12 @@ export function absolute(date) {
 export function parseFieldBucketing(field, defaultUnit = null) {
     if (Array.isArray(field)) {
         if (mbqlEq(field[0], "datetime-field")) {
-            return field[3];
+            if (field.length === 4) {
+                // Deprecated legacy format, see DatetimeFieldDimension
+                return field[3];
+            } else {
+                return field[2]
+            }
         } if (mbqlEq(field[0], "fk->") || mbqlEq(field[0], "field-id")) {
             return defaultUnit;
         } else {
