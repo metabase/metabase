@@ -78,72 +78,89 @@
       updated-table)))
 
 (def ^:private dimension-options
-  (zipmap (range)
-          (concat
-           (map (fn [[name param]]
-                  {:name name
-                   :mbql ["datetime-field" nil param]
-                   :type :type/DateTime})
-                [["Minute" "minute"]
-                 ["Minute of Hour" "minute-of-hour"]
-                 ["Hour" "hour"]
-                 ["Hour of Day" "hour-of-day"]
-                 ["Day" "day"]
-                 ["Day of Week" "day-of-week"]
-                 ["Day of Month" "day-of-month"]
-                 ["Day of Year" "day-of-year"]
-                 ["Week" "week"]
-                 ["Week of Year" "week-of-year"]
-                 ["Month" "month"]
-                 ["Month of Year" "month-of-year"]
-                 ["Quarter" "quarter"]
-                 ["Quarter of Year" "quarter-of-year"]
-                 ["Year" "year"]])
-           (map (fn [[name params]]
-                  {:name name
-                   :mbql (apply vector "binning-strategy" nil params)
-                   :type :type/Numeric})
-                [["Quantized by the default binning strategy for the field" ["default"]]
-                 ["Quantized by the 10 equally sized bins" ["num-bins" 10]]
-                 ["Quantized by the 50 equally sized bins" ["num-bins" 50]]
-                 ["Quantized by the 100 equally sized bins" ["num-bins" 100]]]))))
+  (let [default-entry ["Quantized by the default binning strategy for the field" ["default"]]]
+    (zipmap (range)
+            (concat
+             (map (fn [[name param]]
+                    {:name name
+                     :mbql ["datetime-field" nil param]
+                     :type :type/DateTime})
+                  [["Minute" "minute"]
+                   ["Minute of Hour" "minute-of-hour"]
+                   ["Hour" "hour"]
+                   ["Hour of Day" "hour-of-day"]
+                   ["Day" "day"]
+                   ["Day of Week" "day-of-week"]
+                   ["Day of Month" "day-of-month"]
+                   ["Day of Year" "day-of-year"]
+                   ["Week" "week"]
+                   ["Week of Year" "week-of-year"]
+                   ["Month" "month"]
+                   ["Month of Year" "month-of-year"]
+                   ["Quarter" "quarter"]
+                   ["Quarter of Year" "quarter-of-year"]
+                   ["Year" "year"]])
+             (map (fn [[name params]]
+                    {:name name
+                     :mbql (apply vector "binning-strategy" nil params)
+                     :type :type/Number})
+                  [default-entry
+                   ["Quantized by the 10 equally sized bins"  ["num-bins" 10]]
+                   ["Quantized by the 50 equally sized bins"  ["num-bins" 50]]
+                   ["Quantized by the 100 equally sized bins" ["num-bins" 100]]])
+             (map (fn [[name params]]
+                    {:name name
+                     :mbql (apply vector "binning-strategy" nil params)
+                     :type :type/Coordinate})
+                  [default-entry
+                   ["Quantized by the 1 degree"  ["bin-width" 1.0]]
+                   ["Quantized by the 10 degree" ["bin-width" 10.0]]
+                   ["Quantized by the 20 degree" ["bin-width" 20.0]]
+                   ["Quantized by the 50 degree" ["bin-width" 50.0]]])))))
 
 (def ^:private dimension-options-for-response
   (m/map-kv (fn [k v]
               [(str k) (dissoc v :type)]) dimension-options))
 
-(def ^:private datetime-dimension-indexes
+(defn- create-dim-index-seq [dim-type]
   (->> dimension-options
-       (m/filter-kv (fn [k v] (isa? (:type v) :type/DateTime)))
+       (m/filter-kv (fn [k v] (= (:type v) dim-type)))
        keys
        sort
        (map str)))
 
+(def ^:private datetime-dimension-indexes
+  (create-dim-index-seq :type/DateTime))
+
 (def ^:private numeric-dimension-indexes
-  (->> dimension-options
-       (m/filter-kv (fn [k v] (isa? (:type v) :type/Numeric)))
-       keys
-       sort
-       (map str)))
+  (create-dim-index-seq :type/Number))
+
+(def ^:private coordinate-dimension-indexes
+  (create-dim-index-seq :type/Coordinate))
 
 (defn- assoc-dimension-options [resp]
   (-> resp
       (assoc :dimension_options dimension-options-for-response)
       (update :fields (fn [fields]
-                        (mapv (fn [{:keys [base_type min_value max_value] :as field}]
-                                (assoc field
-                                  :dimension_options
-                                  (cond
+                        (for [{:keys [base_type special_type min_value max_value] :as field} fields]
+                          (assoc field
+                            :dimension_options
+                            (cond
 
-                                    (and min_value max_value (isa? base_type :type/Number))
-                                    numeric-dimension-indexes
+                              (isa? base_type :type/DateTime)
+                              datetime-dimension-indexes
 
-                                    (isa? base_type :type/DateTime)
-                                    datetime-dimension-indexes
+                              (and min_value max_value
+                                   (isa? special_type :type/Coordinate))
+                              coordinate-dimension-indexes
 
-                                    :else
-                                    [])))
-                              fields)))))
+                              (and min_value max_value
+                                   (isa? base_type :type/Number)
+                                   (or (nil? special_type) (isa? special_type :type/Number)))
+                              numeric-dimension-indexes
+
+                              :else
+                              [])))))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.

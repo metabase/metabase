@@ -141,7 +141,12 @@
   clojure.lang.Named
   (getName [_] (name field)))
 
+(def binning-strategies
+  "Valid binning strategies for a `BinnedField`"
+  #{:num-bins :bin-width :default})
+
 (s/defrecord BinnedField [field     :- Field
+                          strategy  :- (apply s/enum binning-strategies)
                           num-bins  :- s/Int
                           min-value :- s/Num
                           max-value :- s/Num
@@ -165,7 +170,8 @@
                                                                         (fn [_] (or (assert-driver-supports :foreign-keys) true)) ; assert-driver-supports will throw Exception if driver is bound
                                                                         "foreign-keys is not supported by this driver."))         ; and driver does not support foreign keys
                                datetime-unit    :- (s/maybe (apply s/enum datetime-field-units))
-                               binning-strategy :- (s/maybe s/Int)])
+                               binning-strategy :- (s/maybe (apply s/enum binning-strategies))
+                               binning-param    :- (s/maybe s/Num)])
 
 (s/defrecord AgFieldRef [index :- s/Int])
 ;; TODO - add a method to get matching expression from the query?

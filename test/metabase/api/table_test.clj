@@ -6,8 +6,8 @@
              [driver :as driver]
              [http-client :as http]
              [middleware :as middleware]
-             [util :as u]
-             [sync-database :as sync-database]]
+             [sync-database :as sync-database]
+             [util :as u]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -23,7 +23,8 @@
             [toucan
              [db :as db]
              [hydrate :as hydrate]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [medley.core :as m]))
 
 (resolve-private-vars metabase.models.table pk-field-id)
 (resolve-private-vars metabase.api.table dimension-options-for-response datetime-dimension-indexes numeric-dimension-indexes)
@@ -161,7 +162,7 @@
                                                 :last_analyzed      $
                                                 :min_value          1.0
                                                 :max_value          75.0
-                                                :dimension_options  (var-get numeric-dimension-indexes)}))
+                                                :dimension_options  []}))
                              (merge defaults (match-$ (Field (id :categories :name))
                                                {:special_type       "type/Name"
                                                 :name               "NAME"
@@ -225,7 +226,7 @@
                                                 :last_analyzed      $
                                                 :min_value          1.0
                                                 :max_value          15.0
-                                                :dimension_options  (var-get numeric-dimension-indexes)}))
+                                                :dimension_options  []}))
                              (merge defaults (match-$ (Field (id :users :last_login))
                                                {:special_type       nil
                                                 :name               "LAST_LOGIN"
@@ -310,7 +311,7 @@
                                                 :last_analyzed      $
                                                 :min_value          1.0
                                                 :max_value          15.0
-                                                :dimension_options  (var-get numeric-dimension-indexes)}))
+                                                :dimension_options  []}))
                              (merge defaults (match-$ (Field (id :users :last_login))
                                                {:special_type       nil
                                                 :name               "LAST_LOGIN"
@@ -499,12 +500,43 @@
 ;; Numeric fields without min/max values should not have binning strategies
 (expect
   []
-  (let [{:keys [min_value max_value]} (Field (id :categories :id))]
+  (let [{:keys [min_value max_value]} (Field (id :venues :latitude))]
     (try
-      (db/update! Field (id :categories :id) :min_value nil :max_value nil)
+      (db/update! Field (id :venues :latitude) :min_value nil :max_value nil)
       (-> ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :categories)))
           (get-in [:fields])
           first
           :dimension_options)
       (finally
-        (db/update! Field (id :categories :id) :min_value min_value :max_value max_value)))))
+        (db/update! Field (id :venues :latitude) :min_value min_value :max_value max_value)))))
+
+(defn- extract-dimension-options
+  "For the given `FIELD-NAME` find it's dimension_options following
+  the indexes given in the field"
+  [response field-name]
+  (set
+   (for [dim-index (->> response
+                        :fields
+                        (m/find-first #(= field-name (:name %)))
+                        :dimension_options)
+         :let [{[_ _ strategy _] :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
+     strategy)))
+
+;; Lat/Long fields should use bin-width rather than num-bins
+(expect
+  #{"bin-width" "default"}
+  (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues)))]
+    (extract-dimension-options response "LATITUDE")))
+
+;; Number columns without a special type should use "num-bins"
+(expect
+  #{"num-bins" "default"}
+  (let [{:keys [special_type]} (Field (id :venues :price))]
+    (try
+      (db/update! Field (id :venues :price) :special_type nil)
+
+      (let [response ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :venues)))]
+        (extract-dimension-options response "PRICE"))
+
+      (finally
+        (db/update! Field (id :venues :price) :special_type special_type)))))

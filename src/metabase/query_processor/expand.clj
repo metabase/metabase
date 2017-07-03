@@ -4,7 +4,6 @@
   (:refer-clojure :exclude [< <= > >= = != and or not filter count distinct sum min max + - / *])
   (:require [clojure.core :as core]
             [clojure.tools.logging :as log]
-            [metabase.public-settings :as public-settings]
             [metabase.query-processor
              [interface :as i]
              [util :as qputil]]
@@ -176,9 +175,10 @@
 
 (s/defn ^:ql ^:always-validate binning-strategy :- FieldPlaceholder
   "Reference to a `BinnedField`. This is just a `Field` reference with an associated `STRATEGY-NAME` and `STRATEGY-PARAM`"
-  ([f strategy-name & [strategy-param]]   (assoc (field f)
-                                            :binning-strategy (clojure.core/or strategy-param
-                                                                               (public-settings/breakout-bins-num)))))
+  ([f strategy-name & [strategy-param]]
+   (let [strategy (qputil/normalize-token strategy-name)
+         field (field f)]
+     (assoc field :binning-strategy strategy, :binning-param strategy-param))))
 
 (defn- fields-list-clause
   ([k query] query)
