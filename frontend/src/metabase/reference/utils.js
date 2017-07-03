@@ -5,6 +5,7 @@ import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard } from "metabase/lib/card";
 import { isPK } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
+import Field from "metabase-lib/lib/metadata/Field";
 
 export const idsToObjectMap = (ids, objects) => ids
     .map(id => objects[id])
@@ -403,7 +404,8 @@ export const separateTablesBySchema = (
                 createListItem(table, index, section);
     });
 
-export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization}) => {
+// TODO Atte Keinänen 7/3/17: Construct question with Question of metabase-lib instead of this using function
+export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization, metadata}) => {
     const newQuestion = startNewCard('query', dbId, tableId);
 
     // consider taking a look at Ramda as a possible underscore alternative?
@@ -416,7 +418,11 @@ export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCou
         .updateIn(['display'], display => visualization || display)
         .updateIn(
             ['dataset_query', 'query', 'breakout'],
-            breakout => fieldId ? [fieldId] : breakout
+            (oldBreakout) => {
+                if (fieldId && metadata && metadata.fields[fieldId]) return [metadata.fields[fieldId].getDefaultBreakout()]
+                if (fieldId) return [fieldId];
+                return oldBreakout;
+            }
         )
         .value();
 

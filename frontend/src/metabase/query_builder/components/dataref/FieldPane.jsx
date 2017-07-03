@@ -60,25 +60,9 @@ export default class FieldPane extends Component {
     //     this.props.setDatasetQuery(datasetQuery);
     // }
 
-    /**
-     * Returns a default breakout for the current field.
-     *
-     * Tries to look up a default subdimension (like "Created At: Day" for "Created At" field)
-     * and if it isn't found, uses the plain field id dimension (like "Product ID") as a fallback.
-     */
-    getDefaultBreakout = () => {
-        const { metadata, field } = this.props;
-        const fieldIdDimension = metadata.fields[field.id].dimension();
-        const defaultSubDimension = fieldIdDimension.defaultDimension();
-        if (defaultSubDimension) {
-            return defaultSubDimension.mbql();
-        } else {
-            return fieldIdDimension.mbql();
-        }
-    }
-
     groupBy = () => {
-        let { question } = this.props;
+
+        let { question, metadata, field } = this.props;
         let query = question.query();
 
         if (query instanceof StructuredQuery) {
@@ -87,7 +71,8 @@ export default class FieldPane extends Component {
                 query = query.clearAggregations()
             }
 
-            query = query.addBreakout(this.getDefaultBreakout());
+            const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
+            query = query.addBreakout(defaultBreakout);
 
             this.props.updateQuestion(query.question())
             this.props.runQuestionQuery();
@@ -105,23 +90,28 @@ export default class FieldPane extends Component {
     }
 
     setQuerySum = () => {
-        const { field } = this.props;
         let card = this.newCard();
         card.dataset_query.query.aggregation = ["sum", this.props.field.id];
         this.props.setCardAndRun(card);
     }
 
     setQueryDistinct = () => {
+        const { metadata, field } = this.props;
+        const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
+
         let card = this.newCard();
         card.dataset_query.query.aggregation = ["rows"];
-        card.dataset_query.query.breakout = [this.getDefaultBreakout()];
+        card.dataset_query.query.breakout = [defaultBreakout];
         this.props.setCardAndRun(card);
     }
 
     setQueryCountGroupedBy = (chartType) => {
+        const { metadata, field } = this.props;
+        const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
+
         let card = this.newCard();
         card.dataset_query.query.aggregation = ["count"];
-        card.dataset_query.query.breakout = [this.getDefaultBreakout()];
+        card.dataset_query.query.breakout = [defaultBreakout];
         card.display = chartType;
         this.props.setCardAndRun(card);
     }

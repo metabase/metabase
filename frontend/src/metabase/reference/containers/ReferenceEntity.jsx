@@ -249,7 +249,6 @@ export default class ReferenceEntity extends Component {
                                     <Formula
                                         type={section.type}
                                         entity={entity}
-                                        table={table}
                                         isExpanded={isFormulaExpanded}
                                         expandFormula={expandFormula}
                                         collapseFormula={collapseFormula}

@@ -16,7 +16,10 @@ import {
 
 // import { getDatabases, getTables, getFields, getMetrics, getSegments } from "metabase/selectors/metadata";
 
-import { getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields, getShallowMetrics as getMetrics, getShallowSegments as getSegments } from "metabase/selectors/metadata";
+import {
+    getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields,
+    getShallowMetrics as getMetrics, getShallowSegments as getSegments, getMetadata
+} from "metabase/selectors/metadata";
 export { getShallowDatabases as getDatabases, getShallowTables as getTables, getShallowFields as getFields, getShallowMetrics as getMetrics, getShallowSegments as getSegments } from "metabase/selectors/metadata";
 
 import _ from "underscore";
@@ -269,7 +272,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
     }
 } : {};
 
-const getSegmentFieldSections = (segment, table, field, user) => segment && field ? {
+const getSegmentFieldSections = (segment, table, field, user, metadata) => segment && field ? {
     [`/reference/segments/${segment.id}/fields/${field.id}`]: {
         id: `/reference/segments/${segment.id}/fields/${field.id}`,
         name: 'Details',
@@ -283,6 +286,7 @@ const getSegmentFieldSections = (segment, table, field, user) => segment && fiel
                     dbId: table && table.db_id,
                     tableId: field.table_id,
                     fieldId: field.id,
+                    metadata,
                     getCount: true
                 })
             },
@@ -292,6 +296,7 @@ const getSegmentFieldSections = (segment, table, field, user) => segment && fiel
                 link: getQuestionUrl({
                     dbId: table && table.db_id,
                     tableId: field.table_id,
+                    metadata,
                     fieldId: field.id
                 })
             }
@@ -422,7 +427,7 @@ const getTableSections = (database, table) => database && table ? {
     }
 } : {};
 
-const getTableFieldSections = (database, table, field) => database && table && field ? {
+const getTableFieldSections = (database, table, field, metadata) => database && table && field ? {
     [`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`,
         name: 'Details',
@@ -436,6 +441,7 @@ const getTableFieldSections = (database, table, field) => database && table && f
                     dbId: database.id,
                     tableId: table.id,
                     fieldId: field.id,
+                    metadata,
                     getCount: true,
                     visualization: 'bar'
                 })
@@ -447,6 +453,7 @@ const getTableFieldSections = (database, table, field) => database && table && f
                     dbId: database.id,
                     tableId: table.id,
                     fieldId: field.id,
+                    metadata,
                     getCount: true,
                     visualization: 'pie'
                 })
@@ -457,7 +464,8 @@ const getTableFieldSections = (database, table, field) => database && table && f
                 link: getQuestionUrl({
                     dbId: database.id,
                     tableId: table.id,
-                    fieldId: field.id
+                    fieldId: field.id,
+                    metadata
                 })
             }
         ],
@@ -602,8 +610,8 @@ export const getForeignKeys = createSelector(
 )
 
 export const getSections = createSelector(
-    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getTableBySegment, getTableByMetric, getUser, getReferenceSections, getSegments, getMetrics],
-    (sectionId, metric, segment, database, table, field, fieldBySegment, tableBySegment, tableByMetric, user, referenceSections, segments, metrics) => {
+    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getTableBySegment, getTableByMetric, getUser, getReferenceSections, getSegments, getMetrics, getMetadata],
+    (sectionId, metric, segment, database, table, field, fieldBySegment, tableBySegment, tableByMetric, user, referenceSections, segments, metrics, metadata) => {
         // can be simplified if we had a single map of all sections
         if (referenceSections[sectionId]) {
             // filter out segments or metrics if we're not on that particular section and there are none
@@ -623,7 +631,7 @@ export const getSections = createSelector(
             return segmentSections;
         }
 
-        const segmentFieldSections = getSegmentFieldSections(segment, tableBySegment, fieldBySegment);
+        const segmentFieldSections = getSegmentFieldSections(segment, tableBySegment, fieldBySegment, metadata);
         if (segmentFieldSections[sectionId]) {
             return segmentFieldSections;
         }
@@ -638,7 +646,7 @@ export const getSections = createSelector(
             return tableSections;
         }
 
-        const tableFieldSections = getTableFieldSections(database, table, field);
+        const tableFieldSections = getTableFieldSections(database, table, field, metadata);
         if (tableFieldSections[sectionId]) {
             return tableFieldSections;
         }
