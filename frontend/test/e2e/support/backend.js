@@ -46,7 +46,14 @@ export const BackendResource = createSharedResource("BackendResource", {
             if (server.dbKey !== server.dbFile) {
                 await fs.copy(`${server.dbKey}.h2.db`, `${server.dbFile}.h2.db`);
             }
-            server.process = spawn("java", ["-jar", "target/uberjar/metabase.jar"], {
+            server.process = spawn("java", ["-Dh2.bindAddress=localhost",           // fix H2 randomly not working (?)
+                                            "-Xmx2g",                               // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
+                                            "-XX:MaxPermSize=256m",                 // (Java 7) Give JVM a little more headroom in the PermGen space. Cloure makes lots of one-off classes!
+                                            "-Xverify:none",                        // Skip bytecode verification for the JAR so it launches faster
+                                            "-XX:+CMSClassUnloadingEnabled",        // (Java 7) Allow GC to collect classes. Clojure makes lots of one-off dynamic classes
+                                            "-XX:+UseConcMarkSweepGC",              // (Java 7) Use Concurrent Mark & Sweep GC which allows classes to be GC'ed
+                                            "-Djava.awt.headless=true",             // when running on macOS prevent little Java icon from popping up in Dock
+                                            "-jar", "target/uberjar/metabase.jar"], {
                 env: {
                     MB_DB_FILE: server.dbFile,
                     MB_JETTY_PORT: server.port

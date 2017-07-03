@@ -151,13 +151,13 @@
     "lint-eslint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
     "lint-prettier": "prettier --tab-width 4 -l 'frontend/src/metabase/{qb,new_question}/**/*.js*' 'frontend/src/metabase-lib/**/*.js' || (echo '\nThese files are not formatted correctly. Did you forget to run \"yarn run prettier\"?' && false)",
     "flow": "flow check",
-    "test": "yarn run test-jest && yarn run test-karma",
+    "test": "yarn run test-jest && yarn run test-integrated && yarn run test-karma",
     "test-karma": "karma start frontend/test/karma.conf.js --single-run",
     "test-karma-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
-    "test-jest": "jest",
-    "test-jest-watch": "jest --watch",
-    "test-jest-integrated": "jest integ.spec.js",
-    "test-jest-unit": "jest unit.spec.js",
+    "test-jest": "jest --config jest.unit.conf.json",
+    "test-jest-watch": "jest --config jest.unit.conf.json --watch",
+    "test-integrated": "babel-node ./frontend/test/run-integrated-tests.js",
+    "test-integrated-watch": "babel-node ./frontend/test/run-integrated-tests.js --watch",
     "test-e2e": "JASMINE_CONFIG_PATH=./frontend/test/e2e/support/jasmine.json jasmine",
     "test-e2e-dev": "./frontend/test/e2e-with-persistent-browser.js",
     "test-e2e-sauce": "USE_SAUCE=true yarn run test-e2e",
@@ -178,22 +178,6 @@
     "frontend/src/metabase-lib/**/*.js*": [
       "prettier --tab-width 4 --write",
       "git add"
-    ]
-  },
-  "jest": {
-    "moduleNameMapper": {
-      "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
-      "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
-      "^promise-loader\\?global\\!metabase\\/lib\\/ga-metadata$": "<rootDir>/frontend/src/metabase/lib/ga-metadata.js"
-    },
-    "testPathIgnorePatterns": [
-      "<rootDir>/frontend/test/"
-    ],
-    "modulePaths": [
-      "<rootDir>/frontend/src"
-    ],
-    "setupFiles": [
-      "<rootDir>/frontend/test/metabase-bootstrap.js"
     ]
   }
 }

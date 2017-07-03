@@ -1,4 +1,3 @@
-/* @flow */
 
 import type { ISO8601Time } from ".";
 

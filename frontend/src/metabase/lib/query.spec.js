@@ -1,8 +1,8 @@
 import Query from "./query";
 import {
-    ORDERS_PRODUCT_FK_FIELD_ID,
     question,
 } from "metabase/__support__/sample_dataset_fixture";
+import Utils from "metabase/lib/utils";
 
 describe('Legacy Query library', () => {
     it('cleanQuery should pass for a query created with metabase-lib', () => {
@@ -10,9 +10,11 @@ describe('Legacy Query library', () => {
             .addAggregation(["count"])
             .datasetQuery()
 
-        Query.cleanQuery(datasetQuery)
+        // We have to take a copy because the original object isn't extensible
+        const copiedDatasetQuery = Utils.copy(datasetQuery);
+        Query.cleanQuery(copiedDatasetQuery)
 
-        expect(datasetQuery).toBeDefined()
+        expect(copiedDatasetQuery).toBeDefined()
     })
 })
 

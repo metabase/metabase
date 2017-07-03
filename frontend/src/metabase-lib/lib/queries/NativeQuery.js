@@ -27,7 +27,7 @@ import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
-const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
+export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     database: null,
     type: "native",
     native: {
@@ -46,8 +46,7 @@ export default class NativeQuery extends AtomicQuery {
     ) {
         super(question, datasetQuery);
 
-        // $FlowFixMe
-        this._nativeDatasetQuery = datasetQuery;
+        this._nativeDatasetQuery = (datasetQuery: NativeDatasetQuery);
     }
 
     static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
@@ -60,6 +59,10 @@ export default class NativeQuery extends AtomicQuery {
         return this.databaseId() != null &&
             this.queryText().length > 0 &&
             (!this.requiresTable() || this.collection());
+    }
+
+    isEmpty() {
+        return this.databaseId() == null || this.queryText().length == 0;
     }
 
     databases(): Database[] {
