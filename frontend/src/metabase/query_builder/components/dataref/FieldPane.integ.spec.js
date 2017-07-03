@@ -54,18 +54,26 @@ describe("FieldPane", () => {
         // then we can replace this with `store.waitForActions([FETCH_TABLE_FOREIGN_KEYS])` or similar
         await delay(1000)
 
-        console.log(dataReference.debug());
-        // store.resetDispatchedActions() // make sure that we wait for the newest actions
         dataReference.find(`a[children="Created At"]`).first().simulate("click")
-
 
         await store.waitForActions([FETCH_TABLE_METADATA]);
     });
 
-    it("shows you the correct segment definition", () => {
-        const queryDefinition = queryBuilder.find(DataReference).find(QueryDefinition);
+    it("lets you group by Created At", async () => {
+        const getUseForButton = () => queryBuilder.find(DataReference).find(UseForButton);
+
+        expect(getUseForButton().length).toBe(0);
+
+        await store.dispatch(setQuerySourceTable(1))
         // eslint-disable-line react/no-irregular-whitespace
-        expect(queryDefinition.text()).toMatch(/Created At -30day/);
+        expect(getUseForButton().text()).toMatch(/Group by/);
+
+        getUseForButton().simulate('click');
+        await store.waitForActions([QUERY_COMPLETED]);
+        store.resetDispatchedActions()
+
+        // after the breakout has been applied, the button shouldn't be visible anymore
+        expect(getUseForButton().length).toBe(0);
     })
 
     it("lets you see all distinct values of Created At", async () => {
