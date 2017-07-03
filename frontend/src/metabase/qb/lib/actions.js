@@ -41,11 +41,11 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
     }
 };
 
-export const getFieldRefFromColumn = col => {
+export const getFieldRefFromColumn = (col, fieldId = col.id) => {
     if (col.fk_field_id != null) {
-        return ["fk->", col.fk_field_id, col.id];
+        return ["fk->", col.fk_field_id, fieldId];
     } else {
-        return ["field-id", col.id];
+        return ["field-id", fieldId];
     }
 };
 
@@ -166,78 +166,7 @@ const getNextUnit = unit => {
     return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
 };
 
-export const drillDownForDimensions = dimensions => {
-    const timeDimensions = dimensions.filter(
-        dimension => dimension.column.unit
-    );
-    const binnedDimensions = dimensions.filter(
-        dimension => dimension.column.binning_info
-    );
-    // single timeseries breakout
-    if (timeDimensions.length === 1) {
-        const column = timeDimensions[0].column;
-        let nextUnit = getNextUnit(column.unit);
-        if (nextUnit && nextUnit !== column.unit) {
-            return {
-                name: column.unit,
-                breakouts: [[
-                    "datetime-field",
-                    getFieldRefFromColumn(column),
-                    nextUnit
-                ]]
-            };
-        }
-    }
-    // single generic numeric binned breakout
-    else if (binnedDimensions.length === 1) {
-        const column = binnedDimensions[0].column;
-        if (column.binning_info.binning_strategy === "num-bins") {
-            return {
-                breakouts: [[
-                    "binning-strategy",
-                    getFieldRefFromColumn(column),
-                    "num-bins",
-                    column.binning_info.num_bins
-                ]]
-            }
-        } else {
-            return {
-                breakouts: [[
-                    "binning-strategy",
-                    getFieldRefFromColumn(column),
-                    "bin-width",
-                    column.binning_info.bin_width / 10
-                ]]
-            }
-        }
-    }
-    // binned lat/lon breakouts
-    else if (binnedDimensions.length === 2 && _.all(dimensions, ({ column }) => isCoordinate(column))) {
-        return {
-            breakouts: binnedDimensions.map(dimension => [
-                "binning-strategy",
-                getFieldRefFromColumn(dimension.column),
-                "num-bins",
-                dimension.column.binning_info.num_bins
-            ])
-        }
-    }
-};
-
-export const drillTimeseriesFilter = (card, value, column) => {
-    const newCard = drillFilter(card, value, column);
-
-    let nextUnit = UNITS[Math.max(0, UNITS.indexOf(column.unit) - 1)];
-
-    newCard.dataset_query.query.breakout[0] = [
-        "datetime-field",
-        card.dataset_query.query.breakout[0][1],
-        "as",
-        nextUnit
-    ];
-
-    return newCard;
-};
+export { drillDownForDimensions } from "./drilldown";
 
 export const drillUnderlyingRecords = (card, dimensions) => {
     for (const dimension of dimensions) {
@@ -350,10 +279,18 @@ export const updateDateTimeFilter = (card, column, start, end) => {
     }
 };
 
-export const updateNumericFilter = (card, column, start, end) => {
+export function updateLatLonFilter(card, latitudeColumn, longitudeColumn, bounds) {
+    return addOrUpdateFilter(card, [
+        "inside",
+        latitudeColumn.id, longitudeColumn.id,
+        bounds.getNorth(), bounds.getWest(), bounds.getSouth(), bounds.getEast()
+    ]);
+}
+
+export function updateNumericFilter(card, column, start, end) {
     const fieldRef = getFieldRefFromColumn(column);
     return addOrUpdateFilter(card, ["BETWEEN", fieldRef, start, end]);
-};
+}
 
 export const pivot = (
     card: CardObject,

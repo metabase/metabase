@@ -6,7 +6,7 @@ import ChoroplethMap from "../components/ChoroplethMap.jsx";
 import PinMap from "../components/PinMap.jsx";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { isNumeric, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { isNumeric, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns, isState, isCountry } from "metabase/lib/schema_metadata";
 import { metricSetting, dimensionSetting, fieldSetting } from "metabase/visualizations/lib/settings";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -117,13 +117,12 @@ export default class Map extends Component {
             title: "Region map",
             widget: "select",
             getDefault: ([{ card, data: { cols }}]) => {
-                switch (card.display) {
-                    case "country":
-                        return "world_countries";
-                    case "state":
-                    default:
-                        return "us_states";
+                if (card.display === "state" || _.any(cols, isState)) {
+                    return "us_states";
+                } else if (card.display === "country" || _.any(cols, isCountry)) {
+                    return "world_countries";
                 }
+                return null;
             },
             getProps: () => ({
                 // $FlowFixMe:
@@ -180,6 +179,9 @@ export default class Map extends Component {
                 throw new ChartSettingsError("Please select longitude and latitude columns in the chart settings.", "Data");
             }
         } else if (settings["map.type"] === "region"){
+            if (!settings["map.region"]) {
+                throw new ChartSettingsError("Please select a region map.", "Data");
+            }
             if (!settings["map.dimension"] || !settings["map.metric"]) {
                 throw new ChartSettingsError("Please select region and metric columns in the chart settings.", "Data");
             }

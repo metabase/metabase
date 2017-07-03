@@ -120,6 +120,13 @@ export default class PinMap extends Component {
         const binWidth = cols[longitudeIndex] && cols[longitudeIndex].binning_info && cols[longitudeIndex].binning_info.bin_width;
         const binHeight = cols[latitudeIndex] && cols[latitudeIndex].binning_info && cols[latitudeIndex].binning_info.bin_width;
 
+        if (binWidth != null) {
+            bounds._northEast.lng += binWidth;
+        }
+        if (binHeight != null) {
+            bounds._northEast.lat += binHeight;
+        }
+
         return { points, bounds, min, max, binWidth, binHeight };
     }
 

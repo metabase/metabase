@@ -8,7 +8,7 @@ import React from "react";
 
 import ExternalLink from "metabase/components/ExternalLink.jsx";
 
-import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
+import { isDate, isNumber, isCoordinate, isLatitude, isLongitude } from "metabase/lib/schema_metadata";
 import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
@@ -66,7 +66,15 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
 
 export function formatCoordinate(value: number, options: FormattingOptions = {}) {
     const binWidth = options.column && options.column.binning_info && options.column.binning_info.bin_width;
-    return DECIMAL_DEGREES_FORMATTER(value) + "°";
+    let direction = "";
+    if (isLatitude(options.column)) {
+        direction = " " + (value < 0 ? "S" : "N");
+        value = Math.abs(value);
+    } else if (isLongitude(options.column)) {
+        direction = " " + (value < 0 ? "W" : "E");
+        value = Math.abs(value);
+    }
+    return DECIMAL_DEGREES_FORMATTER(value) + "°" + direction;
 }
 
 export function formatRange(range: [number, number], formatter: (value: number) => string, options: FormattingOptions = {}) {

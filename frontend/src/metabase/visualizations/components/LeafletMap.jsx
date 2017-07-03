@@ -12,6 +12,7 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 import * as Query from "metabase/lib/query/query";
 import { mbqlEq } from "metabase/lib/query/util";
+import { updateLatLonFilter } from "metabase/qb/lib/actions";
 
 export default class LeafletMap extends Component {
     componentDidMount() {
@@ -74,8 +75,12 @@ export default class LeafletMap extends Component {
                     settings["map.center_longitude"]
                 ], settings["map.zoom"]);
             } else {
+                // compute ideal lat and lon zoom separately and use the lesser zoom to ensure the bounds are visible 
+                const latZoom = this.map.getBoundsZoom(L.latLngBounds([[bounds.getSouth(), 0], [bounds.getNorth(), 0]]))
+                const lonZoom = this.map.getBoundsZoom(L.latLngBounds([[0, bounds.getWest()], [0, bounds.getEast()]]))
+                const zoom = Math.min(latZoom, lonZoom);
+                this.map.setZoom(zoom);
                 this.map.fitBounds(bounds);
-                this.map.setZoom(this.map.getBoundsZoom(bounds, true));
             }
         }
     }
@@ -97,22 +102,7 @@ export default class LeafletMap extends Component {
         const latitudeColumn = _.findWhere(cols, { name: settings["map.latitude_column"] });
         const longitudeColumn = _.findWhere(cols, { name: settings["map.longitude_column"] });
 
-        const filter = [
-            "inside",
-            latitudeColumn.id, longitudeColumn.id,
-            bounds.getNorth(), bounds.getWest(), bounds.getSouth(), bounds.getEast()
-        ]
-
-        setCardAndRun(updateIn(card, ["dataset_query", "query"], (query) => {
-            const index = _.findIndex(Query.getFilters(query), (filter) =>
-                mbqlEq(filter[0], "inside") && filter[1] === latitudeColumn.id && filter[2] === longitudeColumn.id
-            );
-            if (index >= 0) {
-                return Query.updateFilter(query, index, filter);
-            } else {
-                return Query.addFilter(query, filter);
-            }
-        }));
+        setCardAndRun(updateLatLonFilter(card, latitudeColumn, longitudeColumn, bounds));
 
         this.props.onFiltering(false);
     }
