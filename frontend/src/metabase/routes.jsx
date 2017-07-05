@@ -259,6 +259,7 @@ export const getRoutes = (store) =>
                 <Route path="settings" title="Settings">
                     <IndexRedirect to="/admin/settings/setup" />
                     {/* <IndexRoute component={SettingsEditorApp} /> */}
+                    <Route path=":section/:authType" component={SettingsEditorApp} />
                     <Route path=":section" component={SettingsEditorApp} />
                 </Route>
 

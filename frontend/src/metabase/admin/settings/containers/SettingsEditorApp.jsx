@@ -2,9 +2,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
-
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { slugify } from "metabase/lib/formatting";
 
 import AdminLayout from "metabase/components/AdminLayout.jsx";
 
@@ -15,6 +15,7 @@ import SettingsLdapForm from "../components/SettingsLdapForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
+import SettingsAuthenticationForm from "../components/SettingsAuthenticationForm.jsx";
 
 import { prepareAnalyticsValue } from 'metabase/admin/settings/utils'
 
@@ -140,20 +141,30 @@ export default class SettingsEditorApp extends Component {
                     updateSetting={this.updateSetting}
                 />
             );
-        } else if (activeSection.name === "Single Sign-On") {
-            return (
-                <SettingsSingleSignOnForm
-                    elements={activeSection.settings}
-                    updateSetting={this.updateSetting}
-                />
-            );
-        } else if (activeSection.name === "LDAP") {
-            return (
-                <SettingsLdapForm
-                    elements={activeSection.settings}
-                    updateLdapSettings={this.props.updateLdapSettings}
-                />
-            );
+        } else if (activeSection.name === "Authentication") {
+            // HACK - the presence of this param is a way for us to tell if
+            // a user is looking at a sub section of the autentication section
+            // since allowing for multi page settings more broadly would require
+            // a fairly significant refactor of how settings does its routing logic
+            if(this.props.params.authType) {
+                if(this.props.params.authType === 'ldap') {
+                    return (
+                        <SettingsLdapForm
+                            elements={_.findWhere(this.props.sections, { slug: 'ldap'}).settings}
+                            updateLdapSettings={this.props.updateLdapSettings}
+                        />
+                    )
+                } else if (this.props.params.authType === 'google') {
+                    return (
+                        <SettingsSingleSignOnForm
+                            elements={ _.findWhere(this.props.sections, { slug: slugify('Single Sign-On')}).settings}
+                            updateSetting={this.updateSetting}
+                        />
+                    )
+                }
+            } else {
+                return (<SettingsAuthenticationForm />)
+            }
         } else {
             return (
                 <ul>
@@ -180,6 +191,13 @@ export default class SettingsEditorApp extends Component {
         const { sections, activeSection, newVersionAvailable } = this.props;
 
         const renderedSections = _.map(sections, (section, idx) => {
+
+            // HACK - This is used to hide specific items in the sidebar and is currently
+            // only used as a way to fake the multi page auth settings pages without
+            // requiring a larger refactor.
+            if(section.sidebar === false) {
+                return false;
+            }
             const classes = cx("AdminList-item", "flex", "align-center", "justify-between", "no-decoration", {
                 "selected": activeSection && section.name === activeSection.name // this.state.currentSection === idx
             });
