@@ -109,17 +109,19 @@
      :schema       (get-in card [:collection :name] "All questions")
      :description  (:description card)}))
 
+(defn- saved-cards-virtual-db-metadata []
+  (when-let [virtual-tables (seq (cards-virtual-tables))]
+    {:name     "Saved Questions"
+     :id       database/virtual-id
+     :features #{:basic-aggregations}
+     :tables   virtual-tables}))
+
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-virtual-tables-for-saved-cards [dbs]
-  (let [virtual-tables (cards-virtual-tables)]
+  (if-let [virtual-db-metadata (saved-cards-virtual-db-metadata)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
-    (if-not (seq virtual-tables)
-      dbs
-      (conj (vec dbs)
-            {:name     "Saved Questions"
-             :id       database/virtual-id
-             :features #{:basic-aggregations}
-             :tables   virtual-tables}))))
+    (conj (vec dbs) virtual-db-metadata)
+    dbs))
 
 (defn- dbs-list [include-tables? include-cards?]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name]})))]
@@ -145,6 +147,17 @@
 
 
 ;;; ------------------------------------------------------------ GET /api/database/:id/metadata ------------------------------------------------------------
+
+;; Since the normal `:id` param in the normal version of the endpoint will never match with negative numbers
+;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
+;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
+;; match the virtual ID (and nothing else).
+(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str database/virtual-id))]
+  "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
+   and allowing it to treat the Saved Questions virtual DB just like any other database."
+  []
+  (saved-cards-virtual-db-metadata))
+
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
