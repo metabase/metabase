@@ -34,7 +34,7 @@ class VisualizationError extends Component {
   render () {
       const { card, duration, error } = this.props
 
-      if (typeof error.status === "number") {
+      if (error && typeof error.status === "number") {
           // Assume if the request took more than 15 seconds it was due to a timeout
           // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
           if (duration > 15*1000) {
@@ -52,7 +52,7 @@ class VisualizationError extends Component {
                         action={<EmailAdmin />}
                     />
           }
-      } else if (card.dataset_query && card.dataset_query.type === 'native') {
+      } else if (card && card.dataset_query && card.dataset_query.type === 'native') {
           // always show errors for native queries
           return (
               <div className="QueryError flex full align-center text-error">
