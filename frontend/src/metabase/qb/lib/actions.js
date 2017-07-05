@@ -16,6 +16,7 @@ import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
 import type { StructuredQuery, FieldFilter } from "metabase/meta/types/Query";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
+import { parseTimestamp } from "metabase/lib/time";
 
 // TODO: use icepick instead of mutation, make they handle frozen cards
 
@@ -83,6 +84,7 @@ export const filter = (card, operator, column, value) => {
 };
 
 const drillFilter = (card, value, column) => {
+
     let filter;
     if (isDate(column)) {
         filter = [
@@ -93,7 +95,7 @@ const drillFilter = (card, value, column) => {
                 "as",
                 column.unit
             ],
-            moment(value).toISOString()
+            parseTimestamp(value, column.unit).toISOString()
         ];
     } else {
         filter = ["=", getFieldRefFromColumn(column), value];
