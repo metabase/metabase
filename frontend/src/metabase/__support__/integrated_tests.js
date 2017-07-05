@@ -177,7 +177,7 @@ const testStoreEnhancer = (createStore, history) => {
              *
              * Convenient in tests for waiting specific actions to be executed after mounting a React container.
              */
-            waitForActions: (actionTypes, {timeout = 2000} = {}) => {
+            waitForActions: (actionTypes, {timeout = 10000} = {}) => {
                 actionTypes = Array.isArray(actionTypes) ? actionTypes : [actionTypes]
 
                 const allActionsAreTriggered = () => _.every(actionTypes, actionType =>
