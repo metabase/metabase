@@ -47,7 +47,7 @@ describe("MetricPane", () => {
 
         // TODO: Refactor TablePane so that it uses redux/metadata actions instead of doing inlined API calls
         // then we can replace this with `store.waitForActions([FETCH_TABLE_FOREIGN_KEYS])` or similar
-        await delay(1000)
+        await delay(3000)
 
         store.resetDispatchedActions() // make sure that we wait for the newest actions
         dataReference.find(`a[children="${vendor_count_metric.name}"]`).first().simulate("click")

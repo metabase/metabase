@@ -35,7 +35,7 @@ describe("Question", () => {
                 expect(question.canRun()).toBe(true);
             });
             it("has correct display settings", () => {
-                expect(question.display()).toBeUndefined();
+                expect(question.display()).toBe("table");
             });
             it("has correct mode", () => {
                 expect(question.mode().name()).toBe("segment");
@@ -586,7 +586,7 @@ describe("Question", () => {
             it("returns a question with hash for an unsaved question", () => {
                 const question = new Question(metadata, orders_raw_card);
                 expect(question.getUrl()).toBe(
-                    "/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlX3RhYmxlIjoxfX19"
+                    "/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlX3RhYmxlIjoxfX0sImRpc3BsYXkiOiJ0YWJsZSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ=="
                 );
             });
         });
