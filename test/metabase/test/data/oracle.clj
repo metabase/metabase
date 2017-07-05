@@ -9,16 +9,6 @@
             [metabase.util :as u])
   (:import metabase.driver.oracle.OracleDriver))
 
-(defn- get-db-env-var
-  " Look up the relevant connection param from corresponding env var or throw an exception if it's not set.
-
-     (get-db-env-var :user) ; Look up `MB_ORACLE_USER`"
-  [env-var & [default]]
-  (or (env (keyword (format "mb-oracle-%s" (name env-var))))
-      default
-      (throw (Exception. (format "In order to test Oracle, you must specify the env var MB_ORACLE_%s."
-                                 (s/upper-case (name env-var)))))))
-
 ;; Similar to SQL Server, Oracle on AWS doesn't let you create different databases;
 ;; We'll create a unique schema (the same as a "User" in Oracle-land) for each test run and use that to keep
 ;; tests from clobbering over one another; we'll also qualify the names of tables to include their DB name
@@ -35,11 +25,11 @@
 
 
 (def ^:private db-connection-details
-  (delay {:host     (get-db-env-var :host)
-          :port     (Integer/parseInt (get-db-env-var :port "1521"))
-          :user     (get-db-env-var :user)
-          :password (get-db-env-var :password)
-          :sid      (get-db-env-var :sid)}))
+  (delay {:host     (i/db-test-env-var-or-throw :oracle :host)
+          :port     (Integer/parseInt (i/db-test-env-var-or-throw :oracle :port "1521"))
+          :user     (i/db-test-env-var-or-throw :oracle :user)
+          :password (i/db-test-env-var-or-throw :oracle :password)
+          :sid      (i/db-test-env-var-or-throw :oracle :sid)}))
 
 
 (def ^:private ^:const field-base-type->sql-type
