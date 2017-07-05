@@ -420,7 +420,11 @@
 ;; make sure that GET /api/database/:id/metadata works for the Saved Questions 'virtual' database
 (tt/expect-with-temp [Card [card (assoc (card-with-native-query "Birthday Card") :result_metadata [{:name "age_in_bird_years"}])]]
   (saved-questions-virtual-db
-    (virtual-table-for-card card))
+    (assoc (virtual-table-for-card card)
+      :fields [{:name         "age_in_bird_years"
+                :table_id     (str "card__" (u/get-id card))
+                :id           ["field-literal" "age_in_bird_years" "type/*"]
+                :special_type nil}]))
   ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
 
 ;; if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`
