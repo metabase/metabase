@@ -32,7 +32,7 @@ export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see
 import Question from "metabase-lib/lib/Question";
 import type { Card as CardObject, VisualizationSettings } from "metabase/meta/types/Card";
 import type { HoverObject, ClickObject, Series, OnChangeCardAndRun } from "metabase/meta/types/Visualization";
-import type { Metadata } from "metabase/meta/types/Metadata";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type Props = {
     series: Series,
@@ -229,7 +229,6 @@ export default class Visualization extends Component {
         const { series, clicked } = this.state;
 
         const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
-        // $FlowFixMe
         const previousCard: ?CardObject = series && series[index] && series[index].card;
 
         this.props.onChangeCardAndRun({ nextCard, previousCard });
