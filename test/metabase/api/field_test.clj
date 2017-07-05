@@ -9,6 +9,7 @@
              [data :refer :all]
              [util :as tu]]
             [metabase.test.data.users :refer :all]
+            [ring.util.codec :as codec]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -166,6 +167,13 @@
   {:values                {}
    :human_readable_values {}}
   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
+
+
+;; Check that trying to get values for a 'virtual' field just returns a blank values map
+(expect
+  {:values                {}
+   :human_readable_values {}}
+  ((user->client :rasta) :get 200 (format "field/%s/values" (codec/url-encode "field-literal,created_at,type/Datetime"))))
 
 
 ;; ## POST /api/field/:id/value_map_update
