@@ -314,17 +314,21 @@ export default class Question {
     async getResults(
         { cancelDeferred, isDirty = false, ignoreCache = false } = {}
     ): Promise<[Dataset]> {
+        // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
+
         const canUseCardApiEndpoint = !isDirty && this.isSaved();
 
-        const parametersList = this.parametersList().map(param =>
-            _.pick(param, "target", "type", "value"));
-        const hasParameters = parametersList.length > 0;
+        const parameters = this.parametersList()
+            // include only parameters that have a value applied
+            .filter(param => _.has(param, 'value'))
+            // only the superset of parameters object that API expects
+            .map(param => _.pick(param, "type", "target", "value"))
 
         if (canUseCardApiEndpoint) {
             const queryParams = {
                 cardId: this.id(),
                 ignore_cache: ignoreCache,
-                ...(hasParameters ? { parameters: parametersList } : {})
+                parameters
             };
 
             return [
@@ -336,7 +340,7 @@ export default class Question {
             const getDatasetQueryResult = datasetQuery => {
                 const datasetQueryWithParameters = {
                     ...datasetQuery,
-                    ...(hasParameters ? { parameters: parametersList } : {})
+                    parameters
                 };
 
                 return MetabaseApi.dataset(

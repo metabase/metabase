@@ -400,6 +400,7 @@ export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId
     };
 });
 
+// TODO Atte Keinänen 7/5/17: Move the API call to redux/metadata for being able to see the db fields in the new metadata object
 export const LOAD_DATABASE_FIELDS = "metabase/qb/LOAD_DATABASE_FIELDS";
 export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId) => {
     return async (dispatch, getState) => {

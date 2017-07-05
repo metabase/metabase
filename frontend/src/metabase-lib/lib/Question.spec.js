@@ -162,6 +162,24 @@ describe("Question", () => {
         });
     });
 
+    describe("CARD METHODS", () => {
+        describe("card()", () => {
+            it("A question wraps a query/card and you can see the underlying card with card()", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.card()).toEqual(orders_raw_card);
+            });
+        });
+
+        describe("setCard(card)", () => {
+            it("changes the underlying card", () => {
+                const question = new Question(metadata, orders_raw_card);
+                expect(question.card()).toEqual(orders_raw_card);
+                const newQustion = question.setCard(orders_count_by_id_card);
+                expect(question.card()).toEqual(orders_raw_card);
+                expect(newQustion.card()).toEqual(orders_count_by_id_card);
+            });
+        });
+    });
     describe("RESETTING METHODS", () => {
         describe("withoutNameAndId()", () => {
             it("unsets the name and id", () => {
@@ -535,7 +553,16 @@ describe("Question", () => {
         });
     });
 
-    fdescribe("COMPARISON TO OTHER QUESTIONS", () => {
+    describe("QUESTION EXECUTION", () => {
+        describe("getResults()", () => {
+            it("executes correctly a native query with field filter parameters", () => {
+                pending();
+                // test also here a combo of parameter with a value + parameter without a value + parameter with a default value
+            });
+        });
+    });
+
+    describe("COMPARISON TO OTHER QUESTIONS", () => {
         describe("isDirtyComparedTo(question)", () => {
             it("New questions are automatically dirty", () => {
                 const question = new Question(metadata, orders_raw_card);

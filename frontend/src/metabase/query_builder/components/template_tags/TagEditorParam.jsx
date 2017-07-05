@@ -62,7 +62,7 @@ export default class TagEditorParam extends Component {
             if (!field) {
                 return;
             }
-            const options = parameterOptionsForField(field);
+            const options = parameterOptionsForField(new Field(field));
             let widget_type;
             if (tag.widget_type && _.findWhere(options, { type: tag.widget_type })) {
                 widget_type = tag.widget_type;
@@ -90,7 +90,7 @@ export default class TagEditorParam extends Component {
         if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
             const field = _.findWhere(databaseFields, { id: tag.dimension[1] });
             if (field) {
-                widgetOptions = parameterOptionsForField(field);
+                widgetOptions = parameterOptionsForField(new Field(field));
             }
         }
 
