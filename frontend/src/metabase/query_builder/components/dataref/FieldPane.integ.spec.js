@@ -7,19 +7,15 @@ import React from 'react';
 import { mount } from "enzyme";
 
 import {
-    INITIALIZE_QB, LOAD_TABLE_METADATA, QUERY_COMPLETED, SET_QUERY_SOURCE_TABLE, setQuerySourceTable,
+    INITIALIZE_QB, QUERY_COMPLETED, setQuerySourceTable,
     TOGGLE_DATA_REFERENCE
 } from "metabase/query_builder/actions";
 import { delay } from "metabase/lib/promise"
 
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
-import { orders_past_30_days_segment } from "metabase/__support__/sample_dataset_fixture";
-import { createSegment } from "metabase/admin/datamodel/datamodel";
 import { FETCH_TABLE_METADATA } from "metabase/redux/metadata";
-import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition";
 import QueryButton from "metabase/components/QueryButton";
-import Scalar from "metabase/visualizations/visualizations/Scalar";
 import Table from "metabase/visualizations/visualizations/Table";
 import UseForButton from "metabase/query_builder/components/dataref/UseForButton";
 

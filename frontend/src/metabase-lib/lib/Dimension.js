@@ -338,7 +338,8 @@ export class FieldIDDimension extends FieldDimension {
     }
 
     field() {
-        return (this._metadata && this._metadata.fields[this._args[0]]) || new Field();
+        return (this._metadata && this._metadata.fields[this._args[0]]) ||
+            new Field();
     }
 }
 
@@ -375,7 +376,8 @@ export class FKDimension extends FieldDimension {
     }
 
     field() {
-        return (this._metadata && this._metadata.fields[this._args[0]]) || new Field();
+        return (this._metadata && this._metadata.fields[this._args[0]]) ||
+            new Field();
     }
 
     render() {

@@ -5,7 +5,6 @@ import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard } from "metabase/lib/card";
 import { isPK } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import Field from "metabase-lib/lib/metadata/Field";
 
 export const idsToObjectMap = (ids, objects) => ids
     .map(id => objects[id])

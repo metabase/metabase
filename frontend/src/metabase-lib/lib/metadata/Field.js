@@ -115,5 +115,5 @@ export default class Field extends Base {
         } else {
             return fieldIdDimension.mbql();
         }
-    }
+    };
 }

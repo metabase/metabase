@@ -8,5 +8,5 @@ describe("TimeseriesPivotDrill", () => {
         // Intented to test that "Zoom In" for a table cell when you have broken out by year works correctly
         // Could also be part of more comprehensive QB integrated test where the table cell is actually clicked
         pending();
-    })
+    });
 });

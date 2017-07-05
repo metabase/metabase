@@ -9,7 +9,6 @@ import Question from "metabase-lib/lib/Question";
 import {
     DATABASE_ID,
     ORDERS_TABLE_ID,
-    metadata,
     orders_past_30_days_segment
 } from "metabase/__support__/sample_dataset_fixture";
 
@@ -17,7 +16,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { createSegment } from "metabase/admin/datamodel/datamodel";
 import { getMetadata } from "metabase/selectors/metadata";
 import { fetchDatabases, fetchSegments, fetchTableMetadata } from "metabase/redux/metadata";
-import { TestTooltip, TestTooltipContent, TestTooltipTarget } from "metabase/components/Tooltip";
+import { TestTooltip, TestTooltipContent } from "metabase/components/Tooltip";
 import FilterWidget from "metabase/query_builder/components/filters/FilterWidget";
 
 const getFieldList = (query, fieldOptions, segmentOptions) =>
@@ -80,7 +79,7 @@ describe('FieldList', () => {
         const tooltipContent = tooltipTarget.closest(TestTooltip).find(TestTooltipContent);
         expect(tooltipContent.length).toBe(1)
 
-        // eslint-disable-line react/no-irregular-whitespace
+        // eslint-disable-next-line no-irregular-whitespace
         expect(tooltipContent.find(FilterWidget).text()).toMatch(/Created At -30day/);
     })
 });

@@ -7,7 +7,7 @@ import React from 'react';
 import { mount } from "enzyme";
 
 import {
-    INITIALIZE_QB, LOAD_TABLE_METADATA, QUERY_COMPLETED, SET_QUERY_SOURCE_TABLE, setQuerySourceTable,
+    INITIALIZE_QB, LOAD_TABLE_METADATA, QUERY_COMPLETED, setQuerySourceTable,
     TOGGLE_DATA_REFERENCE
 } from "metabase/query_builder/actions";
 import { delay } from "metabase/lib/promise"
@@ -63,7 +63,7 @@ describe("SegmentPane", () => {
 
     it("shows you the correct segment definition", () => {
         const queryDefinition = queryBuilder.find(DataReference).find(QueryDefinition);
-        // eslint-disable-line react/no-irregular-whitespace
+        // eslint-disable-next-line no-irregular-whitespace
         expect(queryDefinition.text()).toMatch(/Created At -30day/);
     })
 

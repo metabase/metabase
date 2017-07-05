@@ -84,7 +84,6 @@ export const filter = (card, operator, column, value) => {
 };
 
 const drillFilter = (card, value, column) => {
-
     let filter;
     if (isDate(column)) {
         filter = [

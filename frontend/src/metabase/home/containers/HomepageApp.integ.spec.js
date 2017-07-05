@@ -12,10 +12,9 @@ import {
 } from "metabase/__support__/sample_dataset_fixture";
 import { delay } from 'metabase/lib/promise';
 
-import { VisualizationEmptyState } from "metabase/query_builder/components/QueryVisualization";
 import HomepageApp from "metabase/home/containers/HomepageApp";
 import { createMetric, createSegment } from "metabase/admin/datamodel/datamodel";
-import { FETCH_ACTIVITY, FETCH_RECENT_VIEWS } from "metabase/home/actions";
+import { FETCH_ACTIVITY } from "metabase/home/actions";
 import { QUERY_COMPLETED } from "metabase/query_builder/actions";
 
 import Activity from "metabase/home/components/Activity";
@@ -29,17 +28,12 @@ describe("HomepageApp", () => {
 
         // Create some entities that will show up in the top of activity feed
         // This test doesn't care if there already are existing items in the feed or not
-        const question = await createSavedQuestion(unsavedOrderCountQuestion)
-
         // Delays are required for having separable creation times for each entity
+        await createSavedQuestion(unsavedOrderCountQuestion)
         await delay(100);
-
-        const segment = await createSegment(orders_past_30_days_segment);
-
+        await createSegment(orders_past_30_days_segment);
         await delay(100);
-
-        const metric = await createMetric(vendor_count_metric);
-
+        await createMetric(vendor_count_metric);
         await delay(100);
     })
 
@@ -64,7 +58,7 @@ describe("HomepageApp", () => {
             expect(activityItems.at(1).text()).toMatch(/Past 30 days/);
             expect(activityStories.at(1).text()).toMatch(/Past 30 days created at/);
 
-            // eslint-disable-line react/no-irregular-whitespace
+            // eslint-disable-next-line no-irregular-whitespace
             expect(activityItems.at(2).text()).toMatch(/You saved a question about Orders/);
             expect(activityStories.at(2).text()).toMatch(new RegExp(unsavedOrderCountQuestion.displayName()));
 

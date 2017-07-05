@@ -279,9 +279,7 @@ export default class Question {
     }
 
     setDisplayName(name: String) {
-        return this.setCard(
-            assoc(this.card(), "name", name)
-        );
+        return this.setCard(assoc(this.card(), "name", name));
     }
 
     id(): number {
@@ -320,9 +318,9 @@ export default class Question {
 
         const parameters = this.parametersList()
             // include only parameters that have a value applied
-            .filter(param => _.has(param, 'value'))
+            .filter(param => _.has(param, "value"))
             // only the superset of parameters object that API expects
-            .map(param => _.pick(param, "type", "target", "value"))
+            .map(param => _.pick(param, "type", "target", "value"));
 
         if (canUseCardApiEndpoint) {
             const queryParams = {

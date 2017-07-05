@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import pure from "recompose/pure";
 import cx from "classnames";
 import { connect } from "react-redux";
 
