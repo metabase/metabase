@@ -137,8 +137,10 @@ export const addOrUpdateBreakout = (card, breakout) => {
     let breakouts = Query.getBreakouts(newCard.dataset_query.query);
     for (let index = 0; index < breakouts.length; index++) {
         if (
-            Field.getFieldTargetId(breakouts[index]) ===
-            Field.getFieldTargetId(breakout)
+            fieldIdsEq(
+                Field.getFieldTargetId(breakouts[index]),
+                Field.getFieldTargetId(breakout)
+            )
         ) {
             newCard.dataset_query.query = Query.updateBreakout(
                 newCard.dataset_query.query,
@@ -247,7 +249,7 @@ export const breakout = (card, breakout, tableMetadata) => {
 // min number of points when switching units
 const MIN_INTERVALS = 4;
 
-export const updateDateTimeFilter = (card, column, start, end) => {
+export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     let newCard = clone(card);
 
     let fieldRef = getFieldRefFromColumn(column);
