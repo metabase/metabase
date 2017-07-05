@@ -110,15 +110,18 @@ export const saveDatabase = createThunkAction(SAVE_DATABASE, function(database, 
     };
 });
 
+const START_DELETE = 'metabase/admin/databases/START_DELETE'
+const startDelete = createAction(START_DELETE)
+
+
 // deleteDatabase
-export const deleteDatabase = createThunkAction(DELETE_DATABASE, function(databaseId, redirect=false) {
+export const deleteDatabase = createThunkAction(DELETE_DATABASE, function(databaseId, redirect=true) {
     return async function(dispatch, getState) {
         try {
+            dispatch(startDelete(databaseId))
+            dispatch(push('/admin/databases/'));
             await MetabaseApi.db_delete({"dbId": databaseId});
             MetabaseAnalytics.trackEvent("Databases", "Delete", redirect ? "Using Detail" : "Using List");
-            if (redirect) {
-                dispatch(push('/admin/databases/'));
-            }
             return databaseId;
         } catch(error) {
             console.log('error deleting database', error);
@@ -156,6 +159,18 @@ const editingDatabase = handleActions({
     [SELECT_ENGINE]: { next: (state, { payload }) => ({...state, engine: payload }) }
 }, null);
 
+const deletes = handleActions({
+    [START_DELETE]: {
+        next: (state, { payload }) => state.concat([payload])
+    },
+    [DELETE_DATABASE]: {
+        next: (state, { payload }) => {
+            console.log(state.indexOf(payload))
+            return state.splice(state.indexOf(payload), 1)
+        }
+    }
+}, []);
+
 const DEFAULT_FORM_STATE = { formSuccess: null, formError: null };
 const formState = handleActions({
     [RESET]: { next: () => DEFAULT_FORM_STATE },
@@ -165,5 +180,6 @@ const formState = handleActions({
 export default combineReducers({
     databases,
     editingDatabase,
-    formState
+    formState,
+    deletes
 });
